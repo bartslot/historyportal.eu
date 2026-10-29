@@ -355,6 +355,17 @@
     pointer-events: none;
 }
 
+/* A panel's content that paints its own backgrounds (tab bars, footers) lives in this box: the
+   same inset as the surface, clipped to its rounded corners, so nothing reaches the gap. */
+.lp-panel-content {
+    position: absolute;
+    inset: calc(var(--editor-gap) / 2);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
 /* ─── The resize handle: the gap between two panels ──── */
 /**
  * ONE handle for every gap in the editor (<x-ui.resize-handle>). Its 8px hit area is the gap, the
@@ -608,6 +619,13 @@
     }
     .card:hover {
         border-color: rgba(255,255,255,0.16);
+    }
+    /* A panel host keeps a .card's layout and none of its chrome: its look is the .lp-panel-surface
+       child. A leftover gradient or hairline would paint the gap around the panel. background:none
+       resets background-image too, which bg-transparent does not. */
+    .card.lp-panel-host {
+        background: none;
+        border: 0;
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an

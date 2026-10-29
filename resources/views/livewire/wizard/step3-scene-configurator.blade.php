@@ -960,7 +960,7 @@
            x-on:inspector-state-request.window="window.dispatchEvent(new CustomEvent('inspector-state', { detail: { open: inspectorOpen, view: '{{ $panelView }}' } }))"
            style="right:0; left:auto; top:64px; bottom:0;"
            data-resizable-drawer
-           class="card card-compact fixed z-50 rounded-none border-0 bg-transparent
+           class="card card-compact lp-panel-host fixed z-50 rounded-none
                   {{-- 19.375rem is the Figma panel's 310px. The old 16rem was narrow enough that a
                        row label and its control competed for the same space, which is where the
                        three different label widths came from. --}}
@@ -1004,6 +1004,7 @@
     })();
     </script>
     @endpush
+        <div class="lp-panel-content">
         {{-- One panel, two subjects: what is selected on the stage, or the lesson as a whole.
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
@@ -1253,6 +1254,7 @@
             </div>
             @endif
         </div>
+        </div>{{-- /.lp-panel-content --}}
     </aside>
 
     {{-- Bottom CTA removed: the Play button (top toolbar) opens the player, and the back
@@ -1666,7 +1668,7 @@
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0 pl-16" style="background: var(--color-shell)"
+    <div data-editor-toolbar class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0 pl-16" style="background: var(--color-shell)"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -2359,7 +2361,7 @@
                    init() { this.note = localStorage.getItem(this.key) || ''; },
                    save() { localStorage.setItem(this.key, this.note); } }"
          class="fixed bottom-0 z-40 w-72 overflow-hidden border-l border-t border-slate-700 bg-base-300"
-         style="right: var(--work-right, 16rem);">
+         style="right: calc(var(--work-right, 16rem) - var(--editor-gap) / 2);">
         <div class="flex items-center justify-between border-b border-slate-700/60 bg-base-200/60 px-3 py-2">
             <span class="text-2xs font-semibold uppercase tracking-widest text-panel-hint">{{ __('Internal notes') }}</span>
             <button type="button" @click="$store.view.hide('notes')" class="text-panel-hint hover:text-slate-200" aria-label="{{ __('Close') }}">✕</button>

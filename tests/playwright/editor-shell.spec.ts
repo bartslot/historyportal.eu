@@ -103,6 +103,62 @@ async function lowContrastText(page: Page) {
   }, PANEL_BG);
 }
 
+/** How far a panel host reaches past its surface: half of --editor-gap. Everything in that ring is shell. */
+const RING = 4;
+
+/**
+ * Every pixel in the RING round each visible panel surface, outside the surface itself, must be
+ * pure black. The screenshot is decoded in the page, so the test reads the real rendered pixels, not
+ * the computed styles. Sampled every 2px. A channel above 2 counts as a leak.
+ */
+async function ringLeaks(page: Page) {
+  await page.mouse.move(5, 5, { steps: 2 });   // no gap line lit while sampling
+  // The object list is hidden by default; show it so its gaps are sampled as well.
+  await page.evaluate(() => { (window as any).Alpine.store('view').objects = true; });
+  await page.waitForTimeout(400);
+  const rects = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.lp-panel-surface'))
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom })));
+  // The top toolbar's band is chrome: its controls may sit over a ring. Its own background is checked
+  // separately, in the shell test.
+  const toolbarBottom = await page.locator('[data-editor-toolbar]').evaluate((el) => el.getBoundingClientRect().bottom);
+  const png = (await page.screenshot({ type: 'png' })).toString('base64');
+  return page.evaluate(async ({ png, rects, ring, toolbarBottom }) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${png}`;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0);
+    const pixels = ctx.getImageData(0, 0, img.width, img.height).data;
+    const scale = img.width / window.innerWidth;
+    const leaks: string[] = [];
+    let sampled = 0;
+    for (const r of rects) {
+      const top = Math.max(0, Math.floor(r.y0 - ring));
+      const bottom = Math.min(window.innerHeight, Math.ceil(r.y1 + ring));
+      const left = Math.max(0, Math.floor(r.x0 - ring));
+      const right = Math.min(window.innerWidth, Math.ceil(r.x1 + ring));
+      for (let y = Math.max(top, Math.ceil(toolbarBottom)); y < bottom; y += 2) {
+        for (let x = left; x < right; x += 2) {
+          if (rects.some((q) => x >= q.x0 && x < q.x1 && y >= q.y0 && y < q.y1)) continue;   // a surface
+          sampled++;
+          const i = (Math.floor(y * scale) * img.width + Math.floor(x * scale)) * 4;
+          if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 2 && leaks.length < 10) {
+            leaks.push(`(${x},${y}) rgb(${pixels[i]}, ${pixels[i + 1]}, ${pixels[i + 2]})`);
+          }
+        }
+      }
+    }
+    return { sampled, leaks };
+  }, { png, rects, ring: RING, toolbarBottom }).finally(() =>
+    page.evaluate(() => { (window as any).Alpine.store('view').objects = false; }));
+}
+
 for (const viewport of VIEWPORTS) {
   test.describe(`editor shell at ${viewport.name}`, () => {
     test.beforeEach(async ({ page }) => {
@@ -163,8 +219,16 @@ for (const viewport of VIEWPORTS) {
       expect(await lowContrastText(page)).toEqual([]);
     });
 
+    test('everything outside a panel surface is pure black', async ({ page }) => {
+      const { sampled, leaks } = await ringLeaks(page);
+      expect(sampled, 'the ring was sampled').toBeGreaterThan(1000);
+      expect(leaks).toEqual([]);
+    });
+
     test('the shell is black and the panels are inset from it', async ({ page }) => {
       const shell = await page.evaluate(() => getComputedStyle(document.elementFromPoint(2, 400)!).backgroundColor);
+      const toolbar = await page.locator('[data-editor-toolbar]').evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(toolbar).toBe('rgb(0, 0, 0)');
       await page.screenshot({ path: `${SHOTS}/${viewport.name}-after-rest.png` });
       expect(shell).toMatch(/rgb\(0, 0, 0\)|rgba\(0, 0, 0, 0\)/);
     });

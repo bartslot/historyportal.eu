@@ -37,6 +37,7 @@
 <aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden']) }}
        style="width: var(--rail-w, 11rem)">
     <div class="lp-panel-surface" aria-hidden="true"></div>
+    <div class="lp-panel-content">
     <div class="flex h-full flex-col pt-20" data-rail-col>
         {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
              track, so no scene can be dropped above it and it stays put while the scenes scroll. --}}
@@ -114,6 +115,7 @@
             @endif
         </div>
     </div>
+    </div>{{-- /.lp-panel-content --}}
 </aside>
 
 @if ($editable)

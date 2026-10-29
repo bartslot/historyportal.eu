@@ -35,7 +35,7 @@
      {{ $attributes }}
      x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }}, @js($narrating))"
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden"
-     :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
+     :style="`left:var(--rail-w,11rem);right:calc(var(--work-right,16rem) - var(--editor-gap) / 2);height:${panelH}px`">
     <div class="lp-panel-surface" aria-hidden="true"></div>
 
     {{-- The resize handle along the dock's top edge: drag up for more room. Keyboard: arrows,
@@ -48,6 +48,9 @@
                         x-on:resize-step="dragStep($event.detail)"
                         x-on:resize-reset="resetHeight()" />
 
+    {{-- The dock's content sits inside its panel surface and is clipped to it, so a tab bar or the
+         footer never paints into the shell gap around the panel. The handle stays outside it. --}}
+    <div class="lp-panel-content">
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
     <div role="tablist" class="tabs tabs-boxed tabs-sm">
@@ -216,6 +219,7 @@
         </div>
     </div>
     </div>{{-- /Script tab --}}
+    </div>{{-- /.lp-panel-content --}}
 </div>
 
 @once
