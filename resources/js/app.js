@@ -18,6 +18,7 @@ import { clampToViewport, restorePosition, savePosition, defaultPosition, isView
 import './dev/tuner.js';
 import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
+import { resizeHandle, onResize } from './ui/resize-handle.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
 import { initKeyedFields } from './ui/keyed-fields.js';
@@ -48,6 +49,11 @@ window.__uiRestoreWindow = restorePosition;
 window.__uiSaveWindow = savePosition;
 window.__uiDefaultWindowPos = defaultPosition;
 window.__uiViewportUsable = isViewportUsable;
+
+// The shared resize handle (<x-ui.resize-handle>): its Alpine factory, and the router that hands
+// each handle's events to its owner by element id.
+window.resizeHandle = resizeHandle;
+window.onResize = onResize;
 
 // Hover hints for icon-only controls, app-wide. Opt in per element with data-tooltip
 // (+ data-tooltip-key for the shortcut); see resources/js/tooltip.js.

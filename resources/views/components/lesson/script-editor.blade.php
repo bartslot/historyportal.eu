@@ -37,18 +37,15 @@
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
      :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
 
-    {{-- The grip: the top edge, drag up for more room. Keyboard: arrows, Home resets. --}}
-    <div class="lp-grip h-2 shrink-0" :data-dragging="dragging ? '' : null"
-         x-on:pointerdown="dragStart($event)"
-         x-on:pointermove="dragMove($event)"
-         x-on:pointerup="dragEnd($event)"
-         x-on:pointercancel="dragEnd($event)"
-         x-on:keydown="dragKey($event)"
-         tabindex="0" data-dock-resize
-         role="separator" aria-orientation="horizontal" :aria-valuenow="panelH"
-         aria-label="{{ __('Resize the panel') }}">
-        <span class="lp-grip-pill" aria-hidden="true"></span>
-    </div>
+    {{-- The resize handle along the dock's top edge: drag up for more room. Keyboard: arrows,
+         Home resets. The shared handle (x-ui.resize-handle) reports the pointer; the dock sizes. --}}
+    <x-ui.resize-handle axis="y" class="shrink-0" data-dock-resize
+                        label="{{ __('Resize the panel') }}"
+                        x-on:resize-start="dragStart($event.detail)"
+                        x-on:resize-drag="dragMove($event.detail)"
+                        x-on:resize-end="dragEnd()"
+                        x-on:resize-step="dragStep($event.detail)"
+                        x-on:resize-reset="resetHeight()" />
 
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
@@ -813,30 +810,27 @@
                     this.active = a;
                 },
 
-                // The grip. Pointer capture keeps the drag on the grip wherever the pointer goes.
-                dragStart(e) {
-                    if (e.button !== 0) return;
+                // The grip, driven by the shared handle's events. Pointer capture lives in the handle.
+                dragStart(d) {
                     this.dragging = true;
-                    this._startY = e.clientY;
+                    this._startY = d.pos;
                     this._startH = this.panelH;
-                    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-                    e.preventDefault();
                 },
-                dragMove(e) {
+                dragMove(d) {
                     if (!this.dragging) return;
-                    this.panelH = clampDockH(this._startH + (this._startY - e.clientY));   // up = taller
+                    this.panelH = clampDockH(this._startH + (this._startY - d.pos));   // up = taller
                 },
                 dragEnd() {
                     if (!this.dragging) return;
                     this.dragging = false;
                     this.keepHeight();
                 },
-                dragKey(e) {
-                    const step = e.shiftKey ? 64 : 16;
-                    const next = { ArrowUp: this.panelH + step, ArrowDown: this.panelH - step, Home: SCRIPT_DEF_H }[e.key];
-                    if (next === undefined) return;
-                    e.preventDefault();
-                    this.panelH = clampDockH(next);
+                dragStep(d) {
+                    this.panelH = clampDockH(this.panelH - d.dir * (d.big ? 64 : 16));   // dir -1 (up) = taller
+                    this.keepHeight();
+                },
+                resetHeight() {
+                    this.panelH = clampDockH(SCRIPT_DEF_H);
                     this.keepHeight();
                 },
                 keepHeight() {

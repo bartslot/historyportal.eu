@@ -964,30 +964,41 @@
         {{-- Drag the left edge to resize the drawer; double-click it for the default width again.
              The width lives on <html> (--inspector-w, remembered per browser), not on this aside:
              every Livewire morph rewrites the aside's own style attribute. The stage follows by
-             itself (the --work-right sync measures the aside). --}}
-        <div aria-hidden="true"
-             class="absolute inset-y-0 left-0 z-20 w-1.5 cursor-col-resize transition-colors hover:bg-primary/40"
-             x-data="{
-                set(w) {
-                    const root = document.documentElement
-                    if (w === null) { root.style.removeProperty('--inspector-w'); delete root.dataset.inspectorW; return }
-                    root.style.setProperty('--inspector-w', w + 'px'); root.dataset.inspectorW = ''
-                },
-                drag() {
-                    const move = (e) => {
-                        const w = Math.round(Math.min(Math.max(window.innerWidth - e.clientX, 280), window.innerWidth * 0.75))
-                        this.set(w)
-                        try { localStorage.setItem('wizard.inspector.w', String(w)) } catch (_) {}
-                    }
-                    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.style.userSelect = '' }
-                    document.body.style.userSelect = 'none'
-                    window.addEventListener('pointermove', move)
-                    window.addEventListener('pointerup', up)
-                },
-             }"
-             x-init="(() => { let w = null; try { w = Number(localStorage.getItem('wizard.inspector.w')) || null } catch (_) {} ; if (w) set(w) })()"
-             @pointerdown.prevent="drag()"
-             @dblclick="set(null); try { localStorage.removeItem('wizard.inspector.w') } catch (_) {}"></div>
+             itself (the --work-right sync measures the aside). The events are wired in the script
+             below. --}}
+        <x-ui.resize-handle axis="x" id="inspector-resize" class="absolute inset-y-0 left-0 z-20"
+                            label="{{ __('Resize the inspector') }}" />
+    @push('scripts')
+    <script>
+    (() => {
+        const KEY = 'wizard.inspector.w';
+        const MIN_W = 280;
+        const rootEl = document.documentElement;
+        const clamp = (w) => Math.round(Math.min(Math.max(w, MIN_W), window.innerWidth * 0.75));
+        const set = (w) => {
+            if (w === null) { rootEl.style.removeProperty('--inspector-w'); delete rootEl.dataset.inspectorW; return; }
+            rootEl.style.setProperty('--inspector-w', w + 'px'); rootEl.dataset.inspectorW = '';
+        };
+        const remember = (w) => {
+            try { if (w === null) localStorage.removeItem(KEY); else localStorage.setItem(KEY, String(w)); } catch (_) {}
+        };
+        // The inspector is anchored to the window's right edge, so its width is the pointer's distance from it.
+        // app.js (a module) defines onResize, and an inline script can run before it: wait for it.
+        const register = () => window.onResize('inspector-resize', {
+            drag: (d) => { const w = clamp(window.innerWidth - d.pos); set(w); remember(w); },
+            step: (d) => {
+                const aside = document.getElementById('inspector-resize')?.parentElement;
+                const w = clamp((aside?.getBoundingClientRect().width ?? MIN_W) - d.dir * (d.big ? 32 : 12));
+                set(w); remember(w);
+            },
+            reset: () => { set(null); remember(null); },
+        });
+        window.onResize ? register() : document.addEventListener('DOMContentLoaded', register);
+        // Restore the width remembered in this browser.
+        try { const w = Number(localStorage.getItem(KEY)) || null; if (w) set(w); } catch (_) {}
+    })();
+    </script>
+    @endpush
         {{-- One panel, two subjects: what is selected on the stage, or the lesson as a whole.
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
@@ -2145,15 +2156,11 @@
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to
          resize; it stops at the icons, and a pull to the rail edge hides it (View ▸ Object list
-         re-opens). Only
-         rendered while the list is shown. --}}
-    <div x-show="$store.view.objects" x-cloak id="objlist-resize" wire:ignore tabindex="0"
-         class="group fixed z-40 -ml-1.5 w-3 cursor-col-resize focus:outline-none focus-visible:bg-sky-400/20"
-         style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 13rem)); top: 4rem; bottom: var(--work-bottom, 0px)"
-         role="separator" aria-orientation="vertical" aria-label="{{ __('Resize object list (arrow keys)') }}"
-         title="{{ __('Drag to resize · drag narrow for icons only · drag to the edge to hide') }}">
-        <div class="mx-auto h-full w-0.5 bg-transparent transition-colors group-hover:bg-sky-400"></div>
-    </div>
+         re-opens). Only rendered while the list is shown. --}}
+    <x-ui.resize-handle axis="x" id="objlist-resize" wire:ignore x-show="$store.view.objects" x-cloak
+                        class="fixed z-40 -ml-1"
+                        style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 13rem)); top: 4rem; bottom: var(--work-bottom, 0px)"
+                        label="{{ __('Resize object list (arrow keys)') }}" />
     @push('scripts')
     <script>
     (() => {
@@ -2164,57 +2171,36 @@
         // hides the list (Bart, 2026-09-29: it hid too early, while the icons still fitted).
         const ICONS_W = 44;   // p-1.5 + px-2 + the 16px icon + the same on the right
         const HIDE_W = 12;    // the pointer this close to the rail edge: hide
+        const DEFAULT_W = 208;
         const widthFor = (raw) => (raw <= HIDE_W ? 0 : Math.max(ICONS_W, clamp(raw)));
-        const boot = () => {
-            const handle = document.getElementById('objlist-resize');
-            if (!handle || handle.__wired) return;
-            handle.__wired = true;
-            let dragging = false;
-            handle.addEventListener('pointerdown', (e) => {
-                dragging = true; handle.setPointerCapture(e.pointerId);
-                document.body.style.userSelect = 'none'; e.preventDefault();
-            });
-            handle.addEventListener('pointermove', (e) => {
-                if (!dragging) return;
-                rootEl.style.setProperty('--objlist-w', widthFor(e.clientX - railW()) + 'px');
-            });
-            const end = (e) => {
-                if (!dragging) return;
-                dragging = false;
-                try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
-                document.body.style.userSelect = '';
-                const rawO = parseFloat(rootEl.style.getPropertyValue('--objlist-w'));
-                const w = Number.isFinite(rawO) ? rawO : 208;   // keep a real 0 (don't let || swallow the hide gesture)
-                const store = window.Alpine?.store('view');
-                if (w === 0) {                    // pulled to the edge → hide the list
-                    if (store) { store.objects = false; store._save?.(); }
-                    return;
-                }
-                rootEl.style.setProperty('--objlist-w', w + 'px');
-                if (store) { store.objectsW = w; store._save?.(); }
-            };
-            handle.addEventListener('pointerup', end);
-            handle.addEventListener('pointercancel', end);
-            // Keyboard: arrows resize, Home resets, End hides (WAI-ARIA splitter pattern).
-            handle.addEventListener('keydown', (e) => {
-                const step = e.shiftKey ? 32 : 12;
-                let w = parseFloat(getComputedStyle(rootEl).getPropertyValue('--objlist-w')) || 0;
-                if (e.key === 'ArrowLeft') w -= step;
-                else if (e.key === 'ArrowRight') w += step;
-                else if (e.key === 'Home') w = 208;
-                else if (e.key === 'End') w = 0;
-                else return;
-                e.preventDefault();
-                w = e.key === 'End' ? 0 : Math.max(ICONS_W, clamp(w));
-                const store = window.Alpine?.store('view');
-                if (w === 0) { rootEl.style.setProperty('--objlist-w', '0px'); if (store) { store.objects = false; store._save?.(); } return; }
-                rootEl.style.setProperty('--objlist-w', w + 'px');
-                if (store) { store.objectsW = w; store._save?.(); }
-            });
+        const store = () => window.Alpine?.store('view');
+        const save = (w) => {
+            rootEl.style.setProperty('--objlist-w', w + 'px');
+            const s = store();
+            if (s) { s.objectsW = w; s._save?.(); }
         };
-        if (document.readyState !== 'loading') boot();
-        else document.addEventListener('DOMContentLoaded', boot);
-        document.addEventListener('livewire:navigated', boot);
+        const hide = () => {
+            const s = store();
+            if (s) { s.objects = false; s._save?.(); }
+        };
+        // Keep a real 0 from a pull to the edge (don't let || swallow the hide gesture).
+        // app.js (a module) defines onResize, and an inline script can run before it: wait for it.
+        const register = () => window.onResize('objlist-resize', {
+            drag: (d) => rootEl.style.setProperty('--objlist-w', widthFor(d.pos - railW()) + 'px'),
+            end: () => {
+                const raw = parseFloat(rootEl.style.getPropertyValue('--objlist-w'));
+                const w = Number.isFinite(raw) ? raw : DEFAULT_W;
+                if (w === 0) hide();                 // pulled to the edge → hide the list
+                else save(w);
+            },
+            step: (d) => {
+                const cur = parseFloat(getComputedStyle(rootEl).getPropertyValue('--objlist-w')) || 0;
+                save(Math.max(ICONS_W, clamp(cur + d.dir * (d.big ? 32 : 12))));
+            },
+            reset: () => save(DEFAULT_W),
+            hide: () => { rootEl.style.setProperty('--objlist-w', '0px'); hide(); },
+        });
+        window.onResize ? register() : document.addEventListener('DOMContentLoaded', register);
     })();
     </script>
     @endpush
@@ -2545,68 +2531,39 @@
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
          the edge) and it disappears completely. Sits at the rail's right edge; when the rail is
          hidden (0) it rests at the far left so it can be dragged back out. --}}
-    <div id="rail-resize" wire:ignore tabindex="0"
-         class="group fixed top-16 z-40 -ml-1.5 w-3 cursor-col-resize focus:outline-none focus-visible:bg-sky-400/20"
-         style="left: var(--rail-w, 11rem); bottom: var(--work-bottom, 0px)"
-         role="separator" aria-orientation="vertical" aria-label="{{ __('Resize scene rail (arrow keys)') }}"
-         title="{{ __('Drag to resize · drag to the edge to hide') }}">
-        <div class="mx-auto h-full w-0.5 bg-transparent transition-colors group-hover:bg-sky-400"></div>
-    </div>
+    <x-ui.resize-handle axis="x" id="rail-resize" wire:ignore class="fixed top-16 z-40 -ml-1"
+                        style="left: var(--rail-w, 11rem); bottom: var(--work-bottom, 0px)"
+                        label="{{ __('Resize scene rail (arrow keys)') }}" />
     @push('scripts')
     <script>
     (() => {
         const KEY = 'wizard.rail.w';
+        const RAIL_DEFAULT_W = 176;
         const rootEl = document.documentElement;   // --rail-w lives on <html> so panels inherit it
         const clamp = (v) => Math.max(0, Math.min(280, v));
-        const boot = () => {
-            const handle = document.getElementById('rail-resize');
-            if (!handle || handle.__wired) return;
-            handle.__wired = true;
-            let dragging = false;
-            handle.addEventListener('pointerdown', (e) => {
-                dragging = true; handle.setPointerCapture(e.pointerId);
-                document.body.style.userSelect = 'none'; e.preventDefault();
-            });
-            handle.addEventListener('pointermove', (e) => {
-                if (!dragging) return;
-                rootEl.style.setProperty('--rail-w', clamp(e.clientX) + 'px');
-            });
-            const commit = (w) => {
-                w = clamp(w);
-                if (w < 24) w = 0;                 // under 24px → hide completely
-                else if (w < 44) w = 44;           // compact floor (numbers-only rail; ≤92px shows numbers)
-                rootEl.style.setProperty('--rail-w', w + 'px');
-                localStorage.setItem(KEY, String(w));
-                // Keep the View ▸ Scenes checkbox in sync with a hide / drag-out.
-                const store = window.Alpine?.store('view');
-                if (store) { store.scenes = w > 0; if (w > 0) store.railLast = w; store._save?.(); }
-            };
-            const end = (e) => {
-                if (!dragging) return;
-                dragging = false;
-                try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
-                document.body.style.userSelect = '';
-                const rawR = parseFloat(rootEl.style.getPropertyValue('--rail-w'));
-                commit(Number.isFinite(rawR) ? rawR : 176);   // keep a real 0 (don't let || swallow the hide gesture)
-            };
-            handle.addEventListener('pointerup', end);
-            handle.addEventListener('pointercancel', end);
-            // Keyboard: arrows resize, Home resets, End hides (WAI-ARIA splitter pattern).
-            handle.addEventListener('keydown', (e) => {
-                const step = e.shiftKey ? 32 : 12;
-                let w = parseFloat(rootEl.style.getPropertyValue('--rail-w')) || 0;
-                if (e.key === 'ArrowLeft') w -= step;
-                else if (e.key === 'ArrowRight') w += step;
-                else if (e.key === 'Home') w = 176;
-                else if (e.key === 'End') w = 0;
-                else return;
-                e.preventDefault();
-                commit(w);
-            });
+        const railRaw = () => {
+            const w = parseFloat(rootEl.style.getPropertyValue('--rail-w'));
+            return Number.isFinite(w) ? w : RAIL_DEFAULT_W;   // keep a real 0 (hidden rail)
         };
-        if (document.readyState !== 'loading') boot();
-        else document.addEventListener('DOMContentLoaded', boot);
-        document.addEventListener('livewire:navigated', boot);
+        const commit = (w) => {
+            w = clamp(w);
+            if (w < 24) w = 0;                 // under 24px → hide completely
+            else if (w < 44) w = 44;           // compact floor (numbers-only rail; ≤92px shows numbers)
+            rootEl.style.setProperty('--rail-w', w + 'px');
+            localStorage.setItem(KEY, String(w));
+            // Keep the View ▸ Scenes checkbox in sync with a hide / drag-out.
+            const store = window.Alpine?.store('view');
+            if (store) { store.scenes = w > 0; if (w > 0) store.railLast = w; store._save?.(); }
+        };
+        // app.js (a module) defines onResize, and an inline script can run before it: wait for it.
+        const register = () => window.onResize('rail-resize', {
+            drag: (d) => rootEl.style.setProperty('--rail-w', clamp(d.pos) + 'px'),
+            end: () => commit(railRaw()),
+            step: (d) => commit(railRaw() + d.dir * (d.big ? 32 : 12)),
+            reset: () => commit(RAIL_DEFAULT_W),
+            hide: () => commit(0),
+        });
+        window.onResize ? register() : document.addEventListener('DOMContentLoaded', register);
     })();
     </script>
     @endpush

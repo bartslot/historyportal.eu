@@ -333,32 +333,49 @@
     box-shadow: none;
 }
 
-/* ─── A resize grip: the dock's top edge and a split scene's divider ──── */
+/* ─── The resize handle: every drawer and panel divider ──── */
 /**
- * ONE grip, so the edge you drag looks and behaves the same everywhere: a short pill that lights up
- * on hover, keyboard focus and while held (Bart, 2026-10-16: "just like a drawer you can grab the
- * edge"). aria-orientation says which way the bar lies; the cursor points the way it moves.
+ * ONE handle for every divider in the lesson editor (<x-ui.resize-handle>). The hit area is 8px
+ * and runs the full length of its separator. At rest the line is a hairline and the grip a faint
+ * pill. On hover, keyboard focus and while dragging the whole line and the pill turn --color-info.
+ * Flat: no shadow, no glow. Layout is flex, so the handle needs no position of its own.
  */
-.lp-grip {
-    display: grid;
-    place-items: center;
+.lp-resize {
+    display: flex;
+    justify-content: center;
     touch-action: none;
     user-select: none;
     outline: none;
 }
-.lp-grip[aria-orientation='horizontal'] { cursor: ns-resize; }
-.lp-grip[aria-orientation='vertical'] { cursor: ew-resize; }
-.lp-grip > .lp-grip-pill {
+.lp-resize[aria-orientation='vertical'] { width: 0.5rem; cursor: col-resize; }
+.lp-resize[aria-orientation='horizontal'] { height: 0.5rem; flex-direction: column; align-items: center; cursor: row-resize; }
+.lp-resize > .lp-resize-line {
     display: block;
-    border-radius: 9999px;
-    background: var(--color-panel-label);
+    background: var(--color-panel-hairline);
     transition: background-color 120ms ease-out;
 }
-.lp-grip[aria-orientation='horizontal'] > .lp-grip-pill { width: 2.5rem; height: 0.25rem; }
-.lp-grip[aria-orientation='vertical'] > .lp-grip-pill { width: 0.25rem; height: 2.5rem; }
-.lp-grip:hover > .lp-grip-pill,
-.lp-grip:focus-visible > .lp-grip-pill,
-.lp-grip[data-dragging] > .lp-grip-pill { background: var(--color-info); }
+.lp-resize[aria-orientation='vertical'] > .lp-resize-line { width: 1px; align-self: stretch; }
+.lp-resize[aria-orientation='horizontal'] > .lp-resize-line { height: 1px; align-self: stretch; }
+.lp-resize > .lp-resize-pill {
+    display: block;
+    align-self: center;
+    border-radius: 9999px;
+    background: var(--color-panel-label);
+    opacity: 0.45;
+    transition: background-color 120ms ease-out, opacity 120ms ease-out;
+}
+.lp-resize[aria-orientation='vertical'] > .lp-resize-pill { width: 0.25rem; height: 2.5rem; }
+.lp-resize[aria-orientation='horizontal'] > .lp-resize-pill { width: 2.5rem; height: 0.25rem; }
+.lp-resize:hover > .lp-resize-line,
+.lp-resize:focus-visible > .lp-resize-line,
+.lp-resize[data-dragging] > .lp-resize-line { background: var(--color-info); }
+.lp-resize:hover > .lp-resize-pill,
+.lp-resize:focus-visible > .lp-resize-pill,
+.lp-resize[data-dragging] > .lp-resize-pill { background: var(--color-info); opacity: 1; }
+.lp-resize[aria-orientation='vertical']:hover > .lp-resize-line,
+.lp-resize[aria-orientation='vertical'][data-dragging] > .lp-resize-line { width: 2px; }
+.lp-resize[aria-orientation='horizontal']:hover > .lp-resize-line,
+.lp-resize[aria-orientation='horizontal'][data-dragging] > .lp-resize-line { height: 2px; }
 
 /* ─── The settings panel's slider — Figma `row-rotate` (1471:2104) ──── */
 /**
