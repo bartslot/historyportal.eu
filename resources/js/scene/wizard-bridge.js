@@ -879,9 +879,9 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _splitStage = new _splitMod.SplitStage(host, {
             editable: true,
             onSelect: (i) => window.Livewire?.dispatch('split:panel', { panel: i }),
-            onLayerChange: (i, assetId, t) => window.Livewire?.dispatch('artwork:move', {
-                assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i,
-            }),
+            onLayerChange: (i, assetId, t) => (t.end_x !== undefined
+              ? window.Livewire?.dispatch('artwork:arrow', { assetId, fields: t, panel: i })
+              : window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i })),
             // The divider and the panes, moved on the stage: the same values the sliders set.
             onSplitChange: (s) => window.Livewire?.dispatch('split:at', { at: s.at }),
             // A pane panned or zoomed on the stage: its crop, and a key at the playhead when the
@@ -1126,6 +1126,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 if (!_artworkOverlay) {
                     _artworkOverlay = new _artworkMod.ArtworkOverlay(artHost, {
                         onChange: (assetId, t) => {
+                            // An arrow's values (end, bend, width, head) save as one; a picture moves.
+                            if (t.end_x !== undefined) return window.Livewire?.dispatch('artwork:arrow', { assetId, fields: t })
                             window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale })
                         },
                     })

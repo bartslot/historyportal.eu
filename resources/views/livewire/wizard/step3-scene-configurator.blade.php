@@ -314,6 +314,8 @@
                 // projector that cannot resolve a point sends anchor:null, which leaves the
                 // existing pin alone rather than stranding the layer at nowhere.
                 onChange: (assetId, t) => {
+                    // An arrow's values save as one (its ends are on the stage, never pinned to a place).
+                    if (t.end_x !== undefined) return window.Livewire.dispatch('artwork:arrow', { assetId, fields: t })
                     const host = voyageArtHost()
                     const ll = (inst && host && typeof inst.textProjector === 'function')
                         ? inst.textProjector(host).unproject(t.x, t.y)
@@ -353,7 +355,7 @@
 
                 return
             }
-            const layers = ((p.shots || [])[0]?.layers || []).filter((l) => l && (l.url || l.embed) && l.asset_id != null)
+            const layers = ((p.shots || [])[0]?.layers || []).filter((l) => l && (l.url || l.embed || l.kind === 'arrow') && l.asset_id != null)
             const onTop = !!(p.config || {}).clipart_on_top
             overlay.setOnTop(onTop)
             // Levels go on the LAYER NODES, not this host: a host with a z-index is a stacking

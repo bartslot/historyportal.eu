@@ -1180,7 +1180,11 @@ export const animationTimeline = (config = {}) => ({
   /** A canvas selection id — `art_<asset>` for artwork, the text id for text — as a target. */
   targetFromObjectId (id) {
     if (!id) return null
-    if (String(id).startsWith('art_')) return `art:${String(id).slice(4)}`
+    if (String(id).startsWith('art_')) {
+      // An arrow's rows are its own (properties.js 'arw'); a picture's are 'art'.
+      const arrow = this.objects.find((o) => o.target === `arw:${String(id).slice(4)}`)
+      return arrow?.target ?? `art:${String(id).slice(4)}`
+    }
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))

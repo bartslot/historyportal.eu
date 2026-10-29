@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\SceneArrow;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
@@ -83,14 +84,15 @@ trait EditsSceneArtwork
         $shots = $scene->shots ?? [];
         // Free position on the stage (centre anchor, % of the stage) — teacher drags it on the
         // canvas. Without a drop point it takes SceneLayers' default spot, just below centre.
-        $newLayer = SceneLayers::figure($asset, array_filter([
+        $newLayer = SceneLayers::forAsset($asset, array_filter([
             'x' => $x !== null ? max(0.0, min(100.0, $x)) : null,
             'y' => $y !== null ? max(0.0, min(100.0, $y)) : null,
         ], fn ($v) => $v !== null));
 
         // Dropped over a live map → the icon belongs to that PLACE, not to that pixel, so it
-        // keeps sitting on it through every pan and zoom. Same anchor a text label uses.
-        if ($lng !== null && $lat !== null) {
+        // keeps sitting on it through every pan and zoom. Same anchor a text label uses. An arrow is
+        // the exception: its two ends and its bend cannot all follow one place, so it stays on the stage.
+        if ($lng !== null && $lat !== null && $newLayer['kind'] !== SceneArrow::KIND) {
             $newLayer['anchor'] = 'map';
             $newLayer['lng'] = max(-180.0, min(180.0, $lng));
             $newLayer['lat'] = max(-90.0, min(90.0, $lat));
@@ -483,7 +485,7 @@ trait EditsSceneArtwork
             'width' => [1, 200],
             'wobble' => [0, 2],
             'opacity' => [0.05, 1],
-            'kind' => ['figure', 'strip', 'cover'],
+            'kind' => ['figure', 'strip', 'cover', SceneArrow::KIND],
             'blur' => [0, 2.5],
             'sway' => null, // boolean
             // 'normal' is how a teacher turns blending back OFF — without it in the list the
@@ -515,6 +517,9 @@ trait EditsSceneArtwork
             'anim_delay' => [0, 10],   // seconds before the entrance starts
             'anim_ease' => ['enter', 'move', 'exit', 'pop', 'linear'],
             'x' => [0, 100],   // stage position %, centre anchor
+            // A vector arrow's end, bend, width and head (SceneArrow), and its look.
+            ...SceneArrow::LIMITS,
+            'arrow_style' => SceneArrow::STYLES,
             // Drawing-mode ink controls (per layer).
             'ink_preset' => ['production', 'brush', 'etch', 'sketch', 'liner'],
             'ink_fill' => ['auto', 'none', 'wash', 'hatch', 'cross'],
@@ -550,12 +555,12 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay',
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay', 'end_x', 'end_y', 'bend', 'shaft', 'head',
             'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
             'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play' => (string) $value,
+            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style' => (string) $value,
             default => $value,
         };
 
@@ -565,7 +570,7 @@ trait EditsSceneArtwork
             // Clamp: use floats for min/max to preserve float results when clamping floats
             $coercedValue = max((float) $min, min((float) $max, (float) $coercedValue));
             // Re-cast after clamping to preserve float/int type
-            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width', 'rotation', 'white_key', 'tint_opacity'], true)) {
+            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'end_x', 'end_y', 'bend', 'shaft', 'head'], true)) {
                 $coercedValue = (float) $coercedValue;
             } elseif ($field === 'wobble') {
                 $coercedValue = (int) $coercedValue;
@@ -585,7 +590,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play'], true)) {
+        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }
@@ -708,6 +713,26 @@ trait EditsSceneArtwork
 
         $scene->update(['shots' => $shots]);
         $this->selectSceneInternal($scene->id);
+    }
+
+    /**
+     * An arrow's handles dragged on the canvas: its start, end, bend, width and head in ONE save, so a
+     * drag is one undo step. Values are clamped to SceneArrow's bounds; nothing else is written.
+     */
+    #[On('artwork:arrow')]
+    public function moveArrowLayer(int $assetId, array $fields, ?int $panel = null): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+        if ($panel !== null) {
+            $this->activePanel = max(0, min(1, $panel));
+        }
+
+        $clean = SceneArrow::clamp($fields);
+        if ($clean !== []) {
+            $this->writeLayerFields($assetId, $clean, unsetNull: false);
+        }
     }
 
     /**

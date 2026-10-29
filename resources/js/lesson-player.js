@@ -2214,7 +2214,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // A split scene's figures live in its panels (SplitStage).
       const layers = sceneMode(scene.config) === 'split'
         ? []
-        : ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+        : ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed || l?.kind === 'arrow') && isClipartLayer(l))
       if (!layers.length && !this._artLayer) { host.style.display = 'none'; return }
       const { ArtworkOverlay } = await import('./scene/ArtworkOverlay.js')
       this._artLayer = this._artLayer || new ArtworkOverlay(host, { readonly: true })
@@ -2619,7 +2619,7 @@ Alpine.data('lessonGame', (lesson) => ({
     /** The panel's ship once per team (or the pupil and the 1642 fleet), as the race's lanes. */
     async _openRace (scene, cfg, art, teamNames = null) {
       const shipId = cfg.react?.layer ?? cfg.payoff?.layer
-      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+      const layers = ((scene.shots || [])[0]?.layers || []).filter(l => (l?.url || l?.embed || l?.kind === 'arrow') && isClipartLayer(l))
       const ship = layers.find(l => String(l.asset_id) === String(shipId))
       if (!ship || !this._artLayer || !art) return null
       const { RaceStage } = await import('./scene/race-stage.js')

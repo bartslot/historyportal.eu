@@ -138,7 +138,7 @@ export class SplitStage {
     const backdrop = backdropLayers(layers)
     if (!backdrop.length && shot.image_url) backdrop.push({ url: shot.image_url, kind: 'cover', depth: 0.4 })
     const planes = backdrop.map(l => ((l.kind ?? 'cover') === 'cover' ? { ...l, objectPosition: pos } : l))
-    const figures = layers.filter(l => (l?.url || l?.embed) && isClipartLayer(l))
+    const figures = layers.filter(l => (l?.url || l?.embed || l?.kind === 'arrow') && isClipartLayer(l))
 
     const overlay = new ArtworkOverlay(art, this.editable
       ? { onChange: (assetId, t) => this.onLayerChange?.(i, assetId, t) }

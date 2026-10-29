@@ -32,6 +32,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
+use App\Services\SceneArrow;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
@@ -311,7 +312,7 @@ class Step3SceneConfigurator extends Component
                 'x' => isset($l['x']) ? (float) $l['x'] : null,
                 'y' => isset($l['y']) ? (float) $l['y'] : null,
                 'depth' => (float) ($l['depth'] ?? 1),
-                'kind' => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
+                'kind' => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip', SceneArrow::KIND], true) ? ($l['kind'] ?? 'cover') : 'cover',
                 'scale' => (float) ($l['scale'] ?? 1),
                 'height' => isset($l['height']) ? (float) $l['height'] : null,
                 // The layer's own width, once a teacher has released the aspect lock and given it
@@ -335,6 +336,8 @@ class Step3SceneConfigurator extends Component
                 'white_key' => isset($l['white_key']) ? (float) $l['white_key'] : null,
                 'tint_opacity' => isset($l['tint_opacity']) ? (float) $l['tint_opacity'] : null,
                 'rotation' => isset($l['rotation']) ? (float) $l['rotation'] : null,
+                // A vector arrow's end, bend, width and head (empty for every other kind).
+                ...SceneArrow::payload($l),
                 // Mirroring, which is not rotation: a half turn and a horizontal flip are the same
                 // on a symmetrical shape and opposite headings on a ship.
                 'flip_x' => ! empty($l['flip_x']),
@@ -358,7 +361,7 @@ class Step3SceneConfigurator extends Component
                 ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
-            ])->filter(fn ($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
+            ])->filter(fn ($l) => $l['url'] || $l['embed'] || $l['kind'] === SceneArrow::KIND)->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
             // but the clipart layers must still reach the editor/player overlay. A split scene keeps

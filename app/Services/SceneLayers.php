@@ -30,6 +30,38 @@ final class SceneLayers
         return ['asset_id' => $asset->id, 'path' => $asset->src(), ...self::FIGURE_DEFAULTS, ...$settings];
     }
 
+    /**
+     * An asset the teacher placed: a figure, or, for a library arrow with a vector form, an arrow
+     * layer (SceneArrow). An arrow has no picture of its own, so it carries no path.
+     *
+     * @param  array<string,mixed>  $settings
+     * @return array<string,mixed>
+     */
+    public static function forAsset(SvgAsset $asset, array $settings = []): array
+    {
+        $preset = SceneArrow::presetFor($asset);
+        if ($preset === null) {
+            return self::figure($asset, $settings);
+        }
+
+        $x = (float) ($settings['x'] ?? self::FIGURE_DEFAULTS['x']);
+        $y = (float) ($settings['y'] ?? self::FIGURE_DEFAULTS['y']);
+
+        return [
+            'asset_id' => $asset->id,
+            ...self::FIGURE_DEFAULTS,
+            'kind' => SceneArrow::KIND,
+            'x' => $x,
+            'y' => $y,
+            'end_x' => min(100.0, $x + 20.0),
+            'end_y' => $y,
+            'shaft' => 1.2,
+            'head' => 5.5,
+            ...$preset,
+            ...$settings,
+        ];
+    }
+
     /** @return array{path:string,kind:string,depth:float} */
     public static function cover(string $imagePath, float $depth = self::COVER_DEPTH): array
     {
