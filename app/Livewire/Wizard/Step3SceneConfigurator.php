@@ -2210,6 +2210,8 @@ class Step3SceneConfigurator extends Component
                 'bg' => ['x', 'y', 'zoom', 'opacity'],
                 'rect' => ['opacity'],
                 'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
+                // A vector arrow: its start (x, y) and its end, bend, width and head (SceneArrow::KEYS).
+                'arw' => ['x', 'y', ...SceneArrow::KEYS],
                 'bal' => SpeechBalloons::TIMELINE_PROPERTIES,
                 default => [],
             };

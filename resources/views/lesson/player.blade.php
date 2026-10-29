@@ -176,7 +176,7 @@
                         'x'      => isset($l['x']) ? (float) $l['x'] : null,
                         'y'      => isset($l['y']) ? (float) $l['y'] : null,
                         'depth'  => (float) ($l['depth'] ?? 1),
-                        'kind'   => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip'], true) ? ($l['kind'] ?? 'cover') : 'cover',
+                        'kind'   => in_array($l['kind'] ?? 'cover', ['cover', 'figure', 'strip', \App\Services\SceneArrow::KIND], true) ? ($l['kind'] ?? 'cover') : 'cover',
                         'scale'  => (float) ($l['scale'] ?? 1),
                         'height' => isset($l['height']) ? (float) $l['height'] : null,
                         // Optional explicit width (the editor's unlocked aspect). The wizard payload
@@ -215,8 +215,10 @@
                         ...\App\Services\Support\LayerSitIn::payload($l),
                         // A sprite sheet over the picture (the sails that swell with the wind).
                         ...\App\Services\Support\LayerFrames::payload($l),
+                        // A vector arrow's end, bend, width and head (empty for every other kind).
+                        ...\App\Services\SceneArrow::payload($l),
                         'occlude' => ! empty($l['occlude']),
-                    ])->filter(fn($l) => $l['url'] || $l['embed'])->values()->all() ?: null,
+                    ])->filter(fn($l) => $l['url'] || $l['embed'] || $l['kind'] === \App\Services\SceneArrow::KIND)->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // The panel's own camera move and entry (resources/js/scene/camera.js).
                     'camera' => \App\Services\Support\ShotCamera::payload($shot['camera'] ?? null),

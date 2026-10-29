@@ -122,4 +122,23 @@ class ArrowLayerTest extends TestCase
         $this->assertSame('arrow', $placed['kind']);
         $this->assertNotSame('map', $placed['anchor'] ?? null, 'a place cannot carry both ends of an arrow');
     }
+
+    public function test_an_arrow_keyframe_track_is_kept_on_the_timeline(): void
+    {
+        $this->wizard()->call('setTimeline', [
+            'duration' => 8,
+            'targets' => [],
+            'tracks' => [[
+                'target' => 'arw:'.$this->arrow->id,
+                'property' => 'end_x',
+                'keyframes' => [['time' => 0, 'value' => 60], ['time' => 3.175, 'value' => 80]],
+            ]],
+        ]);
+
+        $tracks = $this->scene->fresh()->config['timeline']['tracks'];
+        $this->assertCount(1, $tracks, 'an arrow track must not be dropped on save');
+        $this->assertSame('arw:'.$this->arrow->id, $tracks[0]['target']);
+        $this->assertSame('end_x', $tracks[0]['property']);
+        $this->assertCount(2, $tracks[0]['keyframes']);
+    }
 }
