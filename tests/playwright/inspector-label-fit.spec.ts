@@ -71,6 +71,22 @@ function textFixture(): { lesson: number; scene: number } {
   return { lesson: copy.id, scene: Number(scene[1]) };
 }
 
+/**
+ * A throwaway copy of the image lesson with its first figure layer turned into an arrow. The arrow
+ * inspector is keyed on the layer's kind, so this exercises the real panel without a library arrow.
+ */
+function arrowFixture(): Scene {
+  const copy = JSON.parse(php(['artisan', 'lessons:test-copy', String(IMAGE.lesson), '--json']).trim().split('\n').pop() ?? '{}') as { id?: number };
+  if (!copy.id) throw new Error('lessons:test-copy returned no lesson id');
+  const scene = php([
+    'artisan', 'tinker',
+    `--execute=$l=\\App\\Models\\Lesson::findOrFail(${copy.id}); foreach ($l->scenes()->orderBy('order')->get() as $s) { $shots=$s->shots ?? []; $done=false; foreach ($shots as $i=>$shot) { foreach (($shot['layers'] ?? []) as $j=>$layer) { if (($layer['kind'] ?? '') === 'figure') { $shots[$i]['layers'][$j]=array_merge($layer,['kind'=>'arrow','arrow_style'=>'stroke','end_x'=>100,'end_y'=>100,'bend'=>0,'shaft'=>1.2,'head'=>5.5]); $done=true; break 2; } } } if ($done) { $s->shots=$shots; $s->save(); echo 'SCENE='.$s->id.' LAYER=art_'.($shots[$i]['layers'][$j]['asset_id'] ?? ''); break; } }`,
+  ]).match(/SCENE=(\d+) LAYER=(\S*)/);
+  if (!scene) throw new Error('could not add the arrow fixture');
+
+  return { lesson: copy.id, scene: Number(scene[1]), layer: scene[2] };
+}
+
 function tabNames(locale: string): { format: string; animate: string } {
   const dict = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'lang', `${locale}.json`), 'utf8')) as Record<string, string>;
 
@@ -174,7 +190,9 @@ async function clickStage(page: Page, selector: string) {
   await page.waitForTimeout(600);
 }
 
-const CASES: { kind: string; open: (page: Page, fixture: { lesson: number; scene: number }) => Promise<void>; scene: (f: { lesson: number; scene: number }) => { lesson: number; scene: number } }[] = [
+type Scene = { lesson: number; scene: number; layer?: string };
+
+const CASES: { kind: string; open: (page: Page, fixture: Scene) => Promise<void>; scene: (fx: Fixtures) => Scene }[] = [
   { kind: 'map', scene: () => MAP, open: async () => {} },
   // The scene itself (nothing selected): its Power-meter moment row carries a trailing Reset.
   { kind: 'scene', scene: () => BALLOON, open: async () => {} },
@@ -190,16 +208,32 @@ const CASES: { kind: string; open: (page: Page, fixture: { lesson: number; scene
     },
   },
   { kind: 'balloon', scene: () => BALLOON, open: (page) => clickStage(page, '[data-balloon-id="bal_0"] .lp-balloon__bubble') },
-  { kind: 'text', scene: (f) => f, open: (page) => clickStage(page, '[data-text-id="txt_fixture"]') },
+  { kind: 'text', scene: (fx) => fx.text, open: (page) => clickStage(page, '[data-text-id="txt_fixture"]') },
+  // The layer's own box is the whole stage (pointer-events: none). The arrow takes the pointer through
+  // its transparent hit path (pointer-events: stroke), so a real click on that path selects it.
+  {
+    kind: 'arrow',
+    scene: (fx) => fx.arrow,
+    open: async (page, fixture) => {
+      await page.locator(`[data-layer-id="${fixture.layer}"] path[stroke="transparent"]`).first().click();
+      await page.waitForTimeout(600);
+    },
+  },
 ];
 
-let textScene: { lesson: number; scene: number } | null = null;
+interface Fixtures {
+  text: { lesson: number; scene: number };
+  arrow: Scene;
+}
+
+/** Throwaway copies, made once per locale run: a text annotation and an arrow layer. */
+let fixtures: Fixtures | null = null;
 
 for (const locale of LOCALES) {
   test.describe(`locale ${locale}`, () => {
     test.beforeAll(() => {
       setLocale(locale);
-      textScene ??= textFixture();
+      fixtures ??= { text: textFixture(), arrow: arrowFixture() };
     });
     test.afterAll(() => setLocale('en'));
 
@@ -213,7 +247,7 @@ for (const locale of LOCALES) {
           const errors: string[] = [];
           page.on('pageerror', (e) => errors.push(String(e)));
 
-          const fixture = c.scene(textScene ?? BALLOON);
+          const fixture = c.scene(fixtures ?? { text: BALLOON, arrow: BALLOON });
           await openScene(page, fixture.lesson, fixture.scene);
           await c.open(page, fixture);
 

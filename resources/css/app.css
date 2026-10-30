@@ -2069,6 +2069,22 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     --btn-action-label: var(--color-card-action-label);  /* #18293f */
 }
 
+/* The sign-in surface (components/layouts/guest.blade.php) is white on navy, with the logo as the only
+   mark. Every amber on it is the primary token, so the page re-points that token rather than each
+   field, link, ring and checkbox. Scoped to this surface only: amber stays everywhere else. */
+[data-surface="auth"] {
+    --color-primary:         var(--color-card-action);        /* #ffffff */
+    --color-primary-content: var(--color-card-action-label);  /* #18293f, AA on white */
+    --color-link:            var(--color-card-action);
+    --btn-action:            var(--color-card-action);
+    --btn-action-label:      var(--color-card-action-label);
+}
+
+/* DaisyUI gives .btn a white edge glow and a drop shadow. The sign-in page is flat (Bart: no shadows). */
+[data-surface="auth"] .btn {
+    box-shadow: none;
+}
+
 .btn-primary {
     --btn-color: var(--btn-action);
 }

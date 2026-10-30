@@ -28,8 +28,9 @@ export const textObjects = () => {
 export const artObjects = () => {
   const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
   return [...(overlay?._layers ?? [])].reverse().map((l) => ({
-    target: `art:${l.asset_id}`,
-    kind: 'art',
+    // A vector arrow has its own property set (properties.js 'arw'); a picture keeps 'art'.
+    target: `${l.kind === 'arrow' ? 'arw' : 'art'}:${l.asset_id}`,
+    kind: l.kind === 'arrow' ? 'arw' : 'art',
     label: l.title || (l.embed ? (l.embed.type === 'video' ? 'Video' : '3D model') : 'Icon'),
     entrance: entranceSpan(l),
   }))
@@ -82,7 +83,7 @@ export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) =>
 export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
 
-  if (kind === 'art') {
+  if (kind === 'art' || kind === 'arw') {
     const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
     const layer = (overlay?._layers ?? []).find((l) => String(l.asset_id) === id)
     const value = layer?.[property]
@@ -136,7 +137,7 @@ export const setObjectHidden = (target, hidden) => {
   const [kind, id] = String(target).split(':')
   // The background: fade it right out rather than leave the stage blank behind a hidden node.
   if (kind === 'bg') return void window.__backgrounds?.hide?.(id, hidden)
-  const selector = kind === 'art'
+  const selector = kind === 'art' || kind === 'arw'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
     : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`
 
@@ -151,7 +152,7 @@ export const writeObjectProperty = (target, property, value) => {
 
   // A map or voyage scene keeps TWO artwork overlays alive over the same layers, so this has to go
   // through the helper that reaches both — see resources/js/scene/layer-overlays.js.
-  if (kind === 'art') return void window.__setLayerProp?.(id, property, value)
+  if (kind === 'art' || kind === 'arw') return void window.__setLayerProp?.(id, property, value)
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
   if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
 

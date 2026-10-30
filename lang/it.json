@@ -2409,5 +2409,19 @@
     "automatic": "automatico",
     "A history lesson your class plays together": "Una lezione di storia che la tua classe gioca insieme",
     "Modern place names": "Toponimi moderni",
-    "Territory borders": "Confini del territorio"
+    "Territory borders": "Confini del territorio",
+    "Arrow": "Freccia",
+    "End": "Fine",
+    "End horizontal position": "Posizione orizzontale della fine",
+    "End vertical position": "Posizione verticale della fine",
+    "Head": "Punta",
+    "Style": "Stile",
+    "Arrow style": "Stile della freccia",
+    "Line": "Linea",
+    "Block": "Blocco",
+    "Drag to move the start": "Trascina l'inizio",
+    "Drag to move the end": "Trascina la fine",
+    "Drag to bend the arrow": "Trascina per curvare la freccia",
+    "Drag to change the width": "Trascina per cambiare lo spessore",
+    "Drag to change the head size": "Trascina per cambiare la dimensione della punta"
 }

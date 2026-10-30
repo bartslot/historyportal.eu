@@ -2451,5 +2451,19 @@
     "automatic": "automatisch",
     "A history lesson your class plays together": "Een geschiedenisles die je klas samen speelt",
     "Modern place names": "Moderne plaatsnamen",
-    "Territory borders": "Gebiedsgrenzen"
+    "Territory borders": "Gebiedsgrenzen",
+    "Arrow": "Pijl",
+    "End": "Eind",
+    "End horizontal position": "Eindpunt horizontaal",
+    "End vertical position": "Eindpunt verticaal",
+    "Head": "Kop",
+    "Style": "Stijl",
+    "Arrow style": "Pijlstijl",
+    "Line": "Lijn",
+    "Block": "Blok",
+    "Drag to move the start": "Sleep het begin",
+    "Drag to move the end": "Sleep het eind",
+    "Drag to bend the arrow": "Sleep om de pijl te buigen",
+    "Drag to change the width": "Sleep om de breedte te wijzigen",
+    "Drag to change the head size": "Sleep om de kopgrootte te wijzigen"
 }

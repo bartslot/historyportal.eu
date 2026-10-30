@@ -29,7 +29,7 @@ export const applyFrameTo = (frame, { art = null, text = null, bal = null, bg = 
   for (const [target, values] of Object.entries(frame)) {
     const kind = kindOfTarget(target)
     const id = String(target).slice(kind.length + 1)
-    if (kind === 'art') {
+    if (kind === 'art' || kind === 'arw') {
       for (const [property, value] of Object.entries(values)) art?.setLayerProp?.(id, property, value)
     } else if (kind === 'text' || kind === 'rect') {
       text?.patch?.(id, values)

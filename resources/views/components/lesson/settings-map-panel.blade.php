@@ -4,6 +4,10 @@
     $aid = $layer['asset_id'];
     $isMapScene = in_array($scene->kind, ['map', 'voyage'], true);
     $isPinned = ($layer['anchor'] ?? 'screen') === 'map';
+    // A vector arrow: its start is the Position row, its end and shape are the Arrow section, and it
+    // has no box, so Size, Scale and Angle do not apply. Its keys live on its own target (properties.js 'arw').
+    $isArrow = ($layer['kind'] ?? null) === 'arrow';
+    $keyTarget = ($isArrow ? 'arw:' : 'art:').$aid;
 
     // Every control below READS the layer. Restating a default as a literal in the markup is how a
     // panel ends up showing 1.0 for a layer that is actually at 0.4 — the slider looks right and
@@ -77,6 +81,51 @@
         </div>
     @endif
 
+    {{-- ── Arrow: where it ends, how it bends, how thick its shaft is, how big its head. Its start is
+         the Position row in Appearance. Every field is keyed on the arrow's own target, so the timeline
+         moves the whole shape (resources/js/anim/properties.js 'arw'). ─────────────────────────── --}}
+    @if ($isArrow)
+        <x-ui.settings-section :title="__('Arrow')" name="arrow">
+            {{-- Two fields share the row, so the label stacks above them, as Position does. --}}
+            <div class="space-y-1">
+                <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('End') }}</span>
+                <div class="flex items-center gap-2">
+                    <x-ui.stepper-field glyph="X" :label="__('End horizontal position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('end_x', 70), 0)" :default="70" :keyframe-target="$keyTarget" keyframe-property="end_x"
+                                        :on-input="$live('end_x')" :on-change="$save('end_x')" class="min-w-0 flex-1" />
+                    <x-ui.stepper-field glyph="Y" :label="__('End vertical position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('end_y', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="end_y"
+                                        :on-input="$live('end_y')" :on-change="$save('end_y')" class="min-w-0 flex-1" />
+                </div>
+            </div>
+
+            <x-ui.slider-row :label="__('Bend')" :min="-0.5" :max="0.5" :step="0.01"
+                             keyframe :keyframe-target="$keyTarget" keyframe-property="bend"
+                             :value="$val('bend', 0)" :display="$num($val('bend', 0), 2)" :default="0"
+                             :on-input="$live('bend')" :on-change="$save('bend')" />
+
+            <x-ui.slider-row :label="__('Width')" :min="0.2" :max="6" :step="0.1"
+                             keyframe :keyframe-target="$keyTarget" keyframe-property="shaft"
+                             :value="$val('shaft', 1.2)" :display="$num($val('shaft', 1.2), 1)" :default="1.2"
+                             :on-input="$live('shaft')" :on-change="$save('shaft')" />
+
+            <x-ui.slider-row :label="__('Head')" :min="1" :max="20" :step="0.1"
+                             keyframe :keyframe-target="$keyTarget" keyframe-property="head"
+                             :value="$val('head', 5.5)" :display="$num($val('head', 5.5), 1)" :default="5.5"
+                             :on-input="$live('head')" :on-change="$save('head')" />
+
+            <div class="flex items-center gap-2">
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
+                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Style') }}</span>
+                <select class="select select-xs w-full" aria-label="{{ __('Arrow style') }}"
+                        onchange="updateArtworkLayer({{ $aid }}, 'arrow_style', this.value)">
+                    <option value="stroke" @selected($val('arrow_style', 'stroke') === 'stroke')>{{ __('Line') }}</option>
+                    <option value="block" @selected($val('arrow_style', 'stroke') === 'block')>{{ __('Block') }}</option>
+                </select>
+            </div>
+        </x-ui.settings-section>
+    @endif
+
     {{-- ── Appearance: colour, where it sits, how big, how turned, how soft ────────────────── --}}
     <x-ui.settings-section :title="__('Appearance')" name="appearance">
         <div class="space-y-2">
@@ -105,16 +154,18 @@
                 <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
                 <div class="flex items-center gap-2">
                     <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                        :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="'art:'.$aid" keyframe-property="x"
+                                        :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="x"
                                         :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
                     <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                        :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="'art:'.$aid" keyframe-property="y"
+                                        :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="$keyTarget" keyframe-property="y"
                                         :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
                 </div>
             </div>
 
+            @unless ($isArrow)
             <x-ui.size-row :asset-id="$aid" :label="__('Size')"
                            :height="$val('height', 40)" :width="$layer['width'] ?? null" />
+            @endunless
 
             @if (! $isMapScene)
                 <x-ui.slider-row :label="__('Depth')" :min="0.4" :max="2.5" :step="0.05"
@@ -122,15 +173,19 @@
                                  :on-input="$live('depth')" :on-change="$save('depth')" />
             @endif
 
+            @unless ($isArrow)
             <x-ui.slider-row :label="__('Scale')" :min="0.2" :max="6" :step="0.05"
                              :keyframe-target="'art:'.$aid" keyframe-property="scale"
                              :value="$val('scale', 1.0)" :display="$pct($val('scale', 1.0))" unit="%" :default="1.0"
                              keyframe
                              :on-input="$live('scale')" :on-change="$save('scale')" />
+            @endunless
 
             {{-- Rotation is a dial, not a slider — an angle has no ends. See <x-ui.angle-row>. --}}
+            @unless ($isArrow)
             <x-ui.angle-row :asset-id="$aid" :rotation="$val('rotation', 0)"
                             :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
+            @endunless
 
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
                              keyframe :keyframe-target="'art:'.$aid" keyframe-property="blur"

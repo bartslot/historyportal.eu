@@ -59,7 +59,7 @@
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <input id="remember" name="remember" type="checkbox"
-                           class="rounded border-slate-700 bg-slate-800 text-primary focus:ring-primary">
+                           class="rounded border-slate-700 bg-slate-800 accent-primary focus:ring-primary">
                     <label for="remember" class="text-sm text-slate-400">{{ __('Keep me signed in') }}</label>
                 </div>
                 <a href="{{ route('password.request') }}" class="text-sm text-primary hover:underline">

@@ -696,6 +696,41 @@ class Lesson extends Model
     }
 
     /**
+     * A copy of this lesson that draws its title in $style. Never saved: the title-style picker's
+     * miniatures show each style of the real title screen this way (player ?title_preview&title_style=).
+     */
+    public function withTitleStyle(string $style): static
+    {
+        $copy = clone $this;
+        $copy->title_style = $style;
+
+        return $copy;
+    }
+
+    /**
+     * The player URL that frames this lesson's title screen, in $style when given (a picker tile) or
+     * the lesson's own style. The `v` changes with every title setting, so a frame reloads exactly
+     * when there is something new to show.
+     */
+    public function titlePreviewSrc(?string $style = null): string
+    {
+        $version = substr(md5(implode('|', [
+            $this->title_image, $this->title_position?->value, (int) $this->show_qr,
+            $this->title_style, (int) ($this->show_lesson_types ?? true),
+            $this->title, $this->qrPosition(), json_encode($this->expect),
+            $this->updated_at?->getTimestampMs(),
+        ])), 0, 10);
+        $query = http_build_query(array_filter([
+            'embed' => 1,
+            'title_preview' => 1,
+            'title_style' => $style,
+            'v' => $version,
+        ], fn (mixed $value): bool => $value !== null));
+
+        return route('lesson.play', $this->lesson_code).'?'.$query;
+    }
+
+    /**
      * The lesson-type badges the title screen shows (LessonTypes), none when the teacher hid them.
      *
      * @return list<string>
