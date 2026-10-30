@@ -70,6 +70,12 @@
     --color-neutral:          oklch(33% 0.031 264);  /* #334155 slate-700 */
     --color-neutral-content:  oklch(98% 0.004 264);
 
+    /* Editor shell (Spotify layout): the black between and around the panels, and the panel
+       surface itself. --color-panel-label on --color-panel measures 5.2:1 (AA for 12px text). */
+    --color-shell:            #000000;
+    --color-panel:            #14161b;
+    --editor-gap:             8px;
+
     /* Semantic states */
     --color-info:             oklch(76% 0.139 217);  /* sky-400 */
     --color-info-content:     oklch(9% 0.022 264);
@@ -333,32 +339,54 @@
     box-shadow: none;
 }
 
-/* ─── A resize grip: the dock's top edge and a split scene's divider ──── */
+/* ─── The editor shell: black between and around panels, panels are dark grey ──── */
 /**
- * ONE grip, so the edge you drag looks and behaves the same everywhere: a short pill that lights up
- * on hover, keyboard focus and while held (Bart, 2026-10-16: "just like a drawer you can grab the
- * edge"). aria-orientation says which way the bar lies; the cursor points the way it moves.
+ * Spotify layout. The editor's background is --color-shell; each panel is a --color-panel surface
+ * inset by half the gap on every side, so two neighbouring panels are one full gap apart and the
+ * gap itself is the separator. The surface is a child (not the panel's own background) so the
+ * panel's content keeps its current positions. Flat: no border, no shadow.
  */
-.lp-grip {
-    display: grid;
-    place-items: center;
+.lp-panel-surface {
+    position: absolute;
+    inset: calc(var(--editor-gap) / 2);
+    z-index: -1;
+    border-radius: 0.5rem;
+    background: var(--color-panel);
+    pointer-events: none;
+}
+
+/* A panel's content that paints its own backgrounds (tab bars, footers) lives in this box: the
+   same inset as the surface, clipped to its rounded corners, so nothing reaches the gap. */
+.lp-panel-content {
+    position: absolute;
+    inset: calc(var(--editor-gap) / 2);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* ─── The resize handle: the gap between two panels ──── */
+/**
+ * ONE handle for every gap in the editor (<x-ui.resize-handle>). Its 8px hit area is the gap, the
+ * full length of the separator. At rest nothing shows. On hover, keyboard focus and while dragging
+ * a 1px solid line runs the whole length of the gap, in --color-panel-label. No pill, no glow.
+ */
+.lp-resize {
+    display: flex;
+    justify-content: center;
     touch-action: none;
     user-select: none;
     outline: none;
 }
-.lp-grip[aria-orientation='horizontal'] { cursor: ns-resize; }
-.lp-grip[aria-orientation='vertical'] { cursor: ew-resize; }
-.lp-grip > .lp-grip-pill {
-    display: block;
-    border-radius: 9999px;
-    background: var(--color-panel-label);
-    transition: background-color 120ms ease-out;
-}
-.lp-grip[aria-orientation='horizontal'] > .lp-grip-pill { width: 2.5rem; height: 0.25rem; }
-.lp-grip[aria-orientation='vertical'] > .lp-grip-pill { width: 0.25rem; height: 2.5rem; }
-.lp-grip:hover > .lp-grip-pill,
-.lp-grip:focus-visible > .lp-grip-pill,
-.lp-grip[data-dragging] > .lp-grip-pill { background: var(--color-info); }
+.lp-resize[aria-orientation='vertical'] { width: var(--editor-gap); cursor: col-resize; }
+.lp-resize[aria-orientation='horizontal'] { height: var(--editor-gap); flex-direction: column; align-items: center; cursor: row-resize; }
+.lp-resize > .lp-resize-line { display: block; background: transparent; }
+.lp-resize[aria-orientation='vertical'] > .lp-resize-line { width: 1px; align-self: stretch; }
+.lp-resize[aria-orientation='horizontal'] > .lp-resize-line { height: 1px; align-self: stretch; }
+.lp-resize:hover > .lp-resize-line,
+.lp-resize:focus-visible > .lp-resize-line,
+.lp-resize[data-dragging] > .lp-resize-line { background: var(--color-panel-label); }
 
 /* ─── The settings panel's slider — Figma `row-rotate` (1471:2104) ──── */
 /**
@@ -591,6 +619,13 @@
     }
     .card:hover {
         border-color: rgba(255,255,255,0.16);
+    }
+    /* A panel host keeps a .card's layout and none of its chrome: its look is the .lp-panel-surface
+       child. A leftover gradient or hairline would paint the gap around the panel. background:none
+       resets background-image too, which bg-transparent does not. */
+    .card.lp-panel-host {
+        background: none;
+        border: 0;
     }
 
     /* The .btn-primary and .btn-ghost overrides that used to sit here — an amber gradient, an

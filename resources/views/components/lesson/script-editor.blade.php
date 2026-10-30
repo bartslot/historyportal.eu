@@ -34,22 +34,23 @@
 <div x-show="$store.view.script" x-cloak
      {{ $attributes }}
      x-data="scriptEditor(@js($audioUrl), @js($paragraphs), {{ $scene?->id ?? 'null' }}, @js($narrating))"
-     class="fixed bottom-0 z-30 flex flex-col overflow-hidden border-t border-slate-700/70 bg-base-300"
-     :style="`left:var(--rail-w,11rem);right:var(--work-right,16rem);height:${panelH}px`">
+     class="fixed bottom-0 z-30 flex flex-col overflow-hidden"
+     :style="`left:var(--rail-w,11rem);right:calc(var(--work-right,16rem) - var(--editor-gap) / 2);height:${panelH}px`">
+    <div class="lp-panel-surface" aria-hidden="true"></div>
 
-    {{-- The grip: the top edge, drag up for more room. Keyboard: arrows, Home resets. --}}
-    <div class="lp-grip h-2 shrink-0" :data-dragging="dragging ? '' : null"
-         x-on:pointerdown="dragStart($event)"
-         x-on:pointermove="dragMove($event)"
-         x-on:pointerup="dragEnd($event)"
-         x-on:pointercancel="dragEnd($event)"
-         x-on:keydown="dragKey($event)"
-         tabindex="0" data-dock-resize
-         role="separator" aria-orientation="horizontal" :aria-valuenow="panelH"
-         aria-label="{{ __('Resize the panel') }}">
-        <span class="lp-grip-pill" aria-hidden="true"></span>
-    </div>
+    {{-- The resize handle along the dock's top edge: drag up for more room. Keyboard: arrows,
+         Home resets. The shared handle (x-ui.resize-handle) reports the pointer; the dock sizes. --}}
+    <x-ui.resize-handle axis="y" class="shrink-0 -mt-1" data-dock-resize
+                        label="{{ __('Resize the panel') }}"
+                        x-on:resize-start="dragStart($event.detail)"
+                        x-on:resize-drag="dragMove($event.detail)"
+                        x-on:resize-end="dragEnd()"
+                        x-on:resize-step="dragStep($event.detail)"
+                        x-on:resize-reset="resetHeight()" />
 
+    {{-- The dock's content sits inside its panel surface and is clipped to it, so a tab bar or the
+         footer never paints into the shell gap around the panel. The handle stays outside it. --}}
+    <div class="lp-panel-content">
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
     <div role="tablist" class="tabs tabs-boxed tabs-sm">
@@ -218,12 +219,14 @@
         </div>
     </div>
     </div>{{-- /Script tab --}}
+    </div>{{-- /.lp-panel-content --}}
 </div>
 
 @once
     @push('scripts')
     <script>
         const SCRIPT_DEF_H = 240;   // px — the dock's default height
+        const SHELL_GAP_HALF = 4;   // half of --editor-gap: the stage stops this far above the dock's box
         const SCRIPT_MIN_H = 160;   // px — tabs, the timeline's transport and a row stay usable
         const STAGE_MIN_H = 200;    // px — the stage above never gets less than this
         const TOP_BAR_H = 64;       // px — the wizard's top bar
@@ -782,7 +785,7 @@
                     const root = document.getElementById('lesson-canvas-root');
                     if (!root) return;
                     const shown = !!this.$store.view.script;
-                    const h = shown ? Math.round(this.$el.getBoundingClientRect().height) : 0;
+                    const h = shown ? Math.round(this.$el.getBoundingClientRect().height) + SHELL_GAP_HALF : 0;
                     // Only write + nudge when the value actually changes, so the ResizeObserver
                     // can't churn a resize-dispatch loop.
                     if (root.style.getPropertyValue('--work-bottom') === h + 'px') return;
@@ -813,30 +816,27 @@
                     this.active = a;
                 },
 
-                // The grip. Pointer capture keeps the drag on the grip wherever the pointer goes.
-                dragStart(e) {
-                    if (e.button !== 0) return;
+                // The grip, driven by the shared handle's events. Pointer capture lives in the handle.
+                dragStart(d) {
                     this.dragging = true;
-                    this._startY = e.clientY;
+                    this._startY = d.pos;
                     this._startH = this.panelH;
-                    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-                    e.preventDefault();
                 },
-                dragMove(e) {
+                dragMove(d) {
                     if (!this.dragging) return;
-                    this.panelH = clampDockH(this._startH + (this._startY - e.clientY));   // up = taller
+                    this.panelH = clampDockH(this._startH + (this._startY - d.pos));   // up = taller
                 },
                 dragEnd() {
                     if (!this.dragging) return;
                     this.dragging = false;
                     this.keepHeight();
                 },
-                dragKey(e) {
-                    const step = e.shiftKey ? 64 : 16;
-                    const next = { ArrowUp: this.panelH + step, ArrowDown: this.panelH - step, Home: SCRIPT_DEF_H }[e.key];
-                    if (next === undefined) return;
-                    e.preventDefault();
-                    this.panelH = clampDockH(next);
+                dragStep(d) {
+                    this.panelH = clampDockH(this.panelH - d.dir * (d.big ? 64 : 16));   // dir -1 (up) = taller
+                    this.keepHeight();
+                },
+                resetHeight() {
+                    this.panelH = clampDockH(SCRIPT_DEF_H);
                     this.keepHeight();
                 },
                 keepHeight() {
