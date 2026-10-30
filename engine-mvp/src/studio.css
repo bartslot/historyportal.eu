@@ -1,0 +1,166 @@
+/* The app's own stylesheet: DaisyUI `learningportal`, the brand kit, the panel tokens and .range-panel.
+   One theme for the wizard and the studio; nothing here restates a colour it defines. */
+@import '../../resources/css/app.css';
+@source './';
+
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+
+/* ---- engine-drawn chrome (the engine builds these elements itself) ---- */
+.sky { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sky img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid var(--color-panel-hairline); }
+.sky img.on { outline: 1px solid var(--color-panel-value); outline-offset: 1px; }
+
+#sel:empty { display: none; }
+#sel { background: color-mix(in oklch, var(--color-base-100) 70%, transparent); }
+
+#drawer .head { display: flex; gap: 6px; align-items: center; }
+#drawer .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+#drawer .tabs button { padding: 4px 10px; border-radius: 999px; border: 0; background: transparent; color: var(--color-panel-label); font-size: 12px; cursor: pointer; }
+#drawer .tabs button.on { color: var(--color-panel-value); background: var(--color-panel-hairline); }
+#drawer .tiles { display: flex; gap: 8px; overflow-x: auto; padding-top: 8px; }
+#drawer .tile { flex: 0 0 auto; width: 112px; height: 72px; border: 1px solid var(--color-panel-hairline); border-radius: 8px;
+  background: var(--color-base-100); color: var(--color-panel-value); display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 8px; cursor: grab; font-size: 12px; user-select: none; }
+#drawer .tile:hover { border-color: var(--color-panel-label); }
+#drawer .tile small { color: var(--color-panel-label); font-size: 10px; margin-top: 2px; }
+#drawer .tile.image { height: 96px; align-items: center; text-align: center; padding: 4px; background: #e9e6df; color: #333; }
+#drawer .tile.image img { width: 64px; height: 52px; object-fit: contain; pointer-events: none; }
+#drawer .tile.image span { font-size: 10px; line-height: 1.1; max-height: 22px; overflow: hidden; }
+#drawer .tile.image small { display: none; }
+
+#marks { position: absolute; left: 0; right: 0; top: 0; height: 8px; pointer-events: none; }
+#marks i { position: absolute; top: 0; width: 8px; height: 8px; margin-left: -4px; background: var(--color-panel-value); transform: rotate(45deg); }
+
+.msg { margin: 0 0 6px; padding: 5px 7px; border-radius: 6px; white-space: pre-wrap; }
+.msg.you { background: var(--color-panel-hairline); }
+.msg.sys { color: var(--color-panel-label); }
+.msg.err { color: var(--color-error); }
+
+/* ---- selection bar + shots (teacher-bar.js) ---- */
+#selbar { position: absolute; left: 0; top: 0; display: flex; gap: 2px; padding: 3px; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-200) 92%, transparent); border: 1px solid var(--color-panel-hairline); }
+#selbar[hidden] { display: none; }
+#selbar button { border: 0; background: transparent; color: var(--color-panel-value); font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+#selbar button:hover { background: var(--color-panel-hairline); }
+#shots { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; align-items: flex-end; }
+.shot { position: relative; }
+.shot img { width: 96px; display: block; border-radius: 6px; border: 1px solid var(--color-panel-label); cursor: pointer; }
+.shot button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: 0; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-200) 90%, transparent); color: var(--color-panel-value); cursor: pointer; opacity: 0; }
+.shot:hover button, .shot button:focus-visible { opacity: 1; }
+#shots .add { border: 1px solid var(--color-panel-hairline); background: color-mix(in oklch, var(--color-base-200) 92%, transparent); color: var(--color-panel-value);
+  font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+
+/* ---- panels (src/panels): ONE motion for every panel ----
+   Open = --ease-enter over --panel-in, close = --ease-exit over --panel-out (easing.js intents).
+   A docked panel's SLOT animates its width/height so the stage gives way; its BODY keeps its size and
+   slides in from its own edge, so the content never reflows mid-motion. */
+:root { --panel-in: 200ms; --panel-out: 150ms; }
+@media (prefers-reduced-motion: reduce) { :root { --panel-in: 1ms; --panel-out: 1ms; } }
+
+.panel-slot { position: relative; overflow: hidden; min-width: 0; min-height: 0;
+  transition: width var(--panel-out) var(--ease-exit), height var(--panel-out) var(--ease-exit); }
+.panel-slot[data-open="true"] { transition-duration: var(--panel-in); transition-timing-function: var(--ease-enter); }
+html.panel-resizing .panel-slot { transition: none; }
+
+.panel-body { background: var(--color-base-200);
+  transition: transform var(--panel-out) var(--ease-exit), opacity var(--panel-out) var(--ease-exit), visibility 0s linear var(--panel-out); }
+.panel-body[data-open="true"] { transition: transform var(--panel-in) var(--ease-enter), opacity var(--panel-in) var(--ease-enter), visibility 0s; }
+.panel-body[data-open="false"] { visibility: hidden; }
+
+.panel-slot > .panel-body { position: absolute; display: flex; flex-direction: column; }
+.panel-body[data-place="right"]  { top: 0; bottom: 0; right: 0; border-left: 1px solid var(--color-panel-hairline); overflow-y: auto; }
+.panel-body[data-place="left"]   { top: 0; bottom: 0; left: 0; border-right: 1px solid var(--color-panel-hairline); overflow-y: auto; }
+.panel-body[data-place="bottom"] { top: 0; left: 0; right: 0; border-top: 1px solid var(--color-panel-hairline); }
+.panel-body[data-place="right"][data-open="false"]  { transform: translateX(100%); }
+.panel-body[data-place="left"][data-open="false"]   { transform: translateX(-100%); }
+.panel-body[data-place="bottom"][data-open="false"] { transform: translateY(100%); }
+
+.panel-body[data-place="floating"] { position: absolute; right: 12px; bottom: 12px; width: 280px; z-index: 20;
+  border: 1px solid var(--color-panel-hairline); border-radius: var(--radius-box); }
+.panel-body[data-place="floating"][data-open="false"] { transform: translateY(8px); opacity: 0; }
+
+.panel-body[data-place="menu"] { position: fixed; z-index: 50; min-width: 13.5rem; padding: 4px;
+  border: 1px solid var(--color-panel-hairline); border-radius: var(--radius-box); }
+.panel-body[data-place="menu"][data-open="false"] { transform: translateY(-4px); opacity: 0; }
+
+.panel-resize { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 5; }
+.panel-resize[data-place="right"] { left: 0; }
+.panel-resize[data-place="left"] { right: 0; }
+.panel-resize:hover, .panel-resize:focus-visible { background: var(--color-panel-hairline); outline: none; }
+
+/* ---- the script document (src/shell/ScriptView, Figma 2087:1059) ---- */
+.script-doc { outline: none; color: var(--color-panel-value); font-size: 15px; line-height: 1.6; padding-bottom: 40vh; }
+.script-doc p { position: relative; margin: 0 0 0.6em; padding: 2px 6px 2px 8px; border-left: 1px solid transparent; }
+.script-doc p[data-speaker]::before { content: attr(data-speaker); display: block; font-size: 8px; font-weight: 600; letter-spacing: 0.5px;
+  line-height: 1.8; text-transform: uppercase; color: var(--color-panel-label); }
+/* the shot letter in the margin: the same letter as the line's frame in the scene graph */
+.script-doc p[data-shot]::after { content: attr(data-shot); position: absolute; left: -22px; top: 8px; font-size: 8px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--color-panel-tile-glyph); }
+.script-doc p[data-shot][data-speaker]::after { top: calc(8px + 14px); }
+/* the line under the playhead: a quiet bar; the line the cursor is in (its frame is selected): Figma's lit line */
+.script-doc p.is-speaking { border-left-color: var(--color-panel-label); }
+.script-doc p.is-current { border-left-color: var(--color-panel-value); background: var(--color-panel-tile-active); }
+.script-doc .script-scene { margin: 1.4em 0 0.6em; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--color-panel-value); cursor: pointer; border-top: 1px solid var(--color-panel-hairline); padding: 0.9em 0 0 8px; user-select: none; }
+.script-doc .script-scene:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+/* subtitle text: underlined, not coloured (form carries the meaning, legible for everyone) */
+.script-doc .script-subtitle { text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; }
+.script-doc .is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--color-panel-label); }
+
+/* ---- the scene graph (src/storyboard/SceneGraph): one 16:10 clay frame per shot ---- */
+.shot-frame { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 3px; border: 1px solid var(--color-panel-tile);
+  background: var(--color-panel-tile-active); cursor: pointer; }
+.shot-frame:hover { border-color: var(--color-panel-label); }
+.shot-frame[aria-current="true"] { border-color: var(--color-panel-tile-glyph-active); }
+.shot-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* crew working dots (src/crew/CrewPanel.tsx): a soft wave; reduced motion only pulses */
+@keyframes crew-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .4 } 40% { transform: translateY(-3px); opacity: 1 } }
+@keyframes crew-dot-fade { 0%, 100% { opacity: .3 } 50% { opacity: 1 } }
+.crew-dot { animation: crew-dot 1.2s ease-in-out infinite }
+.crew-dot:nth-child(2) { animation-delay: .15s }
+.crew-dot:nth-child(3) { animation-delay: .3s }
+@media (prefers-reduced-motion: reduce) { .crew-dot { animation-name: crew-dot-fade } }
+.crew-caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: text-bottom; background: currentColor; animation: crew-caret 1s steps(1) infinite }
+@keyframes crew-caret { 50% { opacity: 0 } }
+@keyframes crew-in { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+.crew-in { animation: crew-in 120ms ease-out }
+@media (prefers-reduced-motion: reduce) { .crew-caret, .crew-in { animation: none } }
+
+/* ---- light theme: the start screen and the build view (Bart 2026-10-12: light is simpler for teachers) ----
+   Same shape, size and easing as `learningportal`; only the colours change. The panel tokens follow, so a
+   Panel or a crew Face inside a light screen reads light too. */
+@plugin "daisyui/theme" {
+  name: "learningportal-light";
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(98.2% 0.002 90);
+  --color-base-300: oklch(93.5% 0.004 90);
+  --color-base-content: oklch(21% 0.008 264);
+  --color-primary: oklch(21% 0.008 264);
+  --color-primary-content: oklch(100% 0 0);
+  --color-secondary: oklch(87.9% 0.169 91.605);
+  --color-secondary-content: oklch(21% 0.008 264);
+  --color-accent: oklch(62% 0.14 230);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(44% 0.01 264);
+  --color-neutral-content: oklch(100% 0 0);
+  --color-info: oklch(62% 0.14 230);
+  --color-info-content: oklch(100% 0 0);
+  --color-success: oklch(62% 0.15 150);
+  --color-success-content: oklch(100% 0 0);
+  --color-warning: oklch(75% 0.16 68);
+  --color-warning-content: oklch(21% 0.008 264);
+  --color-error: oklch(58% 0.21 27);
+  --color-error-content: oklch(100% 0 0);
+  --radius-selector: 0.5rem; --radius-field: 0.5rem; --radius-box: 0.75rem;
+  --size-selector: 0.25rem; --size-field: 0.25rem;
+  --border: 1px; --depth: 0; --noise: 0;
+}
+[data-theme="learningportal-light"] { --btn-action: var(--color-primary); --btn-action-label: var(--color-primary-content); --color-panel-hairline: oklch(91% 0.004 90); --color-panel-label: oklch(55% 0.01 264); --color-panel-value: oklch(21% 0.008 264); }
+
+/* one entrance for everything the start screen and the build view reveal: in on --ease-enter, out quicker */
+.reveal { transition: opacity 420ms var(--ease-enter), transform 420ms var(--ease-enter), filter 420ms var(--ease-enter); }
+.reveal[data-on="false"] { opacity: 0; transform: translateY(8px); filter: blur(4px); transition-duration: 200ms; transition-timing-function: var(--ease-exit); }
+@media (prefers-reduced-motion: reduce) { .reveal, .reveal * { transition-duration: 1ms !important; transform: none !important; filter: none !important; } }

@@ -1,0 +1,160 @@
+// Storybook look (target: Figma "History Portal" 1915:111, a watercolour night sea).
+// One post chain over the WHOLE frame, so sky, silhouette planes and 3D models share one style:
+//   1 wash        flat colour washes; edges wobble with world-anchored noise
+//   2 ink         pen lines from depth/normal/colour edges; thinner and lighter with distance
+//   3 watercolour wet edges, stains, blooms, granulation, paper fibre (all 3D Perlin on world positions),
+//                 an optional texture projected triplanar in world space, one palette, a ragged paper border
+// Nothing texture-like is tied to the screen, so camera moves never make the paint slide. GLSL: look-shaders.js.
+/* global BABYLON */
+'use strict';
+import { createLookChain, PRESETS } from './look-chain';
+import { __ } from '../i18n';
+
+(() => {
+  const mvp = window.__mvp;
+  const scene = mvp.scene;
+  const camera = mvp.camera;
+
+  // ---------- controls ----------
+  const $ = (id) => document.getElementById(id);
+  const ui = {
+    on: $('lookOn'), toon: $('lookToon'), time: $('lookTime'), darkness: $('lookInkDark'), inkColor: $('lookInkColor'), outline: $('lookOutline'),
+    inkOpacity: $('lookInkOpacity'), inkBlend: $('lookInkBlend'), paintOver: $('lookPaintOver'),
+    wash: $('lookWash'), wobble: $('lookWobble'),
+    ink: $('lookInk'), width: $('lookWidth'), colorInk: $('lookColorInk'), nearDist: $('lookNear'), farInk: $('lookFarInk'),
+    wetEdge: $('lookWet'), granulation: $('lookGrain'), stains: $('lookStains'), blooms: $('lookBlooms'), dark: $('lookDark'),
+    texAmount: $('lookTex'), texScale: $('lookTexScale'), blendMode: $('lookBlend'), texUpload: $('lookTexUpload'),
+    palette: $('lookPalette'), paletteMode: $('lookPaletteMode'),
+    paper: $('lookPaper'), paperEdge: $('lookEdge'),
+  };
+  const val = (el) => Number(el.value);
+  let aquarelTex = null;
+  function useTexture(url) {
+    if (aquarelTex) aquarelTex.dispose();
+    aquarelTex = null;
+    if (url) {
+      aquarelTex = new BABYLON.Texture(url, scene);
+      aquarelTex.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+      aquarelTex.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+    }
+    document.querySelectorAll('#texList img, #texList span').forEach((el) => el.classList.toggle('on', (el.dataset.url || '') === (url || '')));
+  }
+  ui.texUpload.onchange = (e) => { const file = e.target.files[0]; if (file) useTexture(URL.createObjectURL(file)); };
+
+  // texture picker: "None" (procedural paint only) plus every texture prepared by tools/make_textures.py
+  const texList = $('texList');
+  const builtIn = document.createElement('span');
+  builtIn.textContent = __('None');
+  builtIn.dataset.url = '';
+  builtIn.className = 'tex-chip on';
+  builtIn.onclick = () => useTexture(null);
+  texList.appendChild(builtIn);
+  fetch('assets/textures/textures.json').then((r) => (r.ok ? r.json() : [])).then((names) => {
+    names.forEach((name) => {
+      const img = document.createElement('img');
+      img.src = 'assets/textures/' + name + '.png';
+      img.dataset.url = img.src;
+      img.title = name;
+      img.onclick = () => useTexture(img.src);
+      texList.appendChild(img);
+    });
+  }).catch(() => { /* no prepared textures yet: the built-in one stays */ });
+
+  // ---------- post chain (look-chain.js), values read live from the sliders ----------
+  let chain = null;
+  function buildChain() {
+    if (chain) chain.dispose();
+    chain = null;
+    if (!ui.on.checked) return;
+    chain = createLookChain(scene, camera, { num: (k) => val(ui[k]), inkColor: () => ui.inkColor.value, texture: () => aquarelTex });
+  }
+
+  // ---------- toon (cel) materials on every 3D model, including ones added later ----------
+  // backdrop silhouettes and the sky stay flat: they are cut-out planes, not lit objects
+  // a painted model (metadata.painted) carries its light in its texture: no cel bands over it;
+  // anime actors (metadata.anime) bring their own cel shade + ink (anime-look.ts)
+  const skip = (m) => (m.metadata && (m.metadata.painted || m.metadata.anime)) || m.name === 'hitbox' || m.name === 'ground' || m.name.startsWith('sky') || m.name.startsWith('backdrop') || m.name === 'decal'
+    || !m.material || m.material instanceof BABYLON.ShaderMaterial || m.getTotalVertices() === 0; // buildings: own toon shader
+  function toCel(mesh) {
+    if (mesh.metadata && mesh.metadata.cel) { mesh.material = mesh.metadata.cel; return; }
+    const old = mesh.material;
+    const cel = new BABYLON.CellMaterial(old.name + '_cel', scene);
+    cel.computeHighLevel = true;
+    cel.diffuseTexture = old.albedoTexture || old.diffuseTexture || null;
+    const color = old.albedoColor || old.diffuseColor;
+    if (color) cel.diffuseColor = color.clone();
+    cel.backFaceCulling = old.backFaceCulling;
+    mesh.metadata = { ...(mesh.metadata || {}), original: old, cel };
+    mesh.material = cel;
+  }
+  function applyToon() {
+    const want = ui.on.checked && ui.toon.checked;
+    scene.meshes.forEach((m) => {
+      if (skip(m)) return;
+      const isCel = m.material instanceof BABYLON.CellMaterial;
+      if (want && !isCel) toCel(m);
+      if (!want && isCel && m.metadata && m.metadata.original) m.material = m.metadata.original;
+    });
+  }
+  let tick = 0;
+  scene.onAfterRenderObservable.add(() => { if (++tick % 20 === 0) applyToon(); });
+
+  // ---------- presets ----------
+  // ---------- time of day: night (indigo wash, dim) <-> day (natural greens, blue sky, bright sun) ----------
+  const NIGHT = { palette: 0.85, sun: 0.55, hemi: 0.28, ground: '#4c5466' };
+  const DAY = { palette: 0, sun: 1.7, hemi: 0.7, ground: '#6f8f4e' };
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const sunLight = scene.lights.find((l) => l instanceof BABYLON.DirectionalLight);
+  const hemiLight = scene.lights.find((l) => l instanceof BABYLON.HemisphericLight);
+  function applyTime(t) {
+    ui.time.value = t;
+    ui.paletteMode.value = 1;                                   // indigo ramp, faded out towards day
+    ui.palette.value = lerp(NIGHT.palette, DAY.palette, t);
+    if (sunLight) {
+      sunLight.intensity = lerp(NIGHT.sun, DAY.sun, t);
+      sunLight.diffuse = BABYLON.Color3.Lerp(new BABYLON.Color3(0.65, 0.72, 1), new BABYLON.Color3(1, 0.97, 0.9), t); // moonlight -> sun
+    }
+    if (hemiLight) hemiLight.intensity = lerp(NIGHT.hemi, DAY.hemi, t);
+    const g = BABYLON.Color3.Lerp(BABYLON.Color3.FromHexString(NIGHT.ground), BABYLON.Color3.FromHexString(DAY.ground), t);
+    const grid = scene.getMaterialByName('grid');
+    const plain = scene.getMaterialByName('plain');
+    if (grid) { grid.mainColor = g; grid.lineColor = g.scale(1.25); }
+    if (plain) plain.diffuseColor = g;
+    if (window.__backdrop) window.__backdrop.setDayness(t);
+    if (window.__clouds) window.__clouds.setDayness(t);
+  }
+  let fade = null;
+  function fadeTime(to, ms = 2000) {
+    if (fade) scene.onBeforeRenderObservable.remove(fade);
+    const from = val(ui.time);
+    const start = performance.now();
+    fade = scene.onBeforeRenderObservable.add(() => {
+      const k = Math.min(1, (performance.now() - start) / ms);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // ease in-out: dusk/dawn, not a switch
+      applyTime(lerp(from, to, e));
+      if (k >= 1) { scene.onBeforeRenderObservable.remove(fade); fade = null; }
+    });
+  }
+  // a time set by hand (or by a saved scene, or the crew) wins over a preset's fade still running
+  ui.time.oninput = () => {
+    if (fade) { scene.onBeforeRenderObservable.remove(fade); fade = null; }
+    applyTime(val(ui.time));
+  };
+
+  const PRESET_LABEL = { 'Night': __('Night'), 'Day': __('Day'), 'Indigo night (Figma)': __('Indigo night (Figma)'), 'Sepia day': __('Sepia day'), 'Natural colour': __('Natural colour') };
+  const presetSel = $('lookPreset');
+  Object.keys(PRESETS).forEach((name) => presetSel.add(new Option(PRESET_LABEL[name] || name, name)));
+  presetSel.onchange = () => {
+    const p = PRESETS[presetSel.value];
+    Object.entries(p).forEach(([k, v]) => { if (k !== 'time') ui[k].value = v; });
+    if ('time' in p) fadeTime(p.time); // night and day fade into each other
+  };
+
+  ui.on.onchange = () => { buildChain(); applyToon(); };
+  ui.toon.onchange = applyToon;
+  presetSel.value = 'Night';
+  presetSel.onchange();
+  buildChain();
+  applyToon();
+  window.__look = { buildChain, applyToon, PRESETS };
+})();

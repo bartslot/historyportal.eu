@@ -1,0 +1,103 @@
+{
+  "note": "Bart's Figma panel 2321:5151 as a clay blockout: on deck by the starboard rail (running along the view), the coast off to the right; Visscher behind Tasman's right shoulder, nearer the camera; a sailor further forward at the rail, pointing; a barrel by the rail. Panel: horizon 51.55 % down, 40 deg vertical view (33 mm), the people on the left third. Camera found by readback text alone (no screenshots).",
+  "objects": [
+    {
+      "id": "deck",
+      "kit": "deck",
+      "at": [
+        0,
+        3
+      ]
+    },
+    {
+      "id": "rail",
+      "kit": "rail",
+      "at": [
+        2.8,
+        3.5
+      ],
+      "on": "deck",
+      "face": -90
+    },
+    {
+      "id": "coast",
+      "kit": "marker",
+      "at": [
+        60,
+        40
+      ]
+    },
+    {
+      "id": "tasman",
+      "kit": "figure",
+      "pose": "spyglass",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          0.5,
+          0
+        ]
+      },
+      "face": "coast"
+    },
+    {
+      "id": "visscher",
+      "kit": "figure",
+      "pose": "stand",
+      "on": "deck",
+      "place": {
+        "behind": "tasman",
+        "gap": 0.5,
+        "offset": [
+          0.6,
+          0
+        ]
+      },
+      "face": "coast"
+    },
+    {
+      "id": "sailor",
+      "kit": "figure",
+      "pose": "point",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          2.2,
+          0
+        ]
+      },
+      "face": "coast"
+    },
+    {
+      "id": "barrel",
+      "kit": "barrel",
+      "on": "deck",
+      "place": {
+        "near": "rail",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          -1.5,
+          0
+        ]
+      }
+    }
+  ],
+  "camera": {
+    "shot": "medium",
+    "subjects": [
+      "tasman",
+      "visscher"
+    ],
+    "lens_mm": 33,
+    "horizon": 0.5155,
+    "az": 100,
+    "align": "left-third"
+  }
+}

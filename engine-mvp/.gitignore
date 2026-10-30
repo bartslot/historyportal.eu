@@ -1,0 +1,10 @@
+public/assets/images/*
+!public/assets/images/images.json
+public/assets/sky/
+public/assets/clouds/
+node_modules/
+dist/
+public/assets/models/
+__pycache__/
+public/sound
+public/intro

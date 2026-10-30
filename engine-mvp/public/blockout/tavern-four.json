@@ -1,0 +1,120 @@
+{
+  "note": "Gate 2 interior: a tavern, four figures round the table: Tasman points at the chart, Visscher across from him, two sailors listening. The back wall closes the room.",
+  "objects": [
+    {
+      "id": "wall",
+      "kit": "wall",
+      "at": [
+        0,
+        3
+      ]
+    },
+    {
+      "id": "wall2",
+      "kit": "wall",
+      "place": {
+        "right_of": "wall",
+        "gap": 0
+      }
+    },
+    {
+      "id": "table",
+      "kit": "table",
+      "at": [
+        0,
+        0.5
+      ]
+    },
+    {
+      "id": "tasman",
+      "kit": "figure",
+      "pose": "point",
+      "place": {
+        "left_of": "table",
+        "gap": 0.3
+      },
+      "face": "table"
+    },
+    {
+      "id": "visscher",
+      "kit": "figure",
+      "pose": "stand",
+      "place": {
+        "right_of": "table",
+        "gap": 0.3
+      },
+      "face": "table"
+    },
+    {
+      "id": "sailor1",
+      "kit": "figure",
+      "pose": "stand",
+      "place": {
+        "near": "table",
+        "side": "front",
+        "gap": 0.3
+      },
+      "face": "table"
+    },
+    {
+      "id": "sailor2",
+      "kit": "figure",
+      "pose": "stand",
+      "place": {
+        "near": "table",
+        "side": "front",
+        "gap": 0.3,
+        "offset": [
+          -0.9,
+          0
+        ]
+      },
+      "face": "tasman"
+    },
+    {
+      "id": "barrel",
+      "kit": "barrel",
+      "place": {
+        "near": "wall",
+        "side": "front",
+        "gap": 0.2,
+        "offset": [
+          -1.5,
+          0
+        ]
+      }
+    },
+    {
+      "id": "stool",
+      "kit": "stool",
+      "place": {
+        "in_front": "table",
+        "gap": 0.3,
+        "offset": [
+          0.9,
+          0
+        ]
+      }
+    }
+  ],
+  "camera": {
+    "shot": "three-quarter",
+    "subjects": [
+      "tasman",
+      "visscher",
+      "sailor1",
+      "sailor2"
+    ],
+    "lens_mm": 28,
+    "az": 20
+  },
+  "fix": [
+    {
+      "cmd": "place",
+      "id": "sailor2",
+      "rel": "behind",
+      "of": "visscher",
+      "gap": 0.4
+    }
+  ]
+}

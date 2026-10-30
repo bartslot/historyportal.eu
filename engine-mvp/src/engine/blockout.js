@@ -1,0 +1,546 @@
+// Clay blockout in the studio (clay-blockout Gate 1): a shot as data, solved, shown in clay, read back as text.
+//   mvp.blockout.apply(doc)      a whole blockout: { objects: [spec...], camera?: { shot, subjects, lens_mm?, horizon? } }
+//   mvp.blockout.place(id, spec) one piece added or re-placed among the others (they stay where they are)
+//   mvp.blockout.pose(id, name)  stand | point | spyglass
+//   mvp.blockout.frame(shot)     a camera preset on its subjects
+//   mvp.blockout.read()          the readback { text, ... } for the current camera
+//   mvp.blockout.mode(m)         'clay' | 'silhouette' | 'off'   (one feature, two palettes; no shadows, no post)
+//   mvp.blockout.undo() / redo() and Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z: per op, the AI's and the teacher's hand edits
+// URL: ?blockout=<name>[&mode=clay|silhouette] loads public/blockout/<name>.json (the Gate 1 test shots).
+// Pieces are ordinary studio actors (select, drag, save), built from the kit: clay pieces are instances of one
+// source mesh per kit id; the figure is the mannequin from an AssetContainer, posed by aiming its arm bones.
+/* global BABYLON */
+'use strict';
+import { KIT, POSES, kitPiece } from '../blockout/kit';
+import { solve } from '../blockout/solve';
+import { FIGURE_URLS, RIMS, bone, buildShape, poseFigure } from './clay-kit';
+import { frame as frameCam, PRESETS } from '../blockout/camera';
+import { readback } from '../blockout/readback';
+import { History, changeOp, valueOp } from '../blockout/history';
+import { isTypingTarget } from '@hp/ui/keyboard.js';
+
+const CLAY = [0.78, 0.76, 0.72];
+const SLATE = [0.36, 0.40, 0.45];          // the storyboard frame: a mid slate, black silhouettes (memory 10-11)
+const CLAY_BASE = 0.55;                    // clay = an unlit base + a little light for the form (a matcap's job)
+const CLAY_LIT = 0.45;
+const SET_INK = 0.45;                      // silhouette set pieces: this share of the slate
+const SOURCE_PARK_Y = -1000;               // instanced source meshes wait out of sight
+
+(() => {
+  const mvp = window.__mvp;
+  const scene = mvp.scene;
+  const history = new History();
+  const specs = new Map();       // id -> spec (what was asked)
+  const placedOf = new Map();    // id -> solver result (where it is)
+  const actorOf = new Map();     // id -> actor root
+  const sources = new Map();     // kit id -> source mesh (instanced)
+  let figureContainer = null;
+  let shot = null;
+  let lastProblems = [];
+  let lastNotes = [];            // the AI asked to change what the teacher had set: kept, and said so
+  let removing = false;           // set while the blockout itself removes a piece
+  let currentMode = 'off';
+  let rim = 0;
+
+  const clayMat = new BABYLON.StandardMaterial('blockout clay', scene);
+  clayMat.diffuseColor = BABYLON.Color3.FromArray(CLAY.map((v) => v * CLAY_LIT));
+  clayMat.emissiveColor = BABYLON.Color3.FromArray(CLAY.map((v) => v * CLAY_BASE));   // never black on the shade side
+  clayMat.specularColor = BABYLON.Color3.Black();
+  const inkMat = new BABYLON.StandardMaterial('blockout silhouette', scene);
+  inkMat.disableLighting = true;
+  inkMat.emissiveColor = BABYLON.Color3.Black();
+  inkMat.diffuseColor = BABYLON.Color3.Black();
+  const setInkMat = new BABYLON.StandardMaterial('blockout silhouette set', scene);   // the set: darker than the
+  setInkMat.disableLighting = true;                                                    // frame, lighter than people
+  setInkMat.emissiveColor = BABYLON.Color3.FromArray(SLATE.map((v) => v * SET_INK));
+
+  // ---------- the kit (the shapes: clay-kit.js, shared with the storyboard's clay frames) ----------
+  function source(k) {
+    if (sources.has(k.id)) return sources.get(k.id);
+    const parts = buildShape(scene, k);
+    const m = parts.length > 1 ? BABYLON.Mesh.MergeMeshes(parts, true, true) : parts[0];
+    if (m) {
+      m.name = 'kit ' + k.id;
+      m.material = currentMode === 'silhouette' ? setInkMat : clayMat;
+      m.bakeCurrentTransformIntoVertices();   // geometry with its bottom centre at the origin
+      m.isPickable = false;
+      m.position.y = SOURCE_PARK_Y;            // the source itself waits out of sight; its instances are the pieces
+    }
+    sources.set(k.id, m);
+    return m;
+  }
+  async function preload(kitIds) {
+    if (kitIds.includes('figure') && !figureContainer) {
+      for (const url of FIGURE_URLS) {
+        try { figureContainer = await BABYLON.SceneLoader.LoadAssetContainerAsync('', url, scene); break; } catch (e) {
+          if (url === FIGURE_URLS[FIGURE_URLS.length - 1]) throw e;
+        }
+      }
+    }
+  }
+
+  function spawn(id, kitId) {
+    const k = kitPiece(kitId);
+    let meshes = [];
+    let groups = [];
+    if (k.shape.kind === 'figure') {
+      const inst = figureContainer.instantiateModelsToScene((n) => `${id} ${n}`, false);
+      meshes = inst.rootNodes;
+      groups = inst.animationGroups;
+    } else if (k.shape.kind !== 'none') {
+      const src = source(k);
+      const inst = src.createInstance(id);
+      inst.position.setAll(0);                 // createInstance copies the parked source's position: back to the actor's origin
+      meshes = [inst];
+    }
+    const root = mvp.makeActor(id, meshes);
+    root.metadata.id = id;
+    root.metadata.kit = kitId;
+    root.metadata.clips = groups;
+    if (groups.length) {
+      groups.forEach((g) => g.stop());
+      const idle = groups.find((g) => /idle/i.test(g.name)) || groups[0];
+      idle.start(false, 1, idle.from, idle.from);
+      idle.goToFrame(idle.from);
+      idle.pause();
+      fitFigure(root, k.size[1]);
+      root.metadata.rim = RIMS[rim++ % RIMS.length];
+    }
+    if (groups.length) mvp.addHitbox(root);   // thin figures get a grab box; clay pieces are picked as themselves
+    root.metadata.footprint = k.footprint;
+    root.metadata.asset = { snaps_to: 'floor', footprint: k.footprint, turn_step: 45, forward: 0 };
+    actorOf.set(id, root);
+    if (currentMode !== 'off') paint(root);
+    return root;
+  }
+
+  function fitFigure(root, height) {
+    const b = mvp.actorBounds(root);
+    const s = height / ((b.max.y - b.min.y) || 1);
+    root.scaling.setAll(s);
+  }
+
+  function remove(id) {
+    const a = actorOf.get(id);
+    if (a && !a.isDisposed()) {
+      // deleteActor disposes materials too: the clay, the silhouette ink and the mannequin's own materials are
+      // shared by every piece, so let go of them first (losing the clay turned the whole scene black)
+      // an InstancedMesh answers with its SOURCE's material, so dispose instances ourselves, materials kept
+      a.getChildMeshes().forEach((m) => {
+        saved.mats.delete(m);
+        if (m instanceof BABYLON.InstancedMesh) m.dispose(false, false); else m.material = null;
+      });
+      removing = true;                         // our own removal: not a teacher's delete (onDelete lets it through)
+      try { mvp.deleteActor(a); } finally { removing = false; }
+    }
+    actorOf.delete(id);
+  }
+
+  function setTransform(a, p) {
+    a.position.set(p.x, p.y, p.z);
+    a.rotationQuaternion = BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, (p.yaw * Math.PI) / 180);
+    if (p.kit === 'figure') fitFigure(a, p.height);
+  }
+
+  // ---------- poses (clay-kit.js: aim the arm bones in the figure's own frame) ----------
+  function pose(id, name) {
+    const a = actorOf.get(id);
+    if (!a || a.metadata.kit !== 'figure') return false;
+    a.getChildMeshes().filter((m) => m.name.startsWith(id + ' spyglass')).forEach((m) => m.dispose());
+    const idle = a.metadata.clips.find((g) => /idle/i.test(g.name)) || a.metadata.clips[0];
+    if (idle) { idle.goToFrame(idle.from); idle.pause(); }
+    a.computeWorldMatrix(true);
+    const p = placedOf.get(id);
+    const yaw = p ? p.yaw : 0;
+    if (poseFigure(scene, a, yaw, name, clayMat, id) && currentMode !== 'off') paint(a);
+    a.metadata.pose = name;
+    return true;
+  }
+
+  // ---------- state: one piece = its spec + where it stands ----------
+  const stateOf = (id) => (specs.has(id) ? { spec: structuredClone(specs.get(id)), placed: placedOf.has(id) ? { ...placedOf.get(id) } : null } : undefined);
+  function setState(id, st) {
+    if (!st) { specs.delete(id); placedOf.delete(id); remove(id); return; }
+    specs.set(id, structuredClone(st.spec));
+    if (!st.placed) { placedOf.delete(id); remove(id); return; }
+    placedOf.set(id, { ...st.placed });
+    let a = actorOf.get(id);
+    if (!a || a.isDisposed() || a.metadata.kit !== st.placed.kit) { remove(id); a = spawn(id, st.placed.kit); }
+    setTransform(a, st.placed);
+    if (st.spec.pose) pose(id, st.spec.pose);
+  }
+  function snapshot(ids) {
+    const out = {};
+    ids.forEach((id) => { const s = stateOf(id); if (s) out[id] = s; });
+    return out;
+  }
+  function record(label, by, ids, change) {
+    const before = snapshot(ids);
+    change();
+    history.push(changeOp(label, by, before, snapshot(ids), setState));
+  }
+
+  // ---------- apply / place / frame ----------
+  // what the teacher's hand set on a piece (moved / turned / posed): an AI command keeps it (Gate 3)
+  const pinsOf = (id) => (specs.get(id) || {}).pinned || null;
+  const pinWords = (p) => Object.keys(p).filter((k) => p[k]).join(', ');
+  const keptNote = (id, what) => `kept: ${id} was ${pinWords(pinsOf(id))} by the teacher; the AI's ${what} was not applied`;
+
+  async function apply(doc, by = 'ai') {
+    const objects = doc.objects || [];
+    await preload(objects.map((o) => o.kit));
+    lastNotes = [];
+    // pieces the teacher has edited stay exactly as they are; the rest of the shot is solved around them
+    const pinned = by === 'ai' ? [...specs.keys()].filter((id) => pinsOf(id)) : [];
+    const fresh = objects.filter((o) => !pinned.includes(o.id));
+    objects.filter((o) => pinned.includes(o.id)).forEach((o) => lastNotes.push(keptNote(o.id, 'apply')));
+    const ids = [...new Set([...specs.keys(), ...objects.map((o) => o.id)])];
+    record('apply blockout', by, ids, () => {
+      [...specs.keys()].filter((id) => !pinned.includes(id)).forEach((id) => setState(id, undefined));
+      const fixed = {};
+      pinned.forEach((id) => { if (placedOf.has(id)) fixed[id] = placedOf.get(id); });
+      const solved = solve(fresh, fixed);
+      lastProblems = solved.problems;
+      for (const o of fresh) setState(o.id, { spec: o, placed: solved.placed[o.id] || null });
+    });
+    if (doc.camera) frame(doc.camera, by);
+    return read();
+  }
+
+  function fixedExcept(id) {
+    const out = {};
+    placedOf.forEach((p, k) => { if (k !== id) out[k] = p; });
+    return out;
+  }
+
+  /** One piece added or re-placed; every other piece stays exactly where it is (a teacher's edits included). */
+  async function place(spec, by = 'ai') {
+    lastNotes = [];
+    const pins = pinsOf(spec.id);
+    if (by === 'ai' && pins && (pins.moved || pins.turned)) {   // the teacher put it there: it stays
+      lastNotes.push(keptNote(spec.id, 'place'));
+      if (spec.pose && spec.pose !== (specs.get(spec.id) || {}).pose) setPose(spec.id, spec.pose, by);
+      return read();
+    }
+    await preload([spec.kit || (specs.get(spec.id) || {}).kit]);
+    const merged = { ...(specs.get(spec.id) || {}), ...spec };
+    if (spec.place) delete merged.at;
+    if (spec.at) delete merged.place;
+    record(`place ${spec.id}`, by, [spec.id], () => {
+      const solved = solve([merged], fixedExcept(spec.id));
+      lastProblems = solved.problems;
+      specs.set(spec.id, merged);
+      setState(spec.id, { spec: merged, placed: solved.placed[spec.id] || null });
+    });
+    return read();
+  }
+
+  function setPose(id, name, by = 'ai') {
+    if (!specs.has(id)) return false;
+    const pins = pinsOf(id);
+    if (by === 'ai' && pins && pins.posed) { lastNotes.push(keptNote(id, `pose ${name}`)); return true; }
+    record(`pose ${id} ${name}`, by, [id], () => {
+      const s = { ...specs.get(id), pose: name };
+      if (by === 'teacher') s.pinned = { ...(s.pinned || {}), posed: true };
+      specs.set(id, s);
+      setState(id, { spec: s, placed: placedOf.get(id) || null });
+    });
+    return true;
+  }
+
+  function subjectsOf(ids) {
+    return ids.map((id) => actorOf.get(id)).filter(Boolean).map((a) => {
+      const b = mvp.actorBounds(a);
+      return { id: a.metadata.id, box: { min: b.min.asArray(), max: b.max.asArray() }, yaw: (placedOf.get(a.metadata.id) || { yaw: 0 }).yaw };
+    });
+  }
+
+  // the camera as a value: the preset asked for and where the camera actually is
+  function camState() {
+    const cam = mvp.camera;
+    return { shot: shot ? { ...shot } : null, alpha: cam.alpha, beta: cam.beta, radius: cam.radius, target: cam.target.asArray(), fov: cam.fov };
+  }
+  function setCam(v) {
+    const cam = mvp.camera;
+    cam.lockedTarget = null;
+    cam.setTarget(BABYLON.Vector3.FromArray(v.target));
+    Object.assign(cam, { alpha: v.alpha, beta: v.beta, radius: v.radius, fov: v.fov });
+    shot = v.shot ? { ...v.shot } : null;
+  }
+
+  function placeCamera(s) {
+    const cam = mvp.camera;
+    const aspect = scene.getEngine().getAspectRatio(cam);
+    const c = frameCam(s, subjectsOf(s.subjects), aspect);
+    cam.lockedTarget = null;
+    cam.upperBetaLimit = Math.PI * 0.98;     // a blockout camera may look up at the horizon (the studio forbids it)
+    cam.lowerRadiusLimit = 0.05;
+    cam.upperRadiusLimit = 1000;
+    cam.setTarget(BABYLON.Vector3.FromArray(c.target));
+    cam.setPosition(BABYLON.Vector3.FromArray(c.position));
+    cam.fov = c.fovY;
+    shot = { ...s };
+    return c;
+  }
+
+  /** A camera preset as one undo op (the AI's or the teacher's choice of shot). */
+  function frame(s, by = 'ai') {
+    const before = camState();
+    const c = placeCamera(s);
+    history.push(valueOp(`frame ${s.shot}`, by, before, camState(), setCam, s.subjects || []));
+    return c;
+  }
+
+  function currentCam() {
+    const cam = mvp.camera;
+    cam.computeWorldMatrix(true);
+    return {
+      position: cam.position.asArray(),
+      target: cam.getTarget().asArray(),
+      fovY: cam.fov,
+      aspect: scene.getEngine().getAspectRatio(cam),
+    };
+  }
+
+  const PART_BONES = { head: 'Head', 'left hand': 'LeftHand', 'right hand': 'RightHand', 'left foot': 'LeftFoot', 'right foot': 'RightFoot' };
+  function partsOf(a) {
+    const out = {};
+    for (const [part, name] of Object.entries(PART_BONES)) {
+      const b = bone(a, name);
+      if (!b) continue;
+      b.computeWorldMatrix(true);
+      out[part] = b.getAbsolutePosition().asArray();
+    }
+    return out;
+  }
+
+  function read() {
+    const subjects = new Set(shot ? shot.subjects : []);
+    const items = [...actorOf.entries()].filter(([, a]) => !a.isDisposed()).map(([id, a]) => {
+      const p = placedOf.get(id);
+      const kit = a.metadata.kit;
+      let box;
+      if (kit === 'marker') box = { min: [p.x, p.y, p.z], max: [p.x, p.y, p.z] };
+      else { const b = mvp.actorBounds(a); box = { min: b.min.asArray(), max: b.max.asArray() }; }
+      const parts = kit === 'figure' ? partsOf(a) : undefined;
+      return { id, kit, box, yaw: p ? p.yaw : 0, floorY: p ? p.y : 0, subject: subjects.has(id), figure: kit === 'figure', parts };
+    });
+    const r = readback(currentCam(), items, lastProblems, shot ? shot.shot : undefined);
+    const kept = [...specs.keys()].filter((id) => pinsOf(id)).map((id) => `  ${id}: ${pinWords(pinsOf(id))} by teacher, kept`);
+    if (kept.length) r.text += '\nteacher edits (an AI command does not change these):\n' + kept.join('\n');
+    if (lastNotes.length) r.text += '\nnotes:\n' + lastNotes.map((n) => '  ' + n).join('\n');
+    r.notes = [...lastNotes];
+    window.__blockoutReadback = r.text;
+    return r;
+  }
+
+  // ---------- clay / silhouette (one feature, two palettes) ----------
+  const saved = { mats: new Map(), look: null, shadow: null, clear: null, ground: null, sky: null, hidden: [] };
+  const sun = () => scene.lights.find((l) => l instanceof BABYLON.DirectionalLight);
+  const ground = () => scene.getMeshByName('ground');
+  function paint(a) {
+    // clouds are hidden in these modes and rebuilt (disposed with their materials) when the settings load
+    if (a.metadata && a.metadata.cloud) return;
+    a.getChildMeshes().forEach((m) => {
+      if (m.name === 'hitbox' || m instanceof BABYLON.InstancedMesh) return;
+      if (!saved.mats.has(m)) saved.mats.set(m, m.material);
+      m.material = currentMode === 'silhouette' ? inkMat : clayMat;
+      const isFigure = a.metadata.kit === 'figure' || (a.metadata.clips && a.metadata.clips.length);
+      m.renderOutline = currentMode === 'silhouette' && !!isFigure;
+      if (m.renderOutline) { m.outlineColor = BABYLON.Color3.FromHexString(a.metadata.rim || '#ffffff'); m.outlineWidth = 0.012; }
+    });
+  }
+  const rootOf = (m) => { for (let n = m; n; n = n.parent) { if (mvp.actors.includes(n)) return n; if (n.metadata && n.metadata.actor) return n.metadata.actor; } return null; };
+  const inActor = (m) => { const r = rootOf(m); return !!r && !(r.metadata && r.metadata.cloud); };
+  function hideUnlessPiece(m) {
+    if (m.isDisposed() || m === ground() || [...sources.values()].includes(m) || !m.isEnabled() || inActor(m)) return;
+    m.setEnabled(false);
+    saved.hidden.push(m);
+  }
+  // clouds and backdrops built AFTER the mode was set (a lesson's settings loading) go dark too; checked one frame
+  // later, when the new mesh has found its parent
+  scene.onNewMeshAddedObservable.add((m) => {
+    if (currentMode === 'off') return;
+    scene.onBeforeRenderObservable.addOnce(() => { if (currentMode !== 'off') hideUnlessPiece(m); });
+  });
+
+  function mode(m) {
+    const look = document.getElementById('lookOn');
+    if (m !== 'off' && currentMode === 'off') {
+      saved.look = look ? look.checked : null;
+      saved.shadow = sun() ? sun().shadowEnabled : null;
+      saved.clear = scene.clearColor.clone();
+      saved.ground = ground() ? ground().material : null;
+      saved.sky = mvp.getDome() ? mvp.getDome().mesh.isEnabled() : null;
+    }
+    currentMode = m;
+    if (m === 'off') {
+      saved.mats.forEach((mat, mesh) => { if (!mesh.isDisposed()) { mesh.material = mat; mesh.renderOutline = false; } });
+      saved.mats.clear();
+      if (look && saved.look !== null) { look.checked = saved.look; look.dispatchEvent(new Event('change', { bubbles: true })); }
+      if (sun() && saved.shadow !== null) sun().shadowEnabled = saved.shadow;
+      if (saved.clear) scene.clearColor = saved.clear;
+      if (ground() && saved.ground) ground().material = saved.ground;
+      if (mvp.getDome() && saved.sky !== null) mvp.getDome().mesh.setEnabled(saved.sky);
+      saved.hidden.forEach((h) => { if (!h.isDisposed()) h.setEnabled(true); });
+      saved.hidden = [];
+      return m;
+    }
+    if (look && look.checked) { look.checked = false; look.dispatchEvent(new Event('change', { bubbles: true })); }
+    // only the pieces, the floor and the horizon: backdrop rings, plates, clouds and sky go dark
+    scene.meshes.forEach(hideUnlessPiece);
+    if (sun()) sun().shadowEnabled = false;
+    if (mvp.getDome()) mvp.getDome().mesh.setEnabled(false);
+    const bg = m === 'silhouette' ? SLATE : [0.93, 0.92, 0.89];
+    scene.clearColor = new BABYLON.Color4(bg[0], bg[1], bg[2], 1);
+    const g = ground();
+    if (g) {
+      const gm = new BABYLON.StandardMaterial('blockout floor', scene);
+      gm.disableLighting = true;
+      gm.emissiveColor = m === 'silhouette' ? BABYLON.Color3.FromArray(SLATE.map((v) => v * 0.8)) : BABYLON.Color3.FromArray(CLAY.map((v) => v * 1.12));
+      g.material = gm;
+    }
+    mvp.actors.filter((a) => !a.isDisposed()).forEach(paint);
+    sources.forEach((s) => { if (s) s.material = m === 'silhouette' ? setInkMat : clayMat; });
+    return m;
+  }
+
+  // ---------- the teacher's hand: a drag, a turn, a delete is one op each; what it changed is pinned ----------
+  const yawDeg = (a) => Math.round(((a.rotationQuaternion.toEulerAngles().y * 180) / Math.PI) * 1000) / 1000;
+  mvp.onHandEdit = (a, from, kind) => {
+    const id = a.metadata && a.metadata.id;
+    if (!specs.has(id) || !placedOf.has(id) || !from) return;
+    const before = stateOf(id);
+    const p = { ...placedOf.get(id), x: a.position.x, z: a.position.z, yaw: yawDeg(a) };
+    a.position.y = p.y;                        // the studio's drag puts things on the ground; a deck piece stays on the deck
+    const spec = { ...specs.get(id), at: [p.x, p.z], turn: p.yaw };
+    delete spec.place;
+    delete spec.face;
+    spec.pinned = { ...(spec.pinned || {}), [kind === 'turn' ? 'turned' : 'moved']: true };
+    specs.set(id, spec);
+    placedOf.set(id, p);
+    history.push(changeOp(`${kind === 'turn' ? 'turn' : 'move'} ${id}`, 'teacher', { [id]: before }, { [id]: stateOf(id) }, setState));
+  };
+  mvp.onDelete = (a) => {
+    if (removing) return false;
+    const id = a.metadata && a.metadata.id;
+    if (!specs.has(id) || actorOf.get(id) !== a) return false;
+    record(`delete ${id}`, 'teacher', [id], () => setState(id, undefined));
+    return true;
+  };
+
+  window.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e.target) || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || !history.canUndo() && !history.canRedo()) return;
+    e.preventDefault();
+    if (e.shiftKey) history.redo(); else history.undo();
+  });
+
+  // ---------- save / load (scene-io v2) ----------
+  function serialize() {
+    return { mode: currentMode, shot, objects: [...specs.keys()].map((id) => ({ ...stateOf(id) })) };
+  }
+  async function load(data) {
+    if (!data) return;
+    await preload(data.objects.map((o) => o.spec.kit));
+    data.objects.forEach((o) => setState(o.spec.id, o));
+    shot = data.shot ? { ...data.shot } : null;   // the camera pose itself comes back with the scene (scene-io)
+    if (data.mode) mode(data.mode);
+  }
+
+  // ---------- the validated COMMANDS shape (server.py) -> a spec: one conversion, for the crew and the MCP tools ----------
+  function specFromCommand(c) {
+    const spec = { id: c.id };
+    if (c.kit) spec.kit = c.kit;
+    if (c.pose) spec.pose = c.pose;
+    if (c.rel === 'between' && c.of && c.and) spec.place = { between: [c.of, c.and] };
+    else if (c.rel && c.of) spec.place = { [c.rel]: c.of, side: c.side, gap: c.gap };
+    else if (c.x != null && c.z != null) spec.at = [c.x, c.z];
+    if (spec.place && (c.offset_r != null || c.offset_f != null)) spec.place.offset = [c.offset_r || 0, c.offset_f || 0];
+    if (spec.place) Object.keys(spec.place).forEach((k) => spec.place[k] === undefined && delete spec.place[k]);
+    if (c.on) spec.on = c.on;
+    if (c.face != null) spec.face = /^-?\d+(\.\d+)?$/.test(String(c.face)) ? Number(c.face) : c.face;   // a heading or an id
+    if (c.turn != null) spec.turn = c.turn;
+    if (c.height != null) spec.height_m = c.height;
+    return spec;
+  }
+  const shotFromCommand = (c) => ({ shot: c.shot, subjects: c.subjects, lens_mm: c.lens, horizon: c.horizon, az: c.az, align: c.align });
+
+  // ---------- a small picture, only when asked: clay, silhouette, or an id pass (one flat colour per piece) ----------
+  async function picture({ size = 512, pass = 'clay' } = {}) {
+    const engine = scene.getEngine();
+    const before = currentMode;
+    const restore = [];
+    if (pass === 'id') {
+      let i = 0;
+      actorOf.forEach((a, id) => {
+        const m = new BABYLON.StandardMaterial('id ' + id, scene);
+        m.disableLighting = true;
+        m.emissiveColor = BABYLON.Color3.FromHSV((i++ * 137.5) % 360, 0.85, 0.95);
+        a.getChildMeshes().forEach((mesh) => {
+          if (mesh instanceof BABYLON.InstancedMesh) return;    // instances share their source's material
+          restore.push([mesh, mesh.material]);
+          mesh.material = m;
+        });
+      });
+    } else if (pass !== before) mode(pass);
+    // render one frame here and scale the canvas down: the render-target screenshot waits for the render loop,
+    // which a hidden tab (a teacher's page in the background) does not run. First wait for the shaders a mode switch
+    // needs: a mesh whose material is not compiled yet is skipped (the first silhouette had no people in it)
+    await scene.whenReadyAsync();
+    scene.render();
+    const src = engine.getRenderingCanvas();
+    const w = size, h = Math.round((size * src.height) / src.width);
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    out.getContext('2d').drawImage(src, 0, 0, w, h);
+    const data = out.toDataURL('image/png');
+    restore.forEach(([mesh, mat]) => { const own = mesh.material; mesh.material = mat; if (own && own.name.startsWith('id ')) own.dispose(); });
+    if (pass !== 'id' && pass !== before) mode(before);
+    return { image: data, width: w, height: h, pass };
+  }
+
+  const kitList = () => ({
+    kit: KIT.map((k) => ({ id: k.id, name: k.name, size_m: k.size, footprint_cells: k.footprint, anchors: Object.keys(k.anchors) })),
+    poses: [...POSES], shots: [...PRESETS], cell_m: 0.5,
+  });
+
+  function clear() {
+    [...actorOf.keys()].forEach(remove);
+    specs.clear();
+    placedOf.clear();
+    shot = null;
+    lastProblems = [];
+  }
+
+  mvp.blockout = {
+    clear, isPiece: (a) => !!a && actorOf.get(a.metadata && a.metadata.id) === a,
+    specFromCommand, shotFromCommand, snapshot: picture, kitList, revision: () => history.list().length,
+    apply, place, pose: setPose, frame: (s) => { frame(s); return read(); }, read, mode, history,
+    reframe: () => { if (shot) placeCamera(shot); return read(); },   // the same preset at the canvas's current aspect (no op)
+    undo: () => history.undo(), undoOne: () => history.undoOne(), redo: () => history.redo(), serialize, load,
+    begin: (label, by = 'ai') => history.begin(label, by), end: () => history.end(),
+    setPose, frameAs: (s, by) => { frame(s, by); return read(); }, currentShot: () => (shot ? { ...shot } : null),
+    specs: () => [...specs.values()].map((s) => structuredClone(s)),
+    placed: () => Object.fromEntries(placedOf),
+  };
+
+  // ---------- the Gate 1 test shots ----------
+  const params = new URLSearchParams(location.search);
+  const name = params.get('blockout');
+  if (name) {
+    scene.executeWhenReady(async () => {
+      try {
+        const doc = await (await fetch(`blockout/${name}.json`)).json();
+        mode(params.get('mode') || 'clay');
+        const t0 = performance.now();
+        const r = await apply(doc);
+        console.log(`[blockout] ${name} applied in ${Math.round(performance.now() - t0)} ms\n${r.text}`);
+        window.__blockoutReady = true;
+      } catch (e) {
+        console.error('[blockout] ' + name + ': ' + e.message);
+        window.__blockoutError = e.message;
+      }
+    });
+  }
+})();

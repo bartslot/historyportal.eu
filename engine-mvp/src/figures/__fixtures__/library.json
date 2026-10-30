@@ -1,0 +1,99 @@
+{
+ "version": 1,
+ "bundle": "fixture",
+ "assets": [
+  {
+   "id": "hunebed-long-01",
+   "layer": "mid",
+   "tags": [
+    "hunebed",
+    "dolmen",
+    "megalith",
+    "stones",
+    "grave"
+   ],
+   "file": "hunebed-long-01.webp",
+   "w": 910,
+   "h": 341,
+   "anchor": [
+    0.374,
+    1.0
+   ],
+   "height_m": 3,
+   "tileable_x": false,
+   "motion": "none",
+   "era": "c. 3400-2850 BCE",
+   "qa": {
+    "score": 8,
+    "alpha_ok": true,
+    "ink_coverage": 0.1838,
+    "ranked_vs_anchor": "alike",
+    "ink_style_ok": true,
+    "palette_de": 8.25,
+    "sheet": "mid-hunebed",
+    "variant": "h"
+   }
+  },
+  {
+   "id": "boulders-small-01",
+   "layer": "fg",
+   "tags": [
+    "rock",
+    "boulder",
+    "stones"
+   ],
+   "file": "boulders-small-01.webp",
+   "w": 693,
+   "h": 315,
+   "anchor": [
+    0.555,
+    1.0
+   ],
+   "height_m": 0.8,
+   "tileable_x": false,
+   "motion": "none",
+   "era": "c. 3400-2850 BCE",
+   "qa": {
+    "score": 8,
+    "alpha_ok": true,
+    "ink_coverage": 0.1775,
+    "ranked_vs_anchor": "alike",
+    "ink_style_ok": true,
+    "palette_de": 7.8,
+    "sheet": "fg-reeds-rocks",
+    "variant": "g"
+   }
+  },
+  {
+   "id": "log-fallen-01",
+   "layer": "fg",
+   "tags": [
+    "log",
+    "fallen",
+    "deadwood",
+    "forest"
+   ],
+   "file": "log-fallen-01.webp",
+   "w": 1389,
+   "h": 409,
+   "anchor": [
+    0.499,
+    1.0
+   ],
+   "height_m": 1.0,
+   "tileable_x": false,
+   "motion": "none",
+   "era": "c. 3400-2850 BCE",
+   "qa": {
+    "score": 9,
+    "alpha_ok": true,
+    "ink_coverage": 0.3306,
+    "ranked_vs_anchor": "alike",
+    "ink_style_ok": false,
+    "palette_de": 7.97,
+    "sheet": "fg-fences",
+    "variant": "g"
+   }
+  }
+ ]
+}

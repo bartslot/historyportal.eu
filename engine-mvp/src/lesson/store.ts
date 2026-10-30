@@ -1,0 +1,275 @@
+// The lesson being edited: its scene tree, each scene's saved state and thumbnail, and the script.
+// One scene is live in the engine at a time; switching saves it and loads the next. Saved in this
+// browser (IndexedDB) every few seconds and on every switch; Export/Import carry the same JSON.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useSyncExternalStore } from 'react'
+import { idbGet, idbPut } from './idb'
+import * as Tree from './tree'
+import { sweepInterrupted } from '../crew/stream'
+import { __ } from '../i18n'
+import type { ShotData } from '../storyboard/shots'
+
+export const LESSON_VERSION = 1
+const KEY = 'current'
+const AUTOSAVE_MS = 5000
+const THUMB_W = 160
+const THUMB_EVERY = 3
+
+export type Choice = { label: string; why: string; recommended?: boolean }
+export type Choices = { question: string; options: Choice[]; scope?: boolean }
+export type SceneEntry = { doc: any | null; thumb: string | null }
+/** One line of the crew chat, kept with the lesson (src/crew). */
+export type CrewLine = { who: string; as?: string; text: string; changes?: string[]; jev?: { score: number; choice: string }; review?: { who: string; text: string }; thoughts?: string; draft?: string; stopped?: boolean; error?: string; turn?: string | number; status?: 'working'; interrupted?: boolean; choices?: Choices; answered?: string; revised?: boolean; before?: string; sketch?: { url: string; caption: string } }
+/** The three steps, strictly in order (Bart 2026-10-10): plan the story, build it, make it move. */
+export const STEPS = ['script', 'visual', 'animate'] as const
+export type Step = (typeof STEPS)[number]
+export type Lesson = {
+  version: number; id: string; title: string; tree: Tree.TreeNode[]; scenes: Record<string, SceneEntry>; script: any | null; crew?: CrewLine[]
+  /** the step being worked on, the furthest one opened, and whether the teacher approved the script */
+  step?: Step; reached?: Step; approved?: boolean
+  /** directed shots by the id of the line each starts at (src/storyboard); undirected shots are derived */
+  shots?: Record<string, ShotData>
+}
+type State = { lesson: Lesson; current: string; busy: boolean; saved: 'saved' | 'saving' | 'unsaved'; error: string | null }
+
+function freshLesson(): Lesson {
+  const id = Tree.newId('s')
+  return { version: LESSON_VERSION, id: Tree.newId('l'), title: 'Untitled lesson', tree: [{ kind: 'scene', id, title: __('Scene :n', { n: 1 }) }], scenes: { [id]: { doc: null, thumb: null } }, script: null }
+}
+
+let state: State = { lesson: freshLesson(), current: '', busy: false, saved: 'saved', error: null }
+state.current = Tree.scenesInOrder(state.lesson.tree)[0].id
+const listeners = new Set<() => void>()
+const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()) }
+export const getLesson = () => state
+export const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+export const useLesson = () => useSyncExternalStore(subscribe, getLesson)
+
+const io = () => (window as any).__mvp.sceneIO
+const stageImage = (w: number) => (window as any).__mvp.stageImage(w)
+
+/** Validate a lesson from storage or a file: fail loudly rather than open half a lesson. */
+export function checkLesson(x: any): Lesson {
+  if (!x || x.version !== LESSON_VERSION) throw new Error(__('This file is not a History Portal studio lesson (or from another version)'))
+  if (!Array.isArray(x.tree) || typeof x.scenes !== 'object' || !Tree.scenesInOrder(x.tree).length) throw new Error(__('This lesson has no scenes'))
+  for (const s of Tree.scenesInOrder(x.tree)) if (!x.scenes[s.id]) throw new Error(__('Scene ":name" is missing its data', { name: s.title }))
+  return x as Lesson
+}
+
+// ---------- saving ----------
+function captureCurrent(withThumb: boolean): Lesson {
+  const prev = state.lesson.scenes[state.current] ?? { doc: null, thumb: null }
+  const entry: SceneEntry = { doc: io().serialize(), thumb: withThumb ? stageImage(THUMB_W) : prev.thumb }
+  return { ...state.lesson, scenes: { ...state.lesson.scenes, [state.current]: entry } }
+}
+
+// false once a saved lesson failed to open: never write a fresh lesson over one we could not read
+let storageOk = true
+
+async function persist(lesson: Lesson) {
+  if (!storageOk) { set({ saved: 'unsaved' }); return }
+  set({ saved: 'saving' })
+  try { await idbPut(KEY, { lesson, current: state.current }); set({ saved: 'saved', error: null }) }
+  catch (err) { set({ saved: 'unsaved', error: __('Could not save in this browser: :error', { error: err instanceof Error ? err.message : String(err) }) }) }
+}
+
+export async function saveNow(withThumb = false) {
+  if (state.busy) return
+  const lesson = captureCurrent(withThumb)
+  set({ lesson })
+  await persist(lesson)
+}
+
+// ---------- scenes ----------
+async function loadScene(id: string) {
+  const entry = state.lesson.scenes[id]
+  if (entry?.doc) {
+    const { missing } = await io().load(entry.doc)
+    if (missing.length) (window as any).__mvp.flash(__('Not in the library any more: :names', { names: [...new Set(missing)].join(', ') }))
+  } else io().clear()
+}
+
+export async function switchTo(id: string) {
+  if (state.busy || id === state.current || !state.lesson.scenes[id]) return
+  set({ busy: true })
+  try {
+    const lesson = captureCurrent(true)
+    set({ lesson, current: id })
+    await loadScene(id)
+    await persist(state.lesson)
+  } finally { set({ busy: false }) }
+}
+
+export async function addScene(into: string | null = null) {
+  const id = Tree.newId('s')
+  const n = Tree.scenesInOrder(state.lesson.tree).length + 1
+  const node: Tree.SceneNode = { kind: 'scene', id, title: __('Scene :n', { n }) }
+  set({ lesson: { ...state.lesson, tree: Tree.insert(state.lesson.tree, node, into), scenes: { ...state.lesson.scenes, [id]: { doc: null, thumb: null } } } })
+  await switchTo(id)
+  return id
+}
+
+export function addGroup() {
+  const g: Tree.GroupNode = { kind: 'group', id: Tree.newId('g'), title: __('New group'), open: true, children: [] }
+  set({ lesson: { ...state.lesson, tree: Tree.insert(state.lesson.tree, g, null) } })
+  void persist(state.lesson)
+  return g.id
+}
+
+/** Delete a scene or a group with everything in it. The last scene stays. */
+export async function deleteNode(id: string) {
+  const node = Tree.find(state.lesson.tree, id)
+  if (!node) return
+  const gone = new Set(node.kind === 'scene' ? [id] : Tree.scenesInOrder(node.children).map((s) => s.id))
+  const left = Tree.scenesInOrder(state.lesson.tree).filter((s) => !gone.has(s.id))
+  if (!left.length) { (window as any).__mvp.flash(__('A lesson needs at least one scene')); return }
+  if (gone.has(state.current)) {
+    set({ busy: true })
+    try { set({ current: left[0].id }); await loadScene(left[0].id) } finally { set({ busy: false }) }
+  }
+  const scenes = Object.fromEntries(Object.entries(state.lesson.scenes).filter(([k]) => !gone.has(k)))
+  set({ lesson: { ...state.lesson, tree: Tree.remove(state.lesson.tree, id), scenes } })
+  await persist(state.lesson)
+}
+
+export function editTree(fn: (t: Tree.TreeNode[]) => Tree.TreeNode[]) {
+  set({ lesson: { ...state.lesson, tree: fn(state.lesson.tree) } })
+  void persist(state.lesson)
+}
+
+/** Swap in a whole lesson (an opened file; tests). The engine is not touched. */
+export function replaceLesson(lesson: Lesson) {
+  set({ lesson, current: Tree.scenesInOrder(lesson.tree)[0]?.id ?? state.current })
+}
+
+// ---------- steps ----------
+export const stepOf = (l: Lesson = state.lesson): Step => l.step ?? 'script'
+const reachedOf = (l: Lesson): Step => l.reached ?? 'script'
+const rank = (s: Step) => STEPS.indexOf(s)
+
+/** Why a step cannot be opened yet, or null when it can. Going back is always allowed. */
+export function lockedReason(step: Step, l: Lesson = state.lesson): string | null {
+  if (step === 'visual' && !l.approved) return __('Approve the script first')
+  if (step === 'animate' && rank(reachedOf(l)) < rank('animate')) return __('Finish the visual step first')
+  return null
+}
+
+export function goToStep(step: Step) {
+  if (lockedReason(step)) return false
+  set({ lesson: { ...state.lesson, step }, saved: 'unsaved' })
+  return true
+}
+
+/** The teacher approves the script: the Visual step opens. */
+export function approveScript() {
+  set({ lesson: { ...state.lesson, approved: true, reached: rank(reachedOf(state.lesson)) < rank('visual') ? 'visual' : reachedOf(state.lesson), step: 'visual' }, saved: 'unsaved' })
+}
+
+/** Done with the picture: the Animate step opens. */
+export function finishVisual() {
+  set({ lesson: { ...state.lesson, reached: 'animate', step: 'animate' }, saved: 'unsaved' })
+}
+
+export function setTitle(title: string) {
+  set({ lesson: { ...state.lesson, title }, saved: 'unsaved' })
+}
+
+export function setScript(script: any) {
+  set({ lesson: { ...state.lesson, script }, saved: 'unsaved' })
+}
+
+/** Write look/sky settings (control id to value) into other scenes' saved docs, so they open with them.
+ *  A scene never opened has no doc yet: it gets an empty one that only carries the settings.
+ *  Returns the previous docs to hand back to restoreSceneDocs (one undo). Saved at once. */
+export function patchSceneSettings(ids: string[], patch: Record<string, number | boolean | string>): Record<string, any | null> {
+  const prev: Record<string, any | null> = {}
+  const scenes = { ...state.lesson.scenes }
+  for (const id of ids) {
+    const entry = scenes[id]
+    if (!entry) continue
+    prev[id] = entry.doc
+    const doc = entry.doc ?? { version: 1, actors: [] }
+    const settings = { ...(doc.settings ?? {}), ...Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, typeof v === 'boolean' ? v : String(v)])) }
+    scenes[id] = { ...entry, doc: { ...doc, settings } }
+  }
+  set({ lesson: { ...state.lesson, scenes }, saved: 'unsaved' })
+  void persist(state.lesson)
+  return prev
+}
+
+/** Put back docs returned by patchSceneSettings. */
+export function restoreSceneDocs(prev: Record<string, any | null>) {
+  const scenes = { ...state.lesson.scenes }
+  for (const [id, doc] of Object.entries(prev)) if (scenes[id]) scenes[id] = { ...scenes[id], doc }
+  set({ lesson: { ...state.lesson, scenes }, saved: 'unsaved' })
+  void persist(state.lesson)
+}
+
+/** The teacher directed a shot (moved the camera or a figure): kept with the lesson, saved at once. */
+export function setShot(id: string, data: ShotData) {
+  set({ lesson: { ...state.lesson, shots: { ...state.lesson.shots, [id]: { ...data, directed: true } } }, saved: 'unsaved' })
+  void persist(state.lesson)
+}
+
+export function setCrew(crew: CrewLine[]) {
+  set({ lesson: { ...state.lesson, crew }, saved: 'unsaved' })
+}
+
+// ---------- files ----------
+export async function exportLesson() {
+  await saveNow(true)
+  const blob = new Blob([JSON.stringify(state.lesson)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `${state.lesson.title.replace(/[^\w-]+/g, '-') || 'lesson'}.hpstudio.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000) // revoked at once, the download never starts
+}
+
+export async function importLesson(file: File) {
+  const lesson = checkLesson(JSON.parse(await file.text()))
+  set({ busy: true })
+  try {
+    const first = Tree.scenesInOrder(lesson.tree)[0].id
+    set({ lesson, current: first })
+    await loadScene(first)
+    await persist(lesson)
+  } finally { set({ busy: false }) }
+}
+
+/** Start over with an empty lesson. The one being replaced is kept in this browser under its own key first. */
+export async function newLesson(): Promise<boolean> {
+  if (state.busy) return false
+  set({ busy: true })
+  try {
+    const old = captureCurrent(true)
+    await idbPut(`archive:${old.id}`, { lesson: old, current: state.current })
+    const lesson = freshLesson()
+    set({ lesson, current: Tree.scenesInOrder(lesson.tree)[0].id })
+    await loadScene(state.current)
+    await persist(lesson)
+    return true
+  } finally { set({ busy: false }) }
+}
+
+// ---------- start ----------
+export async function initLesson() {
+  try {
+    const saved = await idbGet<{ lesson: unknown; current: string }>(KEY)
+    if (saved) {
+      const lesson = checkLesson(saved.lesson)
+      const current = lesson.scenes[saved.current] ? saved.current : Tree.scenesInOrder(lesson.tree)[0].id
+      set({ lesson: lesson.crew ? { ...lesson, crew: sweepInterrupted(lesson.crew) } : lesson, current })
+      await loadScene(current)
+    }
+  } catch (err) {
+    storageOk = false
+    set({ error: __('The saved lesson could not be opened, so nothing is saved over it: :error', { error: err instanceof Error ? err.message : String(err) }) })
+  }
+  let ticks = 0
+  // the current scene's thumbnail refreshes every few saves (a picture costs more than the data)
+  setInterval(() => { if (!state.busy) void saveNow(++ticks % THUMB_EVERY === 0) }, AUTOSAVE_MS)
+  window.addEventListener('pagehide', () => { if (!state.busy) void saveNow(true) })
+}

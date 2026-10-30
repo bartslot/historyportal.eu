@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="nl" data-theme="learningportal-light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cards Lab</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --paper: #efe9dc; --ink: #1c1418; }
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  #frame { position: fixed; inset: 0; display: grid; place-items: center; }
+  /* the same frame as play.html: 16:9, container units for the card's type */
+  #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: var(--paper); container-type: inline-size; }
+  #cards { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="frame"><div id="wrap"><div id="cards"></div></div></div>
+<script type="module" src="/src/interactions/lab.tsx"></script>
+</body>
+</html>
