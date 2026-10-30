@@ -37,7 +37,7 @@ class ImageRestyle extends Model
 
     public const DISCARDED = 'discarded';
 
-    protected $fillable = ['user_id', 'subject_type', 'subject_id', 'status', 'before', 'step', 'ink_path', 'result_path', 'error_code', 'error_detail', 'notified_at'];
+    protected $fillable = ['user_id', 'subject_type', 'subject_id', 'status', 'before', 'step', 'api_calls', 'cost_usd', 'ink_path', 'result_path', 'error_code', 'error_detail', 'notified_at'];
 
     protected $casts = ['before' => 'array', 'notified_at' => 'datetime'];
 
@@ -54,6 +54,13 @@ class ImageRestyle extends Model
     public function isActive(): bool
     {
         return in_array($this->status, [self::QUEUED, self::RUNNING], true);
+    }
+
+    /** Still "running" long after any API call could take: its job died (fatal, timeout, killed worker). */
+    public function isStale(): bool
+    {
+        return $this->isActive() && $this->updated_at !== null
+            && $this->updated_at->lt(now()->subMinutes((int) config('services.openai.restyle_stale_minutes', 10)));
     }
 
     public function originalUrl(): ?string

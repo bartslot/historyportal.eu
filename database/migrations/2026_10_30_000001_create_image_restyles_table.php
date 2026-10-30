@@ -20,6 +20,8 @@ return new class extends Migration
             $table->unsignedTinyInteger('step')->default(0)->after('before');   // 1 = ink, 2 = colour
             $table->string('ink_path')->nullable()->after('step');                // pass 1 output (ink)
             $table->string('result_path')->nullable()->after('ink_path');         // pass 2 output (final)
+            $table->unsignedTinyInteger('api_calls')->default(0);                 // paid images/edits calls made
+            $table->decimal('cost_usd', 8, 4)->default(0);                        // from the API usage field
             $table->string('error_code', 24)->nullable()->after('result_path');
             $table->text('error_detail')->nullable()->after('error_code');
             $table->timestamp('notified_at')->nullable()->after('error_detail');

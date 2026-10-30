@@ -102,32 +102,20 @@ final class HistoryLineStyle
         .'text, labels or watermarks.';
 
     /** Edit lock, placed before the colour prompt (framework "Edit lock"). */
-    public const EDIT_LOCK = 'Use the attached ink drawing (reference image 1) as a locked source. Preserve exact canvas size, framing, camera, '
-        .'positions, scale, pose, silhouette and every ink mark. Change only colour beneath the drawing. Do not crop, outpaint, recompose or add objects. ';
+    public const EDIT_LOCK = 'Use the attached ink drawing as a locked source. Preserve exact canvas size, framing, camera, positions, scale, pose, silhouette and every ink mark. Change only color beneath the drawing. Do not crop, outpaint, recompose or add objects.';
 
     /** Bart's colour prompt, VERBATIM (framework "Pass 2"). */
-    public const COLOUR_PROMPT = 'Color the existing black-and-white comic drawing as a clean educational historical illustration. Preserve all black '
-        .'linework, hatching and cross-hatching exactly. Apply color only as a second pass beneath the ink. Use a restrained '
-        .'watercolor-comic treatment with transparent washes, subtle pigment variation and a bright editorial feel. Keep major '
-        .'architectural surfaces very light, mostly cream, pale sandstone, warm off-white and light ochre. Use weathered brown for wood '
-        .'and boats, clear muted turquoise or blue-green for water, and restrained olive only for vegetation. Use selective color '
-        .'placement rather than coloring every surface. Keep background areas quieter and less saturated. Black ink must remain '
-        .'dominant. Preserve generous light areas and negative space, with roughly 35 to 45% of the image remaining very pale. No muddy '
-        .'wash, no antique filter, no glossy rendering, no heavy grunge, no green architecture and no repainting of linework.';
+    public const COLOUR_PROMPT = 'Color the existing black-and-white comic drawing as a clean educational historical illustration. Preserve all black linework, hatching and cross-hatching exactly. Apply color only as a second pass beneath the ink. Use a restrained watercolor-comic treatment with transparent washes, subtle pigment variation and a bright editorial feel. Keep major architectural surfaces very light, mostly cream, pale sandstone, warm off-white and light ochre. Use weathered brown for wood and boats, clear muted turquoise or blue-green for water, and restrained olive only for vegetation. Use selective color placement rather than coloring every surface. Keep background areas quieter and less saturated. Black ink must remain dominant. Preserve generous light areas and negative space, with roughly 35 to 45% of the image remaining very pale. No muddy wash, no antique filter, no glossy rendering, no heavy grunge, no green architecture and no repainting of linework.';
 
     /** Cloud addendum, appended after the colour prompt (framework). */
-    public const CLOUD_ADDENDUM = 'Keep clouds primarily the white of the paper, with 80-90% of each cloud untouched. Add only an extremely pale '
-        .'transparent cool blue-grey wash beneath selected lower edges and overlaps. Surround them with a very pale blue watercolor sky. '
-        .'Preserve thin cloud contours. No solid white or grey fill, detailed internal texture, heavy shadows, airbrushed gradients, '
-        .'photographic clouds or 3D rendering.';
+    public const CLOUD_ADDENDUM = 'Keep clouds primarily the white of the paper, with 80–90% of each cloud untouched. Add only an extremely pale transparent cool blue-grey wash beneath selected lower edges and overlaps. Surround them with a very pale blue watercolor sky. Preserve thin cloud contours. No solid white or grey fill, detailed internal texture, heavy shadows, airbrushed gradients, photographic clouds or 3D rendering.';
 
     /** Bart 2026-10-20 ("I would like more watercolour texture. that's history lines"): overrides the old "very low texture". */
     public const TEXTURE = 'Show real watercolor texture in the washes: blooms, backruns, granulation, tide-lines, paper tooth and uneven glazes. '
         .'No blur and no speckle noise. Reference images after the first show the watercolor look and texture only, never their content.';
 
     /** Material and geometry lock (framework "practical addendum"). */
-    public const GEOMETRY_LOCK = 'Color only things already drawn. Keep dry ground almost white; never introduce water or wave marks. Preserve '
-        .'every object, attachment and opening.';
+    public const GEOMETRY_LOCK = 'Color only things already drawn. Keep dry ground almost white; never introduce water or wave marks. Keep every part of a sculpture—including face, hair and hands—the same stone or metal material. Preserve counted ropes, flag bands, objects, attachments and openings. Use quiet broad washes without added surface patterns.';
 
     private const ANCHOR_DIR = 'art/style-anchors/history-lines';
 
@@ -172,7 +160,7 @@ final class HistoryLineStyle
     /** Pass 2: the pass-1 ink + colour refs + texture ref → watercolour edited from that ink. */
     public static function restyleColour(bool $figure = false): string
     {
-        return self::EDIT_LOCK.self::COLOUR_PROMPT.' '.self::CLOUD_ADDENDUM.' '.self::TEXTURE.' '.self::GEOMETRY_LOCK
+        return self::EDIT_LOCK.' '.self::COLOUR_PROMPT.' '.self::CLOUD_ADDENDUM.' '.self::TEXTURE.' '.self::GEOMETRY_LOCK
             .self::figureClause($figure).' '.self::SAFETY;
     }
 }

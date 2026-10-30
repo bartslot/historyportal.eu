@@ -57,4 +57,16 @@ class HistoryLineRestylePromptTest extends TestCase
             }
         }
     }
+
+    public function test_the_framework_wording_is_byte_identical_to_the_notes(): void
+    {
+        $notes = json_decode((string) file_get_contents(dirname(__DIR__, 2).'/Fixtures/history-lines-framework.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame($notes['edit_lock'], HistoryLineStyle::EDIT_LOCK);
+        $this->assertSame($notes['colour_prompt'], HistoryLineStyle::COLOUR_PROMPT);
+        $this->assertSame($notes['cloud_addendum'], HistoryLineStyle::CLOUD_ADDENDUM);
+        $this->assertSame($notes['geometry_lock'], HistoryLineStyle::GEOMETRY_LOCK);
+        $this->assertSame($notes['hatching_rule'], HistoryLineStyle::HATCHING_RULE);
+        $this->assertStringContainsString($notes['edit_lock'].' '.$notes['colour_prompt'].' '.$notes['cloud_addendum'], HistoryLineStyle::restyleColour());
+    }
 }

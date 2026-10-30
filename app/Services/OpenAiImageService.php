@@ -281,8 +281,9 @@ class OpenAiImageService
      *
      * @param  list<array{bytes: string, name: string}>  $images
      * @param  array<string, string|int>  $extra
+     * @param  array<string, mixed>|null  $usage  filled with the response's `usage` block (tokens) when present
      */
-    public function editImages(array $images, string $prompt, string $size = '1536x1024', bool $transparent = false, array $extra = []): string
+    public function editImages(array $images, string $prompt, string $size = '1536x1024', bool $transparent = false, array $extra = [], ?array &$usage = null): string
     {
         $base = (string) config('services.openai.base_url');
         $key = (string) config('services.openai.image_api_key');
@@ -316,6 +317,7 @@ class OpenAiImageService
             throw new RuntimeException("Image edit API returned {$response->status()}: {$response->body()}");
         }
 
+        $usage = (array) ($response->json('usage') ?? []);
         $b64 = $response->json('data.0.b64_json');
         if (is_string($b64) && $b64 !== '' && ($bytes = base64_decode($b64, true)) !== false && $bytes !== '') {
             return $bytes;

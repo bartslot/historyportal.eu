@@ -95,7 +95,11 @@ return [
         // History Lines restyle (ImageRestyler): one images/edits call per click.
         'restyle_quality' => env('OPENAI_RESTYLE_QUALITY', 'medium'),   // low|medium|high (cost scales ~4x per step)
         'restyle_per_hour' => (int) env('OPENAI_RESTYLE_PER_HOUR', 12), // per user
-        'restyle_cost_usd' => (float) env('OPENAI_RESTYLE_COST_USD', 0.07), // estimate for the log, gpt-image-1 medium 1536x1024 + input
+        'restyle_stale_minutes' => (int) env('OPENAI_RESTYLE_STALE_MINUTES', 10), // a restyle "running" longer than this is failed
+        // gpt-image-1 token prices (USD per 1M tokens), used to turn the API `usage` into a cost.
+        'restyle_price_text_in' => (float) env('OPENAI_PRICE_TEXT_IN', 5.0),
+        'restyle_price_image_in' => (float) env('OPENAI_PRICE_IMAGE_IN', 10.0),
+        'restyle_price_image_out' => (float) env('OPENAI_PRICE_IMAGE_OUT', 40.0),
         'timeout' => (int) env('OPENAI_TIMEOUT', 60),
         'max_tokens' => (int) env('OPENAI_MAX_TOKENS', 2048),
         'tts_model' => env('OPENAI_TTS_MODEL', 'tts-1'),

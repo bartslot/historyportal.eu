@@ -34,4 +34,13 @@ class RestyleImage implements ShouldQueue
         }
         $this->pass === 1 ? $restyler->runInk($row) : $restyler->runColour($row);
     }
+
+    /** A fatal, timeout or killed worker: the row would stay "running" for ever, so fail it (the poll shows one toast). */
+    public function failed(\Throwable $e): void
+    {
+        $row = ImageRestyle::find($this->restyleId);
+        if ($row !== null && $row->isActive()) {
+            app(ImageRestyler::class)->fail($row, $e);
+        }
+    }
 }

@@ -60,6 +60,10 @@ trait RestylesImages
     public function pollRestyle(int $restyleId): void
     {
         $row = ImageRestyle::find($restyleId);
+        if ($row?->isStale() && (int) $row->user_id === (int) auth()->id()) {
+            app(ImageRestyler::class)->expire($row);
+            $row->refresh();
+        }
         if ($row === null || $row->isActive() || $row->notified_at !== null || (int) $row->user_id !== (int) auth()->id()) {
             return;
         }

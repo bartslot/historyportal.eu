@@ -72,7 +72,12 @@ class ImageRestyler
         if (! $this->canRestyle($subject)) {
             return self::UNSUPPORTED;
         }
-        if (ImageRestyle::latestFor($subject)?->isActive()) {
+        $latest = ImageRestyle::latestFor($subject);
+        if ($latest?->isStale()) {
+            $this->expire($latest);
+            $latest = null;
+        }
+        if ($latest?->isActive()) {
             return self::BUSY;
         }
 
@@ -88,7 +93,7 @@ class ImageRestyler
             'subject_type' => $subject->getMorphClass(),
             'subject_id' => $subject->getKey(),
             'status' => ImageRestyle::QUEUED,
-            'before' => $this->pointer($subject),
+            'before' => $this->trueOriginal($subject),
         ]);
         RestyleImage::dispatch($row->id);
 
@@ -124,11 +129,11 @@ class ImageRestyler
             $images = [['bytes' => $source, 'name' => 'source.png'], ...$this->anchors(1, $figure)];
             $prompt = HistoryLineStyle::restyleInk($figure, $this->era($subject));
 
-            $ink = $this->edit($images, $prompt, $size);
+            $ink = $this->edit($row, 'ink', $images, $prompt, $size);
             $coverage = $this->inkCoverage($ink);
             if ($coverage < self::INK_COVERAGE_MIN || $coverage > self::INK_COVERAGE_MAX) {
                 Log::warning('restyle ink coverage off, retrying once', ['id' => $row->id, 'coverage' => round($coverage, 3)]);
-                $ink = $this->edit($images, $prompt, $size);
+                $ink = $this->edit($row, 'ink', $images, $prompt, $size);
                 $coverage = $this->inkCoverage($ink);
             }
             Log::info('restyle ink done', ['id' => $row->id, 'ink_coverage' => round($coverage, 3)]);
@@ -155,14 +160,14 @@ class ImageRestyler
             $figure = $subject instanceof SvgAsset;
             $ink = Storage::disk('public')->get($row->ink_path);
             $images = [['bytes' => $ink, 'name' => 'ink.png'], ...$this->anchors(2, $figure)];
-            $final = $this->edit($images, HistoryLineStyle::restyleColour($figure), $this->sizeFor($ink));
+            $final = $this->edit($row, 'colour', $images, HistoryLineStyle::restyleColour($figure), $this->sizeFor($ink));
             if ($figure) {
                 $final = $this->cutAlpha($final);
             }
 
             $path = $this->store($row, $subject, $final, 'final', $figure);
             $row->update(['status' => ImageRestyle::READY, 'result_path' => $path, 'error_code' => null, 'error_detail' => null]);
-            Log::info('restyle done', ['id' => $row->id, 'user' => $row->user_id, 'api_calls' => 2, 'estimated_usd' => 2 * (float) config('services.openai.restyle_cost_usd')]);
+            Log::info('restyle done', ['id' => $row->id, 'user' => $row->user_id, 'api_calls' => $row->api_calls, 'cost_usd' => round((float) $row->cost_usd, 4)]);
         } catch (\Throwable $e) {
             $this->fail($row, $e);
         }
@@ -182,13 +187,37 @@ class ImageRestyler
         return $subject instanceof Scene && is_numeric($subject->year) ? 'the year '.(int) $subject->year : '';
     }
 
-    /** @param  list<array{bytes: string, name: string}>  $images */
-    private function edit(array $images, string $prompt, string $size): string
+    /**
+     * One paid images/edits call. The API's `usage` block is turned into a cost and added to the row,
+     * so the real price per restyle is in the data, not an estimate.
+     *
+     * @param  list<array{bytes: string, name: string}>  $images
+     */
+    private function edit(ImageRestyle $row, string $pass, array $images, string $prompt, string $size): string
     {
-        return $this->images->editImages($images, $prompt, $size, false, [
-            'quality' => (string) config('services.openai.restyle_quality', 'medium'),
-            'input_fidelity' => 'high',
-        ]);
+        $usage = [];
+        try {
+            return $this->images->editImages($images, $prompt, $size, false, [
+                'quality' => (string) config('services.openai.restyle_quality', 'medium'),
+                'input_fidelity' => 'high',
+            ], $usage);
+        } finally {
+            $cost = $this->cost($usage);
+            $row->update(['api_calls' => $row->api_calls + 1, 'cost_usd' => (float) $row->cost_usd + $cost]);
+            Log::info('restyle api call', ['id' => $row->id, 'pass' => $pass, 'usage' => $usage, 'cost_usd' => round($cost, 4)]);
+        }
+    }
+
+    /** @param  array<string, mixed>  $usage the API `usage` block (input/output tokens) */
+    public function cost(array $usage): float
+    {
+        $details = (array) ($usage['input_tokens_details'] ?? []);
+        $imageIn = (int) ($details['image_tokens'] ?? 0);
+        $textIn = (int) ($details['text_tokens'] ?? max(0, (int) ($usage['input_tokens'] ?? 0) - $imageIn));
+
+        return ($textIn * (float) config('services.openai.restyle_price_text_in')
+            + $imageIn * (float) config('services.openai.restyle_price_image_in')
+            + (int) ($usage['output_tokens'] ?? 0) * (float) config('services.openai.restyle_price_image_out')) / 1_000_000;
     }
 
     /** @return list<array{bytes: string, name: string}> the shared anchor images for a pass, in attach order */
@@ -226,7 +255,11 @@ class ImageRestyler
         return $dark / max(1, $w * $h);
     }
 
-    /** Paper white connected to the border becomes transparent; white inside the figure stays. */
+    /**
+     * Paper white connected to the border becomes transparent; white inside the figure stays.
+     * The flood fill runs on a 384px copy (one byte per pixel) and the mask is scaled back up, so
+     * memory stays small even on a 1024x1536 figure. Edges come out soft, which suits watercolour.
+     */
     public function cutAlpha(string $bytes): string
     {
         $img = @imagecreatefromstring($bytes);
@@ -235,46 +268,80 @@ class ImageRestyler
         }
         $w = imagesx($img);
         $h = imagesy($img);
-        $out = imagecreatetruecolor($w, $h);
-        imagealphablending($out, false);
-        imagesavealpha($out, true);
-        imagecopy($out, $img, 0, 0, 0, 0, $w, $h);
-        $clear = imagecolorallocatealpha($out, 255, 255, 255, 127);
-        $isPaper = fn (int $x, int $y): bool => (($c = imagecolorat($out, $x, $y)) >> 24) < 127
-            && (($c >> 16) & 255) >= 225 && (($c >> 8) & 255) >= 225 && ($c & 255) >= 215;
+        $small = imagescale($img, max(1, (int) round($w * min(1, 384 / max($w, $h)))));
+        $sw = imagesx($small);
+        $sh = imagesy($small);
 
-        $seen = [];
-        $queue = [];
-        $push = function (int $x, int $y) use (&$seen, &$queue, $w, $h, $isPaper): void {
-            if ($x < 0 || $y < 0 || $x >= $w || $y >= $h || isset($seen[$y * $w + $x]) || ! $isPaper($x, $y)) {
-                return;
+        $paper = str_repeat("\0", $sw * $sh);   // 1 = paper white
+        for ($y = 0; $y < $sh; $y++) {
+            for ($x = 0; $x < $sw; $x++) {
+                $c = imagecolorat($small, $x, $y);
+                $paper[$y * $sw + $x] = (($c >> 16) & 255) >= 225 && (($c >> 8) & 255) >= 225 && ($c & 255) >= 215 ? "\1" : "\0";
             }
-            $seen[$y * $w + $x] = true;
-            $queue[] = [$x, $y];
+        }
+        imagedestroy($small);
+
+        $out = str_repeat("\0", $sw * $sh);     // 1 = background reached from the border
+        $stack = [];
+        $seed = function (int $x, int $y) use (&$stack, $paper, &$out, $sw): void {
+            $i = $y * $sw + $x;
+            if ($paper[$i] === "\1" && $out[$i] === "\0") {
+                $out[$i] = "\1";
+                $stack[] = $i;
+            }
         };
-        for ($x = 0; $x < $w; $x++) {
-            $push($x, 0);
-            $push($x, $h - 1);
+        for ($x = 0; $x < $sw; $x++) {
+            $seed($x, 0);
+            $seed($x, $sh - 1);
         }
+        for ($y = 0; $y < $sh; $y++) {
+            $seed(0, $y);
+            $seed($sw - 1, $y);
+        }
+        while ($stack !== []) {
+            $i = array_pop($stack);
+            $x = $i % $sw;
+            $y = intdiv($i, $sw);
+            $x > 0 && $seed($x - 1, $y);
+            $x < $sw - 1 && $seed($x + 1, $y);
+            $y > 0 && $seed($x, $y - 1);
+            $y < $sh - 1 && $seed($x, $y + 1);
+        }
+
+        // The mask as a small grayscale image (white = keep), scaled up bilinearly to full size.
+        $mask = imagecreatetruecolor($sw, $sh);
+        $white = imagecolorallocate($mask, 255, 255, 255);
+        $black = imagecolorallocate($mask, 0, 0, 0);
+        for ($y = 0; $y < $sh; $y++) {
+            for ($x = 0; $x < $sw; $x++) {
+                imagesetpixel($mask, $x, $y, $out[$y * $sw + $x] === "\1" ? $black : $white);
+            }
+        }
+        $mask = imagescale($mask, $w, $h, IMG_BILINEAR_FIXED);
+
+        $result = imagecreatetruecolor($w, $h);
+        imagealphablending($result, false);
+        imagesavealpha($result, true);
         for ($y = 0; $y < $h; $y++) {
-            $push(0, $y);
-            $push($w - 1, $y);
-        }
-        while ($queue !== []) {
-            [$x, $y] = array_pop($queue);
-            imagesetpixel($out, $x, $y, $clear);
-            $push($x + 1, $y);
-            $push($x - 1, $y);
-            $push($x, $y + 1);
-            $push($x, $y - 1);
+            for ($x = 0; $x < $w; $x++) {
+                $keep = (imagecolorat($mask, $x, $y) & 255);
+                $rgb = imagecolorat($img, $x, $y) & 0xFFFFFF;
+                imagesetpixel($result, $x, $y, $rgb | ((127 - (int) round($keep * 127 / 255)) << 24));
+            }
         }
         ob_start();
-        imagepng($out);
+        imagepng($result);
 
         return (string) ob_get_clean();
     }
 
-    private function fail(ImageRestyle $row, \Throwable $e): void
+    /** The job died without saying so (fatal, timeout, killed worker): fail the row so the tile stops spinning. */
+    public function expire(ImageRestyle $row): void
+    {
+        $this->fail($row, new RuntimeException('restyle timed out or its worker died'));
+    }
+
+    public function fail(ImageRestyle $row, \Throwable $e): void
     {
         Log::error('restyle failed', ['id' => $row->id, 'user' => $row->user_id, 'step' => $row->step, 'error' => $e->getMessage()]);
         $row->update(['status' => ImageRestyle::FAILED, 'error_code' => $this->classify($e->getMessage()), 'error_detail' => mb_substr($e->getMessage(), 0, 2000)]);
@@ -292,6 +359,8 @@ class ImageRestyler
         } elseif ($subject instanceof SvgAsset) {
             $subject->update(['svg_path' => $row->result_path, 'cdn_url' => null]);
         }
+        ImageRestyle::query()->where('subject_type', $row->subject_type)->where('subject_id', $row->subject_id)
+            ->where('status', ImageRestyle::KEPT)->where('id', '!=', $row->id)->update(['status' => ImageRestyle::READY]);
         $row->update(['status' => ImageRestyle::KEPT]);
     }
 
@@ -317,6 +386,29 @@ class ImageRestyler
             $this->revert($row);
         }
         $row->update(['status' => ImageRestyle::DISCARDED]);
+    }
+
+    /**
+     * What the picture was before ANY restyle. If the subject currently shows a restyle's result,
+     * that restyle's own `before` is the answer; follow the chain so a second restyle of a kept
+     * first one still remembers the real original.
+     *
+     * @return array{path: ?string, cdn_url: ?string}
+     */
+    private function trueOriginal(Model $subject): array
+    {
+        $pointer = $this->pointer($subject);
+        for ($i = 0; $i < 20; $i++) {
+            $earlier = ImageRestyle::query()
+                ->where('subject_type', $subject->getMorphClass())->where('subject_id', $subject->getKey())
+                ->where('result_path', $pointer['path'])->latest('id')->first();
+            if ($earlier === null) {
+                break;
+            }
+            $pointer = $earlier->before;
+        }
+
+        return $pointer;
     }
 
     /** @return array{path: ?string, cdn_url: ?string} */

@@ -284,4 +284,95 @@ class RestyleImageTest extends TestCase
         $this->assertSame(ImageRestyle::READY, ImageRestyle::firstOrFail()->status);
         Http::assertSent(fn ($r) => str_contains($r->body(), "\x89PNG"));
     }
+
+    public function test_a_job_that_dies_leaves_a_failed_row_not_a_spinner(): void
+    {
+        Queue::fake();
+        $row = app(ImageRestyler::class)->request($this->teacher, $this->scene);
+        $row->update(['status' => ImageRestyle::RUNNING, 'step' => 1]);
+
+        (new RestyleImage($row->id))->failed(new \RuntimeException('Maximum execution time exceeded'));
+
+        $this->assertSame(ImageRestyle::FAILED, $row->fresh()->status);
+        $this->assertNotSame(ImageRestyler::BUSY, app(ImageRestyler::class)->request($this->teacher, $this->scene), 'a failed row no longer blocks');
+    }
+
+    public function test_a_stale_running_row_is_failed_by_the_poll_with_one_toast_and_stops_blocking(): void
+    {
+        Queue::fake();
+        $page = $this->editor($this->teacher)->call('restyle', 'scene', $this->scene->id);
+        $row = ImageRestyle::firstOrFail();
+        $row->update(['status' => ImageRestyle::RUNNING]);
+        ImageRestyle::query()->whereKey($row->id)->update(['updated_at' => now()->subMinutes(30)]);
+
+        $page->call('pollRestyle', $row->id)->assertDispatched('toast');
+
+        $this->assertSame(ImageRestyle::FAILED, $row->fresh()->status);
+        $this->assertNotSame(ImageRestyler::BUSY, app(ImageRestyler::class)->request($this->teacher, $this->scene));
+    }
+
+    public function test_back_to_original_after_two_kept_restyles_restores_the_true_original(): void
+    {
+        Http::fake(['openai.test/*' => Http::sequence()
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(301))]]])
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(302))]]])
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(303))]]])
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(304))]]]),
+        ]);
+        $page = $this->editor($this->teacher)->call('restyle', 'scene', $this->scene->id);
+        $first = ImageRestyle::firstOrFail()->refresh();
+        $page->call('keepRestyle', $first->id);
+
+        $page->call('restyle', 'scene', $this->scene->id);
+        $second = ImageRestyle::latest('id')->firstOrFail()->refresh();
+        $this->assertSame('lessons/1/orig.png', $second->before['path'], 'the 2nd restyle remembers the true original, not restyle 1');
+        $page->call('keepRestyle', $second->id);
+        $this->assertSame($second->result_path, $this->scene->fresh()->image_path);
+        $this->assertSame(ImageRestyle::READY, $first->fresh()->status, 'only one restyle is "kept" at a time');
+
+        $page->call('revertRestyle', $second->id);
+
+        $this->assertSame('lessons/1/orig.png', $this->scene->fresh()->image_path);
+    }
+
+    public function test_the_api_usage_is_turned_into_a_cost_and_stored_per_restyle(): void
+    {
+        $usage = ['input_tokens' => 3000, 'input_tokens_details' => ['text_tokens' => 1000, 'image_tokens' => 2000], 'output_tokens' => 1056];
+        Http::fake(['openai.test/*' => Http::sequence()
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(301))]], 'usage' => $usage])
+            ->push(['data' => [['b64_json' => base64_encode($this->ink(302))]], 'usage' => $usage]),
+        ]);
+
+        $this->editor($this->teacher)->call('restyle', 'scene', $this->scene->id);
+
+        $row = ImageRestyle::firstOrFail();
+        // (1000 x 5 + 2000 x 10 + 1056 x 40) / 1M = 0.06724 per call
+        $this->assertEqualsWithDelta(0.06724, app(ImageRestyler::class)->cost($usage), 0.00001);
+        $this->assertSame(2, $row->api_calls);
+        $this->assertEqualsWithDelta(0.13448, (float) $row->cost_usd, 0.0001);
+    }
+
+    public function test_cutting_the_alpha_of_a_full_size_figure_stays_small_in_memory(): void
+    {
+        $img = imagecreatetruecolor(1024, 1536);
+        imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
+        imagefilledrectangle($img, 300, 200, 700, 1400, imagecolorallocate($img, 120, 60, 40));
+        imagefilledrectangle($img, 450, 600, 550, 700, imagecolorallocate($img, 255, 255, 255));   // white inside the figure
+        ob_start();
+        imagepng($img);
+        $png = (string) ob_get_clean();
+        unset($img);
+
+        gc_collect_cycles();
+        $before = memory_get_usage();
+        memory_reset_peak_usage();
+        $out = app(ImageRestyler::class)->cutAlpha($png);
+        $peak = memory_get_peak_usage() - $before;
+
+        $this->assertLessThan(64 * 1024 * 1024, $peak, 'peak '.round($peak / 1048576).' MB');
+        $cut = imagecreatefromstring($out);
+        $this->assertSame(127, imagecolorat($cut, 20, 20) >> 24, 'paper around the figure is transparent');
+        $this->assertSame(0, imagecolorat($cut, 500, 650) >> 24, 'white inside the figure stays opaque');
+        $this->assertSame(0, imagecolorat($cut, 500, 900) >> 24);
+    }
 }
