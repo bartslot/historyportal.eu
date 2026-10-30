@@ -2465,5 +2465,8 @@
     "Drag to move the end": "Sleep het eind",
     "Drag to bend the arrow": "Sleep om de pijl te buigen",
     "Drag to change the width": "Sleep om de breedte te wijzigen",
-    "Drag to change the head size": "Sleep om de kopgrootte te wijzigen"
+    "Drag to change the head size": "Sleep om de kopgrootte te wijzigen",
+    "Transform": "Transformatie",
+    "Viewing angle": "Kijkhoek",
+    "Stop animating": "Niet meer animeren"
 }

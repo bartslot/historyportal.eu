@@ -2423,5 +2423,8 @@
     "Drag to move the end": "Glisser la fin",
     "Drag to bend the arrow": "Glisser pour courber la flèche",
     "Drag to change the width": "Glisser pour changer l'épaisseur",
-    "Drag to change the head size": "Glisser pour changer la taille de la pointe"
+    "Drag to change the head size": "Glisser pour changer la taille de la pointe",
+    "Transform": "Transformation",
+    "Viewing angle": "Angle de vue",
+    "Stop animating": "Arrêter l'animation"
 }

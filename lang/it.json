@@ -2423,5 +2423,8 @@
     "Drag to move the end": "Trascina la fine",
     "Drag to bend the arrow": "Trascina per curvare la freccia",
     "Drag to change the width": "Trascina per cambiare lo spessore",
-    "Drag to change the head size": "Trascina per cambiare la dimensione della punta"
+    "Drag to change the head size": "Trascina per cambiare la dimensione della punta",
+    "Transform": "Trasformazione",
+    "Viewing angle": "Angolo di vista",
+    "Stop animating": "Interrompi animazione"
 }

@@ -193,7 +193,7 @@
     --color-timeline-bar-group: #3b3f6b;  /* the object's span, summarising its properties */
     --timeline-lane-h: 1.3125rem;     /* 21px */
     --timeline-row-pitch: 1.5rem;     /* 24px — lane plus its gap */
-    --timeline-label-col: 14.125rem;  /* 226px — labels and value fields, lanes start after it */
+    --timeline-label-col: 21rem;      /* 336px — labels and value fields, lanes start after it */
 }
 
 /* ─── History — our own display face (OFL, built from Marcellus in
