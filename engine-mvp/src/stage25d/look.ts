@@ -39,12 +39,14 @@ export const FOOT_M = 0.35
 export interface Alive { edgeSoft: number; footM: number; grounding: number; grass: number; light: number; sunSide: number; drift: number; footTint: [number, number, number] }
 /** The no-sticker values for one picture: kind = what it is (a standing thing gets a foot; sky gets drift, no edge or
  *  light; far strips half the light). sunX = the light's direction across the screen (sunDir.x: + travels right). */
-export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | 'standing' | 'other', sunX: number, footTint: [number, number, number]): Alive {
+export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | 'standing' | 'figure' | 'other', sunX: number, footTint: [number, number, number]): Alive {
   const sky = kind === 'sky'
   return {
     edgeSoft: sky ? 0 : num(look, 'edgeSoft'),
     footM: kind === 'standing' ? FOOT_M : 0,
-    grounding: num(look, 'grounding'), grass: num(look, 'grassOverlap'),
+    // a person's feet stay drawn: the foot blend (a fifth of a standing thing's height) would wipe a figure's shins into the floor;
+    // its contact is the stain and the cast shadow under it
+    grounding: kind === 'figure' ? 0 : num(look, 'grounding'), grass: kind === 'figure' ? 0 : num(look, 'grassOverlap'),
     light: sky ? 0 : num(look, 'sunLight') * (kind === 'strip' ? 0.5 : 1),
     sunSide: sunX > 0 ? -1 : 1,                        // light travelling right comes from the left
     drift: sky ? num(look, 'cloudDrift') : 0,

@@ -105,8 +105,11 @@ const STAIN_SCREEN_RATIO = 0.12
  *  in metres that, lying flat and seen from eye height, it still reads as a soft foot on screen (a fixed 0.32 x width
  *  was 2 px tall at 22 m). Most of its depth is hidden behind the asset. */
 export function stainSize(asset: Asset, w: number, h: number, z: number): { w: number; d: number } {
-  const foot = Math.min(w * 0.8, h * 0.55, 6)
+  // a person's stain is the span of the feet (about a third of the height), shallow: it sits under the soles, not below them
+  const person = asset.layer === 'figure'
+  const foot = person ? Math.min(w * 0.55, h * 0.3) : Math.min(w * 0.8, h * 0.55, 6)
   const d = (foot * STAIN_SCREEN_RATIO * z) / EYE_M
+  if (person) return { w: foot, d: Math.min(d, foot * 0.5) }
   return { w: foot, d: Math.min(Math.max(d, foot * 0.3), foot * 3) }
 }
 

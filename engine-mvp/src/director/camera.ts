@@ -8,6 +8,7 @@
 import { DEPTH_Z } from '../stage25d/layout'
 import type { Beat, CamPose, Camera, MoveKind, Scene } from './types'
 import { round } from './timing'
+import { holdSpeaker, speakerFigure } from './speaker'
 
 export { DEPTH_Z }
 export const EYE_Y = 1.6
@@ -63,7 +64,7 @@ export type Focus = { x: number; y: number; z: number; dir: 1 | -1 }
 
 /** The subject: the first figure, else the first mid layer, else frame centre at mid depth. */
 export function focusOf(scene: Scene): Focus {
-  const f = scene.figures?.[0]
+  const f = speakerFigure(scene)
   if (f) {
     const z = DEPTH_Z[f.depth ?? 'mid']
     return { x: worldX(f.x ?? 0.5, z), y: 1.1, z, dir: f.facing === 'left' ? -1 : 1 }
@@ -139,7 +140,11 @@ const STRENGTH: Record<Beat, number> = { hook: 1.3, setup: 0.7, cause: 1, effect
 export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number, opts: { hook?: boolean; scale?: ShotScale } = {}): Camera {
   const scale = move === 'through' ? 'medium' : (opts.scale ?? 'medium')
   const nearest = nearestZ(scene)
-  const { from, to } = scaled(frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1, nearest), scale, nearest)
+  const framed = scaled(frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1, nearest), scale, nearest)
+  // every shot keeps the speaker readable
+  const held = holdSpeaker(framed, scene)
+  // 'through' starts far and ends in front of the speaker (it never flies through them)
+  const { from, to } = move === 'through' ? { from: framed.from, to: held.to } : held
   return {
     move, scale, from, to, at_s: round(at), dur_s: round(dur),
     ease: stageEase(opts.hook ? HOOK_CURVE : CURVE[move]), curve: opts.hook ? HOOK_CURVE : CURVE[move],

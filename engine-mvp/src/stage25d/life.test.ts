@@ -25,6 +25,10 @@ describe('life: smoke and birds follow the lesson clock (a seek shows the same f
 })
 
 describe('aliveOf: no sticker look', () => {
+  it('a figure keeps its feet: no foot blend and no grass over it, but the same light and soft edge', () => {
+    const f = aliveOf({}, 'figure', -0.4, tint), s = aliveOf({}, 'standing', -0.4, tint)
+    expect(f).toMatchObject({ footM: 0, grounding: 0, grass: 0, light: s.light, edgeSoft: s.edgeSoft })
+  })
   const tint: [number, number, number] = [0.6, 0.5, 0.3]
   it('a standing thing gets a foot, soft edges and the full light; a far strip half the light, no foot', () => {
     const a = aliveOf({}, 'standing', -0.4, tint), strip = aliveOf({}, 'strip', -0.4, tint)

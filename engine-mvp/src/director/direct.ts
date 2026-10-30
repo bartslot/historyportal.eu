@@ -9,6 +9,7 @@ import { DEPTH_Z, PLAIN_MOVES, SHOT_MAX_BY_BEAT, makeCamera, nearestZ, pairRepea
 import { figureTracks, layerMotion } from './motion'
 import { dressing } from './dress'
 import { groundBandsFor } from './bands'
+import { placeFigures } from './figures'
 import { clearTreesFromStone, liftSmallProps, liftSubjects } from './props'
 import { BALLOON_GAP_S, firstSentenceEnd, round, sceneSeconds, scheduleBalloons, shotStarts } from './timing'
 import type { Balloon, Beat, Camera, Lesson, Library, MoveKind, Scene, SoundPlan } from './types'
@@ -178,7 +179,7 @@ export function direct(lesson: Lesson, library: Library | null = null, opts: Dir
   const src = structuredClone(lesson)
   src.scenes = src.scenes.map((s) => {
     const lib = opts.libraries?.[bundleOf(s, src)] ?? library
-    return clearTreesFromStone(liftSubjects(liftSmallProps(s, lib), lib), lib)
+    return placeFigures(clearTreesFromStone(liftSubjects(liftSmallProps(s, lib), lib), lib), lib)
   })
   const n = src.scenes.length
   const min = minimums(n)

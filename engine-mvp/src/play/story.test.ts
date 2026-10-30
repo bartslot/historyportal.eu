@@ -40,3 +40,15 @@ describe('story layer', () => {
     expect(storyAt(layerNamed, at).balloons[0]).toMatchObject({ tail: true, x: 0.7 })
   })
 })
+
+describe('balloons follow the speaker on screen', () => {
+  const sc = { ...s, figures: [{ char: 'boer-man', x: 0.3, depth: 'fg' as const }] }
+  const at = s.balloons![1].at_s! + 0.1
+  it('tail and x come from where the head is; out of frame: no balloon; no figure for the speaker: no balloon', () => {
+    const on = storyAt(sc, at, { figuresDrawn: true, where: () => ({ x: 0.62, y: 0.55 }) }).balloons[0]
+    expect(on).toMatchObject({ tail: true, x: 0.62, y: 0.55 })
+    expect(storyAt(sc, at, { figuresDrawn: true, where: () => null }).balloons).toEqual([])
+    const first = s.balloons![0].at_s! + 0.1 // boer-vrouw: no figure, no layer that names her
+    expect(storyAt({ ...sc, set: { ...sc.set, layers: [] } }, first, { figuresDrawn: true, where: () => ({ x: 0.5, y: 0.5 }) }).balloons).toEqual([])
+  })
+})

@@ -12,13 +12,16 @@ import { audit } from '../director/audit'
 import type { Lesson as DLesson, Library as DLibrary } from '../director/types'
 import { playLesson, type Player } from '../stage25d/stage'
 import { libraryUrlFor, loadLibrary } from '../stage25d/library'
-import type { Lesson as SLesson } from '../stage25d/types'
+import type { Lesson as SLesson, Scene as SScene, SceneLayer } from '../stage25d/types'
+
+type SLayer = SceneLayer & { figure?: string }
 import { LessonSound } from '../sound/player'
 import { runIntro } from '../intro/mount'
 import { Cast } from '../figures/cast'
 import { startInteractions, type Interactions } from '../interactions/mount'
 import { lessonUrlOf, syncAction, voiceUrl } from './route'
-import { drawStory, storyAt } from './story'
+import { drawStory, storyAt, type Where } from './story'
+import { headOnScreen } from './frame'
 
 const q = new URLSearchParams(location.search)
 const canvas = document.getElementById('stage') as HTMLCanvasElement
@@ -84,7 +87,7 @@ async function boot() {
     captionsButton.hidden = false
     sound = new LessonSound(new AudioContext(), new URL('sound/', location.href).pathname) // relative to the page: also under /storage/studio-demo/
     cards = startInteractions(player, sound, directed, document.getElementById('cards')!, document.getElementById('wrap')!)
-    follow(player, sound, directed, cards, () => captions)
+    follow(player, sound, directed, cards, () => captions, lib as unknown as DLibrary)
     const go = () => player.resume()
     if (q.get('intro') === '0') { void sound.play(directed, 0); go(); return }
     void runIntro({
@@ -105,7 +108,8 @@ function frameZero(player: Player): Promise<string> {
 
 /** Every frame: the sound follows the stage's lesson clock (syncAction), and the story layer shows the
  *  balloons (and the caption, when on) of the scene on screen, hidden while a card is up. */
-function follow(player: Player, sound: LessonSound, lesson: DLesson, cards: Interactions, captionsOn: () => boolean) {
+function follow(player: Player, sound: LessonSound, lesson: DLesson, cards: Interactions, captionsOn: () => boolean, lib: DLibrary) {
+  const heights = new Map(lib.assets.map((a) => [a.id, a.height_m ?? 1.7]))
   let lastFix = 0
   const tick = (now: number) => {
     const { index, t, mode } = player.scene()
@@ -114,7 +118,12 @@ function follow(player: Player, sound: LessonSound, lesson: DLesson, cards: Inte
     if (action === 'suspend') void sound.pause()
     if (action === 'resume') void sound.resume()
     if (action === 'resync') { lastFix = now; void sound.play(lesson, player.clock()) }
-    const frame = cards.isOpen() ? null : storyAt(lesson.scenes[index], t)
+    // the speaker's head on screen: the balloon's tail points at it, and no balloon when it is out of frame
+    const where: Where = (char) => {
+      const layer = (lesson.scenes[index].set.layers as SLayer[]).find((l) => l.figure === char)
+      return layer?.asset ? headOnScreen(lesson.scenes[index] as unknown as SScene, layer, heights.get(layer.asset) ?? 1.7, t) : null
+    }
+    const frame = cards.isOpen() ? null : storyAt(lesson.scenes[index], t, { figuresDrawn: true, where })
     drawStory(storyHost, frame && { ...frame, caption: captionsOn() ? frame.caption : null })
     requestAnimationFrame(tick)
   }

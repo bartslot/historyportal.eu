@@ -171,3 +171,13 @@ describe('skylineRow: a band\'s crest is the median of its columns\' first opaqu
     expect(skylineRow(new Uint8ClampedArray(w * h * 4), w, h)).toBe(0)
   })
 })
+
+describe('stainSize for a person', () => {
+  const asset = (layer: 'figure' | 'mid') => ({ id: 'a', layer, tags: [], file: 'a.webp', w: 400, h: 900, anchor: [0.5, 1] as [number, number], height_m: 1.7 })
+  it('is the span of the feet and shallow, smaller than a prop of the same size', () => {
+    const person = stainSize(asset('figure'), 0.8, 1.7, 7), prop = stainSize(asset('mid'), 0.8, 1.7, 7)
+    expect(person.w).toBeLessThanOrEqual(1.7 * 0.3 + 1e-9)
+    expect(person.d).toBeLessThanOrEqual(person.w * 0.5 + 1e-9)
+    expect(person.w).toBeLessThan(prop.w)
+  })
+})
