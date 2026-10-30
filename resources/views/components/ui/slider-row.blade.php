@@ -24,7 +24,7 @@
      * Defaults to the panel's own variable so the dev tuner moves every row at
      * once; pass a literal only where a row is outside the settings panel.
      */
-    'labelWidth' => 'var(--settings-panel-label-w, 3.0625rem)',
+    'labelWidth' => 'var(--settings-panel-label-w, 7.5rem)',
     /** Livewire expression for `wire:change` — the value the teacher settles on. */
     'onChange' => null,
     /** Alpine expression for `@input` — the live drag, applied locally without a round trip. */
@@ -39,6 +39,8 @@
      * teacher has moved something and Escape's memory has gone with the focus.
      */
     'default' => null,
+    /** Label above, full-width slider below. See panel-row. */
+    'stacked' => false,
 ])
 
 @php
@@ -77,7 +79,7 @@
      The value is `display`, never a re-derivation of `value` — the caller owns the formatting, and
      a row that recomputed it would show a number the panel above it disagrees with. --}}
 <x-ui.panel-row :label="$label" :default="$default" :keyframe="$keyframe"
-                :keyframe-target="$keyframeTarget" :keyframe-property="$keyframeProperty"
+                :keyframe-target="$keyframeTarget" :keyframe-property="$keyframeProperty" :stacked="$stacked"
                 {{ $attributes }}>
     {{-- The wrapper draws the knob (.range-panel-knob::after); the native thumb is invisible. --}}
     <span class="range-panel-knob min-w-0 flex-1"

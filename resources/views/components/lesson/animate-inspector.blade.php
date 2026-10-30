@@ -172,7 +172,7 @@
         </div>
     @endif
     <label class="block space-y-1" @if ($isLayer) x-show="build === 'out'" x-cloak @endif>
-        <span class="block text-2xs uppercase tracking-wide text-panel-hint">
+        <span class="block text-xs font-semibold uppercase tracking-wide text-panel-label">
             {{ $isLayer ? __('Disappear') : __('Transition') }}
         </span>
         @if ($isLayer)

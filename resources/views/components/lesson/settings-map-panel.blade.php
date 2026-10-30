@@ -86,15 +86,17 @@
          moves the whole shape (resources/js/anim/properties.js 'arw'). ─────────────────────────── --}}
     @if ($isArrow)
         <x-ui.settings-section :title="__('Arrow')" name="arrow">
-            <div class="flex items-center gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('End') }}</span>
-                <x-ui.stepper-field glyph="X" :label="__('End horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('end_x', 70), 0)" :default="70" :keyframe-target="$keyTarget" keyframe-property="end_x"
-                                    :on-input="$live('end_x')" :on-change="$save('end_x')" class="min-w-0 flex-1" />
-                <x-ui.stepper-field glyph="Y" :label="__('End vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('end_y', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="end_y"
-                                    :on-input="$live('end_y')" :on-change="$save('end_y')" class="min-w-0 flex-1" />
+            {{-- Two fields share the row, so the label stacks above them, as Position does. --}}
+            <div class="space-y-1">
+                <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('End') }}</span>
+                <div class="flex items-center gap-2">
+                    <x-ui.stepper-field glyph="X" :label="__('End horizontal position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('end_x', 70), 0)" :default="70" :keyframe-target="$keyTarget" keyframe-property="end_x"
+                                        :on-input="$live('end_x')" :on-change="$save('end_x')" class="min-w-0 flex-1" />
+                    <x-ui.stepper-field glyph="Y" :label="__('End vertical position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('end_y', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="end_y"
+                                        :on-input="$live('end_y')" :on-change="$save('end_y')" class="min-w-0 flex-1" />
+                </div>
             </div>
 
             <x-ui.slider-row :label="__('Bend')" :min="-0.5" :max="0.5" :step="0.01"
@@ -113,7 +115,7 @@
                              :on-input="$live('head')" :on-change="$save('head')" />
 
             <div class="flex items-center gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Style') }}</span>
                 <select class="select select-xs w-full" aria-label="{{ __('Arrow style') }}"
                         onchange="updateArtworkLayer({{ $aid }}, 'arrow_style', this.value)">
@@ -148,15 +150,16 @@
             <div class="divider my-0" role="presentation"></div>
 
             {{-- Position: two fields on one row, X and Y, both stage percentages. --}}
-            <div class="flex items-center gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
-                      class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
-                <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="x"
-                                    :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
-                <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
-                                    :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="$keyTarget" keyframe-property="y"
-                                    :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+            <div class="space-y-1">
+                <span class="block whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Position') }}</span>
+                <div class="flex items-center gap-2">
+                    <x-ui.stepper-field glyph="X" :label="__('Horizontal position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('x', 50), 0)" :default="50" :keyframe-target="$keyTarget" keyframe-property="x"
+                                        :on-input="$live('x')" :on-change="$save('x')" class="min-w-0 flex-1" />
+                    <x-ui.stepper-field glyph="Y" :label="__('Vertical position')" :min="0" :max="100" :step="1"
+                                        :value="$num($val('y', 58), 0)" :default="58" :keyframe-target="$keyTarget" keyframe-property="y"
+                                        :on-input="$live('y')" :on-change="$save('y')" class="min-w-0 flex-1" />
+                </div>
             </div>
 
             @unless ($isArrow)
@@ -207,7 +210,7 @@
     <x-ui.settings-section :title="__('Layer')" name="layer">
         <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Blend') }}</span>
                 {{-- Multiply is the one that earns its keep: it drops the white paper out of an
                      engraving or a scanned map so the artwork sits ON the scene instead of in a box
@@ -254,7 +257,7 @@
     <x-ui.settings-section :title="__('Motion')" name="motion">
         <div class="space-y-2" x-data="{ amb: @js($val('ambient', 'none')) }">
             <label class="flex items-center justify-between gap-2">
-                <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
                 <div class="min-w-0 flex-1">
                     <select x-model="amb" x-on:input="{{ $live('ambient') }}" wire:change="{{ $save('ambient') }}"
@@ -306,7 +309,7 @@
             @if (! empty($layer['frames']))
                 <div class="space-y-2" x-data="{ play: @js($val('frames_play', 'wind')) }" data-layer-frames>
                     <label class="flex items-center justify-between gap-2">
-                        <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                        <span style="width: var(--settings-panel-label-w, 7.5rem)"
                               class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Frames') }}</span>
                         <div class="min-w-0 flex-1">
                             <select x-model="play" x-on:input="{{ $live('frames_play') }}" wire:change="{{ $save('frames_play') }}"
@@ -331,7 +334,7 @@
                  four values are under Advanced. Mirror and tilt are the Angle row above. --}}
             @php $sitOn = collect(\App\Services\Support\LayerSitIn::KEYS)->contains(fn ($k) => (float) ($layer[$k] ?? 0) > 0); @endphp
             <div class="divider my-0" role="presentation"></div>
-            <div class="flex items-center gap-2" data-sit-in>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1" data-sit-in>
                 <button type="button" wire:click="blendLayerIntoScene({{ $aid }})"
                         data-tooltip="{{ __('Waterline, reflection, shadow and colour from the backdrop') }}"
                         @class(['btn btn-xs flex-1 rounded-full', 'btn-primary' => ! $sitOn, 'btn-ghost' => $sitOn])>
@@ -357,7 +360,8 @@
                         'foam' => __('Foam'),
                         'speed' => __('Headway'),
                     ] as $sk => $sl)
-                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05"
+                        {{-- Stacked: inside the Advanced group the label column left these sliders at 52px. --}}
+                        <x-ui.slider-row :label="$sl" :min="0" :max="1" :step="0.05" stacked
                                          :value="$val($sk, 0)" :display="$pct($val($sk, 0))" unit="%" :default="0"
                                          :on-input="$live($sk)" :on-change="$save($sk)" />
                     @endforeach
@@ -370,7 +374,7 @@
             @if (! empty($scene->config['backdrop_depth']))
                 @php $occludeOn = ! empty($layer['occlude']); @endphp
                 <div class="divider my-0" role="presentation"></div>
-                <div class="flex items-center gap-2" data-occlude>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1" data-occlude>
                     <x-ui.toggle-row class="flex-1" :label="__('Behind objects')" :checked="$occludeOn"
                                      :on-toggle="'window.__setLayerProp?.(' . $aid . ', \'occlude\', $event.target.checked ? 1 : 0)'"
                                      :on-change="'setLayerOcclude(' . $aid . ', $event.target.checked)'" />
@@ -408,7 +412,7 @@
                                  :on-change="'setEmbedOption(' . $aid . ', \'autospin\', $event.target.checked)'" />
 
                 <div class="flex items-center gap-2">
-                    <span style="width: var(--settings-panel-label-w, 3.0625rem)"
+                    <span style="width: var(--settings-panel-label-w, 7.5rem)"
                       class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Backdrop') }}</span>
                     <div class="flex min-w-0 flex-1 gap-1">
                         @foreach ([['none', __('None')], ['glass', __('Glass')], ['#0f172a', __('Solid')]] as [$bgVal, $bgLabel])
