@@ -141,12 +141,22 @@
             {{-- One shared grid (image-grid.js): line art, arrows and shapes are ICONS, square and
                  contained. The history line also holds backdrops, which are pictures: they take
                  two columns at 2:1 and zoom at the cursor, so this grid is mixed. --}}
+            @foreach ($this->restyles->filter(fn ($r) => $r->status === \App\Models\ImageRestyle::READY) as $r)
+                <div class="mb-2 rounded-lg bg-slate-800 p-2" wire:key="restyle-{{ $r->id }}">
+                    <x-lesson.restyle-control kind="asset" :id="$r->subject_id" :restyle="$r" compact />
+                </div>
+            @endforeach
             <div class="lp-thumb-grid gap-1" :style="gridStyle" @if ($collection === 'history-line') data-mixed @endif>
                 @foreach ($this->icons() as $icon)
-                    @php $isPicture = $icon->category === 'backdrops'; @endphp
+                    @php
+                        $isPicture = $icon->category === 'backdrops';
+                        $canRestyle = auth()->user()?->isAdmin() && $icon->isRaster() && empty($icon->sheet);
+                        $restyle = $this->restyles->get($icon->id);
+                    @endphp
+                    <div data-kind="{{ $isPicture ? 'image' : 'icon' }}" @if ($isPicture) data-zoom @endif
+                         wire:key="icon-{{ $icon->id }}" class="group"
+                         @if ($restyle && ($restyle->isActive() || $restyle->notified_at === null)) wire:poll.3s="pollRestyle({{ $restyle->id }})" @endif>
                     <button type="button" draggable="true"
-                            data-kind="{{ $isPicture ? 'image' : 'icon' }}" @if ($isPicture) data-zoom @endif
-                            wire:key="icon-{{ $icon->id }}"
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-icon', '{{ $icon->id }}');
                                             $event.dataTransfer.effectAllowed = 'copy'"
                             {{-- The canvas decides WHERE, because only it knows the stage box and
@@ -157,7 +167,7 @@
                                 ? window.__placeIcon({{ $icon->id }})
                                 : $wire.place({{ $icon->id }})"
                             data-tooltip="{{ $icon->title }}"
-                            class="flex cursor-grab items-center justify-center rounded-lg
+                            class="flex h-full w-full cursor-grab items-center justify-center rounded-lg
                                    transition-colors active:cursor-grabbing
                                    {{ $isPicture ? 'lp-paper ring-1 ring-transparent hover:ring-slate-400' : ($icon->isRaster() ? 'lp-paper p-1 ring-1 ring-transparent hover:ring-slate-400' : 'p-2 hover:bg-slate-700/60') }}"
                             aria-label="{{ $icon->title }}">
@@ -165,6 +175,23 @@
                              :srcset="srcset(@js($icon->url()))" :sizes="sizes(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"
                              class="pointer-events-none {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
+                    @if ($canRestyle)
+                        @if ($restyle?->isActive())
+                            <span class="absolute inset-0 flex items-center justify-center bg-base-100/70" data-restyle="running" role="status" aria-label="{{ $restyle->step >= 2 ? __('Restyling 2/2: colour…') : __('Restyling 1/2: ink…') }}">
+                                <x-icons.spinner class="h-5 w-5 animate-spin" /><span class="ml-1 text-xs">{{ max(1, $restyle->step) }}/2</span>
+                            </span>
+                        @else
+                            <span class="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                @if ($restyle?->status === \App\Models\ImageRestyle::KEPT)
+                                    <button type="button" wire:click="revertRestyle({{ $restyle->id }})" data-tooltip="{{ __('Back to original') }}" aria-label="{{ __('Back to original') }}"
+                                            class="btn btn-xs btn-square btn-neutral"><x-icons.arrow-uturn-left class="h-3.5 w-3.5" /></button>
+                                @endif
+                                <button type="button" wire:click="restyle('asset', {{ $icon->id }})" data-tooltip="{{ __('Restyle') }}" aria-label="{{ __('Restyle') }}"
+                                        class="btn btn-xs btn-square btn-neutral"><x-icons.paint-brush class="h-3.5 w-3.5" /></button>
+                            </span>
+                        @endif
+                    @endif
+                    </div>
                 @endforeach
             </div>
         @endif

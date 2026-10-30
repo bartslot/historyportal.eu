@@ -2423,5 +2423,21 @@
     "Drag to move the end": "Trascina la fine",
     "Drag to bend the arrow": "Trascina per curvare la freccia",
     "Drag to change the width": "Trascina per cambiare lo spessore",
-    "Drag to change the head size": "Trascina per cambiare la dimensione della punta"
+    "Drag to change the head size": "Trascina per cambiare la dimensione della punta",
+    "Restyle": "Ristilizza",
+    "Before": "Prima",
+    "After": "Dopo",
+    "Keep": "Tieni",
+    "Back to original": "Torna all'originale",
+    "Restyled. Keep it or undo.": "Ristilizzata. Tienila o annulla.",
+    "This picture is already being restyled.": "Questa immagine è già in corso di ristilizzazione.",
+    "You have restyled a lot of pictures this hour. Try again a little later.": "Hai ristilizzato molte immagini in quest'ora. Riprova più tardi.",
+    "This picture cannot be restyled.": "Questa immagine non può essere ristilizzata.",
+    "You cannot restyle this picture.": "Non puoi ristilizzare questa immagine.",
+    "The image service is out of credits right now. Nothing was changed.": "Il servizio di immagini non ha più credito al momento. Non è stato cambiato nulla.",
+    "The image service declined this picture. Nothing was changed.": "Il servizio di immagini ha rifiutato questa immagine. Non è stato cambiato nulla.",
+    "The image service is busy. Try again in a minute. Nothing was changed.": "Il servizio di immagini è occupato. Riprova tra un minuto. Non è stato cambiato nulla.",
+    "The restyle did not work. Nothing was changed.": "La ristilizzazione non è riuscita. Non è stato cambiato nulla.",
+    "Restyling 1/2: ink…": "Ristilizzazione 1/2: inchiostro…",
+    "Restyling 2/2: colour…": "Ristilizzazione 2/2: colore…"
 }

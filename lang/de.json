@@ -2423,5 +2423,21 @@
     "Drag to move the end": "Ende ziehen",
     "Drag to bend the arrow": "Ziehen, um den Pfeil zu biegen",
     "Drag to change the width": "Ziehen, um die Breite zu ändern",
-    "Drag to change the head size": "Ziehen, um die Spitzengröße zu ändern"
+    "Drag to change the head size": "Ziehen, um die Spitzengröße zu ändern",
+    "Restyle": "Neu gestalten",
+    "Before": "Vorher",
+    "After": "Nachher",
+    "Keep": "Behalten",
+    "Back to original": "Zurück zum Original",
+    "Restyled. Keep it or undo.": "Neu gestaltet. Behalte es oder mach es rückgängig.",
+    "This picture is already being restyled.": "Dieses Bild wird schon neu gestaltet.",
+    "You have restyled a lot of pictures this hour. Try again a little later.": "Du hast diese Stunde viele Bilder neu gestaltet. Versuche es später noch einmal.",
+    "This picture cannot be restyled.": "Dieses Bild kann nicht neu gestaltet werden.",
+    "You cannot restyle this picture.": "Du darfst dieses Bild nicht neu gestalten.",
+    "The image service is out of credits right now. Nothing was changed.": "Der Bilddienst hat gerade kein Guthaben mehr. Nichts wurde geändert.",
+    "The image service declined this picture. Nothing was changed.": "Der Bilddienst hat dieses Bild abgelehnt. Nichts wurde geändert.",
+    "The image service is busy. Try again in a minute. Nothing was changed.": "Der Bilddienst ist ausgelastet. Versuche es in einer Minute noch einmal. Nichts wurde geändert.",
+    "The restyle did not work. Nothing was changed.": "Das Neugestalten hat nicht geklappt. Nichts wurde geändert.",
+    "Restyling 1/2: ink…": "Neu gestalten 1/2: Tusche…",
+    "Restyling 2/2: colour…": "Neu gestalten 2/2: Farbe…"
 }

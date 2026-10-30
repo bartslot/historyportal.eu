@@ -2423,5 +2423,21 @@
     "Drag to move the end": "Glisser la fin",
     "Drag to bend the arrow": "Glisser pour courber la flèche",
     "Drag to change the width": "Glisser pour changer l'épaisseur",
-    "Drag to change the head size": "Glisser pour changer la taille de la pointe"
+    "Drag to change the head size": "Glisser pour changer la taille de la pointe",
+    "Restyle": "Restyliser",
+    "Before": "Avant",
+    "After": "Après",
+    "Keep": "Garder",
+    "Back to original": "Revenir à l'original",
+    "Restyled. Keep it or undo.": "Restylisée. Garde-la ou annule.",
+    "This picture is already being restyled.": "Cette image est déjà en cours de restylisation.",
+    "You have restyled a lot of pictures this hour. Try again a little later.": "Tu as restylisé beaucoup d'images cette heure. Réessaie un peu plus tard.",
+    "This picture cannot be restyled.": "Cette image ne peut pas être restylisée.",
+    "You cannot restyle this picture.": "Tu ne peux pas restyliser cette image.",
+    "The image service is out of credits right now. Nothing was changed.": "Le service d'images n'a plus de crédit pour le moment. Rien n'a été modifié.",
+    "The image service declined this picture. Nothing was changed.": "Le service d'images a refusé cette image. Rien n'a été modifié.",
+    "The image service is busy. Try again in a minute. Nothing was changed.": "Le service d'images est occupé. Réessaie dans une minute. Rien n'a été modifié.",
+    "The restyle did not work. Nothing was changed.": "La restylisation n'a pas fonctionné. Rien n'a été modifié.",
+    "Restyling 1/2: ink…": "Restylisation 1/2 : encre…",
+    "Restyling 2/2: colour…": "Restylisation 2/2 : couleur…"
 }
