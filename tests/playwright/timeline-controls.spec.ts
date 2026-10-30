@@ -73,7 +73,7 @@ test('collapse all folds every group away, and the next press brings them back',
   await openTimeline(page);
 
   const { row } = await firstRow(page);
-  const property = page.locator(`label:has([data-timeline-key="${row}"])`);
+  const property = page.locator(`[data-timeline-row]:has([data-timeline-key="${row}"])`);
   await expect(property).toBeVisible();
 
   await clickAt(page, page.locator('[data-timeline-collapse-all]'));
@@ -121,7 +121,7 @@ test('auto-key off stops recording, and the layer still moves', async ({ page })
   await page.mouse.up();
   await page.waitForTimeout(400);
 
-  const field = page.locator(`label:has([data-timeline-key="${row}"]) [data-timeline-value]`);
+  const field = page.locator(`[data-timeline-row]:has([data-timeline-key="${row}"]) [data-timeline-value]`);
   const box = (await field.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { clickCount: 3 });
   await page.keyboard.type('44');

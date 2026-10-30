@@ -3,15 +3,15 @@
  *
  * Bart, 2026-10-16: "would be nice to be able to change the size of the panels". The column holds
  * the property names and their value fields; a long name or a colour field wants more room than
- * the stylesheet's 226px. Spread into animationTimeline(); the grip is an `.lp-grip` on the
+ * the stylesheet's default. Spread into animationTimeline(); the grip is an `.lp-grip` on the
  * column's right edge. Null width = the stylesheet's --timeline-label-col.
  *
  * Per teacher, not per lesson, so localStorage (as the script dock's height is).
  */
 
 export const LABEL_COL_KEY = 'wizard.timeline.labelw'
-export const LABEL_COL_MIN = 180
-export const LABEL_COL_MAX = 420
+export const LABEL_COL_MIN = 328
+export const LABEL_COL_MAX = 520
 const STEP = 16
 
 const clamp = (w) => Math.round(Math.max(LABEL_COL_MIN, Math.min(LABEL_COL_MAX, w)))
@@ -37,15 +37,13 @@ export const labelColumn = () => ({
   /** The width the column has now, drawn: the dragged one, or what the stylesheet gave it. */
   colWidth () { return this.labelColW ?? this.$refs?.labels?.getBoundingClientRect().width ?? LABEL_COL_MIN },
 
-  colStart (event) {
-    event.preventDefault()
-    event.currentTarget?.setPointerCapture?.(event.pointerId)
-    this.colDrag = { x: event.clientX, w: this.colWidth() }
-  },
+  // The shared <x-ui.resize-handle> reports the pointer (resize-start / -drag / -end, -step, -reset);
+  // the column decides its own width. `pos` is the pointer's clientX.
+  colStart (pos) { this.colDrag = { x: pos, w: this.colWidth() } },
 
-  colMove (event) {
+  colMove (pos) {
     if (!this.colDrag) return
-    this.labelColW = clamp(this.colDrag.w + event.clientX - this.colDrag.x)
+    this.labelColW = clamp(this.colDrag.w + pos - this.colDrag.x)
   },
 
   colEnd () {
@@ -54,11 +52,13 @@ export const labelColumn = () => ({
     store(this.labelColW)
   },
 
-  colKey (event) {
-    const width = { ArrowRight: this.colWidth() + STEP, ArrowLeft: this.colWidth() - STEP, Home: null }[event.key]
-    if (width === undefined) return
-    event.preventDefault()
-    this.labelColW = width === null ? null : clamp(width)
+  colStep ({ dir, big }) {
+    this.labelColW = clamp(this.colWidth() + dir * STEP * (big ? 4 : 1))
     store(this.labelColW)
+  },
+
+  colReset () {
+    this.labelColW = null
+    store(null)
   },
 })
