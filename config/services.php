@@ -92,6 +92,14 @@ return [
         'image_compression' => (int) env('OPENAI_IMAGE_COMPRESSION', 60), // webp/jpeg quality: 100≈lossless/~1.5MB, 60≈high-res/~110KB, lower=smaller
         'image_stitch' => filter_var(env('OPENAI_IMAGE_STITCH', true), FILTER_VALIDATE_BOOLEAN), // 2-image stitched panorama
         'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+        // History Lines restyle (ImageRestyler): one images/edits call per click.
+        'restyle_quality' => env('OPENAI_RESTYLE_QUALITY', 'medium'),   // low|medium|high (cost scales ~4x per step)
+        'restyle_per_hour' => (int) env('OPENAI_RESTYLE_PER_HOUR', 12), // per user
+        'restyle_stale_minutes' => (int) env('OPENAI_RESTYLE_STALE_MINUTES', 10), // a restyle "running" longer than this is failed
+        // gpt-image-1 token prices (USD per 1M tokens), used to turn the API `usage` into a cost.
+        'restyle_price_text_in' => (float) env('OPENAI_PRICE_TEXT_IN', 5.0),
+        'restyle_price_image_in' => (float) env('OPENAI_PRICE_IMAGE_IN', 10.0),
+        'restyle_price_image_out' => (float) env('OPENAI_PRICE_IMAGE_OUT', 40.0),
         'timeout' => (int) env('OPENAI_TIMEOUT', 60),
         'max_tokens' => (int) env('OPENAI_MAX_TOKENS', 2048),
         'tts_model' => env('OPENAI_TTS_MODEL', 'tts-1'),

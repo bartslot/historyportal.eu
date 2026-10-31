@@ -25,6 +25,7 @@ use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
+use App\Livewire\Wizard\Concerns\RestylesImages;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
@@ -74,6 +75,7 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsTitleScreen;
     use FixesLessonProblems;
+    use RestylesImages;
     use EditsSceneBackground;
     use EditsSceneBalloons;
     use EditsSceneArtwork;
@@ -4951,6 +4953,19 @@ class Step3SceneConfigurator extends Component
             $this->selectSceneInternal($sceneId);
         }
         $this->dispatch('toast', message: __('Summary added to the slide.'), type: 'success');
+    }
+
+    protected function restyleSubject(string $kind, int $id): ?\Illuminate\Database\Eloquent\Model
+    {
+        return $kind === 'scene' ? $this->lesson->scenes()->find($id) : null;
+    }
+
+    /** Keep / Undo changed which picture the scene points at: reload it so the canvas redraws at once. */
+    protected function restyleRefreshed(\Illuminate\Database\Eloquent\Model $subject): void
+    {
+        if ($this->selectedSceneId === $subject->id) {
+            $this->selectSceneInternal($subject->id);
+        }
     }
 
     public function regenerate(int $sceneId, string $asset): void

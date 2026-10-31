@@ -2468,5 +2468,21 @@
     "Drag to change the head size": "Sleep om de kopgrootte te wijzigen",
     "Transform": "Transformatie",
     "Viewing angle": "Kijkhoek",
-    "Stop animating": "Niet meer animeren"
+    "Stop animating": "Niet meer animeren",
+    "Restyle": "Herstijlen",
+    "Before": "Voor",
+    "After": "Na",
+    "Keep": "Behouden",
+    "Back to original": "Terug naar het origineel",
+    "Restyled. Keep it or undo.": "Herstijld. Behoud het of maak het ongedaan.",
+    "This picture is already being restyled.": "Deze afbeelding wordt al herstijld.",
+    "You have restyled a lot of pictures this hour. Try again a little later.": "Je hebt dit uur veel afbeeldingen herstijld. Probeer het straks opnieuw.",
+    "This picture cannot be restyled.": "Deze afbeelding kan niet worden herstijld.",
+    "You cannot restyle this picture.": "Je mag deze afbeelding niet herstijlen.",
+    "The image service is out of credits right now. Nothing was changed.": "De beeldservice heeft nu geen tegoed meer. Er is niets veranderd.",
+    "The image service declined this picture. Nothing was changed.": "De beeldservice weigerde deze afbeelding. Er is niets veranderd.",
+    "The image service is busy. Try again in a minute. Nothing was changed.": "De beeldservice is druk. Probeer het over een minuut opnieuw. Er is niets veranderd.",
+    "The restyle did not work. Nothing was changed.": "Herstijlen is niet gelukt. Er is niets veranderd.",
+    "Restyling 1/2: ink…": "Herstijlen 1/2: inkt…",
+    "Restyling 2/2: colour…": "Herstijlen 2/2: kleur…"
 }

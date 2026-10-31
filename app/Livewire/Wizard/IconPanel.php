@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Wizard;
 
+use App\Livewire\Wizard\Concerns\RestylesImages;
+use App\Models\ImageRestyle;
 use App\Models\Lesson;
 use App\Models\SvgAsset;
 use App\Services\Assets\SequenceImporter;
@@ -26,6 +28,7 @@ use RuntimeException;
  */
 class IconPanel extends Component
 {
+    use RestylesImages;
     use WithFileUploads;
 
     /** "Import sequence": numbered frames from the art pipeline (name_clip_0001.webp or .png). */
@@ -306,6 +309,36 @@ class IconPanel extends Component
         }
 
         return array_values($pills);
+    }
+
+    protected function restyleSubject(string $kind, int $id): ?\Illuminate\Database\Eloquent\Model
+    {
+        return $kind === 'asset' ? SvgAsset::query()->bundled()->find($id) : null;
+    }
+
+    protected function restyleRefreshed(\Illuminate\Database\Eloquent\Model $subject): void
+    {
+        unset($this->icons, $this->restyles);
+    }
+
+    /**
+     * Admins only (the library is shared): the newest restyle per tile on screen, keyed by asset id.
+     *
+     * @return \Illuminate\Support\Collection<int, ImageRestyle>
+     */
+    #[Computed]
+    public function restyles(): \Illuminate\Support\Collection
+    {
+        if (! auth()->user()?->isAdmin()) {
+            return collect();
+        }
+
+        return ImageRestyle::query()
+            ->where('subject_type', (new SvgAsset)->getMorphClass())
+            ->whereIn('subject_id', $this->icons()->pluck('id'))
+            ->where('status', '!=', ImageRestyle::DISCARDED)
+            ->orderBy('id')->get()
+            ->keyBy('subject_id');
     }
 
     /** @return \Illuminate\Support\Collection<int, SvgAsset> */
