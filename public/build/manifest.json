@@ -144,7 +144,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DY1aXfAE.css",
+    "file": "assets/app-DCAskLbT.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -153,7 +153,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Dg0ra2V4.js",
+    "file": "assets/app-BELCVQvd.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -366,7 +366,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Dj4LuIOL.js",
+    "file": "assets/index-ahe7KXct.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -459,7 +459,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-DX-l1voN.js",
+    "file": "assets/recorder-Dh4cRtxR.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
