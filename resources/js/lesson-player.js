@@ -1140,6 +1140,7 @@ Alpine.data('lessonGame', (lesson) => ({
         host.style.opacity = '1'
         if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
         stage.play(() => this._audio?.currentTime ?? 0)
+        window.__stage25d = stage   // balloon tails ask it where a speaker's head is (BalloonLayer)
       } catch (e) {
         console.warn('lesson-player: stage25d failed, falling back to flat', e)
         this._destroyStage25d()
@@ -1150,6 +1151,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _destroyStage25d () {
       const mounting = _stage25d
       _stage25d = null
+      window.__stage25d = null
       mounting?.then(stage => stage.destroy()).catch(() => { /* never mounted, or already detached */ })
     },
 

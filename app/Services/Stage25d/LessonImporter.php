@@ -29,7 +29,7 @@ final class LessonImporter
     public const TOPIC_PREFIX = '25d:';
 
     /** Fields of the director's scene that the stage reads; the rest stays in the lesson file. */
-    private const STAGE_FIELDS = ['set', 'camera', 'camera_more', 'motion', 'sound', 'narration_at_s', 'dur_s', 'beat'];
+    private const STAGE_FIELDS = ['set', 'figures', 'camera', 'camera_more', 'motion', 'sound', 'narration_at_s', 'dur_s', 'beat'];
 
     /**
      * @param  array<string,mixed>  $lesson  the directed lesson
@@ -118,13 +118,26 @@ final class LessonImporter
                 $stage[$f] = $s[$f];
             }
         }
-        $lines = collect((array) ($s['balloons'] ?? []))->map(fn ($b) => [
-            'speaker' => (string) ($b['char'] ?? ''),
-            'text' => (string) ($b['text'] ?? ''),
-            'start' => (float) ($b['at_s'] ?? 0),
-            'end' => isset($b['at_s'], $b['dur_s']) ? round((float) $b['at_s'] + (float) $b['dur_s'], 2) : null,
-            'figure' => null,
-        ])->filter(fn ($l) => $l['text'] !== '')->values()->all();
+        // Balloon times are scene times; the editor and the player read them on the narration's clock (it starts
+        // narration_at_s into the scene), and the stage adds that lead back. A speaker with a painted figure layer
+        // gets the figure's stage handle, so the tail points at its head (BalloonLayer, stage25d:<char>).
+        $lead = (float) ($s['narration_at_s'] ?? 0);
+        $faces = collect((array) ($s['figures'] ?? []))->keyBy('char');
+        $drawn = collect((array) ($s['set']['layers'] ?? []))->pluck('figure')->filter()->all();
+        $lines = collect((array) ($s['balloons'] ?? []))->map(function ($b) use ($lead, $faces, $drawn) {
+            $char = (string) ($b['char'] ?? '');
+            $start = max(0.0, round((float) ($b['at_s'] ?? 0) - $lead, 2));
+
+            return [
+                'speaker' => $char,
+                'text' => (string) ($b['text'] ?? ''),
+                'start' => $start,
+                'end' => isset($b['dur_s']) ? round($start + (float) $b['dur_s'], 2) : null,
+                'figure' => in_array($char, $drawn, true)
+                    ? ['asset_id' => 'stage25d:'.$char, 'mouth' => [0.5, 0.3], 'facing' => ($faces[$char]['facing'] ?? 'right') === 'left' ? -1 : 1]
+                    : null,
+            ];
+        })->filter(fn ($l) => $l['text'] !== '')->values()->all();
         $report['balloons'] += count($lines);
 
         $scene = new Scene([

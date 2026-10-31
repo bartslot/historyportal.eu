@@ -17,7 +17,7 @@ vi.mock('@stage25d/stage25d/stage', () => ({
   },
 }))
 vi.mock('@stage25d/stage25d/library', () => ({
-  loadLibrary: vi.fn(async (url) => ({ bundle: 'b', assets: [], base: url })),
+  loadLibrary: vi.fn(async (url) => ({ bundle: 'b', assets: [{ id: 'fig-meisje-push-01', height_m: 1.4 }], base: url })),
 }))
 
 import { loadLibrary } from '@stage25d/stage25d/library'
@@ -56,6 +56,22 @@ describe('stage25d mount', () => {
     stage.play(() => 3)
     frame()
     expect(calls.posed.at(-1)).toEqual(['sc01', 4.5])
+  })
+
+  it('knows where a figure\'s head is, for the balloon tail, and nothing for a char that is not drawn', async () => {
+    const host = document.getElementById('h')
+    const stage = await mountStage25d(host)
+    const layers = [{ asset: 'fig-meisje-push-01', figure: 'meisje', depth: 'fg', x: 0.5, scale: 1 }]
+    stage.canvas.getBoundingClientRect = () => ({ left: 10, top: 20, width: 1000, height: 500 })
+    await stage.show(cfg({ set: { layers }, figures: [{ char: 'meisje' }] }))
+    expect(calls.built[0].figures).toEqual([{ char: 'meisje' }])
+    const box = stage.figureBox('meisje')
+    expect(box).not.toBeNull()
+    expect(box.left).toBeGreaterThan(10)
+    expect(box.left).toBeLessThan(1010)
+    expect(box.top).toBeGreaterThan(20)
+    expect(stage.figureBox('opa')).toBeNull()
+    expect(stage.config.bundle).toBe('nl-prehistory')
   })
 
   it('lists its layers for the object list', async () => {

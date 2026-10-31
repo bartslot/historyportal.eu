@@ -150,8 +150,13 @@ export function clearOf (at, box, others, view, margin, mouthX = null) {
   return at
 }
 
+/** Prefix of a balloon figure's asset_id when the speaker is a figure on the 2.5D stage (the importer writes it). */
+export const STAGE25D_FIGURE = 'stage25d:'
+
 /** The drawn box of a figure layer (ArtworkOverlay marks each layer node with its asset id). */
 const defaultFigureBox = (assetId) => {
+  // A figure painted on the 2.5D stage (kind stage25d): 'stage25d:<char>', its head box comes from the stage.
+  if (typeof assetId === 'string' && assetId.startsWith(STAGE25D_FIGURE)) return window.__stage25d?.figureBox?.(assetId.slice(STAGE25D_FIGURE.length)) ?? null
   const img = document.querySelector(`[data-layer-id="art_${assetId}"] img`)
 
   return img ? img.getBoundingClientRect() : null
@@ -386,7 +391,9 @@ export class BalloonLayer {
     const done = () => el.remove()
     const anim = el.animate?.([{ opacity: 1 }, { opacity: 0 }], { duration: EXIT_MS, easing: EASE.exit, fill: 'forwards' })
     if (anim) anim.onfinish = done
-    else done()
+    // A hidden tab or pane never finishes a Web Animation: the balloon stayed in the page long after its end.
+    setTimeout(done, EXIT_MS + 60)
+    if (!anim) done()
   }
 
   _relayout () {

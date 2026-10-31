@@ -50,7 +50,7 @@ class LessonImporterTest extends TestCase
 
         $this->assertSame(3, $r['scenes']);
         $this->assertSame(2, $r['audio']);
-        $this->assertSame(1, $r['balloons']);
+        $this->assertSame(2, $r['balloons']);
         $this->assertSame(1, $r['quizzes']);
         $this->assertCount(1, $r['skipped'], 'power-meter is reported, not dropped');
 
@@ -67,8 +67,18 @@ class LessonImporterTest extends TestCase
         $this->assertSame('nl-prehistory', $first->config['stage25d']['bundle']);
         $this->assertSame('push', $first->config['stage25d']['camera']['move']);
         $this->assertSame('stone-chamber-01', $first->config['stage25d']['set']['layers'][0]['asset']);
-        $this->assertSame('Hij zit muurvast!', $first->config['lines'][0]['text']);
-        $this->assertEqualsWithDelta(5.7, $first->config['lines'][0]['end'], 0.001);
+        $lines = $first->config['lines'];
+        $this->assertSame('Hij zit muurvast!', $lines[0]['text']);
+        // scene time 3.3-5.7 on a narration that starts 1.0 s in = 2.3-4.7 on the narration's clock
+        $this->assertEqualsWithDelta(2.3, $lines[0]['start'], 0.001);
+        $this->assertEqualsWithDelta(4.7, $lines[0]['end'], 0.001);
+        // the speaker with a painted figure layer: the tail points at its head on the stage, facing left
+        $this->assertSame(['asset_id' => 'stage25d:meisje', 'mouth' => [0.5, 0.3], 'facing' => -1], $lines[0]['figure']);
+        $this->assertNull($lines[1]['figure'], 'a voice with no figure on stage has no tail');
+        // the figures ride along verbatim, next to the figure layers the director made from them
+        $this->assertSame('meisje', $first->config['stage25d']['figures'][0]['char']);
+        $this->assertSame('left', $first->config['stage25d']['figures'][0]['facing']);
+        $this->assertSame('meisje', $first->config['stage25d']['set']['layers'][1]['figure']);
         $this->assertTrue($first->hasFreshAudio());
         Storage::disk('public')->assertExists($first->audio_path);
 
