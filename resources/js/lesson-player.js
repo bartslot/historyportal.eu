@@ -22,6 +22,8 @@ import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
+import { mountStage25d } from './scene/stage25d/mount.js'
+import { isStage25d } from './scene/stage25d/config.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
@@ -166,6 +168,7 @@ let _splitMod       = null
 let _parallaxMod    = null   // cached ./scene/ParallaxScene.js module (lazy-loaded once)
 let _diorama        = null   // live DioramaStage (a scene with config.diorama)
 let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
+let _stage25d       = null   // live Babylon 2.5D stage (a scene of kind stage25d), mounted lazily
 
 // ── Alpine component ──────────────────────────────────────────────────────────
 // Alpine is imported directly (no Livewire on this page) — register before start()
@@ -1119,6 +1122,37 @@ Alpine.data('lessonGame', (lesson) => ({
       }
     },
 
+    // A stage25d scene: the Babylon 2.5D stage from config.stage25d, read-only, following the narration clock.
+    // One stage is kept across consecutive stage scenes (a WebGL context per scene would be slow).
+    async _showStage25d (scene) {
+      const req = ++this._parallaxReq
+      try {
+        const host = document.getElementById('background-layer')
+        if (!host) return
+        this._destroyParallax()
+        if (_diorama) { try { _diorama.destroy() } catch (_) { /* already detached */ } _diorama = null }
+        _stage25d ??= mountStage25d(host)   // a promise: two quick scenes share one mount
+        const stage = await _stage25d
+        if (req !== this._parallaxReq) return
+        await stage.show(scene.config.stage25d)
+        if (req !== this._parallaxReq) return
+        if (_bgCanvas) _bgCanvas.style.opacity = '0'
+        host.style.opacity = '1'
+        if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
+        stage.play(() => this._audio?.currentTime ?? 0)
+      } catch (e) {
+        console.warn('lesson-player: stage25d failed, falling back to flat', e)
+        this._destroyStage25d()
+        this._showFlatColor(scene.background_color, scene.background_gradient)
+      }
+    },
+
+    _destroyStage25d () {
+      const mounting = _stage25d
+      _stage25d = null
+      mounting?.then(stage => stage.destroy()).catch(() => { /* never mounted, or already detached */ })
+    },
+
     _destroyDiorama () {
       if (!_diorama) return
       try { _diorama.destroy() } catch (_) { /* already detached */ }
@@ -1599,6 +1633,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // persistent map survives it (see _teardownStageScene).
       this._teardownStageScene()
       this._destroyDiorama()
+      if (!isStage25d(scene)) this._destroyStage25d()   // consecutive stage scenes keep one WebGL context
 
       // Teacher text annotations for this scene (URLs render as link chips → iframe modal).
       // Before the map early-return, so a map scene clears the previous scene's texts too.
@@ -1643,7 +1678,9 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Swap background. Default scenes are a still flat picture (2D); skybox is opt-in per
       // scene; no image at all = the scene's solid backdrop (brand navy by default).
-      if (scene.config?.diorama) {
+      if (isStage25d(scene)) {
+        this._showStage25d(scene)                             // Babylon 2.5D stage, set from config.stage25d
+      } else if (scene.config?.diorama) {
         this._showDiorama(scene)                              // plate + occluders + items on floor grids
       } else if (scene.image_url || scene.shots?.length) {
         if (scene.scene_view === 'skybox' && _bgInstance) {

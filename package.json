@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build && node scripts/check-asset-budget.mjs",
+        "build": "vite build && node scripts/check-asset-budget.mjs && node scripts/check-chunk-budget.mjs",
         "dev": "vite",
         "test": "vitest run",
         "test:watch": "vitest",
@@ -30,7 +30,11 @@
         "vitest": "^4.1.6"
     },
     "dependencies": {
+        "@babylonjs/core": "9.28.0",
+        "@babylonjs/loaders": "9.28.0",
+        "@babylonjs/materials": "9.28.0",
         "alpinejs": "^3.15.12",
+        "earcut": "3.2.3",
         "flickity": "^3.0.0",
         "gsap": "^3.14.2",
         "maplibre-gl": "^6.14.0",

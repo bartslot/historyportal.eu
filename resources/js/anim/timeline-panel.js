@@ -656,6 +656,7 @@ export const animationTimeline = (config = {}) => ({
     }
     // A diorama plays its own paths (walks, facing, depth order) from the same clock.
     window.__diorama?.update(this.time)
+    window.__stage25d?.update(this.time)
   },
 
   // ── Diorama clips. An item's path is ONE clip: drag it to move the walk in time, drag an end

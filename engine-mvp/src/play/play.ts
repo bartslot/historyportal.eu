@@ -5,6 +5,7 @@
 // Interactions hold the picture and open a card (src/interactions). Balloons are timed silent layers;
 // captions of the narrator are opt-in (a toggle, off by default). ?intro=0 skips the museum. The Start
 // button is the gesture the browser wants before any sound. The page speaks the lesson's language.
+import '../globals'  // loaders + mp4 for the figures (Cast) the stage core does not carry
 import '../studio.css'
 import { __, speakLocale } from '../i18n'
 import { direct } from '../director/direct'

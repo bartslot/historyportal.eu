@@ -11,6 +11,7 @@ import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
 import { createKeyedSaveQueue } from '../anim/save-queue.js'
+import { mountStage25d } from './stage25d/mount.js'
 
 /** Scene kinds the player draws its own way, without balloons (SceneSplit::NO_SPLIT_KINDS). */
 const NO_BALLOON_KINDS = ['game', 'map', 'voyage', 'gallery', 'video']
@@ -124,7 +125,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             fade(canvasEl, 1)
             try {
                 if (!payload.config?.diorama) hideDiorama()
-                if (payload.config?.diorama) {
+                if (!(payload.kind === 'stage25d' && payload.config?.stage25d)) hideStage25d()
+                if (payload.kind === 'stage25d' && payload.config?.stage25d) {
+                    // The Babylon 2.5D stage owns the picture: the same mount module the player uses.
+                    destroyWizardLayers()
+                    applySlideshowCameraMode(activePlayer)
+                    await showStage25d(payload, isCurrent)
+                } else if (payload.config?.diorama) {
                     // A diorama owns the stage: its plate, occluders and items, placed on floor grids.
                     destroyWizardLayers()
                     applySlideshowCameraMode(activePlayer)
@@ -991,6 +998,48 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     const FRAME_KEYS = ['inset', 'left', 'top', 'width', 'height']
     function pinOverlayToFrame({ x, y, w, h }) {
         Object.assign(overlayEl.style, { inset: 'auto', left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` })
+    }
+
+    // ── Stage 2.5D (kind stage25d, config.stage25d) ────────────────────────────────────────
+    // One stage per selected scene run: scene:load re-fires on every poll and edit, an unchanged config is left alone.
+    let _stage25d = null
+    let _stage25dHost = null
+    let _stage25dReq = 0
+
+    function hideStage25d() {
+        _stage25dReq++
+        _stage25d?.then(stage => stage.destroy()).catch(() => { /* never mounted */ })
+        _stage25dHost?.remove()
+        _stage25d = _stage25dHost = null
+        window.__stage25d = null
+    }
+
+    async function showStage25d(payload, isCurrent) {
+        const cfg = payload.config.stage25d
+        const req = ++_stage25dReq
+        if (!_stage25d) {
+            const parent = canvasEl.parentElement
+            if (!parent) return
+            if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
+            const host = document.createElement('div')
+            host.className = 'wizard-stage25d-host'
+            host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
+            parent.appendChild(host)
+            _stage25dHost = host
+            _stage25d = mountStage25d(host)
+        }
+        const mounting = _stage25d
+        try {
+            const stage = await mounting
+            if (req !== _stage25dReq || !isCurrent()) return
+            if (!stage.matches(cfg)) await stage.show(cfg)
+            if (req !== _stage25dReq) return
+            window.__stage25d = stage
+            stage.update(0)
+        } catch (e) {
+            console.warn('wizard-bridge: stage25d failed', e)
+            if (_stage25d === mounting) hideStage25d()
+        }
     }
 
     function hideDiorama() {

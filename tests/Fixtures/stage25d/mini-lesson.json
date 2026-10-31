@@ -1,0 +1,12 @@
+{"id":"mini","title":"Mini","lang":"nl","bundle":"nl-prehistory","level":"groep 5-6","teacher":"Doelen.",
+ "scenes":[
+  {"id":"sc01","beat":"hook","where_when":"Drenthe","narration":"Een meisje duwt tegen een steen.","dur_s":8.4,"tts_s":7.8,"audio":"mini/sc01.mp3",
+   "set":{"sky":"sky morning","layers":[{"asset":"stone-chamber-01","depth":"mid","x":0.6,"scale":1.2}]},
+   "camera":{"move":"push","from":{"x":0,"y":1.5,"z":1.4,"fov":40},"to":{"x":0,"y":1.4,"z":0.8,"fov":35},"dur_s":8.4,"at_s":0,"ease":"out"},
+   "balloons":[{"char":"meisje","text":"Hij zit muurvast!","at_s":3.3,"dur_s":2.4}],"sound":null,"interaction":null},
+  {"id":"sc02","beat":"setup","narration":"Boeren bouwden hunebedden.","dur_s":6,"audio":"mini/sc02.mp3",
+   "set":{"layers":[]},"camera":null,"balloons":[],
+   "interaction":{"type":"quiz","question":"Wie bouwden ze?","options":["Boeren","Reuzen","Jagers"],"correct":0,"explain":"Boeren.","est_s":60}},
+  {"id":"sc03","beat":"recap","narration":"Klaar.","dur_s":4,"audio":"mini/sc03.mp3","set":{"layers":[]},"camera":null,
+   "interaction":{"type":"power-meter"}}
+ ]}

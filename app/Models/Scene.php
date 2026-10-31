@@ -233,9 +233,15 @@ class Scene extends Model
         return is_array($this->config['diorama'] ?? null);
     }
 
+    /** A stage25d scene plays the Babylon 2.5D stage from `config.stage25d` (the autonomous lessons' set). */
+    public function isStage25d(): bool
+    {
+        return $this->kind === 'stage25d' && is_array($this->config['stage25d'] ?? null);
+    }
+
     public function drawsOwnBackdrop(): bool
     {
-        return in_array($this->kind, ['map', 'voyage'], true)
+        return in_array($this->kind, ['map', 'voyage', 'stage25d'], true)
             || filled($this->skybox_image_path)
             || filled($this->world_pano_path);
     }

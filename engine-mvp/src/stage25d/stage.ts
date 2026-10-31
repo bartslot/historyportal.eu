@@ -3,7 +3,7 @@
 //   const player = await playLesson(lessonOrUrl, libraryUrl?, canvas?)
 //   player.pause() / resume() / seek(sceneIndex, t) / seekToScene(id) / clock() / onInteraction(fn) / subscribe(fn)
 //   player.doc (undoable teacher edits) / stage.groundPoint(x, depth)
-import '../globals'                    // the engine modules read Babylon from window.BABYLON
+import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
   Color4, Constants, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,

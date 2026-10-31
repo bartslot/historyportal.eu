@@ -11,12 +11,28 @@ export default defineConfig(({ mode }) => ({
         }),
         tailwindcss(),
     ],
+    resolve: {
+        // The 2.5D stage, director and sound live in engine-mvp/src (one source for the lab and the Laravel
+        // editor + player). Imported through this alias, never copied.
+        alias: { '@stage25d': fileURLToPath(new URL('./engine-mvp/src', import.meta.url)) },
+    },
     build: {
         // The hero "launch" animation dynamically imports three.js (~1.7 MB). Vite would emit a
         // <link rel="modulepreload"> for that chunk on every page that loads app.js — including the
         // landing page — pulling 1.7 MB nobody needs until they actually click. Disabling preload
         // keeps the dynamic import working but defers the download to on-demand.
         modulePreload: false,
+        rollupOptions: {
+            output: {
+                // Babylon is its own chunk, reached only through the dynamic import in scene/stage25d/mount.js.
+                manualChunks: (id) => {
+                    // Vite's shared helpers (the dynamic-import preloader, CJS interop) would otherwise be hoisted
+                    // INTO the babylon chunk, which then loads eagerly on every page that preloads anything.
+                    if (id.includes('vite/preload-helper') || id.includes('vite/modulepreload-polyfill') || id.includes('commonjsHelpers')) return 'vite-helpers'
+                    return id.includes('/node_modules/@babylonjs/') ? 'babylon' : undefined
+                },
+            },
+        },
     },
     server: {
         host: '127.0.0.1',

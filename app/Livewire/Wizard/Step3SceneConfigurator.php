@@ -695,13 +695,17 @@ class Step3SceneConfigurator extends Component
      */
     private function withStoredDiorama(array $payload, Scene $scene): array
     {
-        if (! array_key_exists('config', $payload) || (! is_array($payload['config']) && ! $scene->isDiorama())) {
+        if (! array_key_exists('config', $payload) || (! is_array($payload['config']) && ! $scene->isDiorama() && ! $scene->isStage25d())) {
             return $payload;
         }
         $config = is_array($payload['config']) ? $payload['config'] : [];
-        unset($config['diorama']);
+        unset($config['diorama'], $config['stage25d']);
         if ($scene->isDiorama()) {
             $config['diorama'] = $scene->config['diorama'];
+        }
+        // The stage25d block has its own writers (lessons:import-25d, the stage editor): same rule.
+        if ($scene->isStage25d()) {
+            $config['stage25d'] = $scene->config['stage25d'];
         }
 
         return [...$payload, 'config' => $config];
