@@ -56,6 +56,53 @@ test('the lesson player draws the stage from the database config', async ({ page
   expect(errors).toEqual([])
 })
 
+/** The stub is in place before the page's own scripts ran; confirm it BEFORE anything is clicked (sound rule). */
+async function expectSilent(page: Page) {
+  const silent = await page.evaluate(() => {
+    const stubbedPlay = HTMLMediaElement.prototype.play.toString().includes('muted')
+    const ctx = new AudioContext()
+    return stubbedPlay && ctx.state !== 'running'
+  })
+  expect(silent, 'media.play is muted and the AudioContext is suspended').toBe(true)
+}
+
+test('scene 1 draws its painted figure on the stage (pixels differ with and without it)', async ({ page }) => {
+  await page.addInitScript(SILENT)
+  await page.goto(`/lesson/${CODE}`, { waitUntil: 'domcontentloaded' })
+  await expectSilent(page)
+  await page.getByRole('button', { name: /start (de )?(lesson|les)/i }).locator('visible=true').first().dispatchEvent('click', {}, { timeout: 120_000 })
+  await stagePixels(page)
+  const diff = await page.evaluate(async () => {
+    type Stage = { config: any; show(cfg: any): Promise<void>; figureBox(c: string): DOMRect | null; canvas: HTMLCanvasElement }
+    const stage = (window as unknown as { __stage25d: Stage }).__stage25d
+    const cfg = stage.config
+    const char = cfg.set.layers.find((l: any) => l.figure)?.figure
+    if (!char) return { error: 'scene 1 has no figure layer' }
+    const box = stage.figureBox(char)
+    if (!box) return { error: 'the speaker is out of frame' }
+    const c = stage.canvas, r = c.getBoundingClientRect()
+    const grab = () => {
+      const copy = document.createElement('canvas'); copy.width = 320; copy.height = Math.round(320 * c.height / c.width)
+      const ctx = copy.getContext('2d')!; ctx.drawImage(c, 0, 0, copy.width, copy.height)
+      const x0 = Math.max(0, Math.floor(((box.left - r.left) / r.width - 0.05) * copy.width)), x1 = Math.min(copy.width, Math.ceil(((box.right - r.left) / r.width + 0.05) * copy.width))
+      const y0 = Math.max(0, Math.floor(((box.top - r.top) / r.height) * copy.height)), y1 = Math.min(copy.height, Math.ceil(((box.top - r.top) / r.height + 0.3) * copy.height))
+      return ctx.getImageData(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0)).data
+    }
+    const frames = (n: number) => new Promise<void>((ok) => { const f = (k: number) => (k ? requestAnimationFrame(() => f(k - 1)) : ok()); f(n) })
+    await frames(3)
+    const withFigure = grab()
+    await stage.show({ ...cfg, set: { ...cfg.set, layers: cfg.set.layers.filter((l: any) => !l.figure) } })
+    await frames(6)
+    const without = grab()
+    await stage.show(cfg)
+    let sum = 0
+    for (let i = 0; i < withFigure.length; i++) sum += Math.abs(withFigure[i] - without[i])
+    return { char, meanAbsDiff: sum / withFigure.length }
+  })
+  expect(diff, JSON.stringify(diff)).not.toHaveProperty('error')
+  expect((diff as { meanAbsDiff: number }).meanAbsDiff, 'the figure changes the pixels around its head').toBeGreaterThan(6)
+})
+
 test('the editor canvas draws the stage for a stage25d scene', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))

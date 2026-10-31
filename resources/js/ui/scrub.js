@@ -64,6 +64,8 @@ export function initScrub (root = document) {
     if (!handle) return
     const field = fieldFor(handle)
     if (!field || field.disabled) return
+    // A field that is being typed in keeps its own caret and selection: only an idle one scrubs.
+    if (e.target === document.activeElement) return
 
     const startValue = Number(field.value)
     if (!Number.isFinite(startValue)) return
@@ -97,7 +99,14 @@ export function initScrub (root = document) {
       window.removeEventListener('pointercancel', onUp)
       // Only a real drag saves. A stray press on a label must not write a value, and `change` is
       // what every one of these fields treats as "the number the teacher settled on".
-      if (dragged) field.dispatchEvent(new Event('change', { bubbles: true }))
+      if (dragged) {
+        field.dispatchEvent(new Event('change', { bubbles: true }))
+        // The release of a drag is not a click: a handle that focuses its field on click must not
+        // do it here. Swallow the one click that follows, and stop waiting if none comes.
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault() }
+        window.addEventListener('click', swallow, { capture: true, once: true })
+        setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0)
+      }
     }
 
     window.addEventListener('pointermove', onMove)

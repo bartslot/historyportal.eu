@@ -27,6 +27,7 @@ import {
   DRAG_THRESHOLD_PX, LANE_PAD_PX, zoomFromSlider, sliderFromZoom,
 } from './timeline-view.js'
 import { labelColumn } from './timeline-label-column.js'
+import { groupsFor, sectionKey, displayOf, toShown, fromShown, nudged, summaryTimes } from './timeline-groups.js'
 
 /** Figma's Bézier easing presets, by our easing.js names. 'hold' is Figma's Hold: a cut. */
 const EASING_PRESETS = [
@@ -356,9 +357,93 @@ export const animationTimeline = (config = {}) => ({
       !this.objects.some((o) => o.kind === 'dio' && this.dioramaClip(o.target))
   },
 
-  toggleGroup (target) {
-    this.openGroups[target] = !this.openGroups[target]
+  /**
+   * Open or close a layer. Alt/Option-click is After Effects' "expand all": it opens the layer AND
+   * every group under it, or, when all of that is already open, closes the layer.
+   */
+  toggleGroup (target, event = null) {
+    if (event?.altKey) {
+      const everything = this.openGroups[target] && this.groupsOf(target).every((g) => this.isSectionOpen(target, g.id))
+      this.openGroups[target] = !everything
+      for (const g of this.groupsOf(target)) this.openGroups[sectionKey(target, g.id)] = !everything
+    } else {
+      this.openGroups[target] = !this.openGroups[target]
+    }
     this.remember()
+  },
+
+  // ── Groups: layer > group > property, as in After Effects ───────────────────────────────────
+
+  groupLabel (group) { return config.groupLabels?.[group.id] ?? group.labelKey },
+
+  /** The object's groups, each with its rows. */
+  groupsOf (target) { return groupsFor(kindOfTarget(target)) },
+
+  /** A group is open unless the teacher closed it; the choice is remembered with the scene. */
+  isSectionOpen (target, groupId) { return this.openGroups[sectionKey(target, groupId)] !== false },
+
+  /** Alt/Option-click flips every group of the layer to the opposite of the one clicked. */
+  toggleSection (target, groupId, event = null) {
+    const open = !this.isSectionOpen(target, groupId)
+    const ids = event?.altKey ? this.groupsOf(target).map((g) => g.id) : [groupId]
+    for (const id of ids) this.openGroups[sectionKey(target, id)] = open
+    this.remember()
+  },
+
+  /** Moments any row of the group is keyed at: the summary diamonds shown while it is closed. */
+  sectionKeyTimes (target, groupId) {
+    const group = this.groupsOf(target).find((g) => g.id === groupId)
+    return summaryTimes((group?.props ?? []).map((p) => this.keysOf(target, p.key)))
+  },
+
+  /** How many rows of the group are animated, for the header's quiet count. */
+  sectionAnimated (target, groupId) {
+    const group = this.groupsOf(target).find((g) => g.id === groupId)
+    return (group?.props ?? []).filter((p) => this.isAnimated(target, p.key)).length
+  },
+
+  // ── The value field: what the teacher reads, in the unit the Format panel uses ─────────────
+
+  displayFor (target, property) { return displayOf(kindOfTarget(target), property) },
+
+  /** The number shown for a property at the playhead (opacity 0.5 reads 50). */
+  shownValue (target, property) {
+    return toShown(this.valueAt(target, property), this.displayFor(target, property))
+  },
+
+  unitOf (target, property) { return this.displayFor(target, property).unit },
+
+  /**
+   * A number typed or scrubbed in the field. The same path as every other value edit (setValue):
+   * the canvas follows at once, and on an animated property it becomes a keyframe at the playhead.
+   * `flush: false` is the live drag; the release saves once.
+   */
+  commitShown (target, property, raw, { flush = true } = {}) {
+    const value = fromShown(raw, this.displayFor(target, property))
+    if (value === null) return
+    this.setValue(target, property, value, { flush })
+  },
+
+  /** Arrow keys in the field: a step, ten with Shift, a tenth with Alt. One press, one save. */
+  valueKey (event, target, property) {
+    if (event.key === 'Enter') { event.target.blur(); return }
+    const direction = { ArrowUp: 1, ArrowDown: -1 }[event.key]
+    if (!direction || event.metaKey || event.ctrlKey) return
+    event.preventDefault()
+    const display = this.displayFor(target, property)
+    const next = nudged(toShown(this.valueAt(target, property), display), direction, display, { shift: event.shiftKey, alt: event.altKey })
+    event.target.value = String(next)
+    this.commitShown(target, property, next)
+  },
+
+  /**
+   * The stopwatch: animate this property, or stop animating it. Off → on keys it at the playhead;
+   * on → off takes its keys away and returns it to what it was (Reset), which the next undo gives back.
+   */
+  toggleAnimated (target, property) {
+    if (this.canReset(target, property)) this.resetProperty(target, property)
+    else this.toggleKey(target, property)
+    this.announce()
   },
 
   /** Are any groups open? Drives whether the collapse-all button collapses or expands. */

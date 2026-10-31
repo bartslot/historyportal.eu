@@ -266,8 +266,24 @@ class OpenAiImageService
      * Restyle a data "sketch" (coastlines/rivers/lakes/mountains rendered from real geo data) into
      * the hand-drawn map artwork via the images/edits endpoint. The sketch conditions the model so
      * the artwork follows real geography; the prompt carries the style. Returns raw PNG bytes.
+     * Also the History Lines restyle call ({@see \App\Services\Art\ImageRestyler}): $extra adds fields such as quality.
+     *
+     * @param  array<string, string|int>  $extra
      */
-    public function editFromSketch(string $sketchBytes, string $prompt, string $size = '1536x1024', bool $transparent = true): string
+    public function editFromSketch(string $sketchBytes, string $prompt, string $size = '1536x1024', bool $transparent = true, array $extra = []): string
+    {
+        return $this->editImages([['bytes' => $sketchBytes, 'name' => 'sketch.png']], $prompt, $size, $transparent, $extra);
+    }
+
+    /**
+     * images/edits with one or more input images: the first is the one being edited, the rest are
+     * style references (the model sees them in order, "reference image 1, 2, ..."). Returns raw bytes.
+     *
+     * @param  list<array{bytes: string, name: string}>  $images
+     * @param  array<string, string|int>  $extra
+     * @param  array<string, mixed>|null  $usage  filled with the response's `usage` block (tokens) when present
+     */
+    public function editImages(array $images, string $prompt, string $size = '1536x1024', bool $transparent = false, array $extra = [], ?array &$usage = null): string
     {
         $base = (string) config('services.openai.base_url');
         $key = (string) config('services.openai.image_api_key');
@@ -279,17 +295,20 @@ class OpenAiImageService
             'prompt' => $prompt,
             'size' => $size,
             'n' => 1,
-        ];
+        ] + $extra;
         if ($transparent) {
             $fields['background'] = 'transparent';
             $fields['output_format'] = 'png';
         }
 
         try {
-            $response = Http::withToken($key)
-                ->timeout((int) config('services.openai.timeout', 120))
-                ->attach('image', $sketchBytes, 'sketch.png', ['Content-Type' => 'image/png'])
-                ->post(rtrim($base, '/').'/images/edits', $fields);
+            $request = Http::withToken($key)->timeout((int) config('services.openai.image_timeout', 180));
+            $field = count($images) > 1 ? 'image[]' : 'image';
+            foreach ($images as $image) {
+                $mime = str_ends_with($image['name'], '.jpg') ? 'image/jpeg' : (str_ends_with($image['name'], '.webp') ? 'image/webp' : 'image/png');
+                $request = $request->attach($field, $image['bytes'], $image['name'], ['Content-Type' => $mime]);
+            }
+            $response = $request->post(rtrim($base, '/').'/images/edits', $fields);
         } catch (\Throwable $e) {
             throw new RuntimeException('Image edit request failed: '.$e->getMessage(), previous: $e);
         }
@@ -298,6 +317,7 @@ class OpenAiImageService
             throw new RuntimeException("Image edit API returned {$response->status()}: {$response->body()}");
         }
 
+        $usage = (array) ($response->json('usage') ?? []);
         $b64 = $response->json('data.0.b64_json');
         if (is_string($b64) && $b64 !== '' && ($bytes = base64_decode($b64, true)) !== false && $bytes !== '') {
             return $bytes;

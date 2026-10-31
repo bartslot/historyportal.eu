@@ -41,13 +41,13 @@
      does not already do. Clicking anywhere in the left cell opens the picker. --}}
 {{-- Stock DaisyUI `input` in its label form: the theme draws the border, background and focus
      ring for the whole control, and the swatch, hex and strength sit inside it as one field. --}}
-<div {{ $attributes->class(['input input-xs flex items-center gap-2 px-2']) }}
+<div {{ $attributes->class(['input input-xs flex items-center gap-2 px-2']) }} data-color-field
      style="height: var(--settings-panel-row-h, 2rem)">
 
     <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
         {{-- Unset reads as unset: the swatch shows the checker a transparent colour always means,
              not a blue nobody chose. --}}
-        <span class="relative h-[18px] w-6 shrink-0 overflow-hidden rounded-sm ring-1 ring-inset ring-base-content/15"
+        <span data-color-swatch class="relative h-[18px] w-6 shrink-0 overflow-hidden rounded-sm ring-1 ring-inset ring-base-content/15"
               @if ($isSet)
                   style="background: {{ $swatch }}"
               @else
@@ -63,14 +63,13 @@
                    @if ($keyframeTarget) data-key-target="{{ $keyframeTarget }}" data-key-property="{{ $colorProperty }}" @endif
                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </span>
-        <span class="flex min-w-0 items-baseline gap-0.5">
-            @if ($isSet)
-                <span class="text-xs font-semibold text-panel-label">#</span>
-                <span class="truncate text-xs tracking-wide text-panel-value">{{ $hex }}</span>
-            @else
-                <span class="truncate text-xs tracking-wide text-panel-label">{{ __('None') }}</span>
-            @endif
+        {{-- Both readouts are always in the markup and `hidden` picks one, so the picker's live drag
+             (resources/js/ui/color-field.js) can show a colour on a field that had none. --}}
+        <span class="flex min-w-0 items-baseline gap-0.5" data-color-set @unless ($isSet) hidden @endunless>
+            <span class="text-xs font-semibold text-panel-label">#</span>
+            <span class="truncate text-xs tracking-wide text-panel-value" data-color-hex>{{ $isSet ? $hex : '' }}</span>
         </span>
+        <span class="truncate text-xs tracking-wide text-panel-label" data-color-unset @if ($isSet) hidden @endif>{{ __('None') }}</span>
     </label>
 
     <label class="flex shrink-0 cursor-text items-center gap-0.5 border-l border-panel-hairline pl-2">

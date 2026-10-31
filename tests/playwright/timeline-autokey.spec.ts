@@ -104,7 +104,7 @@ async function openTimeline(page: Page) {
 
 const diamonds = (page: Page, row: string) => page.locator(`[data-timeline-diamond="${row}"]`);
 const valueField = (page: Page, row: string) =>
-  page.locator(`label:has([data-timeline-key="${row}"]) [data-timeline-value]`);
+  page.locator(`[data-timeline-row]:has([data-timeline-key="${row}"]) [data-timeline-value]`);
 const timeMs = async (page: Page) => Number(await page.locator('[data-timeline-time]').inputValue());
 
 /** Type a number into a row the way a hand does: select what is there, type, commit with Tab. */

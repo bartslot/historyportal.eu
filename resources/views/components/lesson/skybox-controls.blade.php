@@ -335,6 +335,11 @@
                           class="textarea textarea-sm textarea-bordered mt-1 w-full bg-slate-900"></textarea>
             </div>
 
+            {{-- Restyle: redo this picture in the History Lines style (any source, not on split panels) --}}
+            @if ($backgroundImageUrl && ! $split)
+                <x-lesson.restyle-control kind="scene" :id="$scene->id" :restyle="\App\Models\ImageRestyle::latestFor($scene)" />
+            @endif
+
             {{-- Paintings (curated public-domain / museum works) as the background image --}}
             <div x-show="imgSrc === 'paintings'" x-cloak class="space-y-1.5">
                 {{-- NOT gated on $isBusy. A narration scene only reaches 'ready' with script + image

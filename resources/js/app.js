@@ -22,6 +22,7 @@ import { resizeHandle, onResize } from './ui/resize-handle.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
 import { initKeyedFields } from './ui/keyed-fields.js';
+import { initColorFields } from './ui/color-field.js';
 import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
@@ -115,6 +116,7 @@ initScrub();
 
 // Format-panel fields of a keyframed property show and record the value at the playhead.
 initKeyedFields();
+initColorFields();
 
 // The panel sliders paint their fill INTO the track (see .range-panel in app.css), so the stop
 // position has to follow the value. Server-rendered for the first frame; this handles the drag.
