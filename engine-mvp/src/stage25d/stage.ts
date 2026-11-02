@@ -266,6 +266,12 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
+  /** How high a built layer's anchor (its feet) stands above the floor now, in metres: 0 on the ground, more for a
+   *  picture lifted into the far landscape (set.horizon) or by its own y. */
+  layerFootY(index: number): number {
+    return this.built.find((n) => n.index === index)?.handle.mesh.position.y ?? 0
+  }
+
   /** The pointer's ray in world space (origin and direction), for finding the floor cell under it. */
   pointerRay(x: number, y: number): { origin: [number, number, number]; dir: [number, number, number] } {
     const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.camera)

@@ -28,11 +28,13 @@ const X_MAX = 2
  * @param {(index: number, property: string, value: number) => void} c.onChange
  * @param {(index: number) => boolean} c.onGround              the layer stands on the ground (not a backdrop)
  * @param {(index: number) => boolean} c.byDistance            resizing moves it in distance, not in scale
- * @param {(x: number, y: number) => number[] | null} c.groundUnder   the ground point [x, z] in metres under a canvas point
+ * @param {(x: number, y: number, lift?: number) => number[] | null} c.groundUnder   the ground point [x, z] in metres under a
+ *        canvas point (on the plane `lift` metres up, where a lifted picture's feet stand)
+ * @param {(index: number) => number} [c.footY]                 how high a layer's feet stand now
  * @param {() => number[]} c.eye                                where the camera stands on the ground, [x, z]
  * @param {(index: number) => void} [c.onSettled]               a drag along the ground ended
  */
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, eye = () => [0, 0], onSettled = () => {} }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {} }) {
   let selected = null
   let drag = null
   let hoverQueued = false
@@ -150,7 +152,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     drag = {
       mode: 'move', index: hit.index, z: b.z, from: stage().worldXAt(x, y, b.z), x0: valueOf(hit.index, 'x'), id: e.pointerId, el: canvas,
       // on the ground the feet (bottom middle of the box) follow the pointer at the offset where it was grabbed
-      ground, start: [x, y], foot: r ? [r.left + r.width / 2, r.top + r.height] : [x, y],
+      ground, start: [x, y], foot: r ? [r.left + r.width / 2, r.top + r.height] : [x, y], lift: ground ? footY(hit.index) : 0,
     }
     canvas.setPointerCapture?.(e.pointerId)
   }
@@ -180,10 +182,10 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     const { x, y } = local(e)
     if (drag?.mode === 'move' && drag.ground) {
       // Slide along the ground: the feet go where the pointer moved them on screen, onto the ground there, snapped.
-      const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1])
+      const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1], drag.lift)
       if (!at) return   // no ground under the feet (above the horizon): it stays put
       const to = layerOf(settle(at))
-      onChange(drag.index, 'x', to.x)
+      onChange(drag.index, 'x', clampTo(to.x, X_MIN, X_MAX))   // the server's range: far off to the side is off the stage
       onChange(drag.index, 'z', to.z)
       showChip(drag.index)
       return

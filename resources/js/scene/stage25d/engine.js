@@ -18,7 +18,7 @@ import { libraryUrl } from './config.js'
 import { layerLabel } from './labels.js'
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
-import { groundUnderRay, settle, groundOf, layerOf, alongSight } from './floor.js'
+import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
@@ -167,7 +167,8 @@ export async function createStage25d (host, opts = {}) {
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
           onGround, byDistance,
-          groundUnder: (x, y) => groundUnderRay(stage.pointerRay(x, y)),
+          groundUnder: (x, y, lift) => groundUnderRay(stage.pointerRay(x, y), lift),
+          footY: (i) => stage.layerFootY(i),
           eye,
           onSettled: (i) => api.settleBand(i),
           onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
@@ -274,30 +275,29 @@ export async function createStage25d (host, opts = {}) {
      * and the stage rebuilds from what the server sends back.
      */
     reorderLayers (order, moved, call) {
-      const at = order.indexOf(moved)
+      if (!onGround(moved)) { call(order, moved, api.sceneId, null, null, null); return }   // strips and sky pictures restack by band
       const zOf = (i) => layers[i]?.z ?? DEPTH_Z[layers[i]?.depth]
-      const front = order[at - 1]
-      const back = order[at + 1]
-      const ground = (i) => i === undefined || onGround(i)
-      // On the ground, "in front of that one" means standing nearer than it: a distance between its neighbours, keeping
-      // the picture's column across the screen and its apparent size (the scale takes up what the distance changes).
-      if (onGround(moved) && ground(front) && ground(back) && (front !== undefined || back !== undefined)) {
-        const z = zNow(moved)
-        const lo = front === undefined ? 0 : zOf(front)
-        const hi = back === undefined ? Infinity : zOf(back)
-        if (z < lo || z > hi) {
-          const p = groundOf(layerAt(layers[moved], nowT()).x, z)
-          const [, nz] = settle([p[0], front === undefined ? hi / 1.25 : back === undefined ? lo * 1.25 : (lo + hi) / 2])
-          const e = eye()
-          const k = (nz - e[1]) / Math.max(0.1, z - e[1])
-          call(order, moved, api.sceneId, layerOf(alongSight(p, nz, e)).x, nz, round3(Math.min(20, Math.max(0.01, (layers[moved].scale ?? 1) * k))))
-          return
-        }
-        // already between them: only the order changes; its distance is saved as it is (a scene from before z gets one)
-        call(order, moved, api.sceneId, layers[moved].x ?? 0.5, zOf(moved), layers[moved].scale ?? 1)
+      // its neighbours on the ground (a strip or a sky picture in between has no distance to stand between)
+      const onGroundOrder = order.filter((i) => i === moved || onGround(i))
+      const at = onGroundOrder.indexOf(moved)
+      const front = onGroundOrder[at - 1]
+      const back = onGroundOrder[at + 1]
+      const z = zNow(moved)
+      const lo = front === undefined ? 0 : zOf(front)
+      const hi = back === undefined ? Infinity : zOf(back)
+      if ((front !== undefined || back !== undefined) && (z < lo || z > hi)) {
+        // On the ground, "in front of that one" means standing nearer than it: a distance between its neighbours (not
+        // snapped: a snap could carry it past one), keeping its column across the screen and its apparent size.
+        const p = groundOf(layerAt(layers[moved], nowT()).x, z)
+        const to = front === undefined ? hi / 1.25 : back === undefined ? lo * 1.25 : (lo + hi) / 2
+        const nz = Math.round(Math.min(GROUND.cells[1][1], Math.max(GROUND.cells[0][1], to)) * 100) / 100
+        const e = eye()
+        const k = (nz - e[1]) / Math.max(0.1, z - e[1])
+        call(order, moved, api.sceneId, layerOf(alongSight(p, nz, e)).x, nz, round3(Math.min(20, Math.max(0.01, (layers[moved].scale ?? 1) * k))))
         return
       }
-      call(order, moved, api.sceneId, null, null, null)   // the server restacks; the stage rebuilds from the scene it sends back
+      // already between them: only the order changes; its place is saved as it is (a scene from before z gets one)
+      call(order, moved, api.sceneId, layers[moved].x ?? 0.5, zOf(moved), layers[moved].scale ?? 1)
     },
     /** The library on stage, for the asset browser: [{ id, layer, file, url, label }]. */
     library () {

@@ -169,7 +169,7 @@ trait EditsStage25d
         $ref = $order[$at + 1] ?? ($order[$at - 1] ?? null);
         $from = $layers[$moved]['depth'] ?? 'mid';
         $to = $ref !== null ? ($layers[$ref]['depth'] ?? $from) : $from;
-        if ($z === null && $from !== 'sky' && in_array($to, LayerKeys::DEPTHS, true) && $to !== $from) {
+        if ($z === null && ! isset($layers[$moved]['z']) && $from !== 'sky' && in_array($to, LayerKeys::DEPTHS, true) && $to !== $from) {
             $layers[$moved]['depth'] = $to;
             // The browser knows where the picture is on screen and sends the x and scale that keep it there; without them, keep its size.
             $layers[$moved] = [...$layers[$moved], ...LayerKeys::clean(['scale' => $scale ?? ($layers[$moved]['scale'] ?? 1.0) * self::DEPTH_Z[$to] / self::DEPTH_Z[$from], 'x' => $x ?? ($layers[$moved]['x'] ?? 0.5)])];

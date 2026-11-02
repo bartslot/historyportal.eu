@@ -324,4 +324,12 @@ describe('distance on the ground (layer.z)', () => {
   it('names the band of a distance', () => {
     expect([3, 7, 22, 70].map(bandOf)).toEqual(['near', 'fg', 'mid', 'bg'])
   })
+  it('rises into the far landscape with its distance, never in a jump; a band without z stands where it did', () => {
+    const at = (z?: number, depth = 'mid') => placeLayer(asset, { depth, x: 0.5, z, scale: 1 } as any, 0, 10).y
+    expect(at(22)).toBe(0)
+    expect(at(46)).toBeCloseTo(5)          // halfway from the middle band to the far one: half the horizon
+    expect(at(39.1)).toBeCloseTo(at(39.3, 'bg'), 1)   // crossing into the bg band moves it by a hair, not by the horizon
+    expect(at(undefined, 'bg')).toBe(10)   // old bg pictures: the whole horizon, as before
+    expect(at(undefined, 'fg')).toBe(0)
+  })
 })

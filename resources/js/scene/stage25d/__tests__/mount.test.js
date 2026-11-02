@@ -176,12 +176,25 @@ describe('stage25d distance on the ground', () => {
     const call = vi.fn()
     stage.reorderLayers([0, 1], 0, call)   // layer 0 to the front, ahead of the one at 8 m
     const [, , , x, z, scale] = call.mock.calls[0]
-    expect(z).toBeCloseTo(6.5)          // 8 / 1.25 = 6.4, snapped to the quarter metre
+    expect(z).toBe(6.4)                 // 8 / 1.25, not snapped: a snap could carry it past its neighbour
     expect(x).toBeCloseTo(0.7, 3)       // the camera stands at the middle: the same share of the view is the same column
-    expect(scale).toBeCloseTo(6.5 / 20)
+    expect(scale).toBeCloseTo(6.4 / 20)
     call.mockClear()
     stage.reorderLayers([1, 0], 0, call)   // already behind it: only the order changes, its place is saved as it is
     expect(call.mock.calls[0].slice(3)).toEqual([0.7, 20, 1])
+  })
+
+  it('a strip in the list between two ground pictures is skipped: the neighbours on the ground decide', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    const lib = calls.stage.lib
+    lib.assets.push({ id: 'strip', layer: 'bg', height_m: 20 })
+    await stage.show(cfg({ set: { layers: [fig({ x: 0.5, z: 30 }), { asset: 'strip', depth: 'bg', x: 0.5 }, fig({ x: 0.5, z: 10 })] } }))
+    const call = vi.fn()
+    stage.reorderLayers([2, 0, 1], 0, call)   // layer 0 dropped between the 10 m one and the strip, at the back of the ground
+    expect(call.mock.calls[0].slice(3)).toEqual([0.5, 30, 1])   // already behind the 10 m one: nothing changes but the order
+    call.mockClear()
+    stage.reorderLayers([0, 1, 2], 1, call)   // the strip itself restacks by its band, as before
+    expect(call.mock.calls[0].slice(3)).toEqual([null, null, null])
   })
 })
 

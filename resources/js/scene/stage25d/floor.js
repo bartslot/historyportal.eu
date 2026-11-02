@@ -20,11 +20,12 @@ export const snapStepAt = (z) => gridStep(z) / 4
 
 /**
  * Pointer ray → the ground point under it [x, z] in metres, unsnapped. Null when the ray never meets the ground in
- * front of the camera (the pointer above the horizon): the picture stays put.
+ * front of the camera (the pointer above the horizon): the picture stays put. `lift`: the height the picture's feet
+ * stand at (a picture rising into the far landscape): the ray meets that plane instead.
  * @param {{origin: number[], dir: number[]}} ray
  */
-export function groundUnderRay (ray) {
-  const t = (GROUND.z - ray.origin[1]) / ray.dir[1]
+export function groundUnderRay (ray, lift = 0) {
+  const t = (GROUND.z + lift - ray.origin[1]) / ray.dir[1]
   if (!Number.isFinite(t) || t <= 0) return null
   return worldToCell(GROUND, [ray.origin[0] + t * ray.dir[0], ray.origin[2] + t * ray.dir[2]])
 }

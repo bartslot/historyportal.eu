@@ -116,4 +116,17 @@ class GroundDistanceTest extends TestCase
 
         $this->assertEquals([0.75, 5.5, 0.15, 'fg'], [$stone['x'], $stone['z'], $stone['scale'], $stone['depth']]);
     }
+
+    public function test_a_list_drag_never_copies_a_band_onto_a_picture_that_has_a_distance(): void
+    {
+        [$stage] = GroundDistance::fill($this->stage());
+        $scene = $this->scene($stage);
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
+
+        // the stone (22 m) dropped right in front of the hills strip, with no distance sent: it stays where it stands
+        $editor->call('reorderStage25dLayers', [2, 1, 0, 3], 1, $scene->id);
+        $stone = collect($scene->fresh()->config['stage25d']['set']['layers'])->firstWhere('asset', 'stone-chamber-01');
+
+        $this->assertEquals([0.75, 22, 0.6, 'mid'], [$stone['x'], $stone['z'], $stone['scale'], $stone['depth']]);
+    }
 }

@@ -52,6 +52,10 @@ export function bandOf(z: number): Exclude<Depth, 'sky'> {
 /** A layer's distance from the camera in metres: its own z, else its depth band's (scenes saved before z look the same). */
 export const distanceOf = (layer: Pick<SceneLayer, 'depth' | 'z'>): number => layer.z ?? DEPTH_Z[layer.depth]
 
+/** How much of set.horizon a picture on the ground stands higher at distance z: none up to the middle band (22 m), all
+ *  of it at the far band (70 m) and beyond. A picture without z sits at its band, so old scenes stand where they did. */
+export const horizonLift = (z: number): number => Math.min(1, Math.max(0, (z - DEPTH_Z.mid) / (DEPTH_Z.bg - DEPTH_Z.mid)))
+
 export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number; rotation: number }
 
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
@@ -82,8 +86,10 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const natW = h * (asset.w / asset.h)
   const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
-  // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
-  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : depth === 'bg' ? horizon : 0
+  // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance; the far landscape
+  // stands `horizon` higher, and a picture on the ground rises into it with its distance (horizonLift), never in a jump
+  const lift = asset.layer === 'bg' ? (depth === 'bg' ? 1 : 0) : horizonLift(distanceOf(layer))
+  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : lift * horizon
   return { x, y: y + (layer.y ?? 0), z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex, rotation: layer.rotation ?? 0 }
 }
 

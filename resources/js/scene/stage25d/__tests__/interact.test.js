@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 // the house view: 2 m wide per metre of distance, to keep the numbers readable
-vi.mock('@stage25d/stage25d/layout', () => ({ GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
+vi.mock('@stage25d/stage25d/layout', async (importOriginal) => ({ ...(await importOriginal()), GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
 
 const { attachInteraction } = await import('../interact.js')
 
@@ -27,6 +27,7 @@ function setup (over = {}) {
   const api = attachInteraction({
     canvas, host, stage: () => stage, valueOf: (i, prop) => values[prop], alpha: { opaque }, onChange, onSettled,
     onGround: over.onGround ?? (() => false), byDistance: over.byDistance ?? (() => false), groundUnder: over.groundUnder ?? (() => null),
+    footY: over.footY ?? (() => 0),
   })
   return { canvas, host, stage, onChange, onSettled, api }
 }
@@ -129,6 +130,14 @@ describe('stage25d canvas interaction', () => {
     expect(onChange.mock.calls[5][2]).toBeLessThan(10)
     canvas.dispatchEvent(pointer('pointerup', 241, 150))
     expect(onSettled).toHaveBeenCalledWith(2)
+  })
+
+  it('a picture standing higher (in the far landscape) is moved on the plane its feet stand on', () => {
+    const lifts = []
+    const { canvas } = setup({ onGround: () => true, footY: () => 3.5, groundUnder: (x, y, lift) => { lifts.push(lift); return [0, 50] } })
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))
+    canvas.dispatchEvent(pointer('pointermove', 200, 90))
+    expect(lifts).toEqual([3.5])
   })
 
   it('no ground under the feet (above the horizon): the picture stays put', () => {
