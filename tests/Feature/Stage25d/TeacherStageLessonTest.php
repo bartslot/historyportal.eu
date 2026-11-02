@@ -44,7 +44,7 @@ class TeacherStageLessonTest extends TestCase
             $asset('sky-summer-01', 'sky', ['sky', 'summer']),
             $asset('sky-autumn-01', 'sky', ['sky', 'autumn']),
             $asset('bg-farmland-01', 'bg', ['fields', 'farm']),
-            $asset('meadow-band-01', 'mid', ['meadow', 'ground'], ['height_m' => 22.8]),
+            $asset('meadow-band-01', 'mid', ['meadow', 'ground'], ['height_m' => 22.8, 'w' => 1536, 'h' => 599]),
             $asset('hunebed-long-01', 'mid', ['hunebed', 'dolmen', 'stones']),
             $asset('house-trb-01', 'mid', ['house', 'farmhouse']),
             $asset('cow-01', 'prop', ['cow', 'cattle']),

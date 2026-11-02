@@ -82,7 +82,7 @@ final class StageSet
     {
         $sky = self::best($assets->where('layer', 'sky'), $words, fallback: true);
         $far = self::best($assets->where('layer', 'bg'), $words, fallback: true);
-        $band = self::best($assets->where('layer', 'mid')->filter(fn ($a) => self::isGround($a) && (float) ($a['height_m'] ?? 0) >= 2), $words, fallback: true);
+        $band = self::best($assets->filter(fn ($a) => LibraryBundle::isGroundBand($a)), $words, fallback: true);
 
         return array_filter([
             'sky' => $sky['id'] ?? null,

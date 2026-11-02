@@ -1386,10 +1386,19 @@
             sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
             replace(kind) { this.sync(); this.query = ''; this.kind = this.kinds.includes(kind) ? kind : 'all'; },
-            get kinds() { return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))]; },
+            // A ground band takes only strips of ground and the sky only skies (the stage refuses anything else): selected,
+            // those are the one shelf. Everything else picks from every shelf.
+            get kinds() {
+                if (/^band-\d+$/.test(String(this.selected))) return ['band'];
+                if (this.selected === 'sky') return ['sky'];
+                return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))];
+            },
+            /** The shelf on show: the chosen one when the selection takes it, else the selection's own. */
+            get active() { return this.kinds.includes(this.kind) ? this.kind : this.kinds[0]; },
             get shown() {
                 const q = this.query.trim().toLowerCase();
-                return (this.lib?.assets ?? []).filter((a) => (this.kind === 'all' || a.layer === this.kind)
+                const kind = this.active;
+                return (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.layer === kind))
                     && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
             },
             pick(asset) {

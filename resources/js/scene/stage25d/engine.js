@@ -11,7 +11,7 @@ import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
-import { layerAt, bandOf, DEPTH_Z, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { layerAt, bandOf, DEPTH_Z, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
@@ -308,7 +308,7 @@ export async function createStage25d (host, opts = {}) {
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
         const a = assets.get(band.asset)
-        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: a?.layer ?? null, fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: motionOf(band, a) }
+        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: 'band', fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: motionOf(band, a) }
       }
       const l = layers[layerIndex(id)]
       if (!l) return null
@@ -374,7 +374,7 @@ export async function createStage25d (host, opts = {}) {
     library () {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
+      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
     },
     /** Put another picture on a layer: rebuilds the set (the one case that must), saved on the layer. */
     async swapAsset (id, assetId) {
@@ -388,7 +388,7 @@ export async function createStage25d (host, opts = {}) {
       const band = bands[bandIndex(id)]
       if (band) {
         const a = assets.get(assetId)
-        if (!a || ['sky', 'figure'].includes(a.layer) || band.asset === assetId) return
+        if (!a || !isBandPicture(a) || band.asset === assetId) return   // a band takes only a wide strip of ground (layout.ts isBandPicture)
         const n = Number(id.slice(5))
         const groundBands = bands.map((g, k) => (k === n ? { ...g, asset: assetId } : g))
         await api.show({ ...cfg, set: { ...liveSet(), groundBands } })

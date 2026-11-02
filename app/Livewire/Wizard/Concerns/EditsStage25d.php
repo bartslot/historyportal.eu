@@ -53,10 +53,9 @@ trait EditsStage25d
                 return;
             }
             $band = $scene->config['stage25d']['set']['groundBands'][$at];
-            $asset = $patch['band']['asset'] ?? null;
-            $layer = is_string($asset) ? LibraryBundle::assetLayer($bundle, $asset) : null;
-            if ($layer !== null && ! in_array($layer, ['sky', 'figure'], true)) {
-                $band['asset'] = $asset;
+            $asset = is_string($patch['band']['asset'] ?? null) ? LibraryBundle::asset($bundle, $patch['band']['asset']) : null;
+            if ($asset !== null && LibraryBundle::isGroundBand($asset)) {   // a band takes only a strip of ground
+                $band['asset'] = $asset['id'];
             }
             $this->storeStage25dSetPart($scene, ['groundBands', $at], [...$band, ...self::backdropValues($patch['band'], self::BAND_FIELDS)]);
 

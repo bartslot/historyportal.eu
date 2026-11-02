@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOf, bandPose, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bandOf, bandPose, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -423,5 +423,15 @@ describe('the sky picture with the teacher\'s Height', () => {
     const up = placeLayer(sky, { depth: 'sky', y: 4 }, 0)
     expect(up.y - at.y).toBeCloseTo(4)
     expect([up.w, up.h, up.z]).toEqual([at.w, at.h, at.z])
+  })
+})
+
+describe('a ground band\'s picture (isBandPicture)', () => {
+  const a = (over: object) => ({ id: 'x', layer: 'mid', file: 'x.webp', w: 1536, h: 599, height_m: 22.8, tags: ['meadow', 'ground'], ...over }) as never
+  it('is a wide strip of ground', () => expect(isBandPicture(a({}))).toBe(true))
+  it('is never a far plate, a plant or a floor tile', () => {
+    expect(isBandPicture(a({ layer: 'bg' }))).toBe(false)             // seen 70 m off: in a band a close-up of its land
+    expect(isBandPicture(a({ w: 500, h: 600, height_m: 2.5 }))).toBe(false)   // three views wide it would fill the view
+    expect(isBandPicture(a({ tileable_x: true }))).toBe(false)
   })
 })

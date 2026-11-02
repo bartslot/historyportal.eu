@@ -42,6 +42,34 @@ final class LibraryBundle
             ->mapWithKeys(fn ($a) => [(string) ($a['id'] ?? '') => (string) ($a['layer'] ?? 'mid')])->all());
     }
 
+    /** Tags that make a standing picture a strip of ground (engine-mvp stage25d/layout.ts GROUND_STRIP_TAGS). */
+    private const GROUND_STRIP_TAGS = ['ground', 'path', 'field', 'ramp', 'water'];
+
+    /** The least width-to-height of a band picture (layout.ts BAND_MIN_ASPECT): a band is three views wide. */
+    private const BAND_MIN_ASPECT = 2.0;
+
+    /**
+     * Can the picture be a ground band (set.groundBands)? A wide strip of land painted to stand on the floor (layout.ts
+     * isBandPicture). A far backdrop plate is not: painted to be seen 70 m off, as a band it is a close-up of its land;
+     * nor a single plant: three views wide, it would stand as tall as the view.
+     *
+     * @param  array<string,mixed>  $asset
+     */
+    public static function isGroundBand(array $asset): bool
+    {
+        return ! in_array($asset['layer'] ?? null, ['bg', 'sky', 'figure', 'ground'], true)
+            && empty($asset['tileable_x'])
+            && (float) ($asset['height_m'] ?? 0) >= 2
+            && array_intersect((array) ($asset['tags'] ?? []), self::GROUND_STRIP_TAGS) !== []
+            && (float) ($asset['w'] ?? 0) / max(1.0, (float) ($asset['h'] ?? 0)) >= self::BAND_MIN_ASPECT;
+    }
+
+    /** @return array<string,mixed>|null one asset of a bundle on the public disk */
+    public static function asset(string $bundle, string $assetId): ?array
+    {
+        return collect(self::assets($bundle))->firstWhere('id', $assetId);
+    }
+
     /** @return list<string> the bundles on the public disk */
     public static function names(): array
     {

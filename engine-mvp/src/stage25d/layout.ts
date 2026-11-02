@@ -76,6 +76,13 @@ const GROUND_STRIP_TAGS = ['ground', 'path', 'field', 'ramp', 'water']
 export const isGroundStrip = (a: Asset): boolean =>
   !['bg', 'sky', 'figure', 'ground'].includes(a.layer) && !a.tileable_x && a.height_m >= 2 && (a.tags ?? []).some((t) => GROUND_STRIP_TAGS.includes(t))
 
+/** The least width-to-height a ground band's picture has: a band is three views wide, so a narrower picture would stand
+ *  as tall as the whole view and fill the stage (a reed plant, a far plate's close-up). */
+export const BAND_MIN_ASPECT = 2
+
+/** Can a picture be a ground band (set.groundBands)? A wide painted strip of ground: not a far plate, not a plant. */
+export const isBandPicture = (a: Asset): boolean => isGroundStrip(a) && a.w / Math.max(1, a.h) >= BAND_MIN_ASPECT
+
 /** Where a ground strip's picture stands: like a ground band (its skyline on the crest, k x z up, the body below the
  *  floor where the floor hides it), but its bottom edge never above the floor line at its distance. */
 export const stripBottom = (z: number, k: number, h: number, skyline: number): number => Math.min(0, bandBottom(z, k, h, skyline))

@@ -75,9 +75,14 @@ describe('stage25d live edits', () => {
     expect(selected.at(-1)).toBe('s25_band-0')
     expect(stage.layerInfo('band-0')).toMatchObject({ backdrop: true, asset: 'meadow-band-01' })
 
-    calls.stage.lib.assets.push({ id: 'fig-x', layer: 'figure' }, { id: 'meadow-band-02', layer: 'mid' })
+    calls.stage.lib.assets.push({ id: 'fig-x', layer: 'figure' }, { id: 'bg-farmland-01', layer: 'bg', height_m: 78, tags: ['fields'] },
+      { id: 'reeds-01', layer: 'fg', height_m: 2.5, w: 500, h: 600, tags: ['reeds', 'water'] },
+      { id: 'meadow-band-02', layer: 'mid', height_m: 20, w: 1536, h: 599, tags: ['meadow', 'ground'] })
     await stage.show(cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 30 }], layers: [{ asset: 'a', depth: 'mid' }] } }))
     await stage.swapAsset('band-0', 'fig-x')   // a figure is never a landscape
+    await stage.swapAsset('band-0', 'bg-farmland-01')   // nor a far plate: in a band it is a close-up of its land
+    await stage.swapAsset('band-0', 'reeds-01')   // nor a plant: three views wide, it would stand as tall as the view
+    expect(stage.library().assets.filter((a) => a.band).map((a) => a.id)).toEqual(['meadow-band-02'])
     expect(saved).toEqual([])
     await stage.swapAsset('band-0', 'meadow-band-02')
     expect(saved).toEqual([[0, { band: { index: 0, asset: 'meadow-band-02' } }, 5]])

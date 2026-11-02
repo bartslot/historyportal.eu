@@ -130,8 +130,10 @@ class StageEditingTest extends TestCase
     {
         Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
             ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
-            ['id' => 'meadow-band-01', 'layer' => 'mid', 'file' => 'm.webp'],
-            ['id' => 'ground-heath-01', 'layer' => 'fg', 'file' => 'h.webp'],
+            ['id' => 'meadow-band-01', 'layer' => 'mid', 'file' => 'm.webp', 'tags' => ['meadow', 'ground'], 'height_m' => 22.8, 'w' => 1536, 'h' => 599],
+            ['id' => 'ground-heath-01', 'layer' => 'fg', 'file' => 'h.webp', 'tags' => ['ground', 'heath'], 'height_m' => 6.9, 'w' => 1536, 'h' => 574],
+            ['id' => 'reeds-01', 'layer' => 'fg', 'file' => 'r.webp', 'tags' => ['reeds', 'water'], 'height_m' => 2.5, 'w' => 500, 'h' => 600],
+            ['id' => 'bg-farmland-01', 'layer' => 'bg', 'file' => 'b.webp', 'tags' => ['fields', 'farm'], 'height_m' => 78.1],
             ['id' => 'fig-meisje-stand-01', 'layer' => 'figure', 'file' => 'f.webp'],
         ]]));
         $scene = $this->scene();
@@ -142,6 +144,8 @@ class StageEditingTest extends TestCase
 
         $editor->call('selectInspectorTarget', 's25_band-0')->assertSet('activeStage25dLayer', 'band-0');
         $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'asset' => 'fig-meisje-stand-01']], $scene->id);   // no figure as landscape
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'asset' => 'bg-farmland-01']], $scene->id);        // nor a far plate: a close-up of its land
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'asset' => 'reeds-01']], $scene->id);              // nor a plant: as tall as the view
         $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 3, 'asset' => 'ground-heath-01']], $scene->id);       // no such band
         $this->assertSame('meadow-band-01', $scene->fresh()->config['stage25d']['set']['groundBands'][0]['asset']);
 
@@ -149,6 +153,9 @@ class StageEditingTest extends TestCase
         $bands = $scene->fresh()->config['stage25d']['set']['groundBands'];
         $this->assertSame([['asset' => 'ground-heath-01', 'z' => 30]], $bands);
         $this->assertSame('stone-chamber-01', $scene->fresh()->config['stage25d']['set']['layers'][0]['asset'], 'the layers are untouched');
+
+        $editor->call('undoLastEdit');   // one undo: the old picture, where it stood
+        $this->assertSame([['asset' => 'meadow-band-01', 'z' => 30]], $scene->fresh()->config['stage25d']['set']['groundBands']);
     }
 
     public function test_a_ground_band_and_the_sky_take_size_distance_height_motion_and_keys_and_undo(): void

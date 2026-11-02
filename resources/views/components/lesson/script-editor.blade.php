@@ -86,8 +86,8 @@
              class="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2 pt-1">
             <div class="flex flex-wrap items-center gap-1.5">
                 <template x-for="k in kinds" :key="k">
-                    <button type="button" class="btn btn-xs" :class="kind === k ? 'btn-neutral' : 'btn-ghost'"
-                            x-on:click="kind = k" x-text="@js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters')])[k] ?? k"></button>
+                    <button type="button" class="btn btn-xs" :class="active === k ? 'btn-neutral' : 'btn-ghost'"
+                            x-on:click="kind = k" x-text="@js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands')])[k] ?? k"></button>
                 </template>
                 <input type="search" x-model="query" placeholder="{{ __('Search') }}" aria-label="{{ __('Search') }}"
                        class="input input-xs ml-auto w-40" />
