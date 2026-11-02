@@ -26,12 +26,12 @@
                 <img x-show="info?.file" :src="info?.file" alt="" class="max-h-full max-w-full object-contain" />
             </div>
             <button type="button" class="btn btn-sm btn-outline"
-                    x-on:click="$store.view.showTab('icons')">{{ __('Change picture') }}</button>
+                    x-on:click="$store.view.showTab('icons'); $nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: info?.role } })))">{{ __('Change picture') }}</button>
         </div>
 
         {{-- Where it stands: across the view, and how far along the ground in metres (drag it up the stage to send it
              back). A picture not on the ground (a strip, a sky picture) keeps its Y instead of a distance. --}}
-        <div class="mt-3 space-y-1" x-show="info?.id !== 'sky'">
+        <div class="mt-3 space-y-1" x-show="info && !info.backdrop">
             @foreach ([['x', __('X'), 0.01, 100, 'true'], ['z', __('Distance'), 0.25, 1, 'info?.ground'], ['y', __('Y'), 0.05, 1, '!info?.ground'], ['scale', __('Scale'), 0.05, 100, 'info?.showScale'], ['rotation', __('Angle'), 1, 1, 'true'], ['opacity', __('Opacity'), 0.05, 100, 'true']] as [$prop, $glyph, $step, $factor, $show])
                 <div x-show="{{ $show }}">
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
@@ -52,7 +52,7 @@
 
         <div class="divider my-2" role="presentation"></div>
 
-        <div class="space-y-1" x-show="info && info.id !== 'sky'">
+        <div class="space-y-1" x-show="info && !info.backdrop">
             <x-ui.panel-row :label="__('Motion')">
                 <select class="select select-xs w-full" data-stage25d-motion="kind"
                         x-on:change="setMotion({ kind: $event.target.value })">

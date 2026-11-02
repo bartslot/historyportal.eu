@@ -82,7 +82,7 @@
         </div>
         {{-- A stage25d scene draws from its own painted library, not from the icon sets. --}}
         <div x-show="$store.view.stage25d" x-cloak x-data="stage25dAssets()" data-stage25d-assets
-             x-on:stage25d-synced.window="sync()" x-on:scene-object-selected.window="sync()"
+             x-on:stage25d-synced.window="sync()" x-on:scene-object-selected.window="sync()" x-on:stage25d-replace.window="replace($event.detail?.kind)"
              class="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2 pt-1">
             <div class="flex flex-wrap items-center gap-1.5">
                 <template x-for="k in kinds" :key="k">

@@ -772,7 +772,7 @@ export const animationTimeline = (config = {}) => ({
     if (!stage) return
     const byLayer = keysFromTracks(this.tracks)
     for (const item of stage.items?.() ?? []) {
-      if (item.id !== 'camera' && item.id !== 'sky') stage.setLayerKeys(item.id, byLayer[item.id] ?? [])
+      if (item.id !== 'camera' && !item.backdrop) stage.setLayerKeys(item.id, byLayer[item.id] ?? [])
     }
   },
 
@@ -1715,7 +1715,7 @@ export const animationTimeline = (config = {}) => ({
   stage25dKeys () {
     const stage = window.__stage25d
     if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
-    const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera' && i.id !== 'sky')
+    const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera' && !i.backdrop)
     if (!items.length) return null
     const byLayer = keysFromTracks(this.tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))

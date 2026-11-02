@@ -33,8 +33,9 @@ const X_MAX = 2
  * @param {(index: number) => number} [c.footY]                 how high a layer's feet stand now
  * @param {() => number[]} c.eye                                where the camera stands on the ground, [x, z]
  * @param {(index: number) => void} [c.onSettled]               a drag along the ground ended
+ * @param {(x: number, y: number) => boolean} [c.onEmpty]       a press on no standing picture; true when it selected a backdrop
  */
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {} }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false }) {
   let selected = null
   let drag = null
   let hoverQueued = false
@@ -111,7 +112,10 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     if (e.button !== 0) return
     const { x, y } = local(e)
     const hit = pickAt(x, y)
-    if (!hit) return
+    if (!hit) {
+      if (onEmpty(x, y)) e.stopPropagation()   // a backdrop was selected: not "the scene"
+      return
+    }
     e.stopPropagation()   // the editor's "empty canvas = the scene is selected" press must not undo this selection
     select(hit.index, true)
     const b = stage().layerBox(hit.index)

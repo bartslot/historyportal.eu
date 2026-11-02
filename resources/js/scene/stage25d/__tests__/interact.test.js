@@ -27,7 +27,7 @@ function setup (over = {}) {
   const api = attachInteraction({
     canvas, host, stage: () => stage, valueOf: (i, prop) => values[prop], alpha: { opaque }, onChange, onSettled,
     onGround: over.onGround ?? (() => false), byDistance: over.byDistance ?? (() => false), groundUnder: over.groundUnder ?? (() => null),
-    footY: over.footY ?? (() => 0),
+    footY: over.footY ?? (() => 0), onEmpty: over.onEmpty,
   })
   return { canvas, host, stage, onChange, onSettled, api }
 }
@@ -155,6 +155,16 @@ describe('stage25d canvas interaction', () => {
     corner.dispatchEvent(pointer('pointerdown', 220, 185))   // box middle (80, 90) = page (180, 140)
     corner.dispatchEvent(pointer('pointermove', 260, 230))   // twice as far from the middle
     expect(onChange.mock.calls).toEqual([[2, 'x', 0.6], [2, 'z', 5]])   // [2, 10] m -> [1, 5] m: x share unchanged
+  })
+
+  it('a press on no standing picture asks for the backdrop there; the scene is not selected when it found one', () => {
+    const onEmpty = vi.fn(() => true)
+    const { canvas } = setup({ stage: { pickLayers: () => [] }, onEmpty })
+    const down = pointer('pointerdown', 150, 80)
+    const stop = vi.spyOn(down, 'stopPropagation')
+    canvas.dispatchEvent(down)
+    expect(onEmpty).toHaveBeenCalledWith(50, 30)
+    expect(stop).toHaveBeenCalled()
   })
 
   it('asks the stage to draw the ground grid while editing, and takes it away when done', () => {

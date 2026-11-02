@@ -79,7 +79,7 @@ export async function createStage25d (host, opts = {}) {
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
   let alpha = null
-  let skySelected = false    // the sky row is the selection (it has no box on the canvas)
+  let backdrop = null        // the backdrop row that is the selection: 'sky' or 'band-<n>' (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
   let pointer = null
   let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
@@ -121,6 +121,17 @@ export async function createStage25d (host, opts = {}) {
     const a = assets.get(layers[i]?.asset)
     return !!(layers[i] && a && (!a.tileable_x || a.layer === 'ground') && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
   }
+  /** Backdrop rows: the sky and the ground bands (set.groundBands, 'band-<n>'). */
+  const isBackdrop = (id) => id === 'sky' || !!bandOf_(id)
+  const bandOf_ = (id) => { const m = /^band-(\d+)$/.exec(String(id ?? '')); return m ? cfg?.set?.groundBands?.[Number(m[1])] ?? null : null }
+  /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
+   *  strip whose paint is there, else the sky. Selected like a row; null when there is nothing to select. */
+  const backdropAt = (x, y) => {
+    const hit = stage?.pickBackdrops?.(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v))
+    const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : (cfg?.set?.sky ? 'sky' : null)
+    if (id) api.select(id)
+    return !!id
+  }
   /** A painted strip of ground and a picture lying flat stand on the floor itself, not on the ground rising into the
    *  far landscape. */
   const floorOnly = (layer, a) => isGroundStrip(a) || liesFlat(layer, a)
@@ -160,7 +171,7 @@ export async function createStage25d (host, opts = {}) {
       alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
-        window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_sky') skySelected = false })
+        window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== `s25_${backdrop}`) backdrop = null })
         canvas.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes(DROP_TYPE)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } })
         canvas.addEventListener('drop', (e) => {
           const id = e.dataTransfer?.getData(DROP_TYPE)
@@ -179,6 +190,8 @@ export async function createStage25d (host, opts = {}) {
           footY: (i) => stage.layerFootY(i) - (onFloor(i) ? 0 : stage.groundHeightAt(zNow(i))),
           eye,
           onSettled: (i) => api.settleBand(i),
+          // a press on no standing picture selects the backdrop painted there: a ground band, a far strip, the sky
+          onEmpty: (x, y) => backdropAt(x, y),
           onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
         })
       }
@@ -237,13 +250,16 @@ export async function createStage25d (host, opts = {}) {
       if (window.__timelineKeying?.edit?.(`s25:${id}`, prop, value, { flush: false })) return
       api.commitLayerProp(id, prop, value)
     },
-    /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. */
+    /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. A backdrop row (the sky, a
+     *  ground band) has no box: it is the selection for the panel and the Assets tab. */
     select (id) {
-      skySelected = id === 'sky'
-      pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !skySelected)
-      if (skySelected) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 's25_sky' } }))
+      backdrop = isBackdrop(id) ? id : null
+      pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !backdrop)
+      if (backdrop) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${backdrop}` } }))
     },
-    get skySelected () { return skySelected },
+    get skySelected () { return backdrop === 'sky' },
+    /** The selected backdrop row ('sky', 'band-<n>'), or null. */
+    get backdrop () { return backdrop },
     get selection () { return pointer?.selected ?? null },
     /** Another scene is opening: nothing stays selected from the one before. */
     clearSelection () { pointer?.select(null) },
@@ -253,7 +269,12 @@ export async function createStage25d (host, opts = {}) {
     layerInfo (id) {
       if (id === 'sky') {
         const sky = skyAsset()
-        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: null } : null
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: null } : null
+      }
+      const band = bandOf_(id)
+      if (band) {
+        const a = assets.get(band.asset)
+        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: a?.layer ?? null, label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: null }
       }
       const l = layers[layerIndex(id)]
       if (!l) return null
@@ -261,7 +282,7 @@ export async function createStage25d (host, opts = {}) {
       const own = typeof l.motion === 'string' ? { kind: l.motion } : (l.motion ?? {})
       const base = asset?.motion ?? 'none'
       return {
-        id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null,
+        id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null, role: asset?.layer ?? null,
         ground: onGround(layerIndex(id)),
         showScale: !onGround(layerIndex(id)) || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined),
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
@@ -329,6 +350,18 @@ export async function createStage25d (host, opts = {}) {
         await api.show({ ...cfg, set: { ...cfg.set, sky: assetId, layers } })
         if (api.sceneId != null) opts.onCommit?.(0, { sky: assetId }, api.sceneId)
         window.dispatchEvent(new CustomEvent('stage25d-synced'))
+        return
+      }
+      const band = bandOf_(id)
+      if (band) {
+        const a = assets.get(assetId)
+        if (!a || ['sky', 'figure'].includes(a.layer) || band.asset === assetId) return
+        const n = Number(id.slice(5))
+        const groundBands = cfg.set.groundBands.map((g, k) => (k === n ? { ...g, asset: assetId } : g))
+        await api.show({ ...cfg, set: { ...cfg.set, groundBands, layers } })
+        if (api.sceneId != null) opts.onCommit?.(0, { band: { index: n, asset: assetId } }, api.sceneId)
+        window.dispatchEvent(new CustomEvent('stage25d-synced'))
+        api.select(id)
         return
       }
       const i = layerIndex(id)
@@ -421,12 +454,21 @@ export async function createStage25d (host, opts = {}) {
       return new DOMRect(r.left + head.x * r.width - w / 2, r.top + head.y * r.height, w, r.height * 0.08)
     },
     /** Rows for the object list and timeline: every layer, then the camera. */
-    items: () => [
-      ...numbered(layers.map((l, i) => layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`))
-        .map((label, i) => ({ id: `layer-${i}`, label, depth: layers[i].depth, z: layers[i].z ?? DEPTH_Z[layers[i].depth], keys: layers[i].keys ?? [] })),
-      ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [] }] : []),
-      { id: 'camera', label: 'Camera', depth: null, keys: [] },
-    ],
+    items: () => {
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      const bands = cfg?.set?.groundBands ?? []
+      // one numbering over the layers and the painted landscape (ground bands, nearest first): no two rows read alike
+      const labels = numbered([
+        ...layers.map((l, i) => layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`),
+        ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
+      ])
+      return [
+        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
+        ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], depth: 'bg', z: g.z, keys: [], backdrop: true })),
+        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [], backdrop: true }] : []),
+        { id: 'camera', label: 'Camera', depth: null, keys: [] },
+      ]
+    },
     destroy () {
       destroyed = true
       delete host.dataset.stage25dReady

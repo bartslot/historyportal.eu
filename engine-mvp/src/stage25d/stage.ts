@@ -26,7 +26,7 @@ import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
-interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number }
+interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset }   // index: in set.groundBands
 interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
@@ -259,6 +259,22 @@ export class Stage {
     return out
   }
 
+  /** The backdrops under a point (CSS px), nearest first: ground bands (`band`: its index in set.groundBands) and far
+   *  strips (`index` in set.layers), with where on the picture the point lands. The editor checks the picture's alpha. */
+  pickBackdrops(x: number, y: number): { band?: number; index?: number; asset: Asset; u: number; v: number }[] {
+    const bandOf = (m: unknown) => this.bands.find((b) => b.handle.mesh === m)
+    const stripOf = (m: unknown) => this.built.find((b) => b.handle.mesh === m && b.index >= 0 && b.asset.layer === 'bg')
+    const hits = [...(this.scene.multiPick(x, y, (m) => !!bandOf(m) || !!stripOf(m)) ?? [])].sort((a, b) => a.distance - b.distance)
+    return hits.flatMap((hit) => {
+      const uv = hit.getTextureCoordinates()
+      if (!uv) return []
+      const band = bandOf(hit.pickedMesh)
+      if (band) return [{ band: band.index, asset: band.asset, u: uv.x, v: uv.y }]
+      const strip = stripOf(hit.pickedMesh)!
+      return [{ index: strip.index, asset: strip.asset, u: uv.x, v: uv.y }]
+    })
+  }
+
   /** A layer's box on screen as shares of the canvas (0..1 from its top-left) and the z of its plane; null while it is not built. */
   layerBox(index: number): { x0: number; y0: number; x1: number; y1: number; z: number } | null {
     const b = this.built.find((n) => n.index === index)
@@ -350,7 +366,7 @@ export class Stage {
   /** The scene's ground bands: painted strips at their metres, three views wide, drawn by distance (height: pose). */
   private async loadBands(s: Scene, lib: Library & { base: string }): Promise<Band[]> {
     const out: Band[] = []
-    for (const g of s.set.groundBands ?? []) {
+    for (const [index, g] of (s.set.groundBands ?? []).entries()) {
       const asset = resolveAsset(lib, { asset: g.asset }, 'ground_band')
       if (!asset) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
       const tex = await loadPremultiplied(lib.base + asset.file, this.scene).catch(() => null)
@@ -361,7 +377,7 @@ export class Stage {
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
-      out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5 })
+      out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5, index, asset })
     }
     return out
   }

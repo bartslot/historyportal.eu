@@ -60,6 +60,30 @@ describe('stage25d live edits', () => {
     expect(stage.matches(cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.2 }, { asset: 'b', depth: 'fg', figure: 'meisje' }] } }))).toBe(true)
   })
 
+  it('lists the painted landscape (ground bands) and the sky as backdrop rows; a band takes another picture', async () => {
+    const saved = []
+    const selected = []
+    window.addEventListener('scene-object-selected', (e) => selected.push(e.detail.id))
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    await stage.show(cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 30 }], layers: [{ asset: 'a', depth: 'mid' }] } }))
+    stage.sceneId = 5
+    const rows = stage.items()
+    expect(rows.map((i) => [i.id, i.label, !!i.backdrop])).toEqual([['layer-0', 'A', false], ['band-0', 'Meadow band', true], ['sky', 'Sky', true], ['camera', 'Camera', false]])
+
+    stage.select('band-0')
+    expect(stage.backdrop).toBe('band-0')
+    expect(selected.at(-1)).toBe('s25_band-0')
+    expect(stage.layerInfo('band-0')).toMatchObject({ backdrop: true, asset: 'meadow-band-01' })
+
+    calls.stage.lib.assets.push({ id: 'fig-x', layer: 'figure' }, { id: 'meadow-band-02', layer: 'mid' })
+    await stage.show(cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 30 }], layers: [{ asset: 'a', depth: 'mid' }] } }))
+    await stage.swapAsset('band-0', 'fig-x')   // a figure is never a landscape
+    expect(saved).toEqual([])
+    await stage.swapAsset('band-0', 'meadow-band-02')
+    expect(saved).toEqual([[0, { band: { index: 0, asset: 'meadow-band-02' } }, 5]])
+    expect(calls.built.at(-1).set.groundBands[0].asset).toBe('meadow-band-02')
+  })
+
   it('the eye hides one layer for the canvas only', async () => {
     const stage = await mountStage25d(document.getElementById('h'))
     await stage.show(two())

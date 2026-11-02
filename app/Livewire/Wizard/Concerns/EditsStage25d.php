@@ -33,7 +33,7 @@ trait EditsStage25d
             return;   // a debounced save from a scene the teacher has since left
         }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
-        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']))) {
+        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']) && ! isset($patch['band']))) {
             return;
         }
         $bundle = (string) ($scene->config['stage25d']['bundle'] ?? '');
@@ -43,6 +43,19 @@ trait EditsStage25d
                 $config['stage25d']['set']['sky'] = $patch['sky'];
                 $scene->update(['config' => $config]);
                 $this->selectedScene['config']['stage25d']['set']['sky'] = $patch['sky'];
+            }
+
+            return;
+        }
+        if (is_array($patch['band'] ?? null)) {   // a ground band of the painted landscape: another picture
+            $at = $patch['band']['index'] ?? null;
+            $asset = $patch['band']['asset'] ?? null;
+            $layer = is_string($asset) ? LibraryBundle::assetLayer($bundle, $asset) : null;
+            if (is_int($at) && isset($scene->config['stage25d']['set']['groundBands'][$at]) && $layer !== null && ! in_array($layer, ['sky', 'figure'], true)) {
+                $config = $scene->config;
+                $config['stage25d']['set']['groundBands'][$at]['asset'] = $asset;
+                $scene->update(['config' => $config]);
+                $this->selectedScene['config']['stage25d']['set']['groundBands'][$at]['asset'] = $asset;
             }
 
             return;
@@ -124,13 +137,26 @@ trait EditsStage25d
         $this->storeStage25dLayers($scene, $layers);
     }
 
-    /** A rendered frame (data:image/jpeg) for a scene of this lesson: the rail thumbnail and the player's WebGL fallback. */
-    public function saveStage25dStill(int $sceneId, string $dataUrl, ?string $hash = null): void
+    /** A rendered frame (data:image/jpeg) for a scene of this lesson: the rail thumbnail and the player's WebGL fallback.
+     *  $quiet: one of many drawn in the background: no render now (each is the whole editor); the caller refreshes once
+     *  at the end, and the poll does not take each one for a change it must draw. */
+    public function saveStage25dStill(int $sceneId, string $dataUrl, ?string $hash = null, bool $quiet = false): void
     {
         $scene = $this->lesson->scenes()->find($sceneId);
-        if ($scene && SceneStill::store($scene, $dataUrl, $hash) && (int) $this->selectedSceneId === $sceneId) {
+        if (! $scene || SceneStill::isFresh($scene)) {
+            // Already has this picture: nothing to store or draw. (A render here re-morphs the timeline, which asks
+            // for the picture again: that loop sent the whole editor every 3 s and froze it.)
+            $this->skipQuietRender();
+
+            return;
+        }
+        if (SceneStill::store($scene, $dataUrl, $hash) && (int) $this->selectedSceneId === $sceneId) {
             // The snapshot the next save is built from must not put the old picture back.
             $this->selectedScene['image_path'] = $scene->image_path;
+        }
+        if ($quiet) {
+            $this->skipQuietRender();
+            $this->renderedFingerprint = $this->lessonFingerprint();
         }
     }
 

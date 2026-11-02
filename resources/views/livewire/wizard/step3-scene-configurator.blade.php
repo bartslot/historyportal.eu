@@ -1383,7 +1383,9 @@
         return {
             lib: null, kind: 'all', query: '', selected: null,
             init() { this.sync(); },
-            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.skySelected ? 'sky' : (window.__stage25d?.selection ?? null); },
+            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
+            /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
+            replace(kind) { this.sync(); this.query = ''; this.kind = this.kinds.includes(kind) ? kind : 'all'; },
             get kinds() { return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))]; },
             get shown() {
                 const q = this.query.trim().toLowerCase();
@@ -1394,7 +1396,7 @@
                 const stage = window.__stage25d;
                 if (!stage) return;
                 const at = stage.selection;
-                if (stage.skySelected) stage.swapAsset('sky', asset.id);
+                if (stage.backdrop) stage.swapAsset(stage.backdrop, asset.id);
                 else if (at !== null) stage.swapAsset('layer-' + at, asset.id); else stage.addLayer(asset.id);
             },
         };
@@ -1459,12 +1461,13 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
                 // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
-                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && i.id !== 'sky')
+                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop)
                     .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
                     .map(({ i }) => ({ id: 's25_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, s25: true }));
-                // The sky is the stage's own backdrop: a row at the very back, picture swappable, not restackable.
-                const s25Sky = window.__stage25d?.items?.().some((i) => i.id === 'sky')
-                    ? [{ id: 's25_sky', icon: 'photo', label: @js(__('Sky')), bg: false, s25: true, s25sky: true }] : [];
+                // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
+                // back, picture swappable, not restackable (s25sky: pinned like the sky).
+                const s25Sky = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop)
+                    .map((i) => ({ id: 's25_' + i.id, icon: 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.label, bg: false, s25: true, s25sky: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));

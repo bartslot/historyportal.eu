@@ -1051,6 +1051,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:fixed;left:-10000px;top:0;width:480px;height:270px;pointer-events:none;'
             document.body.appendChild(host)
             let stage = null
+            let saved = 0
             try {
                 stage = await mountStage25d(host)
                 for (const s of scenes) {
@@ -1060,12 +1061,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         const frame = await stage.still()
                         if (!frame) break   // the page is hidden: nothing draws now; the next visit asks again
                         _stage25dStillAsked.add(s.id)
-                        await window.__step3Wire?.()?.saveStage25dStill(s.id, frame, s.hash)
+                        await window.__step3Wire?.()?.saveStage25dStill(s.id, frame, s.hash, true)   // quiet: one render at the end
+                        saved++
                     } catch (e) { console.warn(`wizard-bridge: no thumbnail for scene ${s.id}`, e) }
                 }
             } finally {
                 stage?.destroy()
                 host.remove()
+                if (saved) window.__step3Wire?.()?.$refresh()   // the rail shows them all at once
             }
         }, OTHER_STILLS_DELAY_MS)
     }

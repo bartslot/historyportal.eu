@@ -126,6 +126,31 @@ class StageEditingTest extends TestCase
         $this->assertSame($other->config['stage25d'], $stale[0]['config']);
     }
 
+    public function test_a_ground_band_of_the_painted_landscape_opens_its_panel_and_takes_another_landscape_picture(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
+            ['id' => 'meadow-band-01', 'layer' => 'mid', 'file' => 'm.webp'],
+            ['id' => 'ground-heath-01', 'layer' => 'fg', 'file' => 'h.webp'],
+            ['id' => 'fig-meisje-stand-01', 'layer' => 'figure', 'file' => 'f.webp'],
+        ]]));
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['groundBands'] = [['asset' => 'meadow-band-01', 'z' => 30]];
+        $scene->update(['config' => $config]);
+        $editor = $this->editor($scene);
+
+        $editor->call('selectInspectorTarget', 's25_band-0')->assertSet('activeStage25dLayer', 'band-0');
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'asset' => 'fig-meisje-stand-01']], $scene->id);   // no figure as landscape
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 3, 'asset' => 'ground-heath-01']], $scene->id);       // no such band
+        $this->assertSame('meadow-band-01', $scene->fresh()->config['stage25d']['set']['groundBands'][0]['asset']);
+
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'asset' => 'ground-heath-01']], $scene->id);
+        $bands = $scene->fresh()->config['stage25d']['set']['groundBands'];
+        $this->assertSame([['asset' => 'ground-heath-01', 'z' => 30]], $bands);
+        $this->assertSame('stone-chamber-01', $scene->fresh()->config['stage25d']['set']['layers'][0]['asset'], 'the layers are untouched');
+    }
+
     public function test_the_layer_panel_changes_picture_motion_and_adds_a_layer_from_the_library(): void
     {
         $scene = $this->scene();

@@ -430,6 +430,7 @@ class Step3SceneConfigurator extends Component
         $scene = $this->lesson->scenes()->findOrFail($id);
         $this->selectedSceneId = $id;
         $this->selectedScene = $this->snapshot($scene);
+        $this->prevSelectedStatus = (string) $scene->status;   // the status poller reloads only when this changes
 
         $ts = $scene->updated_at?->timestamp ?? '';
         $view = $scene->scene_view ?? 'slideshow';
@@ -1046,9 +1047,14 @@ class Step3SceneConfigurator extends Component
         }
 
         // A stage25d layer (the stage selects 's25_layer-<n>'): its own Format panel.
-        if (preg_match('/^s25_(layer-\d+|sky)$/', $objectId, $m) === 1) {
-            $at = $m[1] === 'sky' ? null : (int) substr($m[1], 6);
-            if ($at === null ? isset($this->selectedScene['config']['stage25d']['set']['sky']) : isset($this->selectedScene['config']['stage25d']['set']['layers'][$at])) {
+        if (preg_match('/^s25_(layer-(\d+)|band-(\d+)|sky)$/', $objectId, $m) === 1) {
+            $set = $this->selectedScene['config']['stage25d']['set'] ?? [];
+            $exists = match (true) {
+                $m[1] === 'sky' => isset($set['sky']),
+                str_starts_with($m[1], 'band-') => isset($set['groundBands'][(int) $m[3]]),
+                default => isset($set['layers'][(int) $m[2]]),
+            };
+            if ($exists) {
                 $this->activeStage25dLayer = $m[1];
             }
 
@@ -4532,21 +4538,65 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * The 3 s wire:poll. With the picker open a render recomputes its grid (corpus, Commons,
-     * Cloudinary: up to seconds), and the teacher's own clicks queue behind it, so the pills
-     * looked dead. Nothing the poll refreshes is visible under the modal, so skip that render.
+     * The 3 s wire:poll. A render is the whole editor (about 1 MB on a long lesson, a long morph in
+     * the browser), and the teacher's clicks queue behind it on shared hosting, so the editor froze.
+     * So the poll renders only when the lesson changed under it (a job finished a scene, a picture
+     * landed: lessonFingerprint), or when a painting shelf's real match target has landed. The two
+     * status checks only dispatch events to the canvas, which go out without a render.
      */
     public function poll(): void
     {
-        if (! $this->paintingPickerOpen) {
+        $selected = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
+        $this->pollWorldStatus($selected);
+        $this->pollSceneReady($selected);
+
+        if ($this->paintingPickerOpen) {
+            // Nothing else the poll refreshes is visible under the picker (and a render recomputes its grid).
+            if (! (in_array($this->paintingKind, ['painting', 'city_map'], true) && $this->adoptLandedMatchTarget())) {
+                $this->skipQuietRender();
+            }
+
             return;
         }
-        // The one thing worth a render under the modal: the queued scene tagging has landed, so
-        // a painting shelf swaps its year-based match for the real one.
-        if (in_array($this->paintingKind, ['painting', 'city_map'], true) && $this->adoptLandedMatchTarget()) {
-            return;
+        if ($this->lessonFingerprint() === $this->renderedFingerprint) {
+            $this->skipQuietRender();
+        }
+    }
+
+    /** Calls that may go out without a render (they change nothing the editor draws, or draw it later). */
+    private const QUIET_CALLS = ['poll', 'saveStage25dStill'];
+
+    /**
+     * Skip this request's render, unless a teacher's action rode along: Livewire sends calls made at the same moment
+     * in one request (the poll tick and a selection, say), and a skipped render would swallow that action's change.
+     */
+    protected function skipQuietRender(): void
+    {
+        foreach ((array) request()->input('components', []) as $component) {
+            $memo = json_decode((string) ($component['snapshot'] ?? '{}'), true)['memo'] ?? [];
+            if (($memo['id'] ?? null) !== $this->getId()) {
+                continue;
+            }
+            $calls = array_column((array) ($component['calls'] ?? []), 'method');
+            if (! empty($component['updates']) || array_diff($calls, self::QUIET_CALLS) !== []) {
+                return;
+            }
         }
         $this->skipRender();
+    }
+
+    /** The lesson as the editor last drew it (lessonFingerprint): the poll renders only when it changed. */
+    #[Locked]
+    public ?string $renderedFingerprint = null;
+
+    /** What a render shows of the lesson changes with: its scenes (added, removed, a status, a picture: each bumps
+     *  updated_at) and the lesson row itself. One small query each. */
+    protected function lessonFingerprint(): string
+    {
+        $scenes = $this->lesson->scenes()->orderBy('id')->get(['id', 'status', 'updated_at'])
+            ->map(fn (Scene $s) => $s->id.':'.$s->status.':'.$s->updated_at?->getTimestamp())->implode(',');
+
+        return md5($scenes.'|'.Lesson::query()->whereKey($this->lesson->id)->value('updated_at'));
     }
 
     private function adoptLandedMatchTarget(): bool
@@ -6147,11 +6197,8 @@ class Step3SceneConfigurator extends Component
 
     public function render()
     {
-        // Fetch the selected scene ONCE per tick and share it with both status pollers
-        // (was two identical queries every 3s).
-        $selected = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
-        $this->pollWorldStatus($selected);
-        $this->pollSceneReady($selected);
+        // what this render shows: the poll skips its own render until the lesson changes (poll())
+        $this->renderedFingerprint = $this->lessonFingerprint();
 
         return view('livewire.wizard.step3-scene-configurator');
     }
