@@ -1381,7 +1381,7 @@
         return {
             lib: null, kind: 'all', query: '', selected: null,
             init() { this.sync(); },
-            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.selection ?? null; },
+            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.skySelected ? 'sky' : (window.__stage25d?.selection ?? null); },
             get kinds() { return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))]; },
             get shown() {
                 const q = this.query.trim().toLowerCase();
@@ -1392,7 +1392,8 @@
                 const stage = window.__stage25d;
                 if (!stage) return;
                 const at = stage.selection;
-                if (at !== null) stage.swapAsset('layer-' + at, asset.id); else stage.addLayer(asset.id);
+                if (stage.skySelected) stage.swapAsset('sky', asset.id);
+                else if (at !== null) stage.swapAsset('layer-' + at, asset.id); else stage.addLayer(asset.id);
             },
         };
     };
@@ -1455,8 +1456,14 @@
                 const dioItems = [...(window.__diorama?.items() ?? [])].reverse().map((i) =>
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
-                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera').reverse().map((i) =>
-                    ({ id: 's25_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, s25: true }));
+                // True front-to-back: nearer depth first, and inside one depth the later layer is in front.
+                const RANK = { sky: 0, bg: 1, mid: 2, fg: 3, near: 4 };
+                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && i.id !== 'sky')
+                    .map((i, at) => ({ i, at })).sort((a, b) => ((RANK[b.i.depth] ?? 2) - (RANK[a.i.depth] ?? 2)) || (b.at - a.at))
+                    .map(({ i }) => ({ id: 's25_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, s25: true }));
+                // The sky is the stage's own backdrop: a row at the very back, picture swappable, not restackable.
+                const s25Sky = window.__stage25d?.items?.().some((i) => i.id === 'sky')
+                    ? [{ id: 's25_sky', icon: 'photo', label: @js(__('Sky')), bg: false, s25: true, s25sky: true }] : [];
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
@@ -1466,7 +1473,7 @@
                 // Speech balloons are drawn over everything: listed first, never restacked by hand.
                 const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
                     ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
-                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items];
+                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items, ...s25Sky];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -1506,7 +1513,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25], [data-bal]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1527,6 +1534,13 @@
                         // separate overlays: split the dropped order by the rows' kind (not their id:
                         // a balloon's id is whatever its line carries) and let the DRAGGED row decide
                         // which band is in front (scene/object-list-drop.js).
+                        // A stage25d layer: the list order is the depth order, saved on the server (it rebuilds the stage).
+                        if (this.items.find((i) => i.id === evt.item.dataset.objId)?.s25) {
+                            const order = ids.filter((id) => id.startsWith('s25_layer-')).map((id) => Number(id.slice(10)));
+                            window.__stage25d?.reorderLayers(order, Number(evt.item.dataset.objId.slice(10)), (o, m, scene, x, scale) => this.$wire.reorderStage25dLayers(o, m, scene, x, scale));
+                            this._sig = null;
+                            return;
+                        }
                         const kindOf = (id) => {
                             const it = this.items.find((i) => i.id === id);
                             return !it || it.bg || it.bal || it.dio || it.s25 ? null : (it.art ? 'art' : 'text');
@@ -2194,11 +2208,11 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-bal="obj.bal ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
-                        obj.bg || obj.bal || obj.dio || obj.s25 ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+                        obj.bg || obj.bal || obj.dio || obj.s25sky ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">

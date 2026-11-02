@@ -266,6 +266,15 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
+  /** The layer x (a share of the house view at that depth) that puts a picture's anchor `frac` of the way across the
+   *  screen, seen from the camera as it stands now. Changing a picture's depth keeps its place on screen with this. */
+  xForScreen(frac: number, depth: Depth): number {
+    const z = DEPTH_Z[depth]
+    const half = Math.tan(this.camera.fov / 2) * this.engine.getAspectRatio(this.camera)
+    const worldX = this.camera.position.x + (frac - 0.5) * 2 * half * (z - this.camera.position.z)
+    return 0.5 + worldX / viewWidthAt(z)
+  }
+
   /** World x where the pointer's ray crosses the vertical plane at `z`: how far a drag moved a picture of that depth. */
   worldXAt(x: number, y: number, z: number): number {
     const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.camera)

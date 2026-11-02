@@ -10,6 +10,7 @@
 import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
+import { resolveAsset } from '@stage25d/stage25d/library'
 import { layerAt, DEPTH_Z, viewWidthAt } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -77,6 +78,7 @@ export async function createStage25d (host, opts = {}) {
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
   let alpha = null
+  let skySelected = false    // the sky row is the selection (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
   let pointer = null
 
@@ -108,6 +110,20 @@ export async function createStage25d (host, opts = {}) {
   }
   const nowT = () => (clock ? clock() : manualT)
 
+  /** The sky picture on stage: set.sky is an asset id or just tags ("sky morning"), which the stage resolves to the best match. */
+  const skyAsset = () => (cfg?.set?.sky && libData ? (assets.get(cfg.set.sky) ?? resolveAsset(libData, { asset: cfg.set.sky }, 'sky')) : null)
+
+  /** Before a layer changes depth: its size scaled by the change of distance, and where it is across the screen now. */
+  const keepLook = (index, depth) => {
+    const box = stage?.layerBox(index)
+    return {
+      scale: Math.round(Math.min(20, Math.max(0.01, (layers[index].scale ?? 1) * (DEPTH_Z[depth] / DEPTH_Z[layers[index].depth]))) * 1000) / 1000,
+      frac: box ? (box.x0 + box.x1) / 2 : null,
+    }
+  }
+  /** After the rebuild: the x that puts it back at that place across the screen. */
+  const placeAt = (frac, depth) => (frac === null ? null : Math.round(Math.min(2, Math.max(-1, stage.xForScreen(frac, depth))) * 1000) / 1000)
+
   const api = {
     canvas,
     /** The scene row this stage shows (set by the editor): a save must never land on another scene. */
@@ -135,6 +151,7 @@ export async function createStage25d (host, opts = {}) {
       alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
+        window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_sky') skySelected = false })
         canvas.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes(DROP_TYPE)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } })
         canvas.addEventListener('drop', (e) => {
           const id = e.dataTransfer?.getData(DROP_TYPE)
@@ -205,7 +222,12 @@ export async function createStage25d (host, opts = {}) {
       api.commitLayerProp(id, prop, value)
     },
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. */
-    select (id) { pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, true) },
+    select (id) {
+      skySelected = id === 'sky'
+      pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !skySelected)
+      if (skySelected) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 's25_sky' } }))
+    },
+    get skySelected () { return skySelected },
     get selection () { return pointer?.selected ?? null },
     /** Another scene is opening: nothing stays selected from the one before. */
     clearSelection () { pointer?.select(null) },
@@ -213,6 +235,10 @@ export async function createStage25d (host, opts = {}) {
     atStart () { return manualT === 0 && clock === null && hidden.size === 0 },
     /** What the inspector shows for a layer: its name, picture, depth and motion. */
     layerInfo (id) {
+      if (id === 'sky') {
+        const sky = skyAsset()
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: null } : null
+      }
       const l = layers[layerIndex(id)]
       if (!l) return null
       const asset = assets.get(l.asset) ?? null
@@ -237,10 +263,31 @@ export async function createStage25d (host, opts = {}) {
     async setLayerDepth (id, depth) {
       const i = layerIndex(id)
       if (i < 0 || !layers[i] || layers[i].depth === depth || !['bg', 'mid', 'fg', 'near'].includes(depth) || layers[i].depth === 'sky') return
-      layers = layers.map((l, n) => (n === i ? { ...l, depth } : l))
+      const keep = keepLook(i, depth)
+      layers = layers.map((l, n) => (n === i ? { ...l, depth, scale: keep.scale } : l))
       await api.show({ ...cfg, set: { ...cfg.set, layers } })
-      if (api.sceneId != null) opts.onCommit?.(i, { depth }, api.sceneId)
+      const x = placeAt(keep.frac, depth)   // null when it was not on screen: x stays
+      if (x !== null) { layers = layers.map((l, n) => (n === i ? { ...l, x } : l)); redraw() }
+      if (api.sceneId != null) opts.onCommit?.(i, { depth, scale: keep.scale, ...(x !== null ? { x } : {}) }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
+    },
+    /**
+     * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. It takes the depth
+     * of the layer now behind it (in front of it at the very back), keeping its size and place on screen; `call` saves
+     * the new order and the stage rebuilds from what the server sends back.
+     */
+    reorderLayers (order, moved, call) {
+      const at = order.indexOf(moved)
+      const to = layers[order[at + 1] ?? order[at - 1]]?.depth
+      const from = layers[moved]?.depth
+      let x = null
+      let scale = null
+      if (to && to !== from && from !== 'sky' && ['bg', 'mid', 'fg', 'near'].includes(to)) {
+        const keep = keepLook(moved, to)
+        scale = keep.scale
+        x = placeAt(keep.frac, to)
+      }
+      call(order, moved, api.sceneId, x, scale)   // the server restacks; the stage rebuilds from the scene it sends back
     },
     /** The library on stage, for the asset browser: [{ id, layer, file, url, label }]. */
     library () {
@@ -250,6 +297,13 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Put another picture on a layer: rebuilds the set (the one case that must), saved on the layer. */
     async swapAsset (id, assetId) {
+      if (id === 'sky') {
+        if (assets.get(assetId)?.layer !== 'sky' || skyAsset()?.id === assetId) return
+        await api.show({ ...cfg, set: { ...cfg.set, sky: assetId, layers } })
+        if (api.sceneId != null) opts.onCommit?.(0, { sky: assetId }, api.sceneId)
+        window.dispatchEvent(new CustomEvent('stage25d-synced'))
+        return
+      }
       const i = layerIndex(id)
       if (i < 0 || !layers[i] || !assets.has(assetId) || layers[i].asset === assetId) return
       layers = layers.map((l, n) => (n === i ? { ...l, asset: assetId } : l))
@@ -321,6 +375,7 @@ export async function createStage25d (host, opts = {}) {
     /** Rows for the object list and timeline: every layer, then the camera. */
     items: () => [
       ...layers.map((l, i) => ({ id: `layer-${i}`, label: layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`, depth: l.depth, keys: l.keys ?? [] })),
+      ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [] }] : []),
       { id: 'camera', label: 'Camera', depth: null, keys: [] },
     ],
     destroy () {

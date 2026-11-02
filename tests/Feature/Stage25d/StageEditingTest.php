@@ -154,6 +154,48 @@ class StageEditingTest extends TestCase
         $this->assertSame('fg', $scene->fresh()->config['stage25d']['set']['layers'][0]['depth']);
     }
 
+    public function test_dragging_in_the_object_list_reorders_by_depth_and_keeps_keys_and_apparent_size(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['layers'] = [
+            ['asset' => 'tree-birch-01', 'depth' => 'bg', 'x' => 0.5],
+            ['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.6, 'keys' => [['t' => 0, 'x' => 0.1], ['t' => 2, 'x' => 0.9]]],
+            ['asset' => 'tree-birch-01', 'depth' => 'fg', 'x' => 0.2],
+        ];
+        $scene->update(['config' => $config]);
+        $editor = $this->editor($scene);
+
+        // front first: [2 (fg), 1 (mid), 0 (bg)]. Drag the stone (1) to the top: it joins the front tier.
+        $editor->call('reorderStage25dLayers', [1, 2, 0], 1, $scene->id);
+        $layers = $scene->fresh()->config['stage25d']['set']['layers'];
+        $this->assertSame(['bg', 'fg', 'fg'], array_column($layers, 'depth'));
+        $this->assertSame('stone-chamber-01', $layers[2]['asset'], 'in front of the other front picture');
+        $this->assertCount(2, $layers[2]['keys'], 'its keys moved with it');
+        $this->assertEqualsWithDelta(7.0 / 22.0, $layers[2]['scale'], 0.001, 'nearer: scaled down so it keeps its size on screen');
+
+        $editor->call('reorderStage25dLayers', [0, 1], 0, $scene->id);   // a stale list changes nothing
+        $this->assertCount(3, $scene->fresh()->config['stage25d']['set']['layers']);
+    }
+
+    public function test_the_sky_picture_can_be_swapped_for_another_sky_only(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
+            ['id' => 'sky-summer-01', 'layer' => 'sky', 'file' => 's.webp'],
+            ['id' => 'sky-autumn-01', 'layer' => 'sky', 'file' => 't.webp'],
+        ]]));
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['sky'] = 'sky-summer-01';
+        $scene->update(['config' => $config]);
+
+        $editor = $this->editor($scene);
+        $editor->call('saveStage25dLayer', 0, ['sky' => 'sky-autumn-01'], $scene->id)->call('saveStage25dLayer', 0, ['sky' => 'stone-chamber-01'], $scene->id);
+        $this->assertSame('sky-autumn-01', $scene->fresh()->config['stage25d']['set']['sky']);
+        $editor->call('selectInspectorTarget', 's25_sky')->assertSet('activeStage25dLayer', 'sky');
+    }
+
     public function test_look_sliders_save_inside_their_range_and_only_the_known_ones(): void
     {
         $scene = $this->scene();

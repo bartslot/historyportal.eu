@@ -1046,9 +1046,9 @@ class Step3SceneConfigurator extends Component
         }
 
         // A stage25d layer (the stage selects 's25_layer-<n>'): its own Format panel.
-        if (preg_match('/^s25_(layer-\d+)$/', $objectId, $m) === 1) {
-            $at = (int) substr($m[1], 6);
-            if (isset($this->selectedScene['config']['stage25d']['set']['layers'][$at])) {
+        if (preg_match('/^s25_(layer-\d+|sky)$/', $objectId, $m) === 1) {
+            $at = $m[1] === 'sky' ? null : (int) substr($m[1], 6);
+            if ($at === null ? isset($this->selectedScene['config']['stage25d']['set']['sky']) : isset($this->selectedScene['config']['stage25d']['set']['layers'][$at])) {
                 $this->activeStage25dLayer = $m[1];
             }
 

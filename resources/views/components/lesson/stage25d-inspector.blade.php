@@ -11,7 +11,7 @@
      Nothing selected: the scene's look sliders. Every value is read off the live stage (window.__stage25d) and
      written back through it, so this panel, the canvas drag and the timeline rows share one set of rules; the
      diamonds are the timeline's own. No help text: the controls are the explanation. --}}
-<div data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names))"
+<div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names))"
      x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()">
 
     @if ($layerId)
@@ -29,7 +29,7 @@
                     x-on:click="$store.view.showTab('icons')">{{ __('Change picture') }}</button>
         </div>
 
-        <div class="mt-3 space-y-1">
+        <div class="mt-3 space-y-1" x-show="info?.id !== 'sky'">
             @foreach ([['x', __('X'), 1, 0.01, 100], ['y', __('Y'), 1, 0.05, 1], ['scale', __('Scale'), 1, 0.05, 100], ['rotation', __('Angle'), 1, 1, 1], ['opacity', __('Opacity'), 1, 0.05, 100]] as [$prop, $glyph, $_, $step, $factor])
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
                     <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
@@ -44,7 +44,7 @@
         </div>
 
         {{-- How near it stands: the same picture reads larger and sits in front of everything farther away. --}}
-        <div class="mt-1 space-y-1" x-show="info && info.depth !== 'sky'">
+        <div class="mt-1 space-y-1" x-show="info && info.depth !== 'sky' && info.id !== 'sky'">
             <x-ui.panel-row :label="__('Depth')" stacked>
                 <div class="join w-full">
                     @foreach (['bg' => __('Far'), 'mid' => __('Middle'), 'fg' => __('Front'), 'near' => __('Closest')] as $depth => $name)
@@ -58,12 +58,12 @@
 
         <div class="divider my-2" role="presentation"></div>
 
-        <div class="space-y-1" x-show="info">
+        <div class="space-y-1" x-show="info && info.id !== 'sky'">
             <x-ui.panel-row :label="__('Motion')">
                 <select class="select select-xs w-full" data-stage25d-motion="kind"
                         x-on:change="setMotion({ kind: $event.target.value })">
                     @foreach (\App\Services\Stage25d\LayerKeys::MOTION_KINDS as $kind)
-                        <option value="{{ $kind }}" :selected="info?.motion.kind === '{{ $kind }}'">{{ __(ucfirst($kind)) }}</option>
+                        <option value="{{ $kind }}" :selected="info?.motion?.kind === '{{ $kind }}'">{{ __(ucfirst($kind)) }}</option>
                     @endforeach
                 </select>
             </x-ui.panel-row>
@@ -71,7 +71,7 @@
                 <x-ui.panel-row :label="$label">
                     <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-stage25d-motion="{{ $prop }}"
                            aria-label="{{ $label }}"
-                           :value="info?.motion.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
+                           :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
                 </x-ui.panel-row>
             @endforeach
         </div>

@@ -83,7 +83,7 @@ export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) =>
  * Stage25d layers (config.stage25d.set.layers, window.__stage25d.items()), then its camera. A layer's
  * rows are x, y, scale, angle and opacity (properties.js 's25'); the camera row only names the shot.
  */
-export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i) => (i.id === 'camera'
+export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).filter((i) => i.id !== 'sky').map((i) => (i.id === 'camera'
   ? { target: 's25cam', kind: 's25cam', label: i.label }
   : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id }))
 

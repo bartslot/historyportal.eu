@@ -33,10 +33,20 @@ trait EditsStage25d
             return;   // a debounced save from a scene the teacher has since left
         }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
-        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null))) {
+        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']))) {
             return;
         }
         $bundle = (string) ($scene->config['stage25d']['bundle'] ?? '');
+        if (is_string($patch['sky'] ?? null)) {   // the scene's sky picture
+            if (LibraryBundle::assetLayer($bundle, $patch['sky']) === 'sky') {
+                $config = $scene->config;
+                $config['stage25d']['set']['sky'] = $patch['sky'];
+                $scene->update(['config' => $config]);
+                $this->selectedScene['config']['stage25d']['set']['sky'] = $patch['sky'];
+            }
+
+            return;
+        }
         if (is_array($patch['add'] ?? null)) {
             $add = $patch['add'];
             $kind = LibraryBundle::assetLayer($bundle, (string) ($add['asset'] ?? ''));
@@ -122,6 +132,49 @@ trait EditsStage25d
             // The snapshot the next save is built from must not put the old picture back.
             $this->selectedScene['image_path'] = $scene->image_path;
         }
+    }
+
+    /** Distance of each depth from the camera in metres (engine-mvp stage25d/layout.ts DEPTH_Z). */
+    private const DEPTH_Z = ['bg' => 70.0, 'mid' => 22.0, 'fg' => 7.0, 'near' => 3.5];
+
+    private const DEPTH_RANK = ['sky' => 0, 'bg' => 1, 'mid' => 2, 'fg' => 3, 'near' => 4];
+
+    /**
+     * The object list's order, front first, as layer indexes. The dragged layer takes the depth of the one now behind it
+     * (the one in front when it went to the very back) and keeps its apparent size; inside one depth the array order
+     * is the draw order. Keys move with their layers.
+     *
+     * @param  list<int>  $order
+     */
+    public function reorderStage25dLayers(array $order, int $moved, int $sceneId, ?float $x = null, ?float $scale = null): void
+    {
+        $scene = $this->stage25dScene();
+        $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
+        if (! $scene || $scene->id !== $sceneId || ! is_array($layers)) {
+            return;
+        }
+        $order = array_values(array_map('intval', $order));
+        $all = array_keys($layers);
+        $sorted = $order;
+        sort($sorted);
+        if ($sorted !== $all || ! in_array($moved, $order, true)) {
+            return;   // a stale list (a layer was added or removed since): do nothing
+        }
+        $at = array_search($moved, $order, true);
+        $ref = $order[$at + 1] ?? ($order[$at - 1] ?? null);
+        $from = $layers[$moved]['depth'] ?? 'mid';
+        $to = $ref !== null ? ($layers[$ref]['depth'] ?? $from) : $from;
+        if ($from !== 'sky' && in_array($to, LayerKeys::DEPTHS, true) && $to !== $from) {
+            $layers[$moved]['depth'] = $to;
+            // The browser knows where the picture is on screen and sends the x and scale that keep it there; without them, keep its size.
+            $layers[$moved] = [...$layers[$moved], ...LayerKeys::clean(['scale' => $scale ?? ($layers[$moved]['scale'] ?? 1.0) * self::DEPTH_Z[$to] / self::DEPTH_Z[$from], 'x' => $x ?? ($layers[$moved]['x'] ?? 0.5)])];
+        }
+        $back = array_flip(array_reverse($order));   // layer index -> place from the back
+        $indexes = $all;
+        usort($indexes, fn (int $a, int $b): int => [self::DEPTH_RANK[$layers[$a]['depth'] ?? 'mid'] ?? 2, $back[$a]] <=> [self::DEPTH_RANK[$layers[$b]['depth'] ?? 'mid'] ?? 2, $back[$b]]);
+        $this->storeStage25dLayers($scene, array_map(fn (int $i): array => $layers[$i], $indexes));
+        $this->selectSceneInternal($scene->id);
+        $this->dispatch('stage25d:select', index: (int) array_search($moved, $indexes, true));
     }
 
     /** Take a layer off the stage. Its keys go with it (they live on the layer); the stage rebuilds from the saved scene. */

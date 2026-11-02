@@ -8,6 +8,7 @@ vi.mock('@stage25d/stage25d/stage', () => ({
   Stage: class {
     constructor (canvas, lib) {
       this.lib = lib
+      calls.stage = this
       this.engine = { runRenderLoop: (fn) => { frame = fn }, stopRenderLoop () {}, dispose: () => { calls.disposed++ } }
       this.scene = { render () {}, dispose () {} }
     }
@@ -15,13 +16,15 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     async build (scene) { calls.built.push(scene) }
     tick () {}
     worldXAt (x) { return (x - 200) / 10 }
-    layerBox () { return null }
+    layerBox () { return this.box ?? null }
+    xForScreen (frac) { return 0.5 + (frac - 0.5) * 2 }
     rebind (scene) { calls.rebound = scene }
     pose (scene, t) { calls.posed.push([scene.id, t]) }
   },
 }))
 vi.mock('@stage25d/stage25d/look', () => ({ LOOK_RANGE: {}, lookNum: (look, key) => look[key] }))
 vi.mock('@stage25d/stage25d/library', () => ({
+  resolveAsset: (lib, ref) => lib.assets.find((a) => a.id === ref.asset) ?? null,
   loadLibrary: vi.fn(async (url) => ({ bundle: 'b', assets: [{ id: 'fig-meisje-push-01', height_m: 1.4 }], base: url })),
 }))
 
@@ -120,6 +123,22 @@ describe('stage25d drop from the Assets tab', () => {
   })
 })
 
+describe('stage25d sky', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="h"></div>' })
+
+  it('lists the sky as its own row, however the scene names it, and swaps it', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    stage.sceneId = 3
+    await stage.show(cfg({ set: { sky: 'fig-meisje-push-01', layers: [{ asset: 'a', depth: 'mid' }] } }))
+    expect(stage.items().map((i) => i.id)).toEqual(['layer-0', 'sky', 'camera'])
+    expect(stage.layerInfo('sky').asset).toBe('fig-meisje-push-01')
+    stage.select('sky')
+    expect(stage.skySelected).toBe(true)
+    expect(stage.selection).toBeNull()
+  })
+})
+
 describe('stage25d depth', () => {
   beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
 
@@ -131,9 +150,19 @@ describe('stage25d depth', () => {
     await stage.setLayerDepth('layer-0', 'fg')
     expect(calls.built).toHaveLength(2)
     expect(calls.built[1].set.layers[0].depth).toBe('fg')
-    expect(saved).toEqual([[0, { depth: 'fg' }, 9]])
+    expect(saved).toEqual([[0, { depth: 'fg', scale: 0.318 }, 9]])   // nearer: scaled by the change of distance, so it keeps its size on screen
     await stage.setLayerDepth('layer-1', 'near')
     expect(saved).toHaveLength(1)
+  })
+
+  it('keeps the picture where it stands on screen when its depth changes', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    stage.sceneId = 9
+    await stage.show(cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.7 }] } }))
+    calls.stage.box = { x0: 0.7, x1: 0.9, y0: 0, y1: 1, z: 22 }   // its middle is 80% across the screen
+    await stage.setLayerDepth('layer-0', 'fg')
+    expect(saved[0][1].x).toBeCloseTo(1.1)   // the mock camera spreads near pictures: the x that lands at 80% is further out
   })
 })
 
