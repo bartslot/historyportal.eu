@@ -14,6 +14,27 @@ final class LayerKeys
     /** The fields a key may set; the timeline's rows for a layer (resources/js/anim/properties.js `s25`). */
     public const FIELDS = ['x', 'y', 'scale', 'opacity', 'rotation'];
 
+    /** What a field may hold: a typo or a runaway drag never leaves the picture off the planet. */
+    private const RANGE = ['x' => [-2.0, 3.0], 'y' => [-50.0, 50.0], 'scale' => [0.01, 20.0], 'opacity' => [0.0, 1.0], 'rotation' => [-3600.0, 3600.0]];
+
+    /**
+     * Finite numbers of the known fields, held to their range.
+     *
+     * @param  array<string,mixed>  $values
+     * @return array<string,float>
+     */
+    public static function clean(array $values): array
+    {
+        $out = [];
+        foreach (self::RANGE as $field => [$min, $max]) {
+            if (isset($values[$field]) && is_numeric($values[$field]) && is_finite((float) $values[$field])) {
+                $out[$field] = max($min, min($max, (float) $values[$field]));
+            }
+        }
+
+        return $out;
+    }
+
     /** Below this spread a track does not move anything (a director track of all zeros). */
     private const FLAT = 1e-6;
 
@@ -31,12 +52,7 @@ final class LayerKeys
                 continue;
             }
             $t = round(max(0.0, min($duration > 0 ? $duration : 3600.0, (float) $key['t'])), 3);
-            $clean = [];
-            foreach (self::FIELDS as $field) {
-                if (isset($key[$field]) && is_numeric($key[$field]) && is_finite((float) $key[$field])) {
-                    $clean[$field] = (float) $key[$field];
-                }
-            }
+            $clean = self::clean($key);
             if ($clean !== []) {
                 $byTime[(string) $t] = [...($byTime[(string) $t] ?? []), ...$clean];
             }

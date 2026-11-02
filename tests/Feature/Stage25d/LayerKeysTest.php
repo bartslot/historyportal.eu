@@ -102,7 +102,7 @@ class LayerKeysTest extends TestCase
         $teacher = $scene->lesson->teacher;
         $editor = Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
 
-        $editor->call('setTimeline', ['duration' => 8, 'targets' => [], 'tracks' => [], 'stage25dKeys' => [
+        $editor->call('setTimeline', ['duration' => 8, 'sceneId' => $scene->id, 'targets' => [], 'tracks' => [], 'stage25dKeys' => [
             'layer-0' => [['t' => 0, 'x' => 0.2], ['t' => 3, 'x' => 0.8]],
             'layer-1' => [],
             'layer-9' => [['t' => 1, 'x' => 1]],
@@ -115,6 +115,21 @@ class LayerKeysTest extends TestCase
 
         $editor->call('undoLastEdit');
         $this->assertArrayNotHasKey('keys', $scene->fresh()->config['stage25d']['set']['layers'][0]);
+    }
+
+    public function test_keys_meant_for_another_scene_are_ignored_and_values_are_held_to_range(): void
+    {
+        $scene = $this->sceneWith($this->stage());
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
+
+        $editor->call('setTimeline', ['duration' => 8, 'sceneId' => $scene->id + 1, 'targets' => [], 'tracks' => [], 'stage25dKeys' => ['layer-0' => [['t' => 1, 'x' => 0.5]]]]);
+        $this->assertArrayNotHasKey('keys', $scene->fresh()->config['stage25d']['set']['layers'][0]);
+
+        $editor->call('setTimeline', ['duration' => 4, 'sceneId' => $scene->id, 'targets' => [], 'tracks' => [], 'stage25dKeys' => ['layer-0' => [['t' => 1, 'x' => 1e9, 'opacity' => 50], ['t' => 6, 'scale' => -5]]]]);
+        $keys = $scene->fresh()->config['stage25d']['set']['layers'][0]['keys'];
+        $this->assertEquals([['t' => 1, 'x' => 3, 'opacity' => 1], ['t' => 6, 'scale' => 0.01]], $keys, 'x and opacity held to range; 6s survives a 4s panel because the scene is longer');
+        $editor->call('saveStage25dLayer', 0, ['x' => 0.1], $scene->id + 1);
+        $this->assertSame(0.6, $scene->fresh()->config['stage25d']['set']['layers'][0]['x'], 'a save for another scene changes nothing');
     }
 
     public function test_a_base_value_is_saved_on_its_layer_and_nothing_else_is(): void
@@ -142,7 +157,7 @@ class LayerKeysTest extends TestCase
         ]);
 
         return Scene::create([
-            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x',
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x', 'duration_seconds' => 8,
             'config' => ['stage25d' => $stage], 'status' => 'ready',
         ]);
     }

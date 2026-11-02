@@ -21,14 +21,17 @@ trait EditsStage25d
      * @param  array<string,mixed>  $patch
      */
     #[On('stage25d:layer')]
-    public function saveStage25dLayer(int $index, array $patch): void
+    public function saveStage25dLayer(int $index, array $patch, ?int $sceneId = null): void
     {
         $scene = $this->stage25dScene();
+        if ($sceneId !== null && $scene?->id !== $sceneId) {
+            return;   // a debounced save from a scene the teacher has since left
+        }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
         if (! $scene || ! isset($layers[$index])) {
             return;
         }
-        $values = collect($patch)->only(LayerKeys::FIELDS)->filter(fn ($v) => is_numeric($v) && is_finite((float) $v))->map(fn ($v) => (float) $v)->all();
+        $values = LayerKeys::clean($patch);
         if ($values === []) {
             return;
         }
@@ -41,9 +44,12 @@ trait EditsStage25d
      *
      * @param  array<string,mixed>  $byLayer
      */
-    private function saveStage25dKeys(array $byLayer, float $duration): void
+    private function saveStage25dKeys(array $byLayer, float $duration, int $sceneId): void
     {
         $scene = $this->stage25dScene();
+        if ($scene?->id !== $sceneId) {
+            return;   // the panel's stage belonged to another scene: never write its layers here
+        }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
         if (! $scene || ! is_array($layers)) {
             return;
@@ -52,7 +58,7 @@ trait EditsStage25d
             if (preg_match('/^layer-(\d+)$/', (string) $id, $m) !== 1 || ! isset($layers[(int) $m[1]]) || ! is_array($keys)) {
                 continue;
             }
-            $clean = LayerKeys::sanitize($keys, $duration);
+            $clean = LayerKeys::sanitize($keys, max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds));
             if ($clean === []) {
                 unset($layers[(int) $m[1]]['keys']);
             } else {

@@ -2266,7 +2266,7 @@ class Step3SceneConfigurator extends Component
 
         // A stage25d layer's keys live on the layer, not in the timeline (resources/js/anim/stage25d-keys.js).
         if (is_array($timeline['stage25dKeys'] ?? null)) {
-            $this->saveStage25dKeys($timeline['stage25dKeys'], $duration);
+            $this->saveStage25dKeys($timeline['stage25dKeys'], $duration, (int) ($timeline['sceneId'] ?? 0));
         }
 
         $this->selectedScene['config']['timeline'] = [

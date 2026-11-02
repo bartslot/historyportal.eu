@@ -83,6 +83,7 @@ export async function createStage25d (host, opts = {}) {
     const i = layerIndex(id)
     if (i < 0 || !layers[i]) return -1
     layers = layers.map((l, n) => (n === i ? { ...l, ...patch } : l))
+    seenEdit = editSig({ set: { layers } })   // what the server will hold once saved: an undo then differs from it
     redraw()
     return i
   }
@@ -90,6 +91,8 @@ export async function createStage25d (host, opts = {}) {
 
   return {
     canvas,
+    /** The scene row this stage shows (set by the editor): a save must never land on another scene. */
+    sceneId: null,
     /** Build a scene's set (the old picture stays until every texture is ready). Resolves when drawn. */
     async show (cfgNow) {
       const lib = await libraryOf(cfgNow.bundle)
@@ -131,11 +134,14 @@ export async function createStage25d (host, opts = {}) {
     /** Live, no rebuild: one base value of one layer (a field edit, the timeline's frame). */
     setLayerProp (id, prop, v) { edit(id, { [prop]: v }) },
     /** Live: a layer's keys, as the timeline holds them. */
-    setLayerKeys (id, keys) { edit(id, { keys }) },
+    setLayerKeys (id, keys) {
+      const i = layerIndex(id)
+      if (JSON.stringify(layers[i]?.keys ?? []) !== JSON.stringify(keys)) edit(id, { keys })
+    },
     /** A base value to save (the editor persists it through onCommit). */
     commitLayerProp (id, prop, v) {
       const i = edit(id, { [prop]: v })
-      if (i >= 0) opts.onCommit?.(i, { [prop]: v })
+      if (i >= 0) opts.onCommit?.(i, { [prop]: v }, this.sceneId)
     },
     /** What the layer shows at the playhead, for the row's field. */
     readLayerProp (id, prop) {

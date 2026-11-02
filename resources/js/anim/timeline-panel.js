@@ -188,6 +188,8 @@ export const animationTimeline = (config = {}) => ({
       canResetObject: (target) => this.canResetObject(target),
       resetObject: (target) => this.resetObject(target),
       time: () => this.time,
+      // A live edit still waiting for its pause: a re-fired scene:load must not overwrite it (stage25d adopt).
+      pending: () => !!this._saves?.isPending(),
       // Selected keyframes own Backspace/Delete: the editor's object-delete key asks this first,
       // so deleting a keyframe never takes the whole layer with it (Bart, 2026-10-16).
       hasKeySelection: () => this.selected.length > 0 && this.transportHasTheKeyboard,
@@ -1703,12 +1705,14 @@ export const animationTimeline = (config = {}) => ({
   save () {
     this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
-    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, stage25dKeys: this.stage25dKeys() })
+    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
   },
 
   /** `{ 'layer-3': keys }` for EVERY layer of the stage (an empty list clears a layer's keys), or null with no stage. */
   stage25dKeys () {
-    const items = (window.__stage25d?.items?.() ?? []).filter((i) => i.id !== 'camera')
+    const stage = window.__stage25d
+    if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
+    const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera')
     if (!items.length) return null
     const byLayer = keysFromTracks(this.tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))

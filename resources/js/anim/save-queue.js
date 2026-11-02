@@ -63,5 +63,6 @@ export const createKeyedSaveQueue = (send, pauseMs) => {
       queue.schedule()
     },
     flush: () => queue.flush(),
+    isPending: () => queue.isPending(),
   }
 }

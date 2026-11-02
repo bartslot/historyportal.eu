@@ -1028,15 +1028,19 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { onCommit: (index, patch) => stage25dLayerSaves.schedule(`${index}:${Object.keys(patch)[0]}`, { index, patch }) })
+            _stage25d = mountStage25d(host, { onCommit: (index, patch, sceneId) => stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }) })
         }
         const mounting = _stage25d
         try {
             const stage = await mounting
             if (req !== _stage25dReq || !isCurrent()) return
-            let synced
-            if (!stage.matches(cfg)) { await stage.show(cfg); synced = true } else synced = stage.adopt(cfg)
+            let synced = false
+            if (stage.sceneId !== payload.sceneId) window.__stage25d = null   // the old scene's layers must not take a save meant for this one
+            if (!stage.matches(cfg)) { await stage.show(cfg); synced = true }
+            // A re-fired scene:load must not revert an edit still waiting to be saved.
+            else if (!stage25dLayerSaves.isPending() && !window.__timelineKeying?.pending?.()) synced = stage.adopt(cfg)
             if (req !== _stage25dReq) return
+            stage.sceneId = payload.sceneId
             window.__stage25d = stage
             stage.update(0)
             // The timeline keeps the layers' keys as tracks: tell it the stage now holds a (new) copy.

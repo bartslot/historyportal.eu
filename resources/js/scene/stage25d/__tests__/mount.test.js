@@ -80,6 +80,19 @@ describe('stage25d live edits', () => {
   })
 })
 
+describe('stage25d undo after own edits', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="h"></div>' })
+
+  it('the server going back to the loaded state is adopted after the teacher edited since', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    const loaded = cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.5 }] } })
+    await stage.show(loaded)
+    stage.setLayerKeys('layer-0', [{ t: 0, x: 0.1 }, { t: 2, x: 0.9 }])   // saved by the timeline: the server now holds this
+    expect(stage.adopt(loaded)).toBe(true)                                 // undo: the server is back at the loaded state
+    expect(stage.items()[0].keys).toEqual([])
+  })
+})
+
 describe('stage25d mount', () => {
   beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
 
