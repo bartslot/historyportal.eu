@@ -14,6 +14,8 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     setLook (look) { calls.looks.push(look) }
     async build (scene) { calls.built.push(scene) }
     tick () {}
+    worldXAt (x) { return (x - 200) / 10 }
+    layerBox () { return null }
     rebind (scene) { calls.rebound = scene }
     pose (scene, t) { calls.posed.push([scene.id, t]) }
   },
@@ -82,6 +84,39 @@ describe('stage25d live edits', () => {
     expect(stage.adopt(back)).toBe(true)
     expect(stage.readLayerProp('layer-0', 'x')).toBe(0.1)
     expect(stage.adopt(back)).toBe(false)
+  })
+})
+
+describe('stage25d drop from the Assets tab', () => {
+  beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
+
+  const drop = (canvas, id, clientX) => {
+    const e = Object.assign(new Event('drop', { bubbles: true, cancelable: true }), {
+      clientX, clientY: 90, dataTransfer: { getData: (type) => (type === 'application/x-lp-stage25d' ? id : ''), types: ['application/x-lp-stage25d'] },
+    })
+    canvas.dispatchEvent(e)
+    return e
+  }
+
+  it('a dropped picture becomes a layer standing where the pointer is', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { editable: true, onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    stage.sceneId = 4
+    await stage.show(cfg({ set: { layers: [{ asset: 'a', depth: 'mid' }] } }))
+    stage.canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 225 })
+    const e = drop(stage.canvas, 'fig-meisje-push-01', 300)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(e.defaultPrevented).toBe(true)
+    expect(stage.items().filter((i) => i.id !== 'camera')).toHaveLength(2)
+    expect(saved[0][1].add.asset).toBe('fig-meisje-push-01')
+    expect(saved[0][1].add.x).toBeGreaterThan(0.5)   // dropped right of the middle
+  })
+
+  it('anything else dropped is left alone', async () => {
+    const stage = await mountStage25d(document.getElementById('h'), { editable: true })
+    await stage.show(cfg())
+    const e = drop(stage.canvas, '', 100)
+    expect(e.defaultPrevented).toBe(false)
   })
 })
 

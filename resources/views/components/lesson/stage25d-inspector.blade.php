@@ -45,7 +45,7 @@
 
         {{-- How near it stands: the same picture reads larger and sits in front of everything farther away. --}}
         <div class="mt-1 space-y-1" x-show="info && info.depth !== 'sky'">
-            <x-ui.panel-row :label="__('Depth')">
+            <x-ui.panel-row :label="__('Depth')" stacked>
                 <div class="join w-full">
                     @foreach (['bg' => __('Far'), 'mid' => __('Middle'), 'fg' => __('Front'), 'near' => __('Closest')] as $depth => $name)
                         <button type="button" data-stage25d-depth="{{ $depth }}"

@@ -10,7 +10,7 @@
 import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
-import { layerAt } from '@stage25d/stage25d/layout'
+import { layerAt, DEPTH_Z, viewWidthAt } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
@@ -21,6 +21,9 @@ import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch']
+
+/** What a picture dragged out of the Assets tab carries: the library asset id. */
+export const DROP_TYPE = 'application/x-lp-stage25d'
 
 const libraries = new Map()
 const alphaMaps = new Map()   // one per library, kept across scenes: every picture is read once
@@ -132,6 +135,14 @@ export async function createStage25d (host, opts = {}) {
       alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
+        canvas.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes(DROP_TYPE)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } })
+        canvas.addEventListener('drop', (e) => {
+          const id = e.dataTransfer?.getData(DROP_TYPE)
+          if (!id) return
+          e.preventDefault()
+          const r = canvas.getBoundingClientRect()
+          api.addLayer(id, { x: e.clientX - r.left, y: e.clientY - r.top })
+        })
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
           valueOf: (i, prop) => layerAt(layers[i], nowT())[prop],
@@ -247,16 +258,18 @@ export async function createStage25d (host, opts = {}) {
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** A new layer from a library picture, standing mid-view at its own depth; saved at the end of the layers. */
-    async addLayer (assetId) {
+    async addLayer (assetId, at = null) {
       const a = assets.get(assetId)
       if (!a) return
       const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : 'mid'
-      const layer = { asset: assetId, depth, x: 0.5, scale: 1 }
+      // Dropped on the stage: it stands where the pointer is, at its own depth (the ray meets that depth's plane).
+      const x = at && stage ? 0.5 + stage.worldXAt(at.x, at.y, DEPTH_Z[depth]) / viewWidthAt(DEPTH_Z[depth]) : 0.5
+      const layer = { asset: assetId, depth, x: Math.round(Math.min(2, Math.max(-1, x)) * 1000) / 1000, scale: 1 }
       layers = [...layers, layer]
       await api.show({ ...cfg, set: { ...cfg.set, layers } })
       opts.onCommit?.(layers.length - 1, { add: layer }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
-      pointer?.select(layers.length - 1)
+      pointer?.select(layers.length - 1, true)   // the new layer is the selection: its panel opens
     },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {

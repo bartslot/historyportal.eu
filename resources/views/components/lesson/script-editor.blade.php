@@ -95,10 +95,11 @@
             </div>
             <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
                 <template x-for="a in shown" :key="a.id">
-                    <button type="button" class="flex flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200"
+                    <button type="button" draggable="true" class="flex cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
+                            x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', a.id); $event.dataTransfer.effectAllowed = 'copy'"
                             x-on:click="pick(a)" :title="a.label">
                         <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
-                            <img :src="a.url" loading="lazy" alt="" class="max-h-full max-w-full object-contain" />
+                            <img :src="a.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
                         </span>
                         <span class="truncate text-xs text-panel-label" x-text="a.label"></span>
                     </button>
