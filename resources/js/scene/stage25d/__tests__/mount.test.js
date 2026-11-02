@@ -4,6 +4,7 @@ const calls = { built: [], posed: [], disposed: 0, looks: [] }
 let frame = () => {}
 
 vi.mock('@stage25d/stage25d/stage', () => ({
+  STAGE_LOOK: {},
   Stage: class {
     constructor (canvas, lib) {
       this.lib = lib
@@ -35,7 +36,7 @@ describe('stage25d live edits', () => {
   it('lists layers, the figure by name, then the camera', async () => {
     const stage = await mountStage25d(document.getElementById('h'))
     await stage.show(two())
-    expect(stage.items().map((i) => [i.id, i.label])).toEqual([['layer-0', 'a'], ['layer-1', 'meisje'], ['camera', 'Camera']])
+    expect(stage.items().map((i) => [i.id, i.label])).toEqual([['layer-0', 'A'], ['layer-1', 'Meisje'], ['camera', 'Camera']])
   })
 
   it('a moved or keyed layer redraws without a rebuild and is the same set', async () => {

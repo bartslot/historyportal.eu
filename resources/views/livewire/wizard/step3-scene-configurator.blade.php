@@ -1068,6 +1068,9 @@
             @elseif ($activeDioramaId)
             {{-- A diorama item: where it stands (X, Z on its floor), keyed like the timeline rows. --}}
             <x-lesson.diorama-item-inspector :item-id="$activeDioramaId" wire:key="dio-inspector-{{ $activeDioramaId }}" />
+            @elseif ($activeStage25dLayer)
+            {{-- A stage25d layer: its picture, place and motion (live off window.__stage25d). --}}
+            <x-lesson.stage25d-inspector :layer-id="$activeStage25dLayer" wire:key="s25-inspector-{{ $activeStage25dLayer }}" />
             @elseif ($panelView === 'scene')
             @php $sceneModel = $this->selectedSceneModel; @endphp
             @if ($sceneModel)
@@ -1112,6 +1115,10 @@
                     <x-lesson.scene-inspector-gallery :scene="$sceneModel" />
                 @elseif ($sceneModel->kind === 'video')
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
+                @elseif ($sceneModel->kind === 'stage25d')
+                    {{-- A 3D World: its own view and look settings, then the same scene details (script, caption) as any narrated scene. --}}
+                    <x-lesson.stage25d-inspector wire:key="s25-scene-{{ $sceneModel->id }}" />
+                    <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" :show-view="false" />
                 @else
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" />
                     <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
@@ -1337,6 +1344,58 @@
         };
     };
 
+    // A stage25d layer's (or the scene's) Format panel: values are read off the live stage at the playhead and
+    // written back through it, the way the canvas drag and the timeline row write them.
+    window.stage25dInspector = function stage25dInspector(id, names) {
+        const SHOWN = { x: 100, y: 1, scale: 100, rotation: 1, opacity: 100 };
+        const round = (v) => Math.round(v * 100) / 100;
+        return {
+            names: names || {}, info: null, look: [], values: { x: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            init() { this.sync(); },
+            sync() {
+                const stage = window.__stage25d;
+                if (!stage) return;
+                if (!id) { this.look = stage.lookControls?.() ?? []; return; }
+                this.info = stage.layerInfo?.(id) ?? null;
+                for (const p of Object.keys(SHOWN)) {
+                    const v = window.__timelineKeying?.value?.('s25:' + id, p);
+                    if (Number.isFinite(v)) this.values[p] = round(v * SHOWN[p]);
+                }
+            },
+            set(prop, shown, factor) {
+                const v = Number(shown) / factor;
+                if (!Number.isFinite(v)) return;
+                const target = 's25:' + id;
+                if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) window.__stage25d?.commitLayerProp?.(id, prop, v);
+                this.sync();
+            },
+            setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
+            setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
+        };
+    };
+
+    // The Assets tab of a stage25d scene: the library the stage draws from. A click replaces the picture of the
+    // selected layer, or adds a layer when none is selected.
+    window.stage25dAssets = function stage25dAssets() {
+        return {
+            lib: null, kind: 'all', query: '', selected: null,
+            init() { this.sync(); },
+            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.selection ?? null; },
+            get kinds() { return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))]; },
+            get shown() {
+                const q = this.query.trim().toLowerCase();
+                return (this.lib?.assets ?? []).filter((a) => (this.kind === 'all' || a.layer === this.kind)
+                    && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
+            },
+            pick(asset) {
+                const stage = window.__stage25d;
+                if (!stage) return;
+                const at = stage.selection;
+                if (at !== null) stage.swapAsset('layer-' + at, asset.id); else stage.addLayer(asset.id);
+            },
+        };
+    };
+
     // Object list — reads the live text layer (title/text boxes + backing panels) so the teacher
     // can find, flash-locate, and restack objects that overlap on the stage.
     window.objectList = function objectList() {
@@ -1394,6 +1453,9 @@
                 // Diorama items (config.diorama): front-most first, like the rest of the list.
                 const dioItems = [...(window.__diorama?.items() ?? [])].reverse().map((i) =>
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
+                // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
+                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera').reverse().map((i) =>
+                    ({ id: 's25_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, s25: true }));
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
@@ -1403,7 +1465,7 @@
                 // Speech balloons are drawn over everything: listed first, never restacked by hand.
                 const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
                     ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
-                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems];
+                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -1414,6 +1476,8 @@
                 } else if (objKind === 'voyage') {
                     items.push({ id: '__gallery__', icon: 'photo', label: @js(__('Gallery')), bg: true, voyage: 'gallery' });
                     items.push({ id: '__waypoint__', icon: 'map', label: @js(__('Waypoint')), bg: true, voyage: 'waypoint' });
+                } else if (objKind === 'stage25d') {
+                    // A 3D World has no background object: its layers are the objects.
                 } else {
                     // A quiz is an object on its scene too: its row opens the questions. Pinned like
                     // the background (bg: true = no drag, no delete), just above it.
@@ -1441,7 +1505,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio], [data-bal]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25], [data-bal]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -1464,7 +1528,7 @@
                         // which band is in front (scene/object-list-drop.js).
                         const kindOf = (id) => {
                             const it = this.items.find((i) => i.id === id);
-                            return !it || it.bg || it.bal || it.dio ? null : (it.art ? 'art' : 'text');
+                            return !it || it.bg || it.bal || it.dio || it.s25 ? null : (it.art ? 'art' : 'text');
                         };
                         const drop = window.__objectListDrop({
                             ids, kindOf, movedId: evt.item.dataset.objId,
@@ -1513,6 +1577,10 @@
                 }
                 if (obj.dio) {
                     window.__diorama?.select(obj.id.slice(4));
+                    return;
+                }
+                if (obj.s25) {
+                    window.__stage25d?.select(obj.id.slice(4));
                     return;
                 }
                 if (obj.bal) {
@@ -1587,7 +1655,8 @@
             const isDiorama = id.indexOf('dio_') === 0;
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
             const isBalloon = id.indexOf('bal_') === 0;
-            const objectId = (isArtwork || isDiorama || isText || isBalloon) ? id : '';
+            const isStage25d = id.indexOf('s25_') === 0;
+            const objectId = (isArtwork || isDiorama || isText || isBalloon || isStage25d) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -1609,7 +1678,7 @@
     const __registerViewStore = () => {
         if (!window.Alpine || window.Alpine.store('view')) return;
         Alpine.store('view', {
-            scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
+            stage25d: false, scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
             // Not persisted: set from each scene:load, so Globe layers never shows over a slide.
             mapScene: false,
             // Which tab the bottom dock is showing: 'icons' | 'script'.
@@ -2124,11 +2193,11 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-bal="obj.bal ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-bal="obj.bal ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
                      :class="[
-                        obj.bg || obj.bal || obj.dio ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+                        obj.bg || obj.bal || obj.dio || obj.s25 ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
@@ -2142,7 +2211,7 @@
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal && !obj.s25"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
@@ -2151,7 +2220,7 @@
                         </svg>
                     </button>
                     {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.s25"
                             @click.stop="deleteObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">

@@ -726,6 +726,7 @@ export const animationTimeline = (config = {}) => ({
 
   /** Tell any diamond outside this component that its answer may have changed. */
   announce () {
+    this.syncStage25d()   // keys edited here reach the stage before anything else reads it
     window.dispatchEvent(new CustomEvent('timeline-changed'))
   },
 
@@ -1303,6 +1304,7 @@ export const animationTimeline = (config = {}) => ({
       return arrow?.target ?? `art:${String(id).slice(4)}`
     }
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
+    if (String(id).startsWith('s25_')) return `s25:${String(id).slice(4)}`
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
@@ -1341,6 +1343,7 @@ export const animationTimeline = (config = {}) => ({
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
     else if (kind === 'dio') window.__diorama?.select?.(id)
+    else if (kind === 's25') window.__stage25d?.select?.(id)
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
   },
 

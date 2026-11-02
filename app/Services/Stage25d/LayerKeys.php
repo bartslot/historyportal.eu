@@ -35,6 +35,19 @@ final class LayerKeys
         return $out;
     }
 
+    public const MOTION_KINDS = ['none', 'sway', 'drift', 'ripple', 'flicker'];
+
+    /** A layer's motion as the stage reads it: a kind and how much, how fast (0..5). Null when the kind is unknown. @return array{kind:string,amount:float,speed:float}|null */
+    public static function motion(mixed $m): ?array
+    {
+        if (! is_array($m) || ! in_array($m['kind'] ?? null, self::MOTION_KINDS, true)) {
+            return null;
+        }
+        $n = fn ($v) => is_numeric($v) && is_finite((float) $v) ? max(0.0, min(5.0, (float) $v)) : 1.0;
+
+        return ['kind' => $m['kind'], 'amount' => $n($m['amount'] ?? 1), 'speed' => $n($m['speed'] ?? 1)];
+    }
+
     /** Below this spread a track does not move anything (a director track of all zeros). */
     private const FLAT = 1e-6;
 

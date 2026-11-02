@@ -422,6 +422,7 @@ class Step3SceneConfigurator extends Component
             $this->activeLayerId = null;
             $this->activeTextId = null;
             $this->activeDioramaId = null;
+            $this->activeStage25dLayer = null;
             $this->activeBalloonId = null;
             $this->activePanel = 0;
         }
@@ -462,6 +463,8 @@ class Step3SceneConfigurator extends Component
             'identityTitle' => $scene->config['identity_title'] ?? null,
             'hideIdentity' => ! $scene->showsCaption(),
             'kind' => $scene->kind,
+            // A stage25d scene whose rail thumbnail is missing or out of date: the editor takes its picture off the stage.
+            'stillStale' => $scene->isStage25d() && ! \App\Services\Stage25d\SceneStill::isFresh($scene),
             // For voyages the projection is GLOBAL — inject the lesson-wide voyage_view so every
             // waypoint previews with the same flat/globe setting (the JS reads config.view).
             'config' => $scene->kind === 'voyage'
@@ -1024,6 +1027,7 @@ class Step3SceneConfigurator extends Component
         $this->activeLayerId = null;
         $this->activeTextId = null;
         $this->activeDioramaId = null;
+        $this->activeStage25dLayer = null;
         $this->activeBalloonId = null;
         $this->panelView = 'scene';
 
@@ -1035,6 +1039,16 @@ class Step3SceneConfigurator extends Component
             $lines = array_values((array) ($this->selectedScene['config']['lines'] ?? []));
             if (SpeechBalloons::index($objectId, $lines) !== null) {
                 $this->activeBalloonId = $objectId;
+            }
+
+            return;
+        }
+
+        // A stage25d layer (the stage selects 's25_layer-<n>'): its own Format panel.
+        if (preg_match('/^s25_(layer-\d+)$/', $objectId, $m) === 1) {
+            $at = (int) substr($m[1], 6);
+            if (isset($this->selectedScene['config']['stage25d']['set']['layers'][$at])) {
+                $this->activeStage25dLayer = $m[1];
             }
 
             return;
@@ -1290,6 +1304,7 @@ class Step3SceneConfigurator extends Component
         if ($selectedTextId && collect($clean)->contains(fn ($text) => ($text['id'] ?? null) === $selectedTextId)) {
             $this->activeLayerId = null;
             $this->activeDioramaId = null;
+            $this->activeStage25dLayer = null;
             $this->activeTextId = $selectedTextId;
             $this->panelView = 'scene';
             unset($this->activeText);

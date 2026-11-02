@@ -77,7 +77,34 @@
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
          Its own Livewire component: the dock owns the geometry, the panel owns the library. --}}
     <div x-show="$store.view.bottomTab === 'icons'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" />
+        <div x-show="!$store.view.stage25d" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" />
+        </div>
+        {{-- A stage25d scene draws from its own painted library, not from the icon sets. --}}
+        <div x-show="$store.view.stage25d" x-cloak x-data="stage25dAssets()" data-stage25d-assets
+             x-on:stage25d-synced.window="sync()" x-on:scene-object-selected.window="sync()"
+             class="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-2 pt-1">
+            <div class="flex flex-wrap items-center gap-1.5">
+                <template x-for="k in kinds" :key="k">
+                    <button type="button" class="btn btn-xs" :class="kind === k ? 'btn-neutral' : 'btn-ghost'"
+                            x-on:click="kind = k" x-text="k === 'all' ? @js(__('All')) : k"></button>
+                </template>
+                <input type="search" x-model="query" placeholder="{{ __('Search') }}" aria-label="{{ __('Search') }}"
+                       class="input input-xs ml-auto w-40" />
+                <span class="badge badge-sm" x-text="selected === null ? @js(__('Add')) : @js(__('Replace'))"></span>
+            </div>
+            <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
+                <template x-for="a in shown" :key="a.id">
+                    <button type="button" class="flex flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200"
+                            x-on:click="pick(a)" :title="a.label">
+                        <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
+                            <img :src="a.url" loading="lazy" alt="" class="max-h-full max-w-full object-contain" />
+                        </span>
+                        <span class="truncate text-xs text-panel-label" x-text="a.label"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
     </div>
 
     {{-- ── Script tab ────────────────────────────────────────────────────────── --}}

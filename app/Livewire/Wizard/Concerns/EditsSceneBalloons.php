@@ -37,6 +37,7 @@ trait EditsSceneBalloons
         $this->activeLayerId = null;
         $this->activeTextId = null;
         $this->activeDioramaId = null;
+        $this->activeStage25dLayer = null;
         $this->activeBalloonId = $id;
         $this->panelView = 'scene';
         $this->selectSceneInternal($scene->id);

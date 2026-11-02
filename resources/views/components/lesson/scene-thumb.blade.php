@@ -93,7 +93,11 @@
                  class="relative w-full h-full object-cover" alt="" />
         @endif
         <span class="absolute bottom-0 inset-x-0 bg-black/55 text-2xs text-white px-1 py-0.5 text-left truncate">
-            {{ $scene->year ?? '—' }} · {{ $scene->location ?? '—' }}
+            @if ($scene->kind === 'stage25d')
+                {{ $scene->location ?: ($scene->chapter_name ?: ($scene->config['stage25d']['beat'] ?? '—')) }}
+            @else
+                {{ $scene->year ?? '—' }} · {{ $scene->location ?? '—' }}
+            @endif
         </span>
     @endif
 

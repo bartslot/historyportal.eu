@@ -25,6 +25,19 @@ final class LibraryBundle
         }
     }
 
+    /** Is `$assetId` in the bundle's library.json on the public disk, and which layer kind is it ('mid', 'figure', ...)? */
+    public static function assetLayer(string $bundle, string $assetId): ?string
+    {
+        static $cache = [];
+        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $bundle)) {
+            return null;
+        }
+        $cache[$bundle] ??= collect(json_decode((string) Storage::disk('public')->get(self::DIR."/{$bundle}/library.json"), true)['assets'] ?? [])
+            ->mapWithKeys(fn ($a) => [(string) ($a['id'] ?? '') => (string) ($a['layer'] ?? 'mid')])->all();
+
+        return $cache[$bundle][$assetId] ?? null;
+    }
+
     public static function url(string $bundle): string
     {
         self::assertName($bundle);

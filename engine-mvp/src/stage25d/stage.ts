@@ -6,7 +6,7 @@
 import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Scene as BScene, UniversalCamera, Vector3,
+  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, Scene as BScene, UniversalCamera, Vector3,
   type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
@@ -238,6 +238,38 @@ export class Stage {
   /** Point the built layers at an edited scene's values (x, scale, motion, keys) without rebuilding. */
   rebind(s: Scene) {
     this.built.forEach((b) => { if (b.index >= 0) b.layer = s.set.layers[b.index] })
+  }
+
+  /** Standing pictures under a point (CSS px from the canvas's top-left), nearest first: the layer's index in
+   *  set.layers, its asset and where on the picture (u, v: 0..1, v up) the point lands. Sky, far strips and the
+   *  floor are not pickable. The editor still has to look at the picture's alpha: a plane's empty corners hit too. */
+  pickLayers(x: number, y: number): { index: number; asset: Asset; u: number; v: number }[] {
+    const owns = (m: unknown) => this.built.some((b) => b.handle.mesh === m)
+    const out: { index: number; asset: Asset; u: number; v: number }[] = []
+    for (const hit of this.scene.multiPick(x, y, owns) ?? []) {
+      const b = this.built.find((n) => n.handle.mesh === hit.pickedMesh)
+      const uv = hit.getTextureCoordinates()
+      if (!b || !uv || b.index < 0 || b.asset.tileable_x || ['sky', 'bg', 'ground'].includes(b.asset.layer)) continue
+      out.push({ index: b.index, asset: b.asset, u: uv.x, v: uv.y })
+    }
+    return out
+  }
+
+  /** A layer's box on screen as shares of the canvas (0..1 from its top-left) and the z of its plane; null while it is not built. */
+  layerBox(index: number): { x0: number; y0: number; x1: number; y1: number; z: number } | null {
+    const b = this.built.find((n) => n.index === index)
+    if (!b) return null
+    const view = this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight())
+    const kx = 1 / this.engine.getRenderWidth(), ky = 1 / this.engine.getRenderHeight()
+    const pts = b.handle.mesh.getBoundingInfo().boundingBox.vectorsWorld.map((v) => Vector3.Project(v, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view))
+    const xs = pts.map((p) => p.x * kx), ys = pts.map((p) => p.y * ky)
+    return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
+  }
+
+  /** World x where the pointer's ray crosses the vertical plane at `z`: how far a drag moved a picture of that depth. */
+  worldXAt(x: number, y: number, z: number): number {
+    const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.camera)
+    return ray.origin.x + ((z - ray.origin.z) / ray.direction.z) * ray.direction.x
   }
 
   /** Where the light comes from (S3: puppets cast their contact shadow along it). */

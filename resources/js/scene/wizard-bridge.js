@@ -1007,6 +1007,14 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0
+    const _stage25dStillAsked = new Set()
+    let _stage25dStillWatch = false
+
+    /** The editor's Alpine store tells the Assets tab which library to list. */
+    function setStage25dFlag(on) {
+        const view = window.Alpine?.store?.('view')
+        if (view) view.stage25d = on
+    }
 
     function hideStage25d() {
         _stage25dReq++
@@ -1014,6 +1022,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _stage25dHost?.remove()
         _stage25d = _stage25dHost = null
         window.__stage25d = null
+        setStage25dFlag(false)
     }
 
     async function showStage25d(payload, isCurrent) {
@@ -1025,10 +1034,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
             const host = document.createElement('div')
             host.className = 'wizard-stage25d-host'
-            host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
+            host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'   // only the stage's own canvas takes the pointer
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { onCommit: (index, patch, sceneId) => stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }) })
+            _stage25d = mountStage25d(host, { editable: true, onLook: (key, value, sceneId) => window.Livewire?.dispatch('stage25d:look', { key, value, sceneId }), onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {
@@ -1042,7 +1051,32 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (req !== _stage25dReq) return
             stage.sceneId = payload.sceneId
             window.__stage25d = stage
+            setStage25dFlag(true)
             stage.update(0)
+            // The open scene's thumbnail follows its edits (a few seconds after the last one).
+            if (!_stage25dStillWatch) {
+                _stage25dStillWatch = true
+                let timer = null
+                const refresh = () => {
+                    clearTimeout(timer)
+                    timer = setTimeout(async () => {
+                        const st = window.__stage25d
+                        const frame = await st?.still?.()
+                        if (frame && st.sceneId) window.__step3Wire?.()?.saveStage25dStill(st.sceneId, frame, null)
+                    }, 3000)
+                }
+                for (const ev of ['timeline-changed', 'stage25d-edited']) window.addEventListener(ev, refresh)
+            }
+            // A scene with no (or an old) thumbnail: the stage is drawn right here, so take its picture once it has settled.
+            if (payload.stillStale && !_stage25dStillAsked.has(payload.sceneId)) {
+                _stage25dStillAsked.add(payload.sceneId)
+                setTimeout(async () => {
+                    const st = window.__stage25d
+                    if (!st || st.sceneId !== payload.sceneId) return
+                    const frame = await st.still()
+                    if (frame && st.sceneId === payload.sceneId) window.__step3Wire?.()?.saveStage25dStill(payload.sceneId, frame, null)
+                }, 2500)
+            }
             // The timeline keeps the layers' keys as tracks: tell it the stage now holds a (new) copy.
             if (synced) window.dispatchEvent(new CustomEvent('stage25d-synced'))
         } catch (e) {

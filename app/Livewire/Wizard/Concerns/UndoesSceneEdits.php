@@ -36,7 +36,8 @@ trait UndoesSceneEdits
 
     private function afterHistoryStep(int $sceneId, string $message): void
     {
-        $this->activeDioramaId = null;          // what it pointed at may be gone now
+        $this->activeDioramaId = null;
+        $this->activeStage25dLayer = null;          // what it pointed at may be gone now
         $this->selectSceneInternal($sceneId);   // re-fires scene:load: the stage and panels redraw
         // The Timeline tab keeps its own copy of the tracks (it outlives a morph on purpose, see
         // SESSIONS in timeline-panel.js), so it is handed the restored ones. Without this, Cmd-Z
