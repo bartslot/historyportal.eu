@@ -1004,6 +1004,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // One stage per selected scene run: scene:load re-fires on every poll and edit, an unchanged config is left alone.
     // A base value the teacher set on a layer (a field, not a key): saved into set.layers[index], no scene:load.
     const stage25dLayerSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:layer', save), DIO_MOVE_PAUSE_MS)
+    // The server copied a layer: select the copy (its index) once the stage has it.
+    window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0

@@ -34,6 +34,13 @@ trait DuplicatesSceneObjects
             return;
         }
 
+        // Stage25d layers copy inside their own scene's stage block; the rest go the way they always did.
+        $stageLayers = collect($objectIds)->filter(fn ($id) => is_string($id) && preg_match('/^s25_layer-\d+$/', $id) === 1)->values();
+        if ($stageLayers->isNotEmpty()) {
+            $this->duplicateStage25dLayers($stageLayers->map(fn ($id) => (int) substr($id, 10))->all());
+            $objectIds = collect($objectIds)->reject(fn ($id) => $stageLayers->contains($id))->all();
+        }
+
         $ids = collect($objectIds)
             ->filter(fn ($id) => is_string($id) && $id !== '' && ! str_starts_with($id, '__'))
             ->unique()->take(self::DUPLICATE_MAX_OBJECTS)->values();

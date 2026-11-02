@@ -134,8 +134,8 @@ export async function createStage25d (host, opts = {}) {
         canvas.style.pointerEvents = 'auto'
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
-          xOf: (i) => layerAt(layers[i], nowT()).x,
-          onMove: (i, x) => api.moveLayer(`layer-${i}`, x),
+          valueOf: (i, prop) => layerAt(layers[i], nowT())[prop],
+          onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
         })
       }
       heights = new Map(lib.assets.map(a => [a.id, a.height_m ?? 1.7]))
@@ -188,10 +188,10 @@ export async function createStage25d (host, opts = {}) {
     update (t) { clock = null; manualT = Math.max(0, t) },
     /** The player follows a clock (the narration's currentTime). */
     play (getT) { clock = () => lead + getT() },
-    /** A drag (or the inspector) moved a layer's x: through the timeline when it is keyed, else as the layer's own x. */
-    moveLayer (id, x) {
-      if (window.__timelineKeying?.edit?.(`s25:${id}`, 'x', x, { flush: false })) return
-      api.commitLayerProp(id, 'x', x)
+    /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer. */
+    moveLayer (id, prop, value) {
+      if (window.__timelineKeying?.edit?.(`s25:${id}`, prop, value, { flush: false })) return
+      api.commitLayerProp(id, prop, value)
     },
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. */
     select (id) { pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, true) },
@@ -221,6 +221,15 @@ export async function createStage25d (host, opts = {}) {
       const next = { ...(typeof layers[i].motion === 'object' ? layers[i].motion : { kind: layers[i].motion }), ...motion }
       const idx = edit(id, { motion: next })
       if (idx >= 0) opts.onCommit?.(idx, { motion: next }, api.sceneId)
+    },
+    /** Move a layer to another depth (bg, mid, fg, near): it stands nearer or farther; rebuilds, saved on the layer. */
+    async setLayerDepth (id, depth) {
+      const i = layerIndex(id)
+      if (i < 0 || !layers[i] || layers[i].depth === depth || !['bg', 'mid', 'fg', 'near'].includes(depth) || layers[i].depth === 'sky') return
+      layers = layers.map((l, n) => (n === i ? { ...l, depth } : l))
+      await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      if (api.sceneId != null) opts.onCommit?.(i, { depth }, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** The library on stage, for the asset browser: [{ id, layer, file, url, label }]. */
     library () {

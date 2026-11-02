@@ -17,10 +17,10 @@ function setup (over = {}) {
     worldXAt: vi.fn((x) => x / 100),
     ...over.stage,
   }
-  const onMove = vi.fn()
+  const onChange = vi.fn()
   const opaque = over.opaque ?? (() => true)
-  const api = attachInteraction({ canvas, host, stage: () => stage, xOf: () => 0.5, alpha: { opaque }, onMove })
-  return { canvas, host, stage, onMove, api }
+  const api = attachInteraction({ canvas, host, stage: () => stage, valueOf: (i, prop) => ({ x: 0.5, scale: 1, rotation: 0 })[prop], alpha: { opaque }, onChange })
+  return { canvas, host, stage, onChange, api }
 }
 
 const pointer = (type, x, y) => Object.assign(new Event(type, { bubbles: true }), { clientX: x, clientY: y, button: 0, pointerId: 1 })
@@ -47,17 +47,17 @@ describe('stage25d canvas interaction', () => {
   })
 
   it('dragging moves x by the world distance in views of that depth', () => {
-    const { canvas, onMove, stage } = setup()
+    const { canvas, onChange, stage } = setup()
     canvas.dispatchEvent(pointer('pointerdown', 200, 100))   // world x = 1.0 - 0.0 (client minus canvas left = 100)
     stage.worldXAt.mockImplementation((x) => x / 10)
     canvas.dispatchEvent(pointer('pointermove', 260, 100))   // 60 css px further
-    expect(onMove).toHaveBeenCalledTimes(1)
-    const [index, x] = onMove.mock.calls[0]
-    expect(index).toBe(2)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    const [index, prop, x] = onChange.mock.calls[0]
+    expect([index, prop]).toEqual([2, 'x'])
     expect(x).toBeGreaterThan(0.5)   // moved right of where it started
     canvas.dispatchEvent(pointer('pointerup', 260, 100))
     canvas.dispatchEvent(pointer('pointermove', 300, 100))
-    expect(onMove).toHaveBeenCalledTimes(1)   // released: no more moves
+    expect(onChange).toHaveBeenCalledTimes(1)   // released: no more moves
   })
 
   it('draws its box from the layer box as shares of the canvas, and hides it when nothing is selected', () => {
@@ -69,6 +69,35 @@ describe('stage25d canvas interaction', () => {
     expect(parseFloat(box.style.width)).toBeCloseTo(0.2 * 400)
     api.select(null)
     expect(box.style.display).toBe('none')
+  })
+
+  it('has the artwork layer chrome: sky ring, eight handles and the rotate grip', () => {
+    const { host, api } = setup()
+    api.select(2)
+    const box = host.querySelector('[data-stage25d-selection]')
+    expect(box.style.boxShadow).toContain('#38bdf8')
+    expect(box.querySelectorAll('[data-scale-handle]')).toHaveLength(8)
+    expect(box.querySelector('[data-rotate-handle]')).not.toBeNull()
+  })
+
+  it('a corner handle scales about the middle, in step with the pointer distance', () => {
+    const { host, api, onChange } = setup()
+    api.select(2)   // box: left 40, top 45, 80 x 90 wide in canvas px -> middle (80, 90)
+    const handle = host.querySelector('[data-scale-handle]')
+    handle.dispatchEvent(Object.assign(new Event('pointerdown', { bubbles: true }), { clientX: 100 + 120, clientY: 50 + 90, button: 0, pointerId: 1 }))   // 40 px right of the middle
+    handle.dispatchEvent(Object.assign(new Event('pointermove', { bubbles: true }), { clientX: 100 + 160, clientY: 50 + 90, pointerId: 1 }))     // 80 px: twice as far
+    expect(onChange).toHaveBeenLastCalledWith(2, 'scale', 2)
+  })
+
+  it('the grip turns it clockwise by the angle swept about the middle', () => {
+    const { host, api, onChange } = setup()
+    api.select(2)
+    const grip = host.querySelector('[data-rotate-handle]')
+    grip.dispatchEvent(Object.assign(new Event('pointerdown', { bubbles: true }), { clientX: 100 + 80, clientY: 50 + 10, button: 0, pointerId: 1 }))   // straight above the middle
+    grip.dispatchEvent(Object.assign(new Event('pointermove', { bubbles: true }), { clientX: 100 + 130, clientY: 50 + 90, pointerId: 1 }))              // swept to the right of it
+    const [, prop, deg] = onChange.mock.calls.at(-1)
+    expect(prop).toBe('rotation')
+    expect(deg).toBeCloseTo(90, 0)
   })
 
   it('lets go when another object is selected elsewhere', () => {

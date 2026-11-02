@@ -43,6 +43,19 @@
             @endforeach
         </div>
 
+        {{-- How near it stands: the same picture reads larger and sits in front of everything farther away. --}}
+        <div class="mt-1 space-y-1" x-show="info && info.depth !== 'sky'">
+            <x-ui.panel-row :label="__('Depth')">
+                <div class="join w-full">
+                    @foreach (['bg' => __('Far'), 'mid' => __('Middle'), 'fg' => __('Front'), 'near' => __('Closest')] as $depth => $name)
+                        <button type="button" data-stage25d-depth="{{ $depth }}"
+                                class="btn btn-xs join-item flex-1" :class="info?.depth === '{{ $depth }}' ? 'btn-neutral' : 'btn-ghost'"
+                                x-on:click="setDepth('{{ $depth }}')">{{ $name }}</button>
+                    @endforeach
+                </div>
+            </x-ui.panel-row>
+        </div>
+
         <div class="divider my-2" role="presentation"></div>
 
         <div class="space-y-1" x-show="info">

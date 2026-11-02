@@ -85,6 +85,23 @@ describe('stage25d live edits', () => {
   })
 })
 
+describe('stage25d depth', () => {
+  beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
+
+  it('moves a layer to another depth with a rebuild, saved once; the sky does not move', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    stage.sceneId = 9
+    await stage.show(cfg({ set: { layers: [{ asset: 'a', depth: 'mid' }, { asset: 's', depth: 'sky' }] } }))
+    await stage.setLayerDepth('layer-0', 'fg')
+    expect(calls.built).toHaveLength(2)
+    expect(calls.built[1].set.layers[0].depth).toBe('fg')
+    expect(saved).toEqual([[0, { depth: 'fg' }, 9]])
+    await stage.setLayerDepth('layer-1', 'near')
+    expect(saved).toHaveLength(1)
+  })
+})
+
 describe('stage25d undo after own edits', () => {
   beforeEach(() => { document.body.innerHTML = '<div id="h"></div>' })
 

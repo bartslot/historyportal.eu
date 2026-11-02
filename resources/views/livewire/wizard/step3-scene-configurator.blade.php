@@ -1369,6 +1369,7 @@
                 if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) window.__stage25d?.commitLayerProp?.(id, prop, v);
                 this.sync();
             },
+            async setDepth(depth) { await window.__stage25d?.setLayerDepth?.(id, depth); this.sync(); },
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
         };
@@ -2211,7 +2212,7 @@
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal && !obj.s25"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
@@ -2220,7 +2221,7 @@
                         </svg>
                     </button>
                     {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.s25"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
                             @click.stop="deleteObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">
@@ -2374,6 +2375,8 @@
             return !!(sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea'));
         };
         const selectedObjectId = () => {
+            const stage = window.__stage25d?.selection;
+            if (stage != null) return 's25_layer-' + stage;   // a stage25d layer picked on the canvas
             const id = window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
             return id && !id.startsWith('__') ? id : null;
         };
@@ -2412,7 +2415,8 @@
             if (window.__timelineKeying?.hasKeySelection?.()) return;
             const sel = window.getSelection?.();
             if (sel && !sel.isCollapsed && sel.anchorNode?.parentElement?.closest?.('[contenteditable], input, textarea')) return;
-            const id = window.__balloons?.selected() || window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
+            const stageLayer = window.__stage25d?.selection;
+            const id = window.__balloons?.selected() || (stageLayer != null ? 's25_layer-' + stageLayer : null) || window.__artOverlay()?._selectedId || window.__lessonTextLayer?._selectedId;
             if (!id || id === '__bg__') return;
             e.preventDefault();
             window.Livewire.dispatch('scene:delete-object', { objectId: id });

@@ -127,6 +127,33 @@ class StageEditingTest extends TestCase
         $this->assertSame(['asset' => 'stone-chamber-01', 'depth' => 'fg', 'x' => 0.3], $layers[1]);
     }
 
+    public function test_a_layer_can_be_deleted_and_duplicated_like_any_artwork_layer(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->call('saveStage25dLayer', 1, ['add' => ['asset' => 'tree-birch-01', 'x' => 0.3]], $scene->id);
+
+        $editor->call('duplicateObjects', ['s25_layer-1']);
+        $layers = $scene->fresh()->config['stage25d']['set']['layers'];
+        $this->assertCount(3, $layers);
+        $this->assertSame('tree-birch-01', $layers[2]['asset']);
+        $this->assertEqualsWithDelta(0.35, $layers[2]['x'], 0.0001);
+
+        $editor->call('deleteObject', 's25_layer-0');
+        $this->assertSame(['tree-birch-01', 'tree-birch-01'], array_column($scene->fresh()->config['stage25d']['set']['layers'], 'asset'));
+
+        $editor->call('deleteObject', 's25_layer-0')->call('deleteObject', 's25_layer-0');
+        $this->assertCount(1, $scene->fresh()->config['stage25d']['set']['layers'], 'the last layer stays');
+    }
+
+    public function test_a_layer_moves_to_another_depth_but_the_sky_and_unknown_depths_stay(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->call('saveStage25dLayer', 0, ['depth' => 'fg'], $scene->id)->call('saveStage25dLayer', 0, ['depth' => 'sky'], $scene->id)->call('saveStage25dLayer', 0, ['depth' => 'moon'], $scene->id);
+        $this->assertSame('fg', $scene->fresh()->config['stage25d']['set']['layers'][0]['depth']);
+    }
+
     public function test_look_sliders_save_inside_their_range_and_only_the_known_ones(): void
     {
         $scene = $this->scene();

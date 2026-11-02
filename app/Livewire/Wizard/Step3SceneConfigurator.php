@@ -1206,6 +1206,11 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
+        if (preg_match('/^s25_layer-(\d+)$/', $objectId, $m) === 1) {
+            $this->removeStage25dLayer((int) $m[1]);
+
+            return;
+        }
         if (str_starts_with($objectId, 'bal_')) {
             $this->deleteBalloon($objectId);
 

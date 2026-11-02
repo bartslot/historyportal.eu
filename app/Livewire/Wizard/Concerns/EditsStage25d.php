@@ -51,6 +51,9 @@ trait EditsStage25d
         if (is_string($patch['asset'] ?? null) && LibraryBundle::assetLayer($bundle, $patch['asset']) !== null) {
             $values['asset'] = $patch['asset'];
         }
+        if (in_array($patch['depth'] ?? null, LayerKeys::DEPTHS, true) && ($layers[$index]['depth'] ?? null) !== 'sky') {
+            $values['depth'] = $patch['depth'];
+        }
         if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
             $values['motion'] = $motion;
         }
@@ -119,6 +122,52 @@ trait EditsStage25d
             // The snapshot the next save is built from must not put the old picture back.
             $this->selectedScene['image_path'] = $scene->image_path;
         }
+    }
+
+    /** Take a layer off the stage. Its keys go with it (they live on the layer); the stage rebuilds from the saved scene. */
+    public function removeStage25dLayer(int $index): void
+    {
+        $scene = $this->stage25dScene();
+        $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
+        if (! $scene || ! is_array($layers) || ! isset($layers[$index]) || count($layers) <= 1) {
+            return;   // the last layer stays: a stage with nothing on it has no picture to edit
+        }
+        unset($layers[$index]);
+        $this->storeStage25dLayers($scene, $layers);
+        $this->activeStage25dLayer = null;
+        $this->selectSceneInternal($scene->id);   // the stage rebuilds, the timeline re-reads the layers
+    }
+
+    /**
+     * Copy layers next to themselves (a little to the right, like an artwork layer's copy); the copies are
+     * added at the end and the first one is the one left selected.
+     *
+     * @param  list<int>  $indexes
+     */
+    public function duplicateStage25dLayers(array $indexes): void
+    {
+        $scene = $this->stage25dScene();
+        $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
+        if (! $scene || ! is_array($layers)) {
+            return;
+        }
+        $first = null;
+        foreach (array_slice(array_unique($indexes), 0, 20) as $i) {
+            if (! isset($layers[$i])) {
+                continue;
+            }
+            $copy = $layers[$i];
+            $copy['x'] = min(3.0, (float) ($copy['x'] ?? 0.5) + 0.05);
+            unset($copy['figure']);   // a second drawing of a character is not the character: no speaker handle, no balloon tail
+            $layers[] = $copy;
+            $first ??= count($layers) - 1;
+        }
+        if ($first === null) {
+            return;
+        }
+        $this->storeStage25dLayers($scene, $layers);
+        $this->selectSceneInternal($scene->id);
+        $this->dispatch('stage25d:select', index: $first);
     }
 
     private function stage25dScene(): ?Scene
