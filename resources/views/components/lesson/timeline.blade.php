@@ -129,6 +129,12 @@
         track._sortableMounted = true
         new window.Sortable(track, {
             animation: 150,
+            // Pointer-driven dragging, not the browser's native drag-and-drop: every thumb is a
+            // <button>, and native DnD on buttons starts (dragstart fires) and then never delivers
+            // a move or a drop, so the scene snapped back. 4px before a drag starts keeps clicks
+            // selecting the scene.
+            forceFallback: true,
+            fallbackTolerance: 4,
             {{-- Each scene is a wrapper carrying data-scene-block (the thumb button plus its delete
                  X), so THAT is the direct child Sortable moves — never the "Add" button. --}}
             draggable: '[data-scene-block]',
