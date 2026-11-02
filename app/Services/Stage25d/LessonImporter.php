@@ -34,7 +34,7 @@ final class LessonImporter
     /**
      * @param  array<string,mixed>  $lesson  the directed lesson
      * @param  string  $audioRoot  folder the scenes' `audio` ("hunebedden/sc01.mp3") is relative to; null = no narration
-     * @return array{lesson_id:?int,topic:string,scenes:int,audio:int,balloons:int,quizzes:int,skipped:list<string>,warnings:list<string>}
+     * @return array{lesson_id:?int,topic:string,scenes:int,audio:int,balloons:int,quizzes:int,keys:int,skipped:list<string>,warnings:list<string>}
      */
     public function import(array $lesson, User $teacher, ?string $audioRoot = null, bool $force = false, bool $dryRun = false): array
     {
@@ -45,7 +45,7 @@ final class LessonImporter
             throw new InvalidArgumentException('lesson.json has no scenes.');
         }
         $topic = self::TOPIC_PREFIX.$id;
-        $report = ['lesson_id' => null, 'topic' => $topic, 'scenes' => 0, 'audio' => 0, 'balloons' => 0, 'quizzes' => 0, 'skipped' => [], 'warnings' => []];
+        $report = ['lesson_id' => null, 'topic' => $topic, 'scenes' => 0, 'audio' => 0, 'balloons' => 0, 'quizzes' => 0, 'keys' => 0, 'skipped' => [], 'warnings' => []];
 
         $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $topic)->first();
         if ($existing && ! $force && ! $dryRun) {
@@ -118,6 +118,10 @@ final class LessonImporter
                 $stage[$f] = $s[$f];
             }
         }
+        // The director's figure tracks become keys on the figure's own layer, the shape the editor and the stage read.
+        [$stage, $motion] = LayerKeys::fromMotion($stage);
+        $report['keys'] += $motion['converted'];
+
         // Balloon times are scene times; the editor and the player read them on the narration's clock (it starts
         // narration_at_s into the scene), and the stage adds that lead back. A speaker with a painted figure layer
         // gets the figure's stage handle, so the tail points at its head (BalloonLayer, stage25d:<char>).

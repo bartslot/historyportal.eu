@@ -1,0 +1,149 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Stage25d;
+
+use App\Enums\LessonStatus;
+use App\Livewire\Wizard\Step3SceneConfigurator;
+use App\Models\Lesson;
+use App\Models\Scene;
+use App\Models\User;
+use App\Services\Stage25d\LayerKeys;
+use App\Services\Stage25d\LessonImporter;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class LayerKeysTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** @return array<string,mixed> */
+    private function stage(): array
+    {
+        return [
+            'bundle' => 'nl-prehistory',
+            'set' => ['layers' => [
+                ['asset' => 'stone', 'depth' => 'mid', 'x' => 0.6],
+                ['asset' => 'fig-a', 'depth' => 'fg', 'x' => 0.4, 'figure' => 'meisje'],
+            ]],
+            'figures' => [['char' => 'meisje', 'x' => 0.4]],
+            'motion' => [
+                ['target' => 'figure:0', 'property' => 'x', 'keyframes' => [['time' => 0, 'value' => 0.4], ['time' => 6, 'value' => 0.5]]],
+                ['target' => 'figure:0', 'property' => 'y', 'keyframes' => [['time' => 0, 'value' => 0], ['time' => 3, 'value' => 0]]],
+                ['target' => 'figure:5', 'property' => 'x', 'keyframes' => [['time' => 0, 'value' => 0.1], ['time' => 2, 'value' => 0.9]]],
+            ],
+        ];
+    }
+
+    public function test_motion_tracks_become_keys_on_the_matching_figure_layer(): void
+    {
+        [$stage, $r] = LayerKeys::fromMotion($this->stage());
+
+        $this->assertSame(['converted' => 1, 'flat' => 1, 'unmatched' => 1], $r);
+        $this->assertSame([['t' => 0.0, 'x' => 0.4], ['t' => 6.0, 'x' => 0.5]], $stage['set']['layers'][1]['keys']);
+        $this->assertArrayNotHasKey('keys', $stage['set']['layers'][0]);
+        $this->assertCount(1, $stage['motion'], 'only the unmatched track stays');
+    }
+
+    public function test_converting_twice_changes_nothing(): void
+    {
+        [$once] = LayerKeys::fromMotion($this->stage());
+        [$twice, $r] = LayerKeys::fromMotion($once);
+
+        $this->assertSame($once, $twice);
+        $this->assertSame(0, $r['converted']);
+    }
+
+    public function test_sanitize_keeps_finite_numbers_once_per_moment_in_order(): void
+    {
+        $keys = LayerKeys::sanitize([
+            ['t' => 4, 'x' => 0.9, 'junk' => 1],
+            ['t' => 1, 'x' => 0.1],
+            ['t' => 1, 'y' => 0.5],
+            ['t' => 'no', 'x' => 1],
+            ['t' => 2, 'x' => 'abc'],
+            ['t' => 99, 'scale' => 2],
+        ], 8.0);
+
+        $this->assertSame([['t' => 1.0, 'x' => 0.1, 'y' => 0.5], ['t' => 4.0, 'x' => 0.9], ['t' => 8.0, 'scale' => 2.0]], $keys);
+    }
+
+    public function test_the_importer_emits_the_same_keys(): void
+    {
+        Storage::fake('public');
+        $lesson = json_decode((string) file_get_contents(base_path('tests/Fixtures/stage25d/mini-lesson.json')), true);
+        $lesson['scenes'][0]['motion'] = [['target' => 'figure:0', 'property' => 'x', 'keyframes' => [['time' => 0, 'value' => 0.4], ['time' => 5, 'value' => 0.3]]]];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create());
+
+        $this->assertSame(1, $r['keys']);
+        $scene = Scene::where('lesson_id', $r['lesson_id'])->orderBy('order')->first();
+        $this->assertEquals([['t' => 0, 'x' => 0.4], ['t' => 5, 'x' => 0.3]], $scene->config['stage25d']['set']['layers'][1]['keys']);
+        $this->assertArrayNotHasKey('motion', $scene->config['stage25d']);
+    }
+
+    public function test_the_command_converts_and_dry_run_writes_nothing(): void
+    {
+        $scene = $this->sceneWith($this->stage());
+
+        $this->artisan('lessons:keys-25d', ['--dry-run' => true])->assertSuccessful();
+        $this->assertArrayHasKey('motion', $scene->fresh()->config['stage25d']);
+
+        $this->artisan('lessons:keys-25d')->assertSuccessful();
+        $this->assertCount(2, $scene->fresh()->config['stage25d']['set']['layers'][1]['keys']);
+    }
+
+    public function test_the_editor_saves_keys_onto_the_layers_and_undoes_them(): void
+    {
+        $scene = $this->sceneWith($this->stage());
+        $teacher = $scene->lesson->teacher;
+        $editor = Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
+
+        $editor->call('setTimeline', ['duration' => 8, 'targets' => [], 'tracks' => [], 'stage25dKeys' => [
+            'layer-0' => [['t' => 0, 'x' => 0.2], ['t' => 3, 'x' => 0.8]],
+            'layer-1' => [],
+            'layer-9' => [['t' => 1, 'x' => 1]],
+        ]])->assertNotDispatched('scene:load');
+
+        $layers = $scene->fresh()->config['stage25d']['set']['layers'];
+        $this->assertEquals([['t' => 0, 'x' => 0.2], ['t' => 3, 'x' => 0.8]], $layers[0]['keys']);
+        $this->assertArrayNotHasKey('keys', $layers[1]);
+        $this->assertCount(2, $layers, 'an unknown layer adds nothing');
+
+        $editor->call('undoLastEdit');
+        $this->assertArrayNotHasKey('keys', $scene->fresh()->config['stage25d']['set']['layers'][0]);
+    }
+
+    public function test_a_base_value_is_saved_on_its_layer_and_nothing_else_is(): void
+    {
+        $scene = $this->sceneWith($this->stage());
+        Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveStage25dLayer', 0, ['x' => 0.7, 'y' => 0.25, 'asset' => 'hacked', 'rotation' => 'x'])
+            ->call('saveStage25dLayer', 7, ['x' => 1]);
+
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertSame(0.7, $layer['x']);
+        $this->assertSame(0.25, $layer['y']);
+        $this->assertSame('stone', $layer['asset']);
+        $this->assertArrayNotHasKey('rotation', $layer);
+    }
+
+    /** @param  array<string,mixed>  $stage */
+    private function sceneWith(array $stage): Scene
+    {
+        $lesson = Lesson::create([
+            'teacher_id' => User::factory()->create()->id,
+            'topic' => 'Hunebedden', 'subject' => 'history', 'grade_level' => '6',
+            'image_style' => 'cinematic', 'status' => LessonStatus::ScenesReady,
+        ]);
+
+        return Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x',
+            'config' => ['stage25d' => $stage], 'status' => 'ready',
+        ]);
+    }
+}

@@ -68,6 +68,12 @@ export const displayOf = (kind, key) => {
   const registry = propertyFor(kind, key)
   if (kind === 'camera') return { scale: 1, unit: registry?.unit ?? '', step: key === 'zoom' ? 0.1 : 0.01, decimals: 3 }
   if (kind === 'dio') return { scale: 1, unit: '', step: 1, decimals: 2 }
+  // A stage25d layer: x is a share of the view (read as a percent), y in metres.
+  if (kind === 's25') {
+    if (key === 'x') return { scale: 100, unit: '%', step: 1, decimals: 1 }
+    if (key === 'y') return { scale: 1, unit: 'm', step: 0.05, decimals: 2 }
+    return { scale: 1, unit: registry?.unit ?? '', step: 1, decimals: 1 }
+  }
   if (key === 'root' || key === 'zoom') return { scale: 1, unit: '', step: 0.01, decimals: 2 }
   if (['blur', 'bend', 'shaft', 'head'].includes(key)) return { scale: 1, unit: '', step: 0.1, decimals: 2 }
   return { scale: 1, unit: registry?.unit ?? '', step: 1, decimals: 2 }

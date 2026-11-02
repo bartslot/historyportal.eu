@@ -8,6 +8,12 @@ const tree: Asset = { id: 't', layer: 'fg', tags: [], file: '', w: 1000, h: 2000
 const hills: Asset = { ...tree, layer: 'bg', w: 4000, h: 1000, height_m: 40, tileable_x: true, motion: 'none' }
 
 describe('placeLayer', () => {
+  it('lifts a layer by y metres and carries its rotation', () => {
+    const p = placeLayer(tree, { depth: 'fg', y: 0.7, rotation: 30 }, 0)
+    expect(p.y).toBeCloseTo(0.7)
+    expect(p.rotation).toBe(30)
+    expect(placeLayer(tree, { depth: 'fg' }, 0)).toMatchObject({ y: 0, rotation: 0 })
+  })
   it('scales by height_m and keeps the image aspect', () => {
     const p = placeLayer(tree, { depth: 'fg', x: 0.5, scale: 1.5 }, 0)
     expect(p.h).toBe(15)
@@ -78,7 +84,7 @@ describe('cameraAt', () => {
 })
 
 describe('layerAt', () => {
-  it('returns the layer values without keys', () => expect(layerAt({ depth: 'fg', x: 0.2 }, 3)).toEqual({ x: 0.2, scale: 1, opacity: 1 }))
+  it('returns the layer values without keys', () => expect(layerAt({ depth: 'fg', x: 0.2 }, 3)).toEqual({ x: 0.2, y: 0, scale: 1, opacity: 1, rotation: 0 }))
   it('interpolates keyed fields only', () => {
     const l = { depth: 'fg' as const, x: 0.2, keys: [{ t: 0, x: 0 }, { t: 4, x: 1 }] }
     const mid = layerAt(l, 2)
@@ -86,6 +92,19 @@ describe('layerAt', () => {
     expect([mid.scale, mid.opacity]).toEqual([1, 1])
     expect(layerAt(l, 9).x).toBe(1)
   })
+  it('moves y and rotation along their own keys', () => {
+    const l = { depth: 'fg' as const, keys: [{ t: 0, y: 0, rotation: 0 }, { t: 2, y: 1, rotation: 90 }] }
+    const mid = layerAt(l, 1)
+    expect(mid.y).toBeCloseTo(0.5)
+    expect(mid.rotation).toBeCloseTo(45)
+    expect(layerAt(l, 5)).toMatchObject({ y: 1, rotation: 90, x: 0.5 })
+  })
+  it('a field runs along the keys that name it, not across keys that skip it', () => {
+    const l = { depth: 'fg' as const, keys: [{ t: 0, x: 0 }, { t: 1, scale: 2 }, { t: 2, x: 1 }] }
+    expect(layerAt(l, 1).x).toBeCloseTo(0.5)
+    expect(layerAt(l, 0.5).scale).toBe(2)
+  })
+  it('opacity starts from the layer own value', () => expect(layerAt({ depth: 'fg', opacity: 0.4 }, 0).opacity).toBe(0.4))
 })
 
 describe('motionOf', () => {

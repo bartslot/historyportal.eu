@@ -307,9 +307,10 @@ export class Stage {
     this.birds.update(clock, lookNum(this.look, 'birds'))
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, scale: 1 }, b.order, this.horizonOf(s))
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, scale: 1, rotation: k.rotation }, b.order, this.horizonOf(s))
       b.handle.mesh.position.x = p.x
       b.handle.mesh.position.y = b.layer.flat ? DECAL_LIFT_M : p.y
+      b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)

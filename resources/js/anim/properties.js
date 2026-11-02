@@ -134,6 +134,18 @@ const REGISTRY = {
     P('zoom', 'Zoom', 'linear', ''),
     P('opacity', 'Opacity', 'linear', ''),
   ],
+  /**
+   * A stage25d layer (config.stage25d.set.layers[i], keys in its own `keys`, stage25d-keys.js). x is the
+   * share of the view width at the layer's depth, y metres above its ground point, rotation degrees clockwise.
+   * Linear everywhere: the engine eases between keys itself.
+   */
+  s25: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', 'm'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('rotation', 'Angle', 'linear', '°'),
+    P('opacity', 'Opacity', 'linear', ''),
+  ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
   dio: [

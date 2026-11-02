@@ -13,6 +13,7 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     setLook (look) { calls.looks.push(look) }
     async build (scene) { calls.built.push(scene) }
     tick () {}
+    rebind (scene) { calls.rebound = scene }
     pose (scene, t) { calls.posed.push([scene.id, t]) }
   },
 }))
@@ -25,6 +26,59 @@ import { mountStage25d } from '../mount.js'
 import { isStage25d, libraryUrl } from '../config.js'
 
 const cfg = (over = {}) => ({ id: 'sc01', bundle: 'nl-prehistory', set: { layers: [{ asset: 'a', depth: 'mid' }] }, camera: null, dur_s: 8, ...over })
+
+describe('stage25d live edits', () => {
+  beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
+
+  const two = () => cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.5 }, { asset: 'b', depth: 'fg', figure: 'meisje' }] } })
+
+  it('lists layers, the figure by name, then the camera', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(two())
+    expect(stage.items().map((i) => [i.id, i.label])).toEqual([['layer-0', 'a'], ['layer-1', 'meisje'], ['camera', 'Camera']])
+  })
+
+  it('a moved or keyed layer redraws without a rebuild and is the same set', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(two())
+    stage.setLayerProp('layer-0', 'x', 0.9)
+    stage.setLayerKeys('layer-1', [{ t: 0, x: 0.1 }, { t: 2, x: 0.7 }])
+    expect(calls.built).toHaveLength(1)
+    expect(calls.rebound.set.layers[0].x).toBe(0.9)
+    expect(stage.readLayerProp('layer-0', 'x')).toBe(0.9)
+    stage.update(1)
+    expect(stage.readLayerProp('layer-1', 'x')).toBeGreaterThan(0.1)
+    expect(stage.matches(cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.2 }, { asset: 'b', depth: 'fg', figure: 'meisje' }] } }))).toBe(true)
+  })
+
+  it('the eye hides one layer for the canvas only', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(two())
+    stage.setHidden('layer-0', true)
+    expect(calls.rebound.set.layers[0].opacity).toBe(0)
+    stage.setHidden('layer-0', false)
+    expect(calls.rebound.set.layers[0].opacity).toBeUndefined()
+  })
+
+  it('a base value is saved through onCommit with its layer index', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p) => saved.push([i, p]) })
+    await stage.show(two())
+    stage.commitLayerProp('layer-1', 'y', 0.3)
+    expect(saved).toEqual([[1, { y: 0.3 }]])
+    expect(stage.config).toBeTruthy()
+  })
+
+  it('adopts the server copy once when it changes (undo) and ignores a repeat', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(two())
+    const back = cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.1 }, { asset: 'b', depth: 'fg', figure: 'meisje' }] } })
+    expect(stage.adopt(two())).toBe(false)
+    expect(stage.adopt(back)).toBe(true)
+    expect(stage.readLayerProp('layer-0', 'x')).toBe(0.1)
+    expect(stage.adopt(back)).toBe(false)
+  })
+})
 
 describe('stage25d mount', () => {
   beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
@@ -77,7 +131,7 @@ describe('stage25d mount', () => {
   it('lists its layers for the object list', async () => {
     const stage = await mountStage25d(document.getElementById('h'))
     await stage.show(cfg())
-    expect(stage.items()).toEqual([{ id: 'layer-0', label: 'a', depth: 'mid' }])
+    expect(stage.items().map((i) => i.id)).toEqual(['layer-0', 'camera'])
   })
 
   it('destroy() disposes the engine and removes the canvas', async () => {

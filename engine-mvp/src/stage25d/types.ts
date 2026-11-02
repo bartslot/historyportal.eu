@@ -33,14 +33,21 @@ export interface Library {
 export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number }
 
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
-export interface LayerKey { t: number; x?: number; scale?: number; opacity?: number }
+/** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
+export interface LayerKey { t: number; x?: number; y?: number; scale?: number; opacity?: number; rotation?: number }
 
 export interface SceneLayer {
   need?: string | string[]
   asset?: string | null
   depth: Depth
   x?: number
+  /** metres above the ground point (default 0) */
+  y?: number
   scale?: number
+  /** degrees, clockwise on screen, about the picture's ground point (default 0) */
+  rotation?: number
+  /** the layer's own opacity before keys (default 1) */
+  opacity?: number
   motion?: MotionKind | MotionSpec
   keys?: LayerKey[]
   /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */

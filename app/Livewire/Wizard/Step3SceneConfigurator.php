@@ -14,6 +14,7 @@ use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
+use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
@@ -72,6 +73,7 @@ class Step3SceneConfigurator extends Component
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
     use EditsDiorama;
+    use EditsStage25d;
     use EditsQuizQuestions;
     use EditsTitleScreen;
     use FixesLessonProblems;
@@ -2260,6 +2262,11 @@ class Step3SceneConfigurator extends Component
                 $stored['base'] = $value($track['base']);
             }
             $tracks[] = $stored;
+        }
+
+        // A stage25d layer's keys live on the layer, not in the timeline (resources/js/anim/stage25d-keys.js).
+        if (is_array($timeline['stage25dKeys'] ?? null)) {
+            $this->saveStage25dKeys($timeline['stage25dKeys'], $duration);
         }
 
         $this->selectedScene['config']['timeline'] = [

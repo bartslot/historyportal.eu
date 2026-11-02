@@ -1002,6 +1002,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
     // ── Stage 2.5D (kind stage25d, config.stage25d) ────────────────────────────────────────
     // One stage per selected scene run: scene:load re-fires on every poll and edit, an unchanged config is left alone.
+    // A base value the teacher set on a layer (a field, not a key): saved into set.layers[index], no scene:load.
+    const stage25dLayerSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:layer', save), DIO_MOVE_PAUSE_MS)
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0
@@ -1026,16 +1028,19 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host)
+            _stage25d = mountStage25d(host, { onCommit: (index, patch) => stage25dLayerSaves.schedule(`${index}:${Object.keys(patch)[0]}`, { index, patch }) })
         }
         const mounting = _stage25d
         try {
             const stage = await mounting
             if (req !== _stage25dReq || !isCurrent()) return
-            if (!stage.matches(cfg)) await stage.show(cfg)
+            let synced
+            if (!stage.matches(cfg)) { await stage.show(cfg); synced = true } else synced = stage.adopt(cfg)
             if (req !== _stage25dReq) return
             window.__stage25d = stage
             stage.update(0)
+            // The timeline keeps the layers' keys as tracks: tell it the stage now holds a (new) copy.
+            if (synced) window.dispatchEvent(new CustomEvent('stage25d-synced'))
         } catch (e) {
             console.warn('wizard-bridge: stage25d failed', e)
             if (_stage25d === mounting) hideStage25d()

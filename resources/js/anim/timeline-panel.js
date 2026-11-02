@@ -13,9 +13,10 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
+import { keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
@@ -198,6 +199,11 @@ export const animationTimeline = (config = {}) => ({
     // not the copy this panel remembered (which is exactly what the undo took back).
     window.addEventListener('timeline-restored', (event) => this.restore(event.detail?.timeline))
 
+    // The stage25d layers keep their keys on the layer: whenever the stage shows a scene, or the server's copy
+    // changed under it (undo), the s25 tracks are re-read from the layers.
+    window.addEventListener('stage25d-synced', () => { this.adoptStage25d(); this.refreshObjects(); this.applyFrame() })
+    this.adoptStage25d()
+
     for (const event of ['scene-objects-changed', 'objscene-changed']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
     }
@@ -320,7 +326,7 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(),
+    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
   },
@@ -737,8 +743,10 @@ export const animationTimeline = (config = {}) => ({
 
     for (const [target, values] of Object.entries(frame)) {
       if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, values); continue }
+      if (kindOfTarget(target) === 's25') continue   // the stage samples its own keys (below), with the player's easing
       for (const [property, value] of Object.entries(values)) writeObjectProperty(target, property, value)
     }
+    this.syncStage25d()
     // A diorama plays its own paths (walks, facing, depth order) from the same clock.
     window.__diorama?.update(this.time)
     window.__stage25d?.update(this.time)
@@ -746,6 +754,24 @@ export const animationTimeline = (config = {}) => ({
 
   // ── Diorama clips. An item's path is ONE clip: drag it to move the walk in time, drag an end
   //    to stretch or squeeze it (Bart, 2026-09-29). The keys live in the diorama JSON, not here.
+
+  /** The s25 tracks are the stage's layer keys, as tracks: replace the panel's copy with the stage's. */
+  adoptStage25d () {
+    const stage = window.__stage25d
+    if (!stage?.items) return
+    const own = (t) => kindOfTarget(t.target) === 's25'
+    this.tracks = [...this.tracks.filter((t) => !own(t)), ...tracksFromKeys(stage.items())]
+  },
+
+  /** Hand the stage25d layers their keys, as the timeline holds them now: it eases them exactly as the player will. */
+  syncStage25d () {
+    const stage = window.__stage25d
+    if (!stage) return
+    const byLayer = keysFromTracks(this.tracks)
+    for (const item of stage.items?.() ?? []) {
+      if (item.id !== 'camera') stage.setLayerKeys(item.id, byLayer[item.id] ?? [])
+    }
+  },
 
   /** The item behind a `dio:<id>` target, from the live stage. */
   dioramaItem (target) {
@@ -1048,7 +1074,9 @@ export const animationTimeline = (config = {}) => ({
   /** The scene's timeline as the server now has it — after an undo or redo. */
   restore (timeline) {
     if (!timeline || typeof timeline !== 'object' || this.$el?.isConnected === false) return   // a panel from a scene since left
-    this.tracks = Array.isArray(timeline.tracks) ? timeline.tracks : []
+    // The stage25d keys are not in the stored timeline (they live on the layers): keep ours until the stage re-syncs.
+    const s25 = this.tracks.filter((t) => kindOfTarget(t.target) === 's25')
+    this.tracks = [...(Array.isArray(timeline.tracks) ? timeline.tracks : []), ...s25]
     this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
     this.selected = []
     this.remember()
@@ -1125,6 +1153,7 @@ export const animationTimeline = (config = {}) => ({
     }
     const map = window.__lessonMap
     if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, { [property]: value }) }
+    else if (kindOfTarget(target) === 's25' && !this.isAnimated(target, property)) window.__stage25d?.commitLayerProp?.(target.slice(4), property, value)   // a base value: saved on the layer itself
     else writeObjectProperty(target, property, value)
 
     if (!this.autoKey || !this.isAnimated(target, property)) return
@@ -1674,6 +1703,14 @@ export const animationTimeline = (config = {}) => ({
   save () {
     this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
-    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks })
+    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, stage25dKeys: this.stage25dKeys() })
+  },
+
+  /** `{ 'layer-3': keys }` for EVERY layer of the stage (an empty list clears a layer's keys), or null with no stage. */
+  stage25dKeys () {
+    const items = (window.__stage25d?.items?.() ?? []).filter((i) => i.id !== 'camera')
+    if (!items.length) return null
+    const byLayer = keysFromTracks(this.tracks)
+    return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))
   },
 })

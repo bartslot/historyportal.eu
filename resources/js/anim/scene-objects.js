@@ -79,6 +79,14 @@ export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) =>
   label: i.label || i.id,
 }))
 
+/**
+ * Stage25d layers (config.stage25d.set.layers, window.__stage25d.items()), then its camera. A layer's
+ * rows are x, y, scale, angle and opacity (properties.js 's25'); the camera row only names the shot.
+ */
+export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i) => (i.id === 'camera'
+  ? { target: 's25cam', kind: 's25cam', label: i.label }
+  : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id }))
+
 /** Read one animatable property off the live layer, so a row never shows a number nothing uses. */
 export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
@@ -97,6 +105,7 @@ export const readObjectProperty = (target, property) => {
   }
 
   if (kind === 'bal') return window.__balloons?.value?.(`bal_${id}`, property) ?? null
+  if (kind === 's25') return window.__stage25d?.readLayerProp?.(id, property) ?? null
   if (kind === 'bg') return window.__backgrounds?.value?.(id, property) ?? null
   if (kind !== 'text' && kind !== 'rect') return null
   const item = (window.__lessonTextLayer?._texts ?? []).find((t) => String(t.id) === id)
@@ -137,6 +146,7 @@ export const setObjectHidden = (target, hidden) => {
   const [kind, id] = String(target).split(':')
   // The background: fade it right out rather than leave the stage blank behind a hidden node.
   if (kind === 'bg') return void window.__backgrounds?.hide?.(id, hidden)
+  if (kind === 's25') return void window.__stage25d?.setHidden?.(id, hidden)
   const selector = kind === 'art' || kind === 'arw'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
     : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`
@@ -155,6 +165,7 @@ export const writeObjectProperty = (target, property, value) => {
   if (kind === 'art' || kind === 'arw') return void window.__setLayerProp?.(id, property, value)
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
   if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
+  if (kind === 's25') return void window.__stage25d?.setLayerProp?.(id, property, value)
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })

@@ -9,7 +9,7 @@
  * Same shape as DioramaStage so wizard-bridge / lesson-player / scene-objects treat both alike. This file stays
  * small and static-importable; Babylon only loads when mountStage25d() runs.
  */
-export async function mountStage25d (host) {
+export async function mountStage25d (host, opts = {}) {
   const { createStage25d } = await import('./engine.js')
-  return createStage25d(host)
+  return createStage25d(host, opts)
 }

@@ -41,12 +41,12 @@ export const fovRad = (fov: number) => (fov > Math.PI ? (fov * Math.PI) / 180 : 
 /** Width of the house camera's view at distance z. */
 export const viewWidthAt = (z: number, fov = HOUSE.fov, aspect = ASPECT) => 2 * z * Math.tan(fovRad(fov) / 2) * aspect
 
-export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number }
+export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number; rotation: number }
 
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
 /** horizon: metres the far landscape (bg) stands higher (set.horizon, teacher-editable). Draw order leaves the even
  *  slot below each layer for its contact stain (stainIndex), so a stain is drawn after farther layers, before its own. */
-export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'scale'>, order: number, horizon = 0): Placement {
+export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation'>, order: number, horizon = 0): Placement {
   const depth = layer.depth
   const z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
@@ -60,9 +60,9 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
     const boxW = span * COVER_MARGIN
     const boxH = boxW / ASPECT
     const y = -boxH * 0.12
-    if (asset.tileable_x) return { x: 0, y, z, w: boxW, h: boxH, uRepeat: boxW / (boxH * (asset.w / asset.h)), alphaIndex }
+    if (asset.tileable_x) return { x: 0, y, z, w: boxW, h: boxH, uRepeat: boxW / (boxH * (asset.w / asset.h)), alphaIndex, rotation: 0 }
     const k = Math.max(boxW / asset.w, boxH / asset.h)
-    return { x: 0, y, z, w: asset.w * k, h: asset.h * k, uRepeat: 1, alphaIndex }
+    return { x: 0, y, z, w: asset.w * k, h: asset.h * k, uRepeat: 1, alphaIndex, rotation: 0 }
   }
   // an untiled bg STRIP (asset layer bg, not a prop placed at depth bg) is one painting that must cover its depth's
   // view (COVER_MARGIN wide); never narrower
@@ -73,7 +73,7 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
   // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance
   const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : depth === 'bg' ? horizon : 0
-  return { x, y, z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex }
+  return { x, y: y + (layer.y ?? 0), z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex, rotation: layer.rotation ?? 0 }
 }
 
 /** set.horizon for 'auto': metres the far strip moves up (down if negative) so its land line (landTop: share of the
@@ -122,21 +122,25 @@ export function cameraAt(cam: CameraMove | null | undefined, t: number, dur: num
   return { x: lerp(f.x, to.x, k), y: lerp(f.y, to.y, k), z: lerp(f.z, to.z, k), fov: lerp(fovRad(f.fov), fovRad(to.fov), k) }
 }
 
-/** A layer's x/scale/opacity at time t: its own values, moved by keyframes (eased in-out between keys). */
-export function layerAt(layer: SceneLayer, t: number): { x: number; scale: number; opacity: number } {
-  const base = { x: layer.x ?? 0.5, scale: layer.scale ?? 1, opacity: 1 }
-  const keys = [...(layer.keys ?? [])].sort((a, b) => a.t - b.t)
-  if (!keys.length) return base
-  const val = (k: LayerKey, f: 'x' | 'scale' | 'opacity') => k[f] ?? base[f]
+export interface LayerNow { x: number; y: number; scale: number; opacity: number; rotation: number }
+const LAYER_FIELDS = ['x', 'y', 'scale', 'opacity', 'rotation'] as const
+
+/** A layer's x/y/scale/opacity/rotation at time t: its own values, moved by keyframes (eased in-out between keys).
+ *  Each field moves along the keys that name it, so a key that only sets x leaves y's own run alone. */
+export function layerAt(layer: SceneLayer, t: number): LayerNow {
+  const base: LayerNow = { x: layer.x ?? 0.5, y: layer.y ?? 0, scale: layer.scale ?? 1, opacity: layer.opacity ?? 1, rotation: layer.rotation ?? 0 }
+  const all = layer.keys ?? []
+  if (!all.length) return base
   const out = { ...base }
-  for (const f of ['x', 'scale', 'opacity'] as const) {
-    if (!keys.some((k) => k[f] !== undefined)) continue
-    if (t <= keys[0].t) { out[f] = val(keys[0], f); continue }
-    const last = keys[keys.length - 1]
-    if (t >= last.t) { out[f] = val(last, f); continue }
+  for (const f of LAYER_FIELDS) {
+    const keys = all.filter((k) => k[f] !== undefined).sort((a, b) => a.t - b.t)
+    if (!keys.length) continue
+    const first = keys[0], last = keys[keys.length - 1]
+    if (t <= first.t) { out[f] = first[f] as number; continue }
+    if (t >= last.t) { out[f] = last[f] as number; continue }
     const i = keys.findIndex((k) => k.t > t)
     const a = keys[i - 1], b = keys[i]
-    out[f] = lerp(val(a, f), val(b, f), ease('inOut', (t - a.t) / (b.t - a.t)))
+    out[f] = lerp(a[f] as number, b[f] as number, ease('inOut', (t - a.t) / (b.t - a.t)))
   }
   return out
 }
