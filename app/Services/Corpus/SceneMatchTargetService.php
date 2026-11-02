@@ -26,18 +26,33 @@ class SceneMatchTargetService
     public function for(Scene $scene, Lesson $lesson): array
     {
         $sig = $this->signature($scene, $lesson);
-        $cached = $scene->config['match_target'] ?? null;
-        if (is_array($cached) && ($cached['sig'] ?? null) === $sig) {
+        if (($cached = $this->cached($scene, $lesson)) !== null) {
             return $cached;
         }
 
         $target = $this->derive($scene, $lesson, $sig);
 
+        // The LLM call takes seconds; re-read so edits the teacher saved meanwhile are kept.
+        $scene->refresh();
         $config = $scene->config ?? [];
         $config['match_target'] = $target;
         $scene->update(['config' => $config]);
 
         return $target;
+    }
+
+    /** The stored target when it still fits the scene, else null. Never calls the LLM. */
+    public function cached(Scene $scene, Lesson $lesson): ?array
+    {
+        $cached = $scene->config['match_target'] ?? null;
+
+        return is_array($cached) && ($cached['sig'] ?? null) === $this->signature($scene, $lesson) ? $cached : null;
+    }
+
+    /** A target from the scene's and lesson's years alone, for while the LLM one is being made. */
+    public function fallback(Scene $scene, Lesson $lesson): array
+    {
+        return $this->derive($scene, $lesson, $this->signature($scene, $lesson), useLlm: false);
     }
 
     private function signature(Scene $scene, Lesson $lesson): string
@@ -55,9 +70,9 @@ class SceneMatchTargetService
         ]));
     }
 
-    private function derive(Scene $scene, Lesson $lesson, string $sig): array
+    private function derive(Scene $scene, Lesson $lesson, string $sig, bool $useLlm = true): array
     {
-        $vocab = $this->vocab();
+        $vocab = $useLlm ? $this->vocab() : ['depicts' => [], 'theme' => [], 'era' => []];
 
         // Actors: the lesson's figure/polity QID + the scene's linked territory QID.
         $actors = [];

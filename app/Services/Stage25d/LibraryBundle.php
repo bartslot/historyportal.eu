@@ -33,6 +33,31 @@ final class LibraryBundle
     }
 
     /**
+     * The assets of a bundle already on the public disk, each with its image `url`; [] when the
+     * bundle is missing or unreadable. Read once per request.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function assets(string $bundle): array
+    {
+        static $read = [];
+        if (isset($read[$bundle])) {
+            return $read[$bundle];
+        }
+        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $bundle)) {
+            return $read[$bundle] = [];
+        }
+        $disk = Storage::disk('public');
+        $json = json_decode((string) ($disk->exists(self::DIR."/{$bundle}/library.json") ? $disk->get(self::DIR."/{$bundle}/library.json") : ''), true);
+
+        return $read[$bundle] = collect(is_array($json) ? ($json['assets'] ?? []) : [])
+            ->filter(fn ($a) => is_array($a) && is_string($a['id'] ?? null) && is_string($a['file'] ?? null))
+            ->map(fn (array $a) => $a + ['url' => '/storage/'.self::DIR."/{$bundle}/".$a['file']])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Read and check a bundle folder: library.json with an assets list whose files all exist.
      *
      * @return array<string,mixed> the decoded library.json

@@ -3343,8 +3343,8 @@ class Step3SceneConfigurator extends Component
     /** Wikimedia rate-limited the last search, so an empty grid means "ask again", not "none exist". */
     public bool $paintingSearchThrottled = false;
 
-    /** Grid filter: '' = everything, 'painting' = paintings, 'city_map' = Braun & Hogenberg-style city plans. */
-    public string $paintingKind = '';
+    /** Shelf: 'library', 'stage' (painted stage art), 'painting', 'city_map' (Braun & Hogenberg-style plans). */
+    public string $paintingKind = 'library';
 
     /** The scene's derived match target {core, themes, actor_qids, era} — drives the scored grid. */
     public array $matchTarget = [];
@@ -4068,9 +4068,18 @@ class Step3SceneConfigurator extends Component
         if (! $scene) {
             return;
         }
+        // Never the LLM inside a click: it took 38 s and the request died behind it. The stored
+        // target when there is one, else the year-based one while a job tags the scene.
         try {
-            $this->matchTarget = app(\App\Services\Corpus\SceneMatchTargetService::class)->for($scene, $this->lesson);
+            $targets = app(\App\Services\Corpus\SceneMatchTargetService::class);
+            $cached = $targets->cached($scene, $this->lesson);
+            // One job per scene at a time, however often the picker is opened meanwhile.
+            if ($cached === null && \Illuminate\Support\Facades\Cache::add("match-target-pending:{$scene->id}", true, 120)) {
+                \App\Jobs\DeriveSceneMatchTarget::dispatch($scene->id);
+            }
+            $this->matchTarget = $cached ?? $targets->fallback($scene, $this->lesson);
         } catch (\Throwable $e) {
+            report($e);
             $this->matchTarget = [];
         }
     }
@@ -4120,6 +4129,87 @@ class Step3SceneConfigurator extends Component
      *
      * @return \Illuminate\Support\Collection<int,array{source:string,key:string,thumb:string,title:string,caption:string}>
      */
+    /** The tijdvak this lesson is set in (LibraryEra::forLesson); null when nothing says. */
+    #[Computed]
+    public function pickerEra(): ?string
+    {
+        return \App\Support\LibraryEra::forLesson($this->lesson);
+    }
+
+    /**
+     * The picker's shelves, decided by the lesson's era: only sources that hold pictures of that
+     * time. Prehistory has no paintings and no city plans, so it gets our own pictures and the
+     * painted stage art; city plans exist for roughly 1500-1800 only. No "Everything": it ran
+     * every slow search at once and mixed periods.
+     *
+     * @return list<array{0:string,1:string}>
+     */
+    #[Computed]
+    public function pickerShelves(): array
+    {
+        $era = $this->pickerEra;
+        $shelves = [['library', __('Library')]];
+        if ($this->stageBundles() !== []) {
+            $shelves[] = ['stage', __('Stage art')];
+        }
+        if ($era !== 'hunters-farmers') {
+            $shelves[] = ['painting', __('Paintings')];
+        }
+        if ($era === null || in_array($era, ['discoverers-reformers', 'regents-rulers', 'wigs-revolutions'], true)) {
+            $shelves[] = ['city_map', __('City plans')];
+        }
+
+        return $shelves;
+    }
+
+    /** A shelf the lesson's era does not offer (or a crafted value) falls back to the Library. */
+    public function updatedPaintingKind(string $kind): void
+    {
+        if (! in_array($kind, array_column($this->pickerShelves, 0), true)) {
+            $this->paintingKind = 'library';
+        }
+    }
+
+    /** @return list<string> the painted stage bundles this lesson's stage25d scenes use */
+    private function stageBundles(): array
+    {
+        return $this->scenes
+            ->filter(fn (Scene $s) => $s->kind === 'stage25d')
+            ->map(fn (Scene $s) => $s->config['stage25d']['bundle'] ?? null)
+            ->filter(fn ($b) => is_string($b))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The painted stage art of this lesson's bundles, in the lesson's era only.
+     *
+     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     */
+    private function stageResults(): Collection
+    {
+        $term = mb_strtolower(trim($this->paintingQuery));
+        $era = $this->pickerEra;
+
+        return collect($this->stageBundles())
+            ->flatMap(fn (string $bundle) => \App\Services\Stage25d\LibraryBundle::assets($bundle))
+            ->filter(fn (array $a) => $era === null || \App\Support\LibraryEra::forLabel(is_string($a['era'] ?? null) ? $a['era'] : null) === $era)
+            ->filter(fn (array $a) => $term === '' || str_contains(mb_strtolower($a['id'].' '.implode(' ', (array) ($a['tags'] ?? []))), $term))
+            ->map(fn (array $a) => [
+                'source' => 'library',
+                'key' => $a['url'],
+                'thumb' => $a['url'],
+                'title' => \Illuminate\Support\Str::of($a['id'])->replaceMatches('/-\d+$/', '')->replace('-', ' ')->ucfirst()->toString(),
+                'caption' => __('Stage art'),
+                'kind' => 'library',
+                'provenance' => __('Stage art'),
+                'correctness' => null,
+            ])
+            ->unique('key')
+            ->values();
+    }
+
     #[Computed]
     public function paintingResults()
     {
@@ -4137,6 +4227,9 @@ class Step3SceneConfigurator extends Component
         // "Library" is our own imagery — no corpus, no Commons.
         if ($this->paintingKind === 'library') {
             return $this->libraryResults();
+        }
+        if ($this->paintingKind === 'stage') {
+            return $this->stageResults();
         }
 
         if ($this->matchTarget === []) {
@@ -4300,19 +4393,16 @@ class Step3SceneConfigurator extends Component
                 ->take(self::PAINTING_GRID_LIMIT)
                 ->values();
 
-            // Only "Everything" holds our own pictures too (after the search results). A source tab
-            // shows its source or its empty state, which offers the Commons search: falling back to
-            // the library there made Paintings and City plans show "In this lesson" whenever the
-            // corpus was unreachable, so every tab looked the same (Bart, 2026-10-16).
-            return $this->paintingKind === '' ? $grid->concat($this->libraryResults())->values() : $grid;
+            // A source tab shows its source or its empty state, which offers the Commons search:
+            // falling back to the library there made every tab look the same (Bart, 2026-10-16).
+            return $grid;
         } catch (\Throwable $e) {
             // Corpus / Commons unavailable (e.g. a dropped Supabase pooler connection that didn't
             // recover on the single retry): the picker still OPENS instead of rendering a 500 that
-            // reads as "can't open Browse paintings". Same rule as above: only "Everything" falls
-            // back to our own pictures.
+            // reads as "can't open Browse paintings".
             report($e);
 
-            return $this->paintingKind === '' ? $this->libraryResults() : collect();
+            return collect();
         }
     }
 
@@ -4389,7 +4479,13 @@ class Step3SceneConfigurator extends Component
 
         // Only the collection is capped: every picture of THIS lesson stays findable.
         $own = $tiles->map($identity)->flip();
+        // Only pictures whose folder belongs to the lesson's era (config lesson-taxonomy.library_eras):
+        // a prehistory lesson must not be offered Tasman's ships. A folder with no era is left out
+        // once the era is known; an unknown era shows the whole collection.
+        $era = $this->pickerEra;
         $collection = collect($cloud->library($term))
+            ->filter(fn (array $img) => $era === null
+                || \App\Support\LibraryEra::resolve(null, preg_match('#history-line/[^/]+/([^/]+)/#', $img['public_id'] ?? '', $m) ? $m[1] : null) === $era)
             ->map(fn (array $img) => [
                 'source' => 'library',
                 'key' => $img['url'],
@@ -4405,6 +4501,37 @@ class Step3SceneConfigurator extends Component
             ->take(self::PAINTING_GRID_LIMIT);
 
         return $tiles->concat($collection)->values();
+    }
+
+    /**
+     * The 3 s wire:poll. With the picker open a render recomputes its grid (corpus, Commons,
+     * Cloudinary: up to seconds), and the teacher's own clicks queue behind it, so the pills
+     * looked dead. Nothing the poll refreshes is visible under the modal, so skip that render.
+     */
+    public function poll(): void
+    {
+        if (! $this->paintingPickerOpen) {
+            return;
+        }
+        // The one thing worth a render under the modal: the queued scene tagging has landed, so
+        // a painting shelf swaps its year-based match for the real one.
+        if (in_array($this->paintingKind, ['painting', 'city_map'], true) && $this->adoptLandedMatchTarget()) {
+            return;
+        }
+        $this->skipRender();
+    }
+
+    private function adoptLandedMatchTarget(): bool
+    {
+        $scene = $this->selectedSceneModel();
+        $landed = $scene ? app(\App\Services\Corpus\SceneMatchTargetService::class)->cached($scene, $this->lesson) : null;
+        if ($landed === null || $landed === $this->matchTarget) {
+            return false;
+        }
+        $this->matchTarget = $landed;
+        unset($this->paintingResults);
+
+        return true;
     }
 
     /** wire:init after the lesson's own shelf has painted: now fetch our Cloudinary collection. */

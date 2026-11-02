@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Lesson;
 use App\Services\LessonTaxonomy;
+use App\Services\Stage25d\LibraryBundle;
 
 /**
  * The era facet of the history-line library: which tijdvak a picture belongs to, and which one a
@@ -97,6 +98,58 @@ final class LibraryEra
         return $n ? $keys[$n - 1] : null;
     }
 
+    /** The tijdvak a year falls in; negative years are BCE. */
+    public static function forYear(int $year): ?string
+    {
+        foreach ((array) config('lesson-taxonomy.periods') as $key => $period) {
+            if ($year >= $period['from'] && $year < $period['to']) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The tijdvak of a date label such as "c. 3400-2850 BCE", "1642", "v. Chr. 3000" or
+     * "c. 150,000 years ago": the first year it names, which is where the thing starts. A label
+     * that names no era marker (BCE, AD, v. Chr.) and no year of three digits ("figure-v1", "modern")
+     * is null.
+     */
+    public static function forLabel(?string $label): ?string
+    {
+        $text = (string) preg_replace('/(?<=\d)[,. ](?=\d{3}\b)/', '', (string) $label);
+        if (preg_match('/(\d+)\s*years?\s+ago/i', $text, $m)) {
+            return self::forYear(1950 - (int) $m[1]);
+        }
+        $bce = (bool) preg_match('/\b(bce|bc)\b|v\.?\s?chr/i', $text);
+        $dated = $bce || preg_match('/\b(ce|ad)\b|n\.?\s?chr/i', $text);
+        if (! preg_match($dated ? '/\d+/' : '/\b\d{3,7}\b/', $text, $m)) {
+            return null;
+        }
+
+        return self::forYear($bce ? -(int) $m[0] : (int) $m[0]);
+    }
+
+    /**
+     * The era the painted stage bundles of a lesson's stage25d scenes come from: each asset in
+     * library.json carries a date label, and the most common tijdvak among them wins.
+     */
+    private static function fromStageBundles(Lesson $lesson): ?string
+    {
+        return $lesson->scenes()->where('kind', 'stage25d')->pluck('config')
+            ->map(fn ($config) => is_array($config) ? ($config['stage25d']['bundle'] ?? null) : null)
+            ->filter(fn ($bundle) => is_string($bundle))
+            ->unique()
+            ->flatMap(fn (string $bundle) => LibraryBundle::assets($bundle))
+            ->map(fn (array $asset) => self::forLabel(is_string($asset['era'] ?? null) ? $asset['era'] : null))
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->first();
+    }
+
     /** Period keys in historical order, the order of the config. */
     public static function order(string $era): int
     {
@@ -108,8 +161,9 @@ final class LibraryEra
     /**
      * The era a lesson's library opens on, ONE derivation: a year it names (era, title, topic),
      * then the tijdvak it is linked to (curriculum_goal_lesson), then its earliest dated scene
-     * (LessonTaxonomy), then the era its own backdrops come from. A composed lesson such as Tasman
-     * names no year anywhere, but its tijdvak and its history-line backdrops say which era it is.
+     * (LessonTaxonomy), then the era of its painted stage bundles, then the era its own backdrops
+     * come from. A composed lesson such as Tasman names no year anywhere, but its tijdvak and its
+     * history-line backdrops say which era it is.
      * Null: unknown, every era shown.
      */
     public static function forLesson(Lesson $lesson): ?string
@@ -118,6 +172,9 @@ final class LibraryEra
         $period = $taxonomy->period($lesson, withScenes: false) ?? self::fromTijdvak($lesson) ?? $taxonomy->period($lesson);
         if ($period !== null) {
             return $period;
+        }
+        if (($stage = self::fromStageBundles($lesson)) !== null) {
+            return $stage;
         }
 
         return $lesson->scenes()->pluck('image_path')

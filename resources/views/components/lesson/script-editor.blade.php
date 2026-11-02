@@ -40,7 +40,7 @@
 
     {{-- The resize handle along the dock's top edge: drag up for more room. Keyboard: arrows,
          Home resets. The shared handle (x-ui.resize-handle) reports the pointer; the dock sizes. --}}
-    <x-ui.resize-handle axis="y" class="shrink-0 -mt-1" data-dock-resize
+    <x-ui.resize-handle axis="y" class="relative z-30 shrink-0 -mt-1" data-dock-resize
                         label="{{ __('Resize the panel') }}"
                         x-on:resize-start="dragStart($event.detail)"
                         x-on:resize-drag="dragMove($event.detail)"
@@ -53,7 +53,7 @@
     <div class="lp-panel-content">
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
-    <div role="tablist" class="tabs tabs-box tabs-sm">
+    <div role="tablist" class="tabs tabs-box tabs-sm mt-1">
         <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
                 :aria-selected="$store.view.bottomTab === 'timeline'"
                 :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"

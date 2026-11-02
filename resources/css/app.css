@@ -374,8 +374,9 @@
 
 /* ─── The resize handle: the gap between two panels ──── */
 /**
- * ONE handle for every gap in the editor (<x-ui.resize-handle>). Its 8px hit area is the gap, the
- * full length of the separator. At rest nothing shows. On hover, keyboard focus and while dragging
+ * ONE handle for every gap in the editor (<x-ui.resize-handle>). Its hit area is the gap plus 6px
+ * either side, the full length of the separator. At rest nothing shows. On hover, keyboard focus
+ * and while dragging
  * a 1px solid line runs the whole length of the gap, in --color-panel-label. No pill, no glow.
  */
 .lp-resize {
@@ -387,6 +388,17 @@
 }
 .lp-resize[aria-orientation='vertical'] { width: var(--editor-gap); cursor: col-resize; }
 .lp-resize[aria-orientation='horizontal'] { height: var(--editor-gap); flex-direction: column; align-items: center; cursor: row-resize; }
+/* The grab zone reaches 6px past the gap on both sides (20px in all), invisibly: the 8px gap alone
+   was too thin to find, and a layer on either side could cover half of it. */
+/* Relative, in the components layer so a caller's `absolute` / `fixed` utility still wins: the
+   grab zone below must be placed against the handle itself, never some ancestor. */
+@layer components { .lp-resize { position: relative; } }
+.lp-resize::before { content: ''; position: absolute; }
+.lp-resize[aria-orientation='vertical']::before { top: 0; bottom: 0; width: calc(var(--editor-gap) + 12px); margin-left: -6px; }
+.lp-resize[aria-orientation='horizontal']::before { left: 0; right: 0; height: calc(var(--editor-gap) + 12px); margin-top: -6px; }
+/* The bottom dock clips its overflow, so its top handle's zone grows down into the dock instead. */
+/* It stops just above the tab buttons, which sit mt-1 lower to make room. */
+.lp-resize[data-dock-resize]::before { top: 0; margin-top: 0; height: calc(var(--editor-gap) + 8px); }
 .lp-resize > .lp-resize-line { display: block; background: transparent; }
 .lp-resize[aria-orientation='vertical'] > .lp-resize-line { width: 1px; align-self: stretch; }
 .lp-resize[aria-orientation='horizontal'] > .lp-resize-line { height: 1px; align-self: stretch; }
