@@ -6,6 +6,12 @@ namespace App\Services\Support;
 
 final class ImageStyleTemplate
 {
+    /**
+     * Not a picture style: the lesson's story scenes are 3D stage scenes built from its era's painted bundle
+     * (GenerateLessonScript, App\\Services\\Stage25d\\StageSet), so no image is generated for them.
+     */
+    public const STAGE = 'stage25d';
+
     public const SAFETY_GUARDRAIL = 'no children, no real living people, no readable text in image';
 
     /**
@@ -282,6 +288,7 @@ final class ImageStyleTemplate
             'etching' => __('Etching'),
             'engraved' => __('Engraved'),
             'animation' => __('Animation'),
+            self::STAGE => __('3D'),
             default => ucfirst($style),
         };
     }

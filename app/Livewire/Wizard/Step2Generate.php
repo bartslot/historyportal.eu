@@ -104,7 +104,8 @@ class Step2Generate extends Component
     {
         // Only narration ("script") scenes generate script/image/audio. Map and game scenes have
         // none, so counting them would cap progress below 100% even when every real scene is done.
-        $scenes = $this->scenes->where('kind', 'narration')->values();
+        // A 3D lesson's story scenes become stage25d once scripted: still generated, their stage is the picture.
+        $scenes = $this->scenes->whereIn('kind', ['narration', 'stage25d'])->values();
         if ($scenes->isEmpty()) {
             // No narration scenes at all (e.g. a command-built voyage lesson): nothing generates,
             // so the lesson is "done" as soon as its scenes are ready — never stuck at 0%.
@@ -117,7 +118,7 @@ class Step2Generate extends Component
             if ((string) $s->script_segment !== '') {
                 $done++;
             }
-            if ($s->image_path !== null) {
+            if ($s->image_path !== null || $s->kind === 'stage25d') {
                 $done++;
             }
             if ($s->audio_path !== null) {

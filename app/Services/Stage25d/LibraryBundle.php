@@ -42,6 +42,15 @@ final class LibraryBundle
             ->mapWithKeys(fn ($a) => [(string) ($a['id'] ?? '') => (string) ($a['layer'] ?? 'mid')])->all());
     }
 
+    /** @return list<string> the bundles on the public disk */
+    public static function names(): array
+    {
+        return array_values(array_filter(
+            array_map('basename', Storage::disk('public')->directories(self::DIR)),
+            fn (string $b) => (bool) preg_match('/^[a-z0-9][a-z0-9-]*$/', $b),
+        ));
+    }
+
     public static function url(string $bundle): string
     {
         self::assertName($bundle);

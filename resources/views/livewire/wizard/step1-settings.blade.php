@@ -114,7 +114,7 @@
                 <span class="text-xs text-success/80 mt-1">
                     {!! __('Grounded in :link.', ['link' => '<a href="'.e($topicWikipediaUrl).'" target="_blank" rel="noopener" class="underline">'.e(__('this Wikipedia article')).'</a>']) !!}
                 </span>
-            @elseif (strlen(trim($topic)) >= 2 && !$topicId)
+            @elseif (strlen(trim($topic)) >= 2 && !$topicId && ! $this->keepsSavedTopic())
                 <span class="text-xs text-primary mt-1">{{ __('Select an entry from the list to continue.') }}</span>
             @endif
 
@@ -311,18 +311,12 @@
 
                     <div class="form-control">
                         <span class="label-text text-xs uppercase tracking-wider text-panel-hint mb-1">{{ __('Era') }}</span>
-                        @if ($region)
-                            <x-ui.combobox
-                                :options="$this->eraOptions"
-                                wire-model="era"
-                                :initial-value="$era ?? ''"
-                                :placeholder="__('Select or type an era…')"
-                            />
-                        @else
-                            <input type="text" disabled
-                                   placeholder="{{ __('Pick a region first') }}"
-                                   class="input input-bordered bg-slate-900 w-full opacity-40 cursor-not-allowed" />
-                        @endif
+                        <x-ui.combobox
+                            :options="$this->eraOptions"
+                            wire-model="era"
+                            :initial-value="$era ?? ''"
+                            :placeholder="__('Select or type an era…')"
+                        />
                     </div>
 
                     <button type="button"

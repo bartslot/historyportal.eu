@@ -26,7 +26,7 @@ class StoreWizardSettingsRequest extends FormRequest
             'details' => ['nullable', 'string', 'max:500'],
             'source_mode' => ['required', 'in:internet,local'],
             'sourceUpload' => ['nullable', 'file', 'mimes:pdf,docx', 'max:10240'],
-            'image_style' => ['required', 'in:'.implode(',', ImageStyleTemplate::styles())],
+            'image_style' => ['required', 'in:'.implode(',', [...ImageStyleTemplate::styles(), ImageStyleTemplate::STAGE])],
             'avatar_id' => ['required', 'exists:avatars,id'],
             'include_game' => ['boolean'],
             'game_type' => ['nullable', 'in:quiz,strategy,debate'],

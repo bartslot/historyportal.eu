@@ -35,6 +35,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\SceneArrow;
+use App\Services\Stage25d\StageSet;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
@@ -4204,6 +4205,13 @@ class Step3SceneConfigurator extends Component
         }
     }
 
+    /** The painted stage bundle of the lesson's era (LibraryEra::stageBundle): what a new 3D scene is built from. */
+    #[Computed]
+    public function eraStageBundle(): ?string
+    {
+        return \App\Support\LibraryEra::stageBundleFor($this->lesson);
+    }
+
     /** @return list<string> the painted stage bundles this lesson's stage25d scenes use */
     private function stageBundles(): array
     {
@@ -5245,7 +5253,7 @@ class Step3SceneConfigurator extends Component
         }
         $allowed = $isVoyageLesson
             ? ['game', 'map', 'voyage', 'gallery', 'video']
-            : ['game', 'map', 'gallery', 'branch', 'video'];
+            : ['game', 'map', 'gallery', 'branch', 'video', 'stage25d'];
         $kind = in_array($kind, $allowed, true) ? $kind : 'narration';
         if ($wantsOverview && $kind === 'voyage') {
             $this->addVoyageOverviewScene();
@@ -5273,6 +5281,25 @@ class Step3SceneConfigurator extends Component
             // publish gate demands every scene be ready, and there is no "generate" button to press.
             'status' => in_array($kind, ['map', 'voyage', 'gallery', 'video'], true) ? 'ready' : 'pending',
         ];
+
+        // A 3D scene: the era's painted backdrop (sky, far ground, a ground band) on the house camera, born ready;
+        // the teacher drags the rest in from the Decor shelf. Not offered without a bundle for the era.
+        if ($kind === 'stage25d') {
+            $bundle = $this->eraStageBundle;
+            if ($bundle === null) {
+                return;
+            }
+            $scene = Scene::create([
+                ...$payload,
+                'status' => 'ready',
+                'duration_seconds' => 8,
+                'config' => ['stage25d' => StageSet::starter($bundle, 's'.$next)],
+            ]);
+            $this->placeSceneAfterSelected($scene, $insertAfterSceneId);
+            $this->selectSceneInternal($scene->id);
+
+            return;
+        }
 
         // A video scene IS the film: the stage is the embed, so it starts black and empty and the
         // teacher pastes the link in the inspector.

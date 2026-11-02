@@ -556,7 +556,7 @@ trait EditsQuizQuestions
         }
 
         return $this->lesson->scenes
-            ->filter(fn (Scene $scene) => $scene->kind === 'narration' && $scene->order < $quizScene->order)
+            ->filter(fn (Scene $scene) => in_array($scene->kind, ['narration', 'stage25d'], true) && $scene->order < $quizScene->order)
             ->sortBy('order')
             ->values();
     }

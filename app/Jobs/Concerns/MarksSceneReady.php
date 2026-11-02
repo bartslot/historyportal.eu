@@ -23,7 +23,8 @@ trait MarksSceneReady
         $hasScript = (string) $scene->script_segment !== '';
         $hasVisual = $scene->image_path !== null
             || ! empty($scene->shots)
-            || (string) $scene->background_color !== '';
+            || (string) $scene->background_color !== ''
+            || ! empty($scene->config['stage25d']);   // a 3D scene: the stage draws it
         $hasAudio = $scene->audio_path !== null;
 
         if ($hasScript && $hasVisual && $hasAudio) {

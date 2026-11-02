@@ -195,11 +195,14 @@ class GenerateLessonScript implements ShouldQueue
             $useShots = false;
         }
 
-        $packedSceneIds = $this->assignPackShots($lesson, $scenes);
+        $stagedSceneIds = $this->assignStageScenes($lesson, $scenes);
+        $packedSceneIds = $stagedSceneIds->isEmpty() ? $this->assignPackShots($lesson, $scenes) : collect();
 
         $jobs = [];
         foreach ($scenes as $scene) {
-            if (! $packedSceneIds->contains($scene->id) && $scene->image_path === null) {
+            if ($stagedSceneIds->contains($scene->id)) {
+                \App\Services\Support\GenerationRunRecorder::recordPath($lesson->id, $scene->id, 'stage25d');
+            } elseif (! $packedSceneIds->contains($scene->id) && $scene->image_path === null) {
                 $jobs[] = $useShots ? new GenerateSceneShots($scene->id) : new GenerateSceneImage($scene->id);
                 \App\Services\Support\GenerationRunRecorder::recordPath(
                     $lesson->id,
@@ -224,6 +227,44 @@ class GenerateLessonScript implements ShouldQueue
                 GenerateLessonQuiz::dispatch($lessonId);
             })
             ->dispatch();
+    }
+
+    /**
+     * A 3D lesson (image_style stage25d): every story scene becomes a stage25d scene built from the era's painted
+     * bundle (StageSet::forScene, by the scene's own words: free, no image generation). Its narration and the quiz
+     * are generated as for any lesson. No bundle for the era (it changed after the teacher chose 3D): pictures.
+     *
+     * @param  Collection<int, Scene>  $scenes
+     * @return Collection<int, int> ids of the scenes now on the stage
+     */
+    private function assignStageScenes(Lesson $lesson, Collection $scenes): Collection
+    {
+        if ($lesson->image_style !== \App\Services\Support\ImageStyleTemplate::STAGE) {
+            return collect();
+        }
+        $bundle = \App\Support\LibraryEra::stageBundleFor($lesson);
+        if ($bundle === null) {
+            Log::warning("GenerateLessonScript #{$lesson->id}: 3D chosen but the era has no stage bundle; pictures instead");
+
+            return collect();
+        }
+
+        // A retry finds the scenes an earlier attempt already put on the stage: they keep their set, and stay off
+        // the image path.
+        $story = $scenes->filter(fn (Scene $scene) => in_array($scene->kind, ['narration', 'stage25d'], true))->values();
+        foreach ($story as $i => $scene) {
+            if ($scene->kind === 'stage25d') {
+                continue;
+            }
+            $words = implode(' ', array_filter([$scene->image_prompt, $scene->location, $scene->script_segment]));
+            $scene->update([
+                'kind' => 'stage25d',
+                'config' => [...((array) $scene->config), 'stage25d' => \App\Services\Stage25d\StageSet::forScene($bundle, 's'.$scene->order, $words, $i)],
+            ]);
+        }
+        Log::info("[stage25d] lesson {$lesson->id}: {$story->count()} scenes built from {$bundle} — 0 image-gen calls");
+
+        return $story->pluck('id');
     }
 
     /**

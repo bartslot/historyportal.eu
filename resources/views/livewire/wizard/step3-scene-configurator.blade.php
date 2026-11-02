@@ -2722,6 +2722,14 @@
                     <x-lesson.scene-type-thumb kind="video" />
                     <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
                 </button>
+                {{-- A 3D scene: only when the lesson's era has a painted stage bundle to build it from. --}}
+                @if ($this->eraStageBundle && ($lesson->game_type ?? null) !== 'voyage')
+                    <button type="button" wire:click="addScene('stage25d')" data-add-stage25d
+                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                        <x-lesson.scene-type-thumb kind="stage25d" />
+                        <span class="text-sm font-medium text-slate-200">{{ __('3D scene') }}</span>
+                    </button>
+                @endif
                 {{-- Branching is meaningless on a voyage lesson, whose spine is the route. --}}
                 @if (($lesson->game_type ?? null) !== 'voyage')
                     <button type="button" wire:click="addScene('branch')"

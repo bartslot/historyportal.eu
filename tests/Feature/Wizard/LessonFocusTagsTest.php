@@ -14,6 +14,7 @@ use App\Services\LessonOutlinePrompt;
 use App\Services\OpenAiLlmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -168,6 +169,7 @@ class LessonFocusTagsTest extends TestCase
             'story_query' => 'Power War', 'language' => 'en',
         ]);
         Bus::fake();
+        Storage::fake('public');   // no stage bundles: era 0 asks no 3D question
 
         Livewire::actingAs($this->teacher)
             ->test(LessonChat::class)

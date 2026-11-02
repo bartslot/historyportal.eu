@@ -97,6 +97,39 @@ class GenerateLessonQuizTest extends TestCase
         $this->assertSame(2, QuizQuestion::where('scene_id', $quizScene->id)->count());
     }
 
+    public function test_a_3d_lessons_stage_scenes_are_what_its_quiz_tests(): void
+    {
+        $lesson = Lesson::create([
+            'teacher_id' => User::factory()->create()->id,
+            'topic' => 'Hunebedden', 'subject' => 'history', 'grade_level' => '8',
+            'status' => LessonStatus::ScenesGenerating,
+            'outline' => ['learning_objectives' => [['id' => 'LO1', 'text' => 'Explain how.']],
+                'scene_briefs' => [['order' => 1, 'kind' => 'narration', 'objective_ids' => ['LO1']], ['order' => 2, 'kind' => 'game']]],
+        ]);
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d',
+            'script_segment' => 'Farmers ROLL the stones on logs.', 'status' => 'ready']);
+        $quizScene = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'game',
+            'game_type' => 'quiz', 'quiz_question_count' => 1, 'status' => 'ready']);
+
+        $capturedPrompt = '';
+        $this->mock(OpenAiLlmService::class, function ($mock) use (&$capturedPrompt): void {
+            $mock->shouldReceive('json')->once()
+                ->withArgs(function ($system, $user) use (&$capturedPrompt) {
+                    $capturedPrompt = $user;
+
+                    return true;
+                })
+                ->andReturn(['questions' => [
+                    ['order' => 1, 'objective_id' => 'LO1', 'question' => 'How were the stones moved?', 'options' => ['On logs', 'By boat', 'By cart', 'By crane'], 'correct_index' => 0],
+                ]]);
+        });
+
+        (new GenerateLessonQuiz($lesson->id))->handle(app(OpenAiLlmService::class));
+
+        $this->assertStringContainsString('ROLL the stones', $capturedPrompt);
+        $this->assertSame(1, QuizQuestion::where('scene_id', $quizScene->id)->count());
+    }
+
     public function test_full_scope_override_allows_asking_ahead_with_flagged_questions(): void
     {
         $teacher = User::factory()->create();

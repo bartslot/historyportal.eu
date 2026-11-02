@@ -106,6 +106,22 @@
                 wire:key="opening-question"
             />
 
+            {{-- The first reply takes a while (one model call): the goal and a typing bubble show at once. --}}
+            @if ($state === 'goal')
+                <div wire:loading.flex wire:target="submitGoal" class="flex-col gap-5" data-chat-typing>
+                    <div class="chat chat-end">
+                        <div class="chat-header mb-1 text-xs text-base-content/55">{{ __('You') }}</div>
+                        <div class="chat-bubble chat-bubble-primary max-w-[92%] whitespace-pre-line p-3 text-sm leading-5 sm:max-w-[82%] sm:text-base" x-text="$wire.goal"></div>
+                    </div>
+                    <div class="chat chat-start">
+                        <div class="chat-header mb-1 text-xs text-base-content/55">{{ __('Lesson assistant') }}</div>
+                        <div class="chat-bubble bg-base-300 p-3" aria-label="{{ __('Typing') }}">
+                            <span class="loading loading-dots loading-sm"></span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if ($state !== 'goal')
                 <div class="chat chat-end" wire:key="teacher-goal">
                     <div class="chat-header mb-1 text-xs text-base-content/55">{{ __('You') }}</div>
@@ -140,7 +156,7 @@
                     </div>
                 @endif
 
-                @if (in_array($state, ['era', 'preset_confirmation', 'preset_options', 'age_confirmation', 'age_options', 'grounding_options', 'confirm', 'creating'], true))
+                @if (in_array($state, ['era', 'look', 'preset_confirmation', 'preset_options', 'age_confirmation', 'age_options', 'grounding_options', 'confirm', 'creating'], true))
                     <x-teacher.typed-chat-message
                         :message="$this->eraPrompt"
                         :animate="$state === 'era'"
@@ -152,6 +168,21 @@
                     <div class="chat chat-end" wire:key="era-choice">
                         <div class="chat-header mb-1 text-xs text-base-content/55">{{ __('You') }}</div>
                         <div class="chat-bubble chat-bubble-primary p-3">{{ $eraChoice }}</div>
+                    </div>
+                @endif
+
+                @if ($state === 'look' || $lookChoice !== null)
+                    <x-teacher.typed-chat-message
+                        :message="$this->lookPrompt"
+                        :animate="$state === 'look'"
+                        wire:key="look-prompt"
+                    />
+                @endif
+
+                @if ($lookChoice !== null)
+                    <div class="chat chat-end" wire:key="look-choice">
+                        <div class="chat-header mb-1 text-xs text-base-content/55">{{ __('You') }}</div>
+                        <div class="chat-bubble chat-bubble-primary p-3">{{ $lookChoice }}</div>
                     </div>
                 @endif
 
@@ -433,6 +464,15 @@
                             ])
                         >
                             {{ $option['label'] }}
+                        </button>
+                    @endforeach
+                </div>
+            @elseif ($state === 'look')
+                <div class="flex flex-wrap justify-end gap-2">
+                    @foreach (['pictures' => __('Pictures'), '3d' => __('3D')] as $key => $label)
+                        <button type="button" wire:click="selectLook('{{ $key }}')" data-chat-look="{{ $key }}"
+                                @class(['btn', 'btn-primary' => ($key === '3d') === $this->asksFor3d, 'btn-outline' => ($key === '3d') !== $this->asksFor3d])>
+                            {{ $label }}
                         </button>
                     @endforeach
                 </div>

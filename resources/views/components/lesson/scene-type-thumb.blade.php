@@ -1,13 +1,13 @@
 @props(['kind' => 'narration', 'gameType' => null])
 @php
-    // narration | quiz | strategy | debate | story_game | branch | map | voyage | gallery | video
+    // narration | quiz | strategy | debate | story_game | branch | map | voyage | gallery | video | stage25d
     $key = $kind === 'game' ? ($gameType ?? 'quiz') : $kind;
     // Per-type accent colour (the icons inherit currentColor).
     $tint = [
         'narration' => 'text-primary', 'quiz' => 'text-primary', 'strategy' => 'text-teal-300',
         'debate' => 'text-teal-300', 'story_game' => 'text-teal-300', 'branch' => 'text-teal-300',
         'map' => 'text-panel-link', 'voyage' => 'text-indigo-300', 'gallery' => 'text-violet-300',
-        'video' => 'text-indigo-300', 'predict' => 'text-primary',
+        'video' => 'text-indigo-300', 'predict' => 'text-primary', 'stage25d' => 'text-primary',
     ][$key] ?? 'text-slate-300';
 @endphp
 <div class="flex h-16 w-full items-center justify-center overflow-hidden rounded-md bg-base-100 ring-1 ring-slate-700/60 {{ $tint }}">
@@ -21,6 +21,10 @@
         @case('voyage') <x-lesson.icon-voyage class="h-9 w-auto opacity-90" /> @break
         @case('gallery') <x-lesson.icon-slideshow class="h-8 w-auto opacity-90" /> @break
         @case('video') <x-lesson.icon-video class="h-9 w-auto opacity-90" /> @break
+        {{-- 3D scene: Heroicons outline cube, the stage inspector's own. --}}
+        @case('stage25d')
+            <svg class="h-8 w-8 opacity-90" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+            @break
         {{-- Predict: Heroicons outline light-bulb. --}}
         @case('predict')
             <svg class="h-8 w-8 opacity-90" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>

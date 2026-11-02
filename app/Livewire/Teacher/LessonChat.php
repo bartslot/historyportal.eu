@@ -14,7 +14,8 @@ use App\Models\Story;
 use App\Services\CanonThemeCatalog;
 use App\Services\LessonGoalContextResolver;
 use App\Services\LessonGoalParser;
-use App\Services\Support\HistoryTaxonomy;
+use App\Services\Support\ImageStyleTemplate;
+use App\Support\LibraryEra;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -75,6 +76,11 @@ class LessonChat extends Component
     public ?string $focusChoice = null;
 
     public ?string $eraChoice = null;
+
+    /** 'pictures' or '3d': asked only when the era has a painted stage bundle (LibraryEra::stageBundle). */
+    public ?string $look = null;
+
+    public ?string $lookChoice = null;
 
     public ?string $presetAnswer = null;
 
@@ -144,7 +150,12 @@ class LessonChat extends Component
         $this->subjectDescription = $context['description'];
         $this->region = $context['region'];
         $this->regionLabel = $context['region_label'];
-        $this->detectedEra = $context['era'];
+        // The setting is one of the ten tijdvakken (config lesson-taxonomy.periods), the vocabulary the library,
+        // the stage bundles and Dutch classes share: the first year the resolver found, else its era's name.
+        $tijdvak = $context['period_start'] !== null
+            ? LibraryEra::forYear((int) $context['period_start'])
+            : (LibraryEra::named($context['era']) ?? LibraryEra::forLabel($context['era']));
+        $this->detectedEra = $tijdvak !== null ? LibraryEra::label($tijdvak) : null;
         $this->periodStart = $context['period_start'];
         $this->periodEnd = $context['period_end'];
         $this->era = $this->detectedEra;
@@ -236,30 +247,8 @@ class LessonChat extends Component
     #[Computed]
     public function eraOptions(): array
     {
-        $eras = $this->region !== null
-            ? HistoryTaxonomy::erasFor($this->region)
-            : [];
-
-        if ($this->detectedEra !== null && ! in_array($this->detectedEra, $eras, true)) {
-            array_unshift($eras, $this->detectedEra);
-        }
-
-        if ($eras === []) {
-            $eras = [
-                'Ancient world (before 500)',
-                'Middle Ages (500–1500)',
-                'Early modern period (1500–1800)',
-                'Modern era (1800–1945)',
-                'Contemporary era (1945–present)',
-            ];
-        }
-
-        if ($this->detectedEra !== null) {
-            $eras = array_values(array_unique([
-                $this->detectedEra,
-                ...array_filter($eras, fn (string $era): bool => $era !== $this->detectedEra),
-            ]));
-        }
+        // The ten tijdvakken in historical order, translated.
+        $eras = array_values(LibraryEra::choices());
 
         return array_map(
             fn (string $era, int $index): array => [
@@ -410,9 +399,54 @@ class LessonChat extends Component
 
         $this->era = $option['value'];
         $this->eraChoice = $option['label'];
+        $this->afterEra();
+    }
+
+    /** Pictures or 3D, asked only when the era has a painted stage bundle; then the lesson type. */
+    private function afterEra(): void
+    {
+        if ($this->stageBundle !== null) {
+            $this->state = 'look';
+
+            return;
+        }
+        $this->look = null;
         $this->state = $this->suggestedPresetKey !== null
             ? 'preset_confirmation'
             : 'preset_options';
+    }
+
+    public function selectLook(string $look): void
+    {
+        if ($this->state !== 'look' || $this->createdLessonId !== null || ! in_array($look, ['pictures', '3d'], true)) {
+            return;
+        }
+
+        $this->look = $look;
+        $this->lookChoice = $look === '3d' ? __('3D') : __('Pictures');
+        $this->state = $this->suggestedPresetKey !== null
+            ? 'preset_confirmation'
+            : 'preset_options';
+    }
+
+    /** The painted stage bundle of the chosen era, which makes a 3D lesson possible; null otherwise. */
+    #[Computed]
+    public function stageBundle(): ?string
+    {
+        return LibraryEra::stageBundle(LibraryEra::named($this->era));
+    }
+
+    /** The teacher asked for 3D in their own words ("ik wil een 3D les"): that button is the suggestion. */
+    #[Computed]
+    public function asksFor3d(): bool
+    {
+        return (bool) preg_match('/\b3\s?-?d\b/iu', $this->goal);
+    }
+
+    #[Computed]
+    public function lookPrompt(): string
+    {
+        return __('This period has a 3D set: painted people and places your class sees from all sides. Should the lesson play in 3D, or with pictures?');
     }
 
     public function continueWithSuggestedPreset(): void
@@ -644,7 +678,7 @@ class LessonChat extends Component
             ]);
         }
 
-        return $message."\n\n".__(
+        return self::punctuated($message)."\n\n".__(
             'You can now add up to three optional focus points, or continue without one.'
         );
     }
@@ -749,7 +783,13 @@ class LessonChat extends Component
             ? __('I’ll ground it in the curated story “:story”.', ['story' => $this->selectedStory->title])
             : __('I’ll research the topic from vetted sources.'));
 
-        return $message.' '.__('You can review everything before students see it.');
+        return self::punctuated($message.' '.__('You can review everything before students see it.'));
+    }
+
+    /** A sentence that ends on a topic with its own mark ("Wat weten wij?") keeps that one: never "wij?.". */
+    private static function punctuated(string $message): string
+    {
+        return (string) preg_replace('/([?!.…])\.(?=\s|$)/u', '$1', $message);
     }
 
     private function presetPitch(string $key): string
@@ -830,6 +870,8 @@ class LessonChat extends Component
             'status' => LessonStatus::Draft,
             'wizard_step' => 3,
             ...$storyAttributes,
+            // 3D: the tijdvak the teacher chose picks the stage bundle, so a story's own era label must not replace it.
+            ...($this->look === '3d' && $this->stageBundle !== null ? ['image_style' => ImageStyleTemplate::STAGE, 'era' => $this->era] : []),
         ]));
 
         // Same as Step1Settings::buildSource (internet mode): the actual fetch is deferred to
@@ -898,9 +940,7 @@ class LessonChat extends Component
 
         if ($this->detectedEra !== null && $this->era === $this->detectedEra) {
             $this->eraChoice = $this->displayEraLabel($this->detectedEra);
-            $this->state = $this->suggestedPresetKey !== null
-                ? 'preset_confirmation'
-                : 'preset_options';
+            $this->afterEra();
         }
     }
 

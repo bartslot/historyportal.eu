@@ -130,6 +130,9 @@ class TopicGroundingTest extends TestCase
     public function test_a_year_is_read_out_of_a_human_era_label(): void
     {
         $this->assertSame(1650, TopicGrounding::eraYear('Early modern period (1500–1800)'));
+        // The chat and step 1 store a tijdvak: an ASCII range dash is no year before Christ.
+        $this->assertSame(1650, TopicGrounding::eraYear('Tijd van regenten en vorsten (1600-1700)'));
+        $this->assertNull(TopicGrounding::eraYear('Tijd van jagers en boeren'));
         $this->assertSame(1651, TopicGrounding::eraYear('1642 – 1659'));
         $this->assertSame(1600, TopicGrounding::eraYear('1600'));
         $this->assertNull(TopicGrounding::eraYear('17e eeuw'));

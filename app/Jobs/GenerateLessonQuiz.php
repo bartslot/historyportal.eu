@@ -52,6 +52,9 @@ class GenerateLessonQuiz implements ShouldQueue
         return [10, 30, 90];
     }
 
+    /** The scenes that tell the story: narrated pictures, and a 3D lesson's stage scenes (GenerateLessonScript). */
+    private const STORY_KINDS = ['narration', 'stage25d'];
+
     public function handle(#[Llm('mechanical')] OpenAiLlmService $llm): void
     {
         $lesson = Lesson::with('scenes')->findOrFail($this->lessonId);
@@ -73,14 +76,14 @@ class GenerateLessonQuiz implements ShouldQueue
 
         if ($quizScenes->isEmpty()) {
             // No quiz segment in the timeline — lesson-level pool from the full story.
-            $narration = $lesson->scenes->where('kind', 'narration')->sortBy('order')->values();
+            $narration = $lesson->scenes->whereIn('kind', self::STORY_KINDS)->sortBy('order')->values();
             $this->generateSet($llm, $lesson, $narration, $this->objectivesFor($lesson, $narration), null, null);
         } else {
             $previousQuizOrder = null;
             foreach ($quizScenes as $quizScene) {
                 // Everything the student has heard by the time this quiz starts.
                 $taught = $lesson->scenes
-                    ->filter(fn (Scene $scene) => $scene->kind === 'narration' && $scene->order < $quizScene->order)
+                    ->filter(fn (Scene $scene) => in_array($scene->kind, self::STORY_KINDS, true) && $scene->order < $quizScene->order)
                     ->sortBy('order')
                     ->values();
 
@@ -88,7 +91,7 @@ class GenerateLessonQuiz implements ShouldQueue
                 // check — upcoming narration is allowed, flagged asks_ahead per question.
                 $upcoming = QuizPrompt::scopeFor($quizScene) === 'full'
                     ? $lesson->scenes
-                        ->filter(fn (Scene $scene) => $scene->kind === 'narration' && $scene->order > $quizScene->order)
+                        ->filter(fn (Scene $scene) => in_array($scene->kind, self::STORY_KINDS, true) && $scene->order > $quizScene->order)
                         ->sortBy('order')
                         ->values()
                     : null;

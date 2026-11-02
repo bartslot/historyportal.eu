@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\OpenAiLlmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use RuntimeException;
 use Tests\TestCase;
@@ -28,6 +29,8 @@ class LessonChatTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // No painted stage bundles unless a test puts one there: the 3D question is asked only then.
+        Storage::fake('public');
         $this->teacher = User::factory()->create();
     }
 
@@ -73,13 +76,13 @@ class LessonChatTest extends TestCase
             ->assertSet('topic', "The Eighty Years' War")
             ->assertSet('region', 'netherlands')
             ->assertSet('regionLabel', 'the Netherlands')
-            ->assertSet('detectedEra', 'Opstand & Tachtigjarige Oorlog (1568–1648)')
+            ->assertSet('detectedEra', 'Discoverers and reformers (1500-1600)')
             ->assertSet('periodStart', 1568)
             ->assertSet('periodEnd', 1648)
             ->assertSet('suggestedPresetKey', 'deep_dive')
             ->assertSet('presetKey', null)
             ->assertSet('gradeLevel', 'Age 12')
-            ->assertSee("Ah, The Eighty Years' War — the Dutch revolt against Spanish rule, from 1568 to 1648 in the Netherlands.")
+            ->assertSee("Ah, The Eighty Years' War: the Dutch revolt against Spanish rule, from 1568 to 1648 in the Netherlands.")
             ->assertSee('You can now add up to three optional focus points')
             ->assertSee('Optional focus')
             ->assertSee('Continue')
@@ -92,12 +95,11 @@ class LessonChatTest extends TestCase
             ->call('continueAfterFocus')
             ->assertSet('state', 'preset_confirmation')
             ->assertSet('focusChoice', 'Revolution, Rights')
-            ->assertSet('eraChoice', "Eighty Years' War (1568–1648)")
-            ->assertSeeHtml('I suggest Eighty Years&#039; War (1568–1648).')
-            ->assertSeeHtml('Eighty Years&#039; War (1568–1648)')
+            ->assertSet('eraChoice', 'Discoverers and reformers (1500-1600)')
+            ->assertSee('I suggest Discoverers and reformers (1500-1600).')
             ->call('continueWithSuggestedPreset')
             ->assertSet('state', 'age_confirmation')
-            ->assertSet('era', 'Opstand & Tachtigjarige Oorlog (1568–1648)')
+            ->assertSet('era', 'Discoverers and reformers (1500-1600)')
             ->assertSee('I suggest a Deep dive lesson.')
             ->assertSee('It follows the rise and fall in depth and ends with a quiz.')
             ->assertSee('Change')
@@ -356,7 +358,7 @@ class LessonChatTest extends TestCase
         $this->assertSame('Willem van Oranje', $lesson->protagonist_name);
         $this->assertSame('Age 10', $lesson->grade_level);
         $this->assertSame('netherlands', $lesson->region);
-        $this->assertSame('Opstand & Tachtigjarige Oorlog (1568–1648)', $lesson->era);
+        $this->assertSame('Discoverers and reformers (1500-1600)', $lesson->era);
         $this->assertNull($lesson->title); // pipeline titles it
 
         // Pipeline started exactly like the wizard: source attached, SourceReady, outline queued

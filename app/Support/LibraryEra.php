@@ -137,17 +137,77 @@ final class LibraryEra
      */
     private static function fromStageBundles(Lesson $lesson): ?string
     {
-        return $lesson->scenes()->where('kind', 'stage25d')->pluck('config')
+        return self::eraOfAssets($lesson->scenes()->where('kind', 'stage25d')->pluck('config')
             ->map(fn ($config) => is_array($config) ? ($config['stage25d']['bundle'] ?? null) : null)
             ->filter(fn ($bundle) => is_string($bundle))
             ->unique()
             ->flatMap(fn (string $bundle) => LibraryBundle::assets($bundle))
+            ->all());
+    }
+
+    /** @param  list<array<string,mixed>>  $assets  the most common tijdvak among the assets' date labels */
+    private static function eraOfAssets(array $assets): ?string
+    {
+        return collect($assets)
             ->map(fn (array $asset) => self::forLabel(is_string($asset['era'] ?? null) ? $asset['era'] : null))
             ->filter()
             ->countBy()
             ->sortDesc()
             ->keys()
             ->first();
+    }
+
+    /**
+     * The painted stage bundle of an era (the bundle on the public disk whose assets are mostly from it),
+     * the set a teacher's 3D scene is built from. Null: no bundle for the era yet, so no 3D.
+     */
+    public static function stageBundle(?string $era): ?string
+    {
+        $eras = once(fn () => collect(LibraryBundle::names())
+            ->mapWithKeys(fn (string $bundle) => [$bundle => self::eraOfAssets(LibraryBundle::assets($bundle))])
+            ->all());
+        $bundle = $era === null ? false : array_search($era, $eras, true);
+
+        return is_string($bundle) ? $bundle : null;
+    }
+
+    /** The stage bundle of the era a lesson is set in, or null. */
+    public static function stageBundleFor(Lesson $lesson): ?string
+    {
+        return self::stageBundle(self::forLesson($lesson));
+    }
+
+    /**
+     * The tijdvak a period name names: a key ("hunters-farmers") or its name in any interface language,
+     * with or without the years after it ("Tijd van regenten en vorsten (1600-1700)"). The chat and step 1
+     * store the name, and the BCE ones carry no year to read.
+     */
+    public static function named(?string $text): ?string
+    {
+        $name = mb_strtolower(trim((string) preg_replace('/\s*\(.*\)\s*$/u', '', (string) $text)));
+        if ($name === '') {
+            return null;
+        }
+        foreach ((array) config('lesson-taxonomy.periods') as $key => $period) {
+            $names = array_map(fn (string $locale) => mb_strtolower(trans($period['label'], [], $locale)), ['en', 'nl', 'de', 'fr', 'it']);
+            if ($name === $key || in_array($name, $names, true)) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The ten tijdvakken as choices, in historical order, each labelled in the interface language.
+     *
+     * @return array<string,string> key => label
+     */
+    public static function choices(): array
+    {
+        return collect(array_keys((array) config('lesson-taxonomy.periods')))
+            ->mapWithKeys(fn (string $key) => [$key => self::label($key)])
+            ->all();
     }
 
     /** Period keys in historical order, the order of the config. */
@@ -169,7 +229,7 @@ final class LibraryEra
     public static function forLesson(Lesson $lesson): ?string
     {
         $taxonomy = app(LessonTaxonomy::class);
-        $period = $taxonomy->period($lesson, withScenes: false) ?? self::fromTijdvak($lesson) ?? $taxonomy->period($lesson);
+        $period = self::named($lesson->era) ?? $taxonomy->period($lesson, withScenes: false) ?? self::fromTijdvak($lesson) ?? $taxonomy->period($lesson);
         if ($period !== null) {
             return $period;
         }

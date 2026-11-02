@@ -189,7 +189,9 @@ final class TopicGrounding
      */
     public static function eraYear(string $era): ?int
     {
-        if (! preg_match_all('/-?\d{3,4}/', $era, $matches)) {
+        // A minus straight after a digit is a range dash, not a year before Christ: the chat and step 1 store
+        // tijdvakken as "Regents and rulers (1600-1700)".
+        if (! preg_match_all('/(?<!\d)-?\d{3,4}/', $era, $matches)) {
             return null;
         }
 

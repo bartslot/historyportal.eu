@@ -204,7 +204,25 @@ class Step1Settings extends Component
 
     public function updatedRegion(): void
     {
-        $this->era = null; // reset era when region changes
+        // A region's own era goes with it; a tijdvak holds in every region.
+        if (\App\Support\LibraryEra::named($this->era) === null) {
+            $this->era = null;
+        }
+        $this->keepStyleDrawable();
+    }
+
+    public function updatedEra(): void
+    {
+        $this->keepStyleDrawable();
+    }
+
+    /** 3D needs a stage bundle for the era: once the era has none, the lesson goes back to the recommended pictures. */
+    private function keepStyleDrawable(): void
+    {
+        unset($this->stageBundle);
+        if ($this->image_style === ImageStyleTemplate::STAGE && $this->stageBundle === null) {
+            $this->image_style = GradeBandStyleRecommender::recommend($this->grade_level)[0];
+        }
     }
 
     public function toggleFocusTag(string $slug): void
@@ -423,14 +441,14 @@ class Step1Settings extends Component
     #[Computed]
     public function eraOptions(): array
     {
-        if (! $this->region) {
-            return [];
-        }
+        // The ten tijdvakken first (no region needed), then the region's own eras, then whatever is saved.
+        $eras = array_values(array_unique(array_filter([
+            ...array_values(\App\Support\LibraryEra::choices()),
+            ...($this->region ? HistoryTaxonomy::erasFor($this->region) : []),
+            $this->era,
+        ])));
 
-        return array_map(
-            fn ($e) => ['value' => $e, 'label' => $e],
-            HistoryTaxonomy::erasFor($this->region),
-        );
+        return array_map(fn ($e) => ['value' => $e, 'label' => $e], $eras);
     }
 
     #[Computed]
@@ -448,7 +466,7 @@ class Step1Settings extends Component
     #[Computed]
     public function styleOptions(): array
     {
-        return array_map(fn (string $k) => [
+        $options = array_map(fn (string $k) => [
             'key' => $k,
             'label' => ImageStyleTemplate::label($k),
             // Null when the preview asset is missing so the picker renders a clean placeholder
@@ -456,7 +474,27 @@ class Step1Settings extends Component
             'thumb' => file_exists(public_path("assets/style-{$k}.webp"))
                 ? asset("assets/style-{$k}.webp")
                 : null,
-        ], ImageStyleTemplate::styles());
+        ], [...ImageStyleTemplate::styles(), ...($this->stageBundle !== null ? [ImageStyleTemplate::STAGE] : [])]);
+        // 3D: its tile is the bundle's own painted far landscape.
+        if ($this->stageBundle !== null) {
+            $far = collect(\App\Services\Stage25d\LibraryBundle::assets($this->stageBundle))->firstWhere('layer', 'bg');
+            $options[array_key_last($options)]['thumb'] = $far['url'] ?? null;
+        }
+
+        return $options;
+    }
+
+    /**
+     * The painted stage bundle of the era this lesson is set in, which makes "3D" a visual style; null hides it.
+     * The era as typed or picked here (a tijdvak name, a label with years), else the saved lesson's.
+     */
+    #[Computed]
+    public function stageBundle(): ?string
+    {
+        $era = \App\Support\LibraryEra::named($this->era) ?? \App\Support\LibraryEra::forLabel($this->era)
+            ?? ($this->lesson?->exists ? \App\Support\LibraryEra::forLesson($this->lesson) : null);
+
+        return \App\Support\LibraryEra::stageBundle($era);
     }
 
     #[Computed]
@@ -493,6 +531,16 @@ class Step1Settings extends Component
     }
 
     /**
+     * The lesson already exists with this very topic and no catalog id: the lesson chat made it, from vetted
+     * sources (its LessonSource), and step 1 keeps it rather than asking for a catalog pick again.
+     */
+    public function keepsSavedTopic(): bool
+    {
+        return $this->topicId === null && $this->lesson?->exists
+            && trim((string) $this->lesson->topic) !== '' && trim($this->topic) === trim((string) $this->lesson->topic);
+    }
+
+    /**
      * Server-side guard (A1): the chosen topic must come from the curated catalog. Rejects
      * free-text topics with no catalog id, or an id that isn't in public.topics.
      */
@@ -500,6 +548,9 @@ class Step1Settings extends Component
     {
         // A published catalog story is the strongest grounding — no corpus topic required.
         if ($this->storyId && \App\Models\Story::published()->whereKey($this->storyId)->exists()) {
+            return;
+        }
+        if ($this->keepsSavedTopic()) {
             return;
         }
 
