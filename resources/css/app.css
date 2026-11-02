@@ -344,6 +344,22 @@
     box-shadow: none;
 }
 
+/* ─── Inspector tab strips (tabs tabs-box tabs-sm): folder tabs, not pills ──── */
+/* Rounded on top only, square where they meet the strip's bottom edge, which they sit on: the
+   tray drops its bottom padding and bottom radius. Flat: no lift shadow on the active tab.
+   Unlayered, because DaisyUI's tab rules sit in a layer that would win over components. */
+.tabs-box.tabs-sm {
+    padding-bottom: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    box-shadow: none;
+}
+.tabs-box.tabs-sm > .tab {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    box-shadow: none;
+}
+
 /* ─── The editor shell: black between and around panels, panels are dark grey ──── */
 /**
  * Spotify layout. The editor's background is --color-shell; each panel is a --color-panel surface

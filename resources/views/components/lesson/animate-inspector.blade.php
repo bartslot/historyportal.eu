@@ -297,7 +297,8 @@
                                          :value="$cam['amount']" :display="$num1($cam['amount'])" unit="×" :default="1"
                                          :on-change="'setShotCamera(' . $i . ', \'amount\', $event.target.value)'" />
 
-                        <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-camera-advanced>
+                        {{-- wire:ignore.self: the 3 s wire:poll morph would drop `open` and fold it shut mid-edit. --}}
+                        <details wire:ignore.self class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-camera-advanced>
                             <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
                             <div class="collapse-content space-y-2 px-3">
                                 <x-ui.slider-row :label="__('Duration')" :min="0.3" :max="30" :step="0.1"
