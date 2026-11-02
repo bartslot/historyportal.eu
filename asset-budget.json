@@ -9,7 +9,15 @@
 
   "//channels": "Bytes per texel ON THE GPU, per asset, where it is not the default 4. Nothing in the file says how it will be uploaded — the cloud atlas is a grey image either way — so this mirrors the call site's `channels` option and lives here so a reviewer can compare the two in one place. Getting it wrong in the safe direction over-reports and fails a build that fits; in the unsafe direction it under-reports the one number that shows as a black screen rather than a slow one.",
   "channels": {
-    "public/img/map/cloud-patches.webp": 1
+    "public/img/map/cloud-patches.webp": 1,
+    "public/img/map/clouds-field.webp": 1
+  },
+
+  "//mipmap": "Assets uploaded WITHOUT a mip chain, so the checker drops the mipmapOverhead for them. Mirrors `starfield.js`, which acquires the sky with `mipmap: false`.",
+  "mipmap": {
+    "public/img/map/sky/milkyway-4k.webp": false,
+    "public/img/map/sky/milkyway-2k.webp": false,
+    "public/img/map/sky/milkyway-1k.webp": false
   },
 
   "surfaces": {
@@ -25,9 +33,9 @@
         "public/img/map/clouds-field.webp",
         "public/img/map/cloud-patches.webp",
         "public/img/map/wind-field.png",
-        "public/img/map/milkyway.jpg",
-        "public/img/map/moon.jpg"
-      ]
+        "public/img/map/sky/milkyway-4k.webp"
+      ],
+      "//sky": "The sky tiers are ALTERNATIVES, not a sum: starfield.js picks one per device and releases the 1k placeholder when it lands. The 4k tier is the worst case and is what is billed here; 2k and 1k sit in optional for the dimension rule."
     },
     "lesson-map": {
       "description": "The lesson map has one ground and it is the Earth, so the globe is no longer opt-in per lesson — but what it may spend still is. resolveQuality('lessonMap') decides at runtime and addGlobeLayers never creates a layer the plan refused, so the asset is not fetched rather than fetched and hidden. This surface had ~1 MB of glyph chunks and three tilesets removed for cold-load time; the ceilings below are unchanged from when it was opt-in and do not get raised to fit new work.",
@@ -36,10 +44,8 @@
       "transferBytes": 1572864,
       "vramBytes": 33554432,
       "maxSingleAssetTransferBytes": 1048576,
-      "assets": [
-        "public/img/map/milkyway.jpg",
-        "public/img/map/moon.jpg"
-      ]
+      "//today": "Nothing adds globe layers to the lesson map yet (addGlobeLayers has one caller, timemap/index.js), so it loads no texture from this directory. When it does, the sky must come in at 2k: the 4k tier is 3.6 MB against the 1 MB ceiling below.",
+      "assets": []
     },
     "landing-hero": {
       "description": "First paint. Loaded after paint, never blocking.",
@@ -55,6 +61,8 @@
     "//relief": "earth-normal-8192.webp arrived with `realistic-earth` and is OPTIONAL for a measured reason, not because nobody got round to declaring it. At 8192x4096 it is 128 MiB resident before mipmaps and 171 MiB with them, against a 96 MiB surface ceiling — so it cannot be a default-on layer at this size, whatever the 3.6 MiB file size suggests. It is exactly the case the vram ceiling above exists to catch. Today only the measurement harness loads it (`daylight.js` defaults reliefUrl to null and nothing in the app sets it), and the layers panel ships its relief toggle OFF for the same reason. Moving it into `timemap` needs a smaller bake or a quality tier that picks one, not an edit to this list.",
     "assets": [
       "public/img/map/city-lights.png",
+      "public/img/map/sky/milkyway-2k.webp",
+      "public/img/map/sky/milkyway-1k.webp",
       "public/img/map/earth-normal-8192.webp"
     ]
   },

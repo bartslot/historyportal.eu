@@ -16,10 +16,9 @@
      that variant and takes no space. Hidden in one state is not absent from the design, so it is
      built here and shown whenever there is somewhere to go back to.
 
-     The tabs themselves are <x-ui.segmented>, which is stock DaisyUI `tabs tabs-box`. --}}
-{{-- A FULL border, not `border-y`. The file draws the strip as a bordered box; top-and-bottom
-     rules read as two separators with a gap between them rather than as one strip. --}}
-<div {{ $attributes->class(['flex w-full items-center gap-1 border border-panel-hairline px-4 py-1.5']) }}>
+     The tabs themselves are <x-ui.segmented>, which is stock DaisyUI `tabs tabs-box tabs-sm`, like every inspector tab strip. --}}
+{{-- No border of its own: tabs-box draws the tray, and a frame around it reads as a box in a box. --}}
+<div {{ $attributes->class(['flex w-full items-center gap-1 px-4 py-1.5']) }}>
     {{ $breadcrumb }}
-    <x-ui.segmented panel :name="$name" :options="$tabs" :model="$model" class="shrink-0" />
+    <x-ui.segmented :name="$name" :options="$tabs" :model="$model" class="tabs-sm flex-1" tab-class="flex-1" />
 </div>

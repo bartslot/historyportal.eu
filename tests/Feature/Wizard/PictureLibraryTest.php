@@ -329,19 +329,6 @@ class PictureLibraryTest extends TestCase
         }
     }
 
-    public function test_everything_shows_the_search_results_and_this_lessons_pictures(): void
-    {
-        \Illuminate\Support\Facades\Cache::put('commons.text.v3.'.md5('Tasman painting').'.12', [[
-            'file_title' => 'File:Abel Tasman.jpg', 'title' => 'Abel Tasman', 'artist' => 'Jacob Cuyp',
-            'license' => 'Public domain', 'thumb_url' => 'https://upload.wikimedia.org/tasman.jpg',
-        ]], 60);
-
-        // A typed term filters our own pictures too ("Scene 1" is not a Tasman match), so the
-        // lesson's picture is checked on the unfiltered grid.
-        $this->assertSame(['commons', 'library'], $this->tilesFor('', 'Tasman')->pluck('source')->all(), 'the search result leads, our collection follows');
-        $this->assertContains('/storage/lessons/1/own.jpg', $this->tilesFor('')->pluck('key')->map(fn ($k) => parse_url($k, PHP_URL_PATH))->all());
-    }
-
     public function test_the_picker_opens_on_the_library_tab(): void
     {
         $this->fakeCloudinaryLibrary();

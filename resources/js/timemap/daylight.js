@@ -415,7 +415,7 @@ export const createDaylightLayer = ({
       }
       if (state.lightsUrl) lights = acquireEquirectTexture(gl, state.lightsUrl, repaint)
       if (state.reliefUrl) relief = acquireEquirectTexture(gl, state.reliefUrl, repaint)
-      if (state.fieldUrl) field = acquireEquirectTexture(gl, state.fieldUrl, repaint)
+      if (state.fieldUrl) field = acquireEquirectTexture(gl, state.fieldUrl, repaint, { channels: 1 })
       if (state.windUrl) wind = acquireEquirectTexture(gl, state.windUrl, repaint)
       // ONE CHANNEL. The atlas is a coverage mask: one byte of real data per texel, and an RGBA
       // upload stores three copies of it plus a constant. 32 MiB of VRAM for 8 MiB of information.
@@ -531,9 +531,9 @@ export const createDaylightLayer = ({
       const swap = (handle, key) => {
         if (next[key] === undefined || next[key] === previous[key]) return handle
         handle?.release()
-        // The atlas is a one-byte mask; every other field here is colour. A swap that forgot
-        // this would quietly re-upload it as RGBA and put the 24 MiB back.
-        const options = key === 'patchUrl' ? { channels: 1 } : undefined
+        // The atlas and the cover field are one-byte masks; the rest is colour. A swap that forgot
+        // this would quietly re-upload them as RGBA and put 32 MiB back.
+        const options = key === 'patchUrl' || key === 'fieldUrl' ? { channels: 1 } : undefined
         return state[key] ? acquireEquirectTexture(gl, state[key], repaint, options) : null
       }
       lights = swap(lights, 'lightsUrl')

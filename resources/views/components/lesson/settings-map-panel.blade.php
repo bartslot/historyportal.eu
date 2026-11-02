@@ -349,7 +349,8 @@
                     </button>
                 @endif
             </div>
-            <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-sit-advanced>
+            {{-- wire:ignore.self: the 3 s wire:poll morph would drop `open` and fold it shut. --}}
+            <details wire:ignore.self class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-sit-advanced>
                 <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
                 <div class="collapse-content space-y-2 px-3">
                     @foreach ([

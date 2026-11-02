@@ -129,6 +129,8 @@ not an argument against it.
 
 ## When the asset budget merges
 
+**Done 2026-11-02:** steps 1 and 2 below are in. The budget bills the 4k tier (flat, via the `mipmap` map) on `timemap`, keeps 2k and 1k in `optional`, and `milkyway.jpg` / `moon.jpg` are deleted. Step 3 is answered by billing the worst case only.
+
 `asset-budget.json` and `scripts/check-asset-budget.mjs` live on
 `worktree-map-layers-clouds-and-water-shaders` and are not in this branch's history yet. Nothing
 here has been checked by them. Three things to do at the merge, in order:

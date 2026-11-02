@@ -107,13 +107,12 @@
 <div class="space-y-3" @if ($isLayer) x-data="{ build: 'in' }" @endif>
     @if ($isLayer)
         {{-- Build In / Build Out, the two halves of a layer's life on the scene. --}}
-        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-2xs">
+        <div role="tablist" class="tabs tabs-box tabs-sm w-full">
             @foreach (['in' => __('In'), 'out' => __('Out')] as $key => $label)
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
-                        :class="build === '{{ $key }}'
-                            ? 'bg-slate-700 text-primary'
-                            : 'text-panel-hint hover:text-slate-200'"
-                        class="flex-1 rounded-md px-2 py-1 font-medium transition">{{ $label }}</button>
+                        :aria-selected="build === '{{ $key }}'"
+                        :class="build === '{{ $key }}' ? 'tab-active' : ''"
+                        class="tab flex-1">{{ $label }}</button>
             @endforeach
         </div>
     @endif
@@ -298,7 +297,8 @@
                                          :value="$cam['amount']" :display="$num1($cam['amount'])" unit="×" :default="1"
                                          :on-change="'setShotCamera(' . $i . ', \'amount\', $event.target.value)'" />
 
-                        <details class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-camera-advanced>
+                        {{-- wire:ignore.self: the 3 s wire:poll morph would drop `open` and fold it shut mid-edit. --}}
+                        <details wire:ignore.self class="collapse collapse-arrow rounded-lg border border-panel-hairline" data-camera-advanced>
                             <summary class="collapse-title min-h-0 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Advanced') }}</summary>
                             <div class="collapse-content space-y-2 px-3">
                                 <x-ui.slider-row :label="__('Duration')" :min="0.3" :max="30" :step="0.1"

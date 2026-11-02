@@ -60,17 +60,7 @@ class LessonTaxonomy
     public function period(Lesson $lesson, bool $withScenes = true): ?string
     {
         $year = $this->year($lesson, $withScenes);
-        if ($year === null) {
-            return null;
-        }
-
-        foreach (config('lesson-taxonomy.periods') as $key => $period) {
-            if ($year >= $period['from'] && $year < $period['to']) {
-                return $key;
-            }
-        }
-
-        return null;
+        return $year === null ? null : \App\Support\LibraryEra::forYear($year);
     }
 
     /**

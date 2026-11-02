@@ -11,7 +11,7 @@
     @endif
 @endpush
 
-<div class="contents" x-data="step3SceneConfigurator" wire:poll.3s
+<div class="contents" x-data="step3SceneConfigurator" wire:poll.3s="poll"
      {{-- Optional chaining throughout: this effect runs on first paint, which can beat the view
           store's registration (a pushed script racing alpine:init). Without the `?.` the effect
           throws and Alpine tears down the component's reactive effects. --}}
@@ -1011,7 +1011,7 @@
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
         <div x-show="inspectorOpen" x-ref="inspectorTabs" class="flex shrink-0 border-b border-panel-hairline px-4 py-2">
-            <x-ui.segmented panel name="inspector-subject" class="w-full" tab-class="flex-1"
+            <x-ui.segmented name="inspector-subject" class="tabs-sm w-full" tab-class="flex-1"
                             :value="$panelView === 'settings' ? 'settings' : 'scene'"
                             :options="[['scene', __('Selection')], ['settings', __('Lesson')]]"
                             on-change="$wire.call($event.target.value === 'settings' ? 'openSettings' : 'openFormat')" />
@@ -2811,7 +2811,7 @@
                     {{-- "Library" is our own imagery: this lesson's pictures plus our Cloudinary
                          collection. It is also what the grid falls back to when the corpus and
                          Commons find nothing, so the teacher is never left with an empty modal. --}}
-                    @foreach (['library' => __('Library'), '' => __('Everything'), 'painting' => __('Paintings'), 'city_map' => __('City plans')] as $kindVal => $kindLabel)
+                    @foreach ($this->pickerShelves as [$kindVal, $kindLabel])
                         <button type="button" wire:click="$set('paintingKind', '{{ $kindVal }}')"
                                 class="btn btn-xs flex-none {{ $paintingKind === $kindVal ? 'bg-primary text-slate-950 border-0 hover:brightness-110' : 'btn-outline border-slate-600 text-panel-hint hover:border-primary hover:text-primary' }}">
                             {{ $kindLabel }}
@@ -2829,7 +2829,8 @@
                             </button>
                         @endforeach
                     </div>
-                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 {{ $paintingPickerMode === 'model3d' ? 'lg:hidden' : '' }}"
+                    {{-- Region narrows the corpus; our own shelves have nothing to narrow. --}}
+                    <select class="select select-xs flex-none border-slate-600 bg-base-200 text-slate-300 {{ $paintingPickerMode === 'model3d' ? 'lg:hidden' : '' }} {{ in_array($paintingKind, ['library', 'stage'], true) ? 'hidden' : '' }}"
                             aria-label="{{ __('Region') }}"
                             wire:change="$set('paintingRegion', $event.target.value)">
                         @foreach (['' => __('Region: Auto'), 'european' => __('Europe'), 'americas' => __('Americas'), 'asia' => __('Asia'), 'africa' => __('Africa'), 'all' => __('All')] as $regVal => $regLabel)
@@ -2880,7 +2881,7 @@
                 <div class="h-[62vh] overflow-y-auto p-1.5"
                      wire:loading.class="opacity-40"
                      wire:target="paintingQuery, paintingKind, paintingRegion, applyPaintingChoice">
-                @php $collectionPending = ! $libraryCollectionReady && $paintingPickerMode !== 'model3d' && in_array($paintingKind, ['library', ''], true); @endphp
+                @php $collectionPending = ! $libraryCollectionReady && $paintingPickerMode !== 'model3d' && $paintingKind === 'library'; @endphp
                 <div class="lp-thumb-grid gap-3" :style="gridStyle">
                     @forelse ($this->paintingResults as $art)
                         {{-- @js() escapes the source/key as safe JS literals (titles carry apostrophes,
@@ -2959,7 +2960,8 @@
                 {{-- Wikimedia and image upload belong to the picture modes; a Sketchfab search has
                      nothing to top up and nothing to upload into. --}}
                 <div @class(['mt-4 flex-wrap items-center gap-2', 'hidden' => $paintingPickerMode === 'model3d', 'flex' => $paintingPickerMode !== 'model3d'])>
-                    @unless ($paintingCommonsLoaded)
+                    {{-- Commons is every era: only the painting shelves top up from it, never our own. --}}
+                    @unless ($paintingCommonsLoaded || in_array($paintingKind, ['library', 'stage'], true))
                         <button type="button"
                                 wire:click="$set('paintingCommonsLoaded', true)"
                                 wire:loading.attr="disabled" wire:target="paintingCommonsLoaded"
@@ -2974,7 +2976,7 @@
                 @error('uploadImage')
                     <p class="mt-1 text-prose text-error">{{ $message }}</p>
                 @enderror
-                <p class="mt-3 text-prose text-panel-hint">
+                <p @class(['mt-3 text-prose text-panel-hint', 'hidden' => in_array($paintingKind, ['library', 'stage'], true)])>
                     {{-- Not "public-domain works": the license filter admits CC BY and CC BY-SA too
                          (it only rejects NC/ND), so the grid genuinely serves openly licensed
                          photographs alongside public-domain art. Saying "public domain" told
