@@ -115,25 +115,26 @@ describe('stage25d canvas interaction', () => {
     expect(api.selected).toBeNull()
   })
 
-  it('on the ground, a drag slides the picture along it: up is farther, grabbed offset kept, snapped to quarter steps', () => {
-    // the ground point under the pointer (canvas px: page minus the canvas' left 100, top 50); up the canvas = farther
-    const groundUnder = (x, y) => [x / 20, 30 - y / 10]
-    const { canvas, onChange, onSettled } = setup({ onGround: () => true, groundUnder, values: { x: 0.6, z: 10 } })   // stands at [2, 10] m
-    canvas.dispatchEvent(pointer('pointerdown', 200, 100))   // grabbed at [5, 25]
-    canvas.dispatchEvent(pointer('pointermove', 221, 81))    // pointer at [6.05, 26.9]: +1.05 sideways, +1.9 farther
-    expect(onChange.mock.calls).toEqual([[2, 'x', 0.625], [2, 'z', 12]])   // [3.05, 11.9] on the 1 m grid: [3, 12]
-    canvas.dispatchEvent(pointer('pointermove', 241, 1))     // +2.05, +9.9: [4.05, 19.9] on the 5 m grid, 1.25 m steps
+  it('on the ground, a drag moves the feet with the pointer: up is farther, snapped to quarter steps', () => {
+    // the ground point under a canvas point (page minus the canvas' left 100, top 50); its box puts the feet at (80, 135),
+    // which is [2, 10] m: where the picture stands. Up the canvas is farther.
+    const groundUnder = (x, y) => [(x - 80) / 20 + 2, (135 - y) / 5 + 10]
+    const { canvas, onChange, onSettled } = setup({ onGround: () => true, groundUnder, values: { x: 0.6, z: 10 } })
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))   // grabbed by the body, well above the feet
+    canvas.dispatchEvent(pointer('pointermove', 221, 90))    // feet to (101, 125): [3.05, 12]
+    expect(onChange.mock.calls).toEqual([[2, 'x', 0.625], [2, 'z', 12]])   // on the 1 m grid: [3, 12]
+    canvas.dispatchEvent(pointer('pointermove', 241, 50))    // feet to (121, 85): [4.05, 20], the 5 m grid, 1.25 m steps
     expect(onChange.mock.calls.slice(2)).toEqual([[2, 'x', 0.5938], [2, 'z', 20]])   // [3.75, 20]
-    canvas.dispatchEvent(pointer('pointermove', 241, 101))   // pulled back down: nearer again
-    expect(onChange.mock.calls.slice(4)[1][2]).toBeLessThan(20)
-    canvas.dispatchEvent(pointer('pointerup', 241, 101))
+    canvas.dispatchEvent(pointer('pointermove', 241, 150))   // pulled down past the start: nearer than it was
+    expect(onChange.mock.calls[5][2]).toBeLessThan(10)
+    canvas.dispatchEvent(pointer('pointerup', 241, 150))
     expect(onSettled).toHaveBeenCalledWith(2)
   })
 
-  it('no ground under the pointer (above the horizon): the picture stays put', () => {
-    const { canvas, onChange } = setup({ onGround: () => true, groundUnder: (x, y) => (y < 30 ? null : [0, 5]) })
+  it('no ground under the feet (above the horizon): the picture stays put', () => {
+    const { canvas, onChange } = setup({ onGround: () => true, groundUnder: (x, y) => (y < 100 ? null : [0, 5]) })
     canvas.dispatchEvent(pointer('pointerdown', 200, 100))
-    canvas.dispatchEvent(pointer('pointermove', 200, 60))
+    canvas.dispatchEvent(pointer('pointermove', 200, 60))     // feet from y 135 to 95
     expect(onChange).not.toHaveBeenCalled()
   })
 

@@ -146,9 +146,11 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     select(hit.index, true)
     const b = stage().layerBox(hit.index)
     const ground = onGround(hit.index)
+    const r = rectOf()
     drag = {
       mode: 'move', index: hit.index, z: b.z, from: stage().worldXAt(x, y, b.z), x0: valueOf(hit.index, 'x'), id: e.pointerId, el: canvas,
-      ground, p0: ground ? groundOf(valueOf(hit.index, 'x'), valueOf(hit.index, 'z')) : null, grab: ground ? groundUnder(x, y) : null,
+      // on the ground the feet (bottom middle of the box) follow the pointer at the offset where it was grabbed
+      ground, start: [x, y], foot: r ? [r.left + r.width / 2, r.top + r.height] : [x, y],
     }
     canvas.setPointerCapture?.(e.pointerId)
   }
@@ -177,10 +179,10 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onMoveEvent = (e) => {
     const { x, y } = local(e)
     if (drag?.mode === 'move' && drag.ground) {
-      // Slide along the ground: the point under the pointer, less where the picture was grabbed, snapped to the grid.
-      const at = groundUnder(x, y)
-      if (!drag.grab || !at) return   // no ground under the pointer (above the horizon): it stays put
-      const to = layerOf(settle([drag.p0[0] + at[0] - drag.grab[0], drag.p0[1] + at[1] - drag.grab[1]]))
+      // Slide along the ground: the feet go where the pointer moved them on screen, onto the ground there, snapped.
+      const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1])
+      if (!at) return   // no ground under the feet (above the horizon): it stays put
+      const to = layerOf(settle(at))
       onChange(drag.index, 'x', to.x)
       onChange(drag.index, 'z', to.z)
       showChip(drag.index)
