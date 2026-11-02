@@ -1,11 +1,11 @@
 {
-  "_BalloonLayer-B8Fvp-c0.js": {
-    "file": "assets/BalloonLayer-B8Fvp-c0.js",
+  "_BalloonLayer-BW7g8f70.js": {
+    "file": "assets/BalloonLayer-BW7g8f70.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
       "_easing-HS2C6-zA.js",
-      "_properties-wf1blxyK.js"
+      "_properties-fhY1XOus.js"
     ]
   },
   "_GLTFLoader-Et3HGvr1.js": {
@@ -58,8 +58,8 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-azlEwtgJ.js": {
-    "file": "assets/big-countdown-azlEwtgJ.js",
+  "_big-countdown-D0zZ_PJZ.js": {
+    "file": "assets/big-countdown-D0zZ_PJZ.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -77,11 +77,11 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_camera-DNMIAnHD.js": {
-    "file": "assets/camera-DNMIAnHD.js",
+  "_camera-DNBvFI9Z.js": {
+    "file": "assets/camera-DNBvFI9Z.js",
     "name": "camera",
     "imports": [
-      "_properties-wf1blxyK.js"
+      "_properties-fhY1XOus.js"
     ]
   },
   "_clip-W780-tgz.js": {
@@ -122,8 +122,12 @@
     "file": "assets/pausable-clock-B6VRcHlA.js",
     "name": "pausable-clock"
   },
-  "_properties-wf1blxyK.js": {
-    "file": "assets/properties-wf1blxyK.js",
+  "_projection-CL24asTn.js": {
+    "file": "assets/projection-CL24asTn.js",
+    "name": "projection"
+  },
+  "_properties-fhY1XOus.js": {
+    "file": "assets/properties-fhY1XOus.js",
     "name": "properties",
     "imports": [
       "_easing-HS2C6-zA.js"
@@ -164,7 +168,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DBwMwKIG.js",
+    "file": "assets/app-BvycP-XF.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -173,8 +177,8 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_properties-wf1blxyK.js",
-      "_BalloonLayer-B8Fvp-c0.js",
+      "_properties-fhY1XOus.js",
+      "_BalloonLayer-BW7g8f70.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ],
@@ -227,7 +231,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BaOUTXGF.js",
+    "file": "assets/lesson-player-BuFr9x_I.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -235,9 +239,9 @@
       "_vite-helpers-DqutJMZx.js",
       "_dom-1akfPxNw.js",
       "_pausable-clock-B6VRcHlA.js",
-      "_properties-wf1blxyK.js",
+      "_properties-fhY1XOus.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_config-qjtb2AOJ.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
@@ -253,7 +257,7 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-B8Fvp-c0.js",
+      "_BalloonLayer-BW7g8f70.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "_TeamGame-DKV8-JeE.js",
@@ -285,41 +289,41 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-BYcCxOMN.js",
+    "file": "assets/ArtworkOverlay-Cn28gXAF.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_properties-wf1blxyK.js",
+      "_properties-fhY1XOus.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js"
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DGpZJoJH.js",
+    "file": "assets/ParallaxScene-CWk3znbS.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
-      "_camera-DNMIAnHD.js",
+      "_camera-DNBvFI9Z.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js",
-      "_properties-wf1blxyK.js"
+      "_properties-fhY1XOus.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-CcDPfHAQ.js",
+    "file": "assets/QuizOverlay-DnnNlcz_.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CEzLlAaX.js",
@@ -327,7 +331,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-DLqN3Oyv.js",
+    "file": "assets/SplitStage-CA8t8xEB.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -335,12 +339,12 @@
       "resources/js/scene/ParallaxScene.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-B8Fvp-c0.js",
-      "_big-countdown-azlEwtgJ.js",
+      "_BalloonLayer-BW7g8f70.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
-      "_camera-DNMIAnHD.js",
-      "_properties-wf1blxyK.js",
+      "_camera-DNBvFI9Z.js",
+      "_properties-fhY1XOus.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js"
     ]
@@ -371,34 +375,35 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/diorama/DioramaStage.js": {
-    "file": "assets/DioramaStage-CCdosoig.js",
+    "file": "assets/DioramaStage-Dd8BThfw.js",
     "name": "DioramaStage",
     "src": "resources/js/scene/diorama/DioramaStage.js",
     "isDynamicEntry": true,
     "imports": [
+      "_projection-CL24asTn.js",
       "_clip-W780-tgz.js"
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-B04QjxnQ.js",
+    "file": "assets/index-C1AZyTs0.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_vite-helpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
-      "_camera-DNMIAnHD.js",
-      "_BalloonLayer-B8Fvp-c0.js",
+      "_camera-DNBvFI9Z.js",
+      "_BalloonLayer-BW7g8f70.js",
       "resources/js/app.js",
       "node_modules/three/build/three.module.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
-      "_properties-wf1blxyK.js",
+      "_properties-fhY1XOus.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_clip-W780-tgz.js",
@@ -463,7 +468,7 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/engine.js": {
-    "file": "assets/engine-B2kp-rC7.js",
+    "file": "assets/engine-Bpate2wu.js",
     "name": "engine",
     "src": "resources/js/scene/stage25d/engine.js",
     "isDynamicEntry": true,
@@ -471,11 +476,12 @@
       "_babylon-BEUo0Gn_.js",
       "_config-qjtb2AOJ.js",
       "resources/js/scene/ArtworkOverlay.js",
+      "_projection-CL24asTn.js",
       "_vite-helpers-DqutJMZx.js",
-      "_properties-wf1blxyK.js",
+      "_properties-fhY1XOus.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-azlEwtgJ.js",
+      "_big-countdown-D0zZ_PJZ.js",
       "_ambient-CEzLlAaX.js"
     ]
   },
@@ -489,7 +495,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-cBTvD_sY.js",
+    "file": "assets/recorder-B95KBvIy.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -499,8 +505,8 @@
       "_vite-helpers-DqutJMZx.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
-      "_properties-wf1blxyK.js",
-      "_BalloonLayer-B8Fvp-c0.js",
+      "_properties-fhY1XOus.js",
+      "_BalloonLayer-BW7g8f70.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ]
