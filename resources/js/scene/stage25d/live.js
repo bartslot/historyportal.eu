@@ -14,8 +14,16 @@ export const layerIndex = (id) => {
 
 const without = (layer) => Object.fromEntries(Object.entries(layer).filter(([k]) => !EDITABLE.includes(k)))
 
-/** The config minus the editable layer fields: equal signatures = the same set, nothing to rebuild. */
-export const structureSig = (cfg) => JSON.stringify({ ...cfg, set: { ...cfg?.set, layers: (cfg?.set?.layers ?? []).map(without) } })
+/** The config minus the editable fields of the layers, the ground bands and the sky picture: equal signatures = the
+ *  same set, nothing to rebuild. */
+export const structureSig = (cfg) => {
+  const { layers = [], groundBands = [], skyLayer = {}, ...rest } = cfg?.set ?? {}
+  return JSON.stringify({ ...cfg, set: { ...rest, layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
+}
 
-/** Only the editable layer fields: changes when the server's copy of an edit changes (undo, redo, import). */
-export const editSig = (cfg) => JSON.stringify((cfg?.set?.layers ?? []).map((l) => EDITABLE.map((f) => l[f] ?? null)))
+const edits = (l) => EDITABLE.map((f) => l?.[f] ?? null)
+
+/** Only the editable fields: changes when the server's copy of an edit changes (undo, redo, import). */
+export const editSig = (cfg) => JSON.stringify([
+  (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer),
+])

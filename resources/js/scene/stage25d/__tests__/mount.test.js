@@ -84,6 +84,44 @@ describe('stage25d live edits', () => {
     expect(calls.built.at(-1).set.groundBands[0].asset).toBe('meadow-band-02')
   })
 
+  it('a ground band and the sky take values like a layer: live, saved as their own patch, keyed, and undone', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    const loaded = cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 30 }], layers: [{ asset: 'a', depth: 'mid' }] } })
+    await stage.show(loaded)
+    stage.sceneId = 5
+
+    expect(stage.layerInfo('band-0').fields).toEqual(['z', 'scale', 'opacity'])
+    expect(stage.layerInfo('sky').fields).toEqual(['y', 'scale', 'opacity'])
+    stage.commitLayerProp('band-0', 'z', 45)
+    stage.commitLayerProp('band-0', 'scale', 1.4)
+    stage.commitLayerProp('sky', 'y', 3)
+    stage.setLayerMotion('band-0', { kind: 'sway', amount: 0.5 })
+    expect(calls.built).toHaveLength(1)   // no rebuild: the stage redraws what it has
+    expect(calls.rebound.set.groundBands[0]).toMatchObject({ asset: 'meadow-band-01', z: 45, scale: 1.4 })
+    expect(calls.rebound.set.skyLayer).toEqual({ y: 3 })
+    expect(stage.readLayerProp('band-0', 'z')).toBe(45)
+    expect(stage.readLayerProp('sky', 'y')).toBe(3)
+    expect(stage.layerInfo('band-0').motion).toEqual({ kind: 'sway', amount: 0.5, speed: 1 })
+    expect(saved).toEqual([
+      [0, { band: { index: 0, z: 45 } }, 5],
+      [0, { band: { index: 0, scale: 1.4 } }, 5],
+      [0, { skyLayer: { y: 3 } }, 5],
+      [0, { band: { index: 0, motion: { kind: 'sway', amount: 0.5 } } }, 5],
+    ])
+
+    stage.setLayerKeys('sky', [{ t: 0, opacity: 0.2 }, { t: 2, opacity: 1 }])
+    expect(stage.items().find((i) => i.id === 'sky').keys).toHaveLength(2)
+    stage.update(1)
+    expect(stage.readLayerProp('sky', 'opacity')).toBeGreaterThan(0.2)
+
+    // the server goes back to the loaded state (undo): the band and the sky follow
+    expect(stage.adopt(loaded)).toBe(true)
+    expect(stage.readLayerProp('band-0', 'z')).toBe(30)
+    expect(stage.readLayerProp('sky', 'y')).toBe(0)
+    expect(stage.matches(cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 60, scale: 2 }], skyLayer: { y: 1 }, layers: [{ asset: 'a', depth: 'mid' }] } }))).toBe(true)
+  })
+
   it('the eye hides one layer for the canvas only', async () => {
     const stage = await mountStage25d(document.getElementById('h'))
     await stage.show(two())

@@ -75,6 +75,8 @@ export async function createStage25d (host, opts = {}) {
   let last = performance.now()
   let destroyed = false
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
+  let bands = []            // the ground bands (set.groundBands), live like the layers
+  let skyNow = {}           // the sky picture's own values (set.skyLayer), live like the layers
   let hidden = new Set()    // layer indexes the eye took off the canvas (never saved)
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
@@ -99,16 +101,42 @@ export async function createStage25d (host, opts = {}) {
   /** Draw the live layers without a rebuild: only an asset swap rebuilds. */
   const redraw = () => {
     if (!scene || !stage) return
-    scene = { ...scene, set: { ...scene.set, layers: layers.map((l, i) => (hidden.has(i) ? { ...l, opacity: 0, keys: [] } : l)) } }
+    scene = { ...scene, set: { ...scene.set, groundBands: bands, skyLayer: skyNow, layers: layers.map((l, i) => (hidden.has(i) ? { ...l, opacity: 0, keys: [] } : l)) } }
     stage.rebind(scene)
   }
+  /** 'band-2' -> 2 when that ground band exists, else -1. */
+  const bandIndex = (id) => { const m = /^band-(\d+)$/.exec(String(id ?? '')); return m && bands[Number(m[1])] ? Number(m[1]) : -1 }
+  /** The values of a row: a layer, a ground band or the sky picture (one shape: layout.ts layerAt reads all three). */
+  const valuesOf = (id) => (id === 'sky' ? (cfg?.set?.sky ? { ...skyNow, depth: 'sky' } : null)
+    : bandIndex(id) >= 0 ? { ...bands[bandIndex(id)], depth: 'bg' } : layers[layerIndex(id)] ?? null)
+  /** Change a row live. Returns what the server saves it as: a layer's index, `{ band }`, `{ skyLayer }`; null: no such row. */
   const edit = (id, patch) => {
-    const i = layerIndex(id)
-    if (i < 0 || !layers[i]) return -1
-    layers = layers.map((l, n) => (n === i ? { ...l, ...patch } : l))
-    seenEdit = editSig({ set: { layers } })   // what the server will hold once saved: an undo then differs from it
+    let saved = null
+    if (id === 'sky' && cfg?.set?.sky) {
+      skyNow = { ...skyNow, ...patch }
+      saved = { skyLayer: patch }
+    } else if (bandIndex(id) >= 0) {
+      const n = bandIndex(id)
+      bands = bands.map((g, k) => (k === n ? { ...g, ...patch } : g))
+      saved = { band: { index: n, ...patch } }
+    } else if (layers[layerIndex(id)]) {
+      const i = layerIndex(id)
+      layers = layers.map((l, n) => (n === i ? { ...l, ...patch } : l))
+      saved = i
+    }
+    if (saved === null) return null
+    seenEdit = editSig({ set: { layers, groundBands: bands, skyLayer: skyNow } })   // what the server will hold once saved: an undo then differs from it
     redraw()
-    return i
+    return saved
+  }
+  /** The set as the teacher sees it now: a rebuild (an asset swap, a new layer) keeps every live edit. */
+  const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow })
+  /** Change a row and save it (onCommit: a layer by index; a band or the sky as its own patch). */
+  const commit = (id, patch) => {
+    const saved = edit(id, patch)
+    if (saved === null || api.sceneId == null) return
+    if (typeof saved === 'number') opts.onCommit?.(saved, patch, api.sceneId)
+    else opts.onCommit?.(0, saved, api.sceneId)
   }
   const nowT = () => (clock ? clock() : manualT)
 
@@ -122,8 +150,7 @@ export async function createStage25d (host, opts = {}) {
     return !!(layers[i] && a && (!a.tileable_x || a.layer === 'ground') && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
   }
   /** Backdrop rows: the sky and the ground bands (set.groundBands, 'band-<n>'). */
-  const isBackdrop = (id) => id === 'sky' || !!bandOf_(id)
-  const bandOf_ = (id) => { const m = /^band-(\d+)$/.exec(String(id ?? '')); return m ? cfg?.set?.groundBands?.[Number(m[1])] ?? null : null }
+  const isBackdrop = (id) => id === 'sky' || bandIndex(id) >= 0
   /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
    *  strip whose paint is there, else the sky. Selected like a row; null when there is nothing to select. */
   const backdropAt = (x, y) => {
@@ -162,6 +189,8 @@ export async function createStage25d (host, opts = {}) {
       await stage.build(next, lib)
       scene = next
       layers = next.set.layers
+      bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
+      skyNow = { ...(next.set.skyLayer ?? {}) }
       hidden = new Set()
       seenEdit = editSig(cfgNow)
       cfg = cfgNow
@@ -207,32 +236,31 @@ export async function createStage25d (host, opts = {}) {
       const sig = editSig(cfgNow)
       if (sig === seenEdit) return false
       seenEdit = sig
-      const incoming = cfgNow.set?.layers ?? []
-      layers = layers.map((l, i) => {
-        const next = { ...l }
-        for (const f of EDITABLE) { if (incoming[i]?.[f] === undefined) delete next[f]; else next[f] = incoming[i][f] }
+      const take = (now, from) => {
+        const next = { ...now }
+        for (const f of EDITABLE) { if (from?.[f] === undefined) delete next[f]; else next[f] = from[f] }
         return next
-      })
+      }
+      layers = layers.map((l, i) => take(l, cfgNow.set?.layers?.[i]))
+      bands = bands.map((g, i) => take(g, cfgNow.set?.groundBands?.[i]))
+      skyNow = take(skyNow, cfgNow.set?.skyLayer)
       cfg = cfgNow
       redraw()
       return true
     },
     /** Live, no rebuild: one base value of one layer (a field edit, the timeline's frame). */
     setLayerProp (id, prop, v) { edit(id, { [prop]: v }) },
-    /** Live: a layer's keys, as the timeline holds them. */
+    /** Live: a row's keys (a layer, a ground band, the sky), as the timeline holds them. */
     setLayerKeys (id, keys) {
-      const i = layerIndex(id)
-      if (JSON.stringify(layers[i]?.keys ?? []) !== JSON.stringify(keys)) edit(id, { keys })
+      const now = valuesOf(id)
+      if (now && JSON.stringify(now.keys ?? []) !== JSON.stringify(keys)) edit(id, { keys })
     },
     /** A base value to save (the editor persists it through onCommit). */
-    commitLayerProp (id, prop, v) {
-      const i = edit(id, { [prop]: v })
-      if (i >= 0 && this.sceneId != null) opts.onCommit?.(i, { [prop]: v }, this.sceneId)
-    },
-    /** What the layer shows at the playhead, for the row's field. */
+    commitLayerProp (id, prop, v) { commit(id, { [prop]: v }) },
+    /** What the row shows at the playhead, for its field. */
     readLayerProp (id, prop) {
-      const l = layers[layerIndex(id)]
-      const v = !l ? null : prop === 'z' ? zNow(layerIndex(id)) : layerAt(l, nowT())[prop]
+      const l = valuesOf(id)
+      const v = !l ? null : prop === 'z' && layerIndex(id) >= 0 ? zNow(layerIndex(id)) : prop === 'z' ? (layerAt(l, nowT()).z ?? l.z) : layerAt(l, nowT())[prop]
       return Number.isFinite(v) ? v : null
     },
     setHidden (id, off) {
@@ -267,36 +295,41 @@ export async function createStage25d (host, opts = {}) {
     atStart () { return manualT === 0 && clock === null && hidden.size === 0 },
     /** What the inspector shows for a layer: its name, picture, depth and motion. */
     layerInfo (id) {
+      const motionOf = (l, a) => {
+        const own = typeof l.motion === 'string' ? { kind: l.motion } : (l.motion ?? {})
+        return { kind: own.kind ?? a?.motion ?? 'none', amount: own.amount ?? 1, speed: own.speed ?? 1 }
+      }
+      // fields: the values its panel offers. The sky moves up and down; a ground band stands at a distance, always
+      // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.
       if (id === 'sky') {
         const sky = skyAsset()
-        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: null } : null
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: ['y', 'scale', 'opacity'], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
-      const band = bandOf_(id)
-      if (band) {
+      if (bandIndex(id) >= 0) {
+        const band = bands[bandIndex(id)]
         const a = assets.get(band.asset)
-        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: a?.layer ?? null, label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: null }
+        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: a?.layer ?? null, fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: motionOf(band, a) }
       }
       const l = layers[layerIndex(id)]
       if (!l) return null
       const asset = assets.get(l.asset) ?? null
-      const own = typeof l.motion === 'string' ? { kind: l.motion } : (l.motion ?? {})
-      const base = asset?.motion ?? 'none'
+      const ground = onGround(layerIndex(id))
+      const showScale = !ground || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined)
+      const strip = asset?.layer === 'bg' && !asset.tileable_x
       return {
         id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null, role: asset?.layer ?? null,
-        ground: onGround(layerIndex(id)),
-        showScale: !onGround(layerIndex(id)) || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined),
+        ground, showScale,
+        fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         file: asset ? `${libData.base}${asset.file}` : null,
-        motion: { kind: own.kind ?? base, amount: own.amount ?? 1, speed: own.speed ?? 1 },
+        motion: motionOf(l, asset),
       }
     },
     /** Motion of one layer: kind, amount, speed. Live, and saved on the layer. */
     setLayerMotion (id, motion) {
-      const i = layerIndex(id)
-      if (i < 0 || !layers[i]) return
-      const next = { ...(typeof layers[i].motion === 'object' ? layers[i].motion : { kind: layers[i].motion }), ...motion }
-      const idx = edit(id, { motion: next })
-      if (idx >= 0) opts.onCommit?.(idx, { motion: next }, api.sceneId)
+      const now = valuesOf(id)
+      if (!now) return
+      commit(id, { motion: { ...(typeof now.motion === 'object' ? now.motion : { kind: now.motion }), ...motion } })
     },
     /**
      * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. On the floor it
@@ -347,18 +380,18 @@ export async function createStage25d (host, opts = {}) {
     async swapAsset (id, assetId) {
       if (id === 'sky') {
         if (assets.get(assetId)?.layer !== 'sky' || skyAsset()?.id === assetId) return
-        await api.show({ ...cfg, set: { ...cfg.set, sky: assetId, layers } })
+        await api.show({ ...cfg, set: { ...liveSet(), sky: assetId } })
         if (api.sceneId != null) opts.onCommit?.(0, { sky: assetId }, api.sceneId)
         window.dispatchEvent(new CustomEvent('stage25d-synced'))
         return
       }
-      const band = bandOf_(id)
+      const band = bands[bandIndex(id)]
       if (band) {
         const a = assets.get(assetId)
         if (!a || ['sky', 'figure'].includes(a.layer) || band.asset === assetId) return
         const n = Number(id.slice(5))
-        const groundBands = cfg.set.groundBands.map((g, k) => (k === n ? { ...g, asset: assetId } : g))
-        await api.show({ ...cfg, set: { ...cfg.set, groundBands, layers } })
+        const groundBands = bands.map((g, k) => (k === n ? { ...g, asset: assetId } : g))
+        await api.show({ ...cfg, set: { ...liveSet(), groundBands } })
         if (api.sceneId != null) opts.onCommit?.(0, { band: { index: n, asset: assetId } }, api.sceneId)
         window.dispatchEvent(new CustomEvent('stage25d-synced'))
         api.select(id)
@@ -367,7 +400,7 @@ export async function createStage25d (host, opts = {}) {
       const i = layerIndex(id)
       if (i < 0 || !layers[i] || !assets.has(assetId) || layers[i].asset === assetId) return
       layers = layers.map((l, n) => (n === i ? { ...l, asset: assetId } : l))
-      await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      await api.show({ ...cfg, set: liveSet() })
       opts.onCommit?.(i, { asset: assetId }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
@@ -384,7 +417,7 @@ export async function createStage25d (host, opts = {}) {
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }
       }
       layers = [...layers, layer]
-      await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      await api.show({ ...cfg, set: liveSet() })
       opts.onCommit?.(layers.length - 1, { add: layer }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
       pointer?.select(layers.length - 1, true)   // the new layer is the selection: its panel opens
@@ -397,7 +430,7 @@ export async function createStage25d (host, opts = {}) {
       if (band === l.depth) return
       layers = layers.map((n, k) => (k === i ? { ...n, depth: band } : n))
       const keep = hidden   // the rebuild forgets the eye; pictures hidden with it stay hidden
-      await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      await api.show({ ...cfg, set: liveSet() })
       hidden = keep
       redraw()
       if (api.sceneId != null) opts.onCommit?.(i, { depth: band }, api.sceneId)
@@ -456,7 +489,6 @@ export async function createStage25d (host, opts = {}) {
     /** Rows for the object list and timeline: every layer, then the camera. */
     items: () => {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      const bands = cfg?.set?.groundBands ?? []
       // one numbering over the layers and the painted landscape (ground bands, nearest first): no two rows read alike
       const labels = numbered([
         ...layers.map((l, i) => layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`),
@@ -464,8 +496,8 @@ export async function createStage25d (host, opts = {}) {
       ])
       return [
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
-        ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], depth: 'bg', z: g.z, keys: [], backdrop: true })),
-        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [], backdrop: true }] : []),
+        ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
+        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: 'Camera', depth: null, keys: [] },
       ]
     },

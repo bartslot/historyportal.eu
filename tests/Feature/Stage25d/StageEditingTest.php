@@ -151,6 +151,35 @@ class StageEditingTest extends TestCase
         $this->assertSame('stone-chamber-01', $scene->fresh()->config['stage25d']['set']['layers'][0]['asset'], 'the layers are untouched');
     }
 
+    public function test_a_ground_band_and_the_sky_take_size_distance_height_motion_and_keys_and_undo(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['groundBands'] = [['asset' => 'meadow-band-01', 'z' => 30]];
+        $config['stage25d']['set']['sky'] = 'sky-summer-01';
+        $scene->update(['config' => $config]);
+        $editor = $this->editor($scene);
+
+        $editor->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'z' => 45, 'scale' => 1.5, 'y' => 9, 'rotation' => 30]], $scene->id)
+            ->call('saveStage25dLayer', 0, ['band' => ['index' => 0, 'motion' => ['kind' => 'sway', 'amount' => 0.5, 'speed' => 1]]], $scene->id)
+            ->call('saveStage25dLayer', 0, ['skyLayer' => ['y' => 3, 'opacity' => 0.8, 'z' => 50]], $scene->id)
+            ->call('setTimeline', ['duration' => 8, 'sceneId' => $scene->id, 'targets' => [], 'tracks' => [], 'stage25dKeys' => [
+                'layer-0' => [], 'band-0' => [['t' => 0, 'z' => 30], ['t' => 4, 'z' => 60]], 'sky' => [['t' => 0, 'opacity' => 0], ['t' => 2, 'opacity' => 1]], 'band-7' => [['t' => 0, 'z' => 5]],
+            ]]);
+        $set = $scene->fresh()->config['stage25d']['set'];
+
+        // a band stands on the floor: no Y, no angle; the sky spans the view: no distance
+        $this->assertEquals(['asset' => 'meadow-band-01', 'z' => 45, 'scale' => 1.5, 'motion' => ['kind' => 'sway', 'amount' => 0.5, 'speed' => 1.0],
+            'keys' => [['t' => 0, 'z' => 30], ['t' => 4, 'z' => 60]]], $set['groundBands'][0]);
+        $this->assertEquals(['y' => 3, 'opacity' => 0.8, 'keys' => [['t' => 0, 'opacity' => 0], ['t' => 2, 'opacity' => 1]]], $set['skyLayer']);
+        $this->assertCount(1, $set['groundBands'], 'an unknown band adds nothing');
+
+        $editor->call('undoLastEdit');
+        $this->assertArrayNotHasKey('keys', $scene->fresh()->config['stage25d']['set']['groundBands'][0], 'undo takes the keys back');
+        $editor->call('undoLastEdit')->call('undoLastEdit')->call('undoLastEdit');
+        $this->assertEquals(['asset' => 'meadow-band-01', 'z' => 30], $scene->fresh()->config['stage25d']['set']['groundBands'][0], 'and every value');
+    }
+
     public function test_the_layer_panel_changes_picture_motion_and_adds_a_layer_from_the_library(): void
     {
         $scene = $this->scene();

@@ -1368,7 +1368,7 @@
                 const target = 's25:' + id;
                 if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) {
                     window.__stage25d?.commitLayerProp?.(id, prop, v);
-                    if (prop === 'z') window.__stage25d?.settleBand?.(Number(id.slice(6)));   // nearer or farther: its band follows
+                    if (prop === 'z' && id.startsWith('layer-')) window.__stage25d?.settleBand?.(Number(id.slice(6)));   // nearer or farther: its band follows (a ground band is its own)
                 }
                 this.sync();
             },

@@ -14,20 +14,20 @@ import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
-import type { Asset, Depth, Lesson, Library, Scene, SceneLayer } from './types'
+import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
-interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset }   // index: in set.groundBands
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number }  // index -1 = the sky
+interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -137,7 +137,7 @@ export class Stage {
     const token = ++this.buildToken
     const next: Built[] = []
     const wanted: { layer: SceneLayer; order: number; index: number }[] = []
-    if (s.set.sky) wanted.push({ layer: { asset: s.set.sky, depth: 'sky' }, order: 0, index: -1 })
+    if (s.set.sky) wanted.push({ layer: skyLayerOf(s), order: 0, index: -1 })
     const perDepth: Record<string, number> = { sky: 1 }
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
     const misses: { need: unknown; reason: string }[] = []
@@ -165,7 +165,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file), flat, skyline: skylines.get(lib.base + asset.file) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file), flat, skyline: skylines.get(lib.base + asset.file) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -239,7 +239,8 @@ export class Stage {
 
   /** Point the built layers at an edited scene's values (x, scale, motion, keys) without rebuilding. */
   rebind(s: Scene) {
-    this.built.forEach((b) => { if (b.index >= 0) b.layer = s.set.layers[b.index] })
+    this.built.forEach((b) => { b.layer = b.index >= 0 ? s.set.layers[b.index] : skyLayerOf(s) })
+    this.bands.forEach((b) => { b.band = s.set.groundBands?.[b.index] ?? b.band })
   }
 
   /** Standing pictures under a point (CSS px from the canvas's top-left), nearest first: the layer's index in
@@ -377,7 +378,7 @@ export class Stage {
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
-      out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5, index, asset })
+      out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5, index, asset, band: g })
     }
     return out
   }
@@ -411,12 +412,19 @@ export class Stage {
     this.land = land
     this.poseGrid(land)
     this.bands.forEach((b) => {
-      b.handle.mesh.position.y = bandBottom(b.z, bandK, b.h, b.skyline)   // its skyline on the crest, k x z up
-      const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
-      b.handle.setOpacity(1)
-      b.handle.setBottomFade(Math.min(1, lookNum(this.look, 'bandFade') / b.h))   // the lowest metres only, not a share of the tall picture
-      b.handle.setPaper(paper, pxUV(b.w, b.h, 1, ppm, renderH))
-      b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(b.w, b.h, 1, ppm, renderH), this.hazeTint)
+      // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
+      const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline)   // its skyline on the crest, k x z up, never off the floor
+      b.z = p.z
+      b.handle.mesh.scaling.set(p.sx, p.sy, 1)
+      b.handle.mesh.position.set(p.x, p.y, p.z)
+      b.handle.mesh.alphaIndex = p.alphaIndex
+      const ppm = pxPerMetre(renderH, p.z - HOUSE.z, fovRad(HOUSE.fov))
+      b.handle.setOpacity(p.opacity)
+      b.handle.setBottomFade(Math.min(1, lookNum(this.look, 'bandFade') / p.h))   // the lowest metres only, not a share of the tall picture
+      b.handle.setPaper(paper, pxUV(p.w, p.h, 1, ppm, renderH))
+      b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(p.w, p.h, 1, ppm, renderH), this.hazeTint)
+      b.handle.setMotion(motionOf(b.asset, { ...b.band, depth: 'bg' }))
+      b.handle.material.setFloat('time', clock)
     })
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
     this.birds.update(clock, lookNum(this.look, 'birds'))
@@ -424,8 +432,11 @@ export class Stage {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land)
       b.handle.mesh.position.x = p.x
+      // a far strip moved to another distance looks the same from the house camera (it grows with the distance, about
+      // the eye): what changes is what stands in front of it. Its own Y and Size still move and size it.
+      const far = b.asset.layer === 'bg' && !b.asset.tileable_x ? (p.z - HOUSE.z) / Math.max(0.1, b.builtZ - HOUSE.z) : 1
       // a ground strip stands like a ground band: its skyline on the crest, never its bottom above the floor
-      b.handle.mesh.position.y = b.flat ? DECAL_LIFT_M : isGroundStrip(b.asset) ? stripBottom(p.z, bandK, p.h * k.scale, b.skyline ?? 0) + p.y : p.y
+      b.handle.mesh.position.y = b.flat ? DECAL_LIFT_M : isGroundStrip(b.asset) ? stripBottom(p.z, bandK, p.h * k.scale, b.skyline ?? 0) + p.y : HOUSE.y + (p.y - HOUSE.y) * far
       if (b.handle.mesh.position.z !== p.z) {
         // a picture moved along the ground (layer.z) changes distance: its draw slot follows; its stain rides along
         b.handle.mesh.position.z = p.z
@@ -435,7 +446,7 @@ export class Stage {
         if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
-      b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
+      b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
       if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
@@ -453,6 +464,9 @@ export class Stage {
     }
   }
 }
+
+/** The sky picture as a layer: set.sky, with the teacher's own values (set.skyLayer: y lifts it, scale, opacity, motion). */
+const skyLayerOf = (s: Scene): SceneLayer => ({ ...(s.set.skyLayer ?? {}), asset: s.set.sky, depth: 'sky' })
 
 /** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
  *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */

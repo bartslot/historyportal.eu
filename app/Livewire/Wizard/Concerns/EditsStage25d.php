@@ -33,7 +33,7 @@ trait EditsStage25d
             return;   // a debounced save from a scene the teacher has since left
         }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
-        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']) && ! isset($patch['band']))) {
+        if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']) && ! isset($patch['band']) && ! isset($patch['skyLayer']))) {
             return;
         }
         $bundle = (string) ($scene->config['stage25d']['bundle'] ?? '');
@@ -47,16 +47,24 @@ trait EditsStage25d
 
             return;
         }
-        if (is_array($patch['band'] ?? null)) {   // a ground band of the painted landscape: another picture
+        if (is_array($patch['band'] ?? null)) {   // a ground band of the painted landscape: another picture, or its values
             $at = $patch['band']['index'] ?? null;
+            if (! is_int($at) || ! isset($scene->config['stage25d']['set']['groundBands'][$at])) {
+                return;
+            }
+            $band = $scene->config['stage25d']['set']['groundBands'][$at];
             $asset = $patch['band']['asset'] ?? null;
             $layer = is_string($asset) ? LibraryBundle::assetLayer($bundle, $asset) : null;
-            if (is_int($at) && isset($scene->config['stage25d']['set']['groundBands'][$at]) && $layer !== null && ! in_array($layer, ['sky', 'figure'], true)) {
-                $config = $scene->config;
-                $config['stage25d']['set']['groundBands'][$at]['asset'] = $asset;
-                $scene->update(['config' => $config]);
-                $this->selectedScene['config']['stage25d']['set']['groundBands'][$at]['asset'] = $asset;
+            if ($layer !== null && ! in_array($layer, ['sky', 'figure'], true)) {
+                $band['asset'] = $asset;
             }
+            $this->storeStage25dSetPart($scene, ['groundBands', $at], [...$band, ...self::backdropValues($patch['band'], self::BAND_FIELDS)]);
+
+            return;
+        }
+        if (is_array($patch['skyLayer'] ?? null)) {   // the sky picture's own values: its height, size, opacity, motion
+            $sky = (array) ($scene->config['stage25d']['set']['skyLayer'] ?? []);
+            $this->storeStage25dSetPart($scene, ['skyLayer'], [...$sky, ...self::backdropValues($patch['skyLayer'], self::SKY_FIELDS)]);
 
             return;
         }
@@ -85,6 +93,53 @@ trait EditsStage25d
         }
         $layers[$index] = [...$layers[$index], ...$values];
         $this->storeStage25dLayers($scene, $layers);
+    }
+
+    /** What a ground band takes from a layer: it stands on the floor, so no Y and no angle. */
+    private const BAND_FIELDS = ['x', 'z', 'scale', 'opacity'];
+
+    /** What the sky picture takes: it spans the view, so it only moves up or down and grows. */
+    private const SKY_FIELDS = ['y', 'scale', 'opacity'];
+
+    /**
+     * A backdrop's values from a patch: its fields, held to their range, and its motion.
+     *
+     * @param  array<string,mixed>  $patch
+     * @param  list<string>  $fields
+     * @return array<string,mixed>
+     */
+    private static function backdropValues(array $patch, array $fields): array
+    {
+        $values = array_intersect_key(LayerKeys::clean($patch), array_flip($fields));
+        if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
+            $values['motion'] = $motion;
+        }
+
+        return $values;
+    }
+
+    /**
+     * One part of config.stage25d.set (a ground band, the sky's values), saved and mirrored into the open scene.
+     *
+     * @param  list<string|int>  $path  under set
+     */
+    private function storeStage25dSetPart(Scene $scene, array $path, mixed $value): void
+    {
+        $config = $scene->config;
+        data_set($config, ['stage25d', 'set', ...$path], $value);
+        if ($config === $scene->config) {
+            return;
+        }
+        $this->storeStage25dConfig($scene, $config);
+    }
+
+    /** Save a scene's config and mirror it into the open scene: the panel opens rows the snapshot did not have. */
+    private function storeStage25dConfig(Scene $scene, array $config): void
+    {
+        $scene->update(['config' => $config]);
+        if ((int) $this->selectedSceneId === $scene->id) {
+            $this->selectedScene['config']['stage25d'] = $config['stage25d'];
+        }
     }
 
     /** The scene look sliders the panel offers, with the range each may take (engine-mvp stage25d/look.ts LOOK_RANGE). */
@@ -123,18 +178,33 @@ trait EditsStage25d
         if (! $scene || ! is_array($layers)) {
             return;
         }
+        $config = $scene->config;
+        $span = max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds);
         foreach ($byLayer as $id => $keys) {
-            if (preg_match('/^layer-(\d+)$/', (string) $id, $m) !== 1 || ! isset($layers[(int) $m[1]]) || ! is_array($keys)) {
+            // a layer, a ground band (band-0) or the sky picture: each keeps its keys on itself
+            $path = match (true) {
+                preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => isset($layers[(int) $m[1]]) ? ['layers', (int) $m[1]] : null,
+                preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => isset($config['stage25d']['set']['groundBands'][(int) $m[1]]) ? ['groundBands', (int) $m[1]] : null,
+                $id === 'sky' => ! empty($config['stage25d']['set']['sky']) ? ['skyLayer'] : null,
+                default => null,
+            };
+            if ($path === null || ! is_array($keys)) {
                 continue;
             }
-            $clean = LayerKeys::sanitize($keys, max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds));
+            $row = (array) data_get($config, ['stage25d', 'set', ...$path], []);
+            $clean = LayerKeys::sanitize($keys, $span);
             if ($clean === []) {
-                unset($layers[(int) $m[1]]['keys']);
+                unset($row['keys']);
             } else {
-                $layers[(int) $m[1]]['keys'] = $clean;
+                $row['keys'] = $clean;
+            }
+            if ($row !== [] || $path !== ['skyLayer']) {
+                data_set($config, ['stage25d', 'set', ...$path], $row);
             }
         }
-        $this->storeStage25dLayers($scene, $layers);
+        if ($config !== $scene->config) {
+            $this->storeStage25dConfig($scene, $config);
+        }
     }
 
     /** A rendered frame (data:image/jpeg) for a scene of this lesson: the rail thumbnail and the player's WebGL fallback.
@@ -288,13 +358,6 @@ trait EditsStage25d
     /** @param  array<int,mixed>  $layers */
     private function storeStage25dLayers(Scene $scene, array $layers): void
     {
-        $config = $scene->config;
-        $config['stage25d']['set']['layers'] = array_values($layers);
-        if ($config !== $scene->config) {
-            $scene->update(['config' => $config]);
-            if ((int) $this->selectedSceneId === $scene->id) {
-                $this->selectedScene['config']['stage25d'] = $config['stage25d'];   // the panel opens layers the snapshot did not have
-            }
-        }
+        $this->storeStage25dSetPart($scene, ['layers'], array_values($layers));
     }
 }

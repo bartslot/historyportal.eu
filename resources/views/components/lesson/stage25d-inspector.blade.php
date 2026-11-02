@@ -1,6 +1,8 @@
 @props(['layerId' => null])
 
 @php
+    // The sky and a ground band are the backdrop: a teacher sizes it ("Size") and lifts the sky ("Height").
+    $isBackdrop = $layerId === 'sky' || str_starts_with((string) $layerId, 'band-');
     $names = [
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
         'castShadow' => __('Shadows'), 'smoke' => __('Smoke'), 'birds' => __('Birds'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
@@ -30,10 +32,12 @@
         </div>
 
         {{-- Where it stands: across the view, and how far along the ground in metres (drag it up the stage to send it
-             back). A picture not on the ground (a strip, a sky picture) keeps its Y instead of a distance. --}}
-        <div class="mt-3 space-y-1" x-show="info && !info.backdrop">
-            @foreach ([['x', __('X'), 0.01, 100, 'true'], ['z', __('Distance'), 0.25, 1, 'info?.ground'], ['y', __('Y'), 0.05, 1, '!info?.ground'], ['scale', __('Scale'), 0.05, 100, 'info?.showScale'], ['rotation', __('Angle'), 1, 1, 'true'], ['opacity', __('Opacity'), 0.05, 100, 'true']] as [$prop, $glyph, $step, $factor, $show])
-                <div x-show="{{ $show }}">
+             back). The rows are the ones its kind takes (engine layerInfo fields): a picture on the ground has a
+             distance, a far strip a distance and a Y, a ground band a distance and a size (it stays on the floor), the
+             sky a height and a size. --}}
+        <div class="mt-3 space-y-1" x-show="info">
+            @foreach ([['x', __('X'), 0.01, 100], ['z', __('Distance'), 0.25, 1], ['y', $layerId === 'sky' ? __('Height') : __('Y'), 0.05, 1], ['scale', $isBackdrop ? __('Size') : __('Scale'), 0.05, 100], ['rotation', __('Angle'), 1, 1], ['opacity', __('Opacity'), 0.05, 100]] as [$prop, $glyph, $step, $factor])
+                <div x-show="info?.fields?.includes('{{ $prop }}')">
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
                     <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
                         <input type="number" step="{{ $step * $factor }}" aria-label="{{ $glyph }}"
@@ -52,7 +56,7 @@
 
         <div class="divider my-2" role="presentation"></div>
 
-        <div class="space-y-1" x-show="info && !info.backdrop">
+        <div class="space-y-1" x-show="info">
             <x-ui.panel-row :label="__('Motion')">
                 <select class="select select-xs w-full" data-stage25d-motion="kind"
                         x-on:change="setMotion({ kind: $event.target.value })">

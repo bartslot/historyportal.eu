@@ -1,6 +1,6 @@
 // Pure stage maths: where a layer stands, how big it is, and where the camera is at time t.
 // Metres everywhere. The house camera stands at x 0, eye height, looking down +z with a small fixed tilt.
-import type { Asset, CamPose, CameraMove, Depth, Ease, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
+import type { Asset, CamPose, CameraMove, Depth, Ease, GroundBand, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
 
 /** Distance from the house camera to each depth plane. Wide gaps between them = strong parallax on a truck. */
 /** near: framing tufts, reeds and stones at the frame's bottom edge (partly out of frame), in front of fg */
@@ -80,6 +80,25 @@ export const isGroundStrip = (a: Asset): boolean =>
  *  floor where the floor hides it), but its bottom edge never above the floor line at its distance. */
 export const stripBottom = (z: number, k: number, h: number, skyline: number): number => Math.min(0, bandBottom(z, k, h, skyline))
 
+/** How far a ground band may stand (types.ts: 2..2000 m). */
+export const BAND_Z = [2, 2000] as const
+
+/**
+ * A ground band at t seconds with the teacher's values (Distance, Size, X, Opacity, keys). It is three views wide at any
+ * distance (`w0`: its width as built, `h0` its height then); Size scales its height and never makes it narrower than the
+ * view; it always stands on the floor: a small band never lifts off into the sky (stripBottom). k: the look's band height.
+ */
+export function bandPose(band: GroundBand, t: number, k: number, w0: number, h0: number, skyline: number) {
+  const now = layerAt({ ...band, depth: 'bg' }, t)
+  const z = Math.min(BAND_Z[1], Math.max(BAND_Z[0], now.z ?? band.z))
+  const across = bandWidth(z) / w0
+  const h = h0 * across * now.scale
+  return {
+    z, h, w: w0 * across * Math.max(1, now.scale), sx: across * Math.max(1, now.scale), sy: across * now.scale,
+    x: (now.x - 0.5) * viewWidthAt(z), y: stripBottom(z, k, h, skyline), alphaIndex: bandSlot(z), opacity: now.opacity,
+  }
+}
+
 /** A 'ground' picture (a floor tile: sand, grass) placed as a layer lies flat on the floor, like a decal. */
 export const liesFlat = (layer: Pick<SceneLayer, 'flat'>, asset: Pick<Asset, 'layer'>): boolean => !!layer.flat || asset.layer === 'ground'
 
@@ -101,7 +120,7 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
     // bottom edge stays put, the spare height goes up into the sky, the spare width splits left and right).
     const boxW = span * COVER_MARGIN
     const boxH = boxW / ASPECT
-    const y = -boxH * 0.12
+    const y = -boxH * 0.12 + (layer.y ?? 0)   // the teacher's Height lifts (or lowers) the whole sky
     if (asset.tileable_x) return { x: 0, y, z, w: boxW, h: boxH, uRepeat: boxW / (boxH * (asset.w / asset.h)), alphaIndex, rotation: 0 }
     const k = Math.max(boxW / asset.w, boxH / asset.h)
     return { x: 0, y, z, w: asset.w * k, h: asset.h * k, uRepeat: 1, alphaIndex, rotation: 0 }

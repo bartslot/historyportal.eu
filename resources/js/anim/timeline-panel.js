@@ -772,7 +772,7 @@ export const animationTimeline = (config = {}) => ({
     if (!stage) return
     const byLayer = keysFromTracks(this.tracks)
     for (const item of stage.items?.() ?? []) {
-      if (item.id !== 'camera' && !item.backdrop) stage.setLayerKeys(item.id, byLayer[item.id] ?? [])
+      if (item.id !== 'camera') stage.setLayerKeys(item.id, byLayer[item.id] ?? [])
     }
   },
 
@@ -1711,11 +1711,11 @@ export const animationTimeline = (config = {}) => ({
     this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
   },
 
-  /** `{ 'layer-3': keys }` for EVERY layer of the stage (an empty list clears a layer's keys), or null with no stage. */
+  /** `{ 'layer-3': keys, 'band-0': keys, sky: keys }` for EVERY row of the stage (an empty list clears a layer's keys), or null with no stage. */
   stage25dKeys () {
     const stage = window.__stage25d
     if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
-    const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera' && !i.backdrop)
+    const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera')
     if (!items.length) return null
     const byLayer = keysFromTracks(this.tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))

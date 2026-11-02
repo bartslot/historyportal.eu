@@ -36,6 +36,10 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
 export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number }
 
+/** The values a backdrop (a ground band, the sky picture) takes from a layer. */
+export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys'>>
+export interface GroundBand extends GroundBandProps { asset: string; z: number }
+
 export interface SceneLayer {
   need?: string | string[]
   asset?: string | null
@@ -76,7 +80,9 @@ export interface Scene {
    *  'auto' or unset = its land line at land_target of the frame (layout.ts autoHorizon, default LAND_TARGET 0.42);
    *  near: an asset id, a wide strip painted from eye height, laid on the floor out to look.nearFar (stage.ts) */
   /** layered ground: painted bands standing on the floor at metres z (2..2000), each drawn over the one behind */
-  set: { sky?: string | null; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: { asset: string; z: number }[]; layers: SceneLayer[] }
+  /** groundBands[i] and skyLayer take a layer's own values too (x, z, scale, opacity, motion, keys; the sky's y lifts it):
+   *  the teacher sizes and moves the backdrop like any picture. A band always stands on the floor (stage.ts pose). */
+  set: { sky?: string | null; skyLayer?: GroundBandProps; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

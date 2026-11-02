@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOf, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bandOf, bandPose, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -382,5 +382,46 @@ describe('the ground pictures stand on (groundHeight)', () => {
   it('a picture on the far ground stands on it, never sunk with the strip\'s own offset', () => {
     const land = landHeight(-54.2, { top: 0.187, h: 78.1 })
     expect(placeLayer(tree, { depth: 'bg', x: 0.5, z: 70 }, 0, -54.2, land).y).toBeCloseTo(land)
+  })
+})
+
+describe('a ground band with the teacher\'s values (bandPose)', () => {
+  const band = { asset: 'meadow', z: 30 }
+  const w0 = bandWidth(30), h0 = 10
+
+  it('stands where it was built with no values of its own', () => {
+    const p = bandPose(band, 0, 0.15, w0, h0, 0.4)
+    expect([p.z, p.sx, p.sy, p.x, p.opacity]).toEqual([30, 1, 1, 0, 1])
+    expect(p.y).toBeCloseTo(Math.min(0, bandBottom(30, 0.15, 10, 0.4)))
+  })
+
+  it('moves along the ground: three views wide at its new distance, drawn in that distance\'s slot', () => {
+    const p = bandPose({ ...band, z: 60 }, 0, 0.15, w0, h0, 0.4)
+    expect(p.w).toBeCloseTo(bandWidth(60))
+    expect(p.alphaIndex).toBe(bandSlot(60))
+  })
+
+  it('never lifts off the floor, however small, and is never narrower than the view', () => {
+    for (const scale of [0.05, 0.3, 1, 3]) {
+      const p = bandPose({ ...band, scale }, 0, 0.15, w0, h0, 0.9)
+      expect(p.y).toBeLessThanOrEqual(0)
+      expect(p.w).toBeGreaterThanOrEqual(bandWidth(30) - 1e-9)
+      expect(p.h).toBeCloseTo(h0 * scale)
+    }
+  })
+
+  it('follows its keys and holds its distance to 2..2000 m', () => {
+    expect(bandPose({ ...band, keys: [{ t: 0, z: 20 }, { t: 2, z: 40 }] }, 1, 0.15, w0, h0, 0.4).z).toBeGreaterThan(20)
+    expect(bandPose({ ...band, z: 9999 }, 0, 0.15, w0, h0, 0.4).z).toBe(2000)
+  })
+})
+
+describe('the sky picture with the teacher\'s Height', () => {
+  it('moves up by its y, the rest of its placement unchanged', () => {
+    const sky = { id: 's', layer: 'sky', file: 's.webp', w: 1536, h: 1024, height_m: 0 } as never
+    const at = placeLayer(sky, { depth: 'sky' }, 0)
+    const up = placeLayer(sky, { depth: 'sky', y: 4 }, 0)
+    expect(up.y - at.y).toBeCloseTo(4)
+    expect([up.w, up.h, up.z]).toEqual([at.w, at.h, at.z])
   })
 })
