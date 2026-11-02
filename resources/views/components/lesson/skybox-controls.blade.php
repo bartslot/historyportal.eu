@@ -306,7 +306,7 @@
                 <x-lesson.picture-strip :images="$reuseImages" select="useLessonImageBackground" :current="$backgroundImageUrl" :label="__('Reuse from this lesson')" />
             @endif
 
-            <x-ui.segmented panel name="image-source" model="imgSrc"
+            <x-ui.segmented name="image-source" model="imgSrc" class="tabs-sm w-full" tab-class="flex-1"
                             :options="[['ai', __('AI Gen')], ['paintings', __('Paintings')]]" />
 
             {{-- AI generated — Regenerate / Edit prompt (Figma item 5) --}}

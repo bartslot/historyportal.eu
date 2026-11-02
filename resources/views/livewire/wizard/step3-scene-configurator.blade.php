@@ -1011,7 +1011,7 @@
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
         <div x-show="inspectorOpen" x-ref="inspectorTabs" class="flex shrink-0 border-b border-panel-hairline px-4 py-2">
-            <x-ui.segmented panel name="inspector-subject" class="w-full" tab-class="flex-1"
+            <x-ui.segmented name="inspector-subject" class="tabs-sm w-full" tab-class="flex-1"
                             :value="$panelView === 'settings' ? 'settings' : 'scene'"
                             :options="[['scene', __('Selection')], ['settings', __('Lesson')]]"
                             on-change="$wire.call($event.target.value === 'settings' ? 'openSettings' : 'openFormat')" />

@@ -69,20 +69,20 @@
     </div>
 
     {{-- TABS --}}
-    <div role="tablist" class="mt-3 grid gap-1 rounded-xl bg-slate-800/60 p-1" :class="wide ? 'grid-cols-2' : 'grid-cols-3'">
-        <button type="button" role="tab" x-on:click="tab = 'leg'" x-show="!wide"
-                :class="tab === 'leg' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                class="rounded-lg py-1.5 text-xs font-medium transition-colors">
+    <div role="tablist" class="tabs tabs-box tabs-sm mt-3 w-full">
+        <button type="button" role="tab" x-on:click="tab = 'leg'" :aria-selected="tab === 'leg'" x-show="!wide"
+                :class="tab === 'leg' ? 'tab-active' : ''"
+                class="tab flex-1">
             {{ __('Waypoint') }}
         </button>
-        <button type="button" role="tab" x-on:click="tab = 'map'"
-                :class="tab === 'map' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                class="rounded-lg py-1.5 text-xs font-medium transition-colors">
+        <button type="button" role="tab" x-on:click="tab = 'map'" :aria-selected="tab === 'map'"
+                :class="tab === 'map' ? 'tab-active' : ''"
+                class="tab flex-1">
             {{ __('Map') }}
         </button>
-        <button type="button" role="tab" x-on:click="tab = 'route'"
-                :class="tab === 'route' ? 'bg-primary text-slate-950' : 'text-slate-300 hover:text-slate-100'"
-                class="rounded-lg py-1.5 text-xs font-medium transition-colors">
+        <button type="button" role="tab" x-on:click="tab = 'route'" :aria-selected="tab === 'route'"
+                :class="tab === 'route' ? 'tab-active' : ''"
+                class="tab flex-1">
             {{ __('Route') }}
         </button>
     </div>
@@ -152,11 +152,12 @@
 
                 {{-- Water or land splits the collection: a sea crossing is offered ships, an overland
                      stretch is offered mounts. --}}
-                <div role="tablist" class="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-slate-800/60 p-0.5">
+                <div role="tablist" class="tabs tabs-box tabs-sm mt-2 w-full">
                     @foreach ([['water', __('By sea')], ['land', __('Overland')]] as [$terrainKey, $terrainLabel])
                         <button type="button" role="tab" x-on:click="terrain = '{{ $terrainKey }}'"
-                                :class="terrain === '{{ $terrainKey }}' ? 'bg-slate-700 text-slate-100' : 'text-panel-hint hover:text-slate-200'"
-                                class="rounded-md py-1 text-2xs font-medium transition-colors">{{ $terrainLabel }}</button>
+                                :aria-selected="terrain === '{{ $terrainKey }}'"
+                                :class="terrain === '{{ $terrainKey }}' ? 'tab-active' : ''"
+                                class="tab flex-1">{{ $terrainLabel }}</button>
                     @endforeach
                 </div>
 

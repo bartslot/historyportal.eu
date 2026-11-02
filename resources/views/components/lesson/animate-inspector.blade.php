@@ -107,13 +107,12 @@
 <div class="space-y-3" @if ($isLayer) x-data="{ build: 'in' }" @endif>
     @if ($isLayer)
         {{-- Build In / Build Out, the two halves of a layer's life on the scene. --}}
-        <div role="tablist" class="flex rounded-lg bg-slate-900/70 p-0.5 text-2xs">
+        <div role="tablist" class="tabs tabs-box tabs-sm w-full">
             @foreach (['in' => __('In'), 'out' => __('Out')] as $key => $label)
                 <button type="button" role="tab" @click="build = '{{ $key }}'"
-                        :class="build === '{{ $key }}'
-                            ? 'bg-slate-700 text-primary'
-                            : 'text-panel-hint hover:text-slate-200'"
-                        class="flex-1 rounded-md px-2 py-1 font-medium transition">{{ $label }}</button>
+                        :aria-selected="build === '{{ $key }}'"
+                        :class="build === '{{ $key }}' ? 'tab-active' : ''"
+                        class="tab flex-1">{{ $label }}</button>
             @endforeach
         </div>
     @endif

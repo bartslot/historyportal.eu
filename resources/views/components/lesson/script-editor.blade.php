@@ -53,7 +53,7 @@
     <div class="lp-panel-content">
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
-    <div role="tablist" class="tabs tabs-boxed tabs-sm">
+    <div role="tablist" class="tabs tabs-box tabs-sm">
         <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
                 :aria-selected="$store.view.bottomTab === 'timeline'"
                 :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"
