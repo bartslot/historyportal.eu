@@ -27,7 +27,6 @@
 
         <nav class="site-nav flex items-center gap-5 sm:gap-8">
             <a href="{{ route('about') }}" class="site-nav__link">{{ __('About') }}</a>
-            <a href="/#pricing" class="site-nav__link">{{ __('Pricing') }}</a>
             <a href="{{ $actionUrl }}" class="site-nav__action">{{ $actionLabel }}</a>
         </nav>
     </div>

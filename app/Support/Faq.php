@@ -25,8 +25,6 @@ final class Faq
             self::item(
                 __('Does it cost anything?'),
                 __('Your class plays lessons in the browser for free, without accounts.'),
-                __('See the plans'),
-                Seo::url('home').'#pricing',
             ),
             self::item(
                 __('Do my pupils need an account?'),

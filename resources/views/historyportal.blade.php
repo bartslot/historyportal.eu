@@ -13,7 +13,8 @@
     <x-landing.how-it-works-link />
     <x-landing.lessons :lessons="$playableLessons ?? collect()" />
     <x-landing.trending :lessons="$trendingLessons ?? collect()" />
-    <x-landing.pricing />
+    {{-- Pricing hidden 2026-11-02 (Bart): the price put teachers off before they saw the value. Restore by uncommenting. --}}
+    {{-- <x-landing.pricing /> --}}
     <x-landing.faq />
     <x-landing.footer />
 </x-layouts.landing>

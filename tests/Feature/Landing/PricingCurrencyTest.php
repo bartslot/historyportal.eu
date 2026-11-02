@@ -18,8 +18,20 @@ class PricingCurrencyTest extends TestCase
         $this->withoutVite();
     }
 
+    public function test_the_homepage_shows_no_price_while_pricing_is_hidden(): void
+    {
+        foreach (['/', '/nl'] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $this->assertStringNotContainsString('id="pricing"', $html, $url);
+            $this->assertStringNotContainsString('1.680', $this->text($html), $url);
+            $this->assertStringNotContainsString('1,680', $this->text($html), $url);
+        }
+    }
+
     public function test_the_dutch_page_writes_euros_the_dutch_way(): void
     {
+        $this->markTestSkipped('Pricing section hidden 2026-11-02 (Bart); restore with the section.');
         $html = $this->get('/nl')->assertOk()->getContent();
 
         $this->assertStringContainsString('€ 1.680', $this->text($html));
@@ -28,6 +40,7 @@ class PricingCurrencyTest extends TestCase
 
     public function test_the_english_page_writes_euros_the_english_way(): void
     {
+        $this->markTestSkipped('Pricing section hidden 2026-11-02 (Bart); restore with the section.');
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertStringContainsString('€1,680', $this->text($html));

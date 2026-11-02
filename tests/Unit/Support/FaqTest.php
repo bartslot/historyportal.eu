@@ -23,12 +23,12 @@ class FaqTest extends TestCase
 
     public function test_it_names_no_price(): void
     {
-        // Boardroom 2026-10-14: test a paid offer, do not sell one; cost points at #pricing instead.
+        // Boardroom 2026-10-14: test a paid offer, do not sell one. Pricing hidden 2026-11-02, so no plans link.
         foreach (Faq::items() as $item) {
             $this->assertDoesNotMatchRegularExpression('/[€$£]|\d+\s*(euro|eur)\b/i', $item['answer'], $item['question']);
         }
 
-        $this->assertStringEndsWith('#pricing', Faq::items()[0]['link']['url']);
+        $this->assertNull(Faq::items()[0]['link']);
     }
 
     public function test_a_page_graph_keeps_its_own_nodes_and_gains_the_faq(): void
