@@ -28,14 +28,18 @@ final class LibraryBundle
     /** Is `$assetId` in the bundle's library.json on the public disk, and which layer kind is it ('mid', 'figure', ...)? */
     public static function assetLayer(string $bundle, string $assetId): ?string
     {
-        static $cache = [];
         if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $bundle)) {
             return null;
         }
-        $cache[$bundle] ??= collect(json_decode((string) Storage::disk('public')->get(self::DIR."/{$bundle}/library.json"), true)['assets'] ?? [])
-            ->mapWithKeys(fn ($a) => [(string) ($a['id'] ?? '') => (string) ($a['layer'] ?? 'mid')])->all();
 
-        return $cache[$bundle][$assetId] ?? null;
+        return self::layers($bundle)[$assetId] ?? null;
+    }
+
+    /** @return array<string,string> asset id => layer kind, read once per request per bundle */
+    private static function layers(string $bundle): array
+    {
+        return once(fn () => collect(json_decode((string) Storage::disk('public')->get(self::DIR."/{$bundle}/library.json"), true)['assets'] ?? [])
+            ->mapWithKeys(fn ($a) => [(string) ($a['id'] ?? '') => (string) ($a['layer'] ?? 'mid')])->all());
     }
 
     public static function url(string $bundle): string
@@ -53,21 +57,21 @@ final class LibraryBundle
      */
     public static function assets(string $bundle): array
     {
-        static $read = [];
-        if (isset($read[$bundle])) {
-            return $read[$bundle];
-        }
         if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $bundle)) {
-            return $read[$bundle] = [];
+            return [];
         }
-        $disk = Storage::disk('public');
-        $json = json_decode((string) ($disk->exists(self::DIR."/{$bundle}/library.json") ? $disk->get(self::DIR."/{$bundle}/library.json") : ''), true);
 
-        return $read[$bundle] = collect(is_array($json) ? ($json['assets'] ?? []) : [])
-            ->filter(fn ($a) => is_array($a) && is_string($a['id'] ?? null) && is_string($a['file'] ?? null))
-            ->map(fn (array $a) => $a + ['url' => '/storage/'.self::DIR."/{$bundle}/".$a['file']])
-            ->values()
-            ->all();
+        // once(), not a static: a static outlives the request (queue:work, the test suite).
+        return once(function () use ($bundle) {
+            $disk = Storage::disk('public');
+            $json = json_decode((string) ($disk->exists(self::DIR."/{$bundle}/library.json") ? $disk->get(self::DIR."/{$bundle}/library.json") : ''), true);
+
+            return collect(is_array($json) ? ($json['assets'] ?? []) : [])
+                ->filter(fn ($a) => is_array($a) && is_string($a['id'] ?? null) && is_string($a['file'] ?? null))
+                ->map(fn (array $a) => $a + ['url' => '/storage/'.self::DIR."/{$bundle}/".$a['file']])
+                ->values()
+                ->all();
+        });
     }
 
     /**
