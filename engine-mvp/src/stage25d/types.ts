@@ -34,13 +34,16 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
-export interface LayerKey { t: number; x?: number; y?: number; scale?: number; opacity?: number; rotation?: number }
+export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number }
 
 export interface SceneLayer {
   need?: string | string[]
   asset?: string | null
   depth: Depth
   x?: number
+  /** distance from the house camera in metres, anywhere along the ground; unset = the depth band's distance (DEPTH_Z).
+   *  The band stays as a name for line weight and haze. */
+  z?: number
   /** metres above the ground point (default 0) */
   y?: number
   scale?: number

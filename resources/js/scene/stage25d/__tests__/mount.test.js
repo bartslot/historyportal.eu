@@ -16,8 +16,8 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     async build (scene) { calls.built.push(scene) }
     tick () {}
     worldXAt (x) { return (x - 200) / 10 }
+    pointerRay (x) { return { origin: [0, 1.6, 0], dir: [(x - 200) / 200, -0.2, 1] } }   // meets the ground 8 m out
     layerBox () { return this.box ?? null }
-    xForScreen (frac) { return 0.5 + (frac - 0.5) * 2 }
     rebind (scene) { calls.rebound = scene }
     pose (scene, t) { calls.posed.push([scene.id, t]) }
   },
@@ -29,6 +29,7 @@ vi.mock('@stage25d/stage25d/library', () => ({
 }))
 
 import { loadLibrary } from '@stage25d/stage25d/library'
+import { viewWidthAt } from '@stage25d/stage25d/layout'
 import { mountStage25d } from '../mount.js'
 import { isStage25d, libraryUrl } from '../config.js'
 
@@ -112,7 +113,9 @@ describe('stage25d drop from the Assets tab', () => {
     expect(e.defaultPrevented).toBe(true)
     expect(stage.items().filter((i) => i.id !== 'camera')).toHaveLength(2)
     expect(saved[0][1].add.asset).toBe('fig-meisje-push-01')
-    expect(saved[0][1].add.x).toBeGreaterThan(0.5)   // dropped right of the middle
+    // it stands on the ground where it was dropped: 4 m right, 8 m out (the fg band), snapped; x a share of the view there
+    expect(saved[0][1].add).toMatchObject({ z: 8, depth: 'fg' })
+    expect(saved[0][1].add.x).toBeCloseTo(0.5 + 4 / viewWidthAt(8), 3)
   })
 
   it('anything else dropped is left alone', async () => {
@@ -139,30 +142,46 @@ describe('stage25d sky', () => {
   })
 })
 
-describe('stage25d depth', () => {
+describe('stage25d distance on the ground', () => {
   beforeEach(() => { Object.assign(calls, { built: [], posed: [], disposed: 0, looks: [] }); document.body.innerHTML = '<div id="h"></div>' })
+  const fig = (over = {}) => ({ asset: 'fig-meisje-push-01', depth: 'mid', ...over })
 
-  it('moves a layer to another depth with a rebuild, saved once; the sky does not move', async () => {
+  it('reads a layer without z at its band distance; a distance saves on its own; a figure has no Scale row', async () => {
     const saved = []
     const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
     stage.sceneId = 9
-    await stage.show(cfg({ set: { layers: [{ asset: 'a', depth: 'mid' }, { asset: 's', depth: 'sky' }] } }))
-    await stage.setLayerDepth('layer-0', 'fg')
-    expect(calls.built).toHaveLength(2)
-    expect(calls.built[1].set.layers[0].depth).toBe('fg')
-    expect(saved).toEqual([[0, { depth: 'fg', scale: 0.318 }, 9]])   // nearer: scaled by the change of distance, so it keeps its size on screen
-    await stage.setLayerDepth('layer-1', 'near')
-    expect(saved).toHaveLength(1)
+    await stage.show(cfg({ set: { layers: [fig({ x: 0.5 })] } }))
+    expect(stage.readLayerProp('layer-0', 'z')).toBe(22)
+    stage.commitLayerProp('layer-0', 'z', 10)
+    expect(saved).toEqual([[0, { z: 10 }, 9]])
+    expect(stage.layerInfo('layer-0')).toMatchObject({ ground: true, showScale: false })
   })
 
-  it('keeps the picture where it stands on screen when its depth changes', async () => {
+  it('a picture moved into another distance band takes its name after the drag (one rebuild, one save)', async () => {
     const saved = []
     const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
     stage.sceneId = 9
-    await stage.show(cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.7 }] } }))
-    calls.stage.box = { x0: 0.7, x1: 0.9, y0: 0, y1: 1, z: 22 }   // its middle is 80% across the screen
-    await stage.setLayerDepth('layer-0', 'fg')
-    expect(saved[0][1].x).toBeCloseTo(1.1)   // the mock camera spreads near pictures: the x that lands at 80% is further out
+    await stage.show(cfg({ set: { layers: [fig({ x: 0.5, z: 22 })] } }))
+    stage.setLayerProp('layer-0', 'z', 6)
+    await stage.settleBand(0)
+    expect(calls.built).toHaveLength(2)
+    expect(saved).toEqual([[0, { depth: 'fg' }, 9]])
+    await stage.settleBand(0)
+    expect(saved).toHaveLength(1)   // already named right: nothing to do
+  })
+
+  it('dragged in front of a nearer one in the list, it stands nearer, the same size and column on screen', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(cfg({ set: { layers: [fig({ x: 0.7, z: 20 }), fig({ x: 0.5, z: 8 })] } }))
+    const call = vi.fn()
+    stage.reorderLayers([0, 1], 0, call)   // layer 0 to the front, ahead of the one at 8 m
+    const [, , , x, z, scale] = call.mock.calls[0]
+    expect(z).toBeCloseTo(6.5)          // 8 / 1.25 = 6.4, snapped to the quarter metre
+    expect(x).toBeCloseTo(0.7, 3)       // the camera stands at the middle: the same share of the view is the same column
+    expect(scale).toBeCloseTo(6.5 / 20)
+    call.mockClear()
+    stage.reorderLayers([1, 0], 0, call)   // already behind it: only the order changes, its place is saved as it is
+    expect(call.mock.calls[0].slice(3)).toEqual([0.7, 20, 1])
   })
 })
 

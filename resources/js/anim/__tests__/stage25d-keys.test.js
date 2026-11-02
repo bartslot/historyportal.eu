@@ -46,8 +46,9 @@ describe('the timeline sees stage25d layers', () => {
     expect(calls).toEqual([['set', 'layer-1', 'x', 0.9], ['hide', 'layer-1', true]])
   })
 
-  it('offers x, y, scale, angle and opacity, shown in readable units', () => {
-    expect(propertiesFor('s25').map((p) => p.key)).toEqual(['x', 'y', 'scale', 'rotation', 'opacity'])
+  it('offers x, distance, y, scale, angle and opacity, shown in readable units', () => {
+    expect(propertiesFor('s25').map((p) => p.key)).toEqual(['x', 'z', 'y', 'scale', 'rotation', 'opacity'])
+    expect(displayOf('s25', 'z')).toMatchObject({ scale: 1, unit: 'm' })
     expect(displayOf('s25', 'x')).toMatchObject({ scale: 100, unit: '%' })
     expect(displayOf('s25', 'opacity')).toMatchObject({ scale: 100, unit: '%' })
     expect(displayOf('s25', 'y').unit).toBe('m')

@@ -1347,10 +1347,10 @@
     // A stage25d layer's (or the scene's) Format panel: values are read off the live stage at the playhead and
     // written back through it, the way the canvas drag and the timeline row write them.
     window.stage25dInspector = function stage25dInspector(id, names) {
-        const SHOWN = { x: 100, y: 1, scale: 100, rotation: 1, opacity: 100 };
+        const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, info: null, look: [], values: { x: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, info: null, look: [], values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() { this.sync(); },
             sync() {
                 const stage = window.__stage25d;
@@ -1366,10 +1366,12 @@
                 const v = Number(shown) / factor;
                 if (!Number.isFinite(v)) return;
                 const target = 's25:' + id;
-                if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) window.__stage25d?.commitLayerProp?.(id, prop, v);
+                if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) {
+                    window.__stage25d?.commitLayerProp?.(id, prop, v);
+                    if (prop === 'z') window.__stage25d?.settleBand?.(Number(id.slice(6)));   // nearer or farther: its band follows
+                }
                 this.sync();
             },
-            async setDepth(depth) { await window.__stage25d?.setLayerDepth?.(id, depth); this.sync(); },
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
         };
@@ -1456,10 +1458,9 @@
                 const dioItems = [...(window.__diorama?.items() ?? [])].reverse().map((i) =>
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
-                // True front-to-back: nearer depth first, and inside one depth the later layer is in front.
-                const RANK = { sky: 0, bg: 1, mid: 2, fg: 3, near: 4 };
+                // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
                 const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && i.id !== 'sky')
-                    .map((i, at) => ({ i, at })).sort((a, b) => ((RANK[b.i.depth] ?? 2) - (RANK[a.i.depth] ?? 2)) || (b.at - a.at))
+                    .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
                     .map(({ i }) => ({ id: 's25_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, s25: true }));
                 // The sky is the stage's own backdrop: a row at the very back, picture swappable, not restackable.
                 const s25Sky = window.__stage25d?.items?.().some((i) => i.id === 'sky')
@@ -1537,7 +1538,7 @@
                         // A stage25d layer: the list order is the depth order, saved on the server (it rebuilds the stage).
                         if (this.items.find((i) => i.id === evt.item.dataset.objId)?.s25) {
                             const order = ids.filter((id) => id.startsWith('s25_layer-')).map((id) => Number(id.slice(10)));
-                            window.__stage25d?.reorderLayers(order, Number(evt.item.dataset.objId.slice(10)), (o, m, scene, x, scale) => this.$wire.reorderStage25dLayers(o, m, scene, x, scale));
+                            window.__stage25d?.reorderLayers(order, Number(evt.item.dataset.objId.slice(10)), (o, m, scene, x, z, scale) => this.$wire.reorderStage25dLayers(o, m, scene, x, z, scale));
                             this._sig = null;
                             return;
                         }

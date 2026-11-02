@@ -29,8 +29,11 @@
                     x-on:click="$store.view.showTab('icons')">{{ __('Change picture') }}</button>
         </div>
 
+        {{-- Where it stands: across the view, and how far along the ground in metres (drag it up the stage to send it
+             back). A picture not on the ground (a strip, a sky picture) keeps its Y instead of a distance. --}}
         <div class="mt-3 space-y-1" x-show="info?.id !== 'sky'">
-            @foreach ([['x', __('X'), 1, 0.01, 100], ['y', __('Y'), 1, 0.05, 1], ['scale', __('Scale'), 1, 0.05, 100], ['rotation', __('Angle'), 1, 1, 1], ['opacity', __('Opacity'), 1, 0.05, 100]] as [$prop, $glyph, $_, $step, $factor])
+            @foreach ([['x', __('X'), 0.01, 100, 'true'], ['z', __('Distance'), 0.25, 1, 'info?.ground'], ['y', __('Y'), 0.05, 1, '!info?.ground'], ['scale', __('Scale'), 0.05, 100, 'info?.showScale'], ['rotation', __('Angle'), 1, 1, 'true'], ['opacity', __('Opacity'), 0.05, 100, 'true']] as [$prop, $glyph, $step, $factor, $show])
+                <div x-show="{{ $show }}">
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
                     <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
                         <input type="number" step="{{ $step * $factor }}" aria-label="{{ $glyph }}"
@@ -38,22 +41,13 @@
                                :value="values.{{ $prop }}" x-on:change="set('{{ $prop }}', $event.target.value, {{ $factor }})"
                                class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
                                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                        @if ($prop === 'z')
+                            <span class="text-xs text-panel-hint">m</span>
+                        @endif
                     </label>
                 </x-ui.panel-row>
-            @endforeach
-        </div>
-
-        {{-- How near it stands: the same picture reads larger and sits in front of everything farther away. --}}
-        <div class="mt-1 space-y-1" x-show="info && info.depth !== 'sky' && info.id !== 'sky'">
-            <x-ui.panel-row :label="__('Depth')" stacked>
-                <div class="join w-full">
-                    @foreach (['bg' => __('Far'), 'mid' => __('Middle'), 'fg' => __('Front'), 'near' => __('Closest')] as $depth => $name)
-                        <button type="button" data-stage25d-depth="{{ $depth }}"
-                                class="btn btn-xs join-item flex-1" :class="info?.depth === '{{ $depth }}' ? 'btn-neutral' : 'btn-ghost'"
-                                x-on:click="setDepth('{{ $depth }}')">{{ $name }}</button>
-                    @endforeach
                 </div>
-            </x-ui.panel-row>
+            @endforeach
         </div>
 
         <div class="divider my-2" role="presentation"></div>

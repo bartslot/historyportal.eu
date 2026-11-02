@@ -120,6 +120,8 @@ final class LessonImporter
         }
         // The director's figure tracks become keys on the figure's own layer, the shape the editor and the stage read.
         [$stage, $motion] = LayerKeys::fromMotion($stage);
+        // ...and every picture on the ground has its distance in metres, as the editor drags it.
+        [$stage] = GroundDistance::fill($stage);
         $report['keys'] += $motion['converted'];
 
         // Balloon times are scene times; the editor and the player read them on the narration's clock (it starts

@@ -146,7 +146,7 @@ trait EditsStage25d
      *
      * @param  list<int>  $order
      */
-    public function reorderStage25dLayers(array $order, int $moved, int $sceneId, ?float $x = null, ?float $scale = null): void
+    public function reorderStage25dLayers(array $order, int $moved, int $sceneId, ?float $x = null, ?float $z = null, ?float $scale = null): void
     {
         $scene = $this->stage25dScene();
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
@@ -161,10 +161,15 @@ trait EditsStage25d
             return;   // a stale list (a layer was added or removed since): do nothing
         }
         $at = array_search($moved, $order, true);
+        if ($z !== null) {
+            // On the ground: standing nearer or farther than its neighbours is a distance; the browser worked it out
+            // (and the x and scale that keep its column and its size on screen). Its band follows the distance.
+            $layers[$moved] = [...$layers[$moved], ...LayerKeys::clean(['x' => $x, 'z' => $z, 'scale' => $scale]), 'depth' => self::bandOf($z)];
+        }
         $ref = $order[$at + 1] ?? ($order[$at - 1] ?? null);
         $from = $layers[$moved]['depth'] ?? 'mid';
         $to = $ref !== null ? ($layers[$ref]['depth'] ?? $from) : $from;
-        if ($from !== 'sky' && in_array($to, LayerKeys::DEPTHS, true) && $to !== $from) {
+        if ($z === null && $from !== 'sky' && in_array($to, LayerKeys::DEPTHS, true) && $to !== $from) {
             $layers[$moved]['depth'] = $to;
             // The browser knows where the picture is on screen and sends the x and scale that keep it there; without them, keep its size.
             $layers[$moved] = [...$layers[$moved], ...LayerKeys::clean(['scale' => $scale ?? ($layers[$moved]['scale'] ?? 1.0) * self::DEPTH_Z[$to] / self::DEPTH_Z[$from], 'x' => $x ?? ($layers[$moved]['x'] ?? 0.5)])];
@@ -175,6 +180,12 @@ trait EditsStage25d
         $this->storeStage25dLayers($scene, array_map(fn (int $i): array => $layers[$i], $indexes));
         $this->selectSceneInternal($scene->id);
         $this->dispatch('stage25d:select', index: (int) array_search($moved, $indexes, true));
+    }
+
+    /** The depth band a distance in metres belongs to (engine-mvp stage25d/layout.ts bandOf): line weight and haze. */
+    private static function bandOf(float $z): string
+    {
+        return $z < 4.9 ? 'near' : ($z < 12.4 ? 'fg' : ($z < 39.2 ? 'mid' : 'bg'));
     }
 
     /** Take a layer off the stage. Its keys go with it (they live on the layer); the stage rebuilds from the saved scene. */

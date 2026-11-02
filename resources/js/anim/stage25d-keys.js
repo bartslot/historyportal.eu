@@ -1,12 +1,12 @@
 /**
  * stage25d-keys.js: a stage25d layer keeps its keys as the engine reads them (config.stage25d.set.layers[i].keys:
- * `{ t, x?, y?, scale?, opacity?, rotation? }`), the timeline keeps one track per property
+ * `{ t, x?, z?, y?, scale?, opacity?, rotation? }`), the timeline keeps one track per property
  * (`s25:layer-3` / `x` / keyframes `{ time, value }`). This is the one place that converts between them, both ways.
  */
 import { sameTime } from './keyframes.js'
 
 /** The properties of a layer the engine can move (engine-mvp stage25d/layout.ts layerAt). */
-export const LAYER_KEY_FIELDS = ['x', 'y', 'scale', 'opacity', 'rotation']
+export const LAYER_KEY_FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation']
 
 /** Layers' keys → timeline tracks. `items`: `[{ id: 'layer-3', keys: [...] }]` (stage.items()). */
 export const tracksFromKeys = (items) => items.flatMap((item) => LAYER_KEY_FIELDS.flatMap((property) => {

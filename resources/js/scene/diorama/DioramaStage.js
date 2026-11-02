@@ -1,6 +1,6 @@
 import {
   resolveFloors, placeItem, projectPoint, cellToWorld, hitTest, snapCell, clampCell,
-  cellForScreenHeight, stackOrder, plateToStage, stageToPlate,
+  cellForScreenHeight, gridLines, stackOrder, plateToStage, stageToPlate,
 } from './projection.js'
 import { poseAt, frameFor } from './timeline.js'
 import { alphaAt, loadAlphaMask, DRAWN_ALPHA } from './alpha-mask.js'
@@ -617,27 +617,20 @@ export class DioramaStage {
 
   /** The perspective grid of one floor as an SVG path. */
   _gridPath (floor) {
-    const [[x0, y0], [x1, y1]] = floor.cells
     const cam = this.spec.camera
     const stagePt = (cell) => {
       const p = projectPoint(cam, cellToWorld(floor, cell))
       return p && this._toStage(p)
     }
-    // Endpoints behind the camera have no pixel: walk the line from the far end to the first
-    // cell that projects, so floors that start under the camera still draw.
-    const segment = (a, b, steps = 32) => {
-      const pts = []
-      for (let i = 0; i <= steps; i++) {
-        const t = i / steps
-        const pt = stagePt([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])
-        if (pt && Number.isFinite(pt.x) && Math.abs(pt.y) < 1e5) pts.push(pt)
-      }
-      return pts.length > 1 ? `M${pts[0].x},${pts[0].y}L${pts[pts.length - 1].x},${pts[pts.length - 1].y}` : ''
-    }
+    // Endpoints behind the camera have no pixel: a line is drawn between its first and last cell that projects,
+    // so floors that start under the camera still draw.
     const every = (a, b) => Math.max(1, Math.ceil((b - a) / GRID_MAX_LINES))
+    const [[x0, y0], [x1, y1]] = floor.cells
     let d = ''
-    for (let x = Math.ceil(x0); x <= x1; x += every(x0, x1)) d += segment([x, y0], [x, y1])
-    for (let y = Math.ceil(y0); y <= y1; y += every(y0, y1)) d += segment([x0, y], [x1, y])
+    for (const line of gridLines(floor, Math.max(every(x0, x1), every(y0, y1)))) {
+      const pts = line.map(stagePt).filter(pt => pt && Number.isFinite(pt.x) && Math.abs(pt.y) < 1e5)
+      if (pts.length > 1) d += `M${pts[0].x},${pts[0].y}L${pts[pts.length - 1].x},${pts[pts.length - 1].y}`
+    }
     return `<path d="${d}" fill="none" style="stroke:var(--color-primary);stroke-opacity:0.55;stroke-width:1px"/>`   // var() only works as CSS, not as an SVG attribute
   }
 

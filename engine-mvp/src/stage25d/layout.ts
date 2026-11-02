@@ -33,6 +33,9 @@ export const GROUND_SLOT = 999
 export const DECAL_SLOT = 1000
 /** ...lifted this much off the floor so they never flicker into it */
 export const DECAL_LIFT_M = 0.02
+/** How near and how far a picture can stand on the ground (layer.z), in metres. */
+export const GROUND_NEAR_M = 2
+export const GROUND_FAR_M = 120
 export const SAME_DEPTH_STEP_M = 0.05       // later layers at one depth stand this much nearer, so geometry agrees with draw order
 
 /** fov in degrees (human-editable); a value that can only be radians is converted. */
@@ -41,14 +44,22 @@ export const fovRad = (fov: number) => (fov > Math.PI ? (fov * Math.PI) / 180 : 
 /** Width of the house camera's view at distance z. */
 export const viewWidthAt = (z: number, fov = HOUSE.fov, aspect = ASPECT) => 2 * z * Math.tan(fovRad(fov) / 2) * aspect
 
+/** The depth band a distance belongs to (the nearest tier in log distance): its name for line weight and haze. */
+export function bandOf(z: number): Exclude<Depth, 'sky'> {
+  return z < 4.9 ? 'near' : z < 12.4 ? 'fg' : z < 39.2 ? 'mid' : 'bg'
+}
+
+/** A layer's distance from the camera in metres: its own z, else its depth band's (scenes saved before z look the same). */
+export const distanceOf = (layer: Pick<SceneLayer, 'depth' | 'z'>): number => layer.z ?? DEPTH_Z[layer.depth]
+
 export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number; rotation: number }
 
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
 /** horizon: metres the far landscape (bg) stands higher (set.horizon, teacher-editable). Draw order leaves the even
  *  slot below each layer for its contact stain (stainIndex), so a stain is drawn after farther layers, before its own. */
-export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation'>, order: number, horizon = 0): Placement {
+export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation' | 'z'>, order: number, horizon = 0): Placement {
   const depth = layer.depth
-  const z = DEPTH_Z[depth] - order * SAME_DEPTH_STEP_M
+  const z = distanceOf(layer) - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
   // one depth order for everything standing and every ground band (bandSlot): nearer draws later, so grass in front
   // of a band covers the props behind it, and a prop in front of a band covers the band
@@ -122,13 +133,13 @@ export function cameraAt(cam: CameraMove | null | undefined, t: number, dur: num
   return { x: lerp(f.x, to.x, k), y: lerp(f.y, to.y, k), z: lerp(f.z, to.z, k), fov: lerp(fovRad(f.fov), fovRad(to.fov), k) }
 }
 
-export interface LayerNow { x: number; y: number; scale: number; opacity: number; rotation: number }
-const LAYER_FIELDS = ['x', 'y', 'scale', 'opacity', 'rotation'] as const
+export interface LayerNow { z?: number; x: number; y: number; scale: number; opacity: number; rotation: number }
+const LAYER_FIELDS = ['x', 'y', 'z', 'scale', 'opacity', 'rotation'] as const
 
 /** A layer's x/y/scale/opacity/rotation at time t: its own values, moved by keyframes (eased in-out between keys).
  *  Each field moves along the keys that name it, so a key that only sets x leaves y's own run alone. */
 export function layerAt(layer: SceneLayer, t: number): LayerNow {
-  const base: LayerNow = { x: layer.x ?? 0.5, y: layer.y ?? 0, scale: layer.scale ?? 1, opacity: layer.opacity ?? 1, rotation: layer.rotation ?? 0 }
+  const base: LayerNow = { z: layer.z, x: layer.x ?? 0.5, y: layer.y ?? 0, scale: layer.scale ?? 1, opacity: layer.opacity ?? 1, rotation: layer.rotation ?? 0 }
   const all = layer.keys ?? []
   if (!all.length) return base
   const out = { ...base }

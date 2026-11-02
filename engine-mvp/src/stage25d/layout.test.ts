@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bandOf, distanceOf, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -302,5 +302,26 @@ describe('ground band crest: the skyline sits bandHeight above the floor; the bo
     const z = 15, k = 0.15, h = 12, f = 0.4   // skyline 40 % down the picture
     expect(bandBottom(z, k, h, f) + (1 - f) * h).toBeCloseTo(bandHeight(z, k))
     expect(bandBottom(2, 0.15, 1.65, 0.5)).toBeLessThan(0)   // bottom under the floor: off the frame bottom
+  })
+})
+
+describe('distance on the ground (layer.z)', () => {
+  const asset = { id: 'a', layer: 'figure', file: 'a.png', w: 100, h: 200, height_m: 2 } as any
+  it('stands a layer at its own distance in metres, x a share of the view there', () => {
+    const p = placeLayer(asset, { depth: 'mid', x: 0.75, z: 10, scale: 1 }, 0)
+    expect(p.z).toBeCloseTo(10)
+    expect(p.x).toBeCloseTo(0.25 * viewWidthAt(10))
+  })
+  it('without z it stands at its band as before, so old scenes look the same', () => {
+    const old = placeLayer(asset, { depth: 'mid', x: 0.8, scale: 1 }, 0)
+    const now = placeLayer(asset, { depth: 'mid', x: 0.8, z: distanceOf({ depth: 'mid' }), scale: 1 }, 0)
+    expect(now).toEqual(old)
+  })
+  it('eases z along its own keys', () => {
+    const k = layerAt({ depth: 'mid', z: 10, keys: [{ t: 0, z: 10 }, { t: 2, z: 20 }] } as any, 1)
+    expect(k.z).toBeCloseTo(15)
+  })
+  it('names the band of a distance', () => {
+    expect([3, 7, 22, 70].map(bandOf)).toEqual(['near', 'fg', 'mid', 'bg'])
   })
 })

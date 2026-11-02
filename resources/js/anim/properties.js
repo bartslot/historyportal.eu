@@ -136,11 +136,13 @@ const REGISTRY = {
   ],
   /**
    * A stage25d layer (config.stage25d.set.layers[i], keys in its own `keys`, stage25d-keys.js). x is the
-   * share of the view width at the layer's depth, y metres above its ground point, rotation degrees clockwise.
+   * share of the view width at the layer's distance, z that distance in metres along the ground (unset = its depth
+   * band's), y metres above its ground point, rotation degrees clockwise.
    * Linear everywhere: the engine eases between keys itself.
    */
   s25: [
     P('x', 'X', 'linear', '%'),
+    P('z', 'Distance', 'linear', 'm'),
     P('y', 'Y', 'linear', 'm'),
     P('scale', 'Scale', 'linear', '%'),
     P('rotation', 'Angle', 'linear', '°'),

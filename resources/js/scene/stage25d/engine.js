@@ -11,13 +11,14 @@ import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
-import { layerAt, DEPTH_Z, viewWidthAt } from '@stage25d/stage25d/layout'
+import { layerAt, bandOf, DEPTH_Z } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
 import { layerLabel } from './labels.js'
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
+import { groundUnderRay, settle, groundOf, layerOf, alongSight } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
@@ -113,16 +114,18 @@ export async function createStage25d (host, opts = {}) {
   /** The sky picture on stage: set.sky is an asset id or just tags ("sky morning"), which the stage resolves to the best match. */
   const skyAsset = () => (cfg?.set?.sky && libData ? (assets.get(cfg.set.sky) ?? resolveAsset(libData, { asset: cfg.set.sky }, 'sky')) : null)
 
-  /** Before a layer changes depth: its size scaled by the change of distance, and where it is across the screen now. */
-  const keepLook = (index, depth) => {
-    const box = stage?.layerBox(index)
-    return {
-      scale: Math.round(Math.min(20, Math.max(0.01, (layers[index].scale ?? 1) * (DEPTH_Z[depth] / DEPTH_Z[layers[index].depth]))) * 1000) / 1000,
-      frac: box ? (box.x0 + box.x1) / 2 : null,
-    }
+  /** Does a layer stand on the ground? Backdrops that span the view (sky picture, bg strips) and sky-depth pictures don't. */
+  const onGround = (i) => {
+    const a = assets.get(layers[i]?.asset)
+    return !!(layers[i] && a && !a.tileable_x && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
   }
-  /** After the rebuild: the x that puts it back at that place across the screen. */
-  const placeAt = (frac, depth) => (frac === null ? null : Math.round(Math.min(2, Math.max(-1, stage.xForScreen(frac, depth))) * 1000) / 1000)
+  /** A layer's distance in metres at the playhead: its z (keyed or not), else its band's (scenes from before z). */
+  const zNow = (i) => layerAt(layers[i], nowT()).z ?? DEPTH_Z[layers[i].depth]
+  /** Resizing moves a picture in distance (its real height never changes); a keyed scale still scales. */
+  const byDistance = (i) => onGround(i) && !(layers[i].keys ?? []).some((k) => k.scale !== undefined)
+  const round3 = (n) => Math.round(n * 1000) / 1000
+  /** Where the camera stands now on the ground, [x, z]: sizes and screen columns count from there. */
+  const eye = () => (stage?.camera?.position ? [stage.camera.position.x, stage.camera.position.z] : [0, 0])
 
   const api = {
     canvas,
@@ -162,7 +165,11 @@ export async function createStage25d (host, opts = {}) {
         })
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
-          valueOf: (i, prop) => layerAt(layers[i], nowT())[prop],
+          valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
+          onGround, byDistance,
+          groundUnder: (x, y) => groundUnderRay(stage.pointerRay(x, y)),
+          eye,
+          onSettled: (i) => api.settleBand(i),
           onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
         })
       }
@@ -203,7 +210,7 @@ export async function createStage25d (host, opts = {}) {
     /** What the layer shows at the playhead, for the row's field. */
     readLayerProp (id, prop) {
       const l = layers[layerIndex(id)]
-      const v = l ? layerAt(l, nowT())[prop] : null
+      const v = !l ? null : prop === 'z' ? zNow(layerIndex(id)) : layerAt(l, nowT())[prop]
       return Number.isFinite(v) ? v : null
     },
     setHidden (id, off) {
@@ -246,6 +253,8 @@ export async function createStage25d (host, opts = {}) {
       const base = asset?.motion ?? 'none'
       return {
         id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null,
+        ground: onGround(layerIndex(id)),
+        showScale: !onGround(layerIndex(id)) || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined),
         label: layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         file: asset ? `${libData.base}${asset.file}` : null,
         motion: { kind: own.kind ?? base, amount: own.amount ?? 1, speed: own.speed ?? 1 },
@@ -259,35 +268,36 @@ export async function createStage25d (host, opts = {}) {
       const idx = edit(id, { motion: next })
       if (idx >= 0) opts.onCommit?.(idx, { motion: next }, api.sceneId)
     },
-    /** Move a layer to another depth (bg, mid, fg, near): it stands nearer or farther; rebuilds, saved on the layer. */
-    async setLayerDepth (id, depth) {
-      const i = layerIndex(id)
-      if (i < 0 || !layers[i] || layers[i].depth === depth || !['bg', 'mid', 'fg', 'near'].includes(depth) || layers[i].depth === 'sky') return
-      const keep = keepLook(i, depth)
-      layers = layers.map((l, n) => (n === i ? { ...l, depth, scale: keep.scale } : l))
-      await api.show({ ...cfg, set: { ...cfg.set, layers } })
-      const x = placeAt(keep.frac, depth)   // null when it was not on screen: x stays
-      if (x !== null) { layers = layers.map((l, n) => (n === i ? { ...l, x } : l)); redraw() }
-      if (api.sceneId != null) opts.onCommit?.(i, { depth, scale: keep.scale, ...(x !== null ? { x } : {}) }, api.sceneId)
-      window.dispatchEvent(new CustomEvent('stage25d-synced'))
-    },
     /**
-     * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. It takes the depth
-     * of the layer now behind it (in front of it at the very back), keeping its size and place on screen; `call` saves
-     * the new order and the stage rebuilds from what the server sends back.
+     * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. On the floor it
+     * takes a distance between its new neighbours, keeping its size and place on screen; `call` saves the new order
+     * and the stage rebuilds from what the server sends back.
      */
     reorderLayers (order, moved, call) {
       const at = order.indexOf(moved)
-      const to = layers[order[at + 1] ?? order[at - 1]]?.depth
-      const from = layers[moved]?.depth
-      let x = null
-      let scale = null
-      if (to && to !== from && from !== 'sky' && ['bg', 'mid', 'fg', 'near'].includes(to)) {
-        const keep = keepLook(moved, to)
-        scale = keep.scale
-        x = placeAt(keep.frac, to)
+      const zOf = (i) => layers[i]?.z ?? DEPTH_Z[layers[i]?.depth]
+      const front = order[at - 1]
+      const back = order[at + 1]
+      const ground = (i) => i === undefined || onGround(i)
+      // On the ground, "in front of that one" means standing nearer than it: a distance between its neighbours, keeping
+      // the picture's column across the screen and its apparent size (the scale takes up what the distance changes).
+      if (onGround(moved) && ground(front) && ground(back) && (front !== undefined || back !== undefined)) {
+        const z = zNow(moved)
+        const lo = front === undefined ? 0 : zOf(front)
+        const hi = back === undefined ? Infinity : zOf(back)
+        if (z < lo || z > hi) {
+          const p = groundOf(layerAt(layers[moved], nowT()).x, z)
+          const [, nz] = settle([p[0], front === undefined ? hi / 1.25 : back === undefined ? lo * 1.25 : (lo + hi) / 2])
+          const e = eye()
+          const k = (nz - e[1]) / Math.max(0.1, z - e[1])
+          call(order, moved, api.sceneId, layerOf(alongSight(p, nz, e)).x, nz, round3(Math.min(20, Math.max(0.01, (layers[moved].scale ?? 1) * k))))
+          return
+        }
+        // already between them: only the order changes; its distance is saved as it is (a scene from before z gets one)
+        call(order, moved, api.sceneId, layers[moved].x ?? 0.5, zOf(moved), layers[moved].scale ?? 1)
+        return
       }
-      call(order, moved, api.sceneId, x, scale)   // the server restacks; the stage rebuilds from the scene it sends back
+      call(order, moved, api.sceneId, null, null, null)   // the server restacks; the stage rebuilds from the scene it sends back
     },
     /** The library on stage, for the asset browser: [{ id, layer, file, url, label }]. */
     library () {
@@ -311,19 +321,35 @@ export async function createStage25d (host, opts = {}) {
       opts.onCommit?.(i, { asset: assetId }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
-    /** A new layer from a library picture, standing mid-view at its own depth; saved at the end of the layers. */
+    /** A new layer from a library picture, standing on the ground where it was dropped (snapped to the grid), else
+     *  mid-view at its own band's distance. Saved at the end of the layers. */
     async addLayer (assetId, at = null) {
       const a = assets.get(assetId)
       if (!a) return
       const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : 'mid'
-      // Dropped on the stage: it stands where the pointer is, at its own depth (the ray meets that depth's plane).
-      const x = at && stage ? 0.5 + stage.worldXAt(at.x, at.y, DEPTH_Z[depth]) / viewWidthAt(DEPTH_Z[depth]) : 0.5
-      const layer = { asset: assetId, depth, x: Math.round(Math.min(2, Math.max(-1, x)) * 1000) / 1000, scale: 1 }
+      let layer = { asset: assetId, depth, x: 0.5, scale: 1 }
+      if (!(a.tileable_x || a.layer === 'bg' || a.layer === 'sky')) {
+        const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y)) : null
+        const spot = layerOf(settle(hit ?? [0, DEPTH_Z[depth]]))
+        layer = { ...layer, ...spot, depth: bandOf(spot.z) }
+      }
       layers = [...layers, layer]
       await api.show({ ...cfg, set: { ...cfg.set, layers } })
       opts.onCommit?.(layers.length - 1, { add: layer }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
       pointer?.select(layers.length - 1, true)   // the new layer is the selection: its panel opens
+    },
+    /** After a drag: when the picture crossed into another depth band, name that band (line weight and haze follow it). */
+    async settleBand (i) {
+      const l = layers[i]
+      if (!l || !onGround(i)) return
+      const band = bandOf(zNow(i))
+      if (band === l.depth) return
+      layers = layers.map((n, k) => (k === i ? { ...n, depth: band } : n))
+      await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      if (api.sceneId != null) opts.onCommit?.(i, { depth: band }, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
+      pointer?.select(i, false)
     },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {
@@ -374,7 +400,7 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Rows for the object list and timeline: every layer, then the camera. */
     items: () => [
-      ...layers.map((l, i) => ({ id: `layer-${i}`, label: layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`, depth: l.depth, keys: l.keys ?? [] })),
+      ...layers.map((l, i) => ({ id: `layer-${i}`, label: layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`, depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
       ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [] }] : []),
       { id: 'camera', label: 'Camera', depth: null, keys: [] },
     ],

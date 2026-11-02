@@ -70,6 +70,7 @@ export const displayOf = (kind, key) => {
   if (kind === 'dio') return { scale: 1, unit: '', step: 1, decimals: 2 }
   // A stage25d layer: x is a share of the view (read as a percent), y in metres.
   if (kind === 's25') {
+    if (key === 'z') return { scale: 1, unit: 'm', step: 0.25, decimals: 2 }
     if (key === 'x') return { scale: 100, unit: '%', step: 1, decimals: 1 }
     if (key === 'y') return { scale: 1, unit: 'm', step: 0.05, decimals: 2 }
     return { scale: 1, unit: registry?.unit ?? '', step: 1, decimals: 1 }

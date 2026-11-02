@@ -96,6 +96,21 @@ export function snapCell ([cx, cy], step = 0.25) {
 }
 
 /**
+ * The grid of one floor as cell-space line segments: lines of constant x (running away from the camera) and of
+ * constant y (across), one every `every` cells, each cut into `steps` pieces so a projector can drop the pieces
+ * that fall behind the camera. DioramaStage draws them over the plate, the 2.5D stage over its Babylon view.
+ * @returns {Array<Array<[number, number]>>} one polyline of cells per grid line
+ */
+export function gridLines (floor, every = 1, steps = 32) {
+  const [[x0, y0], [x1, y1]] = floor.cells
+  const line = (a, b) => Array.from({ length: steps + 1 }, (_, i) => [a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps])
+  const out = []
+  for (let x = Math.ceil(x0 / every) * every; x <= x1; x += every) out.push(line([x, y0], [x, y1]))
+  for (let y = Math.ceil(y0 / every) * every; y <= y1; y += every) out.push(line([x0, y], [x1, y]))
+  return out
+}
+
+/**
  * Where an item lands on the plate: its bottom-centre point, its depth, and the display scale
  * for its picture (plate pixels per source pixel) given the asset's `pxPerM` (source pixels per
  * metre of the real thing). Null when the item is at or behind the camera.

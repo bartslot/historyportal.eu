@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Services\Stage25d;
 
 /**
- * Layer keys of a stage25d scene: `config.stage25d.set.layers[i].keys`, a list of `{t, x?, y?, scale?, opacity?, rotation?}`
+ * Layer keys of a stage25d scene: `config.stage25d.set.layers[i].keys`, a list of `{t, x?, z?, y?, scale?, opacity?, rotation?}`
  * that the stage eases itself (engine-mvp stage25d/layout.ts layerAt). The one place that validates them (editor
  * saves) and converts the director's `motion` tracks into them (import, `lessons:keys-25d`).
  */
 final class LayerKeys
 {
     /** The fields a key may set; the timeline's rows for a layer (resources/js/anim/properties.js `s25`). */
-    public const FIELDS = ['x', 'y', 'scale', 'opacity', 'rotation'];
+    public const FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation'];
 
     /** What a field may hold: a typo or a runaway drag never leaves the picture off the planet. */
-    private const RANGE = ['x' => [-2.0, 3.0], 'y' => [-50.0, 50.0], 'scale' => [0.01, 20.0], 'opacity' => [0.0, 1.0], 'rotation' => [-3600.0, 3600.0]];
+    private const RANGE = ['x' => [-2.0, 3.0], 'z' => [2.0, 120.0], 'y' => [-50.0, 50.0], 'scale' => [0.01, 20.0], 'opacity' => [0.0, 1.0], 'rotation' => [-3600.0, 3600.0]];
 
     /**
      * Finite numbers of the known fields, held to their range.

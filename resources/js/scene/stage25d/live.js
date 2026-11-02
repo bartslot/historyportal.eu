@@ -4,7 +4,7 @@
  */
 
 /** Layer fields that move or restyle a built picture. Anything else (asset, depth, need, flat) is a rebuild. */
-export const EDITABLE = ['x', 'y', 'scale', 'rotation', 'opacity', 'keys']
+export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys']
 
 /** 'layer-3' -> 3; anything else (the camera) -> -1. */
 export const layerIndex = (id) => {

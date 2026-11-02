@@ -266,13 +266,26 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
-  /** The layer x (a share of the house view at that depth) that puts a picture's anchor `frac` of the way across the
-   *  screen, seen from the camera as it stands now. Changing a picture's depth keeps its place on screen with this. */
-  xForScreen(frac: number, depth: Depth): number {
-    const z = DEPTH_Z[depth]
-    const half = Math.tan(this.camera.fov / 2) * this.engine.getAspectRatio(this.camera)
-    const worldX = this.camera.position.x + (frac - 0.5) * 2 * half * (z - this.camera.position.z)
-    return 0.5 + worldX / viewWidthAt(z)
+  /** The pointer's ray in world space (origin and direction), for finding the floor cell under it. */
+  pointerRay(x: number, y: number): { origin: [number, number, number]; dir: [number, number, number] } {
+    const ray = this.scene.createPickingRay(x, y, Matrix.Identity(), this.camera)
+    return { origin: [ray.origin.x, ray.origin.y, ray.origin.z], dir: [ray.direction.x, ray.direction.y, ray.direction.z] }
+  }
+
+  /** A world point [x, y, z] as shares of the canvas (0..1 from its top-left); null behind the camera. For the grid. */
+  screenOf(p: [number, number, number]): { x: number; y: number } | null {
+    const v = new Vector3(p[0], p[1], p[2])
+    const rel = v.subtract(this.camera.position)
+    if (Vector3.Dot(rel, this.camera.getForwardRay().direction) <= 0.01) return null
+    const view = this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight())
+    const s = Vector3.Project(v, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view)
+    return { x: s.x / this.engine.getRenderWidth(), y: s.y / this.engine.getRenderHeight() }
+  }
+
+  /** The camera as it stands now, to tell the editor when its grid needs drawing again. */
+  cameraKey(): string {
+    const c = this.camera
+    return [c.position.x, c.position.y, c.position.z, c.rotation.x, c.fov, this.engine.getRenderWidth(), this.engine.getRenderHeight()].map((n) => n.toFixed(4)).join(',')
   }
 
   /** World x where the pointer's ray crosses the vertical plane at `z`: how far a drag moved a picture of that depth. */
@@ -348,9 +361,16 @@ export class Stage {
     this.birds.update(clock, lookNum(this.look, 'birds'))
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, scale: 1, rotation: k.rotation }, b.order, this.horizonOf(s))
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, this.horizonOf(s))
       b.handle.mesh.position.x = p.x
       b.handle.mesh.position.y = b.layer.flat ? DECAL_LIFT_M : p.y
+      if (b.handle.mesh.position.z !== p.z) {
+        // a picture moved along the ground (layer.z) changes distance: its draw slot follows; its stain rides along
+        b.handle.mesh.position.z = p.z
+        if (!b.layer.flat) b.handle.mesh.alphaIndex = p.alphaIndex
+        if (b.stain) b.stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
+        if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
+      }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll(k.scale / b.builtScale)   // grows from the ground point
       b.handle.setOpacity(k.opacity)
