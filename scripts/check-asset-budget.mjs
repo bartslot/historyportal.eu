@@ -80,8 +80,11 @@ const mib = (bytes) => `${(bytes / 1048576).toFixed(1)} MiB`
  */
 const bytesPerTexelOf = (path) => budget.channels?.[path] ?? 4
 
+/** A sky is sampled from inside and acquired with `mipmap: false`; it carries no mip chain. */
+const mipmapOverheadOf = (path) => (budget.mipmap?.[path] === false ? 1 : budget.mipmapOverhead)
+
 const vramOf = ({ width, height }, path) =>
-  Math.round(width * height * bytesPerTexelOf(path) * budget.mipmapOverhead)
+  Math.round(width * height * bytesPerTexelOf(path) * mipmapOverheadOf(path))
 
 /** An asset entry is a path; everything else about it is looked up. */
 const inspect = (path) => {
