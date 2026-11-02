@@ -134,6 +134,20 @@ trait EditsStage25d
         }
     }
 
+    /**
+     * The lesson's stage25d scenes whose rail thumbnail is missing or out of date, with what the browser needs to draw
+     * them (it renders each off screen and posts the picture back through saveStage25dStill).
+     *
+     * @return list<array{id: int, hash: string, config: array<string, mixed>}>
+     */
+    public function stage25dStaleStills(): array
+    {
+        return $this->lesson->scenes()->where('kind', 'stage25d')->orderBy('order')->get()
+            ->filter(fn (Scene $scene) => $scene->isStage25d() && ! SceneStill::isFresh($scene))
+            ->map(fn (Scene $scene) => ['id' => $scene->id, 'hash' => SceneStill::hash($scene), 'config' => $scene->config['stage25d']])
+            ->values()->all();
+    }
+
     /** Distance of each depth from the camera in metres (engine-mvp stage25d/layout.ts DEPTH_Z). */
     private const DEPTH_Z = ['bg' => 70.0, 'mid' => 22.0, 'fg' => 7.0, 'near' => 3.5];
 

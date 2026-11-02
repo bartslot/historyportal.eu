@@ -2454,5 +2454,9 @@
     "Sky": "Ciel",
     "Sunlight": "Lumière du soleil",
     "X": "X",
-    "Y": "Y"
+    "Y": "Y",
+    "Middle ground": "Plan moyen",
+    "Foreground": "Premier plan",
+    "Props": "Objets",
+    "Ground": "Sol"
 }

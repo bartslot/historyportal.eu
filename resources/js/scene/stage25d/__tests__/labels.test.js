@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assetLabel, layerLabel } from '../labels.js'
+import { assetLabel, layerLabel, numbered } from '../labels.js'
 
 describe('stage25d labels', () => {
   it('names a picture from its id, in English or Dutch', () => {
@@ -15,7 +15,16 @@ describe('stage25d labels', () => {
     expect(assetLabel({ id: 'cow-01' }, 'de')).toBe('Cow')
   })
   it('a figure layer reads as its character', () => {
-    expect(layerLabel({ figure: 'dorpeling-b', asset: 'fig-dorpeling-b-walk-01' }, { id: 'fig-dorpeling-b-walk-01' })).toBe('Dorpeling b')
+    expect(layerLabel({ figure: 'dorpeling-b', asset: 'fig-dorpeling-b-walk-01' }, { id: 'fig-dorpeling-b-walk-01' })).toBe('Dorpeling B')
     expect(layerLabel({ need: 'stone boulder' }, null)).toBe('Stone boulder')
+  })
+
+  it('names a figure picture by its character even when the layer does not say who it is', () => {
+    expect(layerLabel({ asset: 'fig-dorpeling-b-stand-01' }, { id: 'fig-dorpeling-b-stand-01', layer: 'figure', tags: ['figure', 'char:dorpeling-b', 'pose:stand'] })).toBe('Dorpeling B')
+    expect(layerLabel({ asset: 'fig-moeder-walk-01-l' }, null)).toBe('Moeder')
+  })
+
+  it('numbers names that repeat, from the second one on', () => {
+    expect(numbered(['Braam', 'Pot', 'Braam', 'Braam'])).toEqual(['Braam', 'Pot', 'Braam 2', 'Braam 3'])
   })
 })

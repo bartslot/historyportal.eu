@@ -157,10 +157,14 @@ describe('stage25d canvas interaction', () => {
     expect(onChange.mock.calls).toEqual([[2, 'x', 0.6], [2, 'z', 5]])   // [2, 10] m -> [1, 5] m: x share unchanged
   })
 
-  it('draws the ground grid over the canvas while editing', () => {
-    const { api, host } = setup({ stage: { screenOf: ([x, , z]) => ({ x: 0.5 + x / z, y: 0.5 + 1 / z }), cameraKey: () => 'k' } })
-    api.place()
-    const path = host.querySelector('[data-stage25d-grid] path')
-    expect(path.getAttribute('d').length).toBeGreaterThan(100)
+  it('asks the stage to draw the ground grid while editing, and takes it away when done', () => {
+    const setGrid = vi.fn()
+    const { api } = setup({ stage: { setGrid } })
+    expect(setGrid).toHaveBeenCalledTimes(1)
+    const [pieces, rgb] = setGrid.mock.calls[0]
+    expect(pieces.length).toBeGreaterThan(5)
+    expect(rgb).toHaveLength(3)
+    api.destroy()
+    expect(setGrid).toHaveBeenLastCalledWith(null)
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOf, distanceOf, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bandOf, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -331,5 +331,56 @@ describe('distance on the ground (layer.z)', () => {
     expect(at(39.1)).toBeCloseTo(at(39.3, 'bg'), 1)   // crossing into the bg band moves it by a hair, not by the horizon
     expect(at(undefined, 'bg')).toBe(10)   // old bg pictures: the whole horizon, as before
     expect(at(undefined, 'fg')).toBe(0)
+  })
+})
+
+describe('ground strips (a meadow, a heath, a path) never stand up into the sky', () => {
+  const meadow: Asset = { id: 'meadow-band-01', layer: 'mid', tags: ['meadow', 'field', 'hedge', 'ground'], file: '', w: 1536, h: 599, anchor: [0.5, 1], height_m: 22.8 }
+  const heather: Asset = { ...meadow, id: 'heather-01', layer: 'fg', tags: ['heather', 'heath', 'ground'], height_m: 0.5 }
+  const floorTile: Asset = { ...meadow, id: 'ground-path-sand-01', layer: 'ground', tags: ['ground', 'path'], height_m: 4, tileable_x: true }
+
+  it('knows a strip by its tags and its size; a tuft, a figure or a floor tile is not one', () => {
+    expect(isGroundStrip(meadow)).toBe(true)
+    expect(isGroundStrip({ ...meadow, id: 'ramp-earth-01', tags: ['ramp', 'earth'], height_m: 2 })).toBe(true)
+    expect(isGroundStrip(heather)).toBe(false)
+    expect(isGroundStrip(tree)).toBe(false)
+    expect(isGroundStrip(floorTile)).toBe(false)
+  })
+
+  it('stands like a ground band (skyline on the crest), its bottom never above the floor', () => {
+    expect(stripBottom(30, 0.15, 22.8, 0.1)).toBeCloseTo(bandBottom(30, 0.15, 22.8, 0.1))   // the band rule, under the floor
+    expect(stripBottom(90, 0.15, 2, 0.05)).toBe(0)                                           // a low strip far off: on the floor
+  })
+
+  it('a floor tile placed as a layer lies flat on the floor', () => {
+    expect(liesFlat({}, floorTile)).toBe(true)
+    expect(liesFlat({}, meadow)).toBe(false)
+    expect(liesFlat({ flat: true }, meadow)).toBe(true)
+  })
+})
+
+describe('the ground pictures stand on (groundHeight)', () => {
+  // the house camera's row of a ground point (share of the frame from the top), pitch -2 degrees
+  const f = 0.5 / Math.tan((HOUSE.fov * Math.PI) / 360)
+  const rowOf = (z: number, y: number) => 0.5 + f * Math.tan((2 * Math.PI) / 180) - (f * (y - HOUSE.y)) / z
+
+  it('is the flat floor without a far landscape', () => {
+    expect([7, 40, 120].map((z) => groundHeight(z, 0))).toEqual([0, 0, 0])
+  })
+
+  it('rises from the middle band onto the far strip\'s land line, then stays on it: farther is never lower', () => {
+    const land = landHeight(-54.2, { top: 0.187, h: 78.1 })   // the hook scene: the strip sinks 54 m, its land is 9.3 m up
+    expect(land).toBeCloseTo(9.3, 1)
+    expect(groundHeight(22, land)).toBe(0)
+    expect(groundHeight(70, land)).toBeCloseTo(land)
+    const rows = [7, 22, 40, 70, 90, 120].map((z) => rowOf(z, groundHeight(z, land)))
+    rows.slice(1).forEach((r, i) => expect(r).toBeLessThanOrEqual(rows[i] + 1e-9))   // up the screen, all the way
+    expect(rows[5]).toBeCloseTo(rows[3], 6)                                           // past the strip: on its land line
+    expect(rowOf(70, land)).toBeCloseTo(0.42, 2)                                      // which is where autoHorizon put it
+  })
+
+  it('a picture on the far ground stands on it, never sunk with the strip\'s own offset', () => {
+    const land = landHeight(-54.2, { top: 0.187, h: 78.1 })
+    expect(placeLayer(tree, { depth: 'bg', x: 0.5, z: 70 }, 0, -54.2, land).y).toBeCloseTo(land)
   })
 })

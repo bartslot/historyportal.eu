@@ -56,12 +56,39 @@ export const distanceOf = (layer: Pick<SceneLayer, 'depth' | 'z'>): number => la
  *  of it at the far band (70 m) and beyond. A picture without z sits at its band, so old scenes stand where they did. */
 export const horizonLift = (z: number): number => Math.min(1, Math.max(0, (z - DEPTH_Z.mid) / (DEPTH_Z.bg - DEPTH_Z.mid)))
 
+/** The height of the ground pictures stand on at distance z. `land`: how high the far landscape's land line stands at
+ *  its distance (DEPTH_Z.bg), in metres. The floor up to the middle band, rising onto that land line by the far band
+ *  (horizonLift); past it the ground stays on the land line as seen from the house camera, so farther is never lower
+ *  on screen and the land line is the ground's horizon. Without a far landscape (land 0) the floor is flat. */
+export function groundHeight(z: number, land: number): number {
+  if (z <= DEPTH_Z.bg || land === 0) return horizonLift(z) * land
+  return HOUSE.y + ((land - HOUSE.y) * z) / DEPTH_Z.bg
+}
+
+/** How high the far landscape's land line stands (metres, at DEPTH_Z.bg): the strip's bottom (`horizon`) plus its
+ *  height above its land line; with no strip, `horizon` itself. */
+export const landHeight = (horizon: number, strip: { top: number; h: number } | null): number => (strip ? horizon + strip.h * (1 - strip.top) : horizon)
+
+/** A painted strip of ground (a meadow, a heath, a path, a quay, a ramp): a picture of the ground from its distance
+ *  toward the camera, so it stands like a ground band and never up into the sky. Its tags say what it is; a tuft
+ *  (heather, 0.5 m) is too low to be one. */
+const GROUND_STRIP_TAGS = ['ground', 'path', 'field', 'ramp', 'water']
+export const isGroundStrip = (a: Asset): boolean =>
+  !['bg', 'sky', 'figure', 'ground'].includes(a.layer) && !a.tileable_x && a.height_m >= 2 && (a.tags ?? []).some((t) => GROUND_STRIP_TAGS.includes(t))
+
+/** Where a ground strip's picture stands: like a ground band (its skyline on the crest, k x z up, the body below the
+ *  floor where the floor hides it), but its bottom edge never above the floor line at its distance. */
+export const stripBottom = (z: number, k: number, h: number, skyline: number): number => Math.min(0, bandBottom(z, k, h, skyline))
+
+/** A 'ground' picture (a floor tile: sand, grass) placed as a layer lies flat on the floor, like a decal. */
+export const liesFlat = (layer: Pick<SceneLayer, 'flat'>, asset: Pick<Asset, 'layer'>): boolean => !!layer.flat || asset.layer === 'ground'
+
 export interface Placement { x: number; y: number; z: number; w: number; h: number; uRepeat: number; alphaIndex: number; rotation: number }
 
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
 /** horizon: metres the far landscape (bg) stands higher (set.horizon, teacher-editable). Draw order leaves the even
  *  slot below each layer for its contact stain (stainIndex), so a stain is drawn after farther layers, before its own. */
-export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation' | 'z'>, order: number, horizon = 0): Placement {
+export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation' | 'z'>, order: number, horizon = 0, land = horizon): Placement {
   const depth = layer.depth
   const z = distanceOf(layer) - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
@@ -87,9 +114,11 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
   // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance; the far landscape
-  // stands `horizon` higher, and a picture on the ground rises into it with its distance (horizonLift), never in a jump
-  const lift = asset.layer === 'bg' ? (depth === 'bg' ? 1 : 0) : horizonLift(distanceOf(layer))
-  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : lift * horizon
+  // strip stands `horizon` higher, and a picture on the ground stands on the ground there (groundHeight): rising onto
+  // the strip's land line (`land`) with its distance, never in a jump. A ground strip stays on the floor itself and
+  // stands from there like a ground band (stripBottom): lifted, its crest would stand up into the sky.
+  const ground = asset.layer === 'bg' ? (depth === 'bg' ? horizon : 0) : isGroundStrip(asset) ? 0 : groundHeight(distanceOf(layer), land)
+  const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : ground
   return { x, y: y + (layer.y ?? 0), z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex, rotation: layer.rotation ?? 0 }
 }
 

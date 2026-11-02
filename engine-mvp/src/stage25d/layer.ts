@@ -167,7 +167,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     gl_FragColor = c * opacity;
   }`
 
-const textures = new Map<string, Promise<RawTexture>>()
+/** per Babylon scene (a texture belongs to one engine: the editor and an off-screen thumbnail stage each load their own) */
+const textures = new WeakMap<Scene, Map<string, Promise<RawTexture>>>()
 /** url -> the colour an image's bottom rows end in (0..1), read while loading: the ground fades into it */
 export const edgeColours = new Map<string, [number, number, number]>()
 /** Per url: where its land starts (landTop), for set.horizon 'auto'. */
@@ -181,7 +182,9 @@ export const bandColours = new Map<string, ([number, number, number] | null)[]>(
 
 /** The image as a premultiplied RGBA texture with mipmaps (cached per url and scene). */
 export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture> {
-  const hit = textures.get(url)
+  const own = textures.get(scene) ?? new Map<string, Promise<RawTexture>>()
+  textures.set(scene, own)
+  const hit = own.get(url)
   if (hit) return hit
   const p = new Promise<RawTexture>((resolve, reject) => {
     const img = new Image()
@@ -212,8 +215,8 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
     }
     img.src = url
   })
-  textures.set(url, p)
-  p.catch(() => textures.delete(url))
+  own.set(url, p)
+  p.catch(() => own.delete(url))
   return p
 }
 

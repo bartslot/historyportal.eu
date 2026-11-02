@@ -11,11 +11,11 @@ import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
-import { layerAt, bandOf, DEPTH_Z } from '@stage25d/stage25d/layout'
+import { layerAt, bandOf, DEPTH_Z, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
-import { layerLabel } from './labels.js'
+import { layerLabel, numbered } from './labels.js'
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
@@ -82,6 +82,7 @@ export async function createStage25d (host, opts = {}) {
   let skySelected = false    // the sky row is the selection (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
   let pointer = null
+  let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
 
   const startLoop = () => {
     stage.engine.runRenderLoop(() => {
@@ -114,11 +115,16 @@ export async function createStage25d (host, opts = {}) {
   /** The sky picture on stage: set.sky is an asset id or just tags ("sky morning"), which the stage resolves to the best match. */
   const skyAsset = () => (cfg?.set?.sky && libData ? (assets.get(cfg.set.sky) ?? resolveAsset(libData, { asset: cfg.set.sky }, 'sky')) : null)
 
-  /** Does a layer stand on the ground? Backdrops that span the view (sky picture, bg strips) and sky-depth pictures don't. */
+  /** Does a layer stand on the ground? Backdrops that span the view (sky picture, bg strips) and sky-depth pictures
+   *  don't; a floor tile (a 'ground' picture, lying flat) does, at its distance. */
   const onGround = (i) => {
     const a = assets.get(layers[i]?.asset)
-    return !!(layers[i] && a && !a.tileable_x && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
+    return !!(layers[i] && a && (!a.tileable_x || a.layer === 'ground') && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
   }
+  /** A painted strip of ground and a picture lying flat stand on the floor itself, not on the ground rising into the
+   *  far landscape. */
+  const floorOnly = (layer, a) => isGroundStrip(a) || liesFlat(layer, a)
+  const onFloor = (i) => { const a = assets.get(layers[i]?.asset); return !!a && floorOnly(layers[i], a) }
   /** A layer's distance in metres at the playhead: its z (keyed or not), else its band's (scenes from before z). */
   const zNow = (i) => layerAt(layers[i], nowT()).z ?? DEPTH_Z[layers[i].depth]
   /** Resizing moves a picture in distance (its real height never changes); a keyed scale still scales. */
@@ -167,8 +173,10 @@ export async function createStage25d (host, opts = {}) {
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
           onGround, byDistance,
-          groundUnder: (x, y, lift) => groundUnderRay(stage.pointerRay(x, y), lift),
-          footY: (i) => stage.layerFootY(i),
+          // the feet slide over the ground as it rises into the far landscape, at their own height above it (a ground
+          // strip stays on the floor itself: layout.ts isGroundStrip)
+          groundUnder: (x, y, lift, i) => groundUnderRay(stage.pointerRay(x, y), onFloor(i) ? lift : (z) => stage.groundHeightAt(z) + lift),
+          footY: (i) => stage.layerFootY(i) - (onFloor(i) ? 0 : stage.groundHeightAt(zNow(i))),
           eye,
           onSettled: (i) => api.settleBand(i),
           onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
@@ -256,7 +264,7 @@ export async function createStage25d (host, opts = {}) {
         id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null,
         ground: onGround(layerIndex(id)),
         showScale: !onGround(layerIndex(id)) || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined),
-        label: layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
+        label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         file: asset ? `${libData.base}${asset.file}` : null,
         motion: { kind: own.kind ?? base, amount: own.amount ?? 1, speed: own.speed ?? 1 },
       }
@@ -338,7 +346,7 @@ export async function createStage25d (host, opts = {}) {
       const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : 'mid'
       let layer = { asset: assetId, depth, x: 0.5, scale: 1 }
       if (!(a.tileable_x || a.layer === 'bg' || a.layer === 'sky')) {
-        const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y)) : null
+        const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y), floorOnly({}, a) ? 0 : (z) => stage.groundHeightAt(z)) : null
         const spot = layerOf(settle(hit ?? [0, DEPTH_Z[depth]]))
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }
       }
@@ -391,9 +399,11 @@ export async function createStage25d (host, opts = {}) {
       // Copy what the loop draws, in the task of a frame (a WebGL canvas only holds its picture until the next one
       // starts). A hidden page draws no frames: no picture beats a wrong one.
       stage.engine.resize()
+      stills++
+      stage.gridHidden = true   // the editor's grid is not part of the scene (hidden while any picture is being taken)
       return new Promise((resolve) => {
         let frames = 0
-        const done = (url) => { stage.engine.onEndFrameObservable.remove(watch); clearTimeout(timer); resolve(url) }
+        const done = (url) => { stage.engine.onEndFrameObservable.remove(watch); clearTimeout(timer); stage.gridHidden = --stills > 0; resolve(url) }
         const watch = stage.engine.onEndFrameObservable.add(() => { if (++frames >= 6) done(grab()) })
         const timer = setTimeout(() => done(null), 4000)
       })
@@ -412,7 +422,8 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Rows for the object list and timeline: every layer, then the camera. */
     items: () => [
-      ...layers.map((l, i) => ({ id: `layer-${i}`, label: layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`, depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
+      ...numbered(layers.map((l, i) => layerLabel(l, assets.get(l.asset), (document.documentElement.lang || 'en').slice(0, 2)) || `layer ${i + 1}`))
+        .map((label, i) => ({ id: `layer-${i}`, label, depth: layers[i].depth, z: layers[i].z ?? DEPTH_Z[layers[i].depth], keys: layers[i].keys ?? [] })),
       ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: [] }] : []),
       { id: 'camera', label: 'Camera', depth: null, keys: [] },
     ],

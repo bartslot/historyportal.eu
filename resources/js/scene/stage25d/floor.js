@@ -20,15 +20,41 @@ export const snapStepAt = (z) => gridStep(z) / 4
 
 /**
  * Pointer ray → the ground point under it [x, z] in metres, unsnapped. Null when the ray never meets the ground in
- * front of the camera (the pointer above the horizon): the picture stays put. `lift`: the height the picture's feet
- * stand at (a picture rising into the far landscape): the ray meets that plane instead.
+ * front of the camera (the pointer above the horizon): the picture stays put. `lift`: the height of the ground the
+ * feet stand on, in metres, or that height per distance (`z => metres`: the ground rising into the far landscape),
+ * found by walking the ray onto it.
  * @param {{origin: number[], dir: number[]}} ray
+ * @param {number | ((z: number) => number)} [lift]
  */
 export function groundUnderRay (ray, lift = 0) {
-  const t = (GROUND.z + lift - ray.origin[1]) / ray.dir[1]
-  if (!Number.isFinite(t) || t <= 0) return null
-  return worldToCell(GROUND, [ray.origin[0] + t * ray.dir[0], ray.origin[2] + t * ray.dir[2]])
+  const heightAt = typeof lift === 'function' ? lift : () => lift
+  const at = (t) => [ray.origin[0] + t * ray.dir[0], ray.origin[2] + t * ray.dir[2]]
+  // how far the ray is above the ground at t (negative: it went under)
+  const above = (t) => ray.origin[1] + t * ray.dir[1] - (GROUND.z + heightAt(at(t)[1]))
+  if (!(ray.dir[2] > 0)) return null
+  const tFar = (GROUND_FAR_M * SURFACE_REACH - ray.origin[2]) / ray.dir[2]
+  // walk out to where it first crosses the ground (from above, or from below for feet higher than the eye), then
+  // halve the step until it lands on it
+  const side = Math.sign(above(0))
+  if (side === 0) return worldToCell(GROUND, at(0))
+  let lo = 0
+  let hi = null
+  for (let i = 1; i <= SURFACE_STEPS; i++) {
+    const t = (tFar * i) / SURFACE_STEPS
+    if (Math.sign(above(t)) !== side) { hi = t; break }
+    lo = t
+  }
+  if (hi === null) return null
+  for (let i = 0; i < SURFACE_HALVINGS; i++) {
+    const mid = (lo + hi) / 2
+    if (Math.sign(above(mid)) === side) lo = mid; else hi = mid
+  }
+  return worldToCell(GROUND, at(hi))
 }
+/** Walking a pointer ray onto the ground: how far out (a share past the far end), in how many steps, then halvings. */
+const SURFACE_REACH = 4
+const SURFACE_STEPS = 400
+const SURFACE_HALVINGS = 30
 
 /** Snap a ground point to the grid at its distance and keep it on the ground. Never off the grid. */
 export function settle (cell) {
@@ -61,15 +87,30 @@ export function pointForSizeRatio ([gx, gz], ratio, eye = [0, 0]) {
   return clampCell(GROUND, alongSight([gx, gz], z, eye))
 }
 
-/** The ground grid as polylines of stage world points [x, y, z], ready for a projector. */
-export function gridPolylines () {
-  const [[x0], [x1]] = GROUND.cells
-  return [[GROUND_NEAR_M, 12, 1], [12, 40, 5], [40, 100, 20]].flatMap(([z0, z1, every]) => {
-    const span = Math.min(x1, every * 40)
-    const part = { ...GROUND, cells: [[Math.max(x0, -span), z0], [Math.min(x1, span), z1]] }
-    return gridLines(part, every, 12).map((line) => line.map((c) => {
-      const [x, z, y] = cellToWorld(GROUND, c)
-      return [x, y, z]
-    }))
+/** The grid drawn while editing: [from, to, every] metres. Few lines: a guide, not a pattern over the picture. */
+const GRID_ROWS = [[GROUND_NEAR_M, 12, 2], [12, 40, 10], [40, GROUND_FAR_M, 40]]
+/** Lines run this many grid steps out to each side (far past the frame: a camera move never finds the edge). */
+const GRID_SIDE_STEPS = 20
+
+/**
+ * The ground grid in pieces, nearest first: each piece is the stretch up to one row line, with the row at its far
+ * edge (`z`) and the lines running away from the camera across it, as polylines of ground points [x, z] sampled every
+ * metre (the stage lifts each point onto the ground there). The stage draws each piece in the pictures' order at `z`.
+ * @returns {{ z: number, lines: number[][][] }[]}
+ */
+export function gridPieces () {
+  return GRID_ROWS.flatMap(([z0, z1, every], section) => {
+    const span = every * GRID_SIDE_STEPS
+    const pieces = []
+    let from = z0
+    for (let z = Math.ceil(z0 / every) * every; z <= z1; z += every) {
+      if (z === z0 && section > 0) continue   // the row the section before ended on
+      const part = { ...GROUND, cells: [[-span, from], [span, z]] }
+      const lines = gridLines(part, every, Math.max(1, Math.round(z - from)))
+        .filter((line) => (line[0][0] !== line[line.length - 1][0] ? line[0][1] === z : z > from))   // its own row, and the lines across it
+      pieces.push({ z, lines: lines.map((line) => line.map((c) => cellToWorld(GROUND, c).slice(0, 2))) })
+      from = z
+    }
+    return pieces
   })
 }

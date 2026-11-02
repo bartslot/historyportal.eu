@@ -13,7 +13,7 @@
  */
 import { viewWidthAt } from '@stage25d/stage25d/layout'
 import { handleCss } from '../ArtworkOverlay.js'
-import { settle, pointForSizeRatio, alongSight, gridPolylines, groundOf, layerOf } from './floor.js'
+import { settle, pointForSizeRatio, alongSight, gridPieces, groundOf, layerOf } from './floor.js'
 
 const X_MIN = -1
 const X_MAX = 2
@@ -28,8 +28,8 @@ const X_MAX = 2
  * @param {(index: number, property: string, value: number) => void} c.onChange
  * @param {(index: number) => boolean} c.onGround              the layer stands on the ground (not a backdrop)
  * @param {(index: number) => boolean} c.byDistance            resizing moves it in distance, not in scale
- * @param {(x: number, y: number, lift?: number) => number[] | null} c.groundUnder   the ground point [x, z] in metres under a
- *        canvas point (on the plane `lift` metres up, where a lifted picture's feet stand)
+ * @param {(x: number, y: number, lift?: number, index?: number) => number[] | null} c.groundUnder   the ground point [x, z] in metres under a
+ *        canvas point, for feet `lift` metres above the ground (layer `index`: a strip keeps to the floor)
  * @param {(index: number) => number} [c.footY]                 how high a layer's feet stand now
  * @param {() => number[]} c.eye                                where the camera stands on the ground, [x, z]
  * @param {(index: number) => void} [c.onSettled]               a drag along the ground ended
@@ -64,44 +64,12 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   })
   host.appendChild(box)
 
-  // The ground grid, drawn over the canvas while editing (never in the player: this file is the editor's).
-  const NS = 'http://www.w3.org/2000/svg'
-  const grid = document.createElementNS(NS, 'svg')
-  grid.setAttribute('aria-hidden', 'true')
-  grid.dataset.stage25dGrid = ''
-  grid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;pointer-events:none;z-index:1;'
-  host.appendChild(grid)
+  // The ground grid while editing (never in the player: this file is the editor's), drawn by the stage on the ground
+  // itself, under the pictures: a faint pencil line in the theme's neutral ink (amber vanishes into painted grass).
+  stage()?.setGrid?.(gridPieces(), themeRgb(host, '--color-neutral'))
   const chip = document.createElement('div')
   chip.style.cssText = 'position:absolute;display:none;pointer-events:none;z-index:4;padding:1px 6px;border-radius:4px;font:12px/1.4 system-ui,sans-serif;background:rgba(15,23,42,0.85);color:#fff;transform:translate(-50%,6px);white-space:nowrap;'
   host.appendChild(chip)
-  const lines = gridPolylines()
-  let gridKey = null
-
-  const drawGrid = () => {
-    const st = stage()
-    if (!st?.screenOf) return
-    const key = st.cameraKey()
-    if (key === gridKey) return   // redrawn only when the camera (or the canvas size) changed
-    gridKey = key
-    const r = canvas.getBoundingClientRect()
-    const h = host.getBoundingClientRect()
-    const dx = r.left - h.left
-    const dy = r.top - h.top
-    const project = st.projector?.() ?? ((w) => st.screenOf(w))
-    let d = ''
-    for (const line of lines) {
-      let run = []
-      const flush = () => { if (run.length > 1) d += `M${run.map((p) => `${p.x},${p.y}`).join('L')}`; run = [] }
-      for (const w of line) {
-        const p = project(w)
-        if (p && Number.isFinite(p.x) && Math.abs(p.y) < 20) run.push({ x: (dx + p.x * r.width).toFixed(1), y: (dy + p.y * r.height).toFixed(1) }); else flush()
-      }
-      flush()
-    }
-    // a dark line under the amber one: readable over painted grass
-    grid.innerHTML = `<path d="${d}" fill="none" style="stroke:#0f172a;stroke-opacity:0.45;stroke-width:3px"/>`
-      + `<path d="${d}" fill="none" style="stroke:var(--color-primary);stroke-opacity:0.9;stroke-width:1.25px"/>`
-  }
 
   const showChip = (index) => {
     const b = rectOf()
@@ -130,7 +98,6 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   }
 
   const place = () => {
-    drawGrid()
     const b = rectOf()
     if (!b) { box.style.display = 'none'; return }
     const r = canvas.getBoundingClientRect()
@@ -183,7 +150,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     const { x, y } = local(e)
     if (drag?.mode === 'move' && drag.ground) {
       // Slide along the ground: the feet go where the pointer moved them on screen, onto the ground there, snapped.
-      const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1], drag.lift)
+      const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1], drag.lift, drag.index)
       if (!at) return   // no ground under the feet (above the horizon): it stays put
       const to = layerOf(settle(at))
       onChange(drag.index, 'x', clampTo(to.x, X_MIN, X_MAX))   // the server's range: far off to the side is off the stage
@@ -254,8 +221,17 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     destroy () {
       window.removeEventListener('scene-object-selected', onOther)
       box.remove()
-      grid.remove()
+      stage()?.setGrid?.(null)
       chip.remove()
     },
   }
+}
+
+/** A theme colour (a CSS variable) as 0..1 RGB for the stage: a 1 px canvas reads any CSS colour, oklch too. */
+function themeRgb (el, name) {
+  const g = document.createElement('canvas').getContext?.('2d', { willReadFrequently: true })
+  if (!g) return [0.2, 0.25, 0.33]   // no 2D canvas (tests): slate
+  g.fillStyle = getComputedStyle(el).getPropertyValue(name).trim() || 'slategray'
+  g.fillRect(0, 0, 1, 1)
+  return [...g.getImageData(0, 0, 1, 1).data.slice(0, 3)].map((v) => v / 255)
 }

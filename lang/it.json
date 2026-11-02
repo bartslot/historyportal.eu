@@ -2454,5 +2454,9 @@
     "Sky": "Cielo",
     "Sunlight": "Luce del sole",
     "X": "X",
-    "Y": "Y"
+    "Y": "Y",
+    "Middle ground": "Piano intermedio",
+    "Foreground": "Primo piano",
+    "Props": "Oggetti",
+    "Ground": "Terreno"
 }

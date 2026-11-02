@@ -109,6 +109,23 @@ class StageEditingTest extends TestCase
         $editor->call('selectScene', $scene->id)->assertDispatched('scene:load', fn ($name, $params) => $params['payload']['stillStale'] === false);
     }
 
+    public function test_the_editor_lists_the_stage_scenes_without_a_thumbnail_for_the_rail_to_fill(): void
+    {
+        $scene = $this->scene();
+        $other = Scene::create([
+            'lesson_id' => $scene->lesson_id, 'order' => 2, 'kind' => 'stage25d', 'script_segment' => 'y', 'status' => 'ready',
+            'config' => $scene->config,
+        ]);
+        Scene::create(['lesson_id' => $scene->lesson_id, 'order' => 3, 'kind' => 'game', 'script_segment' => 'z', 'status' => 'ready']);
+        SceneStill::store($scene, self::JPEG.'AAAA');
+
+        $stale = $this->editor($scene)->instance()->stage25dStaleStills();
+
+        $this->assertSame([$other->id], array_column($stale, 'id'));   // not the one with a picture, not the game
+        $this->assertSame(SceneStill::hash($other), $stale[0]['hash']);
+        $this->assertSame($other->config['stage25d'], $stale[0]['config']);
+    }
+
     public function test_the_layer_panel_changes_picture_motion_and_adds_a_layer_from_the_library(): void
     {
         $scene = $this->scene();

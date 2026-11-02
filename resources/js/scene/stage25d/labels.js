@@ -44,11 +44,34 @@ export function assetLabel (asset, lang = 'en') {
   return capital([...front, ...body].map((w) => pick(w, nl)).join(' '))
 }
 
+/** A character id as a name: "meisje" -> "Meisje", "dorpeling-b" -> "Dorpeling B". */
+const characterName = (id) => capital(String(id).replace(/-/g, ' ').replace(/ ([a-z])$/, (m, c) => ` ${c.toUpperCase()}`))
+
+/** The character a figure picture shows: its `char:` tag, else its id (fig-<character>-<pose>-01). */
+const characterOf = (asset) => {
+  const tag = (asset?.tags ?? []).find((t) => t.startsWith('char:'))
+  if (tag) return tag.slice(5)
+  const m = /^fig-(.+)-[a-z]+-\d+(-l)?$/.exec(String(asset?.id ?? ''))
+  return m ? m[1] : null
+}
+
 /** A layer's row name: a painted figure reads as its character ("Meisje"), anything else as its picture. */
 export function layerLabel (layer, asset, lang = 'en') {
-  if (layer.figure) return capital(String(layer.figure).replace(/-/g, ' '))
+  if (layer.figure) return characterName(layer.figure)
   const picture = asset ?? (layer.asset ? { id: layer.asset } : null)
+  const character = (picture?.layer === 'figure' || /^fig-/.test(String(picture?.id ?? ''))) && characterOf(picture)
+  if (character) return characterName(character)
   if (picture) return assetLabel(picture, lang)
   const need = Array.isArray(layer.need) ? layer.need[0] : layer.need
   return need ? capital(String(need)) : ''
+}
+
+/** Row names that repeat get a number from the second one on: Braam, Braam 2, Braam 3. */
+export function numbered (labels) {
+  const seen = new Map()
+  return labels.map((label) => {
+    const n = (seen.get(label) ?? 0) + 1
+    seen.set(label, n)
+    return n === 1 ? label : `${label} ${n}`
+  })
 }

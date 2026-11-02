@@ -1033,6 +1033,43 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (!on) clearTimeout(_stillTimer)
     }
 
+    // Scenes never opened in the editor have no thumbnail on the rail: once per page, after the open scene has settled,
+    // each of them is drawn on one small stage off screen (the same stage as the editor's) and its first frame saved.
+    let _otherStillsDone = false
+    const OTHER_STILLS_DELAY_MS = 6000
+    const fillOtherStills = () => {
+        if (_otherStillsDone) return
+        _otherStillsDone = true
+        setTimeout(async () => {
+            const wire = window.__step3Wire?.()
+            const todo = (await wire?.stage25dStaleStills?.().catch(() => null)) ?? []
+            const open = window.__stage25d?.sceneId
+            const scenes = todo.filter((s) => s.id !== open && !_stage25dStillAsked.has(s.id))
+            if (!scenes.length) return
+            const host = document.createElement('div')
+            host.setAttribute('aria-hidden', 'true')
+            host.style.cssText = 'position:fixed;left:-10000px;top:0;width:480px;height:270px;pointer-events:none;'
+            document.body.appendChild(host)
+            let stage = null
+            try {
+                stage = await mountStage25d(host)
+                for (const s of scenes) {
+                    try {
+                        await stage.show(s.config)
+                        stage.update(0)
+                        const frame = await stage.still()
+                        if (!frame) break   // the page is hidden: nothing draws now; the next visit asks again
+                        _stage25dStillAsked.add(s.id)
+                        await window.__step3Wire?.()?.saveStage25dStill(s.id, frame, s.hash)
+                    } catch (e) { console.warn(`wizard-bridge: no thumbnail for scene ${s.id}`, e) }
+                }
+            } finally {
+                stage?.destroy()
+                host.remove()
+            }
+        }, OTHER_STILLS_DELAY_MS)
+    }
+
     /** The editor's Alpine store tells the Assets tab which library to list. */
     function setStage25dFlag(on) {
         const view = window.Alpine?.store?.('view')
@@ -1093,6 +1130,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     } finally { _stage25dStillBusy.delete(payload.sceneId) }
                 }, 2500)
             }
+            fillOtherStills()
             // The timeline keeps the layers' keys as tracks: tell it the stage now holds a (new) copy.
             if (synced) window.dispatchEvent(new CustomEvent('stage25d-synced'))
         } catch (e) {

@@ -87,7 +87,7 @@
             <div class="flex flex-wrap items-center gap-1.5">
                 <template x-for="k in kinds" :key="k">
                     <button type="button" class="btn btn-xs" :class="kind === k ? 'btn-neutral' : 'btn-ghost'"
-                            x-on:click="kind = k" x-text="k === 'all' ? @js(__('All')) : k"></button>
+                            x-on:click="kind = k" x-text="@js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters')])[k] ?? k"></button>
                 </template>
                 <input type="search" x-model="query" placeholder="{{ __('Search') }}" aria-label="{{ __('Search') }}"
                        class="input input-xs ml-auto w-40" />

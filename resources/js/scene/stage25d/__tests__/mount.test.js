@@ -17,6 +17,7 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     tick () {}
     worldXAt (x) { return (x - 200) / 10 }
     pointerRay (x) { return { origin: [0, 1.6, 0], dir: [(x - 200) / 200, -0.2, 1] } }   // meets the ground 8 m out
+    groundHeightAt () { return 0 }
     layerBox () { return this.box ?? null }
     rebind (scene) { calls.rebound = scene }
     pose (scene, t) { calls.posed.push([scene.id, t]) }

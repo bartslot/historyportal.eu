@@ -62,11 +62,13 @@
                 </select>
             </x-ui.panel-row>
             @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
+                <div x-show="info?.motion?.kind !== 'none'">
                 <x-ui.panel-row :label="$label">
                     <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-stage25d-motion="{{ $prop }}"
                            aria-label="{{ $label }}"
                            :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
                 </x-ui.panel-row>
+                </div>
             @endforeach
         </div>
     @else

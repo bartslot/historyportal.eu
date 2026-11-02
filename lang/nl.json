@@ -2496,5 +2496,9 @@
     "Sky": "Lucht",
     "Sunlight": "Zonlicht",
     "X": "X",
-    "Y": "Y"
+    "Y": "Y",
+    "Middle ground": "Middengrond",
+    "Foreground": "Voorgrond",
+    "Props": "Voorwerpen",
+    "Ground": "Grond"
 }

@@ -6,15 +6,15 @@
 import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, Scene as BScene, UniversalCamera, Vector3,
-  type RawTexture,
+  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3,
+  type LinesMesh, type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, LAND_TARGET, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
@@ -27,7 +27,7 @@ export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number }
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -150,12 +150,13 @@ export class Stage {
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
-      handle.mesh.alphaIndex = layer.flat ? DECAL_SLOT : p.alphaIndex
-      if (layer.flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
+      const flat = liesFlat(layer, asset)
+      handle.mesh.alphaIndex = flat ? DECAL_SLOT : p.alphaIndex
+      if (flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
       // a contact stain on the ground under standing things (not under far strips or floating sky props)
       let stain: Stain | undefined, cast: Stain | undefined, stainDepth: ((z: number) => number) | undefined
-      if (STANDING.includes(layer.depth) && !asset.tileable_x && !layer.flat) {
+      if (STANDING.includes(layer.depth) && !asset.tileable_x && !flat && !isGroundStrip(asset)) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stainDepth = (z) => stainSize(asset, p.w, p.h, z).d / sz.d   // the stain's depth at another distance, as a share of this one
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
@@ -164,7 +165,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file), flat, skyline: skylines.get(lib.base + asset.file) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -208,7 +209,7 @@ export class Stage {
     this.strip = strip
     // smoke from every fire in the scene, rebuilt with it
     this.smoke.forEach((m) => m.dispose())
-    this.smoke = next.filter((b) => smokes(b.asset) && STANDING.includes(b.layer.depth) && !b.layer.flat).map((b) => {
+    this.smoke = next.filter((b) => smokes(b.asset) && STANDING.includes(b.layer.depth) && !b.flat).map((b) => {
       const p = placeLayer(b.asset, b.layer, b.order)
       return makeSmoke(this.scene, new Vector3(b.handle.mesh.position.x, p.h * 0.6, p.z), Math.min(Math.max(p.h * 0.8, 0.5), 3), p.alphaIndex)
     })
@@ -247,10 +248,12 @@ export class Stage {
   pickLayers(x: number, y: number): { index: number; asset: Asset; u: number; v: number }[] {
     const owns = (m: unknown) => this.built.some((b) => b.handle.mesh === m)
     const out: { index: number; asset: Asset; u: number; v: number }[] = []
-    for (const hit of this.scene.multiPick(x, y, owns) ?? []) {
+    const hits = [...(this.scene.multiPick(x, y, owns) ?? [])].sort((a, b) => a.distance - b.distance)   // nearest first
+    for (const hit of hits) {
       const b = this.built.find((n) => n.handle.mesh === hit.pickedMesh)
       const uv = hit.getTextureCoordinates()
       if (!b || !uv || b.index < 0 || b.asset.tileable_x || ['sky', 'bg', 'ground'].includes(b.asset.layer)) continue
+      if (isGroundStrip(b.asset) && (hit.pickedPoint?.y ?? 0) < 0) continue   // a strip's body under the floor is hidden by it
       out.push({ index: b.index, asset: b.asset, u: uv.x, v: uv.y })
     }
     return out
@@ -267,10 +270,17 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
-  /** How high a built layer's anchor (its feet) stands above the floor now, in metres: 0 on the ground, more for a
-   *  picture lifted into the far landscape (set.horizon) or by its own y. */
+  /** How high the ground stands at distance z in the scene on screen (groundHeight): pictures and the grid stand on it. */
+  groundHeightAt(z: number): number { return groundHeight(z, this.land) }
+  private land = 0
+
+  /** How high a built layer's anchor (its feet) stands above the floor now, in metres: 0 on the floor, more for a
+   *  picture on the ground rising into the far landscape (groundHeightAt) or by its own y. A ground strip stands on
+   *  the floor itself: its visible bottom is the floor line, whatever of it is below. */
   layerFootY(index: number): number {
-    return this.built.find((n) => n.index === index)?.handle.mesh.position.y ?? 0
+    const b = this.built.find((n) => n.index === index)
+    if (!b) return 0
+    return isGroundStrip(b.asset) ? (b.layer.y ?? 0) : b.handle.mesh.position.y
   }
 
   /** The pointer's ray in world space (origin and direction), for finding the floor cell under it. */
@@ -279,30 +289,44 @@ export class Stage {
     return { origin: [ray.origin.x, ray.origin.y, ray.origin.z], dir: [ray.direction.x, ray.direction.y, ray.direction.z] }
   }
 
-  /** A world point [x, y, z] as shares of the canvas (0..1 from its top-left); null behind the camera. For the grid. */
-  screenOf(p: [number, number, number]): { x: number; y: number } | null { return this.projector()(p) }
-
-  /** screenOf for many points under one camera (the editor's grid): the camera's matrices are read once, not per point. */
-  projector(): (p: [number, number, number]) => { x: number; y: number } | null {
-    const w = this.engine.getRenderWidth(), h = this.engine.getRenderHeight()
-    const eye = this.camera.position.clone()
-    const forward = this.camera.getForwardRay().direction.clone()
-    const view = this.camera.viewport.toGlobal(w, h)
-    const m = this.scene.getTransformMatrix()
-    const v = new Vector3(), s = new Vector3()
-    return (p) => {
-      v.set(p[0] - eye.x, p[1] - eye.y, p[2] - eye.z)
-      if (Vector3.Dot(v, forward) <= 0.01) return null
-      v.set(p[0], p[1], p[2])
-      Vector3.ProjectToRef(v, Matrix.IdentityReadOnly, m, view, s)
-      return { x: s.x / w, y: s.y / h }
-    }
+  /** The editor's ground grid: pieces of hairline on the ground (x, z in metres), each with the distance of its far
+   *  edge. Each piece is drawn in the pictures' own order (bandSlot): under everything standing at or in front of it,
+   *  over the floor, the ground bands and pictures behind it. It lies on the ground the pictures stand on
+   *  (groundHeight), so a picture's feet stay on its lines. Null takes it away. */
+  setGrid(pieces: { z: number; lines: [number, number][][] }[] | null, rgb: [number, number, number] = [1, 1, 1]) {
+    this.gridMeshes.forEach((m) => m.dispose())
+    this.gridMeshes = []
+    this.grid = pieces ? { pieces, rgb, land: null } : null
   }
 
-  /** The camera as it stands now, to tell the editor when its grid needs drawing again. */
-  cameraKey(): string {
-    const c = this.camera
-    return [c.position.x, c.position.y, c.position.z, c.rotation.x, c.fov, this.engine.getRenderWidth(), this.engine.getRenderHeight()].map((n) => n.toFixed(4)).join(',')
+  /** Hide the grid for a moment (a thumbnail of the scene is taken without it). */
+  set gridHidden(on: boolean) {
+    this.gridOff = on
+    this.gridMeshes.forEach((m) => m.setEnabled(!on))
+  }
+  private gridOff = false
+
+  private grid: { pieces: { z: number; lines: [number, number][][] }[]; rgb: [number, number, number]; land: number | null } | null = null
+  private gridMeshes: LinesMesh[] = []
+
+  /** (Re)draw the grid's pieces on the ground for this land height (landHeight): only when it changed. */
+  private poseGrid(land: number) {
+    const g = this.grid
+    if (!g || g.land === land) return
+    this.gridMeshes.forEach((m) => m.dispose())
+    const fade = (z: number) => GRID_ALPHA * Math.min(1, Math.max(0, (GRID_FADE_END_M - z) / (GRID_FADE_END_M - GRID_FADE_START_M)))
+    this.gridMeshes = g.pieces.map((piece, i) => {
+      const lines = piece.lines.map((line) => line.map(([x, z]) => new Vector3(x, groundHeight(z, land), z)))
+      const colors = piece.lines.map((line) => line.map(([, z]) => new Color4(g.rgb[0], g.rgb[1], g.rgb[2], fade(z))))
+      const mesh = MeshBuilder.CreateLineSystem(`grid-${i}`, { lines, colors, useVertexAlpha: true }, this.scene)
+      mesh.isPickable = false
+      mesh.setEnabled(!this.gridOff)
+      mesh.alphaIndex = bandSlot(piece.z) + GRID_SLOT_AHEAD   // a row at a band's own distance shows over the band
+      mesh.material!.depthFunction = Constants.ALWAYS   // on the floor: the floor's own depth never cuts it
+      mesh.material!.disableDepthWrite = true          // and it never cuts the feet of what stands on it
+      return mesh
+    })
+    g.land = land
   }
 
   /** World x where the pointer's ray crosses the vertical plane at `z`: how far a drag moved a picture of that depth. */
@@ -366,6 +390,10 @@ export class Stage {
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
     const bandK = lookNum(this.look, 'bandHeight')
+    const horizon = this.horizonOf(s)
+    const land = landHeight(horizon, this.strip)   // where pictures on the far ground stand: the strip's land line
+    this.land = land
+    this.poseGrid(land)
     this.bands.forEach((b) => {
       b.handle.mesh.position.y = bandBottom(b.z, bandK, b.h, b.skyline)   // its skyline on the crest, k x z up
       const ppm = pxPerMetre(renderH, b.z - HOUSE.z, fovRad(HOUSE.fov))
@@ -378,13 +406,14 @@ export class Stage {
     this.birds.update(clock, lookNum(this.look, 'birds'))
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, this.horizonOf(s))
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land)
       b.handle.mesh.position.x = p.x
-      b.handle.mesh.position.y = b.layer.flat ? DECAL_LIFT_M : p.y
+      // a ground strip stands like a ground band: its skyline on the crest, never its bottom above the floor
+      b.handle.mesh.position.y = b.flat ? DECAL_LIFT_M : isGroundStrip(b.asset) ? stripBottom(p.z, bandK, p.h * k.scale, b.skyline ?? 0) + p.y : p.y
       if (b.handle.mesh.position.z !== p.z) {
         // a picture moved along the ground (layer.z) changes distance: its draw slot follows; its stain rides along
         b.handle.mesh.position.z = p.z
-        if (!b.layer.flat) b.handle.mesh.alphaIndex = p.alphaIndex
+        if (!b.flat) b.handle.mesh.alphaIndex = p.alphaIndex
         if (b.stain) b.stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
         if (b.stain && b.stainDepth) b.stain.mesh.scaling.y = b.stainDepth(p.z)   // a stain is as deep as it looks from here
         if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
@@ -401,7 +430,7 @@ export class Stage {
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
       b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * k.opacity)
-      const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.layer.flat ? 'standing' : 'other'
+      const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
       b.handle.setAlive(aliveOf(this.look, kind, this.sunDir.x, this.footTint))
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
@@ -412,6 +441,12 @@ export class Stage {
 /** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
  *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */
 const NEAR_SPAN = 1.3
+
+/** The editor's ground grid: a faint hairline that fades out toward the far end of the ground, so it has no hard edge. */
+const GRID_ALPHA = 0.35
+const GRID_SLOT_AHEAD = 0.001
+const GRID_FADE_START_M = 40
+const GRID_FADE_END_M = 120
 
 /** A cast shadow's length per metre of height: the sun's run over its fall. */
 /** Birds cross the far sky just beyond the far landscape, drawn with the sky (before the floor and the strips). */
