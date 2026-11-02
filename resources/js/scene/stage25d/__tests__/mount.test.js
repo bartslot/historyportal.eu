@@ -18,6 +18,7 @@ vi.mock('@stage25d/stage25d/stage', () => ({
     pose (scene, t) { calls.posed.push([scene.id, t]) }
   },
 }))
+vi.mock('@stage25d/stage25d/look', () => ({ LOOK_RANGE: {}, lookNum: (look, key) => look[key] }))
 vi.mock('@stage25d/stage25d/library', () => ({
   loadLibrary: vi.fn(async (url) => ({ bundle: 'b', assets: [{ id: 'fig-meisje-push-01', height_m: 1.4 }], base: url })),
 }))
@@ -63,10 +64,13 @@ describe('stage25d live edits', () => {
 
   it('a base value is saved through onCommit with its layer index', async () => {
     const saved = []
-    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p) => saved.push([i, p]) })
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push(scene === undefined ? [i, p] : [i, p, scene]) })
     await stage.show(two())
     stage.commitLayerProp('layer-1', 'y', 0.3)
-    expect(saved).toEqual([[1, { y: 0.3 }]])
+    expect(saved).toEqual([])   // no scene stamped yet: a save must not go out without knowing which scene it is for
+    stage.sceneId = 5
+    stage.commitLayerProp('layer-1', 'y', 0.3)
+    expect(saved).toEqual([[1, { y: 0.3 }, 5]])
     expect(stage.config).toBeTruthy()
   })
 
