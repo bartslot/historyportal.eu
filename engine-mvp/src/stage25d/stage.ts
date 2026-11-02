@@ -27,7 +27,7 @@ export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number }
-interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; ink?: number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -154,16 +154,17 @@ export class Stage {
       if (layer.flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
       // a contact stain on the ground under standing things (not under far strips or floating sky props)
-      let stain: Stain | undefined, cast: Stain | undefined
+      let stain: Stain | undefined, cast: Stain | undefined, stainDepth: ((z: number) => number) | undefined
       if (STANDING.includes(layer.depth) && !asset.tileable_x && !layer.flat) {
         const sz = stainSize(asset, p.w, p.h, p.z)
+        stainDepth = (z) => stainSize(asset, p.w, p.h, z).d / sz.d   // the stain's depth at another distance, as a share of this one
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
         // and its shadow, cast along the one sun (S3's makeStain cast: puppets and props share the light)
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, ink: inkLevels.get(lib.base + asset.file) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -279,13 +280,23 @@ export class Stage {
   }
 
   /** A world point [x, y, z] as shares of the canvas (0..1 from its top-left); null behind the camera. For the grid. */
-  screenOf(p: [number, number, number]): { x: number; y: number } | null {
-    const v = new Vector3(p[0], p[1], p[2])
-    const rel = v.subtract(this.camera.position)
-    if (Vector3.Dot(rel, this.camera.getForwardRay().direction) <= 0.01) return null
-    const view = this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight())
-    const s = Vector3.Project(v, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view)
-    return { x: s.x / this.engine.getRenderWidth(), y: s.y / this.engine.getRenderHeight() }
+  screenOf(p: [number, number, number]): { x: number; y: number } | null { return this.projector()(p) }
+
+  /** screenOf for many points under one camera (the editor's grid): the camera's matrices are read once, not per point. */
+  projector(): (p: [number, number, number]) => { x: number; y: number } | null {
+    const w = this.engine.getRenderWidth(), h = this.engine.getRenderHeight()
+    const eye = this.camera.position.clone()
+    const forward = this.camera.getForwardRay().direction.clone()
+    const view = this.camera.viewport.toGlobal(w, h)
+    const m = this.scene.getTransformMatrix()
+    const v = new Vector3(), s = new Vector3()
+    return (p) => {
+      v.set(p[0] - eye.x, p[1] - eye.y, p[2] - eye.z)
+      if (Vector3.Dot(v, forward) <= 0.01) return null
+      v.set(p[0], p[1], p[2])
+      Vector3.ProjectToRef(v, Matrix.IdentityReadOnly, m, view, s)
+      return { x: s.x / w, y: s.y / h }
+    }
   }
 
   /** The camera as it stands now, to tell the editor when its grid needs drawing again. */
@@ -375,6 +386,7 @@ export class Stage {
         b.handle.mesh.position.z = p.z
         if (!b.layer.flat) b.handle.mesh.alphaIndex = p.alphaIndex
         if (b.stain) b.stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
+        if (b.stain && b.stainDepth) b.stain.mesh.scaling.y = b.stainDepth(p.z)   // a stain is as deep as it looks from here
         if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen

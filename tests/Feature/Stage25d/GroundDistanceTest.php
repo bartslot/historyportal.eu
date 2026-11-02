@@ -129,4 +129,19 @@ class GroundDistanceTest extends TestCase
 
         $this->assertEquals([0.75, 22, 0.6, 'mid'], [$stone['x'], $stone['z'], $stone['scale'], $stone['depth']]);
     }
+
+    public function test_a_list_drag_moves_the_keys_of_a_picture_whose_distance_is_keyed(): void
+    {
+        $stage = $this->stage();
+        $stage['set']['layers'][2]['keys'] = [['t' => 0, 'x' => 0.2, 'z' => 7], ['t' => 3, 'x' => 0.8, 'z' => 9]];
+        $scene = $this->scene($stage);
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
+
+        // the girl dragged behind the stone: the browser moved her keys 20 m back with her
+        $editor->call('reorderStage25dLayers', [3, 1, 2, 0], 2, $scene->id, 0.5, 27.0, 1.0, [['t' => 0, 'x' => 0.2, 'z' => 27], ['t' => 3, 'x' => 0.8, 'z' => 29]]);
+        $girl = collect($scene->fresh()->config['stage25d']['set']['layers'])->firstWhere('asset', 'fig-meisje');
+
+        $this->assertEquals([27, 29], array_column($girl['keys'], 'z'));
+        $this->assertSame('mid', $girl['depth']);
+    }
 }

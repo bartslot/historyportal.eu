@@ -2444,5 +2444,15 @@
     "The restyle did not work. Nothing was changed.": "Das Neugestalten hat nicht geklappt. Nichts wurde geändert.",
     "Restyling 1/2: ink…": "Neu gestalten 1/2: Tusche…",
     "Restyling 2/2: colour…": "Neu gestalten 2/2: Farbe…",
-    "Stage art": "Bühnenbild"
+    "Stage art": "Bühnenbild",
+    "Birds": "Vögel",
+    "Change picture": "Bild ändern",
+    "Ground detail": "Bodendetail",
+    "Paper grain": "Papierstruktur",
+    "Replace": "Ersetzen",
+    "Shadows": "Schatten",
+    "Sky": "Himmel",
+    "Sunlight": "Sonnenlicht",
+    "X": "X",
+    "Y": "Y"
 }

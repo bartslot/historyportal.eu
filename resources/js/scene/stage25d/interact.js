@@ -87,13 +87,14 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     const h = host.getBoundingClientRect()
     const dx = r.left - h.left
     const dy = r.top - h.top
+    const project = st.projector?.() ?? ((w) => st.screenOf(w))
     let d = ''
     for (const line of lines) {
       let run = []
       const flush = () => { if (run.length > 1) d += `M${run.map((p) => `${p.x},${p.y}`).join('L')}`; run = [] }
       for (const w of line) {
-        const p = st.screenOf(w)
-        if (p && Number.isFinite(p.x) && Math.abs(p.y) < 20) run.push({ x: dx + p.x * r.width, y: dy + p.y * r.height }); else flush()
+        const p = project(w)
+        if (p && Number.isFinite(p.x) && Math.abs(p.y) < 20) run.push({ x: (dx + p.x * r.width).toFixed(1), y: (dy + p.y * r.height).toFixed(1) }); else flush()
       }
       flush()
     }

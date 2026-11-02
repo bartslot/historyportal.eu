@@ -293,7 +293,16 @@ export async function createStage25d (host, opts = {}) {
         const nz = Math.round(Math.min(GROUND.cells[1][1], Math.max(GROUND.cells[0][1], to)) * 100) / 100
         const e = eye()
         const k = (nz - e[1]) / Math.max(0.1, z - e[1])
-        call(order, moved, api.sceneId, layerOf(alongSight(p, nz, e)).x, nz, round3(Math.min(20, Math.max(0.01, (layers[moved].scale ?? 1) * k))))
+        const scaleBy = (s) => round3(Math.min(20, Math.max(0.01, s * k)))
+        // a keyed distance or size wins over the base: the keys move with it, by the same step
+        const keys = layers[moved].keys?.some((key) => key.z !== undefined || key.scale !== undefined)
+          ? layers[moved].keys.map((key) => ({
+            ...key,
+            ...(key.z !== undefined && { z: Math.min(GROUND.cells[1][1], Math.max(GROUND.cells[0][1], round3(key.z + nz - z))) }),
+            ...(key.scale !== undefined && { scale: scaleBy(key.scale) }),
+          }))
+          : null
+        call(order, moved, api.sceneId, layerOf(alongSight(p, nz, e)).x, nz, scaleBy(layers[moved].scale ?? 1), keys)
         return
       }
       // already between them: only the order changes; its place is saved as it is (a scene from before z gets one)
@@ -346,7 +355,10 @@ export async function createStage25d (host, opts = {}) {
       const band = bandOf(zNow(i))
       if (band === l.depth) return
       layers = layers.map((n, k) => (k === i ? { ...n, depth: band } : n))
+      const keep = hidden   // the rebuild forgets the eye; pictures hidden with it stay hidden
       await api.show({ ...cfg, set: { ...cfg.set, layers } })
+      hidden = keep
+      redraw()
       if (api.sceneId != null) opts.onCommit?.(i, { depth: band }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
       pointer?.select(i, false)

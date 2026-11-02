@@ -1538,7 +1538,7 @@
                         // A stage25d layer: the list order is the depth order, saved on the server (it rebuilds the stage).
                         if (this.items.find((i) => i.id === evt.item.dataset.objId)?.s25) {
                             const order = ids.filter((id) => id.startsWith('s25_layer-')).map((id) => Number(id.slice(10)));
-                            window.__stage25d?.reorderLayers(order, Number(evt.item.dataset.objId.slice(10)), (o, m, scene, x, z, scale) => this.$wire.reorderStage25dLayers(o, m, scene, x, z, scale));
+                            window.__stage25d?.reorderLayers(order, Number(evt.item.dataset.objId.slice(10)), (o, m, scene, x, z, scale, keys = null) => this.$wire.reorderStage25dLayers(o, m, scene, x, z, scale, keys));
                             this._sig = null;
                             return;
                         }

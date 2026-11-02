@@ -2444,5 +2444,15 @@
     "The restyle did not work. Nothing was changed.": "La restylisation n'a pas fonctionné. Rien n'a été modifié.",
     "Restyling 1/2: ink…": "Restylisation 1/2 : encre…",
     "Restyling 2/2: colour…": "Restylisation 2/2 : couleur…",
-    "Stage art": "Décor"
+    "Stage art": "Décor",
+    "Birds": "Oiseaux",
+    "Change picture": "Changer d'image",
+    "Ground detail": "Détail du sol",
+    "Paper grain": "Grain du papier",
+    "Replace": "Remplacer",
+    "Shadows": "Ombres",
+    "Sky": "Ciel",
+    "Sunlight": "Lumière du soleil",
+    "X": "X",
+    "Y": "Y"
 }

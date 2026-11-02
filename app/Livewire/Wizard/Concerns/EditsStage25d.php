@@ -146,7 +146,7 @@ trait EditsStage25d
      *
      * @param  list<int>  $order
      */
-    public function reorderStage25dLayers(array $order, int $moved, int $sceneId, ?float $x = null, ?float $z = null, ?float $scale = null): void
+    public function reorderStage25dLayers(array $order, int $moved, int $sceneId, ?float $x = null, ?float $z = null, ?float $scale = null, ?array $keys = null): void
     {
         $scene = $this->stage25dScene();
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
@@ -165,6 +165,10 @@ trait EditsStage25d
             // On the ground: standing nearer or farther than its neighbours is a distance; the browser worked it out
             // (and the x and scale that keep its column and its size on screen). Its band follows the distance.
             $layers[$moved] = [...$layers[$moved], ...LayerKeys::clean(['x' => $x, 'z' => $z, 'scale' => $scale]), 'depth' => self::bandOf($z)];
+            if ($keys !== null && isset($layers[$moved]['keys'])) {
+                // a keyed distance or size wins over the base: the browser moved the keys by the same step
+                $layers[$moved]['keys'] = LayerKeys::sanitize($keys, max((float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds));
+            }
         }
         $ref = $order[$at + 1] ?? ($order[$at - 1] ?? null);
         $from = $layers[$moved]['depth'] ?? 'mid';
