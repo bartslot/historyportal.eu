@@ -26,10 +26,10 @@ trait EditsStage25d
      * @param  array<string,mixed>  $patch
      */
     #[On('stage25d:layer')]
-    public function saveStage25dLayer(int $index, array $patch, ?int $sceneId = null): void
+    public function saveStage25dLayer(int $index, array $patch, int $sceneId): void
     {
         $scene = $this->stage25dScene();
-        if ($sceneId !== null && $scene?->id !== $sceneId) {
+        if ($scene?->id !== $sceneId) {
             return;   // a debounced save from a scene the teacher has since left
         }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
@@ -69,16 +69,17 @@ trait EditsStage25d
 
     /** One scene look value (config.stage25d.look.<key>). */
     #[On('stage25d:look')]
-    public function saveStage25dLook(string $key, mixed $value, ?int $sceneId = null): void
+    public function saveStage25dLook(string $key, mixed $value, int $sceneId): void
     {
         $scene = $this->stage25dScene();
-        if (! $scene || ($sceneId !== null && $scene->id !== $sceneId) || ! isset(self::LOOK_RANGES[$key]) || ! is_numeric($value) || ! is_finite((float) $value)) {
+        if (! $scene || $scene->id !== $sceneId || ! isset(self::LOOK_RANGES[$key]) || ! is_numeric($value) || ! is_finite((float) $value)) {
             return;
         }
         [$min, $max] = self::LOOK_RANGES[$key];
         $config = $scene->config;
         $config['stage25d']['look'][$key] = max($min, min($max, (float) $value));
         $scene->update(['config' => $config]);
+        $this->selectedScene['config']['stage25d']['look'][$key] = $config['stage25d']['look'][$key];
     }
 
     /**
@@ -134,6 +135,9 @@ trait EditsStage25d
         $config['stage25d']['set']['layers'] = array_values($layers);
         if ($config !== $scene->config) {
             $scene->update(['config' => $config]);
+            if ((int) $this->selectedSceneId === $scene->id) {
+                $this->selectedScene['config']['stage25d'] = $config['stage25d'];   // the panel opens layers the snapshot did not have
+            }
         }
     }
 }

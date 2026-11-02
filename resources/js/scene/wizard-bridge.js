@@ -1007,8 +1007,29 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0
+    const stage25dLookSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:look', save), DIO_MOVE_PAUSE_MS)
     const _stage25dStillAsked = new Set()
+    const _stage25dStillBusy = new Set()
+    // The open scene's thumbnail follows its edits, a few seconds after the last one; only while the stage shows the
+    // scene's first frame (a scrubbed or half-hidden frame is not what the rail should show).
+    let _stillTimer = null
+    const refreshStill = () => {
+        clearTimeout(_stillTimer)
+        _stillTimer = setTimeout(async () => {
+            const st = window.__stage25d
+            if (!st?.atStart?.() || st.sceneId == null) return
+            const sceneId = st.sceneId
+            const frame = await st.still()
+            if (frame && st.sceneId === sceneId) window.__step3Wire?.()?.saveStage25dStill(sceneId, frame, null)
+        }, 3000)
+    }
     let _stage25dStillWatch = false
+    const watchStills = (on) => {
+        if (on === _stage25dStillWatch) return
+        _stage25dStillWatch = on
+        for (const ev of ['timeline-changed', 'stage25d-edited']) window[on ? 'addEventListener' : 'removeEventListener'](ev, refreshStill)
+        if (!on) clearTimeout(_stillTimer)
+    }
 
     /** The editor's Alpine store tells the Assets tab which library to list. */
     function setStage25dFlag(on) {
@@ -1023,6 +1044,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         _stage25d = _stage25dHost = null
         window.__stage25d = null
         setStage25dFlag(false)
+        watchStills(false)
     }
 
     async function showStage25d(payload, isCurrent) {
@@ -1037,44 +1059,36 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'   // only the stage's own canvas takes the pointer
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { editable: true, onLook: (key, value, sceneId) => window.Livewire?.dispatch('stage25d:look', { key, value, sceneId }), onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
+            _stage25d = mountStage25d(host, { editable: true, onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {
             const stage = await mounting
             if (req !== _stage25dReq || !isCurrent()) return
             let synced = false
-            if (stage.sceneId !== payload.sceneId) window.__stage25d = null   // the old scene's layers must not take a save meant for this one
-            if (!stage.matches(cfg)) { await stage.show(cfg); synced = true }
+            if (stage.sceneId !== payload.sceneId) { window.__stage25d = null; stage.clearSelection() }   // the old scene's layers must not take a save meant for this one
+            const savesPending = stage25dLayerSaves.isPending() || stage25dLookSaves.isPending() || window.__timelineKeying?.pending?.()
+            if (!stage.matches(cfg)) { if (!savesPending) { await stage.show(cfg); synced = true } }   // a rebuild now would drop an edit still waiting to be saved
             // A re-fired scene:load must not revert an edit still waiting to be saved.
-            else if (!stage25dLayerSaves.isPending() && !window.__timelineKeying?.pending?.()) synced = stage.adopt(cfg)
+            else if (!savesPending) synced = stage.adopt(cfg)
             if (req !== _stage25dReq) return
             stage.sceneId = payload.sceneId
             window.__stage25d = stage
             setStage25dFlag(true)
             stage.update(0)
-            // The open scene's thumbnail follows its edits (a few seconds after the last one).
-            if (!_stage25dStillWatch) {
-                _stage25dStillWatch = true
-                let timer = null
-                const refresh = () => {
-                    clearTimeout(timer)
-                    timer = setTimeout(async () => {
-                        const st = window.__stage25d
-                        const frame = await st?.still?.()
-                        if (frame && st.sceneId) window.__step3Wire?.()?.saveStage25dStill(st.sceneId, frame, null)
-                    }, 3000)
-                }
-                for (const ev of ['timeline-changed', 'stage25d-edited']) window.addEventListener(ev, refresh)
-            }
+            watchStills(true)
             // A scene with no (or an old) thumbnail: the stage is drawn right here, so take its picture once it has settled.
-            if (payload.stillStale && !_stage25dStillAsked.has(payload.sceneId)) {
-                _stage25dStillAsked.add(payload.sceneId)
+            if (payload.stillStale && !_stage25dStillAsked.has(payload.sceneId) && !_stage25dStillBusy.has(payload.sceneId)) {
+                _stage25dStillBusy.add(payload.sceneId)
                 setTimeout(async () => {
-                    const st = window.__stage25d
-                    if (!st || st.sceneId !== payload.sceneId) return
-                    const frame = await st.still()
-                    if (frame && st.sceneId === payload.sceneId) window.__step3Wire?.()?.saveStage25dStill(payload.sceneId, frame, null)
+                    try {
+                        const st = window.__stage25d
+                        if (!st || st.sceneId !== payload.sceneId || !st.atStart()) return
+                        const frame = await st.still()
+                        if (!frame || st.sceneId !== payload.sceneId) return   // not drawn (hidden tab, still compiling): asked again at the next load
+                        _stage25dStillAsked.add(payload.sceneId)
+                        window.__step3Wire?.()?.saveStage25dStill(payload.sceneId, frame, payload.stillHash ?? null)
+                    } finally { _stage25dStillBusy.delete(payload.sceneId) }
                 }, 2500)
             }
             // The timeline keeps the layers' keys as tracks: tell it the stage now holds a (new) copy.

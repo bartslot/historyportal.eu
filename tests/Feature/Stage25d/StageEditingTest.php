@@ -65,6 +65,24 @@ class StageEditingTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($scene->image_path));
     }
 
+    public function test_a_still_whose_file_is_gone_is_not_fresh(): void
+    {
+        $scene = $this->scene();
+        SceneStill::store($scene, self::JPEG.'AAAA');
+        $scene->refresh();
+        Storage::disk('public')->delete($scene->image_path);   // what an undo leaves behind: the old path of a replaced picture
+
+        $this->assertFalse(SceneStill::isFresh($scene));
+    }
+
+    public function test_a_layer_added_since_the_page_loaded_opens_in_the_panel(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->call('saveStage25dLayer', 1, ['add' => ['asset' => 'tree-birch-01']], $scene->id)
+            ->call('selectInspectorTarget', 's25_layer-1')->assertSet('activeStage25dLayer', 'layer-1');
+    }
+
     public function test_a_stale_or_bad_picture_is_refused_and_a_change_makes_the_scene_stale_again(): void
     {
         $scene = $this->scene();

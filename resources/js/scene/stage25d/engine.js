@@ -23,6 +23,8 @@ import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch']
 
 const libraries = new Map()
+const alphaMaps = new Map()   // one per library, kept across scenes: every picture is read once
+const alphaFor = (base) => { if (!alphaMaps.has(base)) alphaMaps.set(base, createAlphaMaps(base)); return alphaMaps.get(base) }
 
 /** One library per bundle per page; a failed load is forgotten so the next scene tries again. */
 function libraryOf (bundle) {
@@ -126,7 +128,7 @@ export async function createStage25d (host, opts = {}) {
       cfg = cfgNow
       assets = new Map(lib.assets.map(a => [a.id, a]))
       libData = lib
-      alpha = createAlphaMaps(lib.base)
+      alpha = alphaFor(lib.base)
       alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
@@ -168,7 +170,7 @@ export async function createStage25d (host, opts = {}) {
     /** A base value to save (the editor persists it through onCommit). */
     commitLayerProp (id, prop, v) {
       const i = edit(id, { [prop]: v })
-      if (i >= 0) opts.onCommit?.(i, { [prop]: v }, this.sceneId)
+      if (i >= 0 && this.sceneId != null) opts.onCommit?.(i, { [prop]: v }, this.sceneId)
     },
     /** What the layer shows at the playhead, for the row's field. */
     readLayerProp (id, prop) {
@@ -194,6 +196,10 @@ export async function createStage25d (host, opts = {}) {
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. */
     select (id) { pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, true) },
     get selection () { return pointer?.selected ?? null },
+    /** Another scene is opening: nothing stays selected from the one before. */
+    clearSelection () { pointer?.select(null) },
+    /** Is the stage at the scene's first frame with nothing hidden? Only then is its picture a thumbnail of the scene. */
+    atStart () { return manualT === 0 && clock === null && hidden.size === 0 },
     /** What the inspector shows for a layer: its name, picture, depth and motion. */
     layerInfo (id) {
       const l = layers[layerIndex(id)]

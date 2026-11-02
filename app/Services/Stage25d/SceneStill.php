@@ -24,7 +24,10 @@ final class SceneStill
 
     public static function isFresh(Scene $scene): bool
     {
-        return filled($scene->image_path) && str_contains($scene->image_path, '/still-'.self::hash($scene).'.jpg');
+        // The file too: an undo restores the old image_path of a picture that was replaced since.
+        return filled($scene->image_path)
+            && str_contains($scene->image_path, '/still-'.self::hash($scene).'.jpg')
+            && Storage::disk('public')->exists($scene->image_path);
     }
 
     /**

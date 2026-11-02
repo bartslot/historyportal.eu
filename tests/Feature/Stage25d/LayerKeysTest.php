@@ -137,8 +137,8 @@ class LayerKeysTest extends TestCase
         $scene = $this->sceneWith($this->stage());
         Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
             ->call('selectScene', $scene->id)
-            ->call('saveStage25dLayer', 0, ['x' => 0.7, 'y' => 0.25, 'asset' => 'hacked', 'rotation' => 'x'])
-            ->call('saveStage25dLayer', 7, ['x' => 1]);
+            ->call('saveStage25dLayer', 0, ['x' => 0.7, 'y' => 0.25, 'asset' => 'hacked', 'rotation' => 'x'], $scene->id)
+            ->call('saveStage25dLayer', 7, ['x' => 1], $scene->id);
 
         $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
         $this->assertSame(0.7, $layer['x']);
