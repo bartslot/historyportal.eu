@@ -114,6 +114,60 @@ class ImageEditTest extends TestCase
         $this->assertSame([], $set['skyLayer']);
     }
 
+    public function test_a_quick_mask_is_baked_in_and_a_later_edit_keeps_it(): void
+    {
+        $layer = ['asset_id' => 7, 'kind' => 'figure', 'path' => 'assets/ship.png'];
+        $scene = Scene::create([
+            'lesson_id' => $this->lesson()->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'x', 'status' => 'ready',
+            'shots' => [['layers' => [$layer]]],
+        ]);
+        $editor = $this->editor($scene);
+
+        // 1. an edit with state: drawn on the original
+        $editor->call('saveEditedImage', 'art_7', self::png(), self::STATE);
+        $this->assertArrayNotHasKey('edit_base', $scene->fresh()->shots[0]['layers'][0]);
+
+        // 2. a quick mask: no state, baked into the file
+        $this->travel(2)->seconds();
+        $editor->call('saveEditedImage', 'art_7', self::png(), []);
+        $masked = $scene->fresh()->shots[0]['layers'][0];
+        $this->assertArrayNotHasKey('edit_state', $masked);
+        $this->assertSame('assets/ship.png', $masked['original_path']);
+
+        // 3. an edit after the mask is drawn on the masked file, and so is the one after that
+        $this->travel(2)->seconds();
+        $editor->call('saveEditedImage', 'art_7', self::png(), self::STATE);
+        $this->assertSame($masked['path'], $scene->fresh()->shots[0]['layers'][0]['edit_base']);
+        $this->travel(2)->seconds();
+        $editor->call('saveEditedImage', 'art_7', self::png(), self::STATE);
+        $this->assertSame($masked['path'], $scene->fresh()->shots[0]['layers'][0]['edit_base']);
+
+        // Back to the original forgets all of it
+        $this->travel(2)->seconds();
+        $editor->call('resetEditedImage', 'art_7');
+        $this->assertSame($layer, $scene->fresh()->shots[0]['layers'][0]);
+    }
+
+    public function test_a_stage25d_row_keeps_its_masked_copy_as_the_base(): void
+    {
+        $scene = Scene::create([
+            'lesson_id' => $this->lesson()->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x', 'status' => 'ready',
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'stone-chamber-01', 'depth' => 'mid']]]]],
+        ]);
+        $editor = $this->editor($scene);
+
+        $editor->call('saveEditedImage', 's25_layer-0', self::png(), []);
+        $masked = $scene->fresh()->config['stage25d']['set']['layers'][0]['src'];
+        $this->travel(2)->seconds();
+        $editor->call('saveEditedImage', 's25_layer-0', self::png(), self::STATE);
+        $row = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertSame($masked, $row['edit_base']);
+        $this->assertNotSame($masked, $row['src']);
+
+        $editor->call('resetEditedImage', 's25_layer-0');
+        $this->assertSame(['asset' => 'stone-chamber-01', 'depth' => 'mid'], $scene->fresh()->config['stage25d']['set']['layers'][0]);
+    }
+
     public function test_a_bad_picture_or_target_saves_nothing(): void
     {
         $scene = Scene::create([

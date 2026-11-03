@@ -212,6 +212,7 @@ export function normalizeLayer(l) {
         // The image editor (editor/photo-editor.js): the picture before any edit, and the editor's own state.
         original_url: l.original_url || null,
         edit_state: l.edit_state || null,
+        edit_base_url: l.edit_base_url || null,
         kind: l.kind || 'figure',
         // 'map' pins the layer to lng/lat and lets the projector place it; 'screen' (default)
         // keeps it at its x/y on the stage.
@@ -236,6 +237,12 @@ export function normalizeLayer(l) {
         title: l.title || (l.embed && l.embed.title) || 'Icon',
   }
 }
+
+/**
+ * The picture the image editor opens: the file its saved state was drawn on (a quick mask is baked in, so after one
+ * that is the masked file), else the original when there is a state to replay, else what is on screen now.
+ */
+export const editSource = (item) => item.edit_base_url || (item.edit_state ? item.original_url || item.url : item.url)
 
 export class ArtworkOverlay {
   constructor(hostEl, { onChange = null, readonly = false } = {}) {
@@ -1136,7 +1143,7 @@ export class ArtworkOverlay {
         window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
           id: artObjId(item.asset_id),
           title: item.title,
-          original: item.original_url || item.url,
+          original: editSource(item),
           state: item.edit_state,
           edited: !!item.original_url,
           el: this.host,

@@ -35,14 +35,27 @@ trait EditsImages
         }
         $state = EditedImages::state($state);
 
+        // The file the editor's state is drawn on: the original, unless a quick mask was baked in since (a mask save
+        // has no state), so reopening never drops a mask. Null: the original itself.
+        $base = fn (array $row, ?string $current): ?string => match (true) {
+            $state === null => null,
+            isset($row['edit_state']) => $row['edit_base'] ?? null,
+            default => $current,
+        };
+
         return ['ok' => $at[0] === 'art'
             ? $this->editArtLayer($scene, $at[1], fn (array $l): array => [
                 'path' => $path,
                 'original_path' => $l['original_path'] ?? $l['path'] ?? null,
                 'edit_state' => $state,
+                'edit_base' => $base($l, isset($l['original_path']) ? ($l['path'] ?? null) : null),
             ])
             // the URL without its host, like the disk's own (APP_URL/storage): a scene keeps working on another domain
-            : $this->editStageRow($scene, $at[1], ['src' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH), 'edit_state' => $state])];
+            : $this->editStageRow($scene, $at[1], fn (array $row): array => [
+                'src' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH),
+                'edit_state' => $state,
+                'edit_base' => $base($row, $row['src'] ?? null),
+            ])];
     }
 
     /** Back to the picture as it was before the editor touched it. */
@@ -55,12 +68,12 @@ trait EditsImages
         }
         if ($at[0] === 'art') {
             $this->editArtLayer($scene, $at[1], fn (array $l): ?array => isset($l['original_path'])
-                ? ['path' => $l['original_path'], 'original_path' => null, 'edit_state' => null]
+                ? ['path' => $l['original_path'], 'original_path' => null, 'edit_state' => null, 'edit_base' => null]
                 : null);
 
             return;
         }
-        $this->editStageRow($scene, $at[1], ['src' => null, 'edit_state' => null]);
+        $this->editStageRow($scene, $at[1], fn (): array => ['src' => null, 'edit_state' => null, 'edit_base' => null]);
     }
 
     /** @param  callable(array<string,mixed>): ?array<string,mixed>  $fields  the layer's new fields, null: leave it */
@@ -83,8 +96,8 @@ trait EditsImages
         return false;
     }
 
-    /** @param  array<string,mixed>  $fields  null removes a key */
-    private function editStageRow(Scene $scene, string $row, array $fields): bool
+    /** @param  callable(array<string,mixed>): array<string,mixed>  $fields  the row's new fields; null removes a key */
+    private function editStageRow(Scene $scene, string $row, callable $fields): bool
     {
         if (! $scene->isStage25d()) {
             return false;
@@ -100,7 +113,7 @@ trait EditsImages
             return false;
         }
         $next = (array) $current;
-        foreach ($fields as $key => $value) {
+        foreach ($fields($next) as $key => $value) {
             if ($value === null) {
                 unset($next[$key]);
             } else {

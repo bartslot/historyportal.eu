@@ -354,6 +354,7 @@ class Step3SceneConfigurator extends Component
                 // second edit starts from the original with every change still editable.
                 'original_url' => ! empty($l['original_path']) ? MediaUrl::versioned($l['original_path'], $ts) : null,
                 'edit_state' => $l['edit_state'] ?? null,
+                'edit_base_url' => ! empty($l['edit_base']) ? MediaUrl::versioned($l['edit_base'], $ts) : null,
                 // Appear and its exit: the same list the player gets (LayerEntrances::payload).
                 ...LayerEntrances::payload($l),
                 'grayscale' => ! empty($l['grayscale']),

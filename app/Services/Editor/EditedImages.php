@@ -65,6 +65,8 @@ final class EditedImages
     /** The editor's own words around Filerobot (photo-editor.js); Filerobot's are in photo-editor-labels.json. */
     private const OWN_LABELS = ['Edit image', 'Back to the original', 'Saving…', 'This picture could not be saved. Try again.', 'This picture cannot be opened in the editor.',
         // the filters a teacher is offered (photo-editor.js FILTERS)
+        // the quick mask inside the editor (photo-editor-mask.js)
+        'Quick mask', 'Soft edge', 'Edge', 'Tolerance', 'Undo', 'Reset',
         'None', 'Black and white', 'Old photo', 'Soft grey', 'Faded', 'Warm', 'Golden', 'Cool', 'Bright', 'Negative'];
 
     /**

@@ -261,7 +261,8 @@ export async function createStage25d (host, opts = {}) {
       return {
         id: `s25_${id}`,
         title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        original: libData.base + asset.file,
+        // the file the saved state was drawn on (after a quick mask: the masked copy), else the library's own
+        original: row.edit_base ?? (row.edit_state ? libData.base + asset.file : row.src ?? libData.base + asset.file),
         state: row.edit_state ?? null,
         edited: !!row.src,
         el: host,

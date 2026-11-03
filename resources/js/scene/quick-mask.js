@@ -102,6 +102,71 @@ export function restore(data, original, w, h, sx, sy) {
     return out;
 }
 
+export const MAX_FEATHER = 20;   // px of soft edge
+export const MAX_SHIFT = 10;     // px the edge moves in (negative) or out (positive)
+
+/** One pass of a min (shrink) or max (grow) filter over a channel, r px along x then along y. */
+function spread(a, w, h, r, grow) {
+    const pick = grow ? Math.max : Math.min;
+    const tmp = new Uint8ClampedArray(a.length);
+    const out = new Uint8ClampedArray(a.length);
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            let v = a[y * w + x];
+            for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) v = pick(v, a[y * w + k]);
+            tmp[y * w + x] = v;
+        }
+    }
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            let v = tmp[y * w + x];
+            for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) v = pick(v, tmp[k * w + x]);
+            out[y * w + x] = v;
+        }
+    }
+    return out;
+}
+
+/** A box blur of radius r, along x then along y (twice reads as a soft, round falloff). */
+function soften(a, w, h, r) {
+    const pass = (src, horizontal) => {
+        const out = new Uint8ClampedArray(src.length);
+        const len = horizontal ? w : h;
+        const lines = horizontal ? h : w;
+        for (let l = 0; l < lines; l++) {
+            const at = (i) => (horizontal ? l * w + i : i * w + l);
+            let sum = 0, n = 0;
+            for (let i = 0; i <= Math.min(len - 1, r); i++) { sum += src[at(i)]; n++; }
+            for (let i = 0; i < len; i++) {
+                out[at(i)] = sum / n;
+                const add = i + r + 1, drop = i - r;
+                if (add < len) { sum += src[at(add)]; n++; }
+                if (drop >= 0) { sum -= src[at(drop)]; n--; }
+            }
+        }
+        return out;
+    };
+    return pass(pass(a, true), false);
+}
+
+/**
+ * Mask edges (returns a new array): `shift` moves the cut edge in (negative: shrink, eats a fringe left by
+ * the background) or out (positive: grow), `feather` softens it over that many px. Only alpha changes, so
+ * the colour under a cut stays what it was and growing brings back real pixels.
+ */
+export function refineEdges(data, w, h, { feather = 0, shift = 0 } = {}) {
+    const f = Math.max(0, Math.min(MAX_FEATHER, Math.round(feather)));
+    const s = Math.max(-MAX_SHIFT, Math.min(MAX_SHIFT, Math.round(shift)));
+    if (!f && !s) return new Uint8ClampedArray(data);
+    let alpha = new Uint8ClampedArray(w * h);
+    for (let p = 0; p < w * h; p++) alpha[p] = data[p * 4 + 3];
+    if (s) alpha = spread(alpha, w, h, Math.abs(s), s > 0);
+    if (f) alpha = soften(alpha, w, h, f);
+    const out = new Uint8ClampedArray(data);
+    for (let p = 0; p < w * h; p++) out[p * 4 + 3] = alpha[p];
+    return out;
+}
+
 /**
  * Wire a canvas to an image. Returns { undo, reset, toBlob, destroy, state }.
  * `onChange({tolerance, canUndo})` keeps the dialog's readout in sync.
@@ -124,8 +189,9 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     const history = [];
     let drag = null;
     let frame = 0;
+    let edges = { feather: 0, shift: 0 };   // the mask's edge (refineEdges), applied on top of every cut
 
-    const paint = () => ctx.putImageData(new ImageData(current, w, h), 0, 0);
+    const paint = () => ctx.putImageData(new ImageData(refineEdges(current, w, h, edges), w, h), 0, 0);
     const toImage = (e) => {
         const r = canvas.getBoundingClientRect();
         return [Math.floor((e.clientX - r.left) * w / r.width), Math.floor((e.clientY - r.top) * h / r.height)];
@@ -185,10 +251,13 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
 
     return {
         undo() { if (history.length) { current = history.pop(); paint(); emit(); } },
+        /** Soft edge and shrink/grow, live: the canvas (and so toBlob) shows the refined edge. */
+        setEdges(next) { edges = { ...edges, ...next }; paint(); },
         reset() { push(new Uint8ClampedArray(original)); },
         // WebP with alpha, like the library itself: a big figure as PNG is several MB and fails an
         // ordinary upload limit (PHP's default is 2 MB). A browser that cannot encode WebP gives PNG.
         toBlob: () => new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.8)),
+        toDataURL: () => canvas.toDataURL('image/webp', 0.9),
         destroy() {
             for (const [t, f] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', up]]) {
                 canvas.removeEventListener(t, f);

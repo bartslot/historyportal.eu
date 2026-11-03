@@ -87,6 +87,7 @@ describe('photo editor: a picture to edit', () => {
     expect(Fake.last.config.loadableDesignState).toEqual({ a: 1 })
     expect(Fake.last.config.onBeforeSave()).toBe(false)   // straight to onSave, no "save as" dialog
     expect(Fake.last.config.useBackendTranslations).toBe(false)   // no words fetched from an outside server
+    expect(Fake.last.config.Pen.strokeWidth).toBe(8)   // a pencil line that reads on a 1200 px picture
     expect(Fake.last.config.Text).toEqual({ text: 'Text', fontSize: 75 })   // never empty; a sixteenth of a 1200 px picture
     expect(document.querySelector('[data-photo-editor-reset]').hidden).toBe(false)
 

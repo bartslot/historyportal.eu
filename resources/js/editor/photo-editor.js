@@ -15,6 +15,7 @@
  * Filerobot and React load only on the first double-click, in their own chunk.
  */
 import labels from './photo-editor-labels.json'
+import { openMaskView } from './photo-editor-mask.js'
 
 /** The Livewire component that owns the canvas the picture was double-clicked on. */
 export function wireFor (el) {
@@ -123,6 +124,10 @@ function frame (target, t) {
   root.innerHTML = `
     <div class="flex items-center gap-2 border-b border-base-300 px-4 py-2">
       <span class="min-w-0 flex-1 truncate text-sm font-semibold" data-photo-editor-title></span>
+      <button type="button" class="btn btn-ghost btn-sm gap-1.5 text-sm" data-photo-editor-mask hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m7.848 8.25 1.536.887M7.848 8.25a3 3 0 1 1-5.196-3 3 3 0 0 1 5.196 3Zm1.536.887a2.165 2.165 0 0 1 1.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 1 1-5.196 3 3 3 0 0 1 5.196-3Zm1.536-.887a2.165 2.165 0 0 0 1.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863 2.077-1.199m0-3.328a4.323 4.323 0 0 1 2.068-1.379l5.325-1.628a4.5 4.5 0 0 1 2.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.33 4.33 0 0 0 10.607 12m3.736 0 7.794 4.5-.802.215a4.5 4.5 0 0 1-2.48-.043l-5.326-1.629a4.324 4.324 0 0 1-2.068-1.379M14.343 12l-2.882 1.664"/></svg>
+        <span data-photo-editor-mask-label></span>
+      </button>
       <button type="button" class="btn btn-ghost btn-sm text-sm" data-photo-editor-reset hidden></button>
       <span class="text-sm text-base-content/70" data-photo-editor-busy hidden></span>
     </div>
@@ -131,6 +136,7 @@ function frame (target, t) {
   const reset = root.querySelector('[data-photo-editor-reset]')
   reset.textContent = t('Back to the original')
   reset.hidden = !target.edited
+  root.querySelector('[data-photo-editor-mask-label]').textContent = t('Quick mask')
   root.querySelector('[data-photo-editor-busy]').textContent = t('Saving…')
   document.body.appendChild(root)
   return root
@@ -150,8 +156,10 @@ export async function openPhotoEditor (target) {
   const busy = (on) => { root.querySelector('[data-photo-editor-busy]').hidden = !on; root.style.pointerEvents = on ? 'none' : '' }
   let editor = null
   let tame = null
+  let unmask = null
   open = new Promise((resolve) => {
     const close = () => {
+      unmask?.()
       tame?.disconnect()
       try { editor?.terminate() } catch { /* already gone */ }
       root.remove()
@@ -164,6 +172,8 @@ export async function openPhotoEditor (target) {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       e.stopPropagation()
+      const back = root.querySelector('[data-photo-editor-mask] [data-mask-back]')
+      if (back) { back.click(); return }   // in the mask: Esc goes back to the editor
       const x = root.querySelector('.FIE_topbar-close-button')
       if (x) x.click(); else close()
     }
@@ -197,6 +207,8 @@ export async function openPhotoEditor (target) {
         // in the teacher's language rather than "Lorem ipsum". Never empty: Filerobot drops an empty text box on blur.
         Text: { text: t('Text'), fontSize: Math.max(24, Math.round(height / 16)) },
         annotationsCommon: { fill: palette()['accent-primary'] },
+        // the pencil draws in the accent at a width that reads on the picture (Filerobot's default: 1 px black)
+        Pen: { stroke: palette()['accent-primary'], strokeWidth: Math.max(4, Math.round(height / 150)) },
         translations: translations(translated),
         useBackendTranslations: false,   // never fetch words from Scaleflex's server: ours are in translations
         theme: { palette: palette(), typography: { fontFamily: 'inherit' } },
@@ -222,6 +234,40 @@ export async function openPhotoEditor (target) {
         onClose: close,
       })
       editor.render()
+
+      // Quick mask: on the picture as it is edited now. A mask is baked into the saved file (the editor's own state
+      // cannot hold it), so a later edit starts from that masked file (EditsImages keeps edit_base).
+      const maskButton = root.querySelector('[data-photo-editor-mask]')
+      maskButton.hidden = false
+      maskButton.addEventListener('click', async () => {
+        if (unmask) return
+        const now = editor.getCurrentImgData({}, false, true)?.imageData?.imageBase64 || target.original
+        maskButton.disabled = true
+        try {
+          unmask = await openMaskView(body, {
+            src: now,
+            t,
+            onBack: () => { unmask = null; maskButton.disabled = false },
+            onSave: async (dataUrl) => {
+              busy(true)
+              try {
+                const result = await wire.saveEditedImage(target.id, dataUrl, {})
+                if (!result?.ok) throw new Error('refused')
+                unmask = null
+                close()
+                return true
+              } catch {
+                busy(false)
+                say(t('This picture could not be saved. Try again.'))
+                return false
+              }
+            },
+          })
+        } catch {
+          maskButton.disabled = false
+          say(t('This picture cannot be opened in the editor.'))
+        }
+      })
     }).catch(() => { close(); say(t('This picture cannot be opened in the editor.')) })
   })
   return open

@@ -2586,5 +2586,8 @@
     "Add ground layer": "Grondlaag toevoegen",
     "Scene options": "Scèneopties",
     "Duplicate scene": "Scène dupliceren",
-    "Scene duplicated.": "Scène gedupliceerd."
+    "Scene duplicated.": "Scène gedupliceerd.",
+    "Pencil": "Potlood",
+    "Soft edge": "Zachte rand",
+    "Edge": "Rand"
 }

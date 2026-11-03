@@ -2544,5 +2544,8 @@
     "Add ground layer": "Bodenschicht hinzufügen",
     "Scene options": "Szenenoptionen",
     "Duplicate scene": "Szene duplizieren",
-    "Scene duplicated.": "Szene dupliziert."
+    "Scene duplicated.": "Szene dupliziert.",
+    "Pencil": "Bleistift",
+    "Soft edge": "Weiche Kante",
+    "Edge": "Kante"
 }
