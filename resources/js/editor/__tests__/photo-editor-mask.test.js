@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { openMaskView } from '../photo-editor-mask.js'
 import { editSource } from '../../scene/ArtworkOverlay.js'
 
-const mask = { undo: vi.fn(), reset: vi.fn(), setEdges: vi.fn(), destroy: vi.fn(), toDataURL: () => 'data:image/webp;base64,M' }
+const mask = { undo: vi.fn(), reset: vi.fn(), setEdges: vi.fn(), setEverywhere: vi.fn(), destroy: vi.fn(), toDataURL: () => 'data:image/webp;base64,M' }
 let report = null
 vi.mock('../../scene/quick-mask.js', () => ({
   MAX_FEATHER: 20,
@@ -29,7 +29,7 @@ describe('quick mask in the image editor', () => {
   it('masks the picture as it is edited now, in the teacher\'s words', async () => {
     const { $ } = await open()
     expect(mask.src).toBe('data:image/png;base64,EDIT')
-    expect($('[data-photo-editor-mask]').textContent).toContain('Zachte rand')
+    expect($('[data-mask-view]').textContent).toContain('Zachte rand')
     expect($('[data-mask-save]').textContent).toBe('Opslaan')
     expect($('[data-mask-save]').disabled).toBe(true)   // nothing to save yet
   })
@@ -45,7 +45,15 @@ describe('quick mask in the image editor', () => {
     $('[data-mask-save]').click()
     await Promise.resolve(); await Promise.resolve()
     expect(onSave).toHaveBeenCalledWith('data:image/webp;base64,M')
-    expect($('[data-photo-editor-mask]')).toBeNull()
+    expect($('[data-mask-view]')).toBeNull()
+  })
+
+  it('Everywhere selects the colour all over the picture', async () => {
+    const { $ } = await open()
+    const box = $('[data-mask-everywhere]')
+    box.checked = true
+    box.dispatchEvent(new Event('change'))
+    expect(mask.setEverywhere).toHaveBeenCalledWith(true)
   })
 
   it('a cut enables Save and Undo; Back leaves without saving', async () => {

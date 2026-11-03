@@ -39,6 +39,19 @@ export function floodSelect(data, w, h, sx, sy, tol) {
     return mask;
 }
 
+/** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Ink and clear pixels never. */
+export function colorSelect(data, w, h, sx, sy, tol) {
+    const mask = new Uint8Array(w * h);
+    const s = (sy * w + sx) * 4;
+    if (data[s + 3] === 0 || lum(data, s) < INK_LUM) return mask;
+    const seed = [data[s], data[s + 1], data[s + 2]];
+    for (let p = 0; p < w * h; p++) {
+        const i = p * 4;
+        if (data[i + 3] !== 0 && lum(data, i) >= INK_LUM && dist(data, i, seed) <= tol) mask[p] = 1;
+    }
+    return mask;
+}
+
 /** Pixels within `ring` px of the selection, not in it. */
 function ringAround(mask, w, h, ring) {
     let edge = mask;
@@ -154,7 +167,7 @@ function soften(a, w, h, r) {
  * the background) or out (positive: grow), `feather` softens it over that many px. Only alpha changes, so
  * the colour under a cut stays what it was and growing brings back real pixels.
  */
-export function refineEdges(data, w, h, { feather = 0, shift = 0 } = {}) {
+export function refineEdges(data, w, h, { feather = 0, shift = 0 } = {}, cap = null) {
     const f = Math.max(0, Math.min(MAX_FEATHER, Math.round(feather)));
     const s = Math.max(-MAX_SHIFT, Math.min(MAX_SHIFT, Math.round(shift)));
     if (!f && !s) return new Uint8ClampedArray(data);
@@ -163,7 +176,9 @@ export function refineEdges(data, w, h, { feather = 0, shift = 0 } = {}) {
     if (s) alpha = spread(alpha, w, h, Math.abs(s), s > 0);
     if (f) alpha = soften(alpha, w, h, f);
     const out = new Uint8ClampedArray(data);
-    for (let p = 0; p < w * h; p++) out[p * 4 + 3] = alpha[p];
+    // `cap` (the picture before any cut): growing only brings back what the picture really had, never the
+    // black under a part that was already clear, which drew a dark halo around a cut-out figure.
+    for (let p = 0; p < w * h; p++) out[p * 4 + 3] = cap ? Math.min(alpha[p], cap[p * 4 + 3]) : alpha[p];
     return out;
 }
 
@@ -191,7 +206,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     let frame = 0;
     let edges = { feather: 0, shift: 0 };   // the mask's edge (refineEdges), applied on top of every cut
 
-    const paint = () => ctx.putImageData(new ImageData(refineEdges(current, w, h, edges), w, h), 0, 0);
+    let everywhere = false;                  // select the colour everywhere, not only where it touches the press
+    const paint = () => ctx.putImageData(new ImageData(refineEdges(current, w, h, edges, original), w, h), 0, 0);
     const toImage = (e) => {
         const r = canvas.getBoundingClientRect();
         return [Math.floor((e.clientX - r.left) * w / r.width), Math.floor((e.clientY - r.top) * h / r.height)];
@@ -209,7 +225,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         frame = 0;
         octx.clearRect(0, 0, w, h);
         if (!drag || drag.restore) return;
-        drag.mask = floodSelect(current, w, h, drag.x, drag.y, drag.tol);
+        drag.mask = (everywhere ? colorSelect : floodSelect)(current, w, h, drag.x, drag.y, drag.tol);
         const tint = octx.createImageData(w, h);
         for (let p = 0; p < w * h; p++) {
             if (!drag.mask[p]) continue;
@@ -253,6 +269,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         undo() { if (history.length) { current = history.pop(); paint(); emit(); } },
         /** Soft edge and shrink/grow, live: the canvas (and so toBlob) shows the refined edge. */
         setEdges(next) { edges = { ...edges, ...next }; paint(); },
+        /** On: a press selects that colour all over the picture (every paper bit at once). */
+        setEverywhere(on) { everywhere = !!on; },
         reset() { push(new Uint8ClampedArray(original)); },
         // WebP with alpha, like the library itself: a big figure as PNG is several MB and fails an
         // ordinary upload limit (PHP's default is 2 MB). A browser that cannot encode WebP gives PNG.

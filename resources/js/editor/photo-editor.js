@@ -172,7 +172,7 @@ export async function openPhotoEditor (target) {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       e.stopPropagation()
-      const back = root.querySelector('[data-photo-editor-mask] [data-mask-back]')
+      const back = root.querySelector('[data-mask-view] [data-mask-back]')
       if (back) { back.click(); return }   // in the mask: Esc goes back to the editor
       const x = root.querySelector('.FIE_topbar-close-button')
       if (x) x.click(); else close()

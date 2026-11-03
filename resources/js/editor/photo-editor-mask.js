@@ -21,8 +21,8 @@ const range = (name, label, min, max) => `
  */
 export async function openMaskView (root, { src, t, onSave, onBack }) {
   const view = document.createElement('div')
-  view.dataset.photoEditorMask = ''
-  view.className = 'absolute inset-0 z-[100] flex flex-col bg-base-100'   // over all of Filerobot, its X too
+  view.dataset.maskView = ''   // not data-photo-editor-mask: that is the top bar's button
+  view.className = 'absolute inset-0 z-[200] flex flex-col bg-base-100'   // over all of Filerobot, its X (z 111) too
   view.innerHTML = `
     <div class="relative grid min-h-0 flex-1 place-items-center overflow-hidden p-4"
          style="background: repeating-conic-gradient(var(--color-base-300) 0 25%, var(--color-base-200) 0 50%) 0 0 / 20px 20px;">
@@ -34,18 +34,24 @@ export async function openMaskView (root, { src, t, onSave, onBack }) {
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-base-300 px-4 py-3">
       <button type="button" class="btn btn-ghost btn-sm text-sm" data-mask-undo disabled></button>
       <button type="button" class="btn btn-ghost btn-sm text-sm" data-mask-reset></button>
+      <label class="flex cursor-pointer items-center gap-2 text-sm">
+        <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" data-mask-everywhere>
+        <span></span>
+      </label>
       ${range('feather', t('Soft edge'), 0, MAX_FEATHER)}
       ${range('shift', t('Edge'), -MAX_SHIFT, MAX_SHIFT)}
       <span class="text-sm tabular-nums text-base-content/70" data-mask-tolerance hidden></span>
-      <span class="flex-1"></span>
-      <button type="button" class="btn btn-ghost btn-sm text-sm" data-mask-back></button>
-      <button type="button" class="btn btn-primary btn-sm text-sm" data-mask-save disabled></button>
+      <span class="ml-auto flex gap-2">
+        <button type="button" class="btn btn-ghost btn-sm text-sm" data-mask-back></button>
+        <button type="button" class="btn btn-primary btn-sm text-sm" data-mask-save disabled></button>
+      </span>
     </div>`
   const $ = (sel) => view.querySelector(sel)
   $('[data-mask-undo]').textContent = t('Undo')
   $('[data-mask-reset]').textContent = t('Reset')
   $('[data-mask-back]').textContent = t('Back')
   $('[data-mask-save]').textContent = t('Save')
+  $('[data-mask-everywhere] + span').textContent = t('Everywhere')
   root.appendChild(view)
 
   let changed = false
@@ -76,6 +82,7 @@ export async function openMaskView (root, { src, t, onSave, onBack }) {
       frame = requestAnimationFrame(() => { mask.setEdges(edges); refresh({ canUndo: !$('[data-mask-undo]').disabled }) })
     })
   }
+  $('[data-mask-everywhere]').addEventListener('change', (e) => mask.setEverywhere(e.target.checked))
   $('[data-mask-undo]').addEventListener('click', () => mask.undo())
   $('[data-mask-reset]').addEventListener('click', () => {
     mask.reset()

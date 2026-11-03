@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { floodSelect, cut, restore, toleranceFromDrag, refineEdges, MAX_FEATHER } from '../quick-mask.js';
+import { floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER } from '../quick-mask.js';
 
 // 7×3: white | ink column | white, with a soft grey pixel next to the ink on the left.
 //   W W g K W W W
@@ -87,5 +87,26 @@ describe('quick mask: the edge', () => {
         expect(a.every((v) => v === 0)).toBe(true);   // shrunk by MAX_SHIFT (10) eats the whole 5 px strip
         expect(alpha(d)[8]).toBe(255);
         expect(MAX_FEATHER).toBe(20);
+    });
+});
+
+describe('quick mask: everywhere and a capped grow', () => {
+    // 5x1: white, ink, white, ink, white: three white bits that do not touch
+    const bits = () => {
+        const d = new Uint8ClampedArray(5 * 4);
+        [255, 0, 255, 0, 255].forEach((v, x) => d.set([v, v, v, 255], x * 4));
+        return d;
+    };
+
+    it('takes every bit of the colour at once, never the ink', () => {
+        expect(Array.from(colorSelect(bits(), 5, 1, 0, 0, 20))).toEqual([1, 0, 1, 0, 1]);
+        expect(Array.from(floodSelect(bits(), 5, 1, 0, 0, 20))).toEqual([1, 0, 0, 0, 0]);
+    });
+
+    it('grows only into what the picture had, never into its own clear background', () => {
+        const before = new Uint8ClampedArray(4 * 4);
+        [0, 0, 255, 255].forEach((a, x) => before.set([0, 0, 0, a], x * 4));   // a figure on a clear background
+        const grown = refineEdges(before, 4, 1, { shift: 2 }, before);
+        expect(Array.from({ length: 4 }, (_, p) => grown[p * 4 + 3])).toEqual([0, 0, 255, 255]);
     });
 });
