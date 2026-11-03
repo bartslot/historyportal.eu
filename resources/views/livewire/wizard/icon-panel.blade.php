@@ -172,7 +172,9 @@
                                  the map under it — the same call the drop handler makes, minus a
                                  point. It falls back to the server placement if the editor's
                                  script has not booted. --}}
-                            x-on:click="window.__placeIcon
+                            {{-- A series' tile opens the series (dragging it still places this one). --}}
+                            x-on:click="@if ($k === 0 && $members->count() > 1) if (series === null) { series = @js($title); return } @endif
+                                window.__placeIcon
                                 ? window.__placeIcon({{ $icon->id }})
                                 : $wire.place({{ $icon->id }})"
                             data-tooltip="{{ $icon->title }}"

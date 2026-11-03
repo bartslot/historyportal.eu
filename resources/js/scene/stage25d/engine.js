@@ -231,6 +231,7 @@ export async function createStage25d (host, opts = {}) {
           onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
         })
       }
+      if ((pointer?.selected ?? -1) >= layers.length) pointer.select(null)   // its layer is gone (a delete, an undo)
       heights = new Map(lib.assets.map(a => [a.id, a.height_m ?? 1.7]))
       lead = Number(cfgNow.narration_at_s) || 0
       cfgSig = structureSig(cfgNow)
@@ -440,11 +441,13 @@ export async function createStage25d (host, opts = {}) {
     async addLayer (assetId, at = null) {
       const a = assets.get(assetId)
       if (!a) return
-      const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : 'mid'
-      let layer = { asset: assetId, depth, x: 0.5, scale: 1 }
+      // a character without a drop point stands near enough to read (fg), a step beside the ones added before it
+      const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : a.layer === 'figure' ? 'fg' : 'mid'
+      const beside = at ? 0 : layers.filter((l) => l.asset === assetId).length
+      let layer = { asset: assetId, depth, x: 0.5 + 0.08 * (beside % 5), scale: 1 }
       if (!(a.tileable_x || a.layer === 'bg' || a.layer === 'sky')) {
         const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y), floorOnly({}, a) ? 0 : (z) => stage.groundHeightAt(z)) : null
-        const spot = layerOf(settle(hit ?? [0, DEPTH_Z[depth]]))
+        const spot = layerOf(settle(hit ?? groundOf(layer.x, DEPTH_Z[depth])))
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }
       }
       layers = [...layers, layer]

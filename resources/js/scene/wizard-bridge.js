@@ -1005,6 +1005,9 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // A base value the teacher set on a layer (a field, not a key): saved into set.layers[index], no scene:load.
     const stage25dLayerSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:layer', save), DIO_MOVE_PAUSE_MS)
     // The server copied a layer: select the copy (its index) once the stage has it.
+    // An undo, a redo or a deleted balloon closes the layer panel (the server forgets what it pointed at): the stage
+    // drops its box too, or the next tile click would change a picture the teacher no longer sees selected.
+    window.addEventListener('timeline-restored', () => window.__stage25d?.clearSelection?.())
     window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
     let _stage25d = null
     let _stage25dHost = null
