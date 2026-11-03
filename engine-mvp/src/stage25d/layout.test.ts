@@ -401,13 +401,14 @@ describe('a ground band with the teacher\'s values (bandPose)', () => {
     expect(p.alphaIndex).toBe(bandSlot(60))
   })
 
-  it('never lifts off the floor, however small, and is never narrower than the view', () => {
+  it('never lifts off the floor, however small, and Size scales its width with its height (Bart 11-03)', () => {
     for (const scale of [0.05, 0.3, 1, 3]) {
       const p = bandPose({ ...band, scale }, 0, 0.15, w0, h0, 0.9)
       expect(p.y).toBeLessThanOrEqual(0)
-      expect(p.w).toBeGreaterThanOrEqual(bandWidth(30) - 1e-9)
+      expect(p.w).toBeCloseTo(bandWidth(30) * scale)
       expect(p.h).toBeCloseTo(h0 * scale)
     }
+    expect(bandPose({ ...band, scale: 0.4 }, 0, 0.15, w0, h0, 0.9).w).toBeGreaterThan(viewWidthAt(30))   // still covers the view
   })
 
   // Bart 11-03 (lesson 94 scene 2951): Distance 1.75 m with the shot's camera at z 2.42 put the band behind the camera;
