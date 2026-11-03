@@ -2512,5 +2512,14 @@
     "Edit image": "Bild bearbeiten",
     "Back to the original": "Zurück zum Original",
     "This picture could not be saved. Try again.": "Dieses Bild konnte nicht gespeichert werden. Versuch es noch einmal.",
-    "This picture cannot be opened in the editor.": "Dieses Bild lässt sich im Editor nicht öffnen."
+    "This picture cannot be opened in the editor.": "Dieses Bild lässt sich im Editor nicht öffnen.",
+    "Black and white": "Schwarzweiß",
+    "Old photo": "Altes Foto",
+    "Soft grey": "Weiches Grau",
+    "Faded": "Verblasst",
+    "Warm": "Warm",
+    "Golden": "Golden",
+    "Cool": "Kühl",
+    "Bright": "Kräftig",
+    "Negative": "Negativ"
 }

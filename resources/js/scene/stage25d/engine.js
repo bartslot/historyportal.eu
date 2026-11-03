@@ -329,12 +329,12 @@ export async function createStage25d (host, opts = {}) {
       // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.
       if (id === 'sky') {
         const sky = skyAsset()
-        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: skyNow.src ?? `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
         const a = assets.get(band.asset)
-        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: 'band', fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: motionOf(band, a) }
+        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: 'band', fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: band.src ?? (a ? `${libData.base}${a.file}` : null), motion: motionOf(band, a) }
       }
       const l = layers[layerIndex(id)]
       if (!l) return null
@@ -347,7 +347,7 @@ export async function createStage25d (host, opts = {}) {
         ground, showScale,
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        file: asset ? `${libData.base}${asset.file}` : null,
+        file: l.src ?? (asset ? `${libData.base}${asset.file}` : null),   // the edited copy, when there is one
         motion: motionOf(l, asset),
       }
     },

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import labels from '../photo-editor-labels.json'
-import { translations, wireFor, openPhotoEditor } from '../photo-editor.js'
+import { translations, wireFor, openPhotoEditor, nameFilters, tameFilters, FILTERS } from '../photo-editor.js'
 import { ArtworkOverlay } from '../../scene/ArtworkOverlay.js'
 
 vi.mock('filerobot-image-editor', () => {
@@ -13,6 +13,11 @@ vi.mock('filerobot-image-editor', () => {
   }
   return { default: Fake }
 })
+
+vi.mock('konva', () => ({ default: { Filters: {} } }))
+vi.mock('react-filerobot-image-editor/lib/custom/filters', () => ({}))
+
+vi.stubGlobal('Image', class { set src (_) { queueMicrotask(() => { this.naturalHeight = 1200; this.onload?.() }) } })
 
 const flush = () => new Promise((r) => setTimeout(r, 0))
 
@@ -30,6 +35,29 @@ describe('photo editor: words', () => {
   it('never shows the library\'s clumsy defaults', () => {
     expect(Object.values(labels)).not.toContain('Un-Flip X')
     expect(labels.annotateTabLabel).toBe('Draw')
+  })
+})
+
+describe('photo editor: the chosen filter survives a save', () => {
+  it('gives every filter its real name, which minifying took away, and never renames one', () => {
+    const e = function e () {}          // what Konva's Sepia looks like after our build
+    const own = function () {}
+    own.filterName = 'Clarendon'
+    nameFilters({ Sepia: e }, { Clarendon: own, notAFilter: 3 })
+    expect(e.filterName).toBe('Sepia')
+    expect(own.filterName).toBe('Clarendon')
+  })
+})
+
+describe('photo editor: the filters on offer', () => {
+  it('shows a short list in plain words and hides the Instagram names, again after a redraw', () => {
+    const root = document.createElement('div')
+    root.innerHTML = ['Sepia', 'Clarendon', 'Gingham', '1977'].map((n) => `<div class="FIE_filters-item"><span class="FIE_filters-item-label">${n}</span></div>`).join('')
+    tameFilters(root, (en) => (en === 'Old photo' ? 'Oude foto' : en))
+    tameFilters(root, (en) => (en === 'Old photo' ? 'Oude foto' : en))
+    const shown = [...root.querySelectorAll('.FIE_filters-item')].filter((i) => i.style.display !== 'none').map((i) => i.textContent)
+    expect(shown).toEqual(['Oude foto', 'Bright'])
+    expect(Object.keys(FILTERS)).toHaveLength(10)
   })
 })
 
@@ -58,6 +86,8 @@ describe('photo editor: a picture to edit', () => {
     expect(Fake.last.config.source).toBe('/ship.png')
     expect(Fake.last.config.loadableDesignState).toEqual({ a: 1 })
     expect(Fake.last.config.onBeforeSave()).toBe(false)   // straight to onSave, no "save as" dialog
+    expect(Fake.last.config.useBackendTranslations).toBe(false)   // no words fetched from an outside server
+    expect(Fake.last.config.Text.fontSize).toBe(75)   // a sixteenth of a 1200 px picture
     expect(document.querySelector('[data-photo-editor-reset]').hidden).toBe(false)
 
     await Fake.last.config.onSave({ imageBase64: 'data:image/webp;base64,AAA' }, { b: 2 })

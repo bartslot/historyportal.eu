@@ -2512,5 +2512,14 @@
     "Edit image": "Modifica immagine",
     "Back to the original": "Torna all'originale",
     "This picture could not be saved. Try again.": "Impossibile salvare questa immagine. Riprova.",
-    "This picture cannot be opened in the editor.": "Questa immagine non si può aprire nell'editor."
+    "This picture cannot be opened in the editor.": "Questa immagine non si può aprire nell'editor.",
+    "Black and white": "Bianco e nero",
+    "Old photo": "Foto antica",
+    "Soft grey": "Grigio tenue",
+    "Faded": "Sbiadito",
+    "Warm": "Caldo",
+    "Golden": "Dorato",
+    "Cool": "Freddo",
+    "Bright": "Vivace",
+    "Negative": "Negativo"
 }

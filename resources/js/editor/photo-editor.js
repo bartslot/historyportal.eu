@@ -50,6 +50,66 @@ function palette () {
   }
 }
 
+/**
+ * The filters a teacher is offered, in plain words, out of Filerobot's ~45 Instagram names ("Clarendon", "1977").
+ * Filerobot's list itself cannot be configured, so the rest are hidden and these relabelled (tameFilters).
+ */
+export const FILTERS = {
+  Original: 'None', 'Black & White': 'Black and white', Sepia: 'Old photo', Moon: 'Soft grey', Slumber: 'Faded',
+  Valencia: 'Warm', Kelvin: 'Golden', Hudson: 'Cool', Clarendon: 'Bright', Invert: 'Negative',
+}
+
+/** Show only FILTERS, under their own names; re-applied whenever Filerobot redraws the strip. */
+export function tameFilters (root, t) {
+  for (const item of root.querySelectorAll('.FIE_filters-item')) {
+    const label = item.querySelector('.FIE_filters-item-label')
+    const name = label?.dataset.filter ?? label?.textContent?.trim()
+    if (!label || !name) continue
+    label.dataset.filter = name
+    const ours = FILTERS[name]
+    item.style.display = ours ? '' : 'none'
+    if (ours && label.textContent !== t(ours)) label.textContent = t(ours)
+  }
+}
+
+/**
+ * Filerobot saves the chosen filter by name (`filter.filterName || filter.name`) and finds it again by that name. Our
+ * minified build renames Konva's functions (Sepia becomes `e`), so a saved Sepia came back as no filter at all. Give
+ * every filter function its real name, once, before the editor opens.
+ */
+export function nameFilters (...groups) {
+  for (const group of groups) {
+    for (const [name, fn] of Object.entries(group ?? {})) {
+      if (typeof fn === 'function' && !fn.filterName) fn.filterName = name
+    }
+  }
+}
+
+/** Filerobot's own type sizes go down to 10px and its number boxes are white: hold them to the house rules. */
+const STYLE = `
+  [data-photo-editor] :is(label, input, button, .FIE_tab-label, .FIE_filters-item-label, [class*="-option-label"], [class*="-option"] span) { font-size: max(12px, 1em) !important; }
+  [data-photo-editor] .FIE_filters-item-label { font-size: 12px !important; }
+  [data-photo-editor] input { background: var(--color-base-200) !important; color: var(--color-base-content) !important; border-color: var(--color-base-300) !important; }
+`
+function addStyle () {
+  if (document.getElementById('photo-editor-style')) return
+  const el = document.createElement('style')
+  el.id = 'photo-editor-style'
+  el.textContent = STYLE
+  document.head.appendChild(el)
+}
+
+/** The picture's own height in pixels (0 when it does not load), so new text starts at a size that can be read. */
+const HEIGHT_WAIT_MS = 4000   // a slow picture never holds the editor back: Filerobot loads it anyway
+const heightOf = (src) => new Promise((resolve) => {
+  setTimeout(() => resolve(0), HEIGHT_WAIT_MS)
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => resolve(img.naturalHeight || 0)
+  img.onerror = () => resolve(0)
+  img.src = src
+})
+
 const say = (text) => window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: text } }))
 
 /** The full-window layer the editor lives in: a top bar (name, Back to the original, close) over Filerobot. */
@@ -88,16 +148,24 @@ export async function openPhotoEditor (target) {
   const root = frame(target, t)
   const busy = (on) => { root.querySelector('[data-photo-editor-busy]').hidden = !on; root.style.pointerEvents = on ? 'none' : '' }
   let editor = null
+  let tame = null
   open = new Promise((resolve) => {
     const close = () => {
+      tame?.disconnect()
       try { editor?.terminate() } catch { /* already gone */ }
       root.remove()
       document.removeEventListener('keydown', onKey, true)
       open = null
       resolve()
     }
-    // Esc closes the editor, never the panels behind it (they listen on the window).
-    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }
+    // Esc does what the editor's own X does (it asks first when there are unsaved changes), and never reaches the
+    // panels behind it (they listen on the window).
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      const x = root.querySelector('.FIE_topbar-close-button')
+      if (x) x.click(); else close()
+    }
     document.addEventListener('keydown', onKey, true)
 
     root.querySelector('[data-photo-editor-reset]').addEventListener('click', async () => {
@@ -105,18 +173,30 @@ export async function openPhotoEditor (target) {
       try { await wire.resetEditedImage(target.id); close() } catch { busy(false); say(t('This picture could not be saved. Try again.')) }
     })
 
-    import('filerobot-image-editor').then(({ default: FilerobotImageEditor }) => {
+    addStyle()
+    Promise.all([
+      import('filerobot-image-editor'),
+      import('konva'),
+      import('react-filerobot-image-editor/lib/custom/filters'),
+      heightOf(target.original),
+    ]).then(([{ default: FilerobotImageEditor }, { default: Konva }, custom, height]) => {
+      nameFilters(Konva.Filters, custom)
       const { TABS, TOOLS } = FilerobotImageEditor
-      editor = new FilerobotImageEditor(root.querySelector('[data-photo-editor-body]'), {
+      const body = root.querySelector('[data-photo-editor-body]')
+      tame = new MutationObserver(() => tameFilters(body, t))
+      tame.observe(body, { childList: true, subtree: true })
+      editor = new FilerobotImageEditor(body, {
         source: target.original,
         loadableDesignState: target.state || undefined,
         tabsIds: [TABS.ADJUST, TABS.FINETUNE, TABS.FILTERS, TABS.ANNOTATE],
         defaultTabId: TABS.ADJUST,
         defaultToolId: TOOLS.CROP,
         Rotate: { angle: 90, componentType: 'buttons' },
-        Text: { text: '' },
+        // new text a sixteenth of the picture tall: Filerobot's 14 px is a speck on a 1200 px painting
+        Text: { text: '', fontSize: Math.max(24, Math.round(height / 16)) },
         annotationsCommon: { fill: palette()['accent-primary'] },
         translations: translations(translated),
+        useBackendTranslations: false,   // never fetch words from Scaleflex's server: ours are in translations
         theme: { palette: palette(), typography: { fontFamily: 'inherit' } },
         defaultSavedImageType: 'webp',
         defaultSavedImageQuality: 0.9,
