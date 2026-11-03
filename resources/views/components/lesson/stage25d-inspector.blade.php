@@ -6,6 +6,7 @@
     $names = [
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
         'castShadow' => __('Shadows'), 'smoke' => __('Smoke'), 'birds' => __('Birds'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
+        'groundWash' => __('Watercolour'), 'groundGrain' => __('Grain size'), 'grass' => __('Grass'), 'grassSway' => __('Grass sway'), 'horizonBushes' => __('Horizon bushes'),
     ];
     // The poses a figure series is painted in (library.json `pose:` tags).
     $poses = [
@@ -160,5 +161,35 @@
                 </label>
             </template>
         </div>
+
+        {{-- The floor's ground pictures, near to far: each from its distance on (the nearest from the camera). --}}
+        <template x-if="ground && ground.options.length">
+            <div class="mt-3 space-y-1" data-stage25d-ground>
+                <div class="divider my-2" role="presentation"></div>
+                <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Ground') }}</span>
+                <template x-for="(row, i) in ground.rows" :key="i">
+                    <div class="flex items-center gap-1.5" style="min-height: var(--settings-panel-row-h, 2rem)">
+                        <select class="select select-xs min-w-0 flex-1" :aria-label="@js(__('Ground')) + ' ' + (i + 1)" :data-stage25d-ground-asset="i"
+                                x-on:change="groundRow(i, { asset: $event.target.value })">
+                            <template x-for="o in ground.options" :key="o.id">
+                                <option :value="o.id" :selected="o.id === row.asset" x-text="o.label"></option>
+                            </template>
+                        </select>
+                        <label class="input input-xs flex w-24 shrink-0 items-center gap-1 px-1.5" x-show="i > 0">
+                            <span class="text-xs text-panel-hint">{{ __('From') }}</span>
+                            <input type="number" min="0" max="2000" step="1" :aria-label="@js(__('From'))" :data-stage25d-ground-from="i"
+                                   :value="row.from_m" x-on:change="groundRow(i, { from_m: Number($event.target.value) })"
+                                   class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                            <span class="text-xs text-panel-hint">m</span>
+                        </label>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" x-show="ground.rows.length > 1" :aria-label="@js(__('Remove'))"
+                                :data-stage25d-ground-remove="i" x-on:click="removeGround(i)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-ghost btn-xs" x-show="ground.rows.length < ground.max" data-stage25d-ground-add x-on:click="addGround()">{{ __('Add ground layer') }}</button>
+            </div>
+        </template>
     @endif
 </div>

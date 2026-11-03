@@ -14,6 +14,7 @@ import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
+import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
@@ -27,7 +28,7 @@ import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (isAnimation(a) ? 'vfx' : a.layer)
@@ -418,7 +419,8 @@ export async function createStage25d (host, opts = {}) {
     library () {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
+      // a sprite sheet (the ground's clumps) is cut into its cells, never placed whole
+      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet').map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),
@@ -507,6 +509,26 @@ export async function createStage25d (host, opts = {}) {
       if (api.sceneId != null) opts.onCommit?.(i, { depth: band }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
       pointer?.select(i, false)
+    },
+    /** The floor's ground pictures near to far (rows: the scene's own, else its one ground) and the bundle's grounds to
+     *  pick from (options), at most `max` rows. */
+    groundSlots () {
+      if (!libData || !cfg) return null
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from }))
+      const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
+      return { rows, options, max: GROUND_SLOTS_MAX }
+    },
+    /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
+    async setGroundSlots (rows) {
+      if (!cfg || !Array.isArray(rows)) return
+      const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)) }))
+      const keep = hidden
+      await api.show({ ...cfg, look: lookNow, set: { ...liveSet(), groundSlots: slots } })   // the sliders' live values too
+      hidden = keep
+      redraw()
+      if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {

@@ -19,7 +19,9 @@ export interface Asset {
   placeholder?: boolean
   qa?: { score?: number }
   /** an animation (sprite.ts): `file` is a sheet of cols x rows frames, w x h is ONE frame */
-  kind?: 'animation'
+  kind?: 'animation' | 'sheet'
+  /** a sprite sheet (scatter.ts): ONE picture cut into cells, each with its own tags and height (rect: uv [u0, v0, du, dv]) */
+  cells?: { tags: string[]; height_m: number; rect: [number, number, number, number] }[]
   frames?: number
   cols?: number
   rows?: number
@@ -94,7 +96,7 @@ export interface Scene {
   /** layered ground: painted bands standing on the floor at metres z (2..2000), each drawn over the one behind */
   /** groundBands[i] and skyLayer take a layer's own values too (x, z, scale, opacity, motion, keys; the sky's y lifts it):
    *  the teacher sizes and moves the backdrop like any picture. A band always stands on the floor (stage.ts pose). */
-  set: { sky?: string | null; skyLayer?: GroundBandProps; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; layers: SceneLayer[] }
+  set: { sky?: string | null; skyLayer?: GroundBandProps; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; groundSlots?: { asset: string; from_m: number }[]; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

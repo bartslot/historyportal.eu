@@ -286,6 +286,35 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['smoke' => 1, 'housePitch' => 4.5], $scene->fresh()->config['stage25d']['look']);
     }
 
+    public function test_the_ground_sliders_save_like_every_look_slider(): void
+    {
+        $scene = $this->scene();
+        $this->editor($scene)->call('saveStage25dLook', 'grass', 0.2, $scene->id)
+            ->call('saveStage25dLook', 'grassSway', 3, $scene->id)
+            ->call('saveStage25dLook', 'groundGrain', 0.1, $scene->id);
+        $this->assertEquals(['grass' => 0.2, 'grassSway' => 1, 'groundGrain' => 0.5], $scene->fresh()->config['stage25d']['look']);
+    }
+
+    public function test_the_floor_ground_pictures_save_near_to_far_at_most_six_and_an_empty_list_puts_the_one_ground_back(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $rows = array_map(fn ($i) => ['asset' => 'ground-grass-heather-01', 'from_m' => $i * 20], range(0, 8));
+        $rows[0]['from_m'] = 12;
+        $editor->call('saveStage25dGroundSlots', $rows, $scene->id);
+        $slots = $scene->fresh()->config['stage25d']['set']['groundSlots'];
+        $this->assertCount(6, $slots);
+        $this->assertEquals(0, $slots[0]['from_m'], 'the nearest starts at the camera');
+        $this->assertEquals(100, $slots[5]['from_m']);
+
+        $editor->call('saveStage25dGroundSlots', [['asset' => '../etc', 'from_m' => 0]], $scene->id)
+            ->call('saveStage25dGroundSlots', [['asset' => 'ground-path-sand-01', 'from_m' => 0]], $scene->id + 1);
+        $this->assertCount(6, $scene->fresh()->config['stage25d']['set']['groundSlots'], 'a bad row or another scene saves nothing');
+
+        $editor->call('saveStage25dGroundSlots', [], $scene->id);
+        $this->assertArrayNotHasKey('groundSlots', $scene->fresh()->config['stage25d']['set']);
+    }
+
     public function test_selecting_a_layer_opens_its_panel_and_the_rail_names_a_scene_without_a_place(): void
     {
         $scene = $this->scene();

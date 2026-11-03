@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize, groundSlots, GROUND_SLOTS_MAX, slotAt, grainOctave } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -179,5 +179,43 @@ describe('stainSize for a person', () => {
     expect(person.w).toBeLessThanOrEqual(1.7 * 0.3 + 1e-9)
     expect(person.d).toBeLessThanOrEqual(person.w * 0.5 + 1e-9)
     expect(person.w).toBeLessThan(prop.w)
+  })
+})
+
+describe('the ground\'s slots, near to far (groundSlots)', () => {
+  const tiles = [a('ground-grass-01', 'ground', ['ground', 'grass']), a('ground-sand-01', 'ground', ['ground', 'sand']), a('ground-ice-01', 'ground', ['ground', 'ice'])]
+  it('an old scene is one slot from 0 m: its own ground, so it looks as before', () => {
+    expect(groundSlots({ layers: [] }, lib(tiles)).map((s) => [s.asset.id, s.from])).toEqual([['ground-grass-01', 0]])
+    expect(groundSlots({ ground: 'sand', layers: [] }, lib(tiles)).map((s) => s.asset.id)).toEqual(['ground-sand-01'])
+  })
+  it('takes the teacher\'s slots, sorted near to far, at most six, the first from 0 m, unknown pictures skipped', () => {
+    const slots = [{ asset: 'ground-ice-01', from_m: 40 }, { asset: 'nope', from_m: 10 }, { asset: 'ground-sand-01', from_m: 12 }, ...Array.from({ length: 8 }, (_, i) => ({ asset: 'ground-grass-01', from_m: 100 + i }))]
+    const out = groundSlots({ groundSlots: slots, layers: [] }, lib(tiles))
+    expect(out).toHaveLength(GROUND_SLOTS_MAX)
+    expect(out.slice(0, 2).map((s) => [s.asset.id, s.from])).toEqual([['ground-sand-01', 0], ['ground-ice-01', 40]])
+  })
+  it('a paper floor has no slots', () => {
+    expect(groundSlots({ ground: '#ddccbb', layers: [] }, lib(tiles))).toEqual([])
+  })
+  it('slotAt: the slot a distance lies on', () => {
+    const s = groundSlots({ groundSlots: [{ asset: 'ground-grass-01', from_m: 0 }, { asset: 'ground-sand-01', from_m: 20 }], layers: [] }, lib(tiles))
+    expect([slotAt(s, 5), slotAt(s, 20), slotAt(s, 300)]).toEqual([0, 1, 1])
+  })
+})
+
+describe('the watercolour grain on the floor (grainOctave)', () => {
+  it('keeps one grain dot about the same size on screen near and far: never streaks far off, never blobs near', () => {
+    for (const d of [2, 5, 13, 40, 120, 400]) {
+      const { scale, mix } = grainOctave(d, 1)
+      // the world size of one dot (1 / scale) over the distance stays within a factor 2 of the size at 10 m
+      const onScreen = 1 / scale / d, ref = 1 / grainOctave(10, 1).scale / 10
+      expect(onScreen / ref).toBeGreaterThan(0.49)
+      expect(onScreen / ref).toBeLessThan(2.01)
+      expect(mix).toBeGreaterThanOrEqual(0)
+      expect(mix).toBeLessThan(1)
+    }
+  })
+  it('a larger Grain size makes bigger dots', () => {
+    expect(grainOctave(10, 2).scale).toBeLessThan(grainOctave(10, 1).scale)
   })
 })
