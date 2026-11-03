@@ -32,6 +32,7 @@ use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
 use App\Models\City;
 use App\Models\Lesson;
+use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
@@ -5587,6 +5588,35 @@ class Step3SceneConfigurator extends Component
             'label' => __('Undo'),
             'event' => 'scene:undo-delete',
         ]);
+    }
+
+    /**
+     * A copy of the scene straight after it, with its own quiz questions. The copy shares the original's media
+     * files (same paths): scenes are soft-deleted, so deleting either never takes the other's pictures away.
+     */
+    public function duplicateScene(int $sceneId): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+
+        $copy = DB::transaction(function () use ($scene): Scene {
+            $copy = $scene->replicate();
+            $copy->order = $this->parkingOrder();
+            $copy->save();
+            QuizQuestion::where('scene_id', $scene->id)->get()->each(function (QuizQuestion $q) use ($copy): void {
+                $dup = $q->replicate();
+                $dup->scene_id = $copy->id;
+                $dup->save();
+            });
+
+            return $copy;
+        });
+        $this->placeSceneAfterSelected($copy, $scene->id);
+
+        if ($copy->kind === 'game') {
+            $this->syncGameSceneIndexes();
+        }
+        $this->selectSceneInternal($copy->id);
+        $this->dispatch('toast', type: 'success', message: __('Scene duplicated.'));
     }
 
     /** An order no live scene holds, so a soft-deleted row cannot collide with the renumbering. */

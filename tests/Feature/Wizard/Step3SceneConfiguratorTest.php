@@ -788,6 +788,28 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertSame(1, $this->lesson->fresh()->game_split_count);
     }
 
+    public function test_duplicates_a_scene_right_after_it_with_its_quiz_questions(): void
+    {
+        $this->s1->update(['kind' => 'game', 'game_type' => 'quiz', 'game_segment_index' => 1, 'location' => 'Hondsrug']);
+        $this->lesson->quizQuestions()->create([
+            'scene_id' => $this->s1->id, 'order' => 0, 'question' => 'Wie bouwde de hunebedden?',
+            'options' => ['a', 'b', 'c', 'd'], 'correct_index' => 0,
+        ]);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('duplicateScene', $this->s1->id);
+
+        $order = $this->lesson->scenes()->ordered()->get();
+        $copy = $order[1];
+        $this->assertNotSame($this->s1->id, $copy->id, 'the copy sits straight after its original');
+        $this->assertSame('Hondsrug', $copy->location);
+        $this->assertSame($this->s2->id, $order[2]->id);
+        $this->assertSame(1, \App\Models\QuizQuestion::where('scene_id', $copy->id)->count(), 'the copy carries its own questions');
+        $this->assertSame(1, \App\Models\QuizQuestion::where('scene_id', $this->s1->id)->count(), 'the original keeps its questions');
+        $this->assertSame(2, $copy->game_segment_index, 'game segments renumber');
+    }
+
     public function test_generating_a_question_preserves_the_asks_ahead_flag(): void
     {
         $this->s2->update(['game_type' => 'quiz']);

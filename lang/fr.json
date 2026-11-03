@@ -2541,5 +2541,8 @@
     "Grass": "Herbe",
     "Grass sway": "Herbe au vent",
     "Horizon bushes": "Buissons à l'horizon",
-    "Add ground layer": "Ajouter une couche de sol"
+    "Add ground layer": "Ajouter une couche de sol",
+    "Scene options": "Options de la scène",
+    "Duplicate scene": "Dupliquer la scène",
+    "Scene duplicated.": "Scène dupliquée."
 }
