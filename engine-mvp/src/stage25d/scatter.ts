@@ -44,14 +44,15 @@ export function seedOf(s: string): number {
 const isPlant = (a: Asset) => a.layer !== 'ground' && a.layer !== 'sky' && a.layer !== 'bg' && a.layer !== 'figure'
   && !a.tileable_x && !isBandPicture(a) && a.kind !== 'animation' && a.tags.some((t) => PLANT_TAGS.includes(t))
 
-/** Everything a library can strew: the cells of its sprite sheets (kind 'sheet'), and its single plant pictures. */
+/** Everything a library can strew: the cells of its sprite sheets (kind 'sheet', cells in library.json), else its
+ *  single plant pictures. A bundle with a sheet strews only from its sheets, so a new sheet replaces the stand-in
+ *  without a code change. */
 export function spritesOf(lib: Library): Sprite[] {
-  return lib.assets.flatMap((a): Sprite[] => {
-    if (a.kind === 'sheet') {
-      return (a.cells ?? []).map((c) => ({ asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect }))
-    }
-    return isPlant(a) ? [{ asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1] }] : []
-  })
+  const sheets = lib.assets.filter((a) => a.kind === 'sheet')
+  if (sheets.length) {
+    return sheets.flatMap((a) => (a.cells ?? []).map((c): Sprite => ({ asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect })))
+  }
+  return lib.assets.filter(isPlant).map((a) => ({ asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1] }))
 }
 
 const shares = (s: Sprite, groundTags: string[]) => s.tags.some((t) => !PLAIN.includes(t) && groundTags.includes(t))

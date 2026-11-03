@@ -42,6 +42,10 @@ describe('the sprites a scene can strew (spritesOf)', () => {
     expect(s[1]).toMatchObject({ asset: 'ground-sheet-01', tags: ['shrub', 'heath'], height_m: 2, cell: [0.5, 0, 0.5, 1] })
     expect(s[0].aspect).toBeCloseTo((0.5 * 1000) / 500)
   })
+  it('a bundle with a sheet strews only from its sheet: the single pictures are not used twice', () => {
+    const sheet = a('ground-sprites-01', [], 1, { kind: 'sheet', w: 100, h: 100, cells: [{ tags: ['grass'], height_m: 1, rect: [0, 0, 1, 1] }] })
+    expect(spritesOf(lib([...plants.assets, sheet])).map((x) => x.asset)).toEqual(['ground-sprites-01'])
+  })
 })
 
 describe('which sprites stand on which ground (follow the scene\'s ground)', () => {

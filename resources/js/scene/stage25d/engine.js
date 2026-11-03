@@ -419,7 +419,8 @@ export async function createStage25d (host, opts = {}) {
     library () {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
+      // a sprite sheet (the ground's clumps) is cut into its cells, never placed whole
+      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet').map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),
