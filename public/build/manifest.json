@@ -1,6 +1,6 @@
 {
-  "_BalloonLayer-BW7g8f70.js": {
-    "file": "assets/BalloonLayer-BW7g8f70.js",
+  "_BalloonLayer-Yspjt650.js": {
+    "file": "assets/BalloonLayer-Yspjt650.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
@@ -15,12 +15,12 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-DGgVRP57.js": {
-    "file": "assets/PowerMeter-DGgVRP57.js",
+  "_PowerMeter-maYQEUbZ.js": {
+    "file": "assets/PowerMeter-maYQEUbZ.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
       "_TeamGame-DKV8-JeE.js",
@@ -51,18 +51,18 @@
     "file": "assets/ambient-CEzLlAaX.js",
     "name": "ambient"
   },
-  "_babylon-BEUo0Gn_.js": {
-    "file": "assets/babylon-BEUo0Gn_.js",
+  "_babylon-DhBJWxKk.js": {
+    "file": "assets/babylon-DhBJWxKk.js",
     "name": "babylon",
     "imports": [
-      "_vite-helpers-DqutJMZx.js"
+      "_vite-helpers-IKSIfP92.js"
     ]
   },
-  "_big-countdown-xltu4lFj.js": {
-    "file": "assets/big-countdown-xltu4lFj.js",
+  "_big-countdown-CyYN8Rt4.js": {
+    "file": "assets/big-countdown-CyYN8Rt4.js",
     "name": "big-countdown",
     "imports": [
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -103,6 +103,19 @@
   "_i18n-DoByrmTl.js": {
     "file": "assets/i18n-DoByrmTl.js",
     "name": "i18n"
+  },
+  "_index-COx1GTUT.js": {
+    "file": "assets/index-COx1GTUT.js",
+    "name": "index",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vite-helpers-IKSIfP92.js"
+    ]
+  },
+  "_index-Dbvg1dQ0.js": {
+    "file": "assets/index-Dbvg1dQ0.js",
+    "name": "index",
+    "isDynamicEntry": true
   },
   "_map-imagery-Bp93pHDe.js": {
     "file": "assets/map-imagery-Bp93pHDe.js",
@@ -148,9 +161,20 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_vite-helpers-DqutJMZx.js": {
-    "file": "assets/vite-helpers-DqutJMZx.js",
+  "_vite-helpers-IKSIfP92.js": {
+    "file": "assets/vite-helpers-IKSIfP92.js",
     "name": "vite-helpers"
+  },
+  "node_modules/filerobot-image-editor/lib/index.js": {
+    "file": "assets/index-CF_ydchF.js",
+    "name": "index",
+    "src": "node_modules/filerobot-image-editor/lib/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vite-helpers-IKSIfP92.js",
+      "_index-Dbvg1dQ0.js",
+      "_index-COx1GTUT.js"
+    ]
   },
   "node_modules/three/build/three.module.js": {
     "file": "assets/three.module-CpB-wl7P.js",
@@ -159,7 +183,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DlOq2yCf.css",
+    "file": "assets/app-C7rYiJij.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -168,21 +192,24 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DgTRQdWy.js",
+    "file": "assets/app-CX_N3TwY.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
       "_properties-fhY1XOus.js",
-      "_BalloonLayer-BW7g8f70.js",
+      "_BalloonLayer-Yspjt650.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ],
     "dynamicImports": [
+      "node_modules/filerobot-image-editor/lib/index.js",
+      "_index-COx1GTUT.js",
+      "_index-Dbvg1dQ0.js",
       "resources/js/test-session/recorder.js",
       "resources/js/scene/quick-mask.js",
       "resources/js/scene/index.js",
@@ -231,17 +258,17 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-m73SzOmh.js",
+    "file": "assets/lesson-player-CV2QE6-i.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_dom-1akfPxNw.js",
       "_pausable-clock-B6VRcHlA.js",
       "_properties-fhY1XOus.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_config-qjtb2AOJ.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
@@ -257,11 +284,11 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-BW7g8f70.js",
+      "_BalloonLayer-Yspjt650.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "_TeamGame-DKV8-JeE.js",
-      "_PowerMeter-DGgVRP57.js",
+      "_PowerMeter-maYQEUbZ.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/wind-world.js",
       "resources/js/scene/race-lobby.js",
@@ -270,17 +297,17 @@
     ]
   },
   "resources/js/race-device.js": {
-    "file": "assets/race-device-08e_ZkRG.js",
+    "file": "assets/race-device-tW1woZgb.js",
     "name": "race-device",
     "src": "resources/js/race-device.js",
     "isEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
-      "_PowerMeter-DGgVRP57.js",
+      "_PowerMeter-maYQEUbZ.js",
       "resources/js/scene/race-sync.js",
       "resources/js/scene/race-stage.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_TeamGame-DKV8-JeE.js",
       "_ambient-CEzLlAaX.js",
       "_team-colours-JOtUsqOj.js",
@@ -289,49 +316,49 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-BfcSTN3F.js",
+    "file": "assets/ArtworkOverlay-HA3ADv2x.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_properties-fhY1XOus.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
-      "_vite-helpers-DqutJMZx.js"
+      "_vite-helpers-IKSIfP92.js"
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DK0UoH7g.js",
+    "file": "assets/ParallaxScene-CV8tOzT0.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-DNBvFI9Z.js",
       "_easing-HS2C6-zA.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_properties-fhY1XOus.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-Bmqs5Puv.js",
+    "file": "assets/QuizOverlay-C4gQRAqa.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_i18n-DoByrmTl.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-YXLNgyJK.js",
+    "file": "assets/SplitStage-xEo0gW8x.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -339,14 +366,14 @@
       "resources/js/scene/ParallaxScene.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-BW7g8f70.js",
-      "_big-countdown-xltu4lFj.js",
+      "_BalloonLayer-Yspjt650.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-DNBvFI9Z.js",
       "_properties-fhY1XOus.js",
       "_easing-HS2C6-zA.js",
-      "_vite-helpers-DqutJMZx.js"
+      "_vite-helpers-IKSIfP92.js"
     ]
   },
   "resources/js/scene/StoryGameEngine.js": {
@@ -385,20 +412,20 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DeaVQ4h9.js",
+    "file": "assets/index-C8lK63yd.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "resources/js/avatar-3d.js",
       "_camera-DNBvFI9Z.js",
-      "_BalloonLayer-BW7g8f70.js",
+      "_BalloonLayer-Yspjt650.js",
       "resources/js/app.js",
       "node_modules/three/build/three.module.js",
       "_ambient-CEzLlAaX.js",
@@ -417,13 +444,13 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-CE6xjbTk.js",
+    "file": "assets/mic-Dp698ok4.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-DGgVRP57.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_PowerMeter-maYQEUbZ.js",
+      "_vite-helpers-IKSIfP92.js",
       "_i18n-DoByrmTl.js",
       "_dom-1akfPxNw.js",
       "_TeamGame-DKV8-JeE.js",
@@ -468,20 +495,20 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/engine.js": {
-    "file": "assets/engine-Du3PU_C_.js",
+    "file": "assets/engine-52M9zFM0.js",
     "name": "engine",
     "src": "resources/js/scene/stage25d/engine.js",
     "isDynamicEntry": true,
     "imports": [
-      "_babylon-BEUo0Gn_.js",
+      "_babylon-DhBJWxKk.js",
       "_config-qjtb2AOJ.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_projection-CL24asTn.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_properties-fhY1XOus.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-xltu4lFj.js",
+      "_big-countdown-CyYN8Rt4.js",
       "_ambient-CEzLlAaX.js"
     ]
   },
@@ -495,29 +522,29 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-B_SnpenA.js",
+    "file": "assets/recorder-Bi71REqf.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
       "resources/js/app.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_properties-fhY1XOus.js",
-      "_BalloonLayer-BW7g8f70.js",
+      "_BalloonLayer-Yspjt650.js",
       "_clip-W780-tgz.js",
       "_tuner-CTMYYJl-.js"
     ]
   },
   "resources/js/timemap/index.js": {
-    "file": "assets/index-D9KDXN2U.js",
+    "file": "assets/index-p5hrMCUw.js",
     "name": "index",
     "src": "resources/js/timemap/index.js",
     "isEntry": true,
     "imports": [
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_map-imagery-Bp93pHDe.js",
       "_easing-HS2C6-zA.js",
       "_border-sweep-DD0CkwUG.js",
@@ -541,7 +568,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-CCJ0d45p.js",
+    "file": "assets/voyage-tour-CblNDPnK.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -552,7 +579,7 @@
       "_easing-HS2C6-zA.js",
       "_border-sweep-DD0CkwUG.js",
       "resources/js/timemap/voyage-ships.js",
-      "_vite-helpers-DqutJMZx.js",
+      "_vite-helpers-IKSIfP92.js",
       "_map-imagery-Bp93pHDe.js",
       "_pausable-clock-B6VRcHlA.js",
       "_i18n-DoByrmTl.js",
