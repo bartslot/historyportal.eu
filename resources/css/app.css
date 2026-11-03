@@ -72,9 +72,9 @@
 
     /* Editor shell (Spotify layout): the black between and around the panels, and the panel
        surface itself. --color-panel-label on --color-panel measures 5.2:1 (AA for 12px text). */
-    --color-shell:            #000000;
-    --color-panel:            color-mix(in oklab, var(--color-base-200) 60%, transparent);
-    --color-panel-border:     oklch(from var(--color-panel) calc(l + 0.05) c h);  /* the panel, 5% lighter */
+    --color-shell:            #040814;
+    --color-panel:            #09101E;
+    --color-panel-border:     #1F2E47;
     --editor-gap:             8px;
 
     /* Semantic states */
