@@ -15,7 +15,7 @@
  * Answers are shown in stored order, never shuffled, so `option` in an edit is the stored index.
  */
 import { t } from '../i18n.js'
-import { LETTERS, LETTER_CLASSES, LETTER_CHIP, SCRIM, CARD_STILL } from './QuizOverlay.js'
+import { LETTERS, SCRIM, CARD_STILL, quizImage, answerChip } from './QuizOverlay.js'
 
 // Heroicons outline chevrons, 24x24, stroke 1.5 (the icon standard).
 const CHEVRON_LEFT = 'M15.75 19.5 8.25 12l7.5-7.5'
@@ -125,7 +125,7 @@ export class QuizEditorSlides {
         : ''
       return `
         <div data-row="${i}" class="${tone} relative flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-lg font-medium">
-          <span class="${LETTER_CLASSES[i]} ${LETTER_CHIP}">${LETTERS[i]}</span>
+          ${answerChip(i)}
           <span data-edit="option" data-opt="${i}" ${isCorrect ? 'data-correct' : ''} contenteditable="plaintext-only" spellcheck="true"
                 class="${EDITABLE} min-w-0 flex-1 px-1">${escapeHtml(opt)}</span>
           ${badge}
@@ -142,10 +142,11 @@ export class QuizEditorSlides {
              style="width: ${SLIDE_W}px; height: ${SLIDE_H}px">
           <div class="${CARD_STILL} relative max-h-[calc(100%-2rem)] w-[46rem] overflow-y-auto px-16 py-8">
             <div data-edit="question" contenteditable="plaintext-only" spellcheck="true"
-                 class="${EDITABLE} mb-6 text-center text-3xl leading-snug font-medium">${escapeHtml(q.question)}</div>
-            <div class="flex flex-col gap-2.5">${rows}</div>
-            <div class="mt-5 flex items-center justify-center gap-1.5">${dots}</div>
-            <div class="mt-1.5 text-center text-sm text-base-content/60">${this._index + 1} / ${total}</div>
+                 class="${EDITABLE} ${q.image_path ? 'mb-4' : 'mb-6'} text-center text-3xl leading-snug font-medium">${escapeHtml(q.question)}</div>
+            ${quizImage(q)}
+            <div class="${q.image_path ? 'grid grid-cols-2' : 'flex flex-col'} gap-2.5">${rows}</div>
+            ${total > 1 ? `<div class="mt-5 flex items-center justify-center gap-1.5">${dots}</div>
+            <div class="mt-1.5 text-center text-sm text-base-content/60">${this._index + 1} / ${total}</div>` : ''}
           </div>
           ${arrow(-1, CHEVRON_LEFT, t('Previous question'), this._index === 0)}
           ${arrow(1, CHEVRON_RIGHT, t('Next question'), this._index === total - 1)}

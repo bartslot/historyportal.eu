@@ -24,7 +24,7 @@ class StudentLessonController extends Controller
             ->whereHas('classrooms', function ($q) use ($student) {
                 $q->whereHas('students', fn($q2) => $q2->where('users.id', $student->id));
             })
-            ->with(['quizQuestions:id,lesson_id,order,question,options,points'])
+            ->with(['quizQuestions:id,lesson_id,order,question,image_path,options,points'])
             ->get()
             ->map(fn(Lesson $lesson) => $this->lessonSummary($lesson, $student->id));
 
@@ -66,6 +66,7 @@ class StudentLessonController extends Controller
                     'id'       => $q->id,
                     'order'    => $q->order,
                     'question' => $q->question,
+                    'image_url' => $q->image_path ? url($q->image_path) : null,
                     'options'  => $q->options,
                     'points'   => $q->points,
                     // correct_index NOT sent to client until after submission

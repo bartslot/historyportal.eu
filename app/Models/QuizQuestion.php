@@ -15,6 +15,7 @@ class QuizQuestion extends Model
         'scene_id',
         'order',
         'question',
+        'image_path',
         'options',
         'correct_index',
         'asks_ahead',

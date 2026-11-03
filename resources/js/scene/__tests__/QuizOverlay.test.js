@@ -148,6 +148,27 @@ describe('the question card', () => {
     expect(host.querySelector('[data-pager]').textContent).toBe('2 / 3')
   })
 
+  it('a single question shows no pager and no dots (Bart 11-03)', () => {
+    openQuiz([QUESTIONS[0]])
+    expect(host.querySelector('[data-pager]')).toBeNull()
+    expect(text()).not.toContain('1 / 1')
+  })
+
+  it('shows the teacher\'s picture over the question, a site path only', () => {
+    openQuiz([{ ...QUESTIONS[0], image_path: '/storage/lessons/1/uploads/a.webp' }, { ...QUESTIONS[2], image_path: 'javascript:alert(1)' }])
+    expect(host.querySelector('[data-quiz-image]').getAttribute('src')).toBe('/storage/lessons/1/uploads/a.webp')
+    answer(1)
+    vi.advanceTimersByTime(5000)
+    expect(host.querySelector('[data-quiz-image]')).toBeNull()
+  })
+
+  it('answers carry Kahoot\'s shapes, with the letter for screen readers', () => {
+    openQuiz()
+    const chips = [...host.querySelectorAll('[data-opt] [role="img"]')]
+    expect(chips.map((c) => c.getAttribute('aria-label'))).toEqual(['A', 'B', 'C', 'D'])
+    expect(chips[0].className).toContain('quiz-answer-0')
+  })
+
   it('holds longer when there is an explanation to take in', () => {
     openQuiz([QUESTIONS[1], QUESTIONS[2]])
     answer(1)

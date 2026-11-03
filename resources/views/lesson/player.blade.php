@@ -110,7 +110,7 @@
         // (low-stakes in-class quiz; mitigations = server score clamp + integrity telemetry
         // + teacher-eyes-only flags in QuizLeaderboardController). Server-side grading is
         // the v2 path if stakes rise.
-        'quiz_questions'        => $lesson->quizQuestions->whereNull('scene_id')->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values(),
+        'quiz_questions'        => $lesson->quizQuestions->whereNull('scene_id')->map->only(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values(),
         'quiz_timing'           => $lesson->quiz_timing,
         'cover_image_url'       => $lesson->titleBgUrl() ?? $lesson->cardImageUrl(),
         // Where the lesson TEXT came from. The per-scene image credit rides on each scene below and
@@ -245,7 +245,7 @@
                 // correct_index is client-visible; grading stays client-side for v1.
                 'quiz_questions' => $s->kind === 'game'
                     ? ($lesson->quizQuestions->where('scene_id', $s->id)->values()->whenEmpty(fn () => $lesson->quizQuestions->whereNull('scene_id')->values()))
-                        ->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()
+                        ->map->only(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()
                     : null,
                 'quiz_shuffle' => $s->kind === 'game' ? (($s->config ?? [])['quiz_shuffle'] ?? 'per_player') : null,
               ])->values()

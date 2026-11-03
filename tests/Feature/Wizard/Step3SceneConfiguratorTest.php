@@ -463,6 +463,30 @@ class Step3SceneConfiguratorTest extends TestCase
             ->assertSet('quizDraft.0.options.0', 'Corrected by teacher');
     }
 
+    public function test_a_question_takes_a_picture_that_survives_the_autosave_and_can_be_removed(): void
+    {
+        Storage::fake('public');
+        $this->s2->update(['game_type' => 'quiz']);
+
+        $c = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->call('addQuizQuestion')
+            ->set('quizDraft.0.question', 'Who sailed?')
+            ->set('quizDraft.0.options', ['Tasman', 'Cook', 'Drake', 'Hudson'])
+            ->set('quizImageUploads.0', \Illuminate\Http\UploadedFile::fake()->image('ship.png', 800, 600));
+
+        $path = $c->get('quizDraft.0.image_path');
+        $this->assertStringStartsWith("/storage/lessons/{$this->lesson->id}/uploads/", $path);
+        $this->assertSame($path, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->value('image_path'));
+
+        $c->set('quizDraft.0.question', 'Who sailed first?');   // the delete-and-recreate autosave keeps it
+        $this->assertSame($path, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->value('image_path'));
+
+        $c->call('removeQuizImage', 0);
+        $this->assertNull($this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->value('image_path'));
+    }
+
     public function test_question_count_field_adds_and_trims_draft_slots(): void
     {
         $component = Livewire::actingAs($this->teacher)

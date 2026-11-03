@@ -7,6 +7,7 @@ namespace App\Livewire\Wizard\Concerns;
 use App\Models\QuizQuestion;
 use App\Models\Scene;
 use Illuminate\Support\Collection;
+use App\Services\Support\WebpEncoder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 
@@ -21,13 +22,16 @@ use Livewire\Attributes\On;
  */
 trait EditsQuizQuestions
 {
-    /** @var array<int,array{id:?int,question:string,options:array<int,string>,correct_index:int,explanation:string}> */
+    /** @var array<int,array{id:?int,question:string,image_path:?string,options:array<int,string>,correct_index:int,explanation:string}> */
     public array $quizDraft = [];
 
     /** Per-question validation messages, keyed by draft index. */
     public array $quizErrors = [];
 
     public bool $quizSaved = false;
+
+    /** Pictures being uploaded for a question, keyed by draft index (the component uses WithFileUploads). */
+    public array $quizImageUploads = [];
 
     /** The quiz scene the draft was last loaded for — guards against status-poll re-selects wiping edits. */
     public ?int $quizDraftSceneId = null;
@@ -80,6 +84,7 @@ trait EditsQuizQuestions
             ->map(fn (QuizQuestion $q) => [
                 'id' => $q->id,
                 'question' => (string) $q->question,
+                'image_path' => $q->image_path,
                 'options' => $this->padOptions(is_array($q->options) ? $q->options : []),
                 'correct_index' => (int) $q->correct_index,
                 'asks_ahead' => (bool) $q->asks_ahead,
@@ -96,11 +101,37 @@ trait EditsQuizQuestions
         $this->quizDraft[] = [
             'id' => null,
             'question' => '',
+            'image_path' => null,
             'options' => array_fill(0, self::QUIZ_OPTION_COUNT, ''),
             'correct_index' => 0,
             'asks_ahead' => false,
             'explanation' => '',
         ];
+    }
+
+    /** The teacher's picture for question $index: stored like any upload (WebP), then saved with the question. */
+    public function updatedQuizImageUploads(mixed $value, string $key): void
+    {
+        $index = (int) $key;
+        if (! array_key_exists($index, $this->quizDraft)) {
+            $this->quizImageUploads = [];
+
+            return;
+        }
+        $this->validate(["quizImageUploads.{$index}" => 'image|mimes:jpg,jpeg,png,webp,gif|max:8192']);   // 8 MB
+        $path = WebpEncoder::storeUpload($this->quizImageUploads[$index], "lessons/{$this->lesson->id}/uploads");
+        $this->quizImageUploads = [];
+        $this->quizDraft[$index]['image_path'] = '/storage/'.$path;
+        $this->autosaveQuiz();
+    }
+
+    public function removeQuizImage(int $index): void
+    {
+        if (! array_key_exists($index, $this->quizDraft)) {
+            return;
+        }
+        $this->quizDraft[$index]['image_path'] = null;
+        $this->autosaveQuiz();
     }
 
     public function removeQuizQuestion(int $index): void
@@ -289,6 +320,7 @@ trait EditsQuizQuestions
         $this->quizDraft[$index] = [
             'id' => $this->quizDraft[$index]['id'] ?? null,
             'question' => $question,
+            'image_path' => $this->quizDraft[$index]['image_path'] ?? null,   // a redrawn question keeps the teacher's picture
             'options' => $this->padOptions($options),
             'correct_index' => $correctSlot,
             // Keep the prior-knowledge flag: dropping it here silently reset it to false on
@@ -421,6 +453,7 @@ trait EditsQuizQuestions
             $newCorrect = array_search($correctValue, $filled, true);
             $clean[] = [
                 'question' => $question,
+                'image_path' => $q['image_path'] ?? null,
                 'options' => $filled,
                 'correct_index' => $newCorrect === false ? 0 : (int) $newCorrect,
                 'asks_ahead' => (bool) ($q['asks_ahead'] ?? false),
@@ -439,6 +472,7 @@ trait EditsQuizQuestions
                     'scene_id' => $this->quizDraftSceneId,
                     'order' => $order,
                     'question' => $row['question'],
+                    'image_path' => $row['image_path'],
                     'options' => $row['options'],
                     'correct_index' => $row['correct_index'],
                     'asks_ahead' => $row['asks_ahead'],
@@ -530,7 +564,7 @@ trait EditsQuizQuestions
     {
         return $pool->where('scene_id', $sceneId)->values()
             ->whenEmpty(fn () => $pool->whereNull('scene_id')->values())
-            ->map->only(['question', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()->all();
+            ->map->only(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()->all();
     }
 
     /** @deprecated Autosave replaced the manual save — kept for any stray callers. */

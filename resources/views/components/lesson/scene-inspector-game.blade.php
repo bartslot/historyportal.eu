@@ -53,7 +53,7 @@
         {{-- Multiple-choice question editor. Questions are lesson-level (shared across quiz segments);
              each has up to four colour-coded options (A/B/C/D) with exactly one marked correct. This
              is the actual quiz content — the field below is only the spoken intro, not the questions. --}}
-        @php $letters = ['A', 'B', 'C', 'D']; $palette = ['#e11d48', '#0284c7', '#f59e0b', '#059669']; @endphp
+        @php $letters = ['A', 'B', 'C', 'D']; $shapes = ['<path d="M12 3 22 20H2z"/>', '<path d="M12 2 22 12 12 22 2 12z"/>', '<circle cx="12" cy="12" r="9.5"/>', '<rect x="3" y="3" width="18" height="18" rx="1"/>']; @endphp   {{-- Kahoot's shapes, QuizOverlay.js ANSWER_SHAPES --}}
         <div data-quiz-section class="space-y-3 border-t border-white/10 pt-3">
             <div class="flex items-center justify-between">
                 <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Quiz questions') }}</p>
@@ -146,6 +146,23 @@
                         </button>
                     </div>
 
+                    {{-- A picture the class sees with the question (optional). --}}
+                    <div class="flex items-center gap-2" data-quiz-image="{{ $i }}">
+                        @if (! empty($q['image_path']))
+                            <img src="{{ $q['image_path'] }}" alt="" class="h-12 w-20 shrink-0 rounded-md object-cover ring-1 ring-slate-700" />
+                        @endif
+                        <label class="btn btn-ghost btn-xs gap-1.5 px-2">
+                            <x-icons.arrow-up-tray class="h-3.5 w-3.5" /> {{ empty($q['image_path']) ? __('Add image') : __('Change') }}
+                            <input type="file" accept="image/*" wire:model="quizImageUploads.{{ $i }}" class="hidden" />
+                        </label>
+                        @if (! empty($q['image_path']))
+                            <button type="button" wire:click="removeQuizImage({{ $i }})"
+                                    class="text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
+                        @endif
+                        <span wire:loading wire:target="quizImageUploads.{{ $i }}" class="loading loading-spinner loading-xs"></span>
+                    </div>
+                    @error('quizImageUploads.'.$i) <p class="text-2xs text-error">{{ $message }}</p> @enderror
+
                     {{-- Answers: drag handle in front to reorder A/B/C/D (Sortable). The correct
                          answer is locked (generated with the question, green) but still reorderable;
                          distractors get their own AI-redraw button. --}}
@@ -168,8 +185,9 @@
                             <div class="flex items-center gap-1.5" wire:key="quiz-q-{{ $i }}-opt-{{ $oi }}">
                                 <span class="quiz-drag-handle cursor-grab active:cursor-grabbing text-panel-hint hover:text-slate-300 shrink-0"
                                       data-tooltip="{{ __('Drag to reorder') }}"><x-icons.reorder /></span>
-                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-2xs font-bold text-white"
-                                      style="background-color: {{ $palette[$oi] }}">{{ $letter }}</span>
+                                <span class="quiz-answer-{{ $oi }} inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md" role="img" aria-label="{{ $letter }}">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">{!! $shapes[$oi] !!}</svg>
+                                </span>
 
                                 @if ($isCorrect)
                                     {{-- Editable like any option — teachers own their answers. Only the

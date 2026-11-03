@@ -30,16 +30,29 @@ import { Sfx } from './sfx.js'
 import { t } from '../i18n.js'
 import { mountBigCountdown, BIG_COUNTDOWN_LEAVE_MS } from '../big-countdown.js'
 
+/** The teacher's picture between the question and its answers, as Kahoot places it (editor slide and player card alike);
+ *  '' without one. Only a site path. */
+export const quizImage = (q) => {
+  const src = String(q?.image_path ?? '')
+  if (!src.startsWith('/')) return ''
+  return `<img data-quiz-image src="${src.replace(/[&"<>]/g, (c) => `&#${c.charCodeAt(0)};`)}" alt=""
+               class="mx-auto mb-4 max-h-40 w-auto max-w-full rounded-xl object-contain" />`
+}
+
 export const LETTERS = ['A', 'B', 'C', 'D']
-// The four answer letters keep their Kahoot-style colour coding, drawn from the theme rather
-// than raw hexes. C is the brand amber, not the warning yellow (Bart 2026-10-15).
-export const LETTER_CHIP = 'inline-flex h-[30px] w-9 shrink-0 items-center justify-center rounded-lg text-[15px] font-extrabold'
-export const LETTER_CLASSES = [
-  'bg-error text-error-content',
-  'bg-info text-info-content',
-  'bg-primary text-primary-content',
-  'bg-success text-success-content',
+// The four answers in Kahoot's colours and shapes, which a class already knows (Bart 2026-11-03): red triangle,
+// blue diamond, yellow circle, green square. The colours are app.css .quiz-answer-N; the letter stays for screen readers.
+export const LETTER_CHIP = 'inline-flex h-[30px] w-9 shrink-0 items-center justify-center rounded-lg'
+export const LETTER_CLASSES = ['quiz-answer-0', 'quiz-answer-1', 'quiz-answer-2', 'quiz-answer-3']
+export const ANSWER_SHAPES = [
+  '<path d="M12 3 22 20H2z"/>',
+  '<path d="M12 2 22 12 12 22 2 12z"/>',
+  '<circle cx="12" cy="12" r="9.5"/>',
+  '<rect x="3" y="3" width="18" height="18" rx="1"/>',
 ]
+/** The chip in front of answer i: its shape in white on its colour. */
+export const answerChip = (i) =>
+  `<span class="${LETTER_CLASSES[i]} ${LETTER_CHIP}" role="img" aria-label="${LETTERS[i]}"><svg viewBox="0 0 24 24" fill="currentColor" class="h-[18px] w-[18px]" aria-hidden="true">${ANSWER_SHAPES[i]}</svg></span>`
 const POINTS_CORRECT = 10
 const STREAK_BONUS = 5
 const STREAK_FROM = 3
@@ -374,7 +387,7 @@ export class QuizOverlay {
         <button data-opt="${i}" ${answered || gated ? 'disabled' : ''}
                 class="${anim} ${tone} ${cursor} relative flex w-full items-center gap-4 rounded-xl border px-4 py-3
                        text-left text-xl font-medium transition-[background-color,border-color,transform,opacity] duration-150">
-          <span class="${LETTER_CLASSES[i]} ${LETTER_CHIP}">${LETTERS[i]}</span>
+          ${answerChip(i)}
           <span>${this._escape(opt)}</span>
           ${ghost}
         </button>`
@@ -394,11 +407,12 @@ export class QuizOverlay {
     this.host.innerHTML = `
       <div class="${SCRIM}">
         <div class="${CARD} relative mx-4 w-full max-w-3xl p-8 sm:px-12 sm:py-10">
-          <div class="qz-question mb-8 text-center text-2xl leading-snug font-medium drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] sm:text-4xl">${this._escape(q.question)}</div>
-          <div data-answers class="relative flex flex-col gap-2.5">${optionsHtml}</div>
+          <div class="qz-question ${q.image_path ? 'mb-4' : 'mb-8'} text-center text-2xl leading-snug font-medium drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] sm:text-4xl">${this._escape(q.question)}</div>
+          ${quizImage(q)}
+          <div data-answers class="relative ${q.image_path ? 'grid grid-cols-2' : 'flex flex-col'} gap-2.5">${optionsHtml}</div>
           ${explanation}
           ${this._reviewing ? this._reviewNavHtml() : ''}
-          <div class="mt-6 flex items-center justify-center gap-1.5">
+          <div class="mt-6 flex items-center justify-center gap-1.5 ${total > 1 ? '' : 'hidden'}">
             ${this._questions.map((_, i) => {
               const done = this._answered.has(i)
               // _answered holds a DISPLAY index — map it through _display[i] before comparing
@@ -417,7 +431,7 @@ export class QuizOverlay {
                 <svg viewBox="0 0 24 24" fill="currentColor" class="h-[15px] w-[15px]"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>
                 <span data-score-value>${this._score}</span>
               </span>
-              <span data-pager>${this._index + 1} / ${total}</span>
+              ${total > 1 ? `<span data-pager>${this._index + 1} / ${total}</span>` : ''}
             </span>
           </div>
         </div>

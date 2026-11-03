@@ -2276,3 +2276,16 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 @keyframes s25-sheet-x { to { translate: -100% 0; } }
 @keyframes s25-sheet-y { to { transform: translateY(-100%); } }
 @media (prefers-reduced-motion: reduce) { .s25-sheet > img { animation-play-state: paused; } }
+
+/* Quiz answers in the colours and shapes a class knows from Kahoot (Bart 2026-11-03: "so it feels familiar"):
+   red triangle, blue diamond, yellow circle, green square. One place for the editor panel, its slide and the player. */
+:root {
+    --quiz-answer-0: #e21b3c;
+    --quiz-answer-1: #1368ce;
+    --quiz-answer-2: #d89e00;
+    --quiz-answer-3: #26890c;
+}
+.quiz-answer-0 { background-color: var(--quiz-answer-0); color: #fff; }
+.quiz-answer-1 { background-color: var(--quiz-answer-1); color: #fff; }
+.quiz-answer-2 { background-color: var(--quiz-answer-2); color: #fff; }
+.quiz-answer-3 { background-color: var(--quiz-answer-3); color: #fff; }
