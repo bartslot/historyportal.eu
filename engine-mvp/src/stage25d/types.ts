@@ -37,11 +37,13 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number }
 
 /** The values a backdrop (a ground band, the sky picture) takes from a layer. */
-export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys'>>
-export interface GroundBand extends GroundBandProps { asset: string; z: number }
+export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys' | 'src'>>
+export interface GroundBand extends GroundBandProps { asset: string; z: number; src?: string }
 
 export interface SceneLayer {
   need?: string | string[]
+  /** the teacher's edited copy of the picture (a URL), drawn instead of the library file */
+  src?: string
   asset?: string | null
   depth: Depth
   x?: number

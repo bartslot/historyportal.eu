@@ -215,6 +215,12 @@ export async function createStage25d (host, opts = {}) {
           const r = canvas.getBoundingClientRect()
           api.addLayer(id, { x: e.clientX - r.left, y: e.clientY - r.top })
         })
+        // a double-click opens the image editor (editor/photo-editor.js) for the picture the first click selected
+        canvas.addEventListener('dblclick', () => {
+          const id = backdrop ?? (pointer?.selected != null ? `layer-${pointer.selected}` : null)
+          const target = id && api.editTarget(id)
+          if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
+        })
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
@@ -234,6 +240,21 @@ export async function createStage25d (host, opts = {}) {
       lead = Number(cfgNow.narration_at_s) || 0
       cfgSig = structureSig(cfgNow)
       host.dataset.stage25dReady = '1'
+    },
+    /** What the image editor opens for one row ('layer-3', 'band-0', 'sky'): the library picture (the original),
+     *  the editor's saved state, whether the row shows an edited copy (`src`) now. */
+    editTarget (id) {
+      const row = id === 'sky' ? (cfg?.set?.sky ? skyNow : null) : bandIndex(id) >= 0 ? bands[bandIndex(id)] : layers[layerIndex(id)]
+      const asset = id === 'sky' ? skyAsset() : assets.get(row?.asset)
+      if (!row || !asset || !libData) return null
+      return {
+        id: `s25_${id}`,
+        title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
+        original: libData.base + asset.file,
+        state: row.edit_state ?? null,
+        edited: !!row.src,
+        el: host,
+      }
     },
     /** Same set already on stage (an edit of x, y, scale, rotation, opacity or keys is not a different set). */
     matches: (cfg) => cfgSig === structureSig(cfg),

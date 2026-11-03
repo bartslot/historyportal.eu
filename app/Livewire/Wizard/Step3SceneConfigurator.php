@@ -14,6 +14,7 @@ use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
+use App\Livewire\Wizard\Concerns\EditsImages;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
@@ -74,6 +75,7 @@ class Step3SceneConfigurator extends Component
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
     use EditsDiorama;
+    use EditsImages;
     use EditsStage25d;
     use EditsQuizQuestions;
     use EditsTitleScreen;
@@ -347,6 +349,10 @@ class Step3SceneConfigurator extends Component
                 // on a symmetrical shape and opposite headings on a ship.
                 'flip_x' => ! empty($l['flip_x']),
                 'flip_y' => ! empty($l['flip_y']),
+                // The image editor (EditsImages): the picture before any edit, and the editor's own state, so a
+                // second edit starts from the original with every change still editable.
+                'original_url' => ! empty($l['original_path']) ? MediaUrl::versioned($l['original_path'], $ts) : null,
+                'edit_state' => $l['edit_state'] ?? null,
                 // Appear and its exit: the same list the player gets (LayerEntrances::payload).
                 ...LayerEntrances::payload($l),
                 'grayscale' => ! empty($l['grayscale']),
