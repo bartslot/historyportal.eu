@@ -146,15 +146,24 @@
                     <x-lesson.restyle-control kind="asset" :id="$r->subject_id" :restyle="$r" compact />
                 </div>
             @endforeach
+            {{-- Pictures with one name are one series ("Dinosaur", 22 of them): one tile with its count; the count opens
+                 the series in this grid, the breadcrumb closes it. --}}
+            <div x-data="{ series: null }" x-on:icon-series-close.window="series = null">
+            <div x-show="series !== null" x-cloak class="mb-1 flex items-center gap-2">
+                <x-ui.panel-breadcrumb :label="__('Assets')" x-on:click="series = null" />
+                <span class="truncate text-xs font-semibold text-base-content" x-text="series"></span>
+            </div>
             <div class="lp-thumb-grid gap-1" :style="gridStyle" @if ($collection === 'history-line') data-mixed @endif>
-                @foreach ($this->icons() as $icon)
+                @foreach ($this->series() as $title => $members)
+                @foreach ($members as $k => $icon)
                     @php
                         $isPicture = $icon->category === 'backdrops';
                         $canRestyle = auth()->user()?->isAdmin() && $icon->isRaster() && empty($icon->sheet);
                         $restyle = $this->restyles->get($icon->id);
                     @endphp
                     <div data-kind="{{ $isPicture ? 'image' : 'icon' }}" @if ($isPicture) data-zoom @endif
-                         wire:key="icon-{{ $icon->id }}" class="group"
+                         wire:key="icon-{{ $icon->id }}" class="group relative"
+                         x-show="series === null ? {{ $k === 0 ? 'true' : 'false' }} : series === @js($title)"
                          @if ($restyle && ($restyle->isActive() || $restyle->notified_at === null)) wire:poll.3s="pollRestyle({{ $restyle->id }})" @endif>
                     <button type="button" draggable="true"
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-icon', '{{ $icon->id }}');
@@ -175,6 +184,10 @@
                              :srcset="srcset(@js($icon->url()))" :sizes="sizes(@js($icon->url()), {{ $isPicture ? 2 : 1 }})"
                              class="pointer-events-none {{ $icon->isRaster() ? '' : 'invert' }}" />
                     </button>
+                    @if ($k === 0 && $members->count() > 1)
+                        <button type="button" x-show="series === null" x-on:click="series = @js($title)" data-series-count
+                                class="badge badge-sm badge-neutral absolute bottom-1 right-1" aria-label="{{ __(':title, :n pictures', ['title' => $title, 'n' => $members->count()]) }}">{{ $members->count() }}</button>
+                    @endif
                     @if ($canRestyle)
                         @if ($restyle?->isActive())
                             <span class="absolute inset-0 flex items-center justify-center bg-base-100/70" data-restyle="running" role="status" aria-label="{{ $restyle->step >= 2 ? __('Restyling 2/2: colour…') : __('Restyling 1/2: ink…') }}">
@@ -193,6 +206,8 @@
                     @endif
                     </div>
                 @endforeach
+                @endforeach
+            </div>
             </div>
         @endif
     </div>

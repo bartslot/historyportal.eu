@@ -366,6 +366,17 @@ class IconPanel extends Component
             ->get();
     }
 
+    /**
+     * The icons on show as series: pictures with one title are variants of one thing ("Dinosaur", in 22 poses), shown
+     * as one tile with its count, the way Figma and Canva group variants. Keeps the icons' order.
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, SvgAsset>>
+     */
+    public function series(): \Illuminate\Support\Collection
+    {
+        return $this->icons()->groupBy(fn (SvgAsset $icon) => (string) $icon->title)->map->values();
+    }
+
     public function render(): View
     {
         // The remembered (or default) collection may not exist here: show the first one that does,

@@ -48,19 +48,21 @@ export function assetLabel (asset, lang = 'en') {
 const characterName = (id) => capital(String(id).replace(/-/g, ' ').replace(/ ([a-z])$/, (m, c) => ` ${c.toUpperCase()}`))
 
 /** The character a figure picture shows: its `char:` tag, else its id (fig-<character>-<pose>-01). */
-const characterOf = (asset) => {
+export const characterOf = (asset) => {
   const tag = (asset?.tags ?? []).find((t) => t.startsWith('char:'))
   if (tag) return tag.slice(5)
   const m = /^fig-(.+)-[a-z]+-\d+(-l)?$/.exec(String(asset?.id ?? ''))
   return m ? m[1] : null
 }
 
-/** A layer's row name: a painted figure reads as its character ("Meisje"), anything else as its picture. */
+/** A layer's row name: a painted figure reads as its character ("Meisje"), anything else as its picture. The picture
+ *  names the character before the layer's speaker handle does: switched to another character, the handle (and the
+ *  balloons that point at it) stays, the name follows the picture. */
 export function layerLabel (layer, asset, lang = 'en') {
-  if (layer.figure) return characterName(layer.figure)
   const picture = asset ?? (layer.asset ? { id: layer.asset } : null)
   const character = (picture?.layer === 'figure' || /^fig-/.test(String(picture?.id ?? ''))) && characterOf(picture)
   if (character) return characterName(character)
+  if (layer.figure) return characterName(layer.figure)
   if (picture) return assetLabel(picture, lang)
   const need = Array.isArray(layer.need) ? layer.need[0] : layer.need
   return need ? capital(String(need)) : ''

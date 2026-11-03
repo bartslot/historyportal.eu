@@ -105,6 +105,18 @@ class IconPanelTest extends TestCase
         $this->assertSame(['Civilisations', 'Egyptians', 'Prehistoric', 'Dinosaurs'], $labels);
     }
 
+    public function test_pictures_with_one_title_are_one_tile_with_their_count(): void
+    {
+        foreach (range(2, 5) as $n) {
+            $this->bundled('line-art', 'Prehistoric', 'Dinosaurs', 'T rex');
+        }
+
+        $series = $this->panel()->instance()->series();
+        $this->assertSame(['Pharaoh', 'T rex'], $series->keys()->all());
+        $this->assertSame(5, $series['T rex']->count());
+        $this->panel()->assertSeeHtml('data-series-count')->assertSeeHtml('>5</button>');
+    }
+
     public function test_a_flat_collection_has_no_second_row(): void
     {
         $this->assertSame([], $this->panel()->call('selectCollection', 'arrows')->instance()->groups());

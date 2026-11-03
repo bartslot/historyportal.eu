@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
+use App\Services\Support\SpeechBalloons;
 use Livewire\Attributes\On;
 
 /**
@@ -301,7 +302,62 @@ trait EditsStage25d
         return $z < 4.9 ? 'near' : ($z < 12.4 ? 'fg' : ($z < 39.2 ? 'mid' : 'bg'));
     }
 
-    /** Take a layer off the stage. Its keys go with it (they live on the layer); the stage rebuilds from the saved scene. */
+    /** Where a grouped balloon's middle sits from its speaker's mouth, shares of the stage: up, in front of the face. */
+    private const BALLOON_OFFSET = [0.09, -0.16];
+
+    /**
+     * A speech balloon grouped with a character on the stage (config.lines): its tail points at the figure's head and it
+     * moves along with the figure (`group`: its `at` is counted from the mouth, BalloonLayer). A layer without a speaker
+     * handle gets one, named after its character. One save, so one undo takes both back.
+     */
+    public function addStage25dBalloon(int $index, string $kind = 'speech'): void
+    {
+        $scene = $this->stage25dScene();
+        $layer = $scene?->config['stage25d']['set']['layers'][$index] ?? null;
+        $asset = is_array($layer) ? LibraryBundle::asset((string) ($scene->config['stage25d']['bundle'] ?? ''), (string) ($layer['asset'] ?? '')) : null;
+        $series = $asset !== null ? LibraryBundle::seriesOf($asset) : null;
+        if ($series === null) {
+            return;   // a balloon is grouped with a character, not with a tree
+        }
+        $config = $scene->config;
+        $handle = is_string($layer['figure'] ?? null) && $layer['figure'] !== '' ? $layer['figure'] : self::freeHandle($series, $config['stage25d']['set']['layers']);
+        $config['stage25d']['set']['layers'][$index]['figure'] = $handle;
+        $facing = LibraryBundle::facingOf($asset) === 'left' ? -1 : 1;
+        $lines = array_values((array) ($config['lines'] ?? []));
+        $lines[] = [
+            ...SpeechBalloons::make($kind, null),
+            'figure' => ['asset_id' => 'stage25d:'.$handle, 'mouth' => [0.5, 0.3], 'facing' => $facing],
+            'group' => true,
+            'at' => [self::BALLOON_OFFSET[0] * $facing, self::BALLOON_OFFSET[1]],
+        ];
+        $config['lines'] = $lines;
+        $scene->update(['config' => $config]);
+
+        $this->activeStage25dLayer = null;
+        $this->activeBalloonId = 'bal_'.(count($lines) - 1);
+        $this->panelView = 'scene';
+        $this->selectSceneInternal($scene->id);
+        $this->dispatch('balloon:added', id: $this->activeBalloonId);
+    }
+
+    /**
+     * A speaker handle no other layer has: the character's own name, else with a number (dorpeling-a-2).
+     *
+     * @param  array<int,mixed>  $layers
+     */
+    private static function freeHandle(string $series, array $layers): string
+    {
+        $taken = array_filter(array_map(fn ($l) => is_array($l) ? ($l['figure'] ?? null) : null, $layers));
+        $handle = $series;
+        for ($n = 2; in_array($handle, $taken, true); $n++) {
+            $handle = "{$series}-{$n}";
+        }
+
+        return $handle;
+    }
+
+    /** Take a layer off the stage. Its keys go with it (they live on the layer); the stage rebuilds from the saved scene.
+     *  The balloons grouped with it go too: a group is deleted as one. */
     public function removeStage25dLayer(int $index): void
     {
         $scene = $this->stage25dScene();
@@ -309,8 +365,14 @@ trait EditsStage25d
         if (! $scene || ! is_array($layers) || ! isset($layers[$index]) || count($layers) <= 1) {
             return;   // the last layer stays: a stage with nothing on it has no picture to edit
         }
+        $handle = $layers[$index]['figure'] ?? null;
         unset($layers[$index]);
-        $this->storeStage25dLayers($scene, $layers);
+        $config = $scene->config;
+        $config['stage25d']['set']['layers'] = array_values($layers);
+        if (is_string($handle) && ! in_array($handle, array_column($layers, 'figure'), true)) {
+            $config = self::withoutGroupOf($config, 'stage25d:'.$handle);
+        }
+        $this->storeStage25dConfig($scene, $config);
         $this->activeStage25dLayer = null;
         $this->selectSceneInternal($scene->id);   // the stage rebuilds, the timeline re-reads the layers
     }
@@ -345,6 +407,32 @@ trait EditsStage25d
         $this->storeStage25dLayers($scene, $layers);
         $this->selectSceneInternal($scene->id);
         $this->dispatch('stage25d:select', index: $first);
+    }
+
+    /**
+     * The config without the balloons grouped with one speaker; the timeline's balloon tracks are re-keyed to match.
+     *
+     * @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    private static function withoutGroupOf(array $config, string $speaker): array
+    {
+        $lines = array_values((array) ($config['lines'] ?? []));
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (is_array($lines[$i]) && ! empty($lines[$i]['group']) && ($lines[$i]['figure']['asset_id'] ?? null) === $speaker) {
+                array_splice($lines, $i, 1);
+                if (isset($config['timeline'])) {
+                    $config['timeline'] = SpeechBalloons::timelineWithout($config['timeline'], $i);
+                }
+            }
+        }
+        if ($lines === []) {
+            unset($config['lines']);
+        } else {
+            $config['lines'] = $lines;
+        }
+
+        return $config;
     }
 
     private function stage25dScene(): ?Scene

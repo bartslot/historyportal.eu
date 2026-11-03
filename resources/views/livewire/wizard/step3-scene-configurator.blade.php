@@ -1349,17 +1349,18 @@
 
     // A stage25d layer's (or the scene's) Format panel: values are read off the live stage at the playhead and
     // written back through it, the way the canvas drag and the timeline row write them.
-    window.stage25dInspector = function stage25dInspector(id, names) {
+    window.stage25dInspector = function stage25dInspector(id, names, poses) {
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, info: null, look: [], values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() { this.sync(); },
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
                 if (!id) { this.look = stage.lookControls?.() ?? []; return; }
                 this.info = stage.layerInfo?.(id) ?? null;
+                this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
                     const v = window.__timelineKeying?.value?.('s25:' + id, p);
                     if (Number.isFinite(v)) this.values[p] = round(v * SHOWN[p]);
@@ -1376,6 +1377,10 @@
                 this.sync();
             },
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
+            /** Another picture of the same series (a pose, a facing); live, one save. */
+            async pose(assetId) { await window.__stage25d?.swapAsset?.(id, assetId); this.sync(); },
+            /** Another character in the same stance. */
+            async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
         };
     };
@@ -1399,18 +1404,22 @@
             },
             /** The shelf on show: the chosen one when the selection takes it, else the selection's own. */
             get active() { return this.kinds.includes(this.kind) ? this.kind : this.kinds[0]; },
+            /** The tiles on show: a series (a character's poses) is one tile with its count (stage25d/series.js). */
             get shown() {
                 const q = this.query.trim().toLowerCase();
                 const kind = this.active;
-                return (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.layer === kind))
+                const rows = (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.layer === kind))
                     && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
+                return window.__stage25d?.tiles?.(rows) ?? rows.map((a) => ({ id: a.id, asset: a, series: null, count: 1 }));
             },
-            pick(asset) {
+            /** A series on a selected figure switches who stands there and keeps the pose; anything else replaces or adds. */
+            pick(tile) {
                 const stage = window.__stage25d;
                 if (!stage) return;
                 const at = stage.selection;
-                if (stage.backdrop) stage.swapAsset(stage.backdrop, asset.id);
-                else if (at !== null) stage.swapAsset('layer-' + at, asset.id); else stage.addLayer(asset.id);
+                if (stage.backdrop) stage.swapAsset(stage.backdrop, tile.asset.id);
+                else if (at !== null && tile.series && stage.seriesOfLayer?.('layer-' + at)) stage.switchCharacter('layer-' + at, tile.series);
+                else if (at !== null) stage.swapAsset('layer-' + at, tile.asset.id); else stage.addLayer(tile.asset.id);
             },
         };
     };

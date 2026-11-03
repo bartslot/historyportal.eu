@@ -208,7 +208,7 @@ function drag (layer, id, e, target, mode, onChange) {
   const hr = layer.host.getBoundingClientRect()
   const br = el?.querySelector('.lp-balloon__bubble')?.getBoundingClientRect()
   // The balloon's middle in host fractions when the drag began (it may not have had an `at` yet).
-  const startAt = fractionPoint(line.at)
+  const startAt = (layer.middleOf ? layer.middleOf(id) : fractionPoint(line.at))
     ?? (br ? toFraction(layer, br.left + br.width / 2, br.top + br.height / 2) : [0.5, 0.5])
   const start = { x: e.clientX, y: e.clientY }
   const local = (ev) => [ev.clientX - hr.left, ev.clientY - hr.top]
@@ -220,7 +220,8 @@ function drag (layer, id, e, target, mode, onChange) {
     if (mode === 'move') {
       const at = [startAt[0] + (ev.clientX - start.x) / (hr.width || 1), startAt[1] + (ev.clientY - start.y) / (hr.height || 1)]
       const b = layer.fractionBounds?.() ?? { x: [0, 1], y: [0, 1] }
-      return { at: at.map((v, i) => round(Math.min(b[i ? 'y' : 'x'][1], Math.max(b[i ? 'y' : 'x'][0], v)))) }
+      const onStage = at.map((v, i) => round(Math.min(b[i ? 'y' : 'x'][1], Math.max(b[i ? 'y' : 'x'][0], v))))
+      return { at: layer.storedPoint ? layer.storedPoint(id, onStage) : onStage }   // grouped: counted from its speaker
     }
     if (mode === 'scale' && br) {
       const centre = [br.left + br.width / 2, br.top + br.height / 2]
@@ -228,7 +229,10 @@ function drag (layer, id, e, target, mode, onChange) {
     }
     if (mode === 'root' && geom) return tailWith({ root: outlineT(geom.rect, local(ev)) })
     if (mode === 'bend' && geom?.shape) return tailWith({ bend: bendFromPoint(geom.shape.root, geom.shape.tip, local(ev)) })
-    if (mode === 'tail') return tailWith({ tip: toFraction(layer, ev.clientX, ev.clientY), bend: line.tail?.bend ?? DEFAULT_BEND })
+    if (mode === 'tail') {
+      const tip = toFraction(layer, ev.clientX, ev.clientY)
+      return tailWith({ tip: layer.storedPoint ? layer.storedPoint(id, tip) : tip, bend: line.tail?.bend ?? DEFAULT_BEND })
+    }
 
     return null
   }

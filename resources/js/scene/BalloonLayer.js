@@ -422,6 +422,32 @@ export class BalloonLayer {
   }
 
   /**
+   * A point stored on a line, as host fractions. A balloon grouped with its speaker (line.group) stores its middle and
+   * its tail tip counted from the speaker's mouth, so the two move as one; any other point is the stage's own.
+   */
+  _fromMouth (line, p, mouth) {
+    if (!p || !line.group) return p
+    if (!mouth) return null
+    return [mouth[0] / (this.host.clientWidth || 1) + p[0], mouth[1] / (this.host.clientHeight || 1) + p[1]]
+  }
+
+  /** The other way round: a point on the stage (host fractions) as the line stores it. */
+  storedPoint (id, p) {
+    const line = this.lines[this.indexOf(id)]
+    const mouth = line?.group ? this._mouth(line) : null
+    if (!mouth) return p
+    const r = (v) => Math.round(v * 1e4) / 1e4
+    return [r(p[0] - mouth[0] / (this.host.clientWidth || 1)), r(p[1] - mouth[1] / (this.host.clientHeight || 1))]
+  }
+
+  /** A balloon's middle on the stage now (host fractions): where a drag of it starts. */
+  middleOf (id) {
+    const i = this.indexOf(id)
+    if (i < 0) return null
+    return this.lines[i].group ? (this.shown.get(i)?._drawn?.center ?? null) : fractionPoint(this.lines[i].at)
+  }
+
+  /**
    * Where a balloon may go, in host coordinates: the on-screen part of the host (a portrait
    * screen crops the plate). A split panel's balloons ROAM (opts.roam): they may cross the panel
    * border into the next panel, so their bounds are the whole stage around the host.
@@ -477,8 +503,10 @@ export class BalloonLayer {
       // that ended at the border (Bart, 2026-10-16: "the bubble doesn't pass yet").
       width: 'max-content',
     })
-    const at = fractionPoint(line.at)
     const mouth = this._mouth(line)
+    const at = this._fromMouth(line, fractionPoint(line.at), mouth)
+    // A grouped balloon whose speaker is out of frame has nowhere to be.
+    el.style.visibility = line.group && !mouth ? 'hidden' : ''
     const { side, room } = mouth && !at ? balloonSide(mouth, line.figure?.facing || 0, { w, h }, view) : { side: null, room: Infinity }
     // Narrower (more lines) rather than off the face's side.
     bubble.style.maxWidth = `${Math.max(MIN_ROOM_EM * font, Math.min(parseFloat(bubble.style.maxWidth), room))}px`
@@ -541,7 +569,7 @@ export class BalloonLayer {
    * speaker's mouth less the house gap. A speaker beyond the panel's edge: the tail runs to it.
    */
   _tip (line, rect, mouth, view, w, h, font) {
-    const stored = fractionPoint(line.tail?.tip)
+    const stored = this._fromMouth(line, fractionPoint(line.tail?.tip), mouth)
     if (stored) return clampToView([stored[0] * w, stored[1] * h], view)
     if (!mouth) return null
     const target = clampToView(mouth, view)

@@ -64,6 +64,33 @@ final class LibraryBundle
             && (float) ($asset['w'] ?? 0) / max(1.0, (float) ($asset['h'] ?? 0)) >= self::BAND_MIN_ASPECT;
     }
 
+    /**
+     * The series a picture belongs to: the character a figure shows (its `char:` tag, else fig-<character>-<pose>-01),
+     * the same rule as stage25d/series.js seriesOf. null for a picture that stands alone.
+     *
+     * @param  array<string,mixed>  $asset
+     */
+    public static function seriesOf(array $asset): ?string
+    {
+        $id = (string) ($asset['id'] ?? '');
+        if (($asset['layer'] ?? null) !== 'figure' && ! str_starts_with($id, 'fig-')) {
+            return null;
+        }
+        foreach ((array) ($asset['tags'] ?? []) as $tag) {
+            if (is_string($tag) && str_starts_with($tag, 'char:') && strlen($tag) > 5) {
+                return substr($tag, 5);
+            }
+        }
+
+        return preg_match('/^fig-(.+)-[a-z]+-\d+(-l)?$/', $id, $m) ? $m[1] : null;
+    }
+
+    /** @param  array<string,mixed>  $asset  which way a picture looks: 'left' or 'right' (its `facing:` tag, else its id) */
+    public static function facingOf(array $asset): string
+    {
+        return in_array('facing:left', (array) ($asset['tags'] ?? []), true) || str_ends_with((string) ($asset['id'] ?? ''), '-l') ? 'left' : 'right';
+    }
+
     /** @return array<string,mixed>|null one asset of a bundle on the public disk */
     public static function asset(string $bundle, string $assetId): ?array
     {

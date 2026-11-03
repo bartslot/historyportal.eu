@@ -2508,5 +2508,15 @@
     "This period has a 3D set: painted people and places your class sees from all sides. Should the lesson play in 3D, or with pictures?": "Voor deze tijd is er een 3D-decor: getekende mensen en plekken die je klas van alle kanten ziet. Speelt de les in 3D, of met afbeeldingen?",
     "Sway": "Wiegen",
     "Ripple": "Rimpelen",
-    "Ground bands": "Grondstroken"
+    "Ground bands": "Grondstroken",
+    "Pose": "Houding",
+    "Character": "Personage",
+    "Stand": "Staan",
+    "Point": "Wijzen",
+    "Kneel": "Knielen",
+    "Carry": "Dragen",
+    "Push": "Duwen",
+    "Dig": "Graven",
+    "Sit": "Zitten",
+    ":title, :n pictures": ":title, :n afbeeldingen"
 }

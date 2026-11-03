@@ -2466,5 +2466,15 @@
     "This period has a 3D set: painted people and places your class sees from all sides. Should the lesson play in 3D, or with pictures?": "Pour cette période, il existe un décor 3D : des personnages et des lieux dessinés que ta classe voit sous tous les angles. La leçon se joue-t-elle en 3D, ou avec des images ?",
     "Sway": "Balancement",
     "Ripple": "Ondulation",
-    "Ground bands": "Bandes de terrain"
+    "Ground bands": "Bandes de terrain",
+    "Pose": "Posture",
+    "Character": "Personnage",
+    "Stand": "Debout",
+    "Point": "Montrer",
+    "Kneel": "À genoux",
+    "Carry": "Porter",
+    "Push": "Pousser",
+    "Dig": "Creuser",
+    "Sit": "Assis",
+    ":title, :n pictures": ":title, :n images"
 }

@@ -7,13 +7,18 @@
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
         'castShadow' => __('Shadows'), 'smoke' => __('Smoke'), 'birds' => __('Birds'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
     ];
+    // The poses a figure series is painted in (library.json `pose:` tags).
+    $poses = [
+        'stand' => __('Stand'), 'walk' => __('Walk'), 'point' => __('Point'), 'kneel' => __('Kneel'),
+        'carry' => __('Carry'), 'push' => __('Push'), 'dig' => __('Dig'), 'sit' => __('Sit'),
+    ];
 @endphp
 
 {{-- The Format panel of a stage25d scene. A selected layer (layerId): its picture, where it stands, its motion.
      Nothing selected: the scene's look sliders. Every value is read off the live stage (window.__stage25d) and
      written back through it, so this panel, the canvas drag and the timeline rows share one set of rules; the
      diamonds are the timeline's own. No help text: the controls are the explanation. --}}
-<div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names))"
+<div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names), @js($poses))"
      x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()">
 
     @if ($layerId)
@@ -30,6 +35,37 @@
             <button type="button" class="btn btn-sm btn-outline"
                     x-on:click="$store.view.showTab('icons'); $nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: info?.role } })))">{{ __('Change picture') }}</button>
         </div>
+
+        {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
+             that is grouped with it (it moves along). --}}
+        <template x-if="series">
+            <div class="mt-3 space-y-2" data-stage25d-series>
+                <div class="grid grid-cols-6 gap-1" role="listbox" aria-label="{{ __('Pose') }}">
+                    <template x-for="m in series.members" :key="m.id">
+                        <button type="button" role="option" :aria-selected="m.id === series.asset" :title="poses[m.pose] ?? m.pose" :aria-label="poses[m.pose] ?? m.pose"
+                                :data-stage25d-pose="m.id" x-on:click="pose(m.id)"
+                                class="flex h-12 items-center justify-center overflow-hidden rounded bg-base-200 ring-1"
+                                :class="m.id === series.asset ? 'ring-primary' : 'ring-transparent hover:ring-base-content/30'">
+                            <img :src="m.url" alt="" draggable="false" loading="lazy" class="max-h-full max-w-full object-contain" />
+                        </button>
+                    </template>
+                </div>
+                <x-ui.panel-row :label="__('Character')">
+                    <select class="select select-xs w-full" data-stage25d-character aria-label="{{ __('Character') }}" x-on:change="character($event.target.value)">
+                        <template x-for="c in series.characters" :key="c.series">
+                            <option :value="c.series" :selected="c.series === series.series" x-text="c.label"></option>
+                        </template>
+                    </select>
+                </x-ui.panel-row>
+                <button type="button" class="btn btn-sm btn-outline w-full" data-stage25d-balloon
+                        x-on:click="$wire.addStage25dBalloon(Number(@js($layerId).slice(6)))">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                    </svg>
+                    {{ __('Speech balloon') }}
+                </button>
+            </div>
+        </template>
 
         {{-- Where it stands: across the view, and how far along the ground in metres (drag it up the stage to send it
              back). The rows are the ones its kind takes (engine layerInfo fields): a picture on the ground has a

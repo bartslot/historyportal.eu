@@ -16,6 +16,7 @@ import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
+import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
@@ -380,6 +381,31 @@ export async function createStage25d (host, opts = {}) {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
+    },
+    /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
+    tiles: (rows) => libraryTiles(rows),
+    /**
+     * The series of a layer's picture, for its panel: its other pictures (poses, facings) and the other characters it
+     * can become. null when the layer is no figure of a series.
+     */
+    seriesOfLayer (id) {
+      const a = assets.get(layers[layerIndex(id)]?.asset)
+      const series = seriesOf(a)
+      if (!series || !libData) return null
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      const row = (m) => ({ id: m.id, url: libData.base + m.file, ...poseOf(m) })
+      return {
+        series,
+        asset: a.id,
+        members: membersOf(libData.assets, a).map(row),
+        characters: charactersOf(libData.assets).map((c) => ({ series: c.series, url: libData.base + c.asset.file, label: layerLabel({}, c.asset, lang) })),
+      }
+    },
+    /** Another character on a layer, in the same pose and facing when it has them (one swap, one undo step). */
+    async switchCharacter (id, series) {
+      const a = assets.get(layers[layerIndex(id)]?.asset)
+      const to = a && libData ? sameStanceIn(libData.assets, a, series) : null
+      if (to) await api.swapAsset(id, to.id)
     },
     /** Put another picture on a layer: rebuilds the set (the one case that must), saved on the layer. */
     async swapAsset (id, assetId) {

@@ -94,14 +94,16 @@
                 <span class="badge badge-sm" x-text="selected === null ? @js(__('Add')) : @js(__('Replace'))"></span>
             </div>
             <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
-                <template x-for="a in shown" :key="a.id">
-                    <button type="button" draggable="true" class="flex cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
-                            x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', a.id); $event.dataTransfer.effectAllowed = 'copy'"
-                            x-on:click="pick(a)" :title="a.label">
+                {{-- One tile per picture, and one per series (a character's poses and facings), with its count. --}}
+                <template x-for="t in shown" :key="t.id">
+                    <button type="button" draggable="true" class="relative flex cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
+                            x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', t.asset.id); $event.dataTransfer.effectAllowed = 'copy'"
+                            x-on:click="pick(t)" :title="t.asset.label" :data-stage25d-tile="t.id">
                         <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
-                            <img :src="a.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+                            <img :src="t.asset.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
                         </span>
-                        <span class="truncate text-xs text-panel-label" x-text="a.label"></span>
+                        <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
+                        <span x-show="t.count > 1" class="badge badge-sm badge-neutral absolute right-1.5 top-1.5" x-text="t.count" data-series-count></span>
                     </button>
                 </template>
             </div>
