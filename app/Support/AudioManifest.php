@@ -14,7 +14,7 @@ namespace App\Support;
 final class AudioManifest
 {
     /**
-     * @return array{music: array{tracks: list<string>, volume: float, fade_ms: int}, sfx: array<string, string>}
+     * @return array{music: array{tracks: list<string>, volume: float, fade_ms: int}, scene_music: array{volume: float}, sfx: array<string, string>}
      */
     public static function forBrowser(): array
     {
@@ -26,6 +26,9 @@ final class AudioManifest
                 )),
                 'volume' => (float) config('audio.background_music.volume', 0.14),
                 'fade_ms' => (int) config('audio.background_music.fade_ms', 4000),
+            ],
+            'scene_music' => [
+                'volume' => (float) config('audio.scene_music.volume', 0.5),
             ],
             'sfx' => array_map(
                 static fn (string $path): string => asset($path),

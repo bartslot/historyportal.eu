@@ -104,6 +104,7 @@
         // Does a music bed play under the narration? Off unless the teacher turned it on — most
         // lessons run on a classroom speaker, where music under a voice is the last thing wanted.
         'background_music'      => (bool) $lesson->background_music,
+        'music_tracks'          => $lesson->relationLoaded('scenes') ? \App\Models\MusicTrack::forScenes($lesson->scenes) : [],
         'include_game'          => (bool) $lesson->include_game,
         'game_type'             => $lesson->game_type,
         'game_config'           => $lesson->game_config,
@@ -162,6 +163,8 @@
                 'game_type'   => $s->game_type,
                 'scene_view'  => $s->scene_view,
                 'audio_url'   => $s->audioUrl(),
+                // The scene's music mix (scene/music-mixer.js); null = keep the previous scene's.
+                'music'       => $s->music,
                 'script'      => $s->script_segment,
                 'image_url'   => \App\Support\MediaUrl::of($s->image_path),
                 // Attribution for a sourced painting or photograph. Commons images are mostly CC BY

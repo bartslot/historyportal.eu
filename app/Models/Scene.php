@@ -33,6 +33,7 @@ class Scene extends Model
         'world_pano_path', 'world_spz_path', 'world_glb_path',
         'world_semantics',
         'world_y_offset', 'world_scale', 'world_char_scale',
+        'music', 'music_undo',
     ];
 
     protected function casts(): array
@@ -43,6 +44,8 @@ class Scene extends Model
             'shots' => 'array',
             'skybox_candidates' => 'array',
             'audio_alignment' => 'array',
+            'music' => 'array',
+            'music_undo' => 'array',
             'duration_seconds' => 'integer',
             'game_segment_index' => 'integer',
             'branch_group' => 'integer',
