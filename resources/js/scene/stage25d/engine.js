@@ -524,7 +524,7 @@ export async function createStage25d (host, opts = {}) {
       if (!cfg || !Array.isArray(rows)) return
       const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)) }))
       const keep = hidden
-      await api.show({ ...cfg, set: { ...liveSet(), groundSlots: slots } })
+      await api.show({ ...cfg, look: lookNow, set: { ...liveSet(), groundSlots: slots } })   // the sliders' live values too
       hidden = keep
       redraw()
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)

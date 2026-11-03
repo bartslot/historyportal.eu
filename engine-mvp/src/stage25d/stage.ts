@@ -181,7 +181,8 @@ export class Stage {
     // the floor's ground pictures near to far (set.groundSlots, else the scene's one ground)
     const slotsNext = (await Promise.all(groundSlots(s.set, lib).map(async (sl) => {
       const tex = await loadPremultiplied(lib.base + sl.asset.file, this.scene).catch(() => { misses.push({ need: sl.asset.id, reason: `file did not load: ${sl.asset.file}` }); return null })
-      return tex ? { tex, tile: sl.asset.height_m || GROUND_TILE_M, from: sl.from, asset: sl.asset } : null
+      const bands = (bandColours.get(lib.base + sl.asset.file) ?? []).filter((x): x is [number, number, number] => !!x)
+      return tex ? { tex, tile: sl.asset.height_m || GROUND_TILE_M, from: sl.from, asset: sl.asset, colour: bands.length ? mean3(bands) : hexRgb(lib.paper ?? PAPER_HEX) } : null
     }))).filter((sl): sl is NonNullable<typeof sl> => !!sl)
     // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
     let nearTex: RawTexture | null = null
@@ -236,8 +237,7 @@ export class Stage {
     this.nearAsset = nearAsset
     this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
-    const colours = slotsNext.map((sl) => { const c = (bandColours.get(lib.base + sl.asset.file) ?? []).filter((x): x is [number, number, number] => !!x); return c.length ? mean3(c) : look.base })
-    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours, bandTags, front, sprites, tex: strewTex }
+    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
