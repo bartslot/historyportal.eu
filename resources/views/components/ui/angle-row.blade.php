@@ -73,21 +73,18 @@
                 @endforeach
             </div>
         </div>
-        <x-ui.keyframe-diamond :target="'art:'.(int) $assetId" property="rotation" />
-    </div>
+        {{-- Rotate and flip: glyphs, no words, on the angle's own row as real buttons (Bart 11-03: "bigger icons,
+             icons need to become buttons, on the same row as Hoek"). Figma's own alignment controls.
 
-    {{-- Rotate and flip: glyphs, no words, in one row — Figma's own alignment controls.
-
-         The two flips used to be the SAME icon mirrored by a CSS transform, so they rendered
-         identically and neither said which axis it was. Bart: "come on…". They are distinct
-         drawings now, and a quarter-turn button joins them because straightening a dropped icon is
-         the common act and dialling 90.0 by hand is the fiddliest thing a dial does. --}}
-    <x-ui.panel-row>
-        <div class="join">
+             The two flips used to be the SAME icon mirrored by a CSS transform, so they rendered
+             identically and neither said which axis it was. Bart: "come on…". They are distinct
+             drawings now, and a quarter-turn button joins them because straightening a dropped icon is
+             the common act and dialling 90.0 by hand is the fiddliest thing a dial does. --}}
+        <div class="join shrink-0">
             <button type="button" x-on:click="rotate90($wire)"
                     data-tooltip="{{ __('Rotate 90°') }}" aria-label="{{ __('Rotate 90°') }}"
-                    class="btn btn-ghost btn-xs join-item px-2 text-panel-label hover:text-panel-value">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
+                    class="btn btn-sm btn-square join-item border-panel-hairline bg-base-200 text-panel-label hover:text-panel-value">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-[18px] w-[18px]" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 6.75V3.75l4.5 3-4.5 3v-3H9A5.25 5.25 0 0 0 3.75 12v.75"/>
                     <rect x="9.75" y="13.5" width="10.5" height="6.75" rx="1.25"/>
                 </svg>
@@ -95,10 +92,10 @@
 
             <button type="button" x-on:click="toggleFlip('x', $wire)"
                     :aria-pressed="flipX ? 'true' : 'false'"
-                    :class="flipX ? 'bg-base-300 text-base-content' : 'text-panel-label hover:text-panel-value'"
+                    :class="flipX ? 'bg-base-300 text-base-content' : 'bg-base-200 text-panel-label hover:text-panel-value'"
                     data-tooltip="{{ __('Flip horizontally') }}" aria-label="{{ __('Flip horizontally') }}"
-                    class="btn btn-ghost btn-xs join-item px-2">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
+                    class="btn btn-sm btn-square join-item border-panel-hairline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-[18px] w-[18px]" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2" d="M12 3.75v16.5"/>
                     <path stroke-linejoin="round" d="M9.75 6.75 4.5 12l5.25 5.25V6.75Z"/>
                     <path stroke-linejoin="round" d="M14.25 6.75 19.5 12l-5.25 5.25V6.75Z"/>
@@ -107,15 +104,16 @@
 
             <button type="button" x-on:click="toggleFlip('y', $wire)"
                     :aria-pressed="flipY ? 'true' : 'false'"
-                    :class="flipY ? 'bg-base-300 text-base-content' : 'text-panel-label hover:text-panel-value'"
+                    :class="flipY ? 'bg-base-300 text-base-content' : 'bg-base-200 text-panel-label hover:text-panel-value'"
                     data-tooltip="{{ __('Flip vertically') }}" aria-label="{{ __('Flip vertically') }}"
-                    class="btn btn-ghost btn-xs join-item px-2">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
+                    class="btn btn-sm btn-square join-item border-panel-hairline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-[18px] w-[18px]" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2" d="M3.75 12h16.5"/>
                     <path stroke-linejoin="round" d="M6.75 9.75 12 4.5l5.25 5.25H6.75Z"/>
                     <path stroke-linejoin="round" d="M6.75 14.25 12 19.5l5.25-5.25H6.75Z"/>
                 </svg>
             </button>
         </div>
-    </x-ui.panel-row>
+        <x-ui.keyframe-diamond :target="'art:'.(int) $assetId" property="rotation" />
+    </div>
 </div>
