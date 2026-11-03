@@ -1,0 +1,1 @@
+const o="/storage/library",n=()=>typeof document<"u"&&document.querySelector('meta[name="library-version"]')?.content||"",r=e=>`${o}/${encodeURIComponent(e)}/library.json${n()?`?v=${n()}`:""}`,t=e=>e?.kind==="stage25d"&&!!e.config?.stage25d;export{t as i,r as l};
