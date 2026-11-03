@@ -38,7 +38,7 @@ final class LayerKeys
     /** The depths a teacher can put a picture at, far to near (the sky stays where it is). */
     public const DEPTHS = ['bg', 'mid', 'fg', 'near'];
 
-    public const MOTION_KINDS = ['none', 'sway', 'drift', 'ripple', 'flicker'];
+    public const MOTION_KINDS = ['none', 'sway', 'drift', 'ripple', 'flicker', 'breathe'];
 
     /** A layer's motion as the stage reads it: a kind and how much, how fast (0..5). Null when the kind is unknown. @return array{kind:string,amount:float,speed:float}|null */
     public static function motion(mixed $m): ?array

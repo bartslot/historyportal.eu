@@ -58,6 +58,10 @@ Effect.ShadersStore.stageLayerVertexShader = `
       p.x += amount * 0.12 * width * sin(time * speed * 0.035 + phase);
     } else if (kind == 4.0) {   // flicker: the flame stretches and settles
       p.y *= 1.0 + amount * 0.05 * h * (sin(time * speed * 9.0 + phase) * 0.6 + sin(time * speed * 23.0) * 0.4);
+    } else if (kind == 5.0) {   // breathe: the chest rises and carries the head, feet stay put, a slow weight shift on top
+      float chest = smoothstep(0.35, 0.75, h);
+      p.y += amount * 0.008 * height * chest * sin(time * speed * 1.6 + phase);
+      p.x += amount * 0.005 * height * h * h * sin(time * speed * 0.45 + phase * 1.3);
     }
     vUV = uv;
     vH = h;

@@ -11,7 +11,7 @@ import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
-import { layerAt, bandOf, DEPTH_Z, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
@@ -325,7 +325,7 @@ export async function createStage25d (host, opts = {}) {
     layerInfo (id) {
       const motionOf = (l, a) => {
         const own = typeof l.motion === 'string' ? { kind: l.motion } : (l.motion ?? {})
-        return { kind: own.kind ?? a?.motion ?? 'none', amount: own.amount ?? 1, speed: own.speed ?? 1 }
+        return { kind: own.kind ?? defaultMotion(a), amount: own.amount ?? 1, speed: own.speed ?? 1 }
       }
       // fields: the values its panel offers. The sky moves up and down; a ground band stands at a distance, always
       // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.

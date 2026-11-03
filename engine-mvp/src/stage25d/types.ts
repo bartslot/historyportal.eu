@@ -3,7 +3,7 @@
 
 export type LayerKind = 'sky' | 'bg' | 'mid' | 'fg' | 'prop' | 'figure' | 'ground' | 'near_ground' | 'ground_band' | 'decal'
 export type Depth = 'sky' | 'bg' | 'mid' | 'fg' | 'near'
-export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'
+export type MotionKind = 'none' | 'sway' | 'drift' | 'ripple' | 'flicker' | 'breathe'
 
 export interface Asset {
   id: string

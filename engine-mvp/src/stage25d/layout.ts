@@ -217,12 +217,17 @@ export function layerAt(layer: SceneLayer, t: number): LayerNow {
   return out
 }
 
-export const MOTION_CODE: Record<MotionKind, number> = { none: 0, sway: 1, drift: 2, ripple: 3, flicker: 4 }
+export const MOTION_CODE: Record<MotionKind, number> = { none: 0, sway: 1, drift: 2, ripple: 3, flicker: 4, breathe: 5 }
+
+/** A figure breathes unless the teacher stills it, so a held frame never looks frozen. The library marks every
+ *  figure 'none', which only meant "no sway", so for a figure that counts as not set. */
+export const defaultMotion = (asset?: Pick<Asset, 'layer' | 'motion'>): MotionKind =>
+  asset?.layer === 'figure' && (asset.motion ?? 'none') === 'none' ? 'breathe' : asset?.motion ?? 'none'
 
 /** The asset's motion, overridden by the layer's (a bare kind or { kind, amount, speed }). */
 export function motionOf(asset: Asset, layer: SceneLayer): Required<MotionSpec> {
   const o: MotionSpec = typeof layer.motion === 'string' ? { kind: layer.motion } : layer.motion ?? {}
-  return { kind: o.kind ?? asset.motion ?? 'none', amount: o.amount ?? 1, speed: o.speed ?? 1 }
+  return { kind: o.kind ?? defaultMotion(asset), amount: o.amount ?? 1, speed: o.speed ?? 1 }
 }
 
 /** Render size steps: the cap on the longest side (device px), and the adaptive drop below it. */

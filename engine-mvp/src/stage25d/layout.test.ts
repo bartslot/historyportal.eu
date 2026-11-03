@@ -435,3 +435,19 @@ describe('a ground band\'s picture (isBandPicture)', () => {
     expect(isBandPicture(a({ tileable_x: true }))).toBe(false)
   })
 })
+
+describe('figures breathe by default', () => {
+  const fig = { id: 'man', file: 'm.png', layer: 'figure' } as unknown as Asset
+  const tree = { id: 'oak', file: 'o.png', layer: 'mid' } as unknown as Asset
+
+  it('a figure with no motion of its own breathes; other pictures stay still', () => {
+    expect(motionOf(fig, { asset: 'man' } as never).kind).toBe('breathe')
+    expect(motionOf({ ...fig, motion: 'none' } as Asset, { asset: 'man' } as never).kind).toBe('breathe')
+    expect(motionOf(tree, { asset: 'oak' } as never).kind).toBe('none')
+  })
+
+  it('the teacher can still turn it off, and an asset that names a motion keeps it', () => {
+    expect(motionOf(fig, { asset: 'man', motion: 'none' } as never).kind).toBe('none')
+    expect(motionOf({ ...fig, motion: 'sway' } as Asset, { asset: 'man' } as never).kind).toBe('sway')
+  })
+})
