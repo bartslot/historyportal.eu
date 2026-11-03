@@ -75,10 +75,11 @@
     </div>
 
     {{-- ── Icons tab ─────────────────────────────────────────────────────────────
-         Its own Livewire component: the dock owns the geometry, the panel owns the library. --}}
+         Its own Livewire component: the dock owns the geometry, the panel owns the library. Lazy: rendered only once
+         it is on screen, else a 3D scene (which never shows it) downloaded every icon picture (~5 MB). --}}
     <div x-show="$store.view.bottomTab === 'icons'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div x-show="!$store.view.stage25d" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" />
+            <livewire:wizard.icon-panel :lesson-id="$scene?->lesson_id" lazy />
         </div>
         {{-- A stage25d scene draws from its own painted library, not from the icon sets. --}}
         <div x-show="$store.view.stage25d" x-cloak x-data="stage25dAssets()" data-stage25d-assets
