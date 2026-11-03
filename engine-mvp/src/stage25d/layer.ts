@@ -2,7 +2,7 @@
 // vertex/fragment shader. Textures are uploaded PREMULTIPLIED (rgb * a, done here on the CPU), so filtering and
 // mipmaps never mix the colour of transparent pixels into the edge: no light or dark halos at any size.
 import {
-  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, VertexData,
+  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexData,
   type Scene,
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
@@ -88,9 +88,15 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float edgeSoft, footM, grounding, grass, light, sunSide, drift, height;
   uniform float bottomFade;                    // ground bands: alpha ramps to 0 over this share of the height, from the bottom
   uniform vec3 footTint, sunColour, shadeColour;
+  uniform vec4 cell;                           // an animation: the frame's part of the sheet (u0, v0, du, dv), else 0 0 1 1
   ${GL_NOISE}
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
+  // a frame of a sheet is read inside its own cell only, so no tap ever reaches the next frame
+  vec4 tap(vec2 p) {
+    if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
+    return texture2D(tex, p);
+  }
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
@@ -99,7 +105,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       uv.x += k * 0.004 * sin(uv.y * 70.0 + time * speed * 2.2 + phase);
       uv.y += k * 0.002 * sin(uv.x * 45.0 / uRepeat + time * speed * 1.6);
     }
-    vec4 c = texture2D(tex, uv);                       // premultiplied
+    vec4 c = tap(uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
     if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
@@ -110,7 +116,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
         vec3 best = s; float bl = lum(s), edge = 1.0;
         for (int k = 0; k < 4; k++) {
           vec2 d = k == 0 ? vec2(1, 0) : k == 1 ? vec2(-1, 0) : k == 2 ? vec2(0, 1) : vec2(0, -1);
-          vec4 n = texture2D(tex, uv + d * pxUV * lineThin);
+          vec4 n = tap(uv + d * pxUV * lineThin);
           if (n.a > 0.9) { vec3 ns = n.rgb / n.a; float nl = lum(ns); if (nl > bl) { best = ns; bl = nl; } }
           else edge = min(edge, n.a);
         }
@@ -147,7 +153,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float amin = 1.0; vec4 acc = vec4(0.0);
       for (int k = 0; k < 8; k++) {
         float a = float(k) * 0.785398;
-        vec4 n = texture2D(tex, uv + vec2(cos(a), sin(a)) * grainUV * 2.5);
+        vec4 n = tap(uv + vec2(cos(a), sin(a)) * grainUV * 2.5);
         amin = min(amin, n.a); acc += n;
       }
       acc /= 8.0;
@@ -261,6 +267,8 @@ export interface LayerHandle {
   setGroundLine(f: number): void
   /** line by depth (look.ts lineOf) and the texture uv per 1080p screen px (look.ts pxUV) */
   setLine(l: { fade: number; thin: number; haze: number; brown: number }, inkMul: number, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
+  /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
+  setCell(c: readonly [number, number, number, number]): void
 }
 
 let seed = 0
@@ -269,7 +277,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -284,6 +292,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
   mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
+  mat.setVector4('cell', new Vector4(0, 0, 1, 1))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -300,6 +309,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
     },
     setBottomFade: (f) => { mat.setFloat('bottomFade', f) },
+    setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
         .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)

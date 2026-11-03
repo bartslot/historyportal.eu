@@ -100,7 +100,16 @@
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', t.asset.id); $event.dataTransfer.effectAllowed = 'copy'"
                             x-on:click="pick(t)" :title="t.asset.label" :data-stage25d-tile="t.id">
                         <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
-                            <img :src="t.asset.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+                            {{-- An animation (VFX) plays in its tile: the sheet steps frame by frame behind a one-frame window. --}}
+                            <template x-if="t.asset.anim">
+                                <span class="s25-sheet" data-stage25d-anim
+                                      :style="`aspect-ratio: ${t.asset.anim.w} / ${t.asset.anim.h}; --cols: ${t.asset.anim.cols}; --rows: ${t.asset.anim.rows}; --row-s: ${t.asset.anim.cols / t.asset.anim.fps}s`">
+                                    <img :src="t.asset.url" loading="lazy" alt="" draggable="false" />
+                                </span>
+                            </template>
+                            <template x-if="!t.asset.anim">
+                                <img :src="t.asset.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+                            </template>
                         </span>
                         <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
                         <span x-show="t.count > 1" class="badge badge-sm badge-neutral absolute right-1.5 top-1.5" x-text="t.count" data-series-count></span>

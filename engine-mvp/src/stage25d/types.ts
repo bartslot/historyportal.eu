@@ -18,6 +18,14 @@ export interface Asset {
   motion?: MotionKind
   placeholder?: boolean
   qa?: { score?: number }
+  /** an animation (sprite.ts): `file` is a sheet of cols x rows frames, w x h is ONE frame */
+  kind?: 'animation'
+  frames?: number
+  cols?: number
+  rows?: number
+  fps?: number
+  /** default true; false stays on the last frame */
+  loop?: boolean
 }
 
 export interface Library {
@@ -66,6 +74,8 @@ export interface SceneLayer {
   /** a ground decal: the picture lies flat on the floor at its depth (a worn path, a darker grass patch, stones),
    *  its height_m along the floor, drawn right after the floor and under everything that stands */
   flat?: boolean
+  /** an animation's playback (sprite.ts frameAt): speed scales its fps (0 holds), offset = seconds into it at the start */
+  play?: { speed?: number; offset?: number }
 }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }

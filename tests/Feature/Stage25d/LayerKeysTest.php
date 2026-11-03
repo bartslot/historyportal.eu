@@ -147,6 +147,32 @@ class LayerKeysTest extends TestCase
         $this->assertArrayNotHasKey('rotation', $layer);
     }
 
+    public function test_an_animation_saves_its_speed_and_start_held_to_range_and_undo_takes_it_back(): void
+    {
+        $scene = $this->sceneWith($this->stage());
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveStage25dLayer', 0, ['play' => ['speed' => 1.5, 'offset' => 2]], $scene->id);
+        $this->assertEquals(['speed' => 1.5, 'offset' => 2.0], $scene->fresh()->config['stage25d']['set']['layers'][0]['play']);
+
+        $editor->call('undoLastEdit');
+        $this->assertArrayNotHasKey('play', $scene->fresh()->config['stage25d']['set']['layers'][0]);
+
+        $editor->call('saveStage25dLayer', 0, ['play' => ['speed' => 99, 'offset' => -4, 'loop' => 'x']], $scene->id);
+        $this->assertEquals(['speed' => 5.0, 'offset' => 0.0], $scene->fresh()->config['stage25d']['set']['layers'][0]['play'], 'held to range, unknown keys dropped');
+
+        $editor->call('saveStage25dLayer', 0, ['play' => ['speed' => 'fast']], $scene->id);
+        $this->assertEquals(5.0, $scene->fresh()->config['stage25d']['set']['layers'][0]['play']['speed'], 'a non-number changes nothing');
+    }
+
+    public function test_play_reads_only_numbers(): void
+    {
+        $this->assertNull(LayerKeys::play(null));
+        $this->assertNull(LayerKeys::play(['speed' => 'x']));
+        $this->assertSame(['offset' => 600.0], LayerKeys::play(['offset' => 1e9]));
+        $this->assertSame(['speed' => 0.0], LayerKeys::play(['speed' => 0]));
+    }
+
     /** @param  array<string,mixed>  $stage */
     private function sceneWith(array $stage): Scene
     {

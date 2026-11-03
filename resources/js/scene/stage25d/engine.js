@@ -11,6 +11,7 @@ import { Stage } from '@stage25d/stage25d/stage'
 import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
+import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -27,6 +28,11 @@ import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch']
+
+/** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
+const shelfOf = (a) => (isAnimation(a) ? 'vfx' : a.layer)
+/** An animation's sheet, for a tile that plays it (CSS steps): null for a still picture. */
+const animOf = (a) => (isAnimation(a) ? { cols: a.cols, rows: a.rows, frames: a.frames ?? a.cols * a.rows, fps: a.fps ?? 12, w: a.w, h: a.h } : null)
 
 /** What a picture dragged out of the Assets tab carries: the library asset id. */
 export const DROP_TYPE = 'application/x-lp-stage25d'
@@ -223,7 +229,7 @@ export async function createStage25d (host, opts = {}) {
           if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
         })
         pointer = attachInteraction({
-          canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
+          canvas, host, stage: () => stage, alpha: { opaque: (a, u, v, i) => alpha.opaque(a, u, v, isAnimation(a) ? frameAt(a, layers[i]?.play, nowT()) : undefined) },   // an animation: the frame on show
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
           onGround, byDistance,
           // the feet slide over the ground as it rises into the far landscape, at their own height above it (a ground
@@ -351,7 +357,15 @@ export async function createStage25d (host, opts = {}) {
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         file: l.src ?? (asset ? `${libData.base}${asset.file}` : null),   // the edited copy, when there is one
         motion: motionOf(l, asset),
+        anim: animOf(asset),
+        play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
       }
+    },
+    /** An animation's playback on one layer: speed (its fps scale) and where it starts (seconds). Live, and saved. */
+    setLayerPlay (id, play) {
+      const now = valuesOf(id)
+      if (!now) return
+      commit(id, { play: { ...(now.play ?? {}), ...play } })
     },
     /** Motion of one layer: kind, amount, speed. Live, and saved on the layer. */
     setLayerMotion (id, motion) {
@@ -402,7 +416,7 @@ export async function createStage25d (host, opts = {}) {
     library () {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
+      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),

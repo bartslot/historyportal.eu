@@ -2264,3 +2264,15 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .js-hero-demo [data-demo]:not(.is-revealed) .hero-skip {
     display: block;
 }
+
+/* ─── An animation's tile in the 3D Assets tab (script-editor.blade.php): a one-frame window over the sprite sheet.
+       The sheet steps across a row (translate) and down the rows (transform), frame by frame, at the sheet's fps. ─── */
+.s25-sheet { position: relative; display: block; height: 100%; max-width: 100%; overflow: hidden; }
+.s25-sheet > img {
+  position: absolute; left: 0; top: 0; max-width: none;
+  width: calc(var(--cols) * 100%); height: calc(var(--rows) * 100%);
+  animation: s25-sheet-x var(--row-s) steps(var(--cols)) infinite, s25-sheet-y calc(var(--row-s) * var(--rows)) steps(var(--rows)) infinite;
+}
+@keyframes s25-sheet-x { to { translate: -100% 0; } }
+@keyframes s25-sheet-y { to { transform: translateY(-100%); } }
+@media (prefers-reduced-motion: reduce) { .s25-sheet > img { animation-play-state: paused; } }

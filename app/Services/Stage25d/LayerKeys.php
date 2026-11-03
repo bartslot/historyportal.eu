@@ -51,6 +51,32 @@ final class LayerKeys
         return ['kind' => $m['kind'], 'amount' => $n($m['amount'] ?? 1), 'speed' => $n($m['speed'] ?? 1)];
     }
 
+    /** The longest start offset into an animation, in seconds (a sheet is seconds long; this only stops a runaway). */
+    private const PLAY_OFFSET_MAX = 600.0;
+
+    /**
+     * An animation's playback (engine-mvp stage25d/sprite.ts frameAt): speed scales its fps (0 holds a frame, up to 5),
+     * offset is where in it the scene starts (seconds). Null when the patch carries neither.
+     *
+     * @return array{speed?:float,offset?:float}|null
+     */
+    public static function play(mixed $p): ?array
+    {
+        if (! is_array($p)) {
+            return null;
+        }
+        $num = fn ($v) => is_numeric($v) && is_finite((float) $v) ? (float) $v : null;
+        $out = [];
+        if (($speed = $num($p['speed'] ?? null)) !== null) {
+            $out['speed'] = max(0.0, min(5.0, $speed));
+        }
+        if (($offset = $num($p['offset'] ?? null)) !== null) {
+            $out['offset'] = max(0.0, min(self::PLAY_OFFSET_MAX, $offset));
+        }
+
+        return $out === [] ? null : $out;
+    }
+
     /** Below this spread a track does not move anything (a director track of all zeros). */
     private const FLAT = 1e-6;
 

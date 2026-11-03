@@ -15,6 +15,7 @@ import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { cellOf, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type GroundLook } from './ground-gl'
@@ -463,6 +464,7 @@ export class Stage {
       b.handle.setAlive(aliveOf(this.look, kind, this.sunDir.x, this.footTint))
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
+      if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, t)))   // the scene's time: a seek shows the same frame
     }
   }
 }
@@ -474,7 +476,8 @@ const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) =>
 const editedAsset = (asset: Asset, layer: { src?: string }, tex: RawTexture): Asset => {
   if (!layer.src || !asset.w || !asset.h) return asset
   const { width, height } = tex.getSize()
-  return { ...asset, w: width, h: height, height_m: asset.height_m * (height / asset.h) }
+  const w = width / (isAnimation(asset) ? asset.cols! : 1), h = height / (isAnimation(asset) ? asset.rows! : 1)   // a sheet: one frame's size
+  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h) }
 }
 
 /** The sky picture as a layer: set.sky, taking only its motion and the teacher's edited copy (src, the image editor)
