@@ -142,11 +142,12 @@ export class Stage {
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
     const misses: { need: unknown; reason: string }[] = []
     await Promise.all(wanted.map(async ({ layer, order, index }) => {
-      const asset = resolveAsset(lib, layer, layer.depth)
+      let asset = resolveAsset(lib, layer, layer.depth)
       if (!asset) { misses.push({ need: layer.need ?? layer.asset, reason: 'no match' }); return }
       let tex
-      try { tex = await loadPremultiplied(lib.base + asset.file, this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${asset.file}` }); return }
+      try { tex = await loadPremultiplied(urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
       if (token !== this.buildToken) return
+      asset = editedAsset(asset, layer, tex)
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
@@ -165,7 +166,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(lib.base + asset.file), flat, skyline: skylines.get(lib.base + asset.file) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)) })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -181,14 +182,14 @@ export class Stage {
     } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
     // the first strip in the scene's own order (loads finish in any order), not a prop placed far off
     const far = next.filter((b) => b.asset.layer === 'bg').sort((a, b) => a.index - b.index)[0]
-    const strip = far ? { top: landTops.get(lib.base + far.asset.file) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
+    const strip = far ? { top: landTops.get(urlOf(lib, far.asset, far.layer)) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
     // under a strip the floor fades into the strip's own ground colour; with no strip, into the sky's colour where it
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order)
-    const skyHaze = sky && skyP ? bandAt(bandColours.get(lib.base + sky.asset.file) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
+    const skyHaze = sky && skyP ? bandAt(bandColours.get(urlOf(lib, sky.asset, sky.layer)) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
     // with ground bands the floor fades into paper, never into the sky: the bands carry the horizon
-    const tint = far ? edgeColours.get(lib.base + far.asset.file) ?? null : s.set.groundBands?.length ? null : skyHaze
+    const tint = far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : s.set.groundBands?.length ? null : skyHaze
     const bandsNext = await this.loadBands(s, lib)
     const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
@@ -368,17 +369,18 @@ export class Stage {
   private async loadBands(s: Scene, lib: Library & { base: string }): Promise<Band[]> {
     const out: Band[] = []
     for (const [index, g] of (s.set.groundBands ?? []).entries()) {
-      const asset = resolveAsset(lib, { asset: g.asset }, 'ground_band')
-      if (!asset) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
-      const tex = await loadPremultiplied(lib.base + asset.file, this.scene).catch(() => null)
-      if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${asset.file} did not load`); continue }
+      const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
+      if (!found) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
+      const tex = await loadPremultiplied(urlOf(lib, found, g), this.scene).catch(() => null)
+      if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); continue }
+      const asset = editedAsset(found, g, tex)
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
       const handle = makeLayer(asset, tex, w, h, 1, this.scene)
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
-      out.push({ handle, z: g.z, w, h, skyline: skylines.get(lib.base + asset.file) ?? 0.5, index, asset, band: g })
+      out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g })
     }
     return out
   }
@@ -465,9 +467,24 @@ export class Stage {
   }
 }
 
-/** The sky picture as a layer: set.sky, taking only its motion from set.skyLayer. Place, size, opacity and keys saved
- *  before 2026-11-03 are ignored: a moved or faded sky left a hole behind the scene. */
-const skyLayerOf = (s: Scene): SceneLayer => ({ ...(s.set.skyLayer?.motion ? { motion: s.set.skyLayer.motion } : {}), asset: s.set.sky, depth: 'sky' })
+/** A picture's file: the teacher's edited copy (layer.src, written by the app's image editor) or the library's own. */
+const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) => layer?.src ?? lib.base + asset.file
+
+/** An edited copy may be cropped: it keeps the library's metres per pixel, so its own pixel size sets its shape. */
+const editedAsset = (asset: Asset, layer: { src?: string }, tex: RawTexture): Asset => {
+  if (!layer.src || !asset.w || !asset.h) return asset
+  const { width, height } = tex.getSize()
+  return { ...asset, w: width, h: height, height_m: asset.height_m * (height / asset.h) }
+}
+
+/** The sky picture as a layer: set.sky, taking only its motion and the teacher's edited copy (src, the image editor)
+ *  from set.skyLayer. Place, size, opacity and keys saved before 2026-11-03 are ignored: a moved or faded sky left a
+ *  hole behind the scene. */
+const skyLayerOf = (s: Scene): SceneLayer => ({
+  ...(s.set.skyLayer?.motion ? { motion: s.set.skyLayer.motion } : {}),
+  ...(s.set.skyLayer?.src ? { src: s.set.skyLayer.src } : {}),
+  asset: s.set.sky, depth: 'sky',
+})
 
 /** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
  *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */

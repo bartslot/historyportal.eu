@@ -209,6 +209,9 @@ export function normalizeLayer(l) {
         // the same on a symmetrical shape and completely different on a ship or a portrait.
         flip_x: !!l.flip_x,
         flip_y: !!l.flip_y,
+        // The image editor (editor/photo-editor.js): the picture before any edit, and the editor's own state.
+        original_url: l.original_url || null,
+        edit_state: l.edit_state || null,
         kind: l.kind || 'figure',
         // 'map' pins the layer to lng/lat and lets the projector place it; 'screen' (default)
         // keeps it at its x/y on the stage.
@@ -1126,6 +1129,20 @@ export class ArtworkOverlay {
     this._occlude(item, node)
 
     this._wireDrag(item, node)
+    if (!this.readonly && !item.embed) {
+      // Double-click opens the image editor for THIS picture (editor/photo-editor.js).
+      node.addEventListener('dblclick', (e) => {
+        e.stopPropagation()
+        window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
+          id: artObjId(item.asset_id),
+          title: item.title,
+          original: item.original_url || item.url,
+          state: item.edit_state,
+          edited: !!item.original_url,
+          el: this.host,
+        } }))
+      })
+    }
     return node
   }
 

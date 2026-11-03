@@ -216,6 +216,12 @@ export async function createStage25d (host, opts = {}) {
           const r = canvas.getBoundingClientRect()
           api.addLayer(id, { x: e.clientX - r.left, y: e.clientY - r.top })
         })
+        // a double-click opens the image editor (editor/photo-editor.js) for the picture the first click selected
+        canvas.addEventListener('dblclick', () => {
+          const id = backdrop ?? (pointer?.selected != null ? `layer-${pointer.selected}` : null)
+          const target = id && api.editTarget(id)
+          if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
+        })
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: (a, u, v) => alpha.opaque(a, u, v) },
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
@@ -236,6 +242,21 @@ export async function createStage25d (host, opts = {}) {
       lead = Number(cfgNow.narration_at_s) || 0
       cfgSig = structureSig(cfgNow)
       host.dataset.stage25dReady = '1'
+    },
+    /** What the image editor opens for one row ('layer-3', 'band-0', 'sky'): the library picture (the original),
+     *  the editor's saved state, whether the row shows an edited copy (`src`) now. */
+    editTarget (id) {
+      const row = id === 'sky' ? (cfg?.set?.sky ? skyNow : null) : bandIndex(id) >= 0 ? bands[bandIndex(id)] : layers[layerIndex(id)]
+      const asset = id === 'sky' ? skyAsset() : assets.get(row?.asset)
+      if (!row || !asset || !libData) return null
+      return {
+        id: `s25_${id}`,
+        title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
+        original: libData.base + asset.file,
+        state: row.edit_state ?? null,
+        edited: !!row.src,
+        el: host,
+      }
     },
     /** Same set already on stage (an edit of x, y, scale, rotation, opacity or keys is not a different set). */
     matches: (cfg) => cfgSig === structureSig(cfg),
@@ -310,12 +331,12 @@ export async function createStage25d (host, opts = {}) {
       // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.
       if (id === 'sky') {
         const sky = skyAsset()
-        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: skyNow.src ?? `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
         const a = assets.get(band.asset)
-        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: 'band', fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: a ? `${libData.base}${a.file}` : null, motion: motionOf(band, a) }
+        return { id, asset: band.asset, depth: 'bg', figure: null, backdrop: true, role: 'band', fields: ['z', 'scale', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: band.src ?? (a ? `${libData.base}${a.file}` : null), motion: motionOf(band, a) }
       }
       const l = layers[layerIndex(id)]
       if (!l) return null
@@ -328,7 +349,7 @@ export async function createStage25d (host, opts = {}) {
         ground, showScale,
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        file: asset ? `${libData.base}${asset.file}` : null,
+        file: l.src ?? (asset ? `${libData.base}${asset.file}` : null),   // the edited copy, when there is one
         motion: motionOf(l, asset),
       }
     },

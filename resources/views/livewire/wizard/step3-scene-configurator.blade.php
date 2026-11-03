@@ -2646,6 +2646,9 @@
     </div>
     </x-ui.floating-window>
 
+    {{-- The image editor's words in this language (resources/js/editor/photo-editor.js reads them). --}}
+    <div hidden wire:ignore data-photo-editor-labels="{{ json_encode(\App\Services\Editor\EditedImages::labels()) }}"></div>
+
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
                        :problems="$this->problemsByScene"

@@ -31,6 +31,7 @@ import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
+import { installPhotoEditor } from './editor/photo-editor.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
 
@@ -40,6 +41,8 @@ window.__objectListDrop = resolveDrop;
 window.__objectListShield = shieldListFromAlpine;
 // The editor's stage: a click on the title screen's title opens its field (step3 @script).
 window.installTitleStagePick = installTitleStagePick;
+// The image editor: a double-click on any picture on the canvas opens it (Filerobot, loaded on first use).
+installPhotoEditor();
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The
