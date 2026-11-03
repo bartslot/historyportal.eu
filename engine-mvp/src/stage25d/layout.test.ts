@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOf, bandPose, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -408,6 +408,31 @@ describe('a ground band with the teacher\'s values (bandPose)', () => {
       expect(p.w).toBeGreaterThanOrEqual(bandWidth(30) - 1e-9)
       expect(p.h).toBeCloseTo(h0 * scale)
     }
+  })
+
+  // Bart 11-03 (lesson 94 scene 2951): Distance 1.75 m with the shot's camera at z 2.42 put the band behind the camera;
+  // in front of the house camera a band under ~3 m sank below the frame. Either way only the smeared floor showed.
+  const bottomTan = Math.tan(fovRad(HOUSE.fov) / 2 + (HOUSE_PITCH_DEG * Math.PI) / 180)   // the house frame's bottom row
+  const crestTan = (p: ReturnType<typeof bandPose>, f: number, eye = HOUSE.z) => (p.y + (1 - f) * p.h - HOUSE.y) / (p.z - eye)
+
+  it('set nearer than the frame\'s floor, stands where its crest shows, drawn in the slot it was set to', () => {
+    for (const z of [1.75, 2, 3]) {
+      const p = bandPose({ ...band, z }, 0, 0.15, w0, h0, 0.4)
+      expect(p.z).toBe(BAND_NEAR_M)
+      expect(p.alphaIndex).toBe(bandSlot(Math.max(2, z)))   // still over what stands behind where it was set
+      expect(crestTan(p, 0.4)).toBeGreaterThan(-bottomTan)
+    }
+  })
+
+  it('always stands in front of the scene\'s camera, never behind a shot that moved forward', () => {
+    const shot = { camera: { from: { ...HOUSE, z: 2.42 }, to: { ...HOUSE, z: 2.42 } } }
+    expect(cameraFront(shot)).toBeCloseTo(2.42)
+    expect(cameraFront({ camera: null })).toBe(HOUSE.z)
+    const p = bandPose({ ...band, z: 1.75 }, 0, 0.15, w0, h0, 0.4, cameraFront(shot))
+    expect(p.z - 2.42).toBeCloseTo(BAND_NEAR_M)
+    expect(crestTan(p, 0.4, 2.42)).toBeGreaterThan(-bottomTan)
+    // a band well out is left where the teacher put it
+    expect(bandPose(band, 0, 0.15, w0, h0, 0.4, cameraFront(shot)).z).toBe(30)
   })
 
   it('follows its keys and holds its distance to 2..2000 m', () => {

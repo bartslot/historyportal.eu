@@ -89,20 +89,31 @@ export const stripBottom = (z: number, k: number, h: number, skyline: number): n
 
 /** How far a ground band may stand (types.ts: 2..2000 m). */
 export const BAND_Z = [2, 2000] as const
+/** How far in front of the camera a ground band's plane stands at the least (metres). Bart 11-03 (lesson 94, scene
+ *  2951): Distance 1.75 m put the band behind a shot's camera (z 2.42), and even in front of the house camera a band
+ *  nearer than about 3 m sinks under the frame (its crest is k x z up): either way only the floor showed. */
+export const BAND_NEAR_M = 4
+
+/** How far forward a scene's camera ever stands (metres): the largest z of its shots, the house camera's when none. */
+export const cameraFront = (s: Pick<Scene, 'camera' | 'camera_more'>): number =>
+  [s.camera, ...(s.camera_more ?? [])].reduce((z, c) => Math.max(z, c?.from?.z ?? HOUSE.z, c?.to?.z ?? HOUSE.z), HOUSE.z)
 
 /**
  * A ground band at t seconds with the teacher's values (Distance, Size, X, Opacity, keys). It is three views wide at any
  * distance (`w0`: its width as built, `h0` its height then); Size scales its height and never makes it narrower than the
  * view; it always stands on the floor: a small band never lifts off into the sky (stripBottom). k: the look's band height.
+ * front: the scene's cameraFront. Its plane stands at least BAND_NEAR_M in front of that camera, so it is always in the
+ * frame; its draw slot stays at the teacher's distance, so it still covers what stands behind that.
  */
-export function bandPose(band: GroundBand, t: number, k: number, w0: number, h0: number, skyline: number) {
+export function bandPose(band: GroundBand, t: number, k: number, w0: number, h0: number, skyline: number, front = HOUSE.z) {
   const now = layerAt({ ...band, depth: 'bg' }, t)
-  const z = Math.min(BAND_Z[1], Math.max(BAND_Z[0], now.z ?? band.z))
+  const set = Math.min(BAND_Z[1], Math.max(BAND_Z[0], now.z ?? band.z))
+  const z = Math.max(set, front + BAND_NEAR_M)
   const across = bandWidth(z) / w0
   const h = h0 * across * now.scale
   return {
     z, h, w: w0 * across * Math.max(1, now.scale), sx: across * Math.max(1, now.scale), sy: across * now.scale,
-    x: (now.x - 0.5) * viewWidthAt(z), y: stripBottom(z, k, h, skyline), alphaIndex: bandSlot(z), opacity: now.opacity,
+    x: (now.x - 0.5) * viewWidthAt(z), y: stripBottom(z, k, h, skyline), alphaIndex: bandSlot(set), opacity: now.opacity,
   }
 }
 

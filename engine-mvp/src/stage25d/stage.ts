@@ -14,7 +14,7 @@ import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { cellOf, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
@@ -414,9 +414,10 @@ export class Stage {
     const land = landHeight(horizon, this.strip)   // where pictures on the far ground stand: the strip's land line
     this.land = land
     this.poseGrid(land)
+    const front = cameraFront(s)   // a band stands in front of the farthest-forward camera of the scene
     this.bands.forEach((b) => {
       // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
-      const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline)   // its skyline on the crest, k x z up, never off the floor
+      const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front)   // its skyline on the crest, k x z up, never off the floor
       b.z = p.z
       b.handle.mesh.scaling.set(p.sx, p.sy, 1)
       b.handle.mesh.position.set(p.x, p.y, p.z)
