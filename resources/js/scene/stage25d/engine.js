@@ -22,6 +22,9 @@ import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from '.
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
+/** The sky row's name in the object list and the timeline. */
+const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
+
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch']
 
 /** What a picture dragged out of the Assets tab carries: the library asset id. */
@@ -113,8 +116,10 @@ export async function createStage25d (host, opts = {}) {
   const edit = (id, patch) => {
     let saved = null
     if (id === 'sky' && cfg?.set?.sky) {
-      skyNow = { ...skyNow, ...patch }
-      saved = { skyLayer: patch }
+      // the back of the backdrop: only its motion changes (no place, size, opacity or keys: they left a hole)
+      if (patch.motion === undefined) return null
+      skyNow = { ...skyNow, motion: patch.motion }
+      saved = { skyLayer: { motion: patch.motion } }
     } else if (bandIndex(id) >= 0) {
       const n = bandIndex(id)
       bands = bands.map((g, k) => (k === n ? { ...g, ...patch } : g))
@@ -303,7 +308,7 @@ export async function createStage25d (host, opts = {}) {
       // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.
       if (id === 'sky') {
         const sky = skyAsset()
-        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: ['y', 'scale', 'opacity'], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
+        return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
@@ -497,7 +502,7 @@ export async function createStage25d (host, opts = {}) {
       return [
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
-        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
+        ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: 'Camera', depth: null, keys: [] },
       ]
     },

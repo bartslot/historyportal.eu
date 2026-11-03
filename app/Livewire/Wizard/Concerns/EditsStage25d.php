@@ -97,8 +97,9 @@ trait EditsStage25d
     /** What a ground band takes from a layer: it stands on the floor, so no Y and no angle. */
     private const BAND_FIELDS = ['x', 'z', 'scale', 'opacity'];
 
-    /** What the sky picture takes: it spans the view, so it only moves up or down and grows. */
-    private const SKY_FIELDS = ['y', 'scale', 'opacity'];
+    /** What the sky picture takes: nothing but its motion. It is the back of the backdrop; moved, shrunk or faded it leaves
+     *  a hole behind the whole scene (Bart 2026-11-03: "it's part of the background"). */
+    private const SKY_FIELDS = [];
 
     /**
      * A backdrop's values from a patch: its fields, held to their range, and its motion.
@@ -180,11 +181,10 @@ trait EditsStage25d
         $config = $scene->config;
         $span = max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds);
         foreach ($byLayer as $id => $keys) {
-            // a layer, a ground band (band-0) or the sky picture: each keeps its keys on itself
+            // a layer or a ground band (band-0): each keeps its keys on itself. The sky takes none (SKY_FIELDS).
             $path = match (true) {
                 preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => isset($layers[(int) $m[1]]) ? ['layers', (int) $m[1]] : null,
                 preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => isset($config['stage25d']['set']['groundBands'][(int) $m[1]]) ? ['groundBands', (int) $m[1]] : null,
-                $id === 'sky' => ! empty($config['stage25d']['set']['sky']) ? ['skyLayer'] : null,
                 default => null,
             };
             if ($path === null || ! is_array($keys)) {

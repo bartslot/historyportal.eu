@@ -465,8 +465,9 @@ export class Stage {
   }
 }
 
-/** The sky picture as a layer: set.sky, with the teacher's own values (set.skyLayer: y lifts it, scale, opacity, motion). */
-const skyLayerOf = (s: Scene): SceneLayer => ({ ...(s.set.skyLayer ?? {}), asset: s.set.sky, depth: 'sky' })
+/** The sky picture as a layer: set.sky, taking only its motion from set.skyLayer. Place, size, opacity and keys saved
+ *  before 2026-11-03 are ignored: a moved or faded sky left a hole behind the scene. */
+const skyLayerOf = (s: Scene): SceneLayer => ({ ...(s.set.skyLayer?.motion ? { motion: s.set.skyLayer.motion } : {}), asset: s.set.sky, depth: 'sky' })
 
 /** The near band spans this much of the frame's width; past its sides it repeats (tileable art) or mirrors (one
  *  painting), so no camera move ever runs out of it or smears its last column (checker floor HIGH). */

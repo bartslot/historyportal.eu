@@ -158,7 +158,7 @@ class StageEditingTest extends TestCase
         $this->assertSame([['asset' => 'meadow-band-01', 'z' => 30]], $scene->fresh()->config['stage25d']['set']['groundBands']);
     }
 
-    public function test_a_ground_band_and_the_sky_take_size_distance_height_motion_and_keys_and_undo(): void
+    public function test_a_ground_band_takes_size_distance_motion_and_keys_and_the_sky_stays_put_and_undo(): void
     {
         $scene = $this->scene();
         $config = $scene->config;
@@ -175,10 +175,10 @@ class StageEditingTest extends TestCase
             ]]);
         $set = $scene->fresh()->config['stage25d']['set'];
 
-        // a band stands on the floor: no Y, no angle; the sky spans the view: no distance
+        // a band stands on the floor: no Y, no angle; the sky is the back of the backdrop: no place, size, opacity or keys
         $this->assertEquals(['asset' => 'meadow-band-01', 'z' => 45, 'scale' => 1.5, 'motion' => ['kind' => 'sway', 'amount' => 0.5, 'speed' => 1.0],
             'keys' => [['t' => 0, 'z' => 30], ['t' => 4, 'z' => 60]]], $set['groundBands'][0]);
-        $this->assertEquals(['y' => 3, 'opacity' => 0.8, 'keys' => [['t' => 0, 'opacity' => 0], ['t' => 2, 'opacity' => 1]]], $set['skyLayer']);
+        $this->assertEmpty($set['skyLayer'] ?? []);
         $this->assertCount(1, $set['groundBands'], 'an unknown band adds nothing');
 
         $editor->call('undoLastEdit');
