@@ -88,6 +88,9 @@ trait EditsStage25d
         if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
             $values['motion'] = $motion;
         }
+        if (($play = LayerKeys::play($patch['play'] ?? null)) !== null) {   // an animation's speed and start
+            $values['play'] = $play;
+        }
         if ($values === []) {
             return;
         }

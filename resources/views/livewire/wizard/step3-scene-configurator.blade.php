@@ -1312,6 +1312,7 @@
         map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         person: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         cloud:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        vfx:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         leaf:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M5.25 18.75C5.25 10.5 10.5 4.5 19.5 4.5c0 9-6 14.25-14.25 14.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.75 20.25 13.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1377,6 +1378,8 @@
                 this.sync();
             },
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
+            /** An animation's playback: speed (fps scale) and where it starts (s). Live, one save, Cmd-Z undoes it. */
+            setPlay(patch) { window.__stage25d?.setLayerPlay?.(id, patch); this.sync(); },
             /** Another picture of the same series (a pose, a facing); live, one save. */
             async pose(assetId) { await window.__stage25d?.swapAsset?.(id, assetId); this.sync(); },
             /** Another character in the same stance. */
@@ -1390,7 +1393,7 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null,
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'vfx' => __('VFX')]),
             init() { this.sync(); },
             sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
@@ -1400,7 +1403,7 @@
             get kinds() {
                 if (/^band-\d+$/.test(String(this.selected))) return ['band'];
                 if (this.selected === 'sky') return ['sky'];
-                return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.layer))];
+                return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.shelf))];
             },
             /** The shelf on show: the chosen one when the selection takes it, else the selection's own. */
             get active() { return this.kinds.includes(this.kind) ? this.kind : this.kinds[0]; },
@@ -1408,7 +1411,7 @@
             get shown() {
                 const q = this.query.trim().toLowerCase();
                 const kind = this.active;
-                const rows = (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.layer === kind))
+                const rows = (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.shelf === kind))
                     && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
                 return window.__stage25d?.tiles?.(rows) ?? rows.map((a) => ({ id: a.id, asset: a, series: null, count: 1 }));
             },

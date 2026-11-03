@@ -30,7 +30,12 @@
 
         <div class="mt-3 flex items-center gap-3">
             <div class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-base-200">
-                <img x-show="info?.file" :src="info?.file" alt="" class="max-h-full max-w-full object-contain" />
+                <template x-if="info?.file && info?.anim">
+                    <span class="s25-sheet" :style="`aspect-ratio: ${info.anim.w} / ${info.anim.h}; --cols: ${info.anim.cols}; --rows: ${info.anim.rows}; --row-s: ${info.anim.cols / info.anim.fps}s`">
+                        <img :src="info.file" alt="" />
+                    </span>
+                </template>
+                <img x-show="info?.file && !info?.anim" :src="info?.file" alt="" class="max-h-full max-w-full object-contain" />
             </div>
             <button type="button" class="btn btn-sm btn-outline"
                     x-on:click="$store.view.showTab('icons'); $nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: info?.role } })))">{{ __('Change picture') }}</button>
@@ -101,6 +106,26 @@
                     @endforeach
                 </select>
             </x-ui.panel-row>
+            {{-- An animation (VFX): how fast it plays (1 = the sheet's own fps, 0 holds a frame) and where it starts. --}}
+            <template x-if="info?.anim">
+                <div class="space-y-1" data-stage25d-play>
+                    <x-ui.panel-row :label="__('Play speed')">
+                        <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-stage25d-play-field="speed"
+                               aria-label="{{ __('Play speed') }}"
+                               :value="info?.play?.speed" x-on:change="setPlay({ speed: Number($event.target.value) })" />
+                    </x-ui.panel-row>
+                    <x-ui.panel-row :label="__('Start at')">
+                        <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
+                            <input type="number" min="0" :max="info.anim.frames / info.anim.fps" step="0.1" aria-label="{{ __('Start at') }}"
+                                   data-stage25d-play-field="offset"
+                                   :value="info?.play?.offset" x-on:change="setPlay({ offset: Math.max(0, Number($event.target.value) || 0) })"
+                                   class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
+                                          [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                            <span class="text-xs text-panel-hint">s</span>
+                        </label>
+                    </x-ui.panel-row>
+                </div>
+            </template>
             @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
                 <div x-show="info?.motion?.kind !== 'none'">
                 <x-ui.panel-row :label="$label">

@@ -28,13 +28,19 @@ export function createAlphaMaps (base) {
   return {
     /** Start loading the pictures of these assets. */
     prime (list) { list.forEach((a) => a?.file && load(a.file)) },
-    /** Is the point (u across, v up: 0..1) paint? Unknown (not loaded, failed) counts as paint: never refuse a click. */
-    opaque (asset, u, v) {
+    /** Is the point (u across, v down: 0..1, as the plane's uvs and Babylon's pick give it) paint? Unknown (not loaded, failed) counts as paint: never refuse a click.
+     *  An animation reads `frame`, the one on show (sprite.ts frameAt); without it, any frame. */
+    opaque (asset, u, v, frame) {
       const m = maps.get(asset?.file)
       if (!m || typeof m === 'string') { if (asset?.file) load(asset.file); return true }
-      const x = Math.min(m.w - 1, Math.max(0, Math.floor(u * m.w)))
-      const y = Math.min(m.h - 1, Math.max(0, Math.floor((1 - v) * m.h)))
-      return m.data[(y * m.w + x) * 4 + 3] > OPAQUE_FROM
+      // an animation's file is a sheet of frames: the frame on show, or (no frame given) any frame
+      const cols = asset.kind === 'animation' ? Math.max(1, asset.cols ?? 1) : 1
+      const rows = asset.kind === 'animation' ? Math.max(1, asset.rows ?? 1) : 1
+      const fw = m.w / cols, fh = m.h / rows
+      const x = Math.min(fw - 1, Math.max(0, Math.floor(u * fw)))
+      const y = Math.min(fh - 1, Math.max(0, Math.floor(v * fh)))   // the plane's v runs 0 at the top (layer.ts anchoredPlane)
+      const cells = Number.isInteger(frame) ? [[Math.floor(frame / cols) % rows, frame % cols]] : Array.from({ length: rows * cols }, (_, n) => [Math.floor(n / cols), n % cols])
+      return cells.some(([r, c]) => m.data[(Math.floor(r * fh + y) * m.w + Math.floor(c * fw + x)) * 4 + 3] > OPAQUE_FROM)
     },
   }
 }

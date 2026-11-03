@@ -21,6 +21,7 @@ const WORDS = {
   ice: ['ice', 'ijs'], sheet: ['sheet', 'laag'], path: ['path', 'pad'], sand: ['sand', 'zand'], hunebed: ['hunebed', 'hunebed'],
   long: ['long', 'lange'], short: ['short', 'korte'], wheat: ['wheat', 'tarwe'], patch: ['patch', 'veld'],
   clearing: ['clearing', 'open plek'], stumps: ['stumps', 'stronken'], fire: ['fire', 'vuur'], pit: ['pit', 'kuil'],
+  campfire: ['campfire', 'kampvuur'],
   sky: ['sky', 'lucht'], summer: ['summer', 'zomer'], autumn: ['autumn', 'herfst'], bg: ['backdrop', 'achtergrond'],
   farmland: ['farmland', 'akkerland'], trb: ['TRB', 'TRB'], lbk: ['LBK', 'LBK'],
 }
@@ -82,10 +83,12 @@ export function numbered (labels) {
 const NATURE = new Set(['tree', 'shrub', 'heather', 'grass', 'reeds', 'bramble', 'log', 'wheat', 'crop', 'plant', 'flower'])
 
 /**
- * The object-list glyph of a library picture (window.__objIcons): a person for a character, a cloud for a sky, a leaf
- * for a plant, the picture glyph for everything else (backdrops, ground, houses, animals, tools).
+ * The object-list glyph of a library picture (window.__objIcons): sparkles for an animation (VFX), a person for a
+ * character, a cloud for a sky, a leaf for a plant, the picture glyph for everything else (backdrops, ground, houses,
+ * animals, tools).
  */
 export function assetIcon (asset) {
+  if (asset?.kind === 'animation') return 'vfx'
   if (asset?.layer === 'figure') return 'person'
   if (asset?.layer === 'sky') return 'cloud'
   return (asset?.tags ?? []).some((t) => NATURE.has(t)) ? 'leaf' : 'photo'

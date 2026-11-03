@@ -82,7 +82,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   }
 
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top } }
-  const pickAt = (x, y) => stage()?.pickLayers(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v)) ?? null
+  const pickAt = (x, y) => stage()?.pickLayers(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v, h.index)) ?? null
 
   const select = (index, announce) => {
     selected = index
