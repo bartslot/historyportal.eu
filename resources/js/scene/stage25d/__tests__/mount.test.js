@@ -89,6 +89,18 @@ describe('stage25d live edits', () => {
     expect(calls.built.at(-1).set.groundBands[0].asset).toBe('meadow-band-02')
   })
 
+  it('the eye hides a ground band like a layer, and nothing is saved', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })
+    await stage.show(cfg({ set: { sky: 'fig-meisje-push-01', groundBands: [{ asset: 'meadow-band-01', z: 30 }], layers: [{ asset: 'a', depth: 'mid' }] } }))
+    stage.setHidden('band-0', true)
+    expect(calls.rebound.set.groundBands[0].opacity).toBe(0)
+    expect(calls.rebound.set.layers[0].opacity).toBeUndefined()
+    stage.setHidden('band-0', false)
+    expect(calls.rebound.set.groundBands[0].opacity).toBeUndefined()
+    expect(saved).toEqual([])
+  })
+
   it('a ground band takes values like a layer (live, saved as its own patch, keyed, undone); the sky stays put', async () => {
     const saved = []
     const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })

@@ -80,7 +80,7 @@ export async function createStage25d (host, opts = {}) {
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
   let bands = []            // the ground bands (set.groundBands), live like the layers
   let skyNow = {}           // the sky picture's own values (set.skyLayer), live like the layers
-  let hidden = new Set()    // layer indexes the eye took off the canvas (never saved)
+  let hidden = new Set()    // rows the eye took off the canvas, 'layer-<i>' or 'band-<n>' (never saved)
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
   let alpha = null
@@ -104,7 +104,8 @@ export async function createStage25d (host, opts = {}) {
   /** Draw the live layers without a rebuild: only an asset swap rebuilds. */
   const redraw = () => {
     if (!scene || !stage) return
-    scene = { ...scene, set: { ...scene.set, groundBands: bands, skyLayer: skyNow, layers: layers.map((l, i) => (hidden.has(i) ? { ...l, opacity: 0, keys: [] } : l)) } }
+    const off = (l, id) => (hidden.has(id) ? { ...l, opacity: 0, keys: [] } : l)
+    scene = { ...scene, set: { ...scene.set, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
     stage.rebind(scene)
   }
   /** 'band-2' -> 2 when that ground band exists, else -1. */
@@ -269,9 +270,8 @@ export async function createStage25d (host, opts = {}) {
       return Number.isFinite(v) ? v : null
     },
     setHidden (id, off) {
-      const i = layerIndex(id)
-      if (i < 0) return
-      hidden = new Set(off ? [...hidden, i] : [...hidden].filter((n) => n !== i))
+      if (layerIndex(id) < 0 && bandIndex(id) < 0) return
+      hidden = new Set(off ? [...hidden, id] : [...hidden].filter((h) => h !== id))
       redraw()
     },
     /** The editor poses the scene at t seconds. */
