@@ -1354,12 +1354,12 @@
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() { this.sync(); },
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (!id) { this.look = stage.lookControls?.() ?? []; return; }
+                if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; return; }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
@@ -1385,6 +1385,11 @@
             /** Another character in the same stance. */
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
+            /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */
+            async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); this.sync(); },
+            groundRow(i, patch) { this.setGround(this.ground.rows.map((r, n) => (n === i ? { ...r, ...patch } : r))); },
+            addGround() { const last = this.ground.rows.at(-1); this.setGround([...this.ground.rows, { asset: last?.asset ?? this.ground.options[0]?.id, from_m: (last?.from_m ?? 0) + 40 }]); },
+            removeGround(i) { this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
         };
     };
 

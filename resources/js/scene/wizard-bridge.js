@@ -1105,7 +1105,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'   // only the stage's own canvas takes the pointer
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { editable: true, onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
+            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {

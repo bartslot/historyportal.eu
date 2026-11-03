@@ -129,3 +129,35 @@ export const hexRgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.replace('#', '').padEnd(6, '0').slice(0, 6), 16)
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
+
+/** A floor holds at most this many ground pictures, near to far (set.groundSlots). */
+export const GROUND_SLOTS_MAX = 6
+export interface GroundSlot { asset: Asset; from: number }
+
+/** The floor's ground pictures near to far: the teacher's set.groundSlots (unknown pictures skipped, sorted, at most
+ *  six, the nearest from 0 m), else the scene's one ground from 0 m (an old scene looks as before); a paper floor: none. */
+export function groundSlots(set: Scene['set'], lib: Library & { paper?: string }): GroundSlot[] {
+  const grounds = lib.assets.filter((a) => a.layer === 'ground')
+  const own = (set.groundSlots ?? [])
+    .map((s) => ({ asset: grounds.find((a) => a.id === s.asset), from: Math.max(0, Number(s.from_m) || 0) }))
+    .filter((s): s is GroundSlot => !!s.asset)
+    .sort((p, q) => p.from - q.from)
+    .slice(0, GROUND_SLOTS_MAX)
+  if (own.length) return own.map((s, i) => (i === 0 ? { ...s, from: 0 } : s))
+  const one = resolveGround(set, lib)
+  return one.kind === 'asset' ? [{ asset: one.asset, from: 0 }] : []
+}
+
+/** The slot a floor distance lies on. */
+export const slotAt = (slots: GroundSlot[], d: number): number => Math.max(0, slots.reduce((at, s, i) => (d >= s.from ? i : at), 0))
+
+/** The watercolour grain dot's world frequency at distance d (Grain size `size`, 1 = normal), in whole octaves so the
+ *  pattern is fixed to the world; the shader blends `scale` toward scale / 2 by `mix`. A dot is about as big on screen
+ *  near as far: no streaks toward the horizon, no blobs at the feet. GLSL twin: ground-gl.ts grainAt. */
+export const GRAIN_BASE = 2.7      // the old fixed granulation frequency, kept at 10 m
+export const GRAIN_REF_M = 10
+export function grainOctave(d: number, size: number): { scale: number; mix: number } {
+  const L = Math.log2(Math.max(d, 0.5) / GRAIN_REF_M)
+  const o = Math.floor(L)
+  return { scale: GRAIN_BASE / Math.pow(2, o) / Math.max(0.1, size), mix: L - o }
+}

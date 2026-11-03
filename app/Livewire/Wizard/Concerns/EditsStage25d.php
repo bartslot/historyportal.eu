@@ -150,7 +150,42 @@ trait EditsStage25d
     private const LOOK_RANGES = [
         'sheetGrain' => [0, 1], 'groundDetail' => [0, 1], 'sunLight' => [0, 1], 'castShadow' => [0, 1],
         'smoke' => [0, 1], 'birds' => [0, 1], 'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
+        'groundWash' => [0, 1], 'groundGrain' => [0.5, 3], 'grass' => [0, 1], 'grassSway' => [0, 1], 'horizonBushes' => [0, 1],
     ];
+
+    /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */
+    private const GROUND_SLOTS_MAX = 6;
+
+    /**
+     * The floor's ground pictures near to far (config.stage25d.set.groundSlots): library ids and from how far out each
+     * lies (metres). The nearest starts at 0 m; an empty list puts the scene's one ground back.
+     *
+     * @param  array<int,mixed>  $slots
+     */
+    #[On('stage25d:ground-slots')]
+    public function saveStage25dGroundSlots(array $slots, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId) {
+            return;
+        }
+        $clean = [];
+        foreach (array_slice(array_values($slots), 0, self::GROUND_SLOTS_MAX) as $i => $slot) {
+            $asset = is_array($slot) ? ($slot['asset'] ?? null) : null;
+            $from = is_array($slot) ? ($slot['from_m'] ?? null) : null;
+            if (! is_string($asset) || preg_match('/^[a-z0-9][a-z0-9-]{0,80}$/', $asset) !== 1 || ! is_numeric($from)) {
+                return;   // one bad row: nothing saved, the stage keeps showing what it had
+            }
+            $clean[] = ['asset' => $asset, 'from_m' => $i === 0 ? 0.0 : max(0.0, min(2000.0, (float) $from))];
+        }
+        $config = $scene->config;
+        if ($clean === []) {
+            unset($config['stage25d']['set']['groundSlots']);
+        } else {
+            $config['stage25d']['set']['groundSlots'] = $clean;
+        }
+        $this->storeStage25dConfig($scene, $config);
+    }
 
     /** One scene look value (config.stage25d.look.<key>). */
     #[On('stage25d:look')]

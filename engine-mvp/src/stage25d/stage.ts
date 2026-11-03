@@ -17,8 +17,11 @@ import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { cellOf, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
-import { bandAt, defaultNear, featherOf, GROUND_TILE_M, hexRgb, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
-import { makeGround, makeStain, type GroundLook } from './ground-gl'
+import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
+import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
+import { spritesOf } from './scatter'
+import { makeStrewn, type Strewn } from './scatter-gl'
+import { strewPlan } from './strew'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
@@ -45,6 +48,10 @@ export class Stage {
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
   private bands: Band[] = []
+  /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
+  private strewn: Strewn[] = []
+  private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
+  private strewKey = ''
   private smoke: ReturnType<typeof makeSmoke>[] = []
   private birds: ReturnType<typeof makeBirds>
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -72,7 +79,7 @@ export class Stage {
     new DirectionalLight('sun', this.sunDir, this.scene).intensity = 1.2
     this.sceneLib = lib
     this.ground = makeGround(this.scene)
-    this.ground.set(this.groundLook(null, null, lib))
+    this.ground.set(this.groundLook([], null, lib))
     this.birds = makeBirds(this.scene, BIRD_Z_M, viewWidthAt(BIRD_Z_M), BIRD_SLOT)
     createLookChain(this.scene, this.camera, {
       num: (k: string) => Number(this.look[k] ?? 0),
@@ -171,16 +178,18 @@ export class Stage {
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
-    let groundTex = null
+    // the floor's ground pictures near to far (set.groundSlots, else the scene's one ground)
+    const slotsNext = (await Promise.all(groundSlots(s.set, lib).map(async (sl) => {
+      const tex = await loadPremultiplied(lib.base + sl.asset.file, this.scene).catch(() => { misses.push({ need: sl.asset.id, reason: `file did not load: ${sl.asset.file}` }); return null })
+      return tex ? { tex, tile: sl.asset.height_m || GROUND_TILE_M, from: sl.from, asset: sl.asset } : null
+    }))).filter((sl): sl is NonNullable<typeof sl> => !!sl)
     // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
     let nearTex: RawTexture | null = null
     const nearId = defaultNear(s.set.near, lib)
     const nearAsset = nearId ? resolveAsset(lib, { asset: nearId }) : null
     if (s.set.near && !nearAsset) misses.push({ need: s.set.near, reason: 'no near band' })
     if (nearAsset) { try { nearTex = await loadPremultiplied(lib.base + nearAsset.file, this.scene) } catch { misses.push({ need: s.set.near, reason: `file did not load: ${nearAsset.file}` }) } }
-    if (choice.kind === 'asset') {
-      try { groundTex = await loadPremultiplied(lib.base + choice.asset.file, this.scene) } catch { misses.push({ need: s.set.ground ?? 'ground', reason: `file did not load: ${choice.asset.file}` }) }
-    } else if (choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
+    if (choice.kind === 'paper' && choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
     // the first strip in the scene's own order (loads finish in any order), not a prop placed far off
     const far = next.filter((b) => b.asset.layer === 'bg').sort((a, b) => a.index - b.index)[0]
     const strip = far ? { top: landTops.get(urlOf(lib, far.asset, far.layer)) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
@@ -192,6 +201,13 @@ export class Stage {
     // with ground bands the floor fades into paper, never into the sky: the bands carry the horizon
     const tint = far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : s.set.groundBands?.length ? null : skyHaze
     const bandsNext = await this.loadBands(s, lib)
+    // the sprites the ground can be strewn with, loaded now so a Gras slider move never waits on a file
+    const bandTags = s.set.groundBands?.length ? [...new Set(s.set.groundBands.flatMap((g) => resolveAsset(lib, { asset: g.asset }, 'ground_band')?.tags ?? []))] : null
+    const sprites = spritesOf(lib), front = cameraFront(s)
+    const slotsOf = slotsNext.map((sl) => ({ asset: sl.asset, from: sl.from }))
+    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front }).flatMap((p) => p.picks.map((pk) => pk.file)))]
+    const strewTex = new Map<string, RawTexture>()
+    await Promise.all(wantFiles.map(async (f) => { const t = await loadPremultiplied(lib.base + f, this.scene).catch(() => null); if (t) strewTex.set(f, t) }))
     const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
@@ -204,9 +220,9 @@ export class Stage {
     this.built = next
     this.sceneLib = lib
     // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
-    const tileBands = choice.kind === 'asset' ? (bandColours.get(lib.base + choice.asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
+    const tileBands = slotsNext[0] ? (bandColours.get(lib.base + slotsNext[0].asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
     // with ground bands the floor is only the paper behind them: no tile can show between the painted strips
-    const look = this.groundLook(choice.kind === 'asset' ? { tex: groundTex, asset: choice.asset } : null, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
+    const look = this.groundLook(slotsNext, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.strip = strip
     // smoke from every fire in the scene, rebuilt with it
@@ -220,6 +236,9 @@ export class Stage {
     this.nearAsset = nearAsset
     this.hazeTint = skyHaze ?? look.tint
     this.ground.set(look)
+    const colours = slotsNext.map((sl) => { const c = (bandColours.get(lib.base + sl.asset.file) ?? []).filter((x): x is [number, number, number] => !!x); return c.length ? mean3(c) : look.base })
+    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours, bandTags, front, sprites, tex: strewTex }
+    this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
       console.warn(`stage25d: ${s.id}: missing`, misses)
@@ -229,13 +248,33 @@ export class Stage {
   /** The floor's look: art tiled in world metres (or a paper wash), fading toward the far landscape into the colour
    *  that landscape's own ground is painted in. The wash is mostly that colour already: perspective squeezes the far
    *  half of the floor into a thin line, so a pale floor fading to a dark horizon reads as a band. */
-  private groundLook(art: { tex: GroundLook['tex']; asset: Asset } | null, tint: [number, number, number] | null, lib: Library, wash?: string): GroundLook {
+  private groundLook(slots: FloorSlot[], tint: [number, number, number] | null, lib: Library, wash?: string): GroundLook {
     const paper = hexRgb(wash ?? lib.paper ?? PAPER_HEX)
     const horizon = tint ?? paper
     return {
-      tex: art?.tex ?? null, tile: art?.asset.height_m || GROUND_TILE_M,
+      slots,
       base: mix3(paper, horizon, GROUND_WASH), tint: horizon,
-      fadeNear: DEPTH_Z.fg, fadeFar: DEPTH_Z.bg * 0.75, grain: art?.tex ? 0.5 : 1,   // flat tint before the strip: no step at its edge
+      fadeNear: DEPTH_Z.fg, fadeFar: DEPTH_Z.bg * 0.75, grain: slots.length ? 0.5 : 1,   // flat tint before the strip: no step at its edge
+    }
+  }
+
+  /** (Re)strew the ground when the scene or the look's Gras / Horizon changed: pure plan (strew.ts), one mesh set per
+   *  picture file (scatter-gl.ts). */
+  private strew(grass: number, bushes: number) {
+    const src = this.strewSrc
+    const key = src ? `${src.sceneId}:${grass}:${bushes}:${src.slots.length}` : ''
+    if (key === this.strewKey) return
+    this.strewKey = key
+    this.strewn.forEach((m) => m.dispose())
+    this.strewn = []
+    if (!src) return
+    const foot = (z: number) => src.colours[slotAt(src.slots, z)] ?? this.footTint
+    for (const plan of strewPlan({ ...src, grass, bushes })) {
+      for (const file of new Set(plan.picks.map((p) => p.file))) {
+        const tex = src.tex.get(file)
+        const clumps = plan.clumps.filter((c) => plan.picks[c.pick].file === file)
+        if (tex && clumps.length) this.strewn.push(makeStrewn(this.scene, tex, plan.picks, clumps, foot, this.hazeTint, file))
+      }
     }
   }
 
@@ -405,7 +444,7 @@ export class Stage {
     this.camera.rotation.x = (pitch * Math.PI) / 180
     this.ground.follow(this.camera.position)
     const L = (k: string) => lookNum(this.look, k)
-    this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale') })
+    this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale'), wash: L('groundWash'), grainSize: L('groundGrain') })
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
@@ -430,6 +469,8 @@ export class Stage {
       b.handle.setMotion(motionOf(b.asset, { ...b.band, depth: 'bg' }))
       b.handle.material.setFloat('time', clock)
     })
+    this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
+    this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
     this.birds.update(clock, lookNum(this.look, 'birds'))
     for (const b of this.built) {
