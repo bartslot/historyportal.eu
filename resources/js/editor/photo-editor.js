@@ -89,6 +89,7 @@ export function nameFilters (...groups) {
 const STYLE = `
   [data-photo-editor] :is(label, input, button, .FIE_tab-label, .FIE_filters-item-label, [class*="-option-label"], [class*="-option"] span) { font-size: max(12px, 1em) !important; }
   [data-photo-editor] .FIE_filters-item-label { font-size: 12px !important; }
+  [data-photo-editor] .FIE_image-tool-button { display: none !important; }   /* adds pictures from outside the lesson */
   [data-photo-editor] input { background: var(--color-base-200) !important; color: var(--color-base-content) !important; border-color: var(--color-base-300) !important; }
 `
 function addStyle () {
@@ -192,8 +193,9 @@ export async function openPhotoEditor (target) {
         defaultTabId: TABS.ADJUST,
         defaultToolId: TOOLS.CROP,
         Rotate: { angle: 90, componentType: 'buttons' },
-        // new text a sixteenth of the picture tall: Filerobot's 14 px is a speck on a 1200 px painting
-        Text: { text: '', fontSize: Math.max(24, Math.round(height / 16)) },
+        // new text a sixteenth of the picture tall (Filerobot's 14 px is a speck on a 1200 px painting), saying "Text"
+        // in the teacher's language rather than "Lorem ipsum". Never empty: Filerobot drops an empty text box on blur.
+        Text: { text: t('Text'), fontSize: Math.max(24, Math.round(height / 16)) },
         annotationsCommon: { fill: palette()['accent-primary'] },
         translations: translations(translated),
         useBackendTranslations: false,   // never fetch words from Scaleflex's server: ours are in translations
