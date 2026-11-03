@@ -36,7 +36,7 @@
              distance, a far strip a distance and a Y, a ground band a distance and a size (it stays on the floor), the
              sky a height and a size. --}}
         <div class="mt-3 space-y-1" x-show="info">
-            @foreach ([['x', __('X'), 0.01, 100], ['z', __('Distance'), 0.25, 1], ['y', $layerId === 'sky' ? __('Height') : __('Y'), 0.05, 1], ['scale', $isBackdrop ? __('Size') : __('Scale'), 0.05, 100], ['rotation', __('Angle'), 1, 1], ['opacity', __('Opacity'), 0.05, 100]] as [$prop, $glyph, $step, $factor])
+            @foreach ([['x', __('X'), 0.01, 100], ['z', __('Distance'), 0.25, 1], ['y', $layerId === 'sky' ? __('Height') : __('Y'), 0.05, 1], ['scale', __('Size'), 0.05, 100], ['rotation', __('Angle'), 1, 1], ['opacity', __('Opacity'), 0.05, 100]] as [$prop, $glyph, $step, $factor])
                 <div x-show="info?.fields?.includes('{{ $prop }}')">
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
                     <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">

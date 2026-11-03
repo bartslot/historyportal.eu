@@ -33,8 +33,9 @@
                             'relative block aspect-video overflow-hidden rounded-md bg-base-300 ring-1 transition',
                             'ring-2 ring-primary' => $isOn,
                             'ring-slate-700 group-hover:ring-slate-500' => ! $isOn,
-                        ]) x-data="{ scale: 0 }"
-                           x-init="const observer = new ResizeObserver(() => scale = $el.clientWidth / {{ $frameW }}); observer.observe($el); $cleanup(() => observer.disconnect())">
+                        ]) x-data="{ scale: 0, observer: null,
+                                     init() { this.observer = new ResizeObserver(() => this.scale = this.$el.clientWidth / {{ $frameW }}); this.observer.observe(this.$el) },
+                                     destroy() { this.observer?.disconnect() } }">
                             <iframe src="{{ $lesson->titlePreviewSrc($choice['key']) }}" title="{{ $choice['label'] }}" tabindex="-1" aria-hidden="true" loading="lazy"
                                     class="pointer-events-none absolute left-0 top-0 origin-top-left border-0 bg-slate-950"
                                     :style="`width: {{ $frameW }}px; height: {{ $frameH }}px; transform: scale(${scale})`"></iframe>
