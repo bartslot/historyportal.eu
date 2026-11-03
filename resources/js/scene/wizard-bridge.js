@@ -1095,6 +1095,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     async function showStage25d(payload, isCurrent) {
         const cfg = payload.config.stage25d
         const req = ++_stage25dReq
+        setStage25dFlag(true)   // now, not once mounted: until then the 2D icon grid shows and downloads every picture
         if (!_stage25d) {
             const parent = canvasEl.parentElement
             if (!parent) return
@@ -1447,9 +1448,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         audio_path:      toStorage(s.audio_path),
     }))
 
-    // Eagerly warm every scene's narration so Step 4's sequencer + Step 3's Play
-    // button hit cached audio on first ▶.
-    normalizedScenes.forEach(s => preloadAudio(s.audio_path))
+    // Only the open scene's narration is warmed (applyScene does it on each scene:load): warming every
+    // scene here downloaded the whole lesson's audio (59 files, ~5 MB) before the editor could start.
 
     // First paint without a scene:load (it fires during hydration, before this bridge exists):
     // paint the scene the editor has OPEN, not the lesson's first one. A deep link to scene 9
@@ -1548,7 +1548,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     await Promise.all(normalizedScenes
         .filter(s => !(s.duration_seconds > 0) && s.audio_path)
         .map(s => new Promise((resolve) => {
-            const a = audioWarmCache.get(s.audio_path) || new Audio(s.audio_path)
+            let a = audioWarmCache.get(s.audio_path)
+            if (!a) { a = new Audio(); a.preload = 'metadata'; a.src = s.audio_path }   // the length only, not the whole clip
             const done = () => {
                 if (Number.isFinite(a.duration) && a.duration > 0) s.duration_seconds = a.duration
                 resolve()

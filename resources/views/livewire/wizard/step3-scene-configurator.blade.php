@@ -1722,7 +1722,8 @@
     const __registerViewStore = () => {
         if (!window.Alpine || window.Alpine.store('view')) return;
         Alpine.store('view', {
-            stage25d: false, scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
+            // Seeded from the open scene: false until the stage mounted showed the 2D icon grid for seconds and its pictures all downloaded.
+            stage25d: @js($this->selectedSceneModel?->kind === 'stage25d'), scenes: true, objects: false, rulers: false, notes: false, script: true, layers: false, railLast: 176,
             // Not persisted: set from each scene:load, so Globe layers never shows over a slide.
             mapScene: false,
             // Which tab the bottom dock is showing: 'icons' | 'script'.
