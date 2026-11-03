@@ -15,7 +15,7 @@ import { layerAt, bandOf, DEPTH_Z, isBandPicture, isGroundStrip, liesFlat } from
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
-import { layerLabel, numbered } from './labels.js'
+import { assetIcon, layerLabel, numbered } from './labels.js'
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
@@ -495,9 +495,9 @@ export async function createStage25d (host, opts = {}) {
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [
-        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
-        ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
-        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
+        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
+        ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
+        ...(cfg?.set?.sky ? [{ id: 'sky', label: 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: 'Camera', depth: null, keys: [] },
       ]
     },

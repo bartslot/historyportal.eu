@@ -75,3 +75,16 @@ export function numbered (labels) {
     return n === 1 ? label : `${label} ${n}`
   })
 }
+
+/** Tags that make a picture a growing thing: it gets the leaf in the object list. */
+const NATURE = new Set(['tree', 'shrub', 'heather', 'grass', 'reeds', 'bramble', 'log', 'wheat', 'crop', 'plant', 'flower'])
+
+/**
+ * The object-list glyph of a library picture (window.__objIcons): a person for a character, a cloud for a sky, a leaf
+ * for a plant, the picture glyph for everything else (backdrops, ground, houses, animals, tools).
+ */
+export function assetIcon (asset) {
+  if (asset?.layer === 'figure') return 'person'
+  if (asset?.layer === 'sky') return 'cloud'
+  return (asset?.tags ?? []).some((t) => NATURE.has(t)) ? 'leaf' : 'photo'
+}

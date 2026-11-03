@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assetLabel, layerLabel, numbered } from '../labels.js'
+import { assetIcon, assetLabel, layerLabel, numbered } from '../labels.js'
 
 describe('stage25d labels', () => {
   it('names a picture from its id, in English or Dutch', () => {
@@ -26,5 +26,17 @@ describe('stage25d labels', () => {
 
   it('numbers names that repeat, from the second one on', () => {
     expect(numbered(['Braam', 'Pot', 'Braam', 'Braam'])).toEqual(['Braam', 'Pot', 'Braam 2', 'Braam 3'])
+  })
+})
+
+describe('assetIcon', () => {
+  it('gives a character the person, a sky the cloud, a plant the leaf, the rest the picture', () => {
+    expect(assetIcon({ layer: 'figure', tags: ['figure'] })).toBe('person')
+    expect(assetIcon({ layer: 'sky', tags: ['sky'] })).toBe('cloud')
+    expect(assetIcon({ layer: 'fg', tags: ['tree', 'oak'] })).toBe('leaf')
+    expect(assetIcon({ layer: 'fg', tags: ['heather', 'heath', 'ground'] })).toBe('leaf')
+    expect(assetIcon({ layer: 'bg', tags: ['fields', 'farm'] })).toBe('photo')
+    expect(assetIcon({ layer: 'prop', tags: ['cow', 'animal'] })).toBe('photo')
+    expect(assetIcon(undefined)).toBe('photo')
   })
 })

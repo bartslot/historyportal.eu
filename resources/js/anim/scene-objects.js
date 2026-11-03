@@ -86,7 +86,7 @@ export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) =>
  */
 export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i) => (i.id === 'camera'
   ? { target: 's25cam', kind: 's25cam', label: i.label }
-  : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id }))
+  : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id, icon: i.icon }))
 
 /** Read one animatable property off the live layer, so a row never shows a number nothing uses. */
 export const readObjectProperty = (target, property) => {
