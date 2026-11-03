@@ -175,7 +175,8 @@
                                 <option :value="o.id" :selected="o.id === row.asset" x-text="o.label"></option>
                             </template>
                         </select>
-                        <label class="input input-xs flex w-16 shrink-0 items-center gap-1 px-1.5" x-show="i > 0">
+                        <label class="input input-xs flex w-24 shrink-0 items-center gap-1 px-1.5" x-show="i > 0">
+                            <span class="text-xs text-panel-hint">{{ __('From') }}</span>
                             <input type="number" min="0" max="2000" step="1" :aria-label="@js(__('From'))" :data-stage25d-ground-from="i"
                                    :value="row.from_m" x-on:change="groundRow(i, { from_m: Number($event.target.value) })"
                                    class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />

@@ -8,6 +8,8 @@ export const GRASS_RANGE = [3, 60] as const
 /** Bushes on the horizon stand this far out, at most HORIZON_MAX of them. */
 export const HORIZON_RANGE = [60, 300] as const
 export const HORIZON_MAX = 80
+/** Horizon bushes stand this much taller than their picture's own height: a row of shrubs 100 m off reads as tufts. */
+export const HORIZON_SIZE = 1.8
 
 export interface StrewPlan { picks: Sprite[]; clumps: Clump[]; horizon?: boolean }
 
@@ -30,7 +32,7 @@ export function strewPlan(o: { sceneId: string; slots: GroundSlot[]; bandTags: s
   const last = o.slots[o.slots.length - 1]
   if (last && !o.bandTags) {
     const picks = horizonPicks(o.sprites, last.asset.tags)
-    out.push({ picks, horizon: true, clumps: scatter({ picks, count: o.bushes * HORIZON_MAX, from: HORIZON_RANGE[0], to: HORIZON_RANGE[1], front: o.front, seed: seedOf(`${o.sceneId}:horizon`) }) })
+    out.push({ picks, horizon: true, clumps: scatter({ picks, count: o.bushes * HORIZON_MAX, from: HORIZON_RANGE[0], to: HORIZON_RANGE[1], front: o.front, size: HORIZON_SIZE, seed: seedOf(`${o.sceneId}:horizon`) }) })
   }
   return out.filter((p) => p.clumps.length)
 }
