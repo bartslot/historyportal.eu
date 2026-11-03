@@ -368,5 +368,9 @@ describe('stage25d config helpers', () => {
   })
   it('builds a library url from the bundle', () => {
     expect(libraryUrl('nl-prehistory')).toBe('/storage/library/nl-prehistory/library.json')
+    const meta = Object.assign(document.createElement('meta'), { name: 'library-version', content: 'abc123' })
+    document.head.appendChild(meta)   // the page's stamp beats the host's proxy cache after a library:sync
+    expect(libraryUrl('nl-prehistory')).toBe('/storage/library/nl-prehistory/library.json?v=abc123')
+    meta.remove()
   })
 })

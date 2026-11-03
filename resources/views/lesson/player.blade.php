@@ -8,6 +8,7 @@
         <meta name="dev-tuning" content="{{ route('dev.tuning.index') }}">
     @endif
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="library-version" content="{{ \App\Services\Stage25d\LibraryBundle::version() }}">
     <title>{{ $lesson->title }} — History Portal</title>
     {{-- lesson-map.js (+ the ~1 MB MapLibre/volcanoes chunk) is loaded on demand by
          lesson-player.js only when a lesson actually contains a map scene. --}}

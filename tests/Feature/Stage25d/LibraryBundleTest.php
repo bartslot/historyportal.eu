@@ -77,6 +77,17 @@ class LibraryBundleTest extends TestCase
         $this->assertSame(['made' => 0, 'kept' => 0, 'failed' => ['a.webp']], (new LibraryBundle)->thumbs('demo-bundle'));
     }
 
+    public function test_the_version_stamp_changes_when_a_library_is_synced_again(): void
+    {
+        $b = new LibraryBundle;
+        $b->sync($this->dir);
+        $before = LibraryBundle::version();
+        file_put_contents("{$this->dir}/library.json", json_encode(['bundle' => 'demo-bundle', 'version' => 2, 'assets' => [['id' => 'a', 'file' => 'a.webp']]]));
+        $b->sync($this->dir);
+        touch(Storage::disk('public')->path('library/demo-bundle/library.json'), time() + 60);   // a later sync, a later file time
+        $this->assertNotSame($before, LibraryBundle::version());
+    }
+
     public function test_url_and_names(): void
     {
         $this->assertSame('/storage/library/nl-prehistory/library.json', LibraryBundle::url('nl-prehistory'));

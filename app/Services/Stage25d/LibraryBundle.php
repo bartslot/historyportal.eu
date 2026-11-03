@@ -106,6 +106,20 @@ final class LibraryBundle
         ));
     }
 
+    /**
+     * A stamp that changes whenever any bundle's library.json does: the pages put it on the list's URL, because the
+     * host's proxy cache kept serving an old list for hours after a library:sync, whatever the browser asked for.
+     */
+    public static function version(): string
+    {
+        $disk = Storage::disk('public');
+
+        return substr(md5(implode(',', array_map(
+            fn (string $b) => $disk->exists(self::DIR."/{$b}/library.json") ? $disk->lastModified(self::DIR."/{$b}/library.json") : 0,
+            self::names(),
+        ))), 0, 10);
+    }
+
     public static function url(string $bundle): string
     {
         self::assertName($bundle);
