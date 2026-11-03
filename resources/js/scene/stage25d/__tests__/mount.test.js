@@ -89,6 +89,13 @@ describe('stage25d live edits', () => {
     expect(calls.built.at(-1).set.groundBands[0].asset).toBe('meadow-band-02')
   })
 
+  it('shelf tiles point at the small thumbs library:sync makes', async () => {
+    const stage = await mountStage25d(document.getElementById('h'), {})
+    await stage.show(cfg())
+    const a = stage.library().assets.find((x) => x.id === 'meadow-band-02')
+    expect(a.thumb).toContain('thumbs/')
+  })
+
   it('the eye hides a ground band like a layer, and nothing is saved', async () => {
     const saved = []
     const stage = await mountStage25d(document.getElementById('h'), { onCommit: (i, p, scene) => saved.push([i, p, scene]) })

@@ -195,4 +195,67 @@ final class LibraryBundle
 
         return ['bundle' => $bundle, 'copied' => $copied, 'skipped' => $skipped];
     }
+
+    /** The longest side of a shelf thumbnail: a 64 px tile on a 2x screen, with room to spare. */
+    public const THUMB_PX = 256;
+
+    /**
+     * Small copies of a bundle's still pictures in library/<bundle>/thumbs/, for the Assets shelf: its tiles showed the
+     * full paintings (up to 500 KB each, ~6 MB per shelf). An animation keeps its sheet (its tile plays it). A thumb
+     * newer than its picture is kept; a picture GD cannot read is reported in `failed`, and its tile shows the full one.
+     *
+     * @return array{made:int,kept:int,failed:list<string>}
+     */
+    public function thumbs(string $bundle): array
+    {
+        self::assertName($bundle);
+        $disk = Storage::disk('public');
+        $lib = json_decode((string) $disk->get(self::DIR."/{$bundle}/library.json"), true);
+        $made = $kept = 0;
+        $failed = [];
+        foreach ((array) ($lib['assets'] ?? []) as $a) {
+            $f = (string) ($a['file'] ?? '');
+            if ($f === '' || str_contains($f, '..') || ($a['kind'] ?? null) === 'animation') {
+                continue;
+            }
+            $src = self::DIR."/{$bundle}/{$f}";
+            $dst = self::DIR."/{$bundle}/thumbs/{$f}";
+            if ($disk->exists($dst) && $disk->lastModified($dst) >= $disk->lastModified($src)) {
+                $kept++;
+
+                continue;
+            }
+            $webp = self::shrink((string) $disk->get($src));
+            if ($webp === null) {
+                $failed[] = $f;
+
+                continue;
+            }
+            $disk->put($dst, $webp);
+            $made++;
+        }
+
+        return ['made' => $made, 'kept' => $kept, 'failed' => $failed];
+    }
+
+    /** The picture scaled to fit THUMB_PX (never up), as webp with its transparency; null when GD cannot read it. */
+    private static function shrink(string $bytes): ?string
+    {
+        $img = @imagecreatefromstring($bytes);
+        if ($img === false) {
+            return null;
+        }
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $k = min(1.0, self::THUMB_PX / max($w, $h));
+        $out = imagecreatetruecolor(max(1, (int) round($w * $k)), max(1, (int) round($h * $k)));
+        imagealphablending($out, false);
+        imagesavealpha($out, true);
+        imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
+        imagecopyresampled($out, $img, 0, 0, 0, 0, imagesx($out), imagesy($out), $w, $h);
+        ob_start();
+        imagewebp($out, null, 80);
+
+        return (string) ob_get_clean();
+    }
 }

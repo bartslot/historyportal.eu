@@ -90,6 +90,8 @@ export async function createStage25d (host, opts = {}) {
   let hidden = new Set()    // rows the eye took off the canvas, 'layer-<i>' or 'band-<n>' (never saved)
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
+  // library:sync's small copy for a shelf tile (an animation's tile plays its sheet); a tile falls back to url without it
+  const thumbOf = (a) => (isAnimation(a) ? null : libData.base + 'thumbs/' + a.file)
   let alpha = null
   let backdrop = null        // the backdrop row that is the selection: 'sky' or 'band-<n>' (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
@@ -412,11 +414,11 @@ export async function createStage25d (host, opts = {}) {
       // already between them: only the order changes; its place is saved as it is (a scene from before z gets one)
       call(order, moved, api.sceneId, layers[moved].x ?? 0.5, zOf(moved), layers[moved].scale ?? 1)
     },
-    /** The library on stage, for the asset browser: [{ id, layer, file, url, label }]. */
+    /** The library on stage, for the asset browser: [{ id, layer, file, url, thumb, label }]. */
     library () {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, label: layerLabel({}, a, lang) })) }
+      return { bundle: libData.bundle, assets: libData.assets.map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),
@@ -429,12 +431,12 @@ export async function createStage25d (host, opts = {}) {
       const series = seriesOf(a)
       if (!series || !libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      const row = (m) => ({ id: m.id, url: libData.base + m.file, ...poseOf(m) })
+      const row = (m) => ({ id: m.id, url: libData.base + m.file, thumb: thumbOf(m), ...poseOf(m) })
       return {
         series,
         asset: a.id,
         members: membersOf(libData.assets, a).map(row),
-        characters: charactersOf(libData.assets).map((c) => ({ series: c.series, url: libData.base + c.asset.file, label: layerLabel({}, c.asset, lang) })),
+        characters: charactersOf(libData.assets).map((c) => ({ series: c.series, url: libData.base + c.asset.file, thumb: thumbOf(c.asset), label: layerLabel({}, c.asset, lang) })),
       }
     },
     /** Another character on a layer, in the same pose and facing when it has them (one swap, one undo step). */

@@ -51,7 +51,7 @@
                                 :data-stage25d-pose="m.id" x-on:click="pose(m.id)"
                                 class="flex h-12 items-center justify-center overflow-hidden rounded bg-base-200 ring-1"
                                 :class="m.id === series.asset ? 'ring-primary' : 'ring-transparent hover:ring-base-content/30'">
-                            <img :src="m.url" alt="" draggable="false" loading="lazy" class="max-h-full max-w-full object-contain" />
+                            <img :src="m.thumb ?? m.url" x-on:error.once="$el.src = m.url" alt="" draggable="false" loading="lazy" class="max-h-full max-w-full object-contain" />
                         </button>
                     </template>
                 </div>

@@ -52,6 +52,31 @@ class LibraryBundleTest extends TestCase
         }
     }
 
+    public function test_thumbs_are_small_copies_of_still_pictures_made_once(): void
+    {
+        $big = imagecreatetruecolor(1200, 600);
+        imagewebp($big, "{$this->dir}/a.webp");
+        file_put_contents("{$this->dir}/fire.webp", 'SHEET');
+        file_put_contents("{$this->dir}/library.json", json_encode(['bundle' => 'demo-bundle', 'assets' => [
+            ['id' => 'a', 'file' => 'a.webp'],
+            ['id' => 'fire', 'file' => 'fire.webp', 'kind' => 'animation'],   // a sheet plays in its tile: no thumb
+        ]]));
+        $b = new LibraryBundle;
+        $b->sync($this->dir);
+
+        $this->assertSame(['made' => 1, 'kept' => 0, 'failed' => []], $b->thumbs('demo-bundle'));
+        [$w, $h] = getimagesizefromstring(Storage::disk('public')->get('library/demo-bundle/thumbs/a.webp'));
+        $this->assertSame([LibraryBundle::THUMB_PX, LibraryBundle::THUMB_PX / 2], [$w, $h]);
+        Storage::disk('public')->assertMissing('library/demo-bundle/thumbs/fire.webp');
+        $this->assertSame(['made' => 0, 'kept' => 1, 'failed' => []], $b->thumbs('demo-bundle'));
+    }
+
+    public function test_a_picture_that_does_not_decode_is_reported_not_thumbed(): void
+    {
+        (new LibraryBundle)->sync($this->dir);   // a.webp holds 'AAA'
+        $this->assertSame(['made' => 0, 'kept' => 0, 'failed' => ['a.webp']], (new LibraryBundle)->thumbs('demo-bundle'));
+    }
+
     public function test_url_and_names(): void
     {
         $this->assertSame('/storage/library/nl-prehistory/library.json', LibraryBundle::url('nl-prehistory'));

@@ -109,7 +109,7 @@
                                 </span>
                             </template>
                             <template x-if="!t.asset.anim">
-                                <img :src="t.asset.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+                                <img :src="t.asset.thumb ?? t.asset.url" x-on:error.once="$el.src = t.asset.url" loading="lazy" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
                             </template>
                         </span>
                         <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
