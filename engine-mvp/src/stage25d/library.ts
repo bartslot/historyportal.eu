@@ -3,7 +3,8 @@
 import type { Asset, Library } from './types'
 
 export async function loadLibrary(url: string): Promise<Library & { base: string }> {
-  const res = await fetch(url)
+  // asked again every time (a 304 when unchanged): the server sends no Cache-Control, so a browser kept an old list for hours after a library:sync
+  const res = await fetch(url, { cache: 'no-cache' })
   if (!res.ok) throw new Error(`library ${url}: HTTP ${res.status}`)
   const lib = (await res.json()) as Library
   if (!Array.isArray(lib.assets)) throw new Error(`library ${url}: no assets list`)
