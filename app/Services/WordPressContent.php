@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\Locales;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -97,7 +98,10 @@ class WordPressContent
                     'status' => 'publish',
                     'orderby' => 'date',
                     'order' => 'desc',
-                    '_fields' => 'id,slug,date,modified,link,title,excerpt,content,featured_media',
+                    // Categories, tags and the featured image arrive in the same request; WordPress
+                    // only returns them when _links and _embedded survive the _fields filter.
+                    '_embed' => 'wp:term,wp:featuredmedia',
+                    '_fields' => 'id,slug,date,modified,link,title,excerpt,content,_links,_embedded',
                 ]);
 
             if (! $response->successful()) {
@@ -138,7 +142,23 @@ class WordPressContent
             'published_at' => isset($item['date']) ? Carbon::parse($item['date']) : null,
             'updated_at' => isset($item['modified']) ? Carbon::parse($item['modified']) : null,
             'source_url' => (string) ($item['link'] ?? ''),
+            'language' => $this->language($item),
+            'image' => $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null,
         ];
+    }
+
+    /**
+     * The one language a post is written in: a category or tag whose slug is a shipped locale code
+     * ("nl"), otherwise English. WordPress itself has no language field, and without one every
+     * post would sit under all five prefixes as five duplicates.
+     */
+    private function language(array $item): string
+    {
+        $slugs = collect($item['_embedded']['wp:term'] ?? [])
+            ->flatten(1)
+            ->pluck('slug');
+
+        return $slugs->first(fn ($slug) => in_array($slug, Locales::codes(), true)) ?? 'en';
     }
 
     /**

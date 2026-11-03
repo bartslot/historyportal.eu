@@ -120,18 +120,103 @@ class WordPressArticlesTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_articles_reach_the_sitemap_in_every_language(): void
+    /** WordPress embeds a post's categories and tags as groups of terms under _embedded.wp:term. */
+    private function inLanguage(string $slug, array $overrides = []): array
     {
-        $this->fakeWordPress([$this->wpPost()]);
+        return $this->wpPost($overrides + [
+            '_embedded' => [
+                'wp:term' => [
+                    [['taxonomy' => 'category', 'slug' => $slug]],
+                    [],
+                ],
+            ],
+        ]);
+    }
+
+    public function test_an_article_lives_once_in_the_sitemap_under_its_own_language(): void
+    {
+        $this->fakeWordPress([
+            $this->wpPost(),
+            $this->inLanguage('nl', ['id' => 13, 'slug' => 'van-tien-naar-zes-tijdvakken']),
+        ]);
 
         $xml = $this->get(route('sitemap'))->assertOk()->getContent();
 
-        foreach (['en', 'nl', 'de', 'fr', 'it'] as $locale) {
-            $this->assertStringContainsString(
-                '<loc>'.Seo::url('article', ['slug' => 'why-stories-beat-timelines'], $locale).'</loc>',
-                $xml,
-            );
+        $this->assertStringContainsString('<loc>'.Seo::url('article', ['slug' => 'why-stories-beat-timelines'], 'en').'</loc>', $xml);
+        $this->assertStringContainsString('<loc>'.Seo::url('article', ['slug' => 'van-tien-naar-zes-tijdvakken'], 'nl').'</loc>', $xml);
+
+        foreach (['nl', 'de', 'fr', 'it'] as $locale) {
+            $this->assertStringNotContainsString(Seo::url('article', ['slug' => 'why-stories-beat-timelines'], $locale), $xml);
         }
+        foreach (['en', 'de', 'fr', 'it'] as $locale) {
+            $this->assertStringNotContainsString(Seo::url('article', ['slug' => 'van-tien-naar-zes-tijdvakken'], $locale), $xml);
+        }
+    }
+
+    public function test_a_dutch_article_names_its_dutch_url_as_canonical_on_every_prefix(): void
+    {
+        $this->fakeWordPress([$this->inLanguage('nl', ['slug' => 'van-tien-naar-zes-tijdvakken'])]);
+        $dutch = Seo::url('article', ['slug' => 'van-tien-naar-zes-tijdvakken'], 'nl');
+
+        foreach (['/articles/', '/de/articles/', '/nl/articles/'] as $prefix) {
+            $this->get($prefix.'van-tien-naar-zes-tijdvakken')
+                ->assertOk()
+                ->assertSee('<link rel="canonical" href="'.$dutch.'">', escape: false)
+                ->assertDontSee('hreflang=', escape: false);
+        }
+    }
+
+    public function test_an_article_without_a_language_category_is_english(): void
+    {
+        $this->fakeWordPress([$this->inLanguage('filter-1')]);
+
+        $this->get('/nl/articles/why-stories-beat-timelines')
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="'.Seo::url('article', ['slug' => 'why-stories-beat-timelines'], 'en').'">', escape: false);
+    }
+
+    public function test_the_index_links_each_article_in_its_own_language(): void
+    {
+        $this->fakeWordPress([$this->inLanguage('nl', ['slug' => 'van-tien-naar-zes-tijdvakken'])]);
+
+        $this->get(route('public.articles'))
+            ->assertOk()
+            ->assertSee('href="'.Seo::url('article', ['slug' => 'van-tien-naar-zes-tijdvakken'], 'nl').'"', escape: false);
+    }
+
+    public function test_an_article_carries_blog_posting_structured_data(): void
+    {
+        $this->fakeWordPress([$this->inLanguage('nl', [
+            'slug' => 'van-tien-naar-zes-tijdvakken',
+            'title' => ['rendered' => 'Van tien naar zes tijdvakken'],
+            '_embedded' => [
+                'wp:term' => [[['taxonomy' => 'category', 'slug' => 'nl']]],
+                'wp:featuredmedia' => [['source_url' => 'https://example.test/napoleon.jpg']],
+            ],
+        ])]);
+
+        $html = $this->get('/nl/articles/van-tien-naar-zes-tijdvakken')->assertOk()->getContent();
+
+        preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $html, $match);
+        $graph = json_decode($match[1] ?? '{}', true);
+
+        $this->assertSame('BlogPosting', $graph['@type'] ?? null);
+        $this->assertSame('Van tien naar zes tijdvakken', $graph['headline']);
+        $this->assertSame('nl-NL', $graph['inLanguage']);
+        $this->assertSame('2026-07-20', substr($graph['datePublished'], 0, 10));
+        $this->assertSame('https://example.test/napoleon.jpg', $graph['image']);
+        $this->assertSame(Seo::url('article', ['slug' => 'van-tien-naar-zes-tijdvakken'], 'nl'), $graph['mainEntityOfPage']);
+        $this->assertStringContainsString('<meta property="og:image" content="https://example.test/napoleon.jpg">', $html);
+    }
+
+    public function test_wordpress_is_asked_to_embed_terms_and_the_featured_image(): void
+    {
+        $this->fakeWordPress([$this->wpPost()]);
+
+        app(WordPressContent::class)->posts(5);
+
+        Http::assertSent(fn ($request) => str_contains(urldecode($request->url()), '_embed=wp:term,wp:featuredmedia')
+            && str_contains(urldecode($request->url()), '_embedded'));
     }
 
     public function test_an_empty_feed_keeps_articles_out_of_the_sitemap(): void

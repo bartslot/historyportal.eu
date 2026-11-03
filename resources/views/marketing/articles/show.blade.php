@@ -12,6 +12,9 @@
             :params="['slug' => $article['slug']]"
             :title="$article['title']"
             :description="$article['excerpt']"
+            :image="$article['image']"
+            :locale="$article['language']"
+            :graph="Seo::articleGraph($article)"
             type="article"
         />
     </x-slot:head>
