@@ -126,6 +126,28 @@ class StageEditingTest extends TestCase
         $this->assertSame($other->config['stage25d'], $stale[0]['config']);
     }
 
+    public function test_the_camera_opens_its_panel_and_a_framed_move_is_saved_within_range_and_can_be_taken_off(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+
+        $editor->call('selectInspectorTarget', 's25_camera')->assertSet('activeStage25dLayer', 'camera')
+            ->assertSeeHtml('data-stage25d-camera')->assertSeeHtml('data-camera-end="to"');
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => ['from' => ['x' => -1, 'y' => 2, 'z' => 0, 'fov' => 50], 'to' => ['x' => 99, 'z' => 'far', 'fov' => 5]]], $scene->id);
+        $camera = $scene->fresh()->config['stage25d']['camera'];
+        $this->assertEquals(['x' => -1.0, 'y' => 2.0, 'z' => 0.0, 'fov' => 50.0], $camera['from']);
+        $this->assertEquals(['x' => 8.0, 'y' => 1.6, 'z' => 0.0, 'fov' => 20.0], $camera['to']);   // held to the range, gaps from the house camera
+        $this->assertSame('inOut', $camera['ease']);
+        $this->assertSame([['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.6]], $scene->fresh()->config['stage25d']['set']['layers']);
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => ['from' => ['x' => 1], 'to' => ['x' => 2]]], $scene->id + 1);   // a save meant for another scene
+        $this->assertEquals(8, $scene->fresh()->config['stage25d']['camera']['to']['x']);
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => null], $scene->id);
+        $this->assertArrayNotHasKey('camera', $scene->fresh()->config['stage25d']);
+    }
+
     public function test_a_ground_band_of_the_painted_landscape_opens_its_panel_and_takes_another_landscape_picture(): void
     {
         Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [

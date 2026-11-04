@@ -33,6 +33,11 @@ trait EditsStage25d
         if ($scene?->id !== $sceneId) {
             return;   // a debounced save from a scene the teacher has since left
         }
+        if (array_key_exists('camera', $patch)) {   // the camera move the teacher framed on the canvas
+            $this->storeStage25dCamera($scene, $patch['camera']);
+
+            return;
+        }
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
         if (! $scene || ! is_array($layers) || (! isset($layers[$index]) && ! is_array($patch['add'] ?? null) && ! isset($patch['sky']) && ! isset($patch['band']) && ! isset($patch['skyLayer']))) {
             return;
@@ -96,6 +101,39 @@ trait EditsStage25d
         }
         $layers[$index] = [...$layers[$index], ...$values];
         $this->storeStage25dLayers($scene, $layers);
+    }
+
+    /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
+    private const CAMERA_RANGE = ['x' => [-8.0, 8.0], 'y' => [0.3, 6.0], 'z' => [-4.0, 15.0], 'fov' => [20.0, 75.0]];
+
+    /** The house camera (layout.ts HOUSE): what a pose field falls back to. */
+    private const CAMERA_HOUSE = ['x' => 0.0, 'y' => 1.6, 'z' => 0.0, 'fov' => 50.0];
+
+    /**
+     * config.stage25d.camera: a start and an end pose, held to the camera's range; null = the still house camera.
+     * The director's own fields (move, ease, dur_s, at_s) stay as they were.
+     */
+    private function storeStage25dCamera(Scene $scene, mixed $camera): void
+    {
+        $config = $scene->config;
+        if (! is_array($camera)) {
+            unset($config['stage25d']['camera']);
+        } else {
+            $pose = fn (mixed $p): array => collect(self::CAMERA_RANGE)
+                ->map(fn (array $range, string $k) => round(max($range[0], min($range[1], is_numeric($p[$k] ?? null) ? (float) $p[$k] : self::CAMERA_HOUSE[$k])), 3))
+                ->all();
+            $old = (array) ($config['stage25d']['camera'] ?? []);
+            $config['stage25d']['camera'] = [
+                'move' => 'framed', 'ease' => 'inOut', 'at_s' => 0,
+                ...$old,
+                'from' => $pose((array) ($camera['from'] ?? [])),
+                'to' => $pose((array) ($camera['to'] ?? [])),
+            ];
+        }
+        if ($config === $scene->config) {
+            return;
+        }
+        $this->storeStage25dConfig($scene, $config);
     }
 
     /** What a ground band takes from a layer: it stands on the floor, so no Y and no angle. */

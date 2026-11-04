@@ -2588,5 +2588,7 @@
     "The music library is empty.": "La bibliothèque musicale est vide.",
     "Track": "Morceau",
     "2D": "2D",
-    "This era has no 3D set yet.": "Cette époque n’a pas encore de décor 3D."
+    "This era has no 3D set yet.": "Cette époque n’a pas encore de décor 3D.",
+    "Drag the picture to move the camera. Scroll to go closer, pinch to zoom.": "Fais glisser l'image pour déplacer la caméra. Fais défiler pour t'approcher, pince pour zoomer.",
+    "Keep the camera still": "Garder la caméra immobile"
 }

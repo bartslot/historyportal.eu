@@ -1344,6 +1344,7 @@ export const animationTimeline = (config = {}) => ({
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
     else if (kind === 'dio') window.__diorama?.select?.(id)
     else if (kind === 's25') window.__stage25d?.select?.(id)
+    else if (kind === 's25cam') window.__stage25d?.select?.('camera')
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
   },
 

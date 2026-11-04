@@ -22,7 +22,28 @@
 <div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names), @js($poses))"
      x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()">
 
-    @if ($layerId)
+    @if ($layerId === 'camera')
+        {{-- The camera: the canvas shows the start or the end of its move, and the teacher frames it right there.
+             The player glides from one to the other over the scene. --}}
+        <div class="-mx-4 -mt-4 flex items-center gap-2 border-b border-panel-hairline px-4 py-3">
+            <x-ui.panel-breadcrumb :label="__('Scene')"
+                                   x-on:click="window.__stage25d?.select(null); window.__clearLayerGuard?.(); $wire.selectInspectorTarget('')" />
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ __('Camera') }}</span>
+        </div>
+
+        <div class="tabs tabs-box tabs-sm mt-3 w-full" role="tablist" aria-label="{{ __('Camera') }}" data-stage25d-camera>
+            @foreach ([['from', __('Start')], ['to', __('End')]] as [$end, $label])
+                <button type="button" role="tab" class="tab flex-1" data-camera-end="{{ $end }}"
+                        :class="cam?.framing === '{{ $end }}' && 'tab-active'" :aria-selected="cam?.framing === '{{ $end }}'"
+                        x-on:click="frame('{{ $end }}')">{{ $label }}</button>
+            @endforeach
+        </div>
+        <p class="mt-2 text-xs text-panel-hint">{{ __('Drag the picture to move the camera. Scroll to go closer, pinch to zoom.') }}</p>
+
+        <button type="button" class="btn btn-ghost btn-sm mt-3 w-full" data-camera-still x-show="cam?.moves" x-on:click="stillCamera()">
+            {{ __('Keep the camera still') }}
+        </button>
+    @elseif ($layerId)
         <div class="-mx-4 -mt-4 flex items-center gap-2 border-b border-panel-hairline px-4 py-3">
             <x-ui.panel-breadcrumb :label="__('Scene')"
                                    x-on:click="window.__stage25d?.select(null); window.__clearLayerGuard?.(); $wire.selectInspectorTarget('')" />

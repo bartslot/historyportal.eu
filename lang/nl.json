@@ -2630,5 +2630,7 @@
     "The music library is empty.": "De muziekbibliotheek is leeg.",
     "Track": "Nummer",
     "2D": "2D",
-    "This era has no 3D set yet.": "Dit tijdvak heeft nog geen 3D-decor."
+    "This era has no 3D set yet.": "Dit tijdvak heeft nog geen 3D-decor.",
+    "Drag the picture to move the camera. Scroll to go closer, pinch to zoom.": "Sleep het beeld om de camera te bewegen. Scroll om dichterbij te komen, knijp om in te zoomen.",
+    "Keep the camera still": "Camera stil laten staan"
 }

@@ -85,7 +85,7 @@ export const dioramaObjects = () => (window.__diorama?.items() ?? []).map((i) =>
  * rows are x, y, scale, angle and opacity (properties.js 's25'); the camera row only names the shot.
  */
 export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i) => (i.id === 'camera'
-  ? { target: 's25cam', kind: 's25cam', label: i.label }
+  ? { target: 's25cam', kind: 's25cam', label: i.label, icon: i.icon }
   : i.id === 'sky'
     ? { target: 's25sky:sky', kind: 's25sky', label: i.label, icon: i.icon }   // the back of the backdrop: a row, no properties
     : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id, icon: i.icon }))

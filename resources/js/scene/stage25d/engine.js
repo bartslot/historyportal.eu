@@ -23,10 +23,12 @@ import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
+import { endOf, panPose, wheelPose, withEnd } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
+const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
 
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
 
@@ -98,6 +100,9 @@ export async function createStage25d (host, opts = {}) {
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
   let pointer = null
   let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
+  let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
+  let framing = null        // the Camera row is selected: the end of the move the canvas shows and moves, 'from' | 'to'
+  let framingView = false   // the canvas holds that end; playing or scrubbing shows the move itself again
 
   const startLoop = () => {
     stage.engine.runRenderLoop(() => {
@@ -105,7 +110,7 @@ export async function createStage25d (host, opts = {}) {
       motionClock += Math.min(0.1, (now - last) / 1000)
       last = now
       stage.tick(now)
-      if (scene) stage.pose(scene, nowT(), motionClock)
+      if (scene) stage.pose(framing && framingView ? framedScene() : scene, nowT(), motionClock)
       stage.scene.render()
       pointer?.place()
     })
@@ -141,9 +146,44 @@ export async function createStage25d (host, opts = {}) {
       saved = i
     }
     if (saved === null) return null
-    seenEdit = editSig({ set: { layers, groundBands: bands, skyLayer: skyNow } })   // what the server will hold once saved: an undo then differs from it
+    seenEdit = liveSig()   // what the server will hold once saved: an undo then differs from it
     redraw()
     return saved
+  }
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow })
+  /** While framing: the scene held still on the end being framed. */
+  const framedScene = () => { const p = endOf(camNow, framing); return { ...scene, camera: { from: p, to: p }, camera_more: [] } }
+  /** Move the end being framed: live, and saved (the editor's queue keeps the last of a drag). */
+  const frameTo = (pose) => {
+    if (!framing || !scene) return
+    camNow = withEnd(camNow, framing, pose)
+    scene = { ...scene, camera: camNow }
+    seenEdit = liveSig()
+    if (api.sceneId != null) opts.onCommit?.(0, { camera: camNow }, api.sceneId)
+    window.dispatchEvent(new CustomEvent('stage25d-edited'))
+  }
+  /** Framing takes the canvas's pointer and wheel before the layer picking does. */
+  const attachFraming = () => {
+    let pan = null
+    const take = (e) => { e.preventDefault(); e.stopImmediatePropagation() }
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!framing) return
+      take(e)
+      canvas.setPointerCapture?.(e.pointerId)
+      framingView = true
+      pan = { x: e.clientX, y: e.clientY, pose: endOf(camNow, framing) }
+      canvas.style.cursor = 'grabbing'
+    }, { capture: true })
+    canvas.addEventListener('pointermove', (e) => {
+      if (!framing) return
+      take(e)
+      if (pan) frameTo(panPose(pan.pose, e.clientX - pan.x, e.clientY - pan.y, canvas.getBoundingClientRect().height))
+    }, { capture: true })
+    const end = (e) => { if (!pan) return; take(e); pan = null; canvas.style.cursor = framing ? 'grab' : '' }
+    canvas.addEventListener('pointerup', end, { capture: true })
+    canvas.addEventListener('pointercancel', end, { capture: true })
+    canvas.addEventListener('wheel', (e) => { if (!framing) return; take(e); framingView = true; frameTo(wheelPose(endOf(camNow, framing), e)) }, { capture: true, passive: false })
+    window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_camera') api.frameCamera(null) })
   }
   /** The set as the teacher sees it now: a rebuild (an asset swap, a new layer) keeps every live edit. */
   const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow })
@@ -207,6 +247,7 @@ export async function createStage25d (host, opts = {}) {
       layers = next.set.layers
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
       skyNow = { ...(next.set.skyLayer ?? {}) }
+      camNow = next.camera
       hidden = new Set()
       seenEdit = editSig(cfgNow)
       cfg = cfgNow
@@ -216,6 +257,7 @@ export async function createStage25d (host, opts = {}) {
       alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
+        attachFraming()
         window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== `s25_${backdrop}`) backdrop = null })
         canvas.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes(DROP_TYPE)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } })
         canvas.addEventListener('drop', (e) => {
@@ -282,6 +324,8 @@ export async function createStage25d (host, opts = {}) {
       layers = layers.map((l, i) => take(l, cfgNow.set?.layers?.[i]))
       bands = bands.map((g, i) => take(g, cfgNow.set?.groundBands?.[i]))
       skyNow = take(skyNow, cfgNow.set?.skyLayer)
+      camNow = cfgNow.camera ?? null
+      scene = scene ? { ...scene, camera: camNow } : scene
       cfg = cfgNow
       redraw()
       return true
@@ -307,7 +351,10 @@ export async function createStage25d (host, opts = {}) {
       redraw()
     },
     /** The editor poses the scene at t seconds. */
-    update (t) { clock = null; manualT = Math.max(0, t) },
+    update (t) {
+      if (Math.max(0, t) !== manualT) framingView = false   // the playhead moved: show the move, not the framed end
+      clock = null; manualT = Math.max(0, t)
+    },
     /** The player follows a clock (the narration's currentTime). */
     play (getT) { clock = () => lead + getT() },
     /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer. */
@@ -318,6 +365,14 @@ export async function createStage25d (host, opts = {}) {
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. A backdrop row (the sky, a
      *  ground band) has no box: it is the selection for the panel and the Assets tab. */
     select (id) {
+      if (id === 'camera') {
+        backdrop = null
+        pointer?.select(null)
+        api.frameCamera(framing ?? 'from')
+        window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 's25_camera' } }))
+        return
+      }
+      api.frameCamera(null)
       backdrop = isBackdrop(id) ? id : null
       pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !backdrop)
       if (backdrop) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${backdrop}` } }))
@@ -327,9 +382,26 @@ export async function createStage25d (host, opts = {}) {
     get backdrop () { return backdrop },
     get selection () { return pointer?.selected ?? null },
     /** Another scene is opening: nothing stays selected from the one before. */
-    clearSelection () { pointer?.select(null) },
+    clearSelection () { pointer?.select(null); api.frameCamera(null) },
+    /** Frame one end of the camera move on the canvas ('from' | 'to'), or stop framing (null). */
+    frameCamera (end) {
+      framing = end === 'from' || end === 'to' ? end : null
+      framingView = !!framing
+      canvas.style.cursor = framing ? 'grab' : ''
+      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    },
+    /** What the Camera panel shows: the end being framed, and whether the scene has a move of its own. */
+    cameraInfo: () => ({ framing, moves: !!camNow }),
+    /** Back to the still house camera: no move. */
+    resetCamera () {
+      camNow = null
+      if (scene) scene = { ...scene, camera: null }
+      seenEdit = liveSig()
+      if (api.sceneId != null) opts.onCommit?.(0, { camera: null }, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    },
     /** Is the stage at the scene's first frame with nothing hidden? Only then is its picture a thumbnail of the scene. */
-    atStart () { return manualT === 0 && clock === null && hidden.size === 0 },
+    atStart () { return manualT === 0 && clock === null && hidden.size === 0 && !framing },
     /** What the inspector shows for a layer: its name, picture, depth and motion. */
     layerInfo (id) {
       const motionOf = (l, a) => {
@@ -591,7 +663,7 @@ export async function createStage25d (host, opts = {}) {
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
         ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
-        { id: 'camera', label: 'Camera', depth: null, keys: [] },
+        { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },
       ]
     },
     destroy () {

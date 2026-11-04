@@ -1327,6 +1327,7 @@
         vfx:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         leaf:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M5.25 18.75C5.25 10.5 10.5 4.5 19.5 4.5c0 9-6 14.25-14.25 14.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.75 20.25 13.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        camera: '<svg viewBox="0 0 100 100" fill="currentColor" class="h-4 w-4"><path d="m13.281 19.5h48.148c7.3359 0 13.281 7.3359 13.281 13.281v34.449c0 7.3359-5.9453 13.281-13.281 13.281h-48.148c-7.3359 0-13.281-7.3359-13.281-13.281v-34.449c0-7.3359 5.9453-13.281 13.281-13.281z"/><path d="m90.449 27.922l-10.09 6.3008v31.559l10.078 6.3008c5.25 3.2812 9.5508 0.89844 9.5508-5.2891v-33.582c0.011719-6.2109-4.2891-8.5703-9.5391-5.2891z"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1366,12 +1367,13 @@
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() { this.sync(); },
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
                 if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; return; }
+                if (id === 'camera') { this.cam = stage.cameraInfo?.() ?? null; return; }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
@@ -1397,6 +1399,10 @@
             /** Another character in the same stance. */
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
+            /** Frame the start or the end of the camera move on the canvas. */
+            frame(end) { window.__stage25d?.frameCamera?.(end); this.sync(); },
+            /** Back to the still camera: no move. */
+            stillCamera() { window.__stage25d?.resetCamera?.(); this.sync(); },
             /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */
             async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); this.sync(); },
             groundRow(i, patch) { this.setGround(this.ground.rows.map((r, n) => (n === i ? { ...r, ...patch } : r))); },
@@ -1510,6 +1516,8 @@
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 const s25Sky = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop)
                     .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.label, bg: false, s25: true, s25sky: true }));
+                // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
+                if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
@@ -2274,7 +2282,7 @@
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal && !obj.cam"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
@@ -2283,7 +2291,7 @@
                         </svg>
                     </button>
                     {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.cam"
                             @click.stop="deleteObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">
