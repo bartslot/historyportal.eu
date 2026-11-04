@@ -10,6 +10,8 @@ export interface Asset {
   layer: LayerKind
   tags: string[]
   file: string
+  /** the teacher's edited copy this asset is drawn from on stage (stage.ts editedAsset): never in the library itself */
+  src?: string
   w: number
   h: number
   anchor: [number, number]

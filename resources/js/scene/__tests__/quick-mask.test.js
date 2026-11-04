@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS } from '../quick-mask.js';
+import { wandSelect, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS } from '../quick-mask.js';
 
 // 7×3: white | ink column | white, with a soft grey pixel next to the ink on the left.
 //   W W g K W W W
@@ -187,5 +187,33 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
         expect(alpha(out)[10]).toBe(0);
         expect(alpha(d)[10]).toBe(255);
         expect(CLEAN_DEFAULTS.white).toBeGreaterThan(0);
+    });
+});
+
+describe('remove a colour with one click', () => {
+    // 5x1: white, ink, white, ink, white
+    const row = () => {
+        const d = new Uint8ClampedArray(20);
+        [[255, 255, 255], [20, 20, 20], [250, 250, 250], [20, 20, 20], [255, 255, 255]].forEach((c, i) => d.set([...c, 255], i * 4));
+        return d;
+    };
+
+    it('takes the enclosed hole it was clicked in and stops at the lines', () => {
+        expect([...wandSelect(row(), 5, 1, 2, 0, 30)]).toEqual([0, 0, 1, 0, 0]);
+    });
+
+    it('everywhere takes every bit of that colour', () => {
+        expect([...wandSelect(row(), 5, 1, 2, 0, 30, true)]).toEqual([1, 0, 1, 0, 1]);
+    });
+
+    it('a click on a dark colour means that colour: the lines are no walls then', () => {
+        expect([...wandSelect(row(), 5, 1, 1, 0, 30, true)]).toEqual([0, 1, 0, 1, 0]);
+        expect([...wandSelect(row(), 5, 1, 1, 0, 30)]).toEqual([0, 1, 0, 0, 0]);
+    });
+
+    it('a click on what is already clear takes nothing', () => {
+        const d = row();
+        d[2 * 4 + 3] = 0;
+        expect(wandSelect(d, 5, 1, 2, 0, 30).some(Boolean)).toBe(false);
     });
 });

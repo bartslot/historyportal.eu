@@ -1,13 +1,15 @@
 /**
  * stage25d/alpha: which points of a painted picture are paint and which are the transparent margin of its plane,
- * so a click beside the stone does not pick the stone. Loaded lazily, one small canvas read per picture.
+ * so a click beside the stone does not pick the stone. Loaded lazily, one small canvas read per picture. A picture the
+ * teacher edited reads its own new file (asset.src, stage.ts editedAsset), so what was erased no longer picks.
  */
 const OPAQUE_FROM = 24   // alpha 0..255 above which a point counts as the picture
+const fileOf = (asset) => asset?.src ?? asset?.file
 
 export function createAlphaMaps (base) {
   const maps = new Map()   // file -> { w, h, data } | 'loading' | 'failed'
 
-  const load = (file) => {
+  const load = (file, isEdited = false) => {
     if (maps.has(file)) return
     maps.set(file, 'loading')
     const img = new Image()
@@ -22,18 +24,19 @@ export function createAlphaMaps (base) {
       } catch (_) { maps.set(file, 'failed') }
     }
     img.onerror = () => maps.set(file, 'failed')
-    img.src = base + file
+    img.src = isEdited ? file : base + file
   }
 
   return {
     /** Start loading the pictures of these assets. */
-    prime (list) { list.forEach((a) => a?.file && load(a.file)) },
+    prime (list) { list.forEach((a) => fileOf(a) && load(fileOf(a), !!a.src)) },
     /** Is the point (u across, v down: 0..1, as the plane's uvs and Babylon's pick give it) paint? Still loading counts as empty: a transparent margin is never the picture. A picture that failed to load counts as paint.
      *  An animation reads `frame`, the one on show (sprite.ts frameAt); without it, any frame. */
     opaque (asset, u, v, frame) {
-      const m = maps.get(asset?.file)
+      const file = fileOf(asset)
+      const m = maps.get(file)
       if (m === 'failed') return true   // no way to tell: better a picture that can be picked than one that cannot
-      if (!m || m === 'loading') { if (asset?.file) load(asset.file); return false }
+      if (!m || m === 'loading') { if (file) load(file, !!asset.src); return false }
       // an animation's file is a sheet of frames: the frame on show, or (no frame given) any frame
       const cols = asset.kind === 'animation' ? Math.max(1, asset.cols ?? 1) : 1
       const rows = asset.kind === 'animation' ? Math.max(1, asset.rows ?? 1) : 1

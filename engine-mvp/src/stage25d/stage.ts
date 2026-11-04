@@ -532,10 +532,11 @@ const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) =>
 
 /** An edited copy may be cropped: it keeps the library's metres per pixel, so its own pixel size sets its shape. */
 const editedAsset = (asset: Asset, layer: { src?: string }, tex: RawTexture): Asset => {
-  if (!layer.src || !asset.w || !asset.h) return asset
+  if (!layer.src) return asset
+  if (!asset.w || !asset.h) return { ...asset, src: layer.src }
   const { width, height } = tex.getSize()
   const w = width / (isAnimation(asset) ? asset.cols! : 1), h = height / (isAnimation(asset) ? asset.rows! : 1)   // a sheet: one frame's size
-  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h) }
+  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h), src: layer.src }   // src: a pick reads the edited copy's alpha
 }
 
 /** The sky picture as a layer: set.sky, taking only its motion and the teacher's edited copy (src, the image editor)

@@ -43,7 +43,11 @@ window.__objectListShield = shieldListFromAlpine;
 // The editor's stage: a click on the title screen's title opens its field (step3 @script).
 window.installTitleStagePick = installTitleStagePick;
 // Uitknippen: a double-click on any picture on the canvas opens it (editor/cutout-dialog.js, loaded on first use).
-window.addEventListener('image-edit:open', (e) => { import('./editor/cutout-dialog.js').then((m) => m.openCutout(e.detail)); });
+window.addEventListener('image-edit:open', (e) => {
+    document.documentElement.style.cursor = 'progress';   // the first time its code still has to come in
+    const done = () => { document.documentElement.style.cursor = ''; };
+    import('./editor/cutout-dialog.js').then((m) => { done(); m.openCutout(e.detail); }, done);
+});
 // Tekenen: pen, line and arrow over the scene, each saved as its own layer: x-data="drawTool()".
 window.drawTool = drawTool;
 

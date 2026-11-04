@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { openCutout, wireFor } from '../cutout-dialog.js'
+import { openCutout, wireFor, eraserRange } from '../cutout-dialog.js'
 
 const mask = {
-  setMode: vi.fn(), setBrushSize: vi.fn(), setClean: vi.fn(), setEdges: vi.fn(), setEverywhere: vi.fn(), undo: vi.fn(), destroy: vi.fn(),
+  size: { w: 300, h: 450 },
+  setMode: vi.fn(), setBrushSize: vi.fn(), setClean: vi.fn(), setEdges: vi.fn(), setEverywhere: vi.fn(), undo: vi.fn(), redo: vi.fn(), destroy: vi.fn(),
+  setBrush: vi.fn(), setTolerance: vi.fn(), setCompare: vi.fn(),
   resultDataURL: () => 'data:image/webp;base64,CLEAN',
   cutout: () => ({ dataUrl: 'data:image/webp;base64,CUT', box: { x: 0, y: 40, w: 100, h: 150 }, width: 400, height: 600 }),
 }
@@ -47,15 +49,16 @@ describe('double-click: the picture cleans itself', () => {
     fade.dispatchEvent(new Event('input'))
     expect(mask.setClean).toHaveBeenLastCalledWith({ white: 50, fringe: 3, fade: 40 })
     expect($('[data-cut-fade-value]').textContent).toBe('40')
+    $('[data-cut-cancel]').click()   // a slider moved: the second press leaves
     $('[data-cut-cancel]').click()
   })
 
   it('Before shows the picture as it came in while held', async () => {
     const { $ } = await open()
     $('[data-cut-compare]').dispatchEvent(new Event('pointerdown'))
-    expect(mask.setClean).toHaveBeenLastCalledWith({ white: 0, fringe: 0, fade: 0 })
+    expect(mask.setCompare).toHaveBeenLastCalledWith(true)
     $('[data-cut-compare]').dispatchEvent(new Event('pointerup'))
-    expect(mask.setClean).toHaveBeenLastCalledWith({ white: 50, fringe: 3, fade: 0 })
+    expect(mask.setCompare).toHaveBeenLastCalledWith(false)
     $('[data-cut-cancel]').click()
   })
 
@@ -93,5 +96,90 @@ describe('double-click: the picture cleans itself', () => {
     expect(document.querySelector('[data-cutout]')).not.toBeNull()
     expect(toasts.at(-1).type).toBe('error')
     $('[data-cut-cancel]').click()
+  })
+})
+
+describe('the eraser and its tools', () => {
+  const key = (el, init) => el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ...init }))
+
+  it('opens on Erase with a brush that suits the size of the picture', async () => {
+    const { $ } = await open()
+    expect(mask.setMode).toHaveBeenLastCalledWith('erase')
+    expect($('[data-cut-tool="erase"]').classList.contains('btn-primary')).toBe(true)
+    expect(mask.setBrush).toHaveBeenCalledWith({ size: 15 })
+    expect($('[data-cut-esize]').max).toBe('90')
+    expect(mask.setTolerance).toHaveBeenCalledWith(30)
+    $('[data-cut-cancel]').click()
+  })
+
+  it('a small figure gets a small brush', () => {
+    expect(eraserRange(265, 355)).toEqual({ size: 12, max: 71 })
+    expect(eraserRange(24, 24).size).toBe(3)
+  })
+
+  it('shows the size and softness for Erase and Bring back, the tolerance for Remove colour', async () => {
+    const { $ } = await open()
+    const forErase = $('[data-cut-for="erase restore"]'), forColour = $('[data-cut-for="colour"]')
+    expect([forErase.hidden, forColour.hidden]).toEqual([false, true])
+    $('[data-cut-tool="colour"]').click()
+    expect(mask.setMode).toHaveBeenLastCalledWith('colour')
+    expect([forErase.hidden, forColour.hidden]).toEqual([true, false])
+    $('[data-cut-tool="restore"]').click()
+    expect(mask.setMode).toHaveBeenLastCalledWith('restore')
+    expect(forErase.hidden).toBe(false)
+    $('[data-cut-cancel]').click()
+  })
+
+  it('the sliders set the brush and the tolerance', async () => {
+    const { $ } = await open()
+    const set = (name, value) => { const el = $(`[data-cut-${name}]`); el.value = value; el.dispatchEvent(new Event('input')) }
+    set('esize', '30')
+    expect(mask.setBrush).toHaveBeenLastCalledWith({ size: 30 })
+    set('soft', '50')
+    expect(mask.setBrush).toHaveBeenLastCalledWith({ softness: 0.5 })
+    set('tol', '64')
+    expect(mask.setTolerance).toHaveBeenLastCalledWith('64')
+    $('[data-cut-cancel]').click()
+  })
+
+  it('undo and redo: the buttons follow the history, and Cmd+Z stays inside the dialog', async () => {
+    const { mountQuickMask } = await import('../../scene/quick-mask.js')
+    const { $ } = await open()
+    const report = mountQuickMask.mock.lastCall[3]
+    expect($('[data-cut-undo]').disabled).toBe(true)
+    report({ canUndo: true, canRedo: false })
+    expect($('[data-cut-undo]').disabled).toBe(false)
+    expect($('[data-cut-redo]').disabled).toBe(true)
+    const outside = vi.fn()
+    window.addEventListener('keydown', outside)
+    key($('[data-cut-apply]'), { key: 'z', metaKey: true })
+    expect(mask.undo).toHaveBeenCalledTimes(1)
+    key($('[data-cut-apply]'), { key: 'z', metaKey: true, shiftKey: true })
+    expect(mask.redo).toHaveBeenCalledTimes(1)
+    expect(outside).not.toHaveBeenCalled()
+    window.removeEventListener('keydown', outside)
+    report({ canUndo: false })
+    $('[data-cut-cancel]').click()
+  })
+
+  it('[ and ] change the eraser size', async () => {
+    const { $ } = await open()
+    key($('[data-cut-apply]'), { key: ']' })
+    expect($('[data-cut-esize]').value).toBe('17')
+    key($('[data-cut-apply]'), { key: '[' })
+    expect($('[data-cut-esize]').value).toBe('14')
+    $('[data-cut-cancel]').click()
+  })
+
+  it('work done takes a second press to throw away', async () => {
+    const { mountQuickMask } = await import('../../scene/quick-mask.js')
+    const { $ } = await open()
+    mountQuickMask.mock.lastCall[3]({ canUndo: true })
+    const cancel = $('[data-cut-cancel]')
+    cancel.click()
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    expect(cancel.classList.contains('btn-error')).toBe(true)
+    cancel.click()
+    expect(document.querySelector('[data-cutout]')).toBeNull()
   })
 })

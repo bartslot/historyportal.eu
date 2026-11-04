@@ -2610,5 +2610,12 @@
     "Pencil": "Matita",
     "Done": "Fatto",
     "Clear all": "Cancella tutto",
-    "Cut-out of :name": "Ritaglio di :name"
+    "Cut-out of :name": "Ritaglio di :name",
+    "Tools": "Strumenti",
+    "Bring back": "Ripristina",
+    "Remove colour": "Rimuovi colore",
+    "Hand": "Mano",
+    "Softness": "Morbidezza",
+    "Select a part": "Seleziona una parte",
+    "Discard changes": "Scarta le modifiche"
 }

@@ -5,10 +5,14 @@
 //
 // Pure functions on RGBA arrays first (tested), the canvas controller at the bottom.
 
+import { line, union, applyStroke, compose, wholeBox } from './erase-brush.js';
+
 export const INK_LUM = 90;          // darker than this is a line: never selected
 export const EDGE_RING = 2;         // px around a cut that are un-blended from the removed colour
 const MAX_TOL = 180;
-const UNDO_DEPTH = 12;
+const UNDO_DEPTH = 40;
+// ponytail: history shares its arrays, but a colour cut copies the picture: the steps kept shrink for a very big one
+const UNDO_BYTES = 6e8;
 
 const lum = (d, i) => (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
 const dist = (d, i, c) => Math.hypot(d[i] - c[0], d[i + 1] - c[1], d[i + 2] - c[2]) / Math.sqrt(3);
@@ -17,11 +21,11 @@ export function toleranceFromDrag(dx, dy) {
     return Math.min(MAX_TOL, 6 + Math.hypot(dx, dy) * 0.6);
 }
 
-/** Connected pixels within `tol` of the seed colour. Ink and already-clear pixels are walls. */
-export function floodSelect(data, w, h, sx, sy, tol) {
+/** Connected pixels within `tol` of the seed colour. Ink and already-clear pixels are walls (`anyColour`: ink is not). */
+export function floodSelect(data, w, h, sx, sy, tol, anyColour = false) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
-    if (data[s + 3] === 0 || lum(data, s) < INK_LUM) return mask;
+    if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
     const seed = [data[s], data[s + 1], data[s + 2]];
     const stack = [sy * w + sx];
     mask[stack[0]] = 1;
@@ -31,7 +35,7 @@ export function floodSelect(data, w, h, sx, sy, tol) {
         for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
             if (q < 0 || mask[q]) continue;
             const i = q * 4;
-            if (data[i + 3] === 0 || lum(data, i) < INK_LUM || dist(data, i, seed) > tol) continue;
+            if (data[i + 3] === 0 || (!anyColour && lum(data, i) < INK_LUM) || dist(data, i, seed) > tol) continue;
             mask[q] = 1;
             stack.push(q);
         }
@@ -39,17 +43,27 @@ export function floodSelect(data, w, h, sx, sy, tol) {
     return mask;
 }
 
-/** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Ink and clear pixels never. */
-export function colorSelect(data, w, h, sx, sy, tol) {
+/** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Ink and clear pixels never (`anyColour`: ink may). */
+export function colorSelect(data, w, h, sx, sy, tol, anyColour = false) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
-    if (data[s + 3] === 0 || lum(data, s) < INK_LUM) return mask;
+    if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
     const seed = [data[s], data[s + 1], data[s + 2]];
     for (let p = 0; p < w * h; p++) {
         const i = p * 4;
-        if (data[i + 3] !== 0 && lum(data, i) >= INK_LUM && dist(data, i, seed) <= tol) mask[p] = 1;
+        if (data[i + 3] !== 0 && (anyColour || lum(data, i) >= INK_LUM) && dist(data, i, seed) <= tol) mask[p] = 1;
     }
     return mask;
+}
+
+/**
+ * Remove a colour with one click (Bart, 2026-11-05: enclosed white holes in one click): what touches the click, or
+ * `everywhere` all of it. A click on a light colour stops at the drawing's lines; a click on a dark colour means that
+ * dark colour, so the lines are no walls then.
+ */
+export function wandSelect(data, w, h, x, y, tol, everywhere = false) {
+    const dark = lum(data, (y * w + x) * 4) < INK_LUM;
+    return (everywhere ? colorSelect : floodSelect)(data, w, h, x, y, tol, dark);
 }
 
 /** Pixels within `ring` px of the selection, not in it. */
@@ -405,7 +419,7 @@ export const BRUSH_WORK_PX = 640;
  * `onChange({tolerance, canUndo, selected})` keeps the dialog's readout in sync.
  * Returns { undo, reset, setMode, setBrushSize, setEdges, setEverywhere, clearSelection, cutout, toBlob, toDataURL, destroy }.
  */
-export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) {
+export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, { surface = canvas } = {}) {
     // Reading pixels needs a same-origin image. A /storage URL carries APP_URL's host, which is not
     // always the page's own (a second local server, say), so load it from this origin instead.
     const u = new URL(url, location.href);
@@ -435,7 +449,19 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         return labels;
     };
 
+    // the eraser's two masks, over whatever the cuts and the clean-up leave (erase-brush.js)
+    const whole = wholeBox(w, h);
+    let erase = new Uint8ClampedArray(w * h).fill(255);
+    let bring = new Uint8ClampedArray(w * h);
+    let base = new Uint8ClampedArray(original);       // the cuts + the clean-up + the edge
+    const shown = new ImageData(new Uint8ClampedArray(original), w, h);   // what is on the canvas, and what a click reads
+    let brush = { size: 12, softness: 0.2 };          // the eraser: diameter in picture pixels, how much of it fades
+    let wandTol = null;                               // a tolerance set: one click removes the colour, no drag
+    let comparing = false;
+
+    const undoDepth = Math.max(4, Math.min(UNDO_DEPTH, Math.floor(UNDO_BYTES / (w * h * 6))));
     const history = [];
+    let future = [];
     let drag = null;
     let frame = 0;
     let mode = 'colour';
@@ -446,22 +472,59 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     let clean = { white: 0, fringe: 0, fade: 0 };   // the clean-up (cleanUp), off until the dialog turns it on
 
     const selectedAny = () => selection.some(Boolean);
-    /** The picture as it stands: the cuts, the clean-up, the edge. */
-    const result = () => refineEdges(cleanUp(current, w, h, clean), w, h, edges, original);
-    const paint = () => ctx.putImageData(new ImageData(result(), w, h), 0, 0);
-    const toImage = (e) => {
-        const r = canvas.getBoundingClientRect();
-        return [Math.floor((e.clientX - r.left) * w / r.width), Math.floor((e.clientY - r.top) * h / r.height)];
+    /** The picture as it stands: the cuts, the clean-up, the edge, then the eraser. */
+    const paint = () => {
+        base = refineEdges(cleanUp(current, w, h, clean), w, h, edges, original);
+        compose(base, original, erase, bring, w, whole, shown.data);
+        if (!comparing) ctx.putImageData(shown, 0, 0);
     };
-    const emit = (tolerance = null) => onChange({ tolerance, canUndo: history.length > 0, selected: selectedAny() });
-    const push = (next, nextSelection = selection) => {
-        history.push({ current, selection });
-        if (history.length > UNDO_DEPTH) history.shift();
+    /** Where the pointer is on the picture, in picture pixels (with fractions, and maybe off the picture). */
+    const onImage = (e) => {
+        const r = canvas.getBoundingClientRect();
+        return [(e.clientX - r.left) * w / r.width, (e.clientY - r.top) * h / r.height];
+    };
+    const toImage = (e) => onImage(e).map(Math.floor);
+    const emit = (tolerance = null) => onChange({ tolerance, canUndo: history.length > 0, canRedo: future.length > 0, selected: selectedAny() });
+    const snapshot = () => ({ current, selection, erase, bring });
+    const remember = (before) => {
+        history.push(before);
+        if (history.length > undoDepth) history.shift();
+        future = [];
+    };
+    const push = (next, nextSelection = selection, nextBring = bring) => {
+        remember(snapshot());
         current = next;
         selection = nextSelection;
+        bring = nextBring;
         paint();
         showSelection();
         emit();
+    };
+    const backTo = (state) => {
+        ({ current, selection, erase, bring } = state);
+        paint();
+        showSelection();
+        emit();
+    };
+
+    /** The eraser (or Bring back) reaches a new point: only the pixels the stroke just touched are worked out. */
+    const strokeTo = (point) => {
+        const touched = line(drag.cov, w, h, drag.last, point, brush.size / 2, brush.softness);
+        drag.last = point;
+        if (!touched) return;
+        drag.box = union(drag.box, touched);
+        applyStroke(drag.cov, touched, w, drag.from, { erase, bring }, drag.restore);
+        compose(base, original, erase, bring, w, touched, shown.data);
+        ctx.putImageData(shown, 0, 0, touched.x0, touched.y0, touched.x1 - touched.x0 + 1, touched.y1 - touched.y0 + 1);
+    };
+    /** One click with the colour tool: that colour goes at once, on what is on screen now. */
+    const removeColour = (x, y) => {
+        const mask = wandSelect(shown.data, w, h, x, y, wandTol, everywhere);
+        if (!mask.some(Boolean)) return;
+        const i = (y * w + x) * 4;
+        const nextBring = new Uint8ClampedArray(bring);
+        for (let p = 0; p < w * h; p++) if (mask[p]) nextBring[p] = 0;
+        push(cut(current, w, h, mask, [shown.data[i], shown.data[i + 1], shown.data[i + 2]], wandTol), selection, nextBring);
     };
 
     /** Outside the selection the picture is dimmed; the patches a stroke is taking show amber. */
@@ -509,9 +572,22 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     };
 
     const down = (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        const stroking = mode === 'erase' || mode === 'restore';
         const [x, y] = toImage(e);
-        if (x < 0 || y < 0 || x >= w || y >= h) return;
-        try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic pointers */ }
+        // the eraser may start beside the picture, to take its edge; the others need a pixel to read
+        if (!stroking && (x < 0 || y < 0 || x >= w || y >= h)) return;
+        try { surface.setPointerCapture(e.pointerId); } catch { /* synthetic pointers */ }
+        if (stroking) {
+            const from = { erase, bring };
+            erase = new Uint8ClampedArray(erase);
+            bring = new Uint8ClampedArray(bring);
+            const point = onImage(e);
+            drag = { stroke: true, restore: mode === 'restore', from, cov: new Uint8Array(w * h), last: point, box: null };
+            strokeTo(point);
+            return;
+        }
+        if (mode === 'colour' && wandTol !== null && !e.altKey) { removeColour(x, y); return; }
         if (mode === 'brush') {
             drag = { brush: true, remove: e.altKey || erasing, stroke: new Uint8Array(ww * wh), last: [x, y] };
             workLabels();
@@ -527,6 +603,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     };
     const move = (e) => {
         if (!drag) return;
+        if (drag.stroke) { strokeTo(onImage(e)); return; }
         if (drag.brush) {
             const [x, y] = toImage(e);
             const [lx, ly] = drag.last;
@@ -544,6 +621,12 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         if (frame) { cancelAnimationFrame(frame); frame = 0; }
         const d = drag;
         drag = null;
+        if (d.stroke) {
+            // a stroke wholly off the picture changed nothing: no step to undo
+            if (d.box) { remember({ current, selection, erase: d.from.erase, bring: d.from.bring }); emit(); }
+            else ({ erase, bring } = d.from);
+            return;
+        }
         if (d.brush) {
             push(current, brushSelect(selection, workLabels(), d.stroke, { remove: d.remove }));
             return;
@@ -556,7 +639,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
 
     /** The picture as it will be saved: the cuts, the selection (when there is one), the edge; cropped. */
     const cutout = () => {
-        const px = cleanUp(current, w, h, clean);
+        const px = compose(cleanUp(current, w, h, clean), original, erase, bring, w, whole, new Uint8ClampedArray(w * h * 4));
+        const cap = new Uint8ClampedArray(px);   // growing the edge never brings back what was erased
         if (selectedAny()) {
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
                 const s = selection[Math.min(wh - 1, Math.floor(y * k)) * ww + Math.min(ww - 1, Math.floor(x * k))];
@@ -564,7 +648,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
             }
         }
         // a selection's blocky work-size edge is softened by at least a pixel or two of feather
-        const out = refineEdges(px, w, h, { ...edges, feather: Math.max(edges.feather, selectedAny() ? Math.ceil(1 / k) : 0) }, original);
+        const out = refineEdges(px, w, h, { ...edges, feather: Math.max(edges.feather, selectedAny() ? Math.ceil(1 / k) : 0) }, cap);
         const box = opaqueBox(out, w, h);
         if (!box) return null;
         const c = document.createElement('canvas'); c.width = box.w; c.height = box.h;
@@ -575,14 +659,25 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         return { dataUrl: c.toDataURL('image/webp', 0.9), box, width: w, height: h };
     };
 
-    canvas.addEventListener('pointerdown', down);
-    canvas.addEventListener('pointermove', move);
-    canvas.addEventListener('pointerup', up);
-    canvas.addEventListener('pointercancel', up);
+    surface.addEventListener('pointerdown', down);
+    surface.addEventListener('pointermove', move);
+    surface.addEventListener('pointerup', up);
+    surface.addEventListener('pointercancel', up);
     emit();
 
     return {
-        undo() { if (history.length) { ({ current, selection } = history.pop()); paint(); showSelection(); emit(); } },
+        size: { w, h },
+        undo() { if (!drag && history.length) { future.push(snapshot()); backTo(history.pop()); } },
+        redo() { if (!drag && future.length) { history.push(snapshot()); backTo(future.pop()); } },
+        /** The eraser: its diameter in picture pixels, and how much of it fades (0..1). */
+        setBrush(next) { brush = { ...brush, ...next }; },
+        /** A tolerance turns the colour tool into one click; null puts press-and-drag back. */
+        setTolerance(tol) { wandTol = tol === null ? null : Number(tol); },
+        /** Held: the picture exactly as it came in, whatever was done to it. */
+        setCompare(on) {
+            comparing = !!on;
+            ctx.putImageData(comparing ? new ImageData(new Uint8ClampedArray(original), w, h) : shown, 0, 0);
+        },
         /** Soft edge and shrink/grow, live: the canvas (and so toBlob) shows the refined edge. */
         setEdges(next) { edges = { ...edges, ...next }; paint(); },
         /** On: a press selects that colour all over the picture (every paper bit at once). */
@@ -591,12 +686,15 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         setClean(next) { clean = { ...clean, ...next }; paint(); },
         /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
         resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
-        setMode(next) { mode = next === 'brush' ? 'brush' : 'colour'; canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair'; },
+        setMode(next) { mode = ['brush', 'erase', 'restore'].includes(next) ? next : 'colour'; canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair'; },
         /** On: the brush takes away from the selection instead of adding (the Remove button). */
         setErase(on) { erasing = !!on; },
         setBrushSize(px) { brushPx = Math.max(4, Math.min(200, Number(px) || 40)); },
         clearSelection() { if (selectedAny()) push(current, new Uint8Array(ww * wh)); },
-        reset() { push(new Uint8ClampedArray(original), new Uint8Array(ww * wh)); },
+        reset() {
+            remember(snapshot());
+            backTo({ current: new Uint8ClampedArray(original), selection: new Uint8Array(ww * wh), erase: new Uint8ClampedArray(w * h).fill(255), bring: new Uint8ClampedArray(w * h) });
+        },
         cutout,
         // WebP with alpha, like the library itself: a big figure as PNG is several MB and fails an
         // ordinary upload limit (PHP's default is 2 MB). A browser that cannot encode WebP gives PNG.
@@ -604,7 +702,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         toDataURL: () => canvas.toDataURL('image/webp', 0.9),
         destroy() {
             for (const [t, f] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', up]]) {
-                canvas.removeEventListener(t, f);
+                surface.removeEventListener(t, f);
             }
         },
     };

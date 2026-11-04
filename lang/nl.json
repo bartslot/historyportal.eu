@@ -2652,5 +2652,12 @@
     "Pencil": "Potlood",
     "Done": "Klaar",
     "Clear all": "Alles wissen",
-    "Cut-out of :name": "Uitsnede van :name"
+    "Cut-out of :name": "Uitsnede van :name",
+    "Tools": "Gereedschap",
+    "Bring back": "Terughalen",
+    "Remove colour": "Kleur weghalen",
+    "Hand": "Hand",
+    "Softness": "Zachtheid",
+    "Select a part": "Deel selecteren",
+    "Discard changes": "Wijzigingen weggooien"
 }

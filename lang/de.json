@@ -2610,5 +2610,12 @@
     "Pencil": "Bleistift",
     "Done": "Fertig",
     "Clear all": "Alles löschen",
-    "Cut-out of :name": "Ausschnitt aus :name"
+    "Cut-out of :name": "Ausschnitt aus :name",
+    "Tools": "Werkzeuge",
+    "Bring back": "Zurückholen",
+    "Remove colour": "Farbe entfernen",
+    "Hand": "Hand",
+    "Softness": "Weichheit",
+    "Select a part": "Teil auswählen",
+    "Discard changes": "Änderungen verwerfen"
 }

@@ -2610,5 +2610,12 @@
     "Pencil": "Crayon",
     "Done": "Terminé",
     "Clear all": "Tout effacer",
-    "Cut-out of :name": "Découpe de :name"
+    "Cut-out of :name": "Découpe de :name",
+    "Tools": "Outils",
+    "Bring back": "Restaurer",
+    "Remove colour": "Enlever la couleur",
+    "Hand": "Main",
+    "Softness": "Douceur",
+    "Select a part": "Sélectionner une partie",
+    "Discard changes": "Abandonner les modifications"
 }
