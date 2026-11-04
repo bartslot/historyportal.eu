@@ -192,7 +192,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-9KjG07PB.js",
+    "file": "assets/app-qCf6M4OD.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -208,6 +208,7 @@
     ],
     "dynamicImports": [
       "resources/js/scene/music-mixer.js",
+      "resources/js/scene/tempo.js",
       "node_modules/filerobot-image-editor/lib/index.js",
       "_index-COx1GTUT.js",
       "_index-Dbvg1dQ0.js",
@@ -259,7 +260,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-plElL_ic.js",
+    "file": "assets/lesson-player-DTkrsx-C.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -275,7 +276,8 @@
       "_i18n-DoByrmTl.js",
       "resources/js/scene/music-mixer.js",
       "_ambient-CEzLlAaX.js",
-      "_easing-HS2C6-zA.js"
+      "_easing-HS2C6-zA.js",
+      "resources/js/scene/tempo.js"
     ],
     "dynamicImports": [
       "resources/js/scene/StoryGameEngine.js",
@@ -414,7 +416,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CI23Jz6s.js",
+    "file": "assets/index-DkAa4khO.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -463,10 +465,13 @@
     ]
   },
   "resources/js/scene/music-mixer.js": {
-    "file": "assets/music-mixer-D_mKSaX0.js",
+    "file": "assets/music-mixer-CscTe0Lc.js",
     "name": "music-mixer",
     "src": "resources/js/scene/music-mixer.js",
-    "isDynamicEntry": true
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/scene/tempo.js"
+    ]
   },
   "resources/js/scene/quick-mask.js": {
     "file": "assets/quick-mask-Dk6n0edm.js",
@@ -520,6 +525,12 @@
       "_ambient-CEzLlAaX.js"
     ]
   },
+  "resources/js/scene/tempo.js": {
+    "file": "assets/tempo-DxK2ety-.js",
+    "name": "tempo",
+    "src": "resources/js/scene/tempo.js",
+    "isDynamicEntry": true
+  },
   "resources/js/scene/wind-world.js": {
     "file": "assets/wind-world-3O_SyNR9.js",
     "name": "wind-world",
@@ -530,7 +541,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-ByBgUgpt.js",
+    "file": "assets/recorder-Diy2uHTP.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
