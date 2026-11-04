@@ -12,7 +12,7 @@ import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
-import { layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { HOUSE, layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -391,7 +391,7 @@ export async function createStage25d (host, opts = {}) {
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
     /** What the Camera panel shows: the end being framed, and whether the scene has a move of its own. */
-    cameraInfo: () => ({ framing, moves: !!camNow }),
+    cameraInfo: () => ({ framing, moves: !!camNow, move: camNow, house: HOUSE }),
     /** Back to the still house camera: no move. */
     resetCamera () {
       camNow = null

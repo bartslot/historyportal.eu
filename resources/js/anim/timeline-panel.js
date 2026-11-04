@@ -73,6 +73,11 @@ const dragMemory = new WeakMap()
  */
 const SESSIONS = new Map()
 
+/** The ruler above the rows, and the name column's spacer beside it: a pinned row comes to rest once it has scrolled away. */
+const RULER_H_PX = 38
+
+const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam'
+
 /** The sessionStorage key for one scene's unsent live edit. */
 const draftKey = (sceneId) => `timeline-draft:${sceneId}`
 
@@ -206,7 +211,7 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('stage25d-synced', () => { this.adoptStage25d(); this.refreshObjects(); this.applyFrame() })
     this.adoptStage25d()
 
-    for (const event of ['scene-objects-changed', 'objscene-changed']) {
+    for (const event of ['scene-objects-changed', 'objscene-changed', 'stage25d-edited']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
     }
 
@@ -328,9 +333,22 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    this.objects = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+    const listed = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
-    for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = true
+    this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
+    for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = false   // closed until a teacher opens one (Bart 2026-11-04)
+  },
+
+  /** How far the tracks box has scrolled: a pinned row is held at its top by this much. */
+  tracksScrolled: 0,
+
+  isPinned (object) { return isPinnedObject(object) },
+
+  /** A camera stays in view: the first row, held at the top of the tracks while the rest scroll under it. A transform,
+   *  not position: sticky, because the lanes are their own (sideways) scroller and sticky would stop at their edge. */
+  pinnedStyle (object) {
+    if (!isPinnedObject(object)) return ''
+    return ` position: relative; z-index: 5; background: var(--color-panel); transform: translateY(${Math.max(0, this.tracksScrolled - RULER_H_PX)}px);`
   },
 
   get canHaveCamera () { return ['map', 'voyage'].includes(config.sceneKind) },
@@ -529,6 +547,7 @@ export const animationTimeline = (config = {}) => ({
 
   keysOf (target, property) {
     if (kindOfTarget(target) === 'dio') return this.dioramaKeys(target, property)
+    if (kindOfTarget(target) === 's25cam') return this.stage25dCameraKeys(property)
     return sortedKeys(this.trackFor(target, property))
   },
 
@@ -791,6 +810,17 @@ export const animationTimeline = (config = {}) => ({
     return (this.dioramaItem(target)?.keys ?? []).map((k) => ({ time: k.t, value: k.cell[i] }))
   },
 
+  /** The 3D camera row's keys: the move's start pose at its start, its end pose where it ends (the scene's end
+   *  unless the move has its own length). No move, no keys: the camera stands still. */
+  stage25dCameraKeys (property) {
+    void this.canvasTick   // reactive: the teacher framed an end
+    const move = window.__stage25d?.cameraInfo?.()?.move
+    if (!move) return []
+    const start = Number(move.at_s) || 0
+    const end = Math.min(this.duration, start + (Number(move.dur_s) || this.duration))   // a move longer than the timeline ends at its edge
+    return [{ time: start, value: move.from?.[property] }, { time: end, value: move.to?.[property] }]
+  },
+
   /** True when the item's picture has a walk animation: its clip is a walk, not a glide. */
   dioramaWalks (target) {
     const item = this.dioramaItem(target)
@@ -981,6 +1011,7 @@ export const animationTimeline = (config = {}) => ({
    * editing the value while the playhead sits on the key updates it (editKeyed / setValue).
    */
   toggleKey (target, property) {
+    if (kindOfTarget(target) === 's25cam') return   // framed on the canvas, not keyed here
     if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
     this.stopEasingPreview()
     const map = window.__lessonMap
@@ -1007,7 +1038,7 @@ export const animationTimeline = (config = {}) => ({
   /** 'none' | 'here' | 'elsewhere' — the three states of a property's diamond. */
   keyState (target, property) {
     void this.time
-    if (kindOfTarget(target) === 'dio') return keyStateAt({ keyframes: this.keysOf(target, property) }, this.time)
+    if (['dio', 's25cam'].includes(kindOfTarget(target))) return keyStateAt({ keyframes: this.keysOf(target, property) }, this.time)
     return keyStateAt(this.trackFor(target, property), this.time)
   },
 
@@ -1106,6 +1137,10 @@ export const animationTimeline = (config = {}) => ({
       return cell ? Math.round(cell[DIO_AXIS[property]] * 100) / 100 : 0
     }
     const keys = this.keysOf(target, property)
+    if (kindOfTarget(target) === 's25cam') {   // what the move reads at the playhead; no move, the still house camera
+      const value = sampleFrame([{ target, property, keyframes: keys }], this.time)[target]?.[property]
+      return Number.isFinite(value) ? round2(value) : window.__stage25d?.cameraInfo?.()?.house?.[property] ?? 0
+    }
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (keys.length) {
       const frame = sampleFrame(this.tracks, this.time)
@@ -1146,6 +1181,7 @@ export const animationTimeline = (config = {}) => ({
   setValue (target, property, value, { flush = true } = {}) {
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (!isColor && !Number.isFinite(value)) return
+    if (kindOfTarget(target) === 's25cam') return   // framed on the canvas, not typed here
     if (kindOfTarget(target) === 'dio') {
       // The stage applies the canvas rules: snapped, on its floor, recorded while auto-key is on.
       const id = target.slice(4)
@@ -1216,7 +1252,7 @@ export const animationTimeline = (config = {}) => ({
   keyMenu: null,
 
   openKeyMenu (event, target, property, time) {
-    if (kindOfTarget(target) === 'dio') return
+    if (['dio', 's25cam'].includes(kindOfTarget(target))) return
     this.pause()
     this.selected = [keyId({ target, property, time })]
     this.keyMenu = { top: Math.min(event.clientY, window.innerHeight - 48), left: Math.min(event.clientX, window.innerWidth - 200) }
@@ -1261,6 +1297,11 @@ export const animationTimeline = (config = {}) => ({
     event.stopPropagation()
     this.pause()
     const id = keyId({ target, property, time })
+    if (kindOfTarget(target) === 's25cam') {   // the camera's keys are its two ends: a press frames that end
+      window.__stage25d?.select?.('camera')
+      window.__stage25d?.frameCamera?.(time > this.stage25dCameraKeys(property)[0]?.time ? 'to' : 'from')
+      return
+    }
     if (kindOfTarget(target) === 'dio') {   // select only: a diorama path moves in time as one clip
       this.selected = event.shiftKey ? [...new Set([...this.selected, id])] : [id]
       return
@@ -1304,6 +1345,7 @@ export const animationTimeline = (config = {}) => ({
       return arrow?.target ?? `art:${String(id).slice(4)}`
     }
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
+    if (id === 's25_camera') return 's25cam'
     if (String(id).startsWith('s25_')) return `s25:${String(id).slice(4)}`
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
@@ -1322,7 +1364,8 @@ export const animationTimeline = (config = {}) => ({
     const target = this.targetFromObjectId(id)
     this.activeTarget = target
     if (!target) return
-    if (!this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
+    // The 3D camera stays closed: its two keys are on its own row, and its panel frames them.
+    if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
     this.$nextTick(() => {
       const row = [...this.$el.querySelectorAll('[data-timeline-group]')].find((el) => el.dataset.timelineGroup === target)
       row?.scrollIntoView({ block: 'nearest' })

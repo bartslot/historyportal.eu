@@ -417,13 +417,14 @@ describe('diorama items have X and Z rows (their path in the diorama JSON)', () 
  * object at once, and the save waits for a pause; the value the teacher settles on saves now.
  *
  * Looped over every keyframeable property, so a property added to the registry is covered for free.
- * A diorama item is left out: its keys live in its own JSON, not in these tracks.
+ * A diorama item is left out: its keys live in its own JSON, not in these tracks. So is the 3D camera: its keys are
+ * the two ends of its move, framed on the canvas.
  */
 describe('every keyframeable row saves live while it is typed or dragged', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  for (const kind of keyframeKinds().filter((k) => k !== 'dio')) {
+  for (const kind of keyframeKinds().filter((k) => !['dio', 's25cam'].includes(k))) {
     for (const prop of propertiesFor(kind)) {
       it(`${kind}.${prop.key}: the pause saves a live edit, a settled value saves at once`, () => {
         const target = `${kind}:1`
@@ -503,5 +504,42 @@ describe('a stashed draft expires', () => {
     second.restoreDraft()
     expect(second.tracks).toEqual([])
     expect(second.$wire.setTimeline).not.toHaveBeenCalled()
+  })
+})
+
+describe('the 3D camera row', () => {
+  afterEach(() => { delete window.__stage25d })
+
+  it('shows the move\'s start and end as its keys, and none when the camera stands still', () => {
+    const move = { from: { x: 0, y: 1.6, z: 0, fov: 50 }, to: { x: 1, y: 2, z: 4, fov: 40 }, at_s: 0 }
+    window.__stage25d = { cameraInfo: () => ({ move }) }
+    const p = panel([])
+    p.duration = 8
+    expect(p.keysOf('s25cam', 'z')).toEqual([{ time: 0, value: 0 }, { time: 8, value: 4 }])
+    window.__stage25d = { cameraInfo: () => ({ move: { ...move, at_s: 1, dur_s: 3 } }) }
+    expect(p.keysOf('s25cam', 'fov').map((k) => k.time)).toEqual([1, 4])
+    window.__stage25d = { cameraInfo: () => ({ move: { ...move, dur_s: 8.45 } }) }
+    expect(p.keysOf('s25cam', 'x').map((k) => k.time)).toEqual([0, 8])
+    p.time = 2
+    window.__stage25d = { cameraInfo: () => ({ move: { ...move, dur_s: 4 } }) }
+    expect(p.valueAt('s25cam', 'z')).toBe(2)
+    window.__stage25d = { cameraInfo: () => ({ move: null, house: { fov: 50 } }) }
+    expect(p.keysOf('s25cam', 'x')).toEqual([])
+    expect(p.valueAt('s25cam', 'fov')).toBe(50)
+  })
+})
+
+describe('the rows on opening a scene', () => {
+  afterEach(() => { delete window.__stage25d })
+
+  it('are closed, with the camera first and held at the top once the ruler has scrolled away', () => {
+    window.__stage25d = { items: () => [{ id: 'layer-0', label: 'Sea' }, { id: 'camera', label: 'Camera', icon: 'camera' }] }
+    const p = panel([])
+    p.refreshObjects()
+    expect(p.objects.map((o) => o.target)[0]).toBe('s25cam')
+    expect(p.objects.every((o) => p.openGroups[o.target] === false)).toBe(true)
+    p.tracksScrolled = 100
+    expect(p.pinnedStyle(p.objects[0])).toContain('translateY(62px)')
+    expect(p.pinnedStyle(p.objects[1])).toBe('')
   })
 })

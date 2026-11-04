@@ -148,6 +148,16 @@ const REGISTRY = {
     P('rotation', 'Angle', 'linear', '°'),
     P('opacity', 'Opacity', 'linear', ''),
   ],
+  /**
+   * A stage25d camera move (config.stage25d.camera): one key at its start pose, one at its end. Read-only on the
+   * timeline: a teacher frames each end on the canvas (stage25d/framing.js), so the keys come from the move itself.
+   */
+  s25cam: [
+    P('x', 'X', 'linear', 'm'),
+    P('y', 'Y', 'linear', 'm'),
+    P('z', 'Distance', 'linear', 'm'),
+    P('fov', 'Zoom', 'linear', '°'),
+  ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
   dio: [

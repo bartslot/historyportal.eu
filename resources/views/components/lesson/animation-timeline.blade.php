@@ -63,7 +63,7 @@
             'color' => __('Colour'), 'colorOpacity' => __('Colour').' %',
             'tint' => __('Colour'), 'tint_opacity' => __('Colour').' %',
             'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
-            'heading' => __('Direction'), 'tilt' => __('Tilt'),
+            'heading' => __('Direction'), 'tilt' => __('Tilt'), 'fov' => __('Zoom'),
             'tip_x' => __('Tail').' X', 'tip_y' => __('Tail').' Y', 'root' => __('Tail root'), 'bend' => __('Bend'),
             'end_x' => __('End').' X', 'end_y' => __('End').' Y', 'shaft' => __('Width'), 'head' => __('Head'),
         ],
@@ -220,7 +220,8 @@
     </div>
 
     {{-- ── Tracks ─────────────────────────────────────────────────────────────────────────── --}}
-    <div class="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-timeline-tracks>
+    <div class="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-timeline-tracks
+         x-on:scroll="tracksScrolled = $el.scrollTop">
 
         {{-- Left: the object list, which is the same list the Object list panel shows. --}}
         <div class="relative shrink-0 border-r border-panel-hairline" style="width: var(--timeline-label-col)"
@@ -269,7 +270,7 @@
                     <div class="flex w-full items-center border-t border-panel-hairline"
                          :class="activeTarget === object.target && 'bg-white/5'"
                          :data-timeline-active="activeTarget === object.target ? 'true' : 'false'"
-                         style="height: 38px">
+                         :style="'height: 38px;' + pinnedStyle(object)">
                     {{-- Double-click: every property of this object back to what it was before it
                          was keyed. A gesture rather than a "Reset all" button, which took the room
                          the name needs (Bart, 2026-10-16). --}}
@@ -476,7 +477,7 @@
                     <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
                              so a collapsed group still says when it moves. --}}
-                        <div class="relative" style="height: 38px">
+                        <div class="relative" :style="'height: 38px;' + pinnedStyle(object)" :data-timeline-pinned="isPinned(object) ? 'true' : null">
                             {{-- Drag it to move everything this object does; click it to select all
                                  of its keys (Figma selects a layer's keys from its track). --}}
                             <div x-show="objectSpan(object.target)"
@@ -495,6 +496,20 @@
                                     </div>
                                 </template>
                             </div>
+                            {{-- The 3D camera's two ends, on its own row: it stays closed and pinned, and a press frames that end. --}}
+                            <template x-if="object.kind === 's25cam'">
+                                <div>
+                                    <template x-for="key in keysOf(object.target, 'x')" :key="key.time">
+                                        <span class="absolute grid cursor-pointer place-items-center"
+                                              :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(9px + (var(--timeline-lane-h) - 13px) / 2)`"
+                                              data-timeline-camera-key
+                                              x-on:pointerdown.stop="startKeyDrag($event, object.target, 'x', key.time)"
+                                              x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)">
+                                            <x-ui.keyframe-diamond solid on="false" />
+                                        </span>
+                                    </template>
+                                </div>
+                            </template>
                             {{-- A balloon is on screen for a span of the scene: its clip, under its
                                  keyframe bar. The body moves it in time, the ends stretch it. --}}
                             {{-- The bar: a balloon's time on screen, or a figure's entrance (Appear:
@@ -585,7 +600,7 @@
 
                 {{-- Playhead: a plain light line, per the house rule that the mark saying "here"
                      needs no accent, no arrowhead and no glow. --}}
-                <div class="pointer-events-none absolute inset-y-0 w-px"
+                <div class="pointer-events-none absolute inset-y-0 z-10 w-px"
                      data-timeline-playhead
                      :style="`left: ${playheadX}px; background: var(--color-timeline-mark)`"></div>
             </div>
