@@ -114,6 +114,22 @@ class ImageEditTest extends TestCase
         $this->assertSame([], $set['skyLayer']);
     }
 
+    public function test_bring_back_finds_the_picture_from_before_any_editing(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [['id' => 'stone-chamber-01', 'file' => 'stone-chamber-01.webp', 'layer' => 'mid']]]));
+        $scene = Scene::create([
+            'lesson_id' => $this->lesson()->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x', 'status' => 'ready',
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.6]]]]],
+        ]);
+
+        $this->editor($scene)
+            ->call('saveEditedImage', 's25_layer-0', self::png(), [])
+            ->call('originalOfEdited', 's25_layer-0')
+            ->assertReturned('/storage/library/nl-prehistory/stone-chamber-01.webp')
+            ->call('originalOfEdited', 's25_layer-9')
+            ->assertReturned(null);
+    }
+
     public function test_a_bad_picture_or_target_saves_nothing(): void
     {
         $scene = Scene::create([

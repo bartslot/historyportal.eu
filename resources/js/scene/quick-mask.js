@@ -422,11 +422,15 @@ export const BRUSH_WORK_PX = 640;
 export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, { surface = canvas } = {}) {
     // Reading pixels needs a same-origin image. A /storage URL carries APP_URL's host, which is not
     // always the page's own (a second local server, say), so load it from this origin instead.
-    const u = new URL(url, location.href);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = u.origin !== location.origin && u.pathname.startsWith('/storage/') ? location.origin + u.pathname : u.href;
-    await img.decode();
+    const loadImage = async (from) => {
+        const u = new URL(from, location.href);
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.src = u.origin !== location.origin && u.pathname.startsWith('/storage/') ? location.origin + u.pathname : u.href;
+        await image.decode();
+        return image;
+    };
+    const img = await loadImage(url);
     const w = img.naturalWidth, h = img.naturalHeight;
     for (const c of [canvas, overlay]) { c.width = w; c.height = h; }
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -458,6 +462,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     let brush = { size: 12, softness: 0.2 };          // the eraser: diameter in picture pixels, how much of it fades
     let wandTol = null;                               // a tolerance set: one click removes the colour, no drag
     let comparing = false;
+    let source = original;                            // what Bring back and Before show: the picture before any editing
 
     const undoDepth = Math.max(4, Math.min(UNDO_DEPTH, Math.floor(UNDO_BYTES / (w * h * 6))));
     const history = [];
@@ -475,7 +480,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     /** The picture as it stands: the cuts, the clean-up, the edge, then the eraser. */
     const paint = () => {
         base = refineEdges(cleanUp(current, w, h, clean), w, h, edges, original);
-        compose(base, original, erase, bring, w, whole, shown.data);
+        compose(base, source, erase, bring, w, whole, shown.data);
         if (!comparing) ctx.putImageData(shown, 0, 0);
     };
     /** Where the pointer is on the picture, in picture pixels (with fractions, and maybe off the picture). */
@@ -514,7 +519,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         if (!touched) return;
         drag.box = union(drag.box, touched);
         applyStroke(drag.cov, touched, w, drag.from, { erase, bring }, drag.restore);
-        compose(base, original, erase, bring, w, touched, shown.data);
+        compose(base, source, erase, bring, w, touched, shown.data);
         ctx.putImageData(shown, 0, 0, touched.x0, touched.y0, touched.x1 - touched.x0 + 1, touched.y1 - touched.y0 + 1);
     };
     /** One click with the colour tool: that colour goes at once, on what is on screen now. */
@@ -639,7 +644,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
 
     /** The picture as it will be saved: the cuts, the selection (when there is one), the edge; cropped. */
     const cutout = () => {
-        const px = compose(cleanUp(current, w, h, clean), original, erase, bring, w, whole, new Uint8ClampedArray(w * h * 4));
+        const px = compose(cleanUp(current, w, h, clean), source, erase, bring, w, whole, new Uint8ClampedArray(w * h * 4));
         const cap = new Uint8ClampedArray(px);   // growing the edge never brings back what was erased
         if (selectedAny()) {
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -673,10 +678,19 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setBrush(next) { brush = { ...brush, ...next }; },
         /** A tolerance turns the colour tool into one click; null puts press-and-drag back. */
         setTolerance(tol) { wandTol = tol === null ? null : Number(tol); },
+        /** A picture reopened after a save: Bring back reaches past it to this one. A different size (a crop) cannot line up, so it is left. */
+        async setSource(from) {
+            const image = await loadImage(from);
+            if (image.naturalWidth !== w || image.naturalHeight !== h) return;
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const g = c.getContext('2d', { willReadFrequently: true });
+            g.drawImage(image, 0, 0);
+            source = g.getImageData(0, 0, w, h).data;
+        },
         /** Held: the picture exactly as it came in, whatever was done to it. */
         setCompare(on) {
             comparing = !!on;
-            ctx.putImageData(comparing ? new ImageData(new Uint8ClampedArray(original), w, h) : shown, 0, 0);
+            ctx.putImageData(comparing ? new ImageData(new Uint8ClampedArray(source), w, h) : shown, 0, 0);
         },
         /** Soft edge and shrink/grow, live: the canvas (and so toBlob) shows the refined edge. */
         setEdges(next) { edges = { ...edges, ...next }; paint(); },

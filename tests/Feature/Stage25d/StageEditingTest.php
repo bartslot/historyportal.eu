@@ -65,6 +65,28 @@ class StageEditingTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($scene->image_path));
     }
 
+    public function test_the_still_before_this_one_stays_for_an_undo_and_old_ones_go(): void
+    {
+        $scene = $this->scene();
+        SceneStill::store($scene, self::JPEG.'AAAA');
+        $first = $scene->fresh()->image_path;
+        $config = $scene->config;
+        $config['stage25d']['set']['touched'] = 1;
+        $scene->forceFill(['config' => $config])->saveQuietly();
+
+        SceneStill::store($scene->fresh(), self::JPEG.'AAAA');
+
+        $this->assertNotSame($first, $scene->fresh()->image_path);
+        $this->assertTrue(Storage::disk('public')->exists($first), 'an undo points back at it');
+
+        $dir = dirname($first);
+        foreach (range(1, 30) as $n) {
+            Storage::disk('public')->put("{$dir}/still-old{$n}.jpg", 'x');
+        }
+        SceneStill::store($scene->fresh(), self::JPEG.'AAAA');
+        $this->assertLessThanOrEqual(20, count(Storage::disk('public')->files($dir)));
+    }
+
     public function test_a_still_whose_file_is_gone_is_not_fresh(): void
     {
         $scene = $this->scene();

@@ -17,6 +17,9 @@ final class SceneStill
     /** A 480 px wide JPEG is ~30 KB; refuse anything bigger than this. */
     private const MAX_BYTES = 300_000;
 
+    /** As many as a teacher can undo back through, more or less (SceneHistory). */
+    private const KEEP = 20;
+
     public static function hash(Scene $scene): string
     {
         return substr(sha1((string) json_encode($scene->config['stage25d'] ?? [])), 0, 8);
@@ -49,16 +52,23 @@ final class SceneStill
         $dir = "lessons/{$scene->lesson_id}/scenes/{$scene->id}";
         $path = "{$dir}/still-".self::hash($scene).'.jpg';
         $disk = Storage::disk('public');
-        foreach ($disk->files($dir) as $old) {
-            if (str_contains($old, '/still-')) {
-                $disk->delete($old);
-            }
-        }
         $disk->put($path, $bytes);
+        self::prune($dir);
         // Quietly: a thumbnail is not a teacher's edit, so it is no undo step and bumps nothing.
         $scene->image_path = $path;
         $scene->saveQuietly();
 
         return true;
+    }
+
+    /** Only the newest stills stay. Not just the last one: an undo points the scene back at the picture before it. */
+    private static function prune(string $dir): void
+    {
+        $disk = Storage::disk('public');
+        collect($disk->files($dir))
+            ->filter(fn (string $file) => str_contains($file, '/still-'))
+            ->sortByDesc(fn (string $file) => $disk->lastModified($file))
+            ->slice(self::KEEP)
+            ->each(fn (string $file) => $disk->delete($file));
     }
 }

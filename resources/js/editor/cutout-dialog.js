@@ -74,7 +74,8 @@ export async function openCutout (target) {
 
   const cameFrom = document.activeElement
   const root = document.createElement('div')
-  root.className = 'fixed inset-0 z-[80] flex flex-col bg-shell outline-none'
+  root.className = 'fixed inset-0 z-[9000] flex flex-col outline-none'
+  root.style.background = 'var(--color-shell)'
   root.tabIndex = -1
   root.setAttribute('role', 'dialog')
   root.setAttribute('aria-modal', 'true')
@@ -291,6 +292,8 @@ export async function openCutout (target) {
         mask.setBrushSize($('[data-cut-size]').value)
         setTool(tool)
         mask.setClean(clean)   // opens already cleaned: the teacher only nudges
+        // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
+        if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
       })
       .catch(() => { close(); say('error', t('This picture cannot be opened here.')) })
   })

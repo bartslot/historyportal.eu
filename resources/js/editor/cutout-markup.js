@@ -63,18 +63,18 @@ export function markup (t, clean) {
     <div class="flex w-12 shrink-0 flex-col justify-between gap-2">
       <div class="tabs tabs-box flex-col" role="radiogroup" aria-label="${t('Tools')}">
         ${TOOLS.map(([value, label, key]) => `
-        <label class="tab h-10 flex-none px-0" data-cut-tool="${value}" data-tooltip="${t(label)}" data-tooltip-key="${key}" data-tooltip-placement="bottom">
+        <label class="tab px-0" style="flex: none; height: 2.5rem;" data-cut-tool="${value}" data-tooltip="${t(label)}" data-tooltip-key="${key}" data-tooltip-placement="bottom">
           <input type="radio" name="cut-tool" value="${value}" class="sr-only" aria-label="${t(label)}">${icon(ICONS[value])}
         </label>`).join('')}
       </div>
-      <div class="flex flex-col items-center gap-1">
+      <div class="mb-10 flex flex-col items-center gap-1">
         ${iconButton('data-cut-zoom-in', t('Zoom in'), ICONS.zoomIn, '+')}
         <button type="button" class="btn btn-ghost btn-sm w-full px-0 text-xs tabular-nums" data-cut-fit data-tooltip="${t('Fit')}" data-tooltip-key="0" aria-label="${t('Fit')}">100%</button>
         ${iconButton('data-cut-zoom-out', t('Zoom out'), ICONS.zoomOut, '-')}
       </div>
     </div>
-    <div class="relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden rounded-lg border border-panel-border" data-cut-view
-         style="background: repeating-conic-gradient(var(--color-base-300) 0 25%, var(--color-base-200) 0 50%) 0 0 / 20px 20px;">
+    <div class="relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden rounded-lg border" data-cut-view
+         style="border-color: var(--color-panel-border); background: repeating-conic-gradient(var(--color-base-300) 0 25%, var(--color-base-200) 0 50%) 0 0 / 20px 20px;">
       <div class="absolute left-0 top-0 origin-top-left" data-cut-stage>
         <canvas data-cut-art class="block h-full w-full"></canvas>
         <canvas data-cut-film class="pointer-events-none absolute inset-0 h-full w-full"></canvas>
@@ -82,7 +82,7 @@ export function markup (t, clean) {
       <div class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full" style="border: 1px solid #fff; outline: 1px solid #000;" data-cut-ring hidden></div>
       <span class="loading loading-spinner loading-md absolute left-1/2 top-1/2" data-cut-loading></span>
     </div>
-    <aside class="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-lg border border-panel-border bg-panel p-3">
+    <aside class="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-lg border p-3" style="border-color: var(--color-panel-border); background: var(--color-panel);">
       <div class="flex flex-col gap-1">
         <h3 class="pb-1 text-sm font-semibold text-panel-value" data-cut-tool-name></h3>
         <div data-cut-for="erase restore">
@@ -105,7 +105,7 @@ export function markup (t, clean) {
           ${slider('shift', t('Edge'), -MAX_SHIFT, MAX_SHIFT, 0, 'px')}
         </div>
       </div>
-      <div class="flex flex-col gap-1 border-t border-panel-border pt-3" data-cut-clean>
+      <div class="flex flex-col gap-1 border-t pt-3" style="border-color: var(--color-panel-border);" data-cut-clean>
         <h3 class="pb-1 text-sm font-semibold text-panel-value">${t('Clean up')}</h3>
         ${slider('white', t('White holes'), 0, 100, clean.white)}
         ${slider('fringe', t('White edges'), 0, 10, clean.fringe, 'px')}
@@ -113,14 +113,14 @@ export function markup (t, clean) {
         <button type="button" class="btn btn-sm mt-1" data-cut-compare>${t('Before')}</button>
       </div>
       <span class="flex-1"></span>
-      <div class="flex flex-col gap-2 border-t border-panel-border pt-3">
+      <div class="flex flex-col gap-2 border-t pt-3" style="border-color: var(--color-panel-border);">
         <button type="button" class="btn btn-sm" data-cut-asset>${t('Save as asset')}</button>
         <button type="button" class="btn btn-ghost btn-sm" data-cut-original hidden>${t('Back to the original')}</button>
       </div>
     </aside>
   </div>
   <div class="modal modal-open" role="alertdialog" aria-modal="true" aria-labelledby="cut-ask-title" data-cut-ask hidden>
-    <div class="modal-box hp-modals max-w-md border border-panel-border">
+    <div class="modal-box hp-modals max-w-md border" style="border-color: var(--color-panel-border);">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-panel-value" id="cut-ask-title">${t('Save your changes?')}</h2>
         <button type="button" class="btn btn-ghost btn-sm btn-circle text-panel-hint" data-cut-ask-stay aria-label="${t('Close')}">${icon(ICONS.close)}</button>

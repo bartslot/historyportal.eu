@@ -35,6 +35,18 @@ final class LibraryBundle
         return self::layers($bundle)[$assetId] ?? null;
     }
 
+    /** The asset's picture on the public disk, or null when the bundle has no such asset. */
+    public static function assetPath(string $bundle, string $assetId): ?string
+    {
+        if (! preg_match('/^[a-z0-9][a-z0-9-]*$/', $bundle)) {
+            return null;
+        }
+        $asset = collect(json_decode((string) Storage::disk('public')->get(self::DIR."/{$bundle}/library.json"), true)['assets'] ?? [])
+            ->firstWhere('id', $assetId);
+
+        return isset($asset['file']) ? self::DIR."/{$bundle}/{$asset['file']}" : null;
+    }
+
     /** @return array<string,string> asset id => layer kind, read once per request per bundle */
     private static function layers(string $bundle): array
     {

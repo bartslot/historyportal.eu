@@ -7,7 +7,9 @@ namespace App\Livewire\Wizard\Concerns;
 use App\Models\Scene;
 use App\Services\Editor\Cutouts;
 use App\Services\Editor\EditedImages;
+use App\Services\Stage25d\LibraryBundle;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Renderless;
 
 /**
  * Uitknippen's save (saveCutout: a part of a picture as the teacher's own asset), and the saves of the image editor
@@ -70,6 +72,49 @@ trait EditsImages
         }
 
         return ['ok' => $saved];
+    }
+
+    /**
+     * The picture as it was before any editing, for Bring back on a picture reopened after a save: the file it opens
+     * on has lost those pixels. Null: nothing is known (a cut-out's own file), Bring back then goes back to what it opened on.
+     */
+    #[Renderless]
+    public function originalOfEdited(string $target): ?string
+    {
+        $at = EditedImages::target($target);
+        $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
+        if ($at === null || $scene === null) {
+            return null;
+        }
+        $path = $at[0] === 'art' ? $this->artOriginalPath($scene, $at[1]) : $this->stageRowOriginalPath($scene, $at[1]);
+
+        return $path === null ? null : parse_url(Storage::disk('public')->url($path), PHP_URL_PATH);
+    }
+
+    private function artOriginalPath(Scene $scene, int $assetId): ?string
+    {
+        foreach ($scene->shots ?? [] as $shot) {
+            foreach ($shot['layers'] ?? [] as $layer) {
+                if (($layer['asset_id'] ?? null) === $assetId) {
+                    return $layer['original_path'] ?? null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function stageRowOriginalPath(Scene $scene, string $row): ?string
+    {
+        $stage = $scene->config['stage25d'] ?? [];
+        $set = $stage['set'] ?? [];
+        $asset = match (true) {
+            $row === 'sky' => $set['sky'] ?? null,
+            str_starts_with($row, 'band-') => $set['groundBands'][(int) substr($row, 5)]['asset'] ?? null,
+            default => $set['layers'][(int) substr($row, 6)]['asset'] ?? null,
+        };
+
+        return is_string($asset) && isset($stage['bundle']) ? LibraryBundle::assetPath($stage['bundle'], $asset) : null;
     }
 
     /** Back to the picture as it was before the editor touched it. */
