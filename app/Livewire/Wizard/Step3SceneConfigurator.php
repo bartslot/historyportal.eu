@@ -5849,6 +5849,7 @@ class Step3SceneConfigurator extends Component
     #[On('open-lesson-settings')]
     public function openSettings(): void
     {
+        $this->selectInspectorTarget(null);   // a selected object's panel would otherwise stay on screen under the Lesson tab
         $this->panelView = 'settings';
     }
 

@@ -79,6 +79,8 @@ trait EditsStage25d
             if ($kind !== null) {
                 $layers[] = ['asset' => $add['asset'], 'depth' => in_array($add['depth'] ?? null, ['sky', 'bg', 'mid', 'fg', 'near'], true) ? $add['depth'] : 'mid', ...LayerKeys::clean($add)];
                 $this->storeStage25dLayers($scene, $layers);
+                // The stage selected it before this save landed, when the panel could not find it yet: open it now.
+                $this->selectInspectorTarget('s25_layer-'.(count($layers) - 1));
             }
 
             return;
@@ -400,11 +402,13 @@ trait EditsStage25d
         $config['stage25d']['set']['layers'][$index]['figure'] = $handle;
         $facing = LibraryBundle::facingOf($asset) === 'left' ? -1 : 1;
         $lines = array_values((array) ($config['lines'] ?? []));
+        $assetId = 'stage25d:'.$handle;
+        $own = collect($lines)->where('figure.asset_id', $assetId)->count();
         $lines[] = [
             ...SpeechBalloons::make($kind, null),
-            'figure' => ['asset_id' => 'stage25d:'.$handle, 'mouth' => [0.5, 0.3], 'facing' => $facing],
+            'figure' => ['asset_id' => $assetId, 'mouth' => [0.5, 0.3], 'facing' => $facing],
             'group' => true,
-            'at' => [self::BALLOON_OFFSET[0] * $facing, self::BALLOON_OFFSET[1]],
+            'at' => SpeechBalloons::stacked([self::BALLOON_OFFSET[0] * $facing, self::BALLOON_OFFSET[1]], $own, $facing, -1),
         ];
         $config['lines'] = $lines;
         $scene->update(['config' => $config]);

@@ -67,6 +67,18 @@ final class SpeechBalloons
     /** A speaker's mouth on its picture when the figure has no mouth metadata: the head's middle. */
     public const DEFAULT_MOUTH = [0.5, 0.18];
 
+    /**
+     * Where the nth balloon added at a spot goes, so a new one never covers the last: a row further along and, for three
+     * rows, a step up or down before it starts over (the edge of the stage is near).
+     *
+     * @param  array{0: float, 1: float}  $at
+     * @return array{0: float, 1: float}
+     */
+    public static function stacked(array $at, int $nth, int $across = 1, int $down = 1): array
+    {
+        return [round($at[0] + $across * 0.04 * $nth, 3), round($at[1] + $down * 0.1 * ($nth % 3), 3)];
+    }
+
     /** @return array<string, mixed> */
     public static function make(string $kind, ?int $panel): array
     {

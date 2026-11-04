@@ -146,3 +146,19 @@ describe('BalloonLayer: balloons added in the editor', () => {
     expect(layer.shown.size).toBe(1)
   })
 })
+
+describe('patchLine', () => {
+  it('draws new words on the balloon that is showing', () => {
+    const layer = new BalloonLayer(document.createElement('div'), () => null)
+    const bubble = { textContent: 'old' }
+    const el = { querySelector: () => bubble }
+    layer.lines = [{ id: 'bal_0', text: 'old' }]
+    layer.shown.set(0, el)
+    layer._place = vi.fn()
+
+    layer.patchLine('bal_0', { text: 'new' })
+
+    expect(bubble.textContent).toBe('new')
+    expect(layer._place).toHaveBeenCalledWith(el, expect.objectContaining({ text: 'new' }))
+  })
+})

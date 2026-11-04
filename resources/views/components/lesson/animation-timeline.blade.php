@@ -7,9 +7,10 @@
     $timeline  = $config['timeline'] ?? [];
     $alignment = is_array($scene?->audio_alignment) ? $scene->audio_alignment : [];
     // NOT the narration's length. A game segment runs three minutes and a 180,000ms ruler puts
-    // every keyframe in the first few pixels. 8 seconds is a build; the field beside the playhead
-    // changes it. (The JS carries the same default — this is the one that reaches the page.)
-    $duration = (float) ($timeline['duration'] ?? 8);
+    // every keyframe in the first few pixels. The lesson sets the standard (8 seconds until it
+    // does); the field beside the playhead changes one scene. (The JS carries the same default —
+    // this is the one that reaches the page.)
+    $duration = (float) ($timeline['duration'] ?? ($scene?->lesson?->sceneLengthMs() ?? \App\Models\Lesson::SCENE_LENGTH_MS) / 1000);
 @endphp
 
 {{-- The wizard's Timeline tab (Figma 1417:1999).
@@ -85,6 +86,7 @@
           ignores fields, ignores modifiers, and only cancels the page's scroll once it has
           actually taken the key. --}}
      x-on:keydown.window="onKeydown($event)"
+     x-on:scene-length-changed.window="followSceneLength($event.detail)"
      x-on:scene-object-edited.window="recordCanvasEdit($event.detail.target, $event.detail.values)"
      x-on:scene-object-selected.window="onObjectSelected($event.detail?.id)"
      data-timeline
@@ -99,29 +101,15 @@
     <div data-drag-scroll class="no-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto px-4"
          style="height: 44px; background: var(--color-timeline-strip)">
 
-        {{-- Disabled until two keyframes exist, because one keyframe is a position and not a
-             movement — and a play button that runs for thirty seconds and changes nothing reads
-             as the feature being broken.
-
-             The hint is the app's own tooltip carrying its key cap, exactly as the player's play
-             button wears K — never `title` as well, which is what puts two tooltips on screen at
-             once. --}}
-        {{-- The WRAPPER carries the tooltip, not the button.
-
-             A disabled element dispatches no pointer events, so a tooltip on it can never appear —
-             which left a dead play button with no way to learn why. Apple's HIG asks for the
-             opposite: show when a command cannot be carried out AND help people understand why.
-             The wrapper is always alive, so the reason is reachable in exactly the state that
-             needs it. --}}
+        {{-- Always alive: a scene with no keyframes still plays, its figures and its camera move on the clock.
+             The hint is the app's own tooltip carrying its key cap, exactly as the player's play button
+             wears K — never `title` as well, which is what puts two tooltips on screen at once. --}}
         <span class="shrink-0"
-              :data-tooltip="nothingToPlay && !playing
-                  ? @js(__('Set two keyframes on a property to make something move'))
-                  : (playing ? @js(__('Pause')) : @js(__('Play')))"
-              :data-tooltip-key="nothingToPlay && !playing ? null : @js(__('Space'))">
+              :data-tooltip="playing ? @js(__('Pause')) : @js(__('Play'))"
+              data-tooltip-key="{{ __('Space') }}">
         <button type="button" x-on:click="playing ? pause() : play()" data-timeline-play
-                :disabled="nothingToPlay && !playing"
                 class="grid h-7 w-7 cursor-pointer place-items-center rounded text-panel-value
-                       hover:text-white disabled:cursor-default disabled:opacity-30"
+                       hover:text-white"
                 aria-keyshortcuts="Space"
                 :aria-label="playing ? @js(__('Pause')) : @js(__('Play'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">

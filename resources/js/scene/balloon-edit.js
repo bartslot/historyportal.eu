@@ -50,6 +50,11 @@ export function patchBalloon (id, values) {
   for (const l of live()) l.applyValues(id, values)
 }
 
+/** The words on the stage as they are typed in the panel; the panel saves them after a pause. */
+export function setBalloonText (id, text) {
+  for (const l of live()) l.patchLine(id, { text })
+}
+
 /** One animatable property of a balloon on the stage (balloonValue units), or null. */
 export function readBalloon (id, property) {
   for (const l of live()) {

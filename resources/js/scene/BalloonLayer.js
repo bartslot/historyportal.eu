@@ -329,7 +329,9 @@ export class BalloonLayer {
     if (i < 0) return
     this.lines = this.lines.map((l, j) => (j === i ? { ...l, ...patch } : l))
     const el = this.shown.get(i)
-    if (el) this._place(el, this.lines[i])
+    if (!el) return
+    if ('text' in patch) el.querySelector('.lp-balloon__bubble').textContent = patch.text   // textContent: lesson copy
+    this._place(el, this.lines[i])
   }
 
   /** Keyframe values (balloonValue's units) onto one balloon, drawn now. */

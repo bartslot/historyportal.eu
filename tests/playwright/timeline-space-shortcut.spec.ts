@@ -47,7 +47,6 @@ async function state(page: Page) {
     return {
       playing: !!c?.playing,
       time: Number(c?.time ?? -1),
-      nothingToPlay: !!c?.nothingToPlay,
       tab: (window as any).Alpine?.store('view')?.bottomTab ?? null,
     };
   });
@@ -130,7 +129,6 @@ async function giveItSomethingToPlay(page: Page, save = false) {
     if (persist) c.save();
   }, save);
   await page.waitForTimeout(save ? 2000 : 400);
-  expect((await state(page)).nothingToPlay, 'the scene should now have something to play').toBe(false);
 }
 
 test.describe('Space is the timeline’s play/pause', () => {
@@ -210,26 +208,6 @@ test.describe('Space is the timeline’s play/pause', () => {
     // And the caret is still in the field: focus was not stolen.
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-timeline-time') !== null))
       .toBe(true);
-
-    expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
-  });
-
-  test('with under two keyframes Space does nothing at all — including not eating the key', async ({ page }) => {
-    const errors = watchConsole(page);
-    await openTimeline(page);
-
-    expect((await state(page)).nothingToPlay, 'the scene was reset, so play must be refused').toBe(true);
-
-    await pressSpace(page);
-    await page.waitForTimeout(700);
-
-    const after = await state(page);
-    expect(after.playing, 'play is refused, so nothing may start').toBe(false);
-    expect(after.time, 'and the playhead stays home').toBeCloseTo(0, 3);
-
-    // Refused is not handled: cancelling the scroll to then do nothing is the worst of both.
-    const seen = await probe(page);
-    expect(seen.at(-1)!.defaultPrevented, 'a refused Space must not be cancelled either').toBe(false);
 
     expect(errors, `console errors:\n${errors.join('\n')}`).toEqual([]);
   });

@@ -21,7 +21,7 @@ import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
-import { isPlayPauseKey, isTypingTarget } from '../ui/keyboard.js'
+import { isPlayPauseKey, isTypingTarget, scrubDirection } from '../ui/keyboard.js'
 import { EASE, parseBezier, formatBezier } from '../easing.js'
 import {
   fitZoom, timeAtX, toleranceSeconds, tickStep, ticksFor, formatTime,
@@ -93,6 +93,10 @@ const DRAFT_MAX_AGE_MS = 10 * 60 * 1000
  * duration is editable, and word-snap still works across whatever range is shown.
  */
 const DEFAULT_DURATION = 8
+
+/** One press of an arrow key on the timeline, in seconds; with Shift. */
+const SCRUB_S = 0.1
+const SCRUB_LONG_S = 1
 
 /** One decimal on a row that is 115px wide. `30.815` rendered as "30,815" and read as thirty
  *  thousand; the model keeps its precision, the field does not need it. */
@@ -372,18 +376,6 @@ export const animationTimeline = (config = {}) => ({
   keyCountOf (target) { return this.keyTimesOf(target).length },
 
   /**
-   * True when pressing play would show the class precisely nothing.
-   *
-   * One keyframe is a position, not a movement. The panel has to say so: a play button that runs
-   * for thirty seconds and changes nothing on screen reads as the feature being broken, and that
-   * is exactly how it read.
-   */
-  get nothingToPlay () {
-    return !this.tracks.some((t) => sortedKeys(t).length >= 2) &&
-      !this.objects.some((o) => o.kind === 'dio' && this.dioramaClip(o.target))
-  },
-
-  /**
    * Open or close a layer. Alt/Option-click is After Effects' "expand all": it opens the layer AND
    * every group under it, or, when all of that is already open, closes the layer.
    */
@@ -597,6 +589,15 @@ export const animationTimeline = (config = {}) => ({
     event.preventDefault()
     const anchor = this.rawTimeFromEvent(event)
     this.setZoom(this.zoom * Math.exp(-event.deltaY * WHEEL_ZOOM_RATE), anchor)
+  },
+
+  /** The lesson's scene length changed and the server moved this scene with it, if it was still at the old one. */
+  followSceneLength ({ was, seconds }) {
+    if (!sameTime(this.duration, was)) return
+    this.duration = seconds
+    if (this.time > seconds) this.seek(seconds)
+    if (this.zoomIsMine) this.measureFit(); else this.fit()
+    this.remember()
   },
 
   /** The timeline's length. Keys outside it stay where they are; the ruler simply stops there. */
@@ -930,7 +931,7 @@ export const animationTimeline = (config = {}) => ({
 
   play () {
     this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
-    if (this.playing || !(this.duration > 0) || this.nothingToPlay) return
+    if (this.playing || !(this.duration > 0)) return
     this.playing = true
     this._startedFrom = this.time >= this.duration ? 0 : this.time
     this._startedAt = performance.now()
@@ -976,7 +977,8 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /**
-   * Space plays and pauses, the way it does in every editor and in the lesson player.
+   * Space plays and pauses, the way it does in every editor and in the lesson player, whichever tab of the dock is
+   * showing; the left and right arrows scrub (Shift: a whole second). Typing in a field keeps its keys.
    *
    * Bound from the Blade as `x-on:keydown.window` rather than registered here. Switching scenes
    * changes the dock's wire:key, so Livewire tears the panel down and Alpine builds a fresh
@@ -990,12 +992,15 @@ export const animationTimeline = (config = {}) => ({
       event.preventDefault()
       return this.deleteSelected()
     }
-    if (!isPlayPauseKey(event) || !this.transportHasTheKeyboard) return
-
-    // Play refuses under two keyframes, and the refusal has to look like nothing happened rather
-    // than like a broken button. Cancelling the page's scroll to then do nothing is worse than
-    // not taking the key at all, so this returns before preventDefault.
-    if (!this.playing && this.nothingToPlay) return
+    const scrub = scrubDirection(event)
+    if (scrub) {
+      event.preventDefault()
+      this.pause()
+      this.seek(Math.min(this.duration, Math.max(0, this.time + scrub * (event.shiftKey ? SCRUB_LONG_S : SCRUB_S))))
+      this.revealPlayhead()
+      return
+    }
+    if (!isPlayPauseKey(event)) return
 
     event.preventDefault()   // only now that the key is ours: Space must not also scroll the page
     if (this.playing) this.pause()

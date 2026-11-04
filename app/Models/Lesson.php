@@ -24,6 +24,13 @@ use Illuminate\Support\Str;
 
 class Lesson extends Model
 {
+    /** A scene's timeline unless the lesson says otherwise, and how far the lesson may take it. */
+    public const SCENE_LENGTH_MS = 8000;
+
+    public const SCENE_LENGTH_MIN_MS = 1000;
+
+    public const SCENE_LENGTH_MAX_MS = 600000;
+
     use BelongsToTeacher, HasFactory, SoftDeletes;
 
     /** "What you can expect" on the title screen: at most this many lines, each at most this long. */
@@ -70,6 +77,7 @@ class Lesson extends Model
         'title_keep_clear',
         'title_style',
         'show_lesson_types',
+        'scene_length_ms',
         'poster_image',
         'subject',
         'grade_level',
@@ -1158,5 +1166,10 @@ class Lesson extends Model
         return $this->script !== null
             && $this->quizQuestions()->exists()
             && $this->mediaExists($this->audio_path);
+    }
+
+    public function sceneLengthMs(): int
+    {
+        return $this->scene_length_ms ?? self::SCENE_LENGTH_MS;
     }
 }

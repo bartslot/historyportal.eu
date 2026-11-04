@@ -100,6 +100,16 @@ class SeriesAndGroupsTest extends TestCase
         $this->assertArrayNotHasKey('figure', $config['stage25d']['set']['layers'][1]);
     }
 
+    public function test_a_second_balloon_on_a_character_does_not_cover_the_first(): void
+    {
+        $scene = $this->scene([['asset' => 'fig-dorpeling-a-stand-01', 'depth' => 'mid', 'x' => 0.4]]);
+        $this->editor($scene)->call('addStage25dBalloon', 0)->call('addStage25dBalloon', 0);
+
+        [$first, $second] = $scene->fresh()->config['lines'];
+        $this->assertEqualsWithDelta($first['at'][1] - 0.1, $second['at'][1], 0.001, 'a step further above the mouth');
+        $this->assertNotEquals($first['at'][0], $second['at'][0]);
+    }
+
     public function test_only_a_character_takes_a_grouped_balloon(): void
     {
         $scene = $this->scene([['asset' => 'tree-birch-01', 'depth' => 'mid']]);

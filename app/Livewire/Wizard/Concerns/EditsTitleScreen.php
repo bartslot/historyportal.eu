@@ -7,7 +7,6 @@ namespace App\Livewire\Wizard\Concerns;
 use App\Enums\TitlePosition;
 use App\Models\Lesson;
 use App\Services\Support\WebpEncoder;
-use App\Support\TitlePoster;
 
 /**
  * The title screen as the pinned first item of the editor's scene rail.
@@ -135,6 +134,30 @@ trait EditsTitleScreen
     }
 
     /** The lesson-type badges (Interactief, Stripverhaal, Teams) on or off; on is the default. */
+    /**
+     * How long this lesson's scenes run. A scene still at the old length follows; one changed by hand keeps its own.
+     * A saved timeline always stores a length, so that length is the only way to tell them apart.
+     */
+    public function setSceneLength(mixed $ms): void
+    {
+        $was = $this->lesson->sceneLengthMs() / 1000;
+        $ms = (int) max(Lesson::SCENE_LENGTH_MIN_MS, min(Lesson::SCENE_LENGTH_MAX_MS, (int) $ms));
+        $seconds = $ms / 1000;
+        $this->lesson->update(['scene_length_ms' => $ms]);
+
+        foreach ($this->lesson->scenes()->get() as $scene) {
+            $config = $scene->config;
+            if (abs((float) ($config['timeline']['duration'] ?? -1) - $was) < 0.001) {
+                $config['timeline']['duration'] = $seconds;
+                $scene->update(['config' => $config]);
+            }
+        }
+        if (abs((float) ($this->selectedScene['config']['timeline']['duration'] ?? -1) - $was) < 0.001) {
+            $this->selectedScene['config']['timeline']['duration'] = $seconds;
+        }
+        $this->dispatch('scene-length-changed', was: $was, seconds: $seconds);
+    }
+
     public function setShowLessonTypes(bool $show): void
     {
         $this->lesson->update(['show_lesson_types' => $show]);

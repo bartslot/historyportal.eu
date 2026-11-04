@@ -51,3 +51,10 @@ export const isPlayPauseKey = (event) => {
 
   return !isTypingTarget(event.target)
 }
+
+/** Which way an arrow key scrubs a timeline: -1, 1, or 0 when this press is not for it (typing, or a shortcut). */
+export const scrubDirection = (event) => {
+  if (!event || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return 0
+  if (isTypingTarget(event.target)) return 0
+  return event.code === 'ArrowLeft' ? -1 : event.code === 'ArrowRight' ? 1 : 0
+}

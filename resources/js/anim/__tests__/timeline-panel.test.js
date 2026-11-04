@@ -117,24 +117,6 @@ describe('setValue records a keyframe at the playhead', () => {
     expect(keys(p, TEXT, 'x')).toHaveLength(1)
     expect(p.$wire.setTimeline).not.toHaveBeenCalled()
   })
-
-  /** Two keys make a movement. One is a stored position — see applyFrame's filter. */
-  it('turns a single stored position into something that actually plays', () => {
-    const p = panel([{ target: TEXT, property: 'x', keyframes: [{ time: 1, value: 12 }] }])
-    expect(p.nothingToPlay).toBe(true)
-
-    p.time = 3.601
-    p.setValue(TEXT, 'x', 40)
-
-    expect(p.nothingToPlay).toBe(false)
-  })
-
-  it('a diorama figure with a path plays, with no keyframe tracks at all', () => {
-    window.__diorama = { items: () => [{ id: 'sailor_1', keys: [{ t: 0, cell: [0, 0] }, { t: 3, cell: [6, 0] }] }] }
-    const p = panel()
-    p.objects = [{ target: 'dio:sailor_1', kind: 'dio' }]
-    expect(p.nothingToPlay).toBe(false)
-  })
 })
 
 describe('isAnimated', () => {
@@ -541,5 +523,52 @@ describe('the rows on opening a scene', () => {
     p.tracksScrolled = 100
     expect(p.pinnedStyle(p.objects[0])).toContain('translateY(62px)')
     expect(p.pinnedStyle(p.objects[1])).toBe('')
+  })
+})
+
+describe('the keyboard', () => {
+  const press = (code, extra = {}) => ({ code, target: document.body, preventDefault: vi.fn(), ...extra })
+
+  beforeEach(() => { vi.stubGlobal('requestAnimationFrame', () => 1); vi.stubGlobal('cancelAnimationFrame', () => {}) })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('Space plays a scene with no keyframes, whichever tab of the dock shows', () => {
+    const p = panel([])
+    p.$store = { view: { script: true, bottomTab: 'assets' } }
+    const e = press('Space')
+    p.onKeydown(e)
+    expect(p.playing).toBe(true)
+    expect(e.preventDefault).toHaveBeenCalled()
+    p.onKeydown(press('Space'))
+    expect(p.playing).toBe(false)
+  })
+
+  it('the arrows scrub and stop at both ends; Shift is a second; a field keeps its keys', () => {
+    const p = panel([])
+    p.seek = (t) => { p.time = t }
+    p.revealPlayhead = () => {}
+    p.onKeydown(press('ArrowRight'))
+    expect(p.time).toBeCloseTo(0.1)
+    p.onKeydown(press('ArrowRight', { shiftKey: true }))
+    expect(p.time).toBeCloseTo(1.1)
+    p.time = 0
+    p.onKeydown(press('ArrowLeft'))
+    expect(p.time).toBe(0)
+    p.time = 7.95
+    p.onKeydown(press('ArrowRight'))
+    expect(p.time).toBe(8)
+    const typing = press('ArrowLeft', { target: document.createElement('input') })
+    p.onKeydown(typing)
+    expect(p.time).toBe(8)
+    expect(typing.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('follows the lesson\'s scene length only when still at the old one', () => {
+    const p = panel([])
+    p.fit = () => {}
+    p.followSceneLength({ was: 8, seconds: 6 })
+    expect(p.duration).toBe(6)
+    p.followSceneLength({ was: 8, seconds: 5 })
+    expect(p.duration).toBe(6)
   })
 })

@@ -31,6 +31,8 @@
         <span class="text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Text') }}</span>
         <textarea rows="3" maxlength="{{ \App\Services\Support\SpeechBalloons::MAX_TEXT }}"
                   class="textarea textarea-bordered textarea-sm mt-1 w-full"
+                  x-on:input="window.__balloons?.text({{ $jsId }}, $event.target.value.trim() || @js(\App\Services\Support\SpeechBalloons::PLACEHOLDER))"
+                  x-on:input.debounce.500ms="$wire.updateBalloon({{ $jsId }}, 'text', $event.target.value)"
                   wire:change="updateBalloon(@js($id), 'text', $event.target.value)">{{ $balloon['text'] ?? '' }}</textarea>
     </label>
 

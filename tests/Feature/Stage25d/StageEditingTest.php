@@ -126,6 +126,52 @@ class StageEditingTest extends TestCase
         $this->assertSame($other->config['stage25d'], $stale[0]['config']);
     }
 
+    public function test_a_layer_added_on_the_stage_opens_its_panel_once_it_is_saved(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $next = count($scene->config['stage25d']['set']['layers']);
+
+        // the stage selects it first, before the save: nothing to open yet
+        $editor->call('selectInspectorTarget', "s25_layer-{$next}")->assertSet('activeStage25dLayer', null);
+
+        $editor->call('saveStage25dLayer', $next, ['add' => ['asset' => 'tree-birch-01']], $scene->id)
+            ->assertSet('activeStage25dLayer', "layer-{$next}");
+
+        $editor->call('saveStage25dLayer', $next + 1, ['add' => ['asset' => 'nope']], $scene->id)
+            ->assertSet('activeStage25dLayer', "layer-{$next}");
+    }
+
+    public function test_the_lesson_sets_the_scene_length_and_a_scene_changed_by_hand_keeps_its_own(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['timeline'] = ['duration' => 8, 'targets' => [], 'tracks' => []];
+        $scene->update(['config' => $config]);
+        $own = $scene->replicate();
+        $own->order = $scene->order + 1;
+        $own->config = [...$config, 'timeline' => [...$config['timeline'], 'duration' => 12]];
+        $own->save();
+
+        $this->editor($scene)->call('setSceneLength', '6000')
+            ->assertDispatched('scene-length-changed', was: 8, seconds: 6);
+
+        $this->assertSame(6000, $scene->lesson->fresh()->sceneLengthMs());
+        $this->assertEquals(6, $scene->fresh()->config['timeline']['duration']);
+        $this->assertEquals(12, $own->fresh()->config['timeline']['duration']);
+
+        $this->editor($scene)->call('setSceneLength', 5);
+        $this->assertSame(Lesson::SCENE_LENGTH_MIN_MS, $scene->lesson->fresh()->sceneLengthMs());
+    }
+
+    public function test_the_lesson_tab_shows_the_lesson_with_a_layer_selected(): void
+    {
+        $this->editor($this->scene())->call('selectInspectorTarget', 's25_layer-0')
+            ->call('openSettings')
+            ->assertSet('panelView', 'settings')->assertSet('activeStage25dLayer', null)
+            ->assertSeeHtml('data-scene-length-setting');
+    }
+
     public function test_the_camera_opens_its_panel_and_a_framed_move_is_saved_within_range_and_can_be_taken_off(): void
     {
         $scene = $this->scene();

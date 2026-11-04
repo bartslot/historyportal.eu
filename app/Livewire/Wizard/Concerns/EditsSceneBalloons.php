@@ -29,7 +29,9 @@ trait EditsSceneBalloons
         }
         $config = $scene->config ?? [];
         $lines = array_values((array) ($config['lines'] ?? []));
-        $lines[] = SpeechBalloons::make($kind, $this->editedPanel($scene));
+        $line = SpeechBalloons::make($kind, $this->editedPanel($scene));
+        $own = collect($lines)->where('speaker', SpeechBalloons::SPEAKER)->where('panel', $line['panel'] ?? null)->count();
+        $lines[] = [...$line, 'at' => SpeechBalloons::stacked($line['at'], $own)];
         $config['lines'] = $lines;
         $scene->update(['config' => $config]);
 
