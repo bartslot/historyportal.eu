@@ -1544,8 +1544,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _playScene (index) {
-      // marks drawn in class belong to the scene they were drawn on
-      this._draw?.clear()
+      // marks drawn in class belong to the scene they were drawn on: the pen closes with them
+      if (this.drawing) this.stopDraw()
       // A mid-segment click is for THIS scene's narration only; a scene that never starts narration
       // must not hand its offset on to whichever scene does next.
       this._seekOnStart = this._pendingSeek
@@ -2948,7 +2948,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!host) return
       const { mountDraw } = await import('./editor/draw-layer.js')
       this._draw = mountDraw(host, { keep: true, onSelect: (s) => { this.drawPicked = !!s } })
-      this._draw.canvas.style.zIndex = '40'   // over the picture, under the deck and the strip
+      this._draw.canvas.style.zIndex = '29'   // over the picture, under the UI layer (z-30: deck, buttons) and the strip
       this.drawSet()
       this.drawing = true
     },
@@ -2967,7 +2967,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * mouse moved (Bart, 2026-10-21: "only if you click on the story to pause it, then it shows").
      */
     get centreGlyphShown () {
-      if (this.overlayOwnsStage) return false
+      if (this.overlayOwnsStage || this.drawing) return false
       return this.playbackPaused || this.playbackGlyph
     },
 
@@ -3477,6 +3477,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (performance.now() - startT > HOLD_MS) return                               // a press-and-hold
         if (isControl(e.target)) return
         if (wakeOnly) return
+        if (this.drawing) return                    // a tap while drawing picks a mark, never plays
 
         this.togglePlayback()
       })

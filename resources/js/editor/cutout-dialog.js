@@ -42,7 +42,7 @@ const slider = (name, label, min, max, value, unit = '') => `
   </label>`
 
 /** The dialog's markup, in the page's words (t). */
-function markup (t) {
+function markup (t, clean = CLEAN_DEFAULTS) {
   return `
   <div class="modal-box flex max-h-[94vh] w-[min(94vw,72rem)] max-w-none flex-col gap-3 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-4">
     <div class="flex items-center gap-3">
@@ -60,9 +60,9 @@ function markup (t) {
       <span class="loading loading-spinner loading-md absolute" data-cut-loading></span>
     </div>
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2" data-cut-clean>
-      ${slider('white', t('White holes'), 0, 100, CLEAN_DEFAULTS.white)}
-      ${slider('fringe', t('White edges'), 0, 10, CLEAN_DEFAULTS.fringe, 'px')}
-      ${slider('fade', t('Soft bottom'), 0, 200, CLEAN_DEFAULTS.fade, 'px')}
+      ${slider('white', t('White holes'), 0, 100, clean.white)}
+      ${slider('fringe', t('White edges'), 0, 10, clean.fringe, 'px')}
+      ${slider('fade', t('Soft bottom'), 0, 200, clean.fade, 'px')}
       <button type="button" class="btn btn-ghost btn-sm" data-cut-compare>${t('Before')}</button>
     </div>
     <details class="rounded-box border border-base-300 px-3 py-2" data-cut-advanced>
@@ -110,7 +110,9 @@ export async function openCutout (target) {
   const dlg = document.createElement('dialog')
   dlg.className = 'modal'
   dlg.dataset.cutout = target.id
-  dlg.innerHTML = markup(t)
+  // an already cleaned picture starts at 0: cleaning it again would fade the bottom twice
+  const clean = target.edited ? { white: 0, fringe: 0, fade: 0 } : { ...CLEAN_DEFAULTS }
+  dlg.innerHTML = markup(t, clean)
   document.body.appendChild(dlg)
   const $ = (sel) => dlg.querySelector(sel)
   $('[data-cut-title]').textContent = target.title || t('Cut out')
@@ -120,7 +122,6 @@ export async function openCutout (target) {
   let state = { canUndo: false, selected: false }
   let mode = 'brush'
   const edges = { feather: 0, shift: 0 }
-  const clean = { ...CLEAN_DEFAULTS }
 
   open = new Promise((resolve) => {
     const close = () => {
