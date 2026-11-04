@@ -2,9 +2,10 @@
     <x-slot:head>
         <x-seo
             page="home"
-            {{-- What a teacher searches for first, the brand second (x-seo appends it). Bart, 2026-10-15. --}}
-            :title="__('History lessons your class wants to finish')"
-            :description="__('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.')"
+            {{-- What a teacher searches for first, the brand second (x-seo appends it). Bart, 2026-10-15.
+                 Year groups added 2026-11-04: teachers search topic + year group, not "storytelling". --}}
+            :title="__('KS2 and KS3 history lessons your class wants to finish')"
+            :description="__('A narrated story, real paintings and a game your class finishes themselves. KS2 and KS3 history, built in minutes, plays on any screen.')"
             :graph="\App\Support\Seo::withFaq(\App\Support\Seo::organisationGraph())"
         />
     </x-slot:head>
