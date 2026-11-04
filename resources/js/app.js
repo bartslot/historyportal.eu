@@ -33,6 +33,7 @@ import { imageGrid, initImageZoom } from './ui/image-grid.js';
 import { lessonMusicTempo, sceneMusicPreview } from './scene/music-preview.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { installCutout } from './editor/cutout-dialog.js';
+import { drawTool } from './editor/draw-layer.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
 
@@ -44,6 +45,8 @@ window.__objectListShield = shieldListFromAlpine;
 window.installTitleStagePick = installTitleStagePick;
 // Uitknippen: a double-click on any picture on the canvas opens it (editor/cutout-dialog.js).
 installCutout();
+// Tekenen: pen, line and arrow over the scene, each saved as its own layer: x-data="drawTool()".
+window.drawTool = drawTool;
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The

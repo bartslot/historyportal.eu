@@ -38,7 +38,9 @@ final class Cutouts
             return null;
         }
         $info = @getimagesizefromstring((string) Storage::disk('public')->get($path)) ?: [0, 0];
-        $title = trim(Str::limit(strip_tags($title), 80, '')) ?: __('Cut-out');
+        $name = trim(Str::limit(strip_tags($title), 60, ''));
+        // never the source's own name: two cut-outs of a band would read as the band itself
+        $title = $name !== '' ? __('Cut-out of :name', ['name' => $name]) : __('Cut-out');
 
         return SvgAsset::create([
             'user_id' => $user->id,
@@ -77,7 +79,7 @@ final class Cutouts
     /** Every word Uitknippen shows (resources/js/editor/cutout-dialog.js), English => this language. */
     private const LABELS = [
         'White holes', 'White edges', 'Soft bottom', 'Before', 'Advanced', 'Select', 'Brush', 'Colour', 'Close',
-        'Brush size', 'Everywhere', 'Soft edge', 'Edge', 'Undo', 'Tolerance', 'Cut out', 'Back to the original',
+        'Brush size', 'Add', 'Remove', 'Everywhere', 'Soft edge', 'Edge', 'Undo', 'Tolerance', 'Cut out', 'Back to the original',
         'Cancel', 'Save as asset', 'Apply', 'The picture could not be saved. Try again.',
         'This picture cannot be opened here.',
     ];

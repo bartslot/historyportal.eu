@@ -318,7 +318,7 @@ const toLab = (r, g, b) => {
  * SLIC superpixels: a label per pixel (Int32Array), about `regions` patches, each compact and bounded by
  * colour edges. `compactness` trades shape (high) against hugging the edges (low). Clear pixels get -1.
  */
-export function superpixels(data, w, h, { regions = 1200, compactness = 12, iterations = 6 } = {}) {
+export function superpixels(data, w, h, { regions = 2400, compactness = 6, iterations = 6 } = {}) {
     const n = w * h;
     const L = new Float32Array(n), A = new Float32Array(n), Bc = new Float32Array(n);
     for (let p = 0; p < n; p++) { const [l, a, b] = toLab(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]); L[p] = l; A[p] = a; Bc[p] = b; }
@@ -371,7 +371,7 @@ export function strokeShares(labels, stroke) {
  * least `minShare` joins it (or, with `remove`, leaves it). A thin stroke along an edge takes only the
  * patches on the side it mostly covers, which is what keeps the cut on the edge.
  */
-export function brushSelect(selection, labels, stroke, { remove = false, minShare = 0.3 } = {}) {
+export function brushSelect(selection, labels, stroke, { remove = false, minShare = 0.5 } = {}) {
     const take = new Set();
     for (const [k, share] of strokeShares(labels, stroke)) if (share >= minShare) take.add(k);
     const out = new Uint8Array(selection);
@@ -440,6 +440,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
     let frame = 0;
     let mode = 'colour';
     let brushPx = 40;                        // brush diameter in screen px
+    let erasing = false;                     // the brush takes away from the selection (also: Alt held)
     let edges = { feather: 0, shift: 0 };   // the mask's edge (refineEdges), applied on top of every cut
     let everywhere = false;                  // select the colour everywhere, not only where it touches the press
     let clean = { white: 0, fringe: 0, fade: 0 };   // the clean-up (cleanUp), off until the dialog turns it on
@@ -512,7 +513,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         if (x < 0 || y < 0 || x >= w || y >= h) return;
         try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic pointers */ }
         if (mode === 'brush') {
-            drag = { brush: true, remove: e.altKey, stroke: new Uint8Array(ww * wh), last: [x, y] };
+            drag = { brush: true, remove: e.altKey || erasing, stroke: new Uint8Array(ww * wh), last: [x, y] };
             workLabels();
             dab(x, y);
             preview();
@@ -591,6 +592,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}) 
         /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
         resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
         setMode(next) { mode = next === 'brush' ? 'brush' : 'colour'; canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair'; },
+        /** On: the brush takes away from the selection instead of adding (the Remove button). */
+        setErase(on) { erasing = !!on; },
         setBrushSize(px) { brushPx = Math.max(4, Math.min(200, Number(px) || 40)); },
         clearSelection() { if (selectedAny()) push(current, new Uint8Array(ww * wh)); },
         reset() { push(new Uint8ClampedArray(original), new Uint8Array(ww * wh)); },

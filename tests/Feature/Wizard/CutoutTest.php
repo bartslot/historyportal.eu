@@ -63,7 +63,7 @@ class CutoutTest extends TestCase
 
         $asset = SvgAsset::where('source', Cutouts::SOURCE)->sole();
         $this->assertSame($teacher->id, $asset->user_id);
-        $this->assertSame('Grass', $asset->title);
+        $this->assertSame('Cut-out of Grass', $asset->title);
         $this->assertSame(5.0, $asset->height_m, '150 of 600 px of a 20 m band');
         Storage::disk('public')->assertExists($asset->svg_path);
         $this->assertStringStartsWith("cutouts/{$teacher->id}/", $asset->svg_path);

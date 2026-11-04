@@ -314,6 +314,32 @@
         {{-- Populated by lesson-player.js --}}
     </div>
 
+    {{-- The drawing strip in class (toggleDraw): tools, colours, thickness, delete the picked mark, clear, done. --}}
+    <div x-show="drawing" x-cloak data-draw-strip
+         class="absolute left-1/2 top-4 z-[60] flex -translate-x-1/2 flex-wrap items-center gap-3 rounded-box border border-white/15 bg-black/70 px-3 py-2 text-white">
+        <div class="join">
+            <button type="button" class="btn btn-sm join-item" :class="drawTool === 'pen' && 'btn-primary'" @click="drawSet('drawTool', 'pen')">{{ __('Pencil') }}</button>
+            <button type="button" class="btn btn-sm join-item" :class="drawTool === 'line' && 'btn-primary'" @click="drawSet('drawTool', 'line')">{{ __('Line') }}</button>
+            <button type="button" class="btn btn-sm join-item" :class="drawTool === 'arrow' && 'btn-primary'" @click="drawSet('drawTool', 'arrow')">{{ __('Arrow') }}</button>
+        </div>
+        <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+            <template x-for="c in drawColours" :key="c">
+                <button type="button" class="h-7 w-7 rounded-full border-2" :style="`background:${c}`"
+                        :class="drawColour === c ? 'border-sky-400' : 'border-white/30'" @click="drawSet('drawColour', c)" :aria-label="c"></button>
+            </template>
+        </div>
+        <div class="flex items-center gap-1" role="group" aria-label="{{ __('Thickness') }}">
+            <template x-for="w in drawWidths" :key="w">
+                <button type="button" class="btn btn-ghost btn-sm btn-square" :class="drawWidth === w && 'bg-white/15'" @click="drawSet('drawWidth', w)" :aria-label="w">
+                    <span class="block rounded-full bg-white" :style="`width:${w + 2}px;height:${w + 2}px`"></span>
+                </button>
+            </template>
+        </div>
+        <button type="button" class="btn btn-sm" :disabled="!drawPicked" @click="drawDelete()">{{ __('Delete') }}</button>
+        <button type="button" class="btn btn-sm" @click="drawClear()">{{ __('Clear all') }}</button>
+        <button type="button" class="btn btn-sm btn-primary" @click="stopDraw()">{{ __('Done') }}</button>
+    </div>
+
     {{-- Teacher text annotations per scene (links open an iframe modal). z-31: above the map stage
          (z-20) so text a teacher placed on a voyage/history map is visible, below the quiz overlay. --}}
     <div id="lesson-text-overlay" lang="{{ $contentLang }}" class="absolute inset-0 z-31 pointer-events-none"></div>
@@ -733,6 +759,14 @@
                                        class="lp-volume w-14"
                                        :style="`--lp-vol:${(audioMuted ? 0 : volumeLevel) * 100}%`">
                             </div>
+
+                            {{-- Draw over the lesson in class: pen, line, arrow; a tap selects a mark to delete. Never saved. --}}
+                            <button type="button" x-show="!currentIsGame" @click="toggleDraw()"
+                                    data-tooltip="{{ __('Draw') }}" aria-label="{{ __('Draw') }}" :aria-pressed="drawing.toString()" data-draw-button
+                                    class="group relative flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                    :class="drawing ? 'bg-white/10 text-white' : 'text-white/85 hover:text-white'">
+                                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                            </button>
 
                             {{-- Subtitles — opens the Audio & Subtitles panel above (C does too). The
                                  plate + amber underline mark captions on. No tooltip while the panel

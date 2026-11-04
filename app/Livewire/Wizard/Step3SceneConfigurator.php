@@ -14,6 +14,7 @@ use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
+use App\Livewire\Wizard\Concerns\EditsDrawings;
 use App\Livewire\Wizard\Concerns\EditsImages;
 use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsPredict;
@@ -76,6 +77,7 @@ class Step3SceneConfigurator extends Component
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
     use EditsDiorama;
+    use EditsDrawings;
     use EditsImages;
     use EditsMoment;
     use EditsPredict;

@@ -34,17 +34,17 @@ const words = () => {
 
 const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }))
 
-const slider = (name, label, min, max, value) => `
+const slider = (name, label, min, max, value, unit = '') => `
   <label class="flex items-center gap-2">
     <span class="w-24 shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">${label}</span>
     <input type="range" min="${min}" max="${max}" step="1" value="${value}" class="range range-xs range-primary w-36" data-cut-${name}>
-    <span class="w-8 text-right text-sm tabular-nums" data-cut-${name}-value>${value}</span>
+    <span class="w-8 text-right text-sm tabular-nums" data-cut-${name}-value>${value}</span><span class="text-xs text-panel-label">${unit}</span>
   </label>`
 
 /** The dialog's markup, in the page's words (t). */
 function markup (t) {
   return `
-  <div class="modal-box flex max-h-[94vh] w-[min(94vw,72rem)] max-w-none flex-col gap-3 rounded-box border border-base-300 bg-base-100 p-4">
+  <div class="modal-box flex max-h-[94vh] w-[min(94vw,72rem)] max-w-none flex-col gap-3 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-4">
     <div class="flex items-center gap-3">
       <h3 class="min-w-0 flex-1 truncate text-sm font-semibold" data-cut-title></h3>
       <button type="button" class="btn btn-ghost btn-sm btn-square" data-cut-close aria-label="${t('Close')}">
@@ -54,15 +54,15 @@ function markup (t) {
     <div class="relative grid min-h-0 flex-1 place-items-center overflow-hidden rounded"
          style="background: repeating-conic-gradient(var(--color-base-300) 0 25%, var(--color-base-200) 0 50%) 0 0 / 20px 20px;">
       <div class="relative max-h-full max-w-full" data-cut-stage>
-        <canvas data-cut-art class="block h-auto max-h-[64vh] w-auto max-w-full touch-none"></canvas>
+        <canvas data-cut-art class="block h-auto max-h-[52vh] w-auto max-w-full touch-none"></canvas>
         <canvas data-cut-film class="pointer-events-none absolute inset-0 h-full w-full"></canvas>
       </div>
       <span class="loading loading-spinner loading-md absolute" data-cut-loading></span>
     </div>
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2" data-cut-clean>
       ${slider('white', t('White holes'), 0, 100, CLEAN_DEFAULTS.white)}
-      ${slider('fringe', t('White edges'), 0, 10, CLEAN_DEFAULTS.fringe)}
-      ${slider('fade', t('Soft bottom'), 0, 200, CLEAN_DEFAULTS.fade)}
+      ${slider('fringe', t('White edges'), 0, 10, CLEAN_DEFAULTS.fringe, 'px')}
+      ${slider('fade', t('Soft bottom'), 0, 200, CLEAN_DEFAULTS.fade, 'px')}
       <button type="button" class="btn btn-ghost btn-sm" data-cut-compare>${t('Before')}</button>
     </div>
     <details class="rounded-box border border-base-300 px-3 py-2" data-cut-advanced>
@@ -72,14 +72,18 @@ function markup (t) {
           <button type="button" class="btn btn-sm join-item" data-cut-mode="brush">${t('Brush')}</button>
           <button type="button" class="btn btn-sm join-item" data-cut-mode="colour">${t('Colour')}</button>
         </div>
-        <span data-cut-brush-only>${slider('size', t('Brush size'), 8, 160, 40)}</span>
+        <div class="join" role="group" data-cut-brush-only>
+          <button type="button" class="btn btn-sm join-item btn-primary" data-cut-erase="0">${t('Add')}</button>
+          <button type="button" class="btn btn-sm join-item" data-cut-erase="1">${t('Remove')}</button>
+        </div>
+        <span data-cut-brush-only>${slider('size', t('Brush size'), 8, 160, 40, 'px')}</span>
         <label class="flex cursor-pointer items-center gap-2 text-sm" data-cut-colour-only hidden>
           <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" data-cut-everywhere>${t('Everywhere')}
         </label>
-        ${slider('feather', t('Soft edge'), 0, MAX_FEATHER, 0)}
-        ${slider('shift', t('Edge'), -MAX_SHIFT, MAX_SHIFT, 0)}
+        ${slider('feather', t('Soft edge'), 0, MAX_FEATHER, 0, 'px')}
+        ${slider('shift', t('Edge'), -MAX_SHIFT, MAX_SHIFT, 0, 'px')}
         <span class="text-sm tabular-nums text-base-content/70" data-cut-tolerance hidden></span>
-        <button type="button" class="btn btn-ghost btn-sm" data-cut-undo disabled>${t('Undo')}</button>
+        <button type="button" class="btn btn-outline btn-sm" data-cut-undo disabled>${t('Undo')}</button>
       </div>
     </details>
     <div class="flex flex-wrap items-center gap-2">
@@ -145,11 +149,18 @@ export async function openCutout (target) {
         b.classList.toggle('btn-primary', on)
         b.setAttribute('aria-pressed', on ? 'true' : 'false')
       }
-      $('[data-cut-brush-only]').hidden = next !== 'brush'
+      for (const el of dlg.querySelectorAll('[data-cut-brush-only]')) el.hidden = next !== 'brush'
       $('[data-cut-colour-only]').hidden = next !== 'colour'
     }
 
     for (const b of dlg.querySelectorAll('[data-cut-mode]')) b.addEventListener('click', () => setMode(b.dataset.cutMode))
+    // Add / Remove: what the brush does, without a key to hold (Alt still works)
+    for (const b of dlg.querySelectorAll('[data-cut-erase]')) {
+      b.addEventListener('click', () => {
+        mask?.setErase(b.dataset.cutErase === '1')
+        for (const o of dlg.querySelectorAll('[data-cut-erase]')) o.classList.toggle('btn-primary', o === b)
+      })
+    }
     $('[data-cut-close]').addEventListener('click', close)
     $('[data-cut-cancel]').addEventListener('click', close)
     $('[data-cut-undo]').addEventListener('click', () => mask?.undo())

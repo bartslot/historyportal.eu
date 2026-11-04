@@ -1859,6 +1859,38 @@
 
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
 
+        {{-- Tekenen: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
+        <div x-data="drawTool()" class="relative" x-on:keydown.escape.window="on && stop()" data-draw-tool>
+            <button type="button" x-on:click="toggle()"
+                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    :class="on && 'bg-sky-500/15 text-panel-link'" :aria-pressed="on.toString()"
+                    data-tooltip="{{ __('Draw') }}" aria-label="{{ __('Draw') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+            </button>
+            <div x-show="on" x-cloak class="fixed left-1/2 top-16 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-box border border-base-300 bg-base-200 px-3 py-2" data-draw-strip>
+                <div class="join">
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                </div>
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                    <template x-for="c in colours" :key="c">
+                        <button type="button" class="h-6 w-6 rounded-full border-2" :style="`background:${c}`"
+                                :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
+                    </template>
+                </div>
+                <div class="flex items-center gap-1" role="group" aria-label="{{ __('Thickness') }}">
+                    <template x-for="w in widths" :key="w">
+                        <button type="button" class="btn btn-ghost btn-sm btn-square" :class="width === w && 'bg-base-300'" x-on:click="pick('width', w)" :aria-label="w">
+                            <span class="block rounded-full bg-base-content" :style="`width:${w + 2}px;height:${w + 2}px`"></span>
+                        </button>
+                    </template>
+                </div>
+                <span class="loading loading-spinner loading-xs" x-show="busy > 0"></span>
+                <button type="button" class="btn btn-sm" x-on:click="stop()">{{ __('Done') }}</button>
+            </div>
+        </div>
+
         {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
         <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"

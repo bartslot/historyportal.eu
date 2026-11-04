@@ -68,6 +68,7 @@ import { startSceneIndex, mayAutoplay, canStartLesson } from './player-start.js'
 import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
+import { mountDraw, TOOLS as DRAW_TOOLS, COLOURS as DRAW_COLOURS, WIDTHS as DRAW_WIDTHS } from './editor/draw-layer.js'
 import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
 import { splitTitle, canLetter, fitLines } from './title-letters.js'
 
@@ -278,6 +279,15 @@ Alpine.data('lessonGame', (lesson) => ({
     currentIsGame:     false, // current scene is a quiz/game → hide the chapter bar
     sceneProgress:     0,    // 0-1 through the current chapter's audio
     chaptersOpen:      false,
+    // Drawing over the lesson in class (editor/draw-layer.js): the teacher's own marks, never saved
+    drawing:           false,
+    drawTool:          'pen',
+    drawColour:        DRAW_COLOURS[0],
+    drawWidth:         DRAW_WIDTHS[1],
+    drawPicked:        false,
+    drawTools:         DRAW_TOOLS,
+    drawColours:       DRAW_COLOURS,
+    drawWidths:        DRAW_WIDTHS,
     estimatedMinutes:  lesson.estimated_minutes ? formatMinutes(lesson.estimated_minutes * 60) : '',
     _quizRuns:         new Map(),  // queue index -> a finished quiz run, reopened read-only on return
     _pendingSeek:      0,          // seconds into the scene goToChapter is about to play (a click mid-segment)
@@ -1534,6 +1544,8 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _playScene (index) {
+      // marks drawn in class belong to the scene they were drawn on
+      this._draw?.clear()
       // A mid-segment click is for THIS scene's narration only; a scene that never starts narration
       // must not hand its offset on to whichever scene does next.
       this._seekOnStart = this._pendingSeek
@@ -2926,8 +2938,28 @@ Alpine.data('lessonGame', (lesson) => ({
     /** True when the player chrome (top bar, deck, scrims, centre glyph) is faded out. */
     get chromeHidden () {
       if (this.overlayOwnsStage) return true
-      return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen && !this.ccOpen
+      return this.isPlaying && !this.chromeAwake && !this.zoneHover && !this.chromeFocus && !this.chaptersOpen && !this.ccOpen && !this.drawing
     },
+
+    /** Draw over the lesson (pen, line, arrow): marks stay until the scene changes; a tap selects one to delete. */
+    toggleDraw () {
+      if (this.drawing) { this.stopDraw(); return }
+      const host = document.getElementById('lesson-stage')
+      if (!host) return
+      this._draw = mountDraw(host, { keep: true, onSelect: (s) => { this.drawPicked = !!s } })
+      this._draw.canvas.style.zIndex = '40'   // over the picture, under the deck and the strip
+      this.drawSet()
+      this.drawing = true
+    },
+    drawSet (key = null, value = null) {
+      if (key) this[key] = value
+      this._draw?.setTool(this.drawTool)
+      this._draw?.setColour(this.drawColour)
+      this._draw?.setWidth(this.drawWidth)
+    },
+    drawDelete () { this._draw?.removeSelected() },
+    drawClear () { this._draw?.clear() },
+    stopDraw () { this._draw?.destroy(); this._draw = null; this.drawing = false; this.drawPicked = false },
 
     /**
      * The centre glyph: up while paused and for a moment after a press. Never just because the

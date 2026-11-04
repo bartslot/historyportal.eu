@@ -990,6 +990,7 @@ export class ArtworkOverlay {
     if (item.kind === 'arrow') return this._arrowChrome(item)
     const chrome = document.createElement('div')
     chrome.dataset.layerChrome = artObjId(item.asset_id)
+    if (!item.embed) chrome.addEventListener('dblclick', (e) => this._openEditor(e, item))
     chrome.style.cssText = `position:absolute; display:none; pointer-events:none; box-sizing:border-box;
       transform-origin:center; box-shadow:0 0 0 2px #38bdf8; z-index:${this._zTop + 1};`
 
@@ -1132,21 +1133,29 @@ export class ArtworkOverlay {
 
     this._wireDrag(item, node)
     if (!this.readonly && !item.embed) {
-      // Double-click opens Uitknippen for THIS picture, as it is shown (editor/cutout-dialog.js).
       node.addEventListener('dblclick', (e) => {
         if (this._onEmptyPixels(item, node, e)) return
-        e.stopPropagation()
-        window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
-          id: artObjId(item.asset_id),
-          title: item.title,
-          original: item.url,
-          from: null,
-          edited: !!item.original_url,
-          el: this.host,
-        } }))
+        this._openEditor(e, item)
       })
     }
     return node
+  }
+
+  /**
+   * Double-click opens the picture dialog for THIS picture, as it is shown (editor/cutout-dialog.js). Bound on the node
+   * AND on its selection frame: after the first click the frame's handles lie over the picture, and the second click
+   * of a double-click lands on them.
+   */
+  _openEditor(e, item) {
+    e.stopPropagation()
+    window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
+      id: artObjId(item.asset_id),
+      title: item.title,
+      original: item.url,
+      from: null,
+      edited: !!item.original_url,
+      el: this.host,
+    } }))
   }
 
 

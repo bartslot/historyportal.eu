@@ -332,8 +332,15 @@ export async function createStage25d (host, opts = {}) {
           api.addLayer(id, { x: e.clientX - r.left, y: e.clientY - r.top })
         })
         // a double-click opens Uitknippen (editor/cutout-dialog.js) for the picture the first click selected
-        canvas.addEventListener('dblclick', () => {
-          const id = backdrop ?? (pointer?.selected != null ? `layer-${pointer.selected}` : null)
+        // On the HOST, not the canvas: after the first click the selection frame lies over the picture, so the second
+        // click of a double-click lands on the frame and never reached a canvas listener. The picture is picked again
+        // under the pointer, so the double-click never depends on what the first click selected.
+        host.addEventListener('dblclick', (e) => {
+          const r = canvas.getBoundingClientRect()
+          const x = e.clientX - r.left, y = e.clientY - r.top
+          if (x < 0 || y < 0 || x > r.width || y > r.height || !stage) return
+          const hit = stage.pickLayers(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v, h.index))
+          const id = hit ? `layer-${hit.index}` : (backdropAt(x, y) ? backdrop : null)
           const target = id && api.editTarget(id)
           if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
         })

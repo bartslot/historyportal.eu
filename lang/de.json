@@ -2606,5 +2606,9 @@
     "My cut-outs": "Meine Ausschnitte",
     "Saved in My cut-outs.": "In Meine Ausschnitte gespeichert.",
     "Own cut-out": "Eigener Ausschnitt",
-    "Cut-out": "Ausschnitt"
+    "Cut-out": "Ausschnitt",
+    "Pencil": "Bleistift",
+    "Done": "Fertig",
+    "Clear all": "Alles löschen",
+    "Cut-out of :name": "Ausschnitt aus :name"
 }
