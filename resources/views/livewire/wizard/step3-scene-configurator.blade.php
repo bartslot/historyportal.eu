@@ -1089,7 +1089,14 @@
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
                 <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]" />
+                                 :tabs="[['format', __('Format')], ['animate', __('Animate')], ['music', __('Music')]]" />
+
+                {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
+                @unless (auth()->user()?->isGuestDemo())
+                    <div x-show="tab === 'music'" x-cloak wire:ignore>
+                        <livewire:wizard.scene-music :scene="$sceneModel" :key="'music-'.$sceneModel->id" />
+                    </div>
+                @endunless
 
                 <div x-show="tab === 'animate'" x-cloak>
                     <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />

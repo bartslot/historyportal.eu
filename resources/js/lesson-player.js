@@ -57,6 +57,7 @@ import { cueAt } from './scene/captions.js'
 import { translatedCues } from './scene/caption-menu.js'
 import { captionPanel } from './scene/caption-panel.js'
 import { createBackgroundMusic } from './scene/background-music.js'
+import { createMusicMixer, hasSceneMusic, resolveSceneMusic } from './scene/music-mixer.js'
 import { Sfx } from './scene/sfx.js'
 import { captionVisible } from './scene/SceneOverlay.js'
 import { gradientCss } from './scene/background-gradient.js'
@@ -672,7 +673,10 @@ Alpine.data('lessonGame', (lesson) => ({
     // has to do is hand it the student's volume and stop it when the lesson does.
     _startBackgroundMusic () {
       if (_music) return
-      _music = createBackgroundMusic(lesson.background_music)
+      // Music the teacher set per scene wins; otherwise the lesson-wide shuffled bed (if switched on).
+      _music = hasSceneMusic(lesson.scenes)
+        ? createMusicMixer(lesson.music_tracks || {})
+        : createBackgroundMusic(lesson.background_music)
       if (!_music) return
       _music.setMuted(this.audioMuted)
       _music.setVolume(this.volumeLevel)
@@ -1255,7 +1259,7 @@ Alpine.data('lessonGame', (lesson) => ({
             kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, diorama_assets: s.diorama_assets ?? {}, scene_view: s.scene_view,
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
-            audio_url: s.audio_url, script: s.script, image_url: s.image_url,
+            audio_url: s.audio_url, music: s.music ?? null, script: s.script, image_url: s.image_url,
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
             chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
@@ -1538,6 +1542,9 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!scene) { this._onAudioEnded(); return }
 
       this._tel.log('scene_started', { sceneIndex: index, sceneId: scene.id })
+
+      // This scene's music, or the scene before it's still playing on (a chapter jump lands mid-chapter).
+      _music?.enterScene?.(resolveSceneMusic(_sceneQueue, index))
 
       // A landfall gallery freezes this scene's auto-advance while it is open, and it is a GLOBAL
       // flag. If a tour is torn down with its modal still up, nothing ever clears it and every
@@ -3006,9 +3013,10 @@ Alpine.data('lessonGame', (lesson) => ({
       // Every scene builds a fresh Audio, so the chosen volume/mute must be re-applied here —
       // without this, a muted lesson came back at full volume on the next scene.
       this._audio.volume = this.audioMuted ? 0 : this.volumeLevel
-      this._audio.addEventListener('play', () => { this.audioPlaying = true }, { once: false })
-      this._audio.addEventListener('pause', () => { this.audioPlaying = false }, { once: false })
-      this._audio.addEventListener('ended', () => { this.audioPlaying = false }, { once: false })
+      // The scene music dips while the narrator speaks and comes back up in the pauses.
+      this._audio.addEventListener('play', () => { this.audioPlaying = true; _music?.duck?.(true) }, { once: false })
+      this._audio.addEventListener('pause', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
+      this._audio.addEventListener('ended', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
     },
 
     toggleAudio () {

@@ -42,6 +42,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Scene music
+    |--------------------------------------------------------------------------
+    |
+    | The teacher's per-scene tracks from the music library (scene/music-mixer.js). Each track has
+    | its own volume in the scene; this is the ceiling over all of them, before the student's own
+    | volume. Higher than the bed above because a teacher picked these and set their levels.
+    |
+    */
+
+    'scene_music' => [
+        'volume' => 0.5,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Sound effects
     |--------------------------------------------------------------------------
     |

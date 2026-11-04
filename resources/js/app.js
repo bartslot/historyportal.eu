@@ -30,6 +30,7 @@ import { isTypingTarget } from './ui/keyboard.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
+import { sceneMusicPreview } from './scene/music-preview.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { installPhotoEditor } from './editor/photo-editor.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
@@ -77,6 +78,9 @@ if (pendingTestSession()) import('./test-session/recorder.js').then((m) => m.boo
 // Registered as a global (like wavePlayer in the app layout) so the Blade view can call it without
 // waiting on alpine:init ordering.
 window.onboardingTour = createTour;
+
+// Scene inspector > Music > Preview: x-data="sceneMusicPreview(@js($trackUrls))".
+window.sceneMusicPreview = sceneMusicPreview;
 
 // The About page's product tour, the same spotlight over screenshots: x-data="screenshotTour(@js($config))".
 window.screenshotTour = createScreenshotTour;
