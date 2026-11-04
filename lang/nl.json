@@ -2628,5 +2628,7 @@
     "No music": "Geen muziek",
     "Tempo unknown, so the change uses the timed crossfade.": "Tempo onbekend, dus de wissel gebruikt de gewone overgang.",
     "The music library is empty.": "De muziekbibliotheek is leeg.",
-    "Track": "Nummer"
+    "Track": "Nummer",
+    "2D": "2D",
+    "This era has no 3D set yet.": "Dit tijdvak heeft nog geen 3D-decor."
 }

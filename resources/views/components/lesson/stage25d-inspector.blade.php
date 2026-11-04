@@ -1,4 +1,4 @@
-@props(['layerId' => null])
+@props(['layerId' => null, 'scene' => null])
 
 @php
     // The sky and a ground band are the backdrop: a teacher sizes it ("Size") and lifts the sky ("Height").
@@ -138,19 +138,10 @@
             @endforeach
         </div>
     @else
-        {{-- The stage draws the picture itself, so this scene is a 3D World; a slideshow's 2D options (layout, Ken Burns,
-             a background colour) do not apply and the view cannot be switched away. --}}
-        <div class="relative mb-3">
-            <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-panel-hint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-                </svg>
-            </span>
-            <select disabled data-stage25d-view aria-label="{{ __('3D World') }}"
-                    class="select select-sm select-bordered w-full bg-base-100 pl-9 font-medium text-slate-200">
-                <option>{{ __('3D World') }}</option>
-            </select>
-        </div>
+        {{-- The stage draws the picture itself; 2D switches this scene back to pictures and panels. --}}
+        @if ($scene)
+            <x-lesson.scene-mode-tabs :scene="$scene" />
+        @endif
         <div class="space-y-1">
             <template x-for="c in look" :key="c.key">
                 <label class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">

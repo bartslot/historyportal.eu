@@ -1124,7 +1124,7 @@
                     <x-lesson.scene-inspector-video :scene="$sceneModel" />
                 @elseif ($sceneModel->kind === 'stage25d')
                     {{-- A 3D World: its own view and look settings, then the same scene details (script, caption) as any narrated scene. --}}
-                    <x-lesson.stage25d-inspector wire:key="s25-scene-{{ $sceneModel->id }}" />
+                    <x-lesson.stage25d-inspector :scene="$sceneModel" wire:key="s25-scene-{{ $sceneModel->id }}" />
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" :show-view="false" />
                 @else
                     <x-lesson.scene-inspector-narration :scene="$sceneModel" :active-panel="$this->activePanel" />

@@ -2586,5 +2586,7 @@
     "No music": "Keine Musik",
     "Tempo unknown, so the change uses the timed crossfade.": "Tempo unbekannt, daher nutzt der Wechsel die normale Überblendung.",
     "The music library is empty.": "Die Musikbibliothek ist leer.",
-    "Track": "Titel"
+    "Track": "Titel",
+    "2D": "2D",
+    "This era has no 3D set yet.": "Für diese Epoche gibt es noch keine 3D-Kulisse."
 }

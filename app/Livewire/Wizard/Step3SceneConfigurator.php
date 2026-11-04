@@ -15,15 +15,15 @@ use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsImages;
-use App\Livewire\Wizard\Concerns\EditsStage25d;
+use App\Livewire\Wizard\Concerns\EditsMoment;
+use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
+use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
-use App\Livewire\Wizard\Concerns\EditsMoment;
-use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
@@ -36,21 +36,21 @@ use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
-use App\Services\SceneArrow;
-use App\Services\Stage25d\StageSet;
 use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
+use App\Services\SceneArrow;
+use App\Services\Stage25d\StageSet;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
-use App\Support\LayerEntrances;
 use App\Services\Support\LayerSitIn;
 use App\Services\Support\SceneSplit;
-use App\Services\Support\TextLayerStyle;
-use App\Services\Support\SpeechBalloons;
 use App\Services\Support\ShotCamera;
+use App\Services\Support\SpeechBalloons;
+use App\Services\Support\TextLayerStyle;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
+use App\Support\LayerEntrances;
 use App\Support\MediaUrl;
 use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
@@ -77,19 +77,19 @@ class Step3SceneConfigurator extends Component
     use DuplicatesSceneObjects;
     use EditsDiorama;
     use EditsImages;
-    use EditsStage25d;
+    use EditsMoment;
+    use EditsPredict;
     use EditsQuizQuestions;
+    use EditsSceneArtwork;
+    use EditsSceneBackground;
+    use EditsSceneBalloons;
+    use EditsSplitPanels;
+    use EditsStage25d;
+    use EditsStoryGame;
+    use EditsTeamGame;
     use EditsTitleScreen;
     use FixesLessonProblems;
     use RestylesImages;
-    use EditsSceneBackground;
-    use EditsSceneBalloons;
-    use EditsSceneArtwork;
-    use EditsSplitPanels;
-    use EditsStoryGame;
-    use EditsPredict;
-    use EditsTeamGame;
-    use EditsMoment;
     use UndoesSceneEdits;
     use WithFileUploads;
 
@@ -3214,6 +3214,41 @@ class Step3SceneConfigurator extends Component
         }
 
         return $clean;
+    }
+
+    /**
+     * A story scene is 2D (pictures, comic panels, Ken Burns) or 3D (the painted stage). The other side's
+     * setup stays in the row, so switching back brings it back: the 2D picture in image_path, the 3D set in
+     * config.stage25d. A first switch to 3D builds the set from the scene's words, from the era's bundle.
+     */
+    public function setSceneMode(string $mode): void
+    {
+        $scene = $this->selectedSceneModel;
+        if (! $scene || ! in_array($scene->kind, ['narration', 'stage25d'], true)) {
+            return;
+        }
+
+        if ($mode === '2d' && $scene->kind === 'stage25d') {
+            $scene->update(['kind' => 'narration', 'scene_view' => 'slideshow']);
+        } elseif ($mode === '3d' && $scene->kind === 'narration') {
+            $config = $scene->config ?? [];
+            if (! isset($config['stage25d'])) {
+                $bundle = $this->eraStageBundle;
+                if ($bundle === null) {
+                    $this->dispatch('toast', type: 'warning', message: __('This era has no 3D set yet.'));
+                    $this->selectSceneInternal($scene->id);
+
+                    return;
+                }
+                $config['stage25d'] = StageSet::forScene($bundle, 's'.$scene->order, (string) $scene->script_segment);
+            }
+            $scene->update(['kind' => 'stage25d', 'status' => 'ready', 'config' => $config]);
+        } else {
+            return;
+        }
+
+        unset($this->selectedSceneModel, $this->scenes);
+        $this->selectSceneInternal($scene->id);
     }
 
     public function setSceneView(string $view): void

@@ -130,6 +130,47 @@ class TeacherStageLessonTest extends TestCase
         $this->assertSame('meadow-band-01', $scene->config['stage25d']['set']['groundBands'][0]['asset']);
     }
 
+    public function test_a_scene_switches_between_2d_and_3d_and_each_side_keeps_its_setup(): void
+    {
+        $lesson = $this->lesson();
+        $scene = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Farmers carry stones to the hunebed',
+            'status' => 'pending', 'image_path' => 'lessons/1/a.webp', 'scene_view' => 'slideshow']);
+
+        $c = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('selectScene', $scene->id)
+            ->assertSeeHtml('data-scene-mode')
+            ->call('setSceneMode', '3d');
+
+        $scene->refresh();
+        $this->assertSame('stage25d', $scene->kind);
+        $this->assertSame('ready', $scene->status);
+        $this->assertContains('hunebed-long-01', array_column($scene->config['stage25d']['set']['layers'], 'asset'), 'built from the words');
+        $stage = $scene->config['stage25d'];
+
+        $c->call('setSceneMode', '2d');
+        $scene->refresh();
+        $this->assertSame('narration', $scene->kind);
+        $this->assertSame('slideshow', $scene->scene_view);
+        $this->assertSame('lessons/1/a.webp', $scene->image_path, 'the 2D picture is still there');
+
+        $c->call('setSceneMode', '3d');
+        $this->assertSame($stage, $scene->fresh()->config['stage25d'], 'back to the same 3D set');
+    }
+
+    public function test_no_switch_to_3d_without_a_bundle_and_only_story_scenes_switch(): void
+    {
+        $lesson = $this->lesson(['era' => 'Tijd van regenten en vorsten (1600-1700)', 'topic' => 'Tasman']);
+        $story = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'x', 'status' => 'ready']);
+        $map = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'map', 'status' => 'ready']);
+
+        $c = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('selectScene', $story->id)->call('setSceneMode', '3d')
+            ->call('selectScene', $map->id)->call('setSceneMode', '3d');
+
+        $this->assertSame('narration', $story->fresh()->kind);
+        $this->assertSame('map', $map->fresh()->kind);
+    }
+
     public function test_no_3d_scene_without_a_bundle_for_the_era(): void
     {
         $lesson = $this->lesson(['era' => 'Tijd van regenten en vorsten (1600-1700)', 'topic' => 'Tasman']);

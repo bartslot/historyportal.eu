@@ -1,23 +1,14 @@
 @props(['scene' => null, 'activePanel' => 0])
 
 @php
-    $blur           = (float)  ($scene->skybox_blur      ?? 0.5);
-    $opacity        = (float)  ($scene->skybox_opacity   ?? 1.0);
-    $bgColor        = (string) ($scene->background_color ?? '#000000');
-    $view           = (string) ($scene->scene_view       ?? 'skybox');
-    $worldStatus    = (string) ($scene->world_labs_status ?? '');
-    $worldYOffset   = (float)  ($scene->world_y_offset   ?? 0);
-    $worldScale     = (float)  ($scene->world_scale      ?? 1);
-    $worldCharScale = (float)  ($scene->world_char_scale ?? 0.53);
     $isGenerating   = $scene->status === 'generating';
     $isUpscaling    = ($scene->upscale_status ?? null) === 'upscaling';
     $isBusy         = $isGenerating;
-    $hasSkyboxImage = ! empty($scene->skybox_image_path);
+    $bgColor        = (string) ($scene->background_color ?? '#000000');
     // Standard or Split (two comic panels). The retired Parallax / Drawing modes read as Standard.
     $split          = \App\Services\Support\SceneSplit::of($scene->config);
     $panelShot      = $split ? (array) (array_values((array) ($scene->shots ?? []))[$activePanel] ?? []) : [];
     $panelFocus     = \App\Services\Support\SceneSplit::focus($panelShot['focus'] ?? []) ?? ['x' => 50.0, 'y' => 50.0];
-    $candidates     = $scene->skybox_candidates ?? [];
     // Default image-source tab reflects how the current background was set.
     $bgKind         = $scene->config['background_credit']['kind'] ?? null;
     $srcDefault     = $bgKind === 'painting' ? 'paintings' : 'ai';
@@ -38,40 +29,7 @@
     $gradientDraft  = is_array($gradient) ? $gradient : ['from' => $bgColor, 'to' => '#0f172a', 'angle' => 180];
 @endphp
 
-<div class="mt-2 space-y-3"
-     x-data="{
-        view:         '{{ $view }}',
-        blur:         {{ $blur }},
-        opacity:      {{ $opacity }},
-        bgColor:      '{{ $bgColor }}',
-        charYOffset:  {{ $worldYOffset }},
-        worldScale:   {{ $worldScale }},
-        charScale:    {{ $worldCharScale }},
-        emitWorldScale() { window.dispatchEvent(new CustomEvent('lesson:world:scale',  { detail: { scale: Number(this.worldScale) } })); },
-        emitCharScale()  { window.dispatchEvent(new CustomEvent('lesson:world:char-scale', { detail: { scale: Number(this.charScale) } })); },
-        emitAllWorld()   { this.$nextTick(() => { this.emitCharY(); this.emitWorldScale(); this.emitCharScale(); }); },
-        _onMounted: null,
-        init() {
-            this.$watch('view', v => { if (v === 'world') this.emitAllWorld(); });
-            this._onMounted = (e) => {
-                if (this.view !== 'world') return
-                const d = e.detail
-                if (d) {
-                    if (d.worldYOffset   !== undefined) this.charYOffset = d.worldYOffset
-                    if (d.worldScale     !== undefined) this.worldScale  = d.worldScale
-                    if (d.worldCharScale !== undefined) this.charScale   = d.worldCharScale
-                }
-            };
-            window.addEventListener('world:mounted', this._onMounted);
-        },
-        destroy() {
-            if (this._onMounted) window.removeEventListener('world:mounted', this._onMounted);
-        },
-        emitBlur()    { window.dispatchEvent(new CustomEvent('lesson:skybox:blur',    { detail: { blur:    Number(this.blur)    } })); },
-        emitOpacity() { window.dispatchEvent(new CustomEvent('lesson:skybox:opacity', { detail: { opacity: Number(this.opacity) } })); },
-        emitBg()      { window.dispatchEvent(new CustomEvent('lesson:skybox:bgcolor', { detail: { color:   String(this.bgColor) } })); },
-        emitCharY()   { window.dispatchEvent(new CustomEvent('lesson:world:character-y', { detail: { offset: Number(this.charYOffset) } })); },
-     }">
+<div class="mt-2 space-y-3">
 
     {{-- ── Upscaling progress banner (local env only) ────────────────────── --}}
     @if ($isUpscaling)
@@ -81,35 +39,12 @@
         </div>
     @endif
 
-    {{-- ── Scene view — a dropdown (Figma): Slideshow · Panorama · 3D World. Keeps the
-         lesson:scene:view dispatch + setSceneView/generateWorld wiring. ─────────────── --}}
-    <div class="relative">
-        <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-panel-hint">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                <rect x="3" y="6" width="14" height="10" rx="1.5" /><path stroke-linecap="round" d="M20 8v8M17 6.5v11" />
-            </svg>
-        </span>
-        <select x-model="view"
-                @change="
-                    window.dispatchEvent(new CustomEvent('lesson:scene:view', { detail: {
-                        view:     view,
-                        imageUrl: {{ json_encode(\App\Support\MediaUrl::of($scene->image_path)) }},
-                        sceneId:  {{ $scene->id }},
-                        duration: {{ $scene->duration_seconds ?? 10 }},
-                    }}));
-                    view === 'world'
-                        ? $wire.call('generateWorld', $wire.get('selectedSceneId'))
-                        : $wire.call('setSceneView', view);
-                "
-                class="select select-sm select-bordered w-full bg-base-100 pl-9 font-medium text-slate-200">
-            <option value="slideshow">{{ __('Slideshow') }}</option>
-            <option value="skybox">{{ __('Panorama') }}</option>
-            <option value="world">{{ __('3D World') }}</option>
-        </select>
-    </div>
+    @if ($scene->kind === 'narration')
+        <x-lesson.scene-mode-tabs :scene="$scene" />
+    @endif
 
-    {{-- ── Slideshow tab ────────────────────────────────────────────────────── --}}
-    <div x-show="view === 'slideshow'" x-cloak class="space-y-2">
+    {{-- ── 2D: pictures, panels, Ken Burns ──────────────────────────────────── --}}
+    <div class="space-y-2">
         {{-- Layout (Figma 2346:503): one strip of tiles, each a picture of its arrangement, that
              scrolls sideways to more of them. Single is one picture; every other tile splits the
              scene into comic panels. The panel clicked on the stage is the one the controls below
@@ -385,239 +320,6 @@
             </div>
         </div>
 
-    </div>
-
-    {{-- ── Skybox tab ───────────────────────────────────────────────────────── --}}
-    <div x-show="view === 'skybox'" x-cloak class="space-y-2">
-
-        @if (count($candidates) && ! $hasSkyboxImage)
-            {{-- ── State A: candidates ready, awaiting the teacher's pick ───────── --}}
-            <div class="space-y-2">
-                <span class="text-2xs uppercase tracking-widest text-panel-hint block">{{ __('Pick your panorama') }}</span>
-                <div class="grid grid-cols-2 gap-1.5">
-                    @foreach ($candidates as $i => $path)
-                        <button type="button"
-                                wire:click="selectSkyboxCandidate({{ $scene->id }}, {{ $i }})"
-                                wire:loading.attr="disabled" wire:target="selectSkyboxCandidate,generateSkyboxCandidates"
-                                class="group relative block w-full overflow-hidden rounded ring-1 ring-slate-700 hover:ring-base-content/40 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                style="aspect-ratio:2/1">
-                            <img src="{{ asset('storage/' . $path) }}"
-                                 class="w-full h-full object-cover" />
-                        </button>
-                    @endforeach
-                </div>
-                <button type="button"
-                        wire:click="generateSkyboxCandidates({{ $scene->id }})"
-                        wire:loading.attr="disabled" wire:target="generateSkyboxCandidates"
-                        @disabled($isBusy)
-                        class="text-2xs text-panel-hint hover:text-panel-link underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1">
-                    <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
-                    <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Generate 4 new options</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
-                </button>
-            </div>
-        @elseif ($hasSkyboxImage)
-            {{-- ── State B: a skybox has been chosen ───────────────────────────── --}}
-            <div class="relative">
-                <img src="{{ asset('storage/' . $scene->skybox_image_path) }}?v={{ $scene->updated_at?->timestamp }}"
-                     class="w-full rounded object-cover @if($isUpscaling) opacity-60 @endif" style="aspect-ratio:2/1" />
-                @if ($isUpscaling)
-                    <div class="absolute inset-0 flex items-center justify-center gap-1.5 rounded">
-                        <x-icons.spinner class="w-4 h-4 animate-spin text-violet-300" />
-                        <span class="text-2xs text-violet-300 font-medium">{{ __('Upscaling…') }}</span>
-                    </div>
-                @endif
-            </div>
-
-            <div class="flex flex-wrap gap-1.5">
-                <button type="button"
-                        wire:click="generateSkyboxCandidates({{ $scene->id }})"
-                        wire:loading.attr="disabled" wire:target="generateSkyboxCandidates"
-                        @disabled($isBusy)
-                        class="btn btn-outline btn-sm border-slate-600 text-panel-hint hover:border-sky-500 hover:text-panel-link disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
-                    <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
-                    <span wire:loading.remove wire:target="generateSkyboxCandidates">↻ Regenerate</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
-                </button>
-                <button type="button"
-                        wire:click="enhanceSkybox({{ $scene->id }})"
-                        wire:loading.attr="disabled" wire:target="enhanceSkybox"
-                        @disabled($isBusy)
-                        class="btn btn-xs bg-violet-600 text-white hover:bg-violet-500 border-0 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
-                    <span wire:loading wire:target="enhanceSkybox"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
-                    <span wire:loading.remove wire:target="enhanceSkybox">Enhance 4×</span>
-                    <span wire:loading wire:target="enhanceSkybox">{{ __('Enhancing…') }}</span>
-                </button>
-            </div>
-        @else
-            {{-- ── State C: nothing generated yet ──────────────────────────────── --}}
-            <div class="w-full rounded bg-slate-800 border border-dashed border-slate-600 flex items-center justify-center" style="aspect-ratio:2/1">
-                @if ($isGenerating)
-                    <x-icons.spinner class="w-5 h-5 animate-spin text-panel-hint" />
-                @else
-                    <span class="text-xs text-panel-hint">{{ __('No panorama yet') }}</span>
-                @endif
-            </div>
-
-            <div class="flex flex-wrap gap-1.5">
-                <button type="button"
-                        wire:click="generateSkyboxCandidates({{ $scene->id }})"
-                        wire:loading.attr="disabled" wire:target="generateSkyboxCandidates"
-                        @disabled($isBusy || ! $scene->image_path)
-                        class="btn btn-xs bg-sky-600 text-white hover:bg-sky-500 border-0 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
-                    <span wire:loading wire:target="generateSkyboxCandidates"><x-icons.spinner class="w-3 h-3 animate-spin" /></span>
-                    <span wire:loading.remove wire:target="generateSkyboxCandidates">{{ __('Generate 4 panorama options') }}</span>
-                    <span wire:loading wire:target="generateSkyboxCandidates">{{ __('Generating…') }}</span>
-                </button>
-            </div>
-        @endif
-
-        @if (! $scene->image_path)
-            <p class="text-prose text-panel-hint">{{ __('Generate the flat image first to unlock panorama options.') }}</p>
-        @endif
-
-        {{-- Blur --}}
-        <div>
-            <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Blur') }}</label>
-                <span class="text-2xs font-mono text-base-content/85" x-text="Number(blur).toFixed(2)"></span>
-            </div>
-            <span class="range-panel-knob min-w-0 w-full">
-                <input type="range" min="0.01" max="0.9" step="0.01"
-                       x-model.number="blur"
-                       @input="emitBlur()"
-                       @change="$wire.set('selectedScene.skybox_blur', Number(blur)); $wire.call('saveSelected')"
-                       class="range range-panel" />
-            </span>
-        </div>
-
-        {{-- Opacity --}}
-        <div>
-            <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Opacity') }}</label>
-                <span class="text-2xs font-mono text-base-content/85" x-text="Math.round(opacity * 100) + '%'"></span>
-            </div>
-            <span class="range-panel-knob min-w-0 w-full">
-                <input type="range" min="0" max="1" step="0.01"
-                       x-model.number="opacity"
-                       @input="emitOpacity()"
-                       @change="$wire.set('selectedScene.skybox_opacity', Number(opacity)); $wire.call('saveSelected')"
-                       class="range range-panel" />
-            </span>
-        </div>
-
-        {{-- Background color --}}
-        <div>
-            <div class="flex items-center justify-between mb-1">
-                <label class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Background') }}</label>
-                <span class="text-2xs font-mono text-base-content/85" x-text="bgColor"></span>
-            </div>
-            <label class="flex items-center gap-2 cursor-pointer">
-                <span class="w-6 h-6 rounded border border-slate-600 overflow-hidden relative shrink-0"
-                      :style="'background:' + bgColor">
-                    <input type="color"
-                           x-model="bgColor"
-                           @input="emitBg()"
-                           @change="$wire.set('selectedScene.background_color', String(bgColor)); $wire.call('saveSelected')"
-                           class="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                </span>
-            </label>
-        </div>
-    </div>
-
-    {{-- ── World tab ────────────────────────────────────────────────────────── --}}
-    <div x-show="view === 'world'" x-cloak class="space-y-3">
-
-        <div class="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs space-y-1">
-            @if($worldStatus === 'ready')
-                <div class="flex items-center gap-2 text-success">
-                    <span class="h-1.5 w-1.5 rounded-full bg-success"></span>
-                    World ready
-                </div>
-            @elseif(in_array($worldStatus, ['pending', 'generating']))
-                <div class="flex items-center gap-2 text-warning">
-                    <span class="h-1.5 w-1.5 rounded-full bg-warning animate-pulse"></span>
-                    Generating world… this takes ~5–10 min
-                </div>
-            @elseif($worldStatus === 'failed')
-                <div class="flex items-center gap-2 text-error">
-                    <span class="h-1.5 w-1.5 rounded-full bg-error"></span>
-                    Generation failed
-                </div>
-                <button wire:click="generateWorld({{ $scene->id }})"
-                        class="text-warning hover:text-base-content underline underline-offset-2 mt-1">{{ __('Retry') }}</button>
-            @else
-                <div class="text-panel-hint">Select to start WorldLabs generation</div>
-            @endif
-        </div>
-
-        <div x-data="{
-                 open:        false,
-                 savedY:      {{ $worldYOffset }},
-                 savedScale:  {{ $worldScale }},
-                 savedChar:   {{ $worldCharScale }},
-                 get dirty() {
-                     return Math.abs(charYOffset - this.savedY)    > 0.001
-                         || Math.abs(worldScale  - this.savedScale) > 0.001
-                         || Math.abs(charScale   - this.savedChar)  > 0.001
-                 },
-                 save() {
-                     $wire.call('saveWorldSettings', Number(charYOffset), Number(worldScale), Number(charScale))
-                     this.savedY     = charYOffset
-                     this.savedScale = worldScale
-                     this.savedChar  = charScale
-                 }
-             }">
-            <button @click="open = !open"
-                    class="flex items-center justify-between w-full text-2xs uppercase tracking-widest text-panel-hint hover:text-slate-200 transition-colors">
-                <span>World Settings</span>
-                <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-            <div x-show="open" class="mt-2 space-y-3">
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-panel-hint">World Y</label>
-                        <span class="text-2xs font-mono text-base-content/85" x-text="(charYOffset >= 0 ? '+' : '') + Number(charYOffset).toFixed(2)"></span>
-                    </div>
-                    <span class="range-panel-knob min-w-0 w-full">
-                        <input type="range" min="-3" max="3" step="0.01" x-model.number="charYOffset"
-                               @input="emitCharY()" class="range range-panel" />
-                    </span>
-                    <button @click="charYOffset = 0; emitCharY()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-panel-hint">World Scale</label>
-                        <span class="text-2xs font-mono text-base-content/85" x-text="Number(worldScale).toFixed(2) + '×'"></span>
-                    </div>
-                    <span class="range-panel-knob min-w-0 w-full">
-                        <input type="range" min="0.1" max="5" step="0.01" x-model.number="worldScale"
-                               @input="emitWorldScale()" class="range range-panel" />
-                    </span>
-                    <button @click="worldScale = 1; emitWorldScale()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-2xs uppercase tracking-widest text-panel-hint">Char Scale</label>
-                        <span class="text-2xs font-mono text-base-content/85" x-text="Number(charScale).toFixed(2) + '×'"></span>
-                    </div>
-                    <span class="range-panel-knob min-w-0 w-full">
-                        <input type="range" min="0.1" max="3" step="0.01" x-model.number="charScale"
-                               @input="emitCharScale()" class="range range-panel" />
-                    </span>
-                    <button @click="charScale = 1; emitCharScale()" class="text-2xs text-panel-hint hover:text-slate-300 mt-1">reset</button>
-                </div>
-                <button @click="dirty && save()"
-                        :disabled="!dirty"
-                        :class="dirty ? 'bg-slate-600 hover:bg-slate-500 text-white cursor-pointer' : 'bg-slate-800 text-panel-hint cursor-not-allowed'"
-                        class="w-full rounded px-2 py-1 text-2xs uppercase tracking-widest transition-colors">
-                    Save world settings
-                </button>
-            </div>
-        </div>
     </div>
 
 </div>
