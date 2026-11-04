@@ -21,6 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
 import { applyLayerFilter } from './layer-filters.js'
+import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occlusion.js'
 import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
@@ -270,6 +271,7 @@ export class ArtworkOverlay {
       this._occResize.observe(this.host)
     }
     this.host.style.pointerEvents = 'none'   // the host is transparent; only layer nodes catch events
+    this._masks = new Map()   // url -> alpha mask, for telling a layer's paint from its empty pixels
     trackStage(this.host)   // stage size for ambient drift distances (ambient.js)
     // Deselect when something that isn't one of MY layers is selected (mutually-exclusive
     // selection across text, artwork and background — no re-dispatch, so no loop).
@@ -1132,6 +1134,7 @@ export class ArtworkOverlay {
     if (!this.readonly && !item.embed) {
       // Double-click opens the image editor for THIS picture (editor/photo-editor.js).
       node.addEventListener('dblclick', (e) => {
+        if (this._onEmptyPixels(item, node, e)) return
         e.stopPropagation()
         window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
           id: artObjId(item.asset_id),
@@ -1323,8 +1326,35 @@ export class ArtworkOverlay {
   }
 
   // Drag anywhere on the layer to move it; a press that doesn't move just selects.
+  /** Is this point on the picture's empty pixels? Those are not the layer. Unknown (no mask yet, no picture) is the layer. */
+  _onEmptyPixels(item, node, e) {
+    const mask = item.url && !item.embed ? this._masks.get(item.url) : null
+    if (!mask) return false
+    const { fx, fy } = picturePoint(e.clientX, e.clientY, node.getBoundingClientRect(), node.offsetWidth, node.offsetHeight,
+      { rotation: item.rotation ?? 0, flipX: !!item.flip_x, flipY: !!item.flip_y })
+    return alphaAt(mask, fx, fy) <= DRAWN_ALPHA
+  }
+
+  /** Hand a press on empty pixels to whatever is under it: another layer, or the stage. */
+  _passDown(node, e) {
+    node.style.pointerEvents = 'none'
+    const under = document.elementFromPoint(e.clientX, e.clientY)
+    node.style.pointerEvents = 'auto'
+    under?.dispatchEvent(new PointerEvent(e.type, e))
+  }
+
   _wireDrag(item, node) {
+    if (!this.readonly && item.url && !item.embed && !this._masks.has(item.url)) {
+      this._masks.set(item.url, null)
+      loadAlphaMask(item.url).then((mask) => { this._masks.set(item.url, mask) }).catch(() => {})
+    }
+    node.addEventListener('pointermove', (e) => {
+      if (!e.buttons) node.style.cursor = this._onEmptyPixels(item, node, e) ? 'default' : 'grab'
+    })
     node.addEventListener('pointerdown', (e) => {
+      if (e.target === node || e.target.tagName === 'IMG') {
+        if (this._onEmptyPixels(item, node, e)) { this._passDown(node, e); return }
+      }
       if (e.target.dataset && (e.target.dataset.scaleHandle || e.target.dataset.rotateHandle)) return   // handles resize/rotate, not drag
       this.select(artObjId(item.asset_id))
       const startX = e.clientX, startY = e.clientY

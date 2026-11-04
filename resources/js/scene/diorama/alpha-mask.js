@@ -18,6 +18,19 @@ export function alphaAt (mask, fx, fy) {
   return mask.alpha[y * mask.w + x]
 }
 
+/**
+ * Where a screen point lands on a picture that is turned and mirrored about its middle: fractions across and down.
+ * `rect` is its bounding box on screen, `w`, `h` its own unturned size. Mirrors the CSS `rotate() scale()` it is drawn with.
+ */
+export function picturePoint (clientX, clientY, rect, w, h, { rotation = 0, flipX = false, flipY = false } = {}) {
+  const dx = clientX - (rect.left + rect.width / 2)
+  const dy = clientY - (rect.top + rect.height / 2)
+  const a = (-rotation * Math.PI) / 180
+  const x = dx * Math.cos(a) - dy * Math.sin(a)
+  const y = dx * Math.sin(a) + dy * Math.cos(a)
+  return { fx: 0.5 + ((flipX ? -1 : 1) * x) / w, fy: 0.5 + ((flipY ? -1 : 1) * y) / h }
+}
+
 const _cache = new Map()
 
 /**

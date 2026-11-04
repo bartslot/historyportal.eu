@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ArtworkOverlay, layersIdentity, layersSignature } from '../ArtworkOverlay.js'
+import { picturePoint } from '../diorama/alpha-mask.js'
 
 const host = () => document.createElement('div')
 const layer = (extra = {}) => ({ asset_id: 1, url: '/a.png', x: 50, y: 58, scale: 1, height: 40, ...extra })
@@ -503,3 +504,20 @@ describe('syncProps against the payload the server actually sends', () => {
     expect(overlay.syncProps([serverLayer({ depth: 2 })])).toBe(false)
   })
 })
+
+describe('picturePoint', () => {
+  const rect = { left: 0, top: 0, width: 100, height: 100 }
+
+  it('reads a point on a plain picture', () => {
+    expect(picturePoint(25, 75, rect, 100, 100)).toEqual({ fx: 0.25, fy: 0.75 })
+  })
+
+  it('undoes a turn and a mirror', () => {
+    const turned = picturePoint(75, 50, rect, 100, 100, { rotation: 90 })   // turned clockwise, its top is on the right
+    expect(turned.fx).toBeCloseTo(0.5)
+    expect(turned.fy).toBeCloseTo(0.25)
+    expect(picturePoint(25, 50, rect, 100, 100, { flipX: true }).fx).toBeCloseTo(0.75)
+    expect(picturePoint(50, 25, rect, 100, 100, { flipY: true }).fy).toBeCloseTo(0.75)
+  })
+})
+
