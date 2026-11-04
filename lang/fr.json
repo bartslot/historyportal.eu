@@ -2617,5 +2617,9 @@
     "Hand": "Main",
     "Softness": "Douceur",
     "Select a part": "Sélectionner une partie",
-    "Discard changes": "Abandonner les modifications"
+    "Saved.": "Enregistré.",
+    "Discard": "Abandonner",
+    "Keep editing": "Continuer",
+    "Save your changes?": "Enregistrer les modifications ?",
+    "Clean up": "Nettoyer"
 }

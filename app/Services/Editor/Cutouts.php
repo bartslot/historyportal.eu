@@ -78,11 +78,11 @@ final class Cutouts
 
     /** Every word Uitknippen shows (resources/js/editor/cutout-dialog.js), English => this language. */
     private const LABELS = [
-        'White holes', 'White edges', 'Soft bottom', 'Before', 'Advanced', 'Select', 'Brush', 'Colour', 'Close',
-        'Brush size', 'Add', 'Remove', 'Everywhere', 'Soft edge', 'Edge', 'Undo', 'Tolerance', 'Cut out', 'Back to the original',
-        'Cancel', 'Save as asset', 'Apply', 'The picture could not be saved. Try again.',
-        'This picture cannot be opened here.', 'Tools', 'Erase', 'Bring back', 'Remove colour', 'Hand', 'Size', 'Softness',
-        'Redo', 'Zoom in', 'Zoom out', 'Fit', 'Select a part', 'Discard changes',
+        'Back to the scene', 'Picture', 'Save', 'Undo', 'Redo', 'Tools', 'Erase', 'Bring back', 'Remove colour', 'Select a part', 'Hand',
+        'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
+        'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
+        'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
+        'This picture cannot be opened here.',
     ];
 
     /** @return array<string,string> */

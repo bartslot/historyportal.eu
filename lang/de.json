@@ -2617,5 +2617,9 @@
     "Hand": "Hand",
     "Softness": "Weichheit",
     "Select a part": "Teil auswählen",
-    "Discard changes": "Änderungen verwerfen"
+    "Saved.": "Gespeichert.",
+    "Discard": "Verwerfen",
+    "Keep editing": "Weiter bearbeiten",
+    "Save your changes?": "Änderungen speichern?",
+    "Clean up": "Aufräumen"
 }

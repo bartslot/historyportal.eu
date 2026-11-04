@@ -2659,5 +2659,9 @@
     "Hand": "Hand",
     "Softness": "Zachtheid",
     "Select a part": "Deel selecteren",
-    "Discard changes": "Wijzigingen weggooien"
+    "Saved.": "Opgeslagen.",
+    "Discard": "Weggooien",
+    "Keep editing": "Verder bewerken",
+    "Save your changes?": "Wijzigingen opslaan?",
+    "Clean up": "Opschonen"
 }

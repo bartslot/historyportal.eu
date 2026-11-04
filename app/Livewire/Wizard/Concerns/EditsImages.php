@@ -57,14 +57,19 @@ trait EditsImages
         }
         $state = EditedImages::state($state);
 
-        return ['ok' => $at[0] === 'art'
+        $saved = $at[0] === 'art'
             ? $this->editArtLayer($scene, $at[1], fn (array $l): array => [
                 'path' => $path,
                 'original_path' => $l['original_path'] ?? $l['path'] ?? null,
                 'edit_state' => $state,
             ])
             // the URL without its host, like the disk's own (APP_URL/storage): a scene keeps working on another domain
-            : $this->editStageRow($scene, $at[1], ['src' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH), 'edit_state' => $state])];
+            : $this->editStageRow($scene, $at[1], ['src' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH), 'edit_state' => $state]);
+        if ($saved) {
+            $this->dispatch('toast', type: 'success', message: __('Saved.'));
+        }
+
+        return ['ok' => $saved];
     }
 
     /** Back to the picture as it was before the editor touched it. */

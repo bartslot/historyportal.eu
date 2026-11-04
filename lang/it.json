@@ -2617,5 +2617,9 @@
     "Hand": "Mano",
     "Softness": "Morbidezza",
     "Select a part": "Seleziona una parte",
-    "Discard changes": "Scarta le modifiche"
+    "Saved.": "Salvato.",
+    "Discard": "Scarta",
+    "Keep editing": "Continua a modificare",
+    "Save your changes?": "Salvare le modifiche?",
+    "Clean up": "Pulisci"
 }

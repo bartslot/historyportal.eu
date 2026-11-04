@@ -19,8 +19,6 @@ let wire
 beforeEach(() => {
   document.body.innerHTML = ''
   Object.values(mask).forEach((f) => f?.mockClear?.())
-  HTMLDialogElement.prototype.showModal ??= function () { this.open = true }
-  HTMLDialogElement.prototype.close ??= function () { this.open = false }
   vi.stubGlobal('requestAnimationFrame', (fn) => { fn(); return 1 })
   const root = document.createElement('div')
   root.setAttribute('wire:id', 'w1')
@@ -49,8 +47,8 @@ describe('double-click: the picture cleans itself', () => {
     fade.dispatchEvent(new Event('input'))
     expect(mask.setClean).toHaveBeenLastCalledWith({ white: 50, fringe: 3, fade: 40 })
     expect($('[data-cut-fade-value]').textContent).toBe('40')
-    $('[data-cut-cancel]').click()   // a slider moved: the second press leaves
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()   // a slider moved: there was something to lose
   })
 
   it('Before shows the picture as it came in while held', async () => {
@@ -59,12 +57,12 @@ describe('double-click: the picture cleans itself', () => {
     expect(mask.setCompare).toHaveBeenLastCalledWith(true)
     $('[data-cut-compare]').dispatchEvent(new Event('pointerup'))
     expect(mask.setCompare).toHaveBeenLastCalledWith(false)
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
-  it('Apply puts the clean picture on the item and closes', async () => {
+  it('Save puts the clean picture on the item and closes', async () => {
     const { $, done } = await open()
-    $('[data-cut-apply]').click()
+    $('[data-cut-save]').click()
     await done
     expect(wire.saveEditedImage).toHaveBeenCalledWith('s25_band-0', 'data:image/webp;base64,CLEAN', {})
     expect(document.querySelector('[data-cutout]')).toBeNull()
@@ -80,10 +78,10 @@ describe('double-click: the picture cleans itself', () => {
   it('offers Back to the original only on a picture edited before', async () => {
     let { $ } = await open()
     expect($('[data-cut-original]').hidden).toBe(true)
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
     ;({ $ } = await open({ edited: true }))
     expect($('[data-cut-original]').hidden).toBe(false)
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
   it('stays open and says so when a save is refused', async () => {
@@ -91,11 +89,11 @@ describe('double-click: the picture cleans itself', () => {
     const toasts = []
     window.addEventListener('toast', (e) => toasts.push(e.detail))
     const { $ } = await open()
-    $('[data-cut-apply]').click()
+    $('[data-cut-save]').click()
     await flush()
     expect(document.querySelector('[data-cutout]')).not.toBeNull()
     expect(toasts.at(-1).type).toBe('error')
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 })
 
@@ -105,11 +103,12 @@ describe('the eraser and its tools', () => {
   it('opens on Erase with a brush that suits the size of the picture', async () => {
     const { $ } = await open()
     expect(mask.setMode).toHaveBeenLastCalledWith('erase')
-    expect($('[data-cut-tool="erase"]').classList.contains('btn-primary')).toBe(true)
+    expect($('[data-cut-tool="erase"] input').checked).toBe(true)
+    expect($('[data-cut-tool-name]').textContent).toBe('Erase')
     expect(mask.setBrush).toHaveBeenCalledWith({ size: 15 })
     expect($('[data-cut-esize]').max).toBe('90')
     expect(mask.setTolerance).toHaveBeenCalledWith(30)
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
   it('a small figure gets a small brush', () => {
@@ -121,13 +120,13 @@ describe('the eraser and its tools', () => {
     const { $ } = await open()
     const forErase = $('[data-cut-for="erase restore"]'), forColour = $('[data-cut-for="colour"]')
     expect([forErase.hidden, forColour.hidden]).toEqual([false, true])
-    $('[data-cut-tool="colour"]').click()
+    $('[data-cut-tool="colour"] input').click()
     expect(mask.setMode).toHaveBeenLastCalledWith('colour')
     expect([forErase.hidden, forColour.hidden]).toEqual([true, false])
-    $('[data-cut-tool="restore"]').click()
+    $('[data-cut-tool="restore"] input').click()
     expect(mask.setMode).toHaveBeenLastCalledWith('restore')
     expect(forErase.hidden).toBe(false)
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
   it('the sliders set the brush and the tolerance', async () => {
@@ -138,8 +137,8 @@ describe('the eraser and its tools', () => {
     set('soft', '50')
     expect(mask.setBrush).toHaveBeenLastCalledWith({ softness: 0.5 })
     set('tol', '64')
-    expect(mask.setTolerance).toHaveBeenLastCalledWith('64')
-    $('[data-cut-cancel]').click()
+    expect(mask.setTolerance).toHaveBeenLastCalledWith(64)
+    $('[data-cut-back]').click()
   })
 
   it('undo and redo: the buttons follow the history, and Cmd+Z stays inside the dialog', async () => {
@@ -152,34 +151,102 @@ describe('the eraser and its tools', () => {
     expect($('[data-cut-redo]').disabled).toBe(true)
     const outside = vi.fn()
     window.addEventListener('keydown', outside)
-    key($('[data-cut-apply]'), { key: 'z', metaKey: true })
+    key($('[data-cut-save]'), { key: 'z', metaKey: true })
     expect(mask.undo).toHaveBeenCalledTimes(1)
-    key($('[data-cut-apply]'), { key: 'z', metaKey: true, shiftKey: true })
+    key($('[data-cut-save]'), { key: 'z', metaKey: true, shiftKey: true })
     expect(mask.redo).toHaveBeenCalledTimes(1)
     expect(outside).not.toHaveBeenCalled()
     window.removeEventListener('keydown', outside)
     report({ canUndo: false })
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
   it('[ and ] change the eraser size', async () => {
     const { $ } = await open()
-    key($('[data-cut-apply]'), { key: ']' })
+    key($('[data-cut-save]'), { key: ']' })
     expect($('[data-cut-esize]').value).toBe('17')
-    key($('[data-cut-apply]'), { key: '[' })
+    key($('[data-cut-save]'), { key: '[' })
     expect($('[data-cut-esize]').value).toBe('14')
-    $('[data-cut-cancel]').click()
+    $('[data-cut-back]').click()
   })
 
-  it('work done takes a second press to throw away', async () => {
+  const withWork = async () => {
     const { mountQuickMask } = await import('../../scene/quick-mask.js')
-    const { $ } = await open()
+    const opened = await open()
     mountQuickMask.mock.lastCall[3]({ canUndo: true })
-    const cancel = $('[data-cut-cancel]')
-    cancel.click()
-    expect(document.querySelector('[data-cutout]')).not.toBeNull()
-    expect(cancel.classList.contains('btn-error')).toBe(true)
-    cancel.click()
+    return opened
+  }
+
+  it('without work the back arrow and Esc leave at once', async () => {
+    let { $, done } = await open()
+    $('[data-cut-back]').click()
+    await done
     expect(document.querySelector('[data-cutout]')).toBeNull()
+    ;({ done } = await open())
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await done
+    expect(document.querySelector('[data-cutout]')).toBeNull()
+  })
+
+  it('with work the back arrow asks: Keep editing stays, and nothing was saved', async () => {
+    const { $ } = await withWork()
+    $('[data-cut-back]').click()
+    expect($('[data-cut-ask]').hidden).toBe(false)
+    $('[data-cut-ask-stay]').click()
+    expect($('[data-cut-ask]').hidden).toBe(true)
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    expect(wire.saveEditedImage).not.toHaveBeenCalled()
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()
+  })
+
+  it('Esc does what the back arrow does, and Esc again keeps editing', async () => {
+    const { $ } = await withWork()
+    const esc = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    esc()
+    expect($('[data-cut-ask]').hidden).toBe(false)
+    esc()
+    expect($('[data-cut-ask]').hidden).toBe(true)
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    esc()
+    $('[data-cut-ask-discard]').click()
+  })
+
+  it('Discard leaves without saving', async () => {
+    const { $, done } = await withWork()
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()
+    await done
+    expect(wire.saveEditedImage).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-cutout]')).toBeNull()
+  })
+
+  it('Save in the question saves and leaves', async () => {
+    const { $, done } = await withWork()
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-save]').click()
+    await done
+    expect(wire.saveEditedImage).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-cutout]')).toBeNull()
+  })
+
+  it('a refused save stays in the editor with the work, says so, and the question is gone', async () => {
+    wire.saveEditedImage.mockResolvedValueOnce({ ok: false })
+    const { $ } = await withWork()
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-save]').click()
+    await flush()
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    expect($('[data-cut-ask]').hidden).toBe(true)
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()
+  })
+
+  it('the app behind is inert while it is up and comes back after', async () => {
+    const behind = document.body.firstElementChild
+    const { $ } = await open()
+    expect(behind.inert).toBe(true)
+    $('[data-cut-back]').click()
+    expect(behind.inert).toBe(false)
   })
 })

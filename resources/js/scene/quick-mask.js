@@ -583,7 +583,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             erase = new Uint8ClampedArray(erase);
             bring = new Uint8ClampedArray(bring);
             const point = onImage(e);
-            drag = { stroke: true, restore: mode === 'restore', from, cov: new Uint8Array(w * h), last: point, box: null };
+            drag = { eraser: true, restore: mode === 'restore', from, cov: new Uint8Array(w * h), last: point, box: null };
             strokeTo(point);
             return;
         }
@@ -603,7 +603,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     };
     const move = (e) => {
         if (!drag) return;
-        if (drag.stroke) { strokeTo(onImage(e)); return; }
+        if (drag.eraser) { strokeTo(onImage(e)); return; }
         if (drag.brush) {
             const [x, y] = toImage(e);
             const [lx, ly] = drag.last;
@@ -621,7 +621,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         if (frame) { cancelAnimationFrame(frame); frame = 0; }
         const d = drag;
         drag = null;
-        if (d.stroke) {
+        if (d.eraser) {
             // a stroke wholly off the picture changed nothing: no step to undo
             if (d.box) { remember({ current, selection, erase: d.from.erase, bring: d.from.bring }); emit(); }
             else ({ erase, bring } = d.from);
