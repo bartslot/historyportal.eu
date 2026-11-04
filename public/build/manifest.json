@@ -183,7 +183,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CoKFf-ut.css",
+    "file": "assets/app-cs2lpcsZ.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -192,7 +192,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-zon1NKfz.js",
+    "file": "assets/app-9KjG07PB.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -207,6 +207,7 @@
       "_tuner-CTMYYJl-.js"
     ],
     "dynamicImports": [
+      "resources/js/scene/music-mixer.js",
       "node_modules/filerobot-image-editor/lib/index.js",
       "_index-COx1GTUT.js",
       "_index-Dbvg1dQ0.js",
@@ -258,7 +259,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-Bige6C24.js",
+    "file": "assets/lesson-player-plElL_ic.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -272,6 +273,7 @@
       "_config-DwQUN7uY.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
+      "resources/js/scene/music-mixer.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -412,7 +414,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-B0c8op5L.js",
+    "file": "assets/index-CI23Jz6s.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -459,6 +461,12 @@
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
     ]
+  },
+  "resources/js/scene/music-mixer.js": {
+    "file": "assets/music-mixer-D_mKSaX0.js",
+    "name": "music-mixer",
+    "src": "resources/js/scene/music-mixer.js",
+    "isDynamicEntry": true
   },
   "resources/js/scene/quick-mask.js": {
     "file": "assets/quick-mask-Dk6n0edm.js",
@@ -522,7 +530,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CA-FBs_7.js",
+    "file": "assets/recorder-ByBgUgpt.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
