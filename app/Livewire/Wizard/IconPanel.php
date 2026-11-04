@@ -9,11 +9,13 @@ use App\Models\ImageRestyle;
 use App\Models\Lesson;
 use App\Models\SvgAsset;
 use App\Services\Assets\SequenceImporter;
+use App\Services\Editor\Cutouts;
 use App\Support\LibraryEra;
 use Illuminate\Contracts\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RuntimeException;
@@ -39,6 +41,9 @@ class IconPanel extends Component
     public string $sequenceCategory = 'figures';
 
     private const MAX_SEQUENCE_FRAMES = 240;
+
+    /** The teacher's own cut-outs (Cutouts): a tab like a collection, shown once there is one. */
+    public const CUTOUTS = 'cutouts';
 
     /**
      * Frames → one animated library asset (SequenceImporter). Admins only: it writes into the
@@ -211,6 +216,14 @@ class IconPanel extends Component
         'history-line' => ['figures' => 'Characters', 'backdrops' => 'Backdrops', 'props' => 'Misc', 'nature' => 'Nature', 'architecture' => 'Architecture'],
     ];
 
+    /** A cut-out was just saved (EditsImages::saveCutout): open its tab, so the teacher sees it there. */
+    #[On('cutouts-changed')]
+    public function showCutouts(): void
+    {
+        unset($this->collections, $this->icons, $this->groups);
+        $this->selectCollection(self::CUTOUTS);
+    }
+
     public function selectCollection(string $collection): void
     {
         if (! in_array($collection, $this->collections(), true)) {
@@ -247,6 +260,15 @@ class IconPanel extends Component
     #[Computed]
     public function collections(): array
     {
+        $mine = auth()->check() && SvgAsset::query()->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->exists()
+            ? [self::CUTOUTS] : [];
+
+        return [...$mine, ...$this->bundledCollections()];
+    }
+
+    /** @return list<string> */
+    private function bundledCollections(): array
+    {
         return SvgAsset::query()
             ->bundled()
             ->whereNotNull('collection')
@@ -274,6 +296,9 @@ class IconPanel extends Component
     #[Computed]
     public function groups(): array
     {
+        if ($this->collection === self::CUTOUTS) {
+            return [];
+        }
         if ($main = self::MAIN_CATEGORIES[$this->collection] ?? null) {
             $present = SvgAsset::query()->bundled()->where('collection', $this->collection)->distinct()->pluck('category')->all();
 
@@ -345,6 +370,10 @@ class IconPanel extends Component
     #[Computed]
     public function icons(): \Illuminate\Support\Collection
     {
+        if ($this->collection === self::CUTOUTS) {
+            return SvgAsset::query()->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->latest()->limit(self::PAGE)->get();
+        }
+
         return SvgAsset::query()
             ->bundled()
             ->where('collection', $this->collection)

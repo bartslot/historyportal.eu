@@ -210,7 +210,7 @@ export function normalizeLayer(l) {
         // the same on a symmetrical shape and completely different on a ship or a portrait.
         flip_x: !!l.flip_x,
         flip_y: !!l.flip_y,
-        // The image editor (editor/photo-editor.js): the picture before any edit, and the editor's own state.
+        // Saved by the earlier image editor (removed 2026-11-04): the picture before its edit, and its state.
         original_url: l.original_url || null,
         edit_state: l.edit_state || null,
         kind: l.kind || 'figure',
@@ -1132,15 +1132,15 @@ export class ArtworkOverlay {
 
     this._wireDrag(item, node)
     if (!this.readonly && !item.embed) {
-      // Double-click opens the image editor for THIS picture (editor/photo-editor.js).
+      // Double-click opens Uitknippen for THIS picture, as it is shown (editor/cutout-dialog.js).
       node.addEventListener('dblclick', (e) => {
         if (this._onEmptyPixels(item, node, e)) return
         e.stopPropagation()
         window.dispatchEvent(new CustomEvent('image-edit:open', { detail: {
           id: artObjId(item.asset_id),
           title: item.title,
-          original: item.original_url || item.url,
-          state: item.edit_state,
+          original: item.url,
+          from: null,
           edited: !!item.original_url,
           el: this.host,
         } }))

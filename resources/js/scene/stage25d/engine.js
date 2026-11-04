@@ -33,7 +33,32 @@ const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
-const shelfOf = (a) => (isAnimation(a) ? 'vfx' : a.layer)
+const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
+
+/**
+ * The teacher's own cut-outs (Uitknippen, app/Services/Editor/Cutouts.php) as rows of the library: the page lists
+ * them (data-stage25d-cutouts) and a new one arrives with `cutouts-changed`. Their file is relative to the bundle's
+ * folder, so the stage resolves them like any library picture.
+ */
+let cutoutRows = null
+const ownCutouts = () => {
+  if (cutoutRows) return cutoutRows
+  try { cutoutRows = JSON.parse(document.querySelector('[data-stage25d-cutouts]')?.dataset.stage25dCutouts || '[]') } catch { cutoutRows = [] }
+  return cutoutRows
+}
+export const withCutouts = (lib, rows = ownCutouts()) => {
+  if (!rows.length) return lib
+  const ids = new Set(rows.map((a) => a.id))
+  return { ...lib, assets: [...lib.assets.filter((a) => !ids.has(a.id)), ...rows] }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('cutouts-changed', (e) => {
+    const row = e.detail?.stage
+    if (!row?.id) return
+    cutoutRows = [row, ...ownCutouts().filter((a) => a.id !== row.id)]
+    window.dispatchEvent(new CustomEvent('stage25d-cutouts'))
+  })
+}
 /** An animation's sheet, for a tile that plays it (CSS steps): null for a still picture. */
 const animOf = (a) => (isAnimation(a) ? { cols: a.cols, rows: a.rows, frames: a.frames ?? a.cols * a.rows, fps: a.fps ?? 12, w: a.w, h: a.h } : null)
 
@@ -98,7 +123,7 @@ export async function createStage25d (host, opts = {}) {
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
   // library:sync's small copy for a shelf tile (an animation's tile plays its sheet); a tile falls back to url without it
-  const thumbOf = (a) => (isAnimation(a) ? null : libData.base + 'thumbs/' + a.file)
+  const thumbOf = (a) => (isAnimation(a) ? null : a.cutout ? libData.base + a.file : libData.base + 'thumbs/' + a.file)
   let alpha = null
   let backdrop = null        // the backdrop row that is the selection: 'sky' or 'band-<n>' (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
@@ -108,6 +133,14 @@ export async function createStage25d (host, opts = {}) {
   let camMore = []          // and the shots after it (camera_more): one per pair of camera keys
   let camMotion = null      // the camera's own motion (camera_motion): { kind, amount, speed }
   let framing = false       // the Camera row is selected: the canvas's pointer moves the camera at the playhead
+  // a cut-out just saved joins the library on stage at once: the Assets tab shows it, a drop adds it
+  const onCutouts = () => {
+    if (!libData) return
+    libData = withCutouts(libData)
+    assets = new Map(libData.assets.map((a) => [a.id, a]))
+    window.dispatchEvent(new CustomEvent('stage25d-synced'))
+  }
+  window.addEventListener('stage25d-cutouts', onCutouts)
 
   const startLoop = () => {
     stage.engine.runRenderLoop(() => {
@@ -262,7 +295,7 @@ export async function createStage25d (host, opts = {}) {
     sceneId: null,
     /** Build a scene's set (the old picture stays until every texture is ready). Resolves when drawn. */
     async show (cfgNow) {
-      const lib = await libraryOf(cfgNow.bundle)
+      const lib = withCutouts(await libraryOf(cfgNow.bundle))
       if (destroyed) return
       if (!stage) {
         stage = new Stage(canvas, lib)
@@ -298,7 +331,7 @@ export async function createStage25d (host, opts = {}) {
           const r = canvas.getBoundingClientRect()
           api.addLayer(id, { x: e.clientX - r.left, y: e.clientY - r.top })
         })
-        // a double-click opens the image editor (editor/photo-editor.js) for the picture the first click selected
+        // a double-click opens Uitknippen (editor/cutout-dialog.js) for the picture the first click selected
         canvas.addEventListener('dblclick', () => {
           const id = backdrop ?? (pointer?.selected != null ? `layer-${pointer.selected}` : null)
           const target = id && api.editTarget(id)
@@ -325,8 +358,8 @@ export async function createStage25d (host, opts = {}) {
       cfgSig = structureSig(cfgNow)
       host.dataset.stage25dReady = '1'
     },
-    /** What the image editor opens for one row ('layer-3', 'band-0', 'sky'): the library picture (the original),
-     *  the editor's saved state, whether the row shows an edited copy (`src`) now. */
+    /** What Uitknippen (editor/cutout-dialog.js) opens for one row ('layer-3', 'band-0', 'sky'): the picture as it is
+     *  drawn now, and what it was cut from, so a cut-out keeps its real size in metres (Cutouts::heightM). */
     editTarget (id) {
       const row = id === 'sky' ? (cfg?.set?.sky ? skyNow : null) : bandIndex(id) >= 0 ? bands[bandIndex(id)] : layers[layerIndex(id)]
       const asset = id === 'sky' ? skyAsset() : assets.get(row?.asset)
@@ -334,8 +367,9 @@ export async function createStage25d (host, opts = {}) {
       return {
         id: `s25_${id}`,
         title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        original: libData.base + asset.file,
-        state: row.edit_state ?? null,
+        original: row.src ? new URL(row.src, location.href).href : libData.base + asset.file,
+        // an edited copy has its own pixel size: no metres from the library's
+        from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
         edited: !!row.src,
         el: host,
       }
@@ -710,6 +744,7 @@ export async function createStage25d (host, opts = {}) {
     },
     destroy () {
       destroyed = true
+      window.removeEventListener('stage25d-cutouts', onCutouts)
       delete host.dataset.stage25dReady
       try { stage?.engine.stopRenderLoop(); stage?.scene.dispose(); stage?.engine.dispose() } catch (_) { /* context already lost */ }
       pointer?.destroy()

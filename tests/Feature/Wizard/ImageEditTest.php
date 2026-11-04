@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-/** The image editor (Filerobot) saves: a new file per edit, the original kept, one Cmd-Z, Reset points back. */
+/** Edited pictures (the earlier image editor): a new file per edit, the original kept, one Cmd-Z, Reset points back. */
 class ImageEditTest extends TestCase
 {
     use RefreshDatabase;
@@ -149,6 +149,5 @@ class ImageEditTest extends TestCase
         $this->assertSame(['art', 12], EditedImages::target('art_12'));
         $this->assertSame(['s25', 'band-2'], EditedImages::target('s25_band-2'));
         $this->assertNull(EditedImages::target('s25_camera'));
-        $this->assertArrayHasKey('Undo all changes', EditedImages::labels());
     }
 }

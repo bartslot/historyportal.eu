@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Services\Editor\Cutouts;
 use App\Services\Editor\EditedImages;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * The image editor's saves: a double-click on a picture opens Filerobot (resources/js/editor/photo-editor.js); Save
+ * Uitknippen's save (saveCutout: a part of a picture as the teacher's own asset), and the saves of the image editor
+ * that came before it (Filerobot, removed 2026-11-04; layers it edited still draw their copy). saveEditedImage: Save
  * stores the edited picture as a new file and points the layer at it, Reset points it back. One save is one write,
  * so one Cmd-Z, and the original file is never touched.
  *
@@ -18,6 +20,26 @@ use Illuminate\Support\Facades\Storage;
  */
 trait EditsImages
 {
+    /**
+     * Uitknippen: the quick mask's selection saved as the teacher's own asset (Cutouts). `$from` = what it was cut
+     * from (a stage25d `bundle` + `asset`, the cut's `box_h` of the picture's `height` px), for its size in 3D.
+     *
+     * @param  array<string,mixed>  $from
+     * @return array{ok: bool, id?: int}
+     */
+    public function saveCutout(string $image, string $title = '', array $from = []): array
+    {
+        $asset = Cutouts::save(auth()->user(), $image, $title, $from);
+        if ($asset === null) {
+            return ['ok' => false];
+        }
+        // the Assets panels follow: the icon panel opens its "My cut-outs" tab, the 3D library takes the new row
+        $this->dispatch('cutouts-changed', id: $asset->id, stage: Cutouts::stageRow($asset));
+        $this->dispatch('toast', type: 'success', message: __('Saved in My cut-outs.'));
+
+        return ['ok' => true, 'id' => $asset->id];
+    }
+
     /**
      * @param  array<string,mixed>  $state  the editor's design state (crop, colour, filters, drawings)
      * @return array{ok: bool}

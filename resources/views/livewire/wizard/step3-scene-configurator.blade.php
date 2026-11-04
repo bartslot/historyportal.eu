@@ -1419,7 +1419,7 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null,
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'vfx' => __('VFX')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
             sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
@@ -2679,8 +2679,10 @@
     </div>
     </x-ui.floating-window>
 
-    {{-- The image editor's words in this language (resources/js/editor/photo-editor.js reads them). --}}
-    <div hidden wire:ignore data-photo-editor-labels="{{ json_encode(\App\Services\Editor\EditedImages::labels()) }}"></div>
+    {{-- Uitknippen's words in this language (resources/js/editor/cutout-dialog.js reads them). --}}
+    {{-- The teacher's own cut-outs, and the ones this lesson's 3D scenes use: rows of the 3D library (stage25d/engine.js). --}}
+    <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode(\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson)) }}"></div>
+    <div hidden wire:ignore data-cutout-labels="{{ json_encode(\App\Services\Editor\Cutouts::labels()) }}"></div>
 
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable

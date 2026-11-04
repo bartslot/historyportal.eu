@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Services\Editor\Cutouts;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
@@ -80,7 +81,7 @@ trait EditsStage25d
         }
         if (is_array($patch['add'] ?? null)) {
             $add = $patch['add'];
-            $kind = LibraryBundle::assetLayer($bundle, (string) ($add['asset'] ?? ''));
+            $kind = $this->stage25dAssetLayer($bundle, (string) ($add['asset'] ?? ''));
             if ($kind !== null) {
                 $layers[] = ['asset' => $add['asset'], 'depth' => in_array($add['depth'] ?? null, ['sky', 'bg', 'mid', 'fg', 'near'], true) ? $add['depth'] : 'mid', ...LayerKeys::clean($add)];
                 $this->storeStage25dLayers($scene, $layers);
@@ -91,7 +92,7 @@ trait EditsStage25d
             return;
         }
         $values = LayerKeys::clean($patch);
-        if (is_string($patch['asset'] ?? null) && LibraryBundle::assetLayer($bundle, $patch['asset']) !== null) {
+        if (is_string($patch['asset'] ?? null) && $this->stage25dAssetLayer($bundle, $patch['asset']) !== null) {
             $values['asset'] = $patch['asset'];
         }
         if (in_array($patch['depth'] ?? null, LayerKeys::DEPTHS, true) && ($layers[$index]['depth'] ?? null) !== 'sky') {
@@ -572,5 +573,11 @@ trait EditsStage25d
     private function storeStage25dLayers(Scene $scene, array $layers): void
     {
         $this->storeStage25dSetPart($scene, ['layers'], array_values($layers));
+    }
+
+    /** A picture's library kind: the period's library, or the teacher's own cut-out (Cutouts: 'cut-<id>'). */
+    private function stage25dAssetLayer(string $bundle, string $assetId): ?string
+    {
+        return Cutouts::layerOf($assetId, (int) auth()->id()) ?? LibraryBundle::assetLayer($bundle, $assetId);
     }
 }

@@ -2591,5 +2591,20 @@
     "This era has no 3D set yet.": "Für diese Epoche gibt es noch keine 3D-Kulisse.",
     "Drag the picture to move the camera. Scroll to go closer, pinch to zoom.": "Zieh das Bild, um die Kamera zu bewegen. Scrolle, um näher heranzugehen, zoome mit zwei Fingern.",
     "Keep the camera still": "Kamera stillhalten",
-    "Handheld": "Aus der Hand"
+    "Handheld": "Aus der Hand",
+    "White holes": "Weiße Löcher",
+    "White edges": "Weiße Ränder",
+    "Soft bottom": "Weiche Unterkante",
+    "Select": "Auswählen",
+    "Everywhere": "Überall",
+    "Soft edge": "Weiche Kante",
+    "Edge": "Kante",
+    "Cut out": "Ausschneiden",
+    "Save as asset": "Als Asset speichern",
+    "The picture could not be saved. Try again.": "Das Bild konnte nicht gespeichert werden. Versuch es noch einmal.",
+    "This picture cannot be opened here.": "Dieses Bild lässt sich hier nicht öffnen.",
+    "My cut-outs": "Meine Ausschnitte",
+    "Saved in My cut-outs.": "In Meine Ausschnitte gespeichert.",
+    "Own cut-out": "Eigener Ausschnitt",
+    "Cut-out": "Ausschnitt"
 }

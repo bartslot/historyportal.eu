@@ -48,6 +48,8 @@
     @endif
 </head>
 <body class="h-full overflow-hidden bg-[#020617]">
+{{-- The teacher's own cut-outs this lesson's 3D scenes stand in (Cutouts; stage25d/engine.js reads them). --}}
+<div hidden data-stage25d-cutouts="{{ json_encode(\App\Services\Editor\Cutouts::forStage(null, $lesson)) }}"></div>
 {{-- LessonPlayerController switches the locale to the lesson's language when the interface ships
      it, so <html lang>, the chrome and the JS strings all speak the lesson's language. Content
      surfaces still carry the lesson language explicitly: for a lesson in a language the interface

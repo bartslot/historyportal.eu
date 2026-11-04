@@ -4,6 +4,7 @@
         'line-art' => __('Line art'),
         'arrows' => __('Arrows'),
         'shapes' => __('Shapes'),
+        \App\Livewire\Wizard\IconPanel::CUTOUTS => __('My cut-outs'),
     ];
 @endphp
 

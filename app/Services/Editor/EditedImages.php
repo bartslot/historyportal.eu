@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Pictures a teacher edited in the image editor (Filerobot, resources/js/editor/photo-editor.js).
+ * Pictures a teacher edited in the image editor (Filerobot, removed 2026-11-04 for Uitknippen: Cutouts). Layers it
+ * edited still draw their edited copy, and resetEditedImage still points them back.
  *
  * An edit is a NEW file next to the lesson's media; the original is never overwritten, so Reset and Cmd-Z only have
  * to point the layer back. The editor's own design state is kept on the layer too, so reopening the editor starts
@@ -30,6 +31,12 @@ final class EditedImages
     /** Store a posted `data:image/...;base64,` picture under the lesson; the public-disk path, or null when refused. */
     public static function store(Lesson $lesson, string $dataUrl): ?string
     {
+        return self::storeIn("lessons/{$lesson->id}/edits", $dataUrl);
+    }
+
+    /** The same, in any folder of the public disk (a teacher's cut-outs: Cutouts). */
+    public static function storeIn(string $dir, string $dataUrl): ?string
+    {
         if (preg_match('#^data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$#', $dataUrl, $m) !== 1) {
             return null;
         }
@@ -41,7 +48,7 @@ final class EditedImages
         if ($info === false || ($info['mime'] ?? null) !== $m[1] || $info[0] < 1 || $info[1] < 1 || max($info[0], $info[1]) > self::MAX_SIDE) {
             return null;
         }
-        $path = sprintf('lessons/%d/edits/%s.%s', $lesson->id, Str::uuid(), self::TYPES[$m[1]]);
+        $path = sprintf('%s/%s.%s', trim($dir, '/'), Str::uuid(), self::TYPES[$m[1]]);
         Storage::disk('public')->put($path, $bytes);
 
         return $path;
@@ -60,23 +67,6 @@ final class EditedImages
         $json = json_encode($state);
 
         return $json !== false && strlen($json) <= self::MAX_STATE_BYTES && $state !== [] ? $state : null;
-    }
-
-    /** The editor's own words around Filerobot (photo-editor.js); Filerobot's are in photo-editor-labels.json. */
-    private const OWN_LABELS = ['Edit image', 'Back to the original', 'Saving…', 'This picture could not be saved. Try again.', 'This picture cannot be opened in the editor.',
-        // the filters a teacher is offered (photo-editor.js FILTERS)
-        'None', 'Black and white', 'Old photo', 'Soft grey', 'Faded', 'Warm', 'Golden', 'Cool', 'Bright', 'Negative'];
-
-    /**
-     * Every English label the editor shows, translated into the page's language: English => shown.
-     *
-     * @return array<string,string>
-     */
-    public static function labels(): array
-    {
-        $filerobot = json_decode((string) file_get_contents(resource_path('js/editor/photo-editor-labels.json')), true) ?: [];
-
-        return collect(array_values($filerobot))->merge(self::OWN_LABELS)->unique()->mapWithKeys(fn (string $en) => [$en => __($en)])->all();
     }
 
     /** A target the editor names: ['art', assetId] or ['s25', 'layer-3' | 'band-0' | 'sky']; null when unknown. */
