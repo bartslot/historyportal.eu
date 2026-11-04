@@ -192,7 +192,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-I0nHnGSE.js",
+    "file": "assets/app-COjU9fBq.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -416,7 +416,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-cXzuUK3p.js",
+    "file": "assets/index-DavyYIBo.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -541,7 +541,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-Cc8S8RRc.js",
+    "file": "assets/recorder-DM5-UMvY.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

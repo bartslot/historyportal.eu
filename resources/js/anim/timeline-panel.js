@@ -73,10 +73,9 @@ const dragMemory = new WeakMap()
  */
 const SESSIONS = new Map()
 
-/** The ruler above the rows, and the name column's spacer beside it: a pinned row comes to rest once it has scrolled away. */
-const RULER_H_PX = 38
-
 const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam'
+
+const pinStyle = (scrolled, layer) => ` position: relative; z-index: ${layer}; background: var(--color-timeline-ground); transform: translateY(${scrolled}px);`
 
 /** The sessionStorage key for one scene's unsent live edit. */
 const draftKey = (sceneId) => `timeline-draft:${sceneId}`
@@ -348,12 +347,11 @@ export const animationTimeline = (config = {}) => ({
 
   isPinned (object) { return isPinnedObject(object) },
 
-  /** A camera stays in view: the first row, held at the top of the tracks while the rest scroll under it. A transform,
-   *  not position: sticky, because the lanes are their own (sideways) scroller and sticky would stop at their edge. */
-  pinnedStyle (object) {
-    if (!isPinnedObject(object)) return ''
-    return ` position: relative; z-index: 5; background: var(--color-panel); transform: translateY(${Math.max(0, this.tracksScrolled - RULER_H_PX)}px);`
-  },
+  /** The ruler and the camera stay in view while the rows scroll under them. A transform, not position: sticky, because
+   *  the lanes are their own (sideways) scroller and sticky would stop at their edge. */
+  get rulerPinStyle () { return pinStyle(this.tracksScrolled, 6) },
+
+  pinnedStyle (object) { return isPinnedObject(object) ? pinStyle(this.tracksScrolled, 5) : '' },
 
   get canHaveCamera () { return ['map', 'voyage'].includes(config.sceneKind) },
   get hasCamera () { return this.targets.includes('camera') },

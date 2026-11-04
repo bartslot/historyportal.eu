@@ -226,7 +226,7 @@
             {{-- Matches the ruler's height on the other side. Without it every lane sits one row
                  below the property it belongs to, and a keyframe on Altitude is drawn beside
                  Heading — which looks like a data bug and is a layout one. --}}
-            <div class="shrink-0" style="height: 38px"></div>
+            <div class="shrink-0" :style="'height: 38px;' + rulerPinStyle" data-timeline-ruler-spacer></div>
 
             {{-- Adding a camera is not part of the empty state. It was, and that meant a map scene
                  with a single caption on it could never be given one: the button was inside the
@@ -448,7 +448,7 @@
                  x-on:pointerdown="startMarquee($event)">
 
                 {{-- Ruler --}}
-                <div class="relative shrink-0 cursor-col-resize select-none" style="height: 38px"
+                <div class="relative shrink-0 cursor-col-resize select-none" :style="'height: 38px;' + rulerPinStyle"
                      data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
                         <span class="absolute top-1.5 text-xs text-panel-label"

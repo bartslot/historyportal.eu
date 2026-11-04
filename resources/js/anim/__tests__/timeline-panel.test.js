@@ -514,14 +514,15 @@ describe('the 3D camera row', () => {
 describe('the rows on opening a scene', () => {
   afterEach(() => { delete window.__stage25d })
 
-  it('are closed, with the camera first and held at the top once the ruler has scrolled away', () => {
+  it('are closed, with the ruler and the camera held at the top while the rest scroll', () => {
     window.__stage25d = { items: () => [{ id: 'layer-0', label: 'Sea' }, { id: 'camera', label: 'Camera', icon: 'camera' }] }
     const p = panel([])
     p.refreshObjects()
     expect(p.objects.map((o) => o.target)[0]).toBe('s25cam')
     expect(p.objects.every((o) => p.openGroups[o.target] === false)).toBe(true)
     p.tracksScrolled = 100
-    expect(p.pinnedStyle(p.objects[0])).toContain('translateY(62px)')
+    expect(p.rulerPinStyle).toContain('translateY(100px)')
+    expect(p.pinnedStyle(p.objects[0])).toContain('translateY(100px)')
     expect(p.pinnedStyle(p.objects[1])).toBe('')
   })
 })
