@@ -2548,7 +2548,6 @@
     "Add a track to the library": "Titel zur Bibliothek hinzufügen",
     "Choose a track": "Titel wählen",
     "Continue from scene before": "Von der Szene davor weiter",
-    "Download the song from Suno yourself on a paid plan, then upload the MP3 here.": "Lade den Song selbst mit einem bezahlten Abo bei Suno herunter und lade die MP3 hier hoch.",
     "Licence": "Lizenz",
     "Licence note": "Lizenzhinweis",
     "Licence note, e.g. plan and download date": "Lizenzhinweis, z. B. Abo und Downloaddatum",
@@ -2570,5 +2569,6 @@
     "Undo music change": "Musikänderung rückgängig machen",
     "Upload": "Hochladen",
     "seconds": "Sekunden",
-    "A track could not be loaded.": "Ein Titel konnte nicht geladen werden."
+    "A track could not be loaded.": "Ein Titel konnte nicht geladen werden.",
+    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Füge den Suno-Teilen-Link ein, dann wird der Titel ausgefüllt. Lade danach die MP3 mit einem bezahlten Abo bei Suno herunter und lade sie hier hoch."
 }

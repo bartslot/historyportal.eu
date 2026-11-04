@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -92,6 +93,25 @@ class SceneMusicEditorTest extends TestCase
         $track = MusicTrack::where('title', 'Harbour at dawn')->firstOrFail();
         Storage::disk('public')->assertExists($track->path);
         $this->assertSame($track->id, $this->scene->fresh()->music['layers'][0]['track_id']);
+    }
+
+    public function test_a_pasted_suno_link_fills_the_title_and_other_links_are_not_fetched(): void
+    {
+        Http::fake(['suno.com/*' => Http::response('<meta property="og:title" content="Road ahead &amp; home">')]);
+        $this->teacher->update(['role' => 'admin']);
+        $this->actingAs($this->teacher);
+
+        Livewire::test(SceneMusic::class, ['scene' => $this->scene])
+            ->set('uploadSource', 'https://suno.com/s/fTrDC3Nbq9febwlm')
+            ->assertSet('uploadTitle', 'Road ahead & home')
+            ->set('uploadTitle', 'My own title')
+            ->set('uploadSource', 'https://suno.com/s/other')
+            ->assertSet('uploadTitle', 'My own title');
+
+        Livewire::test(SceneMusic::class, ['scene' => $this->scene])
+            ->set('uploadSource', 'http://169.254.169.254/latest')
+            ->assertSet('uploadTitle', '');
+        Http::assertSentCount(1);
     }
 
     public function test_an_unknown_licence_is_refused(): void

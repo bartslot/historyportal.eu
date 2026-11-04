@@ -8,7 +8,6 @@ use App\Enums\MusicLicence;
 use App\Models\MusicTrack;
 use Illuminate\Console\Command;
 use Illuminate\Http\File;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -42,7 +41,7 @@ class ImportMusicTrack extends Command
         }
 
         $source = $this->option('source') ?: null;
-        $title = $this->option('title') ?: ($source ? $this->titleFrom($source) : null) ?: pathinfo($path, PATHINFO_FILENAME);
+        $title = $this->option('title') ?: ($source ? MusicTrack::titleFromLink($source) : null) ?: pathinfo($path, PATHINFO_FILENAME);
 
         $track = MusicTrack::create([
             'title' => mb_substr($title, 0, 120),
@@ -55,19 +54,5 @@ class ImportMusicTrack extends Command
         $this->info("Added \"{$track->title}\" (id {$track->id}).");
 
         return self::SUCCESS;
-    }
-
-    /** The og:title of a public share page, if it has one. */
-    private function titleFrom(string $url): ?string
-    {
-        try {
-            $html = Http::timeout(10)->get($url)->body();
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return preg_match('/<meta property="og:title" content="([^"]+)"/', $html, $m)
-            ? html_entity_decode($m[1], ENT_QUOTES)
-            : null;
     }
 }

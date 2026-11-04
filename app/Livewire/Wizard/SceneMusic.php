@@ -103,6 +103,14 @@ class SceneMusic extends Component
         $this->music = $this->scene->music;
     }
 
+    /** A pasted Suno link fills an empty title with the song's own. */
+    public function updatedUploadSource(): void
+    {
+        if (trim($this->uploadTitle) === '' && auth()->user()?->isAdmin()) {
+            $this->uploadTitle = MusicTrack::titleFromLink(trim($this->uploadSource)) ?? '';
+        }
+    }
+
     public function saveUpload(): void
     {
         abort_unless((bool) auth()->user()?->isAdmin(), 403);

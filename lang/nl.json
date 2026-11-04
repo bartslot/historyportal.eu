@@ -2590,7 +2590,6 @@
     "Add a track to the library": "Nummer aan de bibliotheek toevoegen",
     "Choose a track": "Kies een nummer",
     "Continue from scene before": "Doorgaan van vorige scène",
-    "Download the song from Suno yourself on a paid plan, then upload the MP3 here.": "Download het nummer zelf bij Suno met een betaald abonnement en upload de MP3 hier.",
     "Licence": "Licentie",
     "Licence note": "Licentienotitie",
     "Licence note, e.g. plan and download date": "Licentienotitie, bijv. abonnement en downloaddatum",
@@ -2612,5 +2611,6 @@
     "Undo music change": "Muziekwijziging ongedaan maken",
     "Upload": "Uploaden",
     "seconds": "seconden",
-    "A track could not be loaded.": "Een nummer kon niet worden geladen."
+    "A track could not be loaded.": "Een nummer kon niet worden geladen.",
+    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Plak de Suno-deellink, dan vult de titel zich in. Download daarna de MP3 bij Suno met een betaald abonnement en upload hem hier."
 }

@@ -87,13 +87,13 @@
         <details class="rounded-box border border-panel-hairline p-2">
             <summary class="cursor-pointer text-xs font-medium text-panel-value">{{ __('Add a track to the library') }}</summary>
             <form wire:submit="saveUpload" class="mt-2 space-y-2">
-                <p class="text-xs text-panel-hint">{{ __('Download the song from Suno yourself on a paid plan, then upload the MP3 here.') }}</p>
+                <p class="text-xs text-panel-hint">{{ __('Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.') }}</p>
+                <input type="url" wire:model.blur="uploadSource" class="input input-xs w-full" placeholder="{{ __('Source link, e.g. the Suno share link') }}" aria-label="{{ __('Source link') }}" />
+                @error('uploadSource') <p class="text-xs text-error">{{ $message }}</p> @enderror
                 <input type="file" accept="audio/mpeg,audio/mp4,.mp3,.m4a" wire:model="upload" class="file-input file-input-xs w-full" aria-label="{{ __('Music file') }}" />
                 @error('upload') <p class="text-xs text-error">{{ $message }}</p> @enderror
                 <input type="text" wire:model="uploadTitle" class="input input-xs w-full" placeholder="{{ __('Title') }}" aria-label="{{ __('Title') }}" />
                 @error('uploadTitle') <p class="text-xs text-error">{{ $message }}</p> @enderror
-                <input type="url" wire:model="uploadSource" class="input input-xs w-full" placeholder="{{ __('Source link, e.g. the Suno share link') }}" aria-label="{{ __('Source link') }}" />
-                @error('uploadSource') <p class="text-xs text-error">{{ $message }}</p> @enderror
                 <select wire:model="uploadLicence" class="select select-xs w-full" aria-label="{{ __('Licence') }}">
                     @foreach ($licences as $licence)
                         <option value="{{ $licence->value }}">{{ $licence->label() }}</option>
