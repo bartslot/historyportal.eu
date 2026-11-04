@@ -21,6 +21,14 @@ describe('camera framing', () => {
     expect(wheelPose(HOUSE, { deltaY: -50, ctrlKey: true }).z).toBe(0)
   })
 
+  it('a roll is held to its range, and a level pose has none', () => {
+    expect(clampPose({ roll: 90 }).roll).toBe(45)
+    expect(clampPose({ roll: 0 })).toEqual(HOUSE)
+    const keys = [{ t: 0, pose: HOUSE }, { t: 8, pose: { ...HOUSE, roll: 10 } }]
+    const [cam, ...more] = shotsOfKeys(keys)
+    expect(cameraPoseAt(cam, more, 8, 8).roll).toBeCloseTo(10)
+  })
+
   it('keys go to shots and back, one shot per pair, with no gap in the keys', () => {
     const keys = [{ t: 0, pose: HOUSE }, { t: 3, pose: { ...HOUSE, z: 4 } }, { t: 8, pose: { ...HOUSE, x: 1 } }]
     const [first, ...rest] = shotsOfKeys(keys)
@@ -34,6 +42,7 @@ describe('camera framing', () => {
     const [still, ...none] = shotsOfKeys([{ t: 2, pose: { ...HOUSE, z: 4 } }])
     expect(none).toEqual([])
     expect(still.from).toEqual(still.to)
+    expect(cameraKeys(still, none, 8)).toHaveLength(1)   // framing it again stays still, it does not start a move
     expect(shotsOfKeys([])).toEqual([])
   })
 

@@ -826,7 +826,7 @@ export const animationTimeline = (config = {}) => ({
   /** The 3D camera row's keys, one per framed moment. A move longer than the timeline ends at its edge. */
   stage25dCameraKeys (property) {
     void this.canvasTick   // reactive: the teacher framed the camera
-    const keys = (window.__stage25d?.cameraInfo?.()?.keys ?? []).map((k) => ({ time: Math.min(this.duration, k.t), value: k.pose?.[property] }))
+    const keys = (window.__stage25d?.cameraInfo?.()?.keys ?? []).map((k) => ({ time: Math.min(this.duration, k.t), value: k.pose?.[property] ?? 0 }))
     return keys.filter((k, i) => !keys.slice(i + 1).some((later) => sameTime(later.time, k.time)))
   },
 

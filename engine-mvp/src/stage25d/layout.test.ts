@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { cameraWobble } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -477,3 +478,22 @@ describe('figures breathe by default', () => {
     expect(motionOf({ ...fig, motion: 'sway' } as Asset, { asset: 'man' } as never).kind).toBe('sway')
   })
 })
+
+describe('cameraWobble', () => {
+  it('adds nothing with no motion, and the same clock gives the same frame', () => {
+    expect(cameraWobble(null, 3)).toEqual({ x: 0, y: 0, roll: 0 })
+    expect(cameraWobble({ kind: 'none' }, 3)).toEqual({ x: 0, y: 0, roll: 0 })
+    expect(cameraWobble({ kind: 'shake' }, 3)).toEqual(cameraWobble({ kind: 'shake' }, 3))
+  })
+
+  it('amount scales it, zero stills it; a sway leans more than a shake, a shake moves faster', () => {
+    const sway = cameraWobble({ kind: 'sway' }, 2.3)
+    expect(cameraWobble({ kind: 'sway', amount: 2 }, 2.3).roll).toBeCloseTo(sway.roll * 2)
+    expect(cameraWobble({ kind: 'sway', amount: 0 }, 2.3).roll).toBeCloseTo(0)
+    const peak = (kind: 'sway' | 'shake') => Math.max(...Array.from({ length: 2000 }, (_, i) => Math.abs(cameraWobble({ kind }, i * 0.05).roll)))
+    expect(peak('sway')).toBeGreaterThan(peak('shake'))
+    const crossings = (kind: 'sway' | 'shake') => Array.from({ length: 2000 }, (_, i) => cameraWobble({ kind }, i * 0.005).roll).filter((v, i, a) => i > 0 && Math.sign(v) !== Math.sign(a[i - 1])).length
+    expect(crossings('shake')).toBeGreaterThan(crossings('sway') * 5)
+  })
+})
+

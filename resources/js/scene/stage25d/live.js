@@ -19,7 +19,7 @@ const without = (layer) => Object.fromEntries(Object.entries(layer).filter(([k])
  *  signatures = the same set, nothing to rebuild. */
 export const structureSig = (cfg) => {
   const { layers = [], groundBands = [], skyLayer = {}, ...rest } = cfg?.set ?? {}
-  const { camera, camera_more, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
+  const { camera, camera_more, camera_motion, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
   return JSON.stringify({ ...unframed, set: { ...rest, layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
 }
 
@@ -27,5 +27,5 @@ const edits = (l) => EDITABLE.map((f) => l?.[f] ?? null)
 
 /** Only the editable fields and the camera move: changes when the server's copy of an edit changes (undo, redo, import). */
 export const editSig = (cfg) => JSON.stringify([
-  (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [],
+  (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [], cfg?.camera_motion ?? null,
 ])

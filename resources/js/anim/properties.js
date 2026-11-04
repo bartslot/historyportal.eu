@@ -157,6 +157,7 @@ const REGISTRY = {
     P('y', 'Y', 'linear', 'm'),
     P('z', 'Distance', 'linear', 'm'),
     P('fov', 'Zoom', 'linear', '°'),
+    P('roll', 'Rotate', 'linear', '°'),
   ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */

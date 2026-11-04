@@ -45,6 +45,8 @@ const alphaMaps = new Map()   // one per library, kept across scenes: every pict
 /** A layer in front of the selected one, while they overlap (Bart 2026-11-05: 20% invisible). */
 const IN_FRONT_OPACITY = 0.8
 
+const REDUCED_MOTION = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+
 const alphaFor = (base) => { if (!alphaMaps.has(base)) alphaMaps.set(base, createAlphaMaps(base)); return alphaMaps.get(base) }
 
 /** One library per bundle per page; a failed load is forgotten so the next scene tries again. */
@@ -61,6 +63,7 @@ export const stageScene = (cfg) => ({
   set: { ...(cfg.set ?? {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
   camera: cfg.camera ?? null,
   camera_more: cfg.camera_more ?? [],
+  camera_motion: cfg.camera_motion ?? null,
   figures: cfg.figures ?? [],
   dur_s: cfg.dur_s,
   est_s: cfg.est_s,
@@ -105,6 +108,7 @@ export async function createStage25d (host, opts = {}) {
   let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
   let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
   let camMore = []          // and the shots after it (camera_more): one per pair of camera keys
+  let camMotion = null      // the camera's own motion (camera_motion): { kind, amount, speed }
   let framing = false       // the Camera row is selected: the canvas's pointer moves the camera at the playhead
 
   const startLoop = () => {
@@ -113,7 +117,11 @@ export async function createStage25d (host, opts = {}) {
       motionClock += Math.min(0.1, (now - last) / 1000)
       last = now
       stage.tick(now)
-      if (pointer) stage.fadeLayers(selectionFade(), IN_FRONT_OPACITY)
+      if (pointer) {
+        stage.fadeLayers(selectionFade(), IN_FRONT_OPACITY)
+        // in the editor the camera only moves on its own when it is what you are looking at: playing, or the Camera row
+        stage.cameraAlive = !REDUCED_MOTION() && stills === 0 && (framing || !!window.__timelineKeying?.playing?.())
+      }
       if (scene) stage.pose(scene, nowT(), motionClock)
       stage.scene.render()
       pointer?.place()
@@ -154,7 +162,7 @@ export async function createStage25d (host, opts = {}) {
     redraw()
     return saved
   }
-  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow, camera_more: camMore })
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow, camera_more: camMore, camera_motion: camMotion })
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
@@ -272,6 +280,7 @@ export async function createStage25d (host, opts = {}) {
       skyNow = { ...(next.set.skyLayer ?? {}) }
       camNow = next.camera
       camMore = next.camera_more ?? []
+      camMotion = next.camera_motion ?? null
       hidden = new Set()
       seenEdit = editSig(cfgNow)
       cfg = cfgNow
@@ -350,7 +359,8 @@ export async function createStage25d (host, opts = {}) {
       skyNow = take(skyNow, cfgNow.set?.skyLayer)
       camNow = cfgNow.camera ?? null
       camMore = cfgNow.camera_more ?? []
-      scene = scene ? { ...scene, camera: camNow, camera_more: camMore } : scene
+      camMotion = cfgNow.camera_motion ?? null
+      scene = scene ? { ...scene, camera: camNow, camera_more: camMore, camera_motion: camMotion } : scene
       cfg = cfgNow
       redraw()
       return true
@@ -414,7 +424,15 @@ export async function createStage25d (host, opts = {}) {
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
     /** What the Camera panel and row show: its keys, and the pose at the playhead (the still house camera with no move). */
-    cameraInfo: () => ({ framing, moves: !!camNow, keys: camKeysNow(), pose: camPoseNow() }),
+    cameraInfo: () => ({ framing, moves: !!camNow, keys: camKeysNow(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
+    /** The camera's own motion: live, and saved. */
+    setCameraMotion (patch) {
+      camMotion = { kind: 'none', amount: 1, speed: 1, ...camMotion, ...patch }
+      if (scene) scene = { ...scene, camera_motion: camMotion }
+      seenEdit = liveSig()
+      if (api.sceneId != null) opts.onCommit?.(0, { cameraMotion: camMotion }, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    },
     /** One value of the camera typed in its row: the same edit as a drag. */
     setCameraValue (property, value) { frameTo({ ...camPoseNow(), [property]: value }) },
     /** The diamond on a camera row: a key under the playhead goes, else one comes with the pose on screen. */

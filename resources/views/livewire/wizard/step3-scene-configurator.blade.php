@@ -1404,6 +1404,8 @@
             frame(end) { window.__timelineKeying?.seekTo?.(end); this.sync(); },
             /** Back to the still camera: no move. */
             stillCamera() { window.__stage25d?.resetCamera?.(); this.sync(); },
+            cameraValue(prop, value) { window.__stage25d?.setCameraValue?.(prop, value); this.sync(); },
+            cameraMotion(patch) { window.__stage25d?.setCameraMotion?.(patch); this.sync(); },
             /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */
             async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); this.sync(); },
             groundRow(i, patch) { this.setGround(this.ground.rows.map((r, n) => (n === i ? { ...r, ...patch } : r))); },

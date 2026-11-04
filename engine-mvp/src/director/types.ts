@@ -10,7 +10,7 @@ export type Depth = 'sky' | 'bg' | 'mid' | 'fg' | 'near'
 
 /** A camera pose in stage metres (see camera.ts for the frame). `target` is the look-at point,
  *  `focus_z` the depth in focus; both optional for a stage that only reads x/y/z/fov. */
-export type CamPose = { x: number; y: number; z: number; fov: number; target?: { x: number; y: number; z: number }; focus_z?: number }
+export type CamPose = { x: number; y: number; z: number; fov: number; roll?: number; target?: { x: number; y: number; z: number }; focus_z?: number }
 export type MoveKind = 'push' | 'pull' | 'truck' | 'pan' | 'tilt' | 'rack' | 'through'
 export type Camera = {
   move: MoveKind; from: CamPose; to: CamPose

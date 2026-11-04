@@ -39,6 +39,32 @@
         </div>
         <p class="mt-2 text-xs text-panel-hint">{{ __('Drag the picture to move the camera. Scroll to go closer, pinch to zoom.') }}</p>
 
+        <div class="mt-3 space-y-1" x-show="cam">
+            <x-ui.panel-row :label="__('Rotate')">
+                <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
+                    <input type="number" min="-45" max="45" step="1" aria-label="{{ __('Rotate') }}" data-camera-roll
+                           :value="Math.round((cam?.pose?.roll ?? 0) * 10) / 10"
+                           x-on:change="cameraValue('roll', Number($event.target.value))" />
+                    <span class="text-panel-hint">°</span>
+                </label>
+            </x-ui.panel-row>
+            <x-ui.panel-row :label="__('Motion')">
+                <select class="select select-xs w-full" data-camera-motion="kind" x-on:change="cameraMotion({ kind: $event.target.value })">
+                    @foreach ([['none', __('None')], ['sway', __('Sway')], ['handheld', __('Handheld')], ['shake', __('Shake')]] as [$kind, $label])
+                        <option value="{{ $kind }}" :selected="cam?.motion?.kind === '{{ $kind }}'">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </x-ui.panel-row>
+            @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
+                <div x-show="cam?.motion?.kind !== 'none'">
+                    <x-ui.panel-row :label="$label">
+                        <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-camera-motion="{{ $prop }}" aria-label="{{ $label }}"
+                               :value="cam?.motion?.{{ $prop }}" x-on:input="cameraMotion({ {{ $prop }}: Number($event.target.value) })" />
+                    </x-ui.panel-row>
+                </div>
+            @endforeach
+        </div>
+
         <button type="button" class="btn btn-ghost btn-sm mt-3 w-full" data-camera-still x-show="cam?.moves" x-on:click="stillCamera()">
             {{ __('Keep the camera still') }}
         </button>

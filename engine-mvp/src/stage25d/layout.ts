@@ -1,6 +1,6 @@
 // Pure stage maths: where a layer stands, how big it is, and where the camera is at time t.
 // Metres everywhere. The house camera stands at x 0, eye height, looking down +z with a small fixed tilt.
-import type { Asset, CamPose, CameraMove, Depth, Ease, GroundBand, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
+import type { Asset, CamPose, CameraMotion, CameraMotionKind, CameraMove, Depth, Ease, GroundBand, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
 
 /** Distance from the house camera to each depth plane. Wide gaps between them = strong parallax on a truck. */
 /** near: framing tufts, reeds and stones at the frame's bottom edge (partly out of frame), in front of fg */
@@ -203,7 +203,27 @@ export function cameraAt(cam: CameraMove | null | undefined, t: number, dur: num
   const k = ease(cam.ease, dur > 0 ? t / (cam.dur_s ?? dur) : 1)
   const f = { ...HOUSE, ...cam.from }
   const to = { ...f, ...cam.to }
-  return { x: lerp(f.x, to.x, k), y: lerp(f.y, to.y, k), z: lerp(f.z, to.z, k), fov: lerp(fovRad(f.fov), fovRad(to.fov), k) }
+  return { x: lerp(f.x, to.x, k), y: lerp(f.y, to.y, k), z: lerp(f.z, to.z, k), fov: lerp(fovRad(f.fov), fovRad(to.fov), k), roll: lerp(f.roll ?? 0, to.roll ?? 0, k) }
+}
+
+/** Peak size of each kind at amount 1, and how fast it goes: metres sideways and up, degrees of roll, cycles a second. */
+const CAMERA_WOBBLE: Record<Exclude<CameraMotionKind, 'none'>, { x: number; y: number; roll: number; hz: number }> = {
+  sway: { x: 0.08, y: 0.05, roll: 1.6, hz: 0.18 },       // a ship in a swell: slow, mostly a lean
+  handheld: { x: 0.02, y: 0.02, roll: 0.25, hz: 0.35 },  // someone holding it: small and restless
+  shake: { x: 0.05, y: 0.05, roll: 0.6, hz: 6 },         // a blow, a quake
+}
+
+/** Sines at unrelated rates: never quite repeats, and the same clock gives the same frame (a saved scene plays alike). */
+const unsteady = (t: number, seed: number) => (Math.sin(t * 1.0 + seed) + 0.6 * Math.sin(t * 2.17 + seed * 2.3) + 0.3 * Math.sin(t * 3.71 + seed * 4.1)) / 1.9
+
+/** What the camera's own motion adds at this moment. */
+export function cameraWobble(motion: CameraMotion | null | undefined, clock: number): { x: number; y: number; roll: number } {
+  const kind = motion?.kind
+  if (!kind || kind === 'none') return { x: 0, y: 0, roll: 0 }
+  const size = CAMERA_WOBBLE[kind]
+  const amount = motion.amount ?? 1
+  const t = clock * size.hz * (motion.speed ?? 1) * 2 * Math.PI
+  return { x: size.x * amount * unsteady(t, 1), y: size.y * amount * unsteady(t, 2), roll: size.roll * amount * unsteady(t, 3) }
 }
 
 export interface LayerNow { z?: number; x: number; y: number; scale: number; opacity: number; rotation: number }

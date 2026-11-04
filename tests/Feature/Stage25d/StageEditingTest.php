@@ -182,6 +182,24 @@ class StageEditingTest extends TestCase
         $this->assertArrayNotHasKey('camera_more', $stage);
     }
 
+    public function test_the_camera_leans_within_range_and_its_own_motion_is_saved_and_can_be_taken_off(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $pose = ['x' => 0, 'y' => 1.6, 'z' => 0, 'fov' => 50];
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => ['from' => [...$pose, 'roll' => 99], 'to' => $pose]], $scene->id);
+        $camera = $scene->fresh()->config['stage25d']['camera'];
+        $this->assertEquals(45, $camera['from']['roll']);
+        $this->assertArrayNotHasKey('roll', $camera['to']);
+
+        $editor->call('saveStage25dLayer', 0, ['cameraMotion' => ['kind' => 'shake', 'amount' => 9, 'speed' => 'fast']], $scene->id);
+        $this->assertEquals(['kind' => 'shake', 'amount' => 3, 'speed' => 1], $scene->fresh()->config['stage25d']['camera_motion']);
+
+        $editor->call('saveStage25dLayer', 0, ['cameraMotion' => ['kind' => 'nonsense']], $scene->id);
+        $this->assertArrayNotHasKey('camera_motion', $scene->fresh()->config['stage25d']);
+    }
+
     public function test_the_lesson_tab_shows_the_lesson_with_a_layer_selected(): void
     {
         $this->editor($this->scene())->call('selectInspectorTarget', 's25_layer-0')

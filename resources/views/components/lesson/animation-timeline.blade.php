@@ -64,7 +64,7 @@
             'color' => __('Colour'), 'colorOpacity' => __('Colour').' %',
             'tint' => __('Colour'), 'tint_opacity' => __('Colour').' %',
             'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
-            'heading' => __('Direction'), 'tilt' => __('Tilt'), 'fov' => __('Zoom'),
+            'heading' => __('Direction'), 'tilt' => __('Tilt'), 'fov' => __('Zoom'), 'roll' => __('Rotate'),
             'tip_x' => __('Tail').' X', 'tip_y' => __('Tail').' Y', 'root' => __('Tail root'), 'bend' => __('Bend'),
             'end_x' => __('End').' X', 'end_y' => __('End').' Y', 'shaft' => __('Width'), 'head' => __('Head'),
         ],

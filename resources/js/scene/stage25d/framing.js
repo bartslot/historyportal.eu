@@ -9,6 +9,9 @@ import { HOUSE, cameraAt, fovRad, shotAt } from '@stage25d/stage25d/layout'
 /** How far the camera may go (metres, lens in degrees): the dev tool's ranges, so a shot never leaves the set. */
 export const CAM_RANGE = { x: [-8, 8], y: [0.3, 6], z: [-4, 15], fov: [20, 75] }
 
+/** How far the camera may lean, degrees. Kept apart from CAM_RANGE: a pose without it is level. */
+export const ROLL_RANGE = [-45, 45]
+
 /** A drag moves the picture as if held at this distance (metres): the middle ground follows the pointer. */
 const GRAB_M = 10
 const DOLLY_M_PER_PX = 0.01
@@ -20,7 +23,9 @@ const round3 = (n) => Math.round(n * 1000) / 1000
 /** A pose held to the camera's range, every field present (the house pose fills the gaps). */
 export const clampPose = (p) => {
   const full = { ...HOUSE, ...p }
-  return Object.fromEntries(Object.keys(CAM_RANGE).map((k) => [k, round3(clamp(Number(full[k]) || HOUSE[k], CAM_RANGE[k]))]))
+  const pose = Object.fromEntries(Object.keys(CAM_RANGE).map((k) => [k, round3(clamp(Number(full[k]) || HOUSE[k], CAM_RANGE[k]))]))
+  const roll = round3(clamp(Number(full.roll) || 0, ROLL_RANGE))
+  return roll ? { ...pose, roll } : pose
 }
 
 /** A drag of dx, dy CSS px on a canvas heightPx tall: the picture follows the pointer, so the camera goes the other way. */
@@ -45,8 +50,11 @@ export const cameraKeys = (cam, more, dur) => {
   for (const shot of [cam, ...(more ?? [])].filter(Boolean)) {
     const at = Number(shot.at_s) || 0
     const put = (t, pose) => { const i = keys.findIndex((k) => Math.abs(k.t - t) < SAME_S); if (i >= 0) keys[i] = { t, pose }; else keys.push({ t, pose }) }
-    put(at, clampPose(shot.from ?? HOUSE))
-    put(at + (Number(shot.dur_s) || Math.max(0, dur - at)), clampPose(shot.to ?? shot.from ?? HOUSE))
+    const from = clampPose(shot.from ?? HOUSE)
+    const to = clampPose(shot.to ?? shot.from ?? HOUSE)
+    put(at, from)
+    // a still shot with no length of its own is one framed moment, not a pair
+    if (Number(shot.dur_s) || JSON.stringify(from) !== JSON.stringify(to)) put(at + (Number(shot.dur_s) || Math.max(0, dur - at)), to)
   }
   return keys.sort((a, b) => a.t - b.t)
 }
@@ -71,5 +79,5 @@ export const shotsOfKeys = (keys) => {
 export const cameraPoseAt = (cam, more, t, dur) => {
   const { cam: shot, t: into } = shotAt({ camera: cam, camera_more: more }, t)
   const p = cameraAt(shot, Math.max(0, into), dur)
-  return clampPose({ x: p.x, y: p.y, z: p.z, fov: (p.fov * 180) / Math.PI })
+  return clampPose({ x: p.x, y: p.y, z: p.z, fov: (p.fov * 180) / Math.PI, roll: p.roll })
 }

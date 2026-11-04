@@ -14,7 +14,7 @@ import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { cellOf, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
@@ -328,6 +328,9 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
+  /** The camera's own motion is on. Off for someone who asked for less motion; the editor also stills it while working. */
+  cameraAlive = !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+
   private faded = new Set<number>()
   private fadedTo = 1
 
@@ -447,10 +450,12 @@ export class Stage {
     const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
     const end = cameraAt(shot.cam, shot.t, sceneDuration(s))
     const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
-    this.camera.position.set(c.x, c.y, c.z)
+    const wobble = this.cameraAlive ? cameraWobble(s.camera_motion, clock) : { x: 0, y: 0, roll: 0 }
+    this.camera.position.set(c.x + wobble.x, c.y + wobble.y, c.z)
     this.camera.fov = c.fov
     const pitch = lookNum(this.look, 'housePitch')                 // degrees down (a teacher slider)
     this.camera.rotation.x = (pitch * Math.PI) / 180
+    this.camera.rotation.z = (((c.roll ?? 0) + wobble.roll) * Math.PI) / 180
     this.ground.follow(this.camera.position)
     const L = (k: string) => lookNum(this.look, k)
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale'), wash: L('groundWash'), grainSize: L('groundGrain') })

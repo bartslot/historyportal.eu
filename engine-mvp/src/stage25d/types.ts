@@ -82,6 +82,9 @@ export interface SceneLayer {
 
 export interface CamPose { x: number; y: number; z: number; fov: number }
 export type Ease = 'linear' | 'in' | 'out' | 'inOut'
+export type CameraMotionKind = 'none' | 'sway' | 'handheld' | 'shake'
+export interface CameraMotion { kind: CameraMotionKind; amount?: number; speed?: number }
+
 /** at_s: when this shot starts within the scene (0 for `camera`; the director sets it on `camera_more`). */
 export interface CameraMove { move?: string; from: CamPose; to: CamPose; ease?: Ease; dur_s?: number; at_s?: number }
 
@@ -101,6 +104,8 @@ export interface Scene {
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */
   camera_more?: CameraMove[]
+  /** The camera's own life on top of its shots: a boat's sway, a hand holding it, a shake. */
+  camera_motion?: CameraMotion
   /** a class moment at the END of the scene (quiz, power-meter, choice): the stage holds until it is resolved */
   interaction?: { type: string; [k: string]: unknown } | null
   /** a scene in another era's library (overrides lesson.bundle) */

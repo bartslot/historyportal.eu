@@ -33,6 +33,11 @@ trait EditsStage25d
         if ($scene?->id !== $sceneId) {
             return;   // a debounced save from a scene the teacher has since left
         }
+        if (is_array($patch['cameraMotion'] ?? null)) {   // its own motion: a sway, a hand holding it, a shake
+            $this->storeStage25dCameraMotion($scene, $patch['cameraMotion']);
+
+            return;
+        }
         if (array_key_exists('camera', $patch)) {   // the camera move the teacher framed on the canvas
             $this->storeStage25dCamera($scene, $patch['camera'], $patch['camera_more'] ?? []);
 
@@ -108,6 +113,10 @@ trait EditsStage25d
     /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
     private const CAMERA_MAX_SHOTS = 50;
 
+    private const CAMERA_MOTION_KINDS = ['none', 'sway', 'handheld', 'shake'];
+
+    private const CAMERA_ROLL_MAX = 45.0;
+
     private const CAMERA_RANGE = ['x' => [-8.0, 8.0], 'y' => [0.3, 6.0], 'z' => [-4.0, 15.0], 'fov' => [20.0, 75.0]];
 
     /** The house camera (layout.ts HOUSE): what a pose field falls back to. */
@@ -125,12 +134,34 @@ trait EditsStage25d
      */
     private static function cameraShot(array $shot): array
     {
-        $pose = fn (mixed $p): array => collect(self::CAMERA_RANGE)
-            ->map(fn (array $range, string $k) => round(max($range[0], min($range[1], is_numeric($p[$k] ?? null) ? (float) $p[$k] : self::CAMERA_HOUSE[$k])), 3))
-            ->all();
+        $pose = function (mixed $p): array {
+            $held = collect(self::CAMERA_RANGE)
+                ->map(fn (array $range, string $k) => round(max($range[0], min($range[1], is_numeric($p[$k] ?? null) ? (float) $p[$k] : self::CAMERA_HOUSE[$k])), 3))
+                ->all();
+            $roll = is_numeric($p['roll'] ?? null) ? round(max(-self::CAMERA_ROLL_MAX, min(self::CAMERA_ROLL_MAX, (float) $p['roll'])), 3) : 0.0;
+
+            return $roll !== 0.0 ? [...$held, 'roll' => $roll] : $held;
+        };
         $time = fn (string $key): array => is_numeric($shot[$key] ?? null) ? [$key => round(max(0.0, min(3600.0, (float) $shot[$key])), 3)] : [];
 
         return [...$time('at_s'), ...$time('dur_s'), 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
+    }
+
+    /** @param  array<mixed>  $motion */
+    private function storeStage25dCameraMotion(Scene $scene, array $motion): void
+    {
+        $config = $scene->config;
+        if (in_array($motion['kind'] ?? null, self::CAMERA_MOTION_KINDS, true)) {
+            $config['stage25d']['camera_motion'] = [
+                'kind' => $motion['kind'],
+                ...collect(['amount', 'speed'])->mapWithKeys(fn (string $k) => [$k => is_numeric($motion[$k] ?? null) ? round(max(0.0, min(3.0, (float) $motion[$k])), 2) : 1.0])->all(),
+            ];
+        } else {
+            unset($config['stage25d']['camera_motion']);
+        }
+        if ($config !== $scene->config) {
+            $this->storeStage25dConfig($scene, $config);
+        }
     }
 
     private function storeStage25dCamera(Scene $scene, mixed $camera, mixed $more = []): void
