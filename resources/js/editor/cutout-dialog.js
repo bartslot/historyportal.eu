@@ -218,10 +218,3 @@ export async function openCutout (target) {
   })
   return open
 }
-
-/** Listen for double-clicks on pictures (the `image-edit:open` event) once per page. */
-export function installCutout () {
-  if (window.__cutoutInstalled) return
-  window.__cutoutInstalled = true
-  window.addEventListener('image-edit:open', (e) => { openCutout(e.detail) })
-}

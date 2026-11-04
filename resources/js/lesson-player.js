@@ -68,7 +68,7 @@ import { startSceneIndex, mayAutoplay, canStartLesson } from './player-start.js'
 import { mountTitlePoster as mountPoster, posterFit, episodeSize, posterVariants, variantFor, hasUpright } from './title-poster.js'
 import { QR, qrOptions, layoutTitleQr, drawQrDebug, coverRect, pictureSize } from './title-qr.js'
 import { placeExpectStrip } from './title-expect.js'
-import { mountDraw, TOOLS as DRAW_TOOLS, COLOURS as DRAW_COLOURS, WIDTHS as DRAW_WIDTHS } from './editor/draw-layer.js'
+import { TOOLS as DRAW_TOOLS, COLOURS as DRAW_COLOURS, WIDTHS as DRAW_WIDTHS } from './editor/draw-options.js'
 import { FIT, FIT_START, collisions, nextFit, artHits, calmScale, lettersBox, scaleBoxAbout, titlePieces } from './title-fit.js'
 import { splitTitle, canLetter, fitLines } from './title-letters.js'
 
@@ -2942,10 +2942,11 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     /** Draw over the lesson (pen, line, arrow): marks stay until the scene changes; a tap selects one to delete. */
-    toggleDraw () {
+    async toggleDraw () {
       if (this.drawing) { this.stopDraw(); return }
       const host = document.getElementById('lesson-stage')
       if (!host) return
+      const { mountDraw } = await import('./editor/draw-layer.js')
       this._draw = mountDraw(host, { keep: true, onSelect: (s) => { this.drawPicked = !!s } })
       this._draw.canvas.style.zIndex = '40'   // over the picture, under the deck and the strip
       this.drawSet()

@@ -14,9 +14,8 @@
  * one, the bin or Delete removes it, Clear removes all. Nothing in class is saved.
  */
 
-export const TOOLS = ['pen', 'line', 'arrow']
-export const COLOURS = ['#f59e0b', '#ef4444', '#ffffff', '#111827']
-export const WIDTHS = [4, 8, 16]
+import { TOOLS, COLOURS, WIDTHS } from './draw-options.js'
+export { TOOLS, COLOURS, WIDTHS }
 
 /** Drop points closer than `min` (stage %) to the last kept one: a slow hand makes hundreds of them. */
 export function thin (points, min = 0.25) {
