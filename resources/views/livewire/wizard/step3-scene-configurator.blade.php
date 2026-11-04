@@ -1042,11 +1042,11 @@
                  switching tabs never costs a round trip; keyed per layer so selecting a different
                  one starts on Format rather than inheriting the last layer's tab. --}}
             {{-- Figma order (settings-Maps-panel): title, then the tab row, then the sections. The
-                 title and tabs bleed to the panel edges, so they cancel the card-body padding. --}}
+                 title bleeds to the panel edges; the tab row sits in the content width. --}}
             <div x-data="{ tab: 'format' }" wire:key="layer-tabs-{{ $al['asset_id'] ?? 0 }}">
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
-                <x-ui.panel-tabs class="-mx-4 mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
+                <x-ui.panel-tabs class="mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
                                  :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
@@ -1088,7 +1088,7 @@
                      scene before it just as a narration scene does. --}}
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
-                <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
+                <x-ui.panel-tabs name="scene-tabs-{{ $sceneModel->id }}"
                                  :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
@@ -2251,7 +2251,8 @@
          class="fixed z-30 overflow-hidden"
          style="left: var(--rail-w, 11rem); width: var(--objlist-w, 13rem); top: 4rem; bottom: 0;">
         <div class="lp-panel-surface" aria-hidden="true"></div>
-        <div x-ref="list" class="h-full space-y-0.5 overflow-y-auto p-1.5">
+        {{-- wire:ignore: Alpine draws these rows. A Livewire morph re-inits them outside their x-for, where `obj` does not exist. --}}
+        <div x-ref="list" wire:ignore class="h-full space-y-0.5 overflow-y-auto p-1.5">
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}

@@ -66,7 +66,7 @@
         </button>
     </div>
 
-    <x-ui.panel-tabs class="-mx-4 mb-1" name="text-tabs-{{ $id }}"
+    <x-ui.panel-tabs class="mb-1" name="text-tabs-{{ $id }}"
                      :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE]]">
         <x-slot:breadcrumb>
             <x-ui.panel-breadcrumb :label="__('Scene')" wire:click="clearActiveText"

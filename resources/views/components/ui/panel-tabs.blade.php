@@ -17,8 +17,9 @@
      built here and shown whenever there is somewhere to go back to.
 
      The tabs themselves are <x-ui.segmented>, which is stock DaisyUI `tabs tabs-box tabs-sm`, like every inspector tab strip. --}}
-{{-- No border of its own: tabs-box draws the tray, and a frame around it reads as a box in a box. --}}
-<div {{ $attributes->class(['flex w-full items-center gap-1 px-4 py-1.5']) }}>
+{{-- No border of its own: tabs-box draws the tray, and a frame around it reads as a box in a box.
+     No padding and no bleed: the row is the panel's content width, edge to edge with the controls under it. --}}
+<div {{ $attributes->class(['flex items-center gap-1 py-1.5']) }}>
     {{ $breadcrumb }}
     <x-ui.segmented :name="$name" :options="$tabs" :model="$model" class="tabs-sm flex-1" tab-class="flex-1" />
 </div>
