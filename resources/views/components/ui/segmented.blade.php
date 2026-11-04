@@ -3,7 +3,8 @@
     'name',
     /**
      * [[value, label], …] — labels already translated by the caller. A third item is an icon: the
-     * `d` of a 24px outline path (Heroicons geometry), or ['motion' => ms, 'factor' => f] for a
+     * `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
+     * for a filled glyph (App\Support\TabIcons), or ['motion' => ms, 'factor' => f] for a
      * movement's own curve that plays on hover. The tab then shows the icon, and the label becomes
      * its tooltip and accessible name.
      */
@@ -49,13 +50,17 @@
             {{-- DaisyUI's icon tab: a label.tab holding the radio, so the browser still owns the
                  exclusivity and the arrow keys. .tabs-panel styles label:has(:checked). --}}
             <label class="tab {{ $tabClass }}" data-tooltip="{{ $optLabel }}" data-segment="{{ $optValue }}"
-                   @if (is_array($optIcon)) x-on:mouseenter="matchMedia('(prefers-reduced-motion: reduce)').matches || $el.querySelector('animateMotion')?.beginElement()" @endif>
+                   @if (is_array($optIcon) && isset($optIcon['motion'])) x-on:mouseenter="matchMedia('(prefers-reduced-motion: reduce)').matches || $el.querySelector('animateMotion')?.beginElement()" @endif>
                 <input type="radio" name="{{ $name }}" value="{{ $optValue }}" class="sr-only"
                        aria-label="{{ $optLabel }}"
                        @if ($model) x-model="{{ $model }}" @endif
                        @if ($onChange) x-on:change="{{ $onChange }}" @endif
                        @checked($value !== null && (string) $value === (string) $optValue) />
-                @if (is_array($optIcon))
+                @if (is_array($optIcon) && isset($optIcon['fill']))
+                    <svg viewBox="{{ $optIcon['viewBox'] }}" fill="currentColor" class="{{ $optIcon['class'] ?? 'h-5 w-5' }}" aria-hidden="true">
+                        <path d="{{ $optIcon['fill'] }}"/>
+                    </svg>
+                @elseif (is_array($optIcon))
                     {{-- A motion icon (Appear's speed): the movement's curve, distance over time, as
                          long as it takes. Hovering runs a dot along it at the real duration, so the
                          icon shows the feel rather than naming it. Still under reduced motion. --}}

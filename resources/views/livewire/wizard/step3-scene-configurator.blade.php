@@ -1047,7 +1047,7 @@
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
                 <x-ui.panel-tabs class="-mx-4 mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
-                                 :tabs="[['format', __('Format')], ['animate', __('Animate')]]">
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
                              JS dedupe guard, or the layer stays visibly selected with nothing
@@ -1089,7 +1089,7 @@
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
                 <x-ui.panel-tabs class="-mx-4" name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format')], ['animate', __('Animate')], ['music', __('Music')]]" />
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
                 @unless (auth()->user()?->isGuestDemo())
