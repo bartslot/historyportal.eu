@@ -1,4 +1,4 @@
-<x-layouts.landing title="History Portal">
+<x-layouts.landing title="History Portal" :livewire="false">
     <x-slot:head>
         <x-seo
             page="home"

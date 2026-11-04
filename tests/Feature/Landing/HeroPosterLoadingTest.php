@@ -10,8 +10,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The hero poster is above the fold: it loads at once and first, never lazily. Carousel posters
- * further down stay lazy (pair test 2026-10-24).
+ * The hero poster is above the fold: it loads at once, never lazily. Carousel posters further down
+ * stay lazy (pair test 2026-10-24). Not high priority: the demo hides it until the end, and on
+ * mobile it starved the sprite sheets the demo waits on (PageSpeed 2026-11-04).
  */
 class HeroPosterLoadingTest extends TestCase
 {
@@ -27,12 +28,12 @@ class HeroPosterLoadingTest extends TestCase
         return (string) $this->blade('<x-lesson-poster-card :lesson="$lesson" :bare="$bare" />', compact('lesson', 'bare'));
     }
 
-    public function test_the_hero_poster_loads_eagerly_with_high_priority(): void
+    public function test_the_hero_poster_loads_eagerly_without_jumping_the_queue(): void
     {
         $html = $this->card(true);
 
         $this->assertStringContainsString('loading="eager"', $html);
-        $this->assertStringContainsString('fetchpriority="high"', $html);
+        $this->assertStringNotContainsString('fetchpriority', $html);
     }
 
     public function test_a_carousel_poster_stays_lazy(): void

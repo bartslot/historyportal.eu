@@ -86,11 +86,14 @@
              which was never a real utility (Tailwind v4 builds `w-7xl` from --container-7xl and has no
              matching height scale), so it had a width and NO reserved height: until the bytes arrived
              it laid out 1281x0 at the flex centre and snapped to 1303x1303 at y=-201 the moment they
-             did. A 651px jump of a full-width element in a 900px viewport is a 0.72 layout shift, and
-             `fetchpriority=high` guarantees the picture wins the race against the JS that would
-             otherwise have hidden it first. Keep both attributes even though CSS now sets the box:
-             they are what the browser has to go on before the stylesheet's own value can matter. --}}
-        <img src="{{ asset('assets/videocards.webp') }}" alt="" fetchpriority="high"
+             did. A 651px jump of a full-width element in a 900px viewport is a 0.72 layout shift.
+             Keep both attributes even though CSS now sets the box: they are what the browser has to
+             go on before the stylesheet's own value can matter.
+
+             No fetchpriority=high: with the demo running the drawn cardwheel hides this picture
+             before it is ever seen, so its 139 KB only took bandwidth from the atlases below that
+             the demo waits on (PageSpeed mobile, 2026-11-04: LCP 6.3 s on slow 4G). --}}
+        <img src="{{ asset('assets/videocards.webp') }}" alt=""
              width="1280" height="1280"
              class="pointer-events-none absolute wheel z-10" />
         {{-- The drawn field: hero/cardwheel.js (default) or hero/timewarp.js, from one sprite sheet. --}}

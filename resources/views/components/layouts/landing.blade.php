@@ -1,4 +1,9 @@
-@props(['title' => config('app.name')])
+@props(['title' => config('app.name'), 'livewire' => true])
+@php
+    // A page with no Livewire component and no Alpine (the home page) skips livewire.min.js: 52 KB
+    // on the mobile critical path for nothing. The local dev panel still needs it.
+    $withLivewire = $livewire || (app()->environment('local') && auth()->check());
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', \App\Support\Locales::region(app()->getLocale())) }}" class="h-full scroll-smooth" data-theme="learningportal">
 <head>
@@ -26,7 +31,9 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-font-switch />
-    @livewireStyles
+    @if ($withLivewire)
+        @livewireStyles
+    @endif
 </head>
 <body class="landing-shell relative min-h-full bg-slate-950 text-white antialiased">
     <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_34%),radial-gradient(circle_at_bottom,_rgba(14,165,233,0.14),_transparent_28%)]"></div>
@@ -50,7 +57,9 @@
     @endif
 
     @stack('scripts')
-    @livewireScripts
+    @if ($withLivewire)
+        @livewireScripts
+    @endif
     <x-playtest-recorder />
 </body>
 </html>
