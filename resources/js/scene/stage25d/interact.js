@@ -1,8 +1,10 @@
 /**
  * stage25d/interact: pick a layer on the canvas, show its box with handles, drag it sideways.
  *
- * A press picks the nearest standing picture whose paint (not its transparent margin) is under the pointer; an
- * empty press does nothing here, so the editor's own "scene selected" handling takes it. The selection looks and
+ * A press picks the nearest standing picture whose paint (not its transparent margin) is under the pointer, and the
+ * selected picture before any other: it can be dragged out from behind what stands in front of it. A click on it with
+ * others under the pointer selects the next one down, so every layer can be reached on the canvas. An empty press does
+ * nothing here, so the editor's own "scene selected" handling takes it. The selection looks and
  * works like an artwork layer's (ArtworkOverlay): the sky ring, eight white handles that scale about the middle,
  * and the rotate grip on its stem. Everything goes through `onChange(index, property, value)`, which the editor
  * routes through the timeline: a keyed property gets a key at the playhead, a plain one is saved on the layer.
@@ -17,6 +19,23 @@ import { settle, pointForSizeRatio, alongSight, gridPieces, groundOf, layerOf } 
 
 const X_MIN = -1
 const X_MAX = 2
+/** Further than this between press and release (CSS px) is a drag, not a click. */
+const CLICK_PX = 4
+
+/** Which of the pictures under the pointer (nearest first) a press takes, and where a click on it goes next. */
+export const pickOf = (hits, selected) => {
+  const at = hits.findIndex((h) => h.index === selected)
+  if (at < 0) return { hit: hits[0] ?? null, next: null }
+  return { hit: hits[at], next: hits.length > 1 ? hits[(at + 1) % hits.length].index : null }
+}
+
+/** The layers standing nearer than the selected one and overlapping its box: `boxes` is `[{ index, box }]`. */
+export const inFrontOf = (boxes, selected) => {
+  const own = boxes.find((b) => b.index === selected)?.box
+  if (!own) return []
+  return boxes.filter(({ index, box }) => index !== selected && box && box.z < own.z
+    && box.x0 < own.x1 && box.x1 > own.x0 && box.y0 < own.y1 && box.y1 > own.y0).map((b) => b.index)
+}
 
 /**
  * @param {object} c
@@ -82,7 +101,8 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   }
 
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top } }
-  const pickAt = (x, y) => stage()?.pickLayers(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v, h.index)) ?? null
+  const hitsAt = (x, y) => (stage()?.pickLayers(x, y) ?? []).filter((h) => alpha.opaque(h.asset, h.u, h.v, h.index))
+  const pickAt = (x, y) => hitsAt(x, y)[0] ?? null
 
   const select = (index, announce) => {
     selected = index
@@ -111,7 +131,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onDown = (e) => {
     if (e.button !== 0) return
     const { x, y } = local(e)
-    const hit = pickAt(x, y)
+    const { hit, next } = pickOf(hitsAt(x, y), selected)
     if (!hit) {
       if (onEmpty(x, y)) e.stopPropagation()   // a backdrop was selected: not "the scene"
       return
@@ -124,6 +144,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     drag = {
       mode: 'move', index: hit.index, z: b.z, from: stage().worldXAt(x, y, b.z), x0: valueOf(hit.index, 'x'), id: e.pointerId, el: canvas,
       // on the ground the feet (bottom middle of the box) follow the pointer at the offset where it was grabbed
+      next, pressed: [e.clientX, e.clientY],
       ground, start: [x, y], foot: r ? [r.left + r.width / 2, r.top + r.height] : [x, y], lift: ground ? footY(hit.index) : 0,
     }
     canvas.setPointerCapture?.(e.pointerId)
@@ -195,14 +216,16 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     requestAnimationFrame(() => { hoverQueued = false; canvas.style.cursor = pickAt(x, y) ? 'pointer' : '' })
   }
 
-  const onUp = () => {
+  const onUp = (e) => {
     if (!drag) return
     drag.el.releasePointerCapture?.(drag.id)
     const index = drag.index
     const moved = (drag.mode === 'move' && drag.ground) || drag.byDistance
+    const next = drag.next != null && Math.hypot(e.clientX - drag.pressed[0], e.clientY - drag.pressed[1]) < CLICK_PX ? drag.next : null
     drag = null
     chip.style.display = 'none'
     if (moved) onSettled(index)
+    if (next !== null) select(next, true)
   }
 
   const onOther = (e) => { if (selected !== null && e.detail?.id !== `s25_layer-${selected}`) { selected = null; place() } }

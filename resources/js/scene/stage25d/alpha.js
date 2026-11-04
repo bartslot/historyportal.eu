@@ -28,11 +28,12 @@ export function createAlphaMaps (base) {
   return {
     /** Start loading the pictures of these assets. */
     prime (list) { list.forEach((a) => a?.file && load(a.file)) },
-    /** Is the point (u across, v down: 0..1, as the plane's uvs and Babylon's pick give it) paint? Unknown (not loaded, failed) counts as paint: never refuse a click.
+    /** Is the point (u across, v down: 0..1, as the plane's uvs and Babylon's pick give it) paint? Still loading counts as empty: a transparent margin is never the picture. A picture that failed to load counts as paint.
      *  An animation reads `frame`, the one on show (sprite.ts frameAt); without it, any frame. */
     opaque (asset, u, v, frame) {
       const m = maps.get(asset?.file)
-      if (!m || typeof m === 'string') { if (asset?.file) load(asset.file); return true }
+      if (m === 'failed') return true   // no way to tell: better a picture that can be picked than one that cannot
+      if (!m || m === 'loading') { if (asset?.file) load(asset.file); return false }
       // an animation's file is a sheet of frames: the frame on show, or (no frame given) any frame
       const cols = asset.kind === 'animation' ? Math.max(1, asset.cols ?? 1) : 1
       const rows = asset.kind === 'animation' ? Math.max(1, asset.rows ?? 1) : 1

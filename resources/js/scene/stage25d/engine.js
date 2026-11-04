@@ -20,7 +20,7 @@ import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
-import { attachInteraction } from './interact.js'
+import { attachInteraction, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
 import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from './framing.js'
@@ -42,6 +42,9 @@ export const DROP_TYPE = 'application/x-lp-stage25d'
 
 const libraries = new Map()
 const alphaMaps = new Map()   // one per library, kept across scenes: every picture is read once
+/** A layer in front of the selected one, while they overlap (Bart 2026-11-05: 20% invisible). */
+const IN_FRONT_OPACITY = 0.8
+
 const alphaFor = (base) => { if (!alphaMaps.has(base)) alphaMaps.set(base, createAlphaMaps(base)); return alphaMaps.get(base) }
 
 /** One library per bundle per page; a failed load is forgotten so the next scene tries again. */
@@ -110,6 +113,7 @@ export async function createStage25d (host, opts = {}) {
       motionClock += Math.min(0.1, (now - last) / 1000)
       last = now
       stage.tick(now)
+      if (pointer) stage.fadeLayers(selectionFade(), IN_FRONT_OPACITY)
       if (scene) stage.pose(scene, nowT(), motionClock)
       stage.scene.render()
       pointer?.place()
@@ -151,6 +155,12 @@ export async function createStage25d (host, opts = {}) {
     return saved
   }
   const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow, camera_more: camMore })
+  /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
+  const selectionFade = () => {
+    const selected = pointer?.selected ?? null
+    if (selected === null || stills > 0 || window.__timelineKeying?.playing?.()) return []
+    return inFrontOf(layers.map((_, index) => ({ index, box: hidden.has(`layer-${index}`) ? null : stage.layerBox(index) })), selected)
+  }
   const camLength = () => (scene ? sceneDuration(scene) : 8)
   const camKeysNow = () => cameraKeys(camNow, camMore, camLength())
   const camPoseNow = () => cameraPoseAt(camNow, camMore, nowT(), camLength())
@@ -223,7 +233,7 @@ export async function createStage25d (host, opts = {}) {
   /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
    *  strip whose paint is there, else the sky. Selected like a row; null when there is nothing to select. */
   const backdropAt = (x, y) => {
-    const hit = stage?.pickBackdrops?.(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v))
+    const hit = stage?.pickBackdrops?.(x, y).find((h) => !hidden.has(h.band !== undefined ? `band-${h.band}` : `layer-${h.index}`) && alpha.opaque(h.asset, h.u, h.v))
     const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : (cfg?.set?.sky ? 'sky' : null)
     if (id) api.select(id)
     return !!id
@@ -288,7 +298,7 @@ export async function createStage25d (host, opts = {}) {
           if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
         })
         pointer = attachInteraction({
-          canvas, host, stage: () => stage, alpha: { opaque: (a, u, v, i) => alpha.opaque(a, u, v, isAnimation(a) ? frameAt(a, layers[i]?.play, nowT()) : undefined) },   // an animation: the frame on show
+          canvas, host, stage: () => stage, alpha: { opaque: (a, u, v, i) => !hidden.has(`layer-${i}`) && alpha.opaque(a, u, v, isAnimation(a) ? frameAt(a, layers[i]?.play, nowT()) : undefined) },   // an animation: the frame on show
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
           onGround, byDistance,
           // the feet slide over the ground as it rises into the far landscape, at their own height above it (a ground

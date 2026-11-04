@@ -196,6 +196,7 @@ export const animationTimeline = (config = {}) => ({
       canResetObject: (target) => this.canResetObject(target),
       resetObject: (target) => this.resetObject(target),
       time: () => this.time,
+      playing: () => this.playing,
       seekTo: (end) => { this.pause(); this.seek(end === 'to' ? this.duration : 0); this.revealPlayhead() },
       // A live edit still waiting for its pause: a re-fired scene:load must not overwrite it (stage25d adopt).
       pending: () => !!this._saves?.isPending(),

@@ -328,6 +328,15 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
+  private faded = new Set<number>()
+  private fadedTo = 1
+
+  /** The editor lets a selected layer show through what stands in front of it: these layers drawn at this share. Never saved. */
+  fadeLayers(indices: number[], to: number) {
+    this.faded = new Set(indices)
+    this.fadedTo = to
+  }
+
   /** How high the ground stands at distance z in the scene on screen (groundHeight): pictures and the grid stand on it. */
   groundHeightAt(z: number): number { return groundHeight(z, this.land) }
   private land = 0
@@ -492,7 +501,8 @@ export class Stage {
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
-      b.handle.setOpacity(k.opacity)
+      const opacity = k.opacity * (this.faded.has(b.index) ? this.fadedTo : 1)
+      b.handle.setOpacity(opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
       if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
       const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
@@ -500,8 +510,8 @@ export class Stage {
       // the paper's grain at the scale it has from the house camera, fixed to the picture (moves and zooms with it)
       b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
-      b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * k.opacity)
-      b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * k.opacity)
+      b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
+      b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity)
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
       b.handle.setAlive(aliveOf(this.look, kind, this.sunDir.x, this.footTint))
       b.handle.setMotion(motionOf(b.asset, b.layer))

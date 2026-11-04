@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // the house view: 2 m wide per metre of distance, to keep the numbers readable
 vi.mock('@stage25d/stage25d/layout', async (importOriginal) => ({ ...(await importOriginal()), GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
 
-const { attachInteraction } = await import('../interact.js')
+const { attachInteraction, inFrontOf, pickOf } = await import('../interact.js')
 
 const rect = { left: 100, top: 50, width: 400, height: 225, right: 500, bottom: 275, x: 100, y: 50 }
 
@@ -178,3 +178,33 @@ describe('stage25d canvas interaction', () => {
     expect(setGrid).toHaveBeenLastCalledWith(null)
   })
 })
+
+describe('with something selected', () => {
+  const hits = [{ index: 1 }, { index: 2 }, { index: 3 }]
+
+  it('a press takes the selected layer even behind another; its click goes to the next one down, and round', () => {
+    expect(pickOf(hits, 2)).toEqual({ hit: hits[1], next: 3 })
+    expect(pickOf(hits, 3)).toEqual({ hit: hits[2], next: 1 })
+  })
+
+  it('nothing selected there: the nearest, and a lone picture has nothing to go to', () => {
+    expect(pickOf(hits, 9)).toEqual({ hit: hits[0], next: null })
+    expect(pickOf(hits, null).hit).toBe(hits[0])
+    expect(pickOf([hits[0]], 1).next).toBe(null)
+    expect(pickOf([], 1).hit).toBe(null)
+  })
+
+  it('fades only nearer layers that overlap the selected one', () => {
+    const box = (x0, x1, z) => ({ x0, x1, y0: 0, y1: 1, z })
+    const boxes = [
+      { index: 0, box: box(0.2, 0.4, 10) },
+      { index: 1, box: box(0.3, 0.5, 5) },    // nearer, overlapping
+      { index: 2, box: box(0.6, 0.8, 5) },    // nearer, beside it
+      { index: 3, box: box(0.3, 0.5, 20) },   // behind it
+      { index: 4, box: null },                // hidden
+    ]
+    expect(inFrontOf(boxes, 0)).toEqual([1])
+    expect(inFrontOf(boxes, 7)).toEqual([])
+  })
+})
+
