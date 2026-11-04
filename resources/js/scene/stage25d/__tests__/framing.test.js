@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CAM_RANGE, clampPose, endOf, panPose, wheelPose, withEnd } from '../framing.js'
+import { CAM_RANGE, cameraKeys, cameraPoseAt, clampPose, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
 
 const HOUSE = { x: 0, y: 1.6, z: 0, fov: 50 }
 
@@ -21,11 +21,30 @@ describe('camera framing', () => {
     expect(wheelPose(HOUSE, { deltaY: -50, ctrlKey: true }).z).toBe(0)
   })
 
-  it('setting one end keeps the other, and a scene with no move starts both at the house pose', () => {
-    const cam = withEnd(null, 'to', { z: 4 })
-    expect(cam.from).toEqual(HOUSE)
-    expect(cam.to).toEqual({ ...HOUSE, z: 4 })
-    expect(withEnd(cam, 'from', { x: 1 }).to).toEqual(cam.to)
-    expect(endOf(null, 'to')).toEqual(HOUSE)
+  it('keys go to shots and back, one shot per pair, with no gap in the keys', () => {
+    const keys = [{ t: 0, pose: HOUSE }, { t: 3, pose: { ...HOUSE, z: 4 } }, { t: 8, pose: { ...HOUSE, x: 1 } }]
+    const [first, ...rest] = shotsOfKeys(keys)
+    expect(rest).toHaveLength(1)
+    expect(first).toMatchObject({ at_s: 0, dur_s: 3, from: HOUSE })
+    expect(rest[0]).toMatchObject({ at_s: 3, dur_s: 5, to: { x: 1 } })
+    expect(cameraKeys(first, rest, 8)).toEqual(keys)
+  })
+
+  it('a single key is a still shot, no key is no move', () => {
+    const [still, ...none] = shotsOfKeys([{ t: 2, pose: { ...HOUSE, z: 4 } }])
+    expect(none).toEqual([])
+    expect(still.from).toEqual(still.to)
+    expect(shotsOfKeys([])).toEqual([])
+  })
+
+  it('a key replaces the one at its time, or joins in order; the pose is read back in degrees', () => {
+    const keys = withCameraKey([{ t: 0, pose: HOUSE }, { t: 8, pose: HOUSE }], 4, { z: 2 })
+    expect(keys.map((k) => k.t)).toEqual([0, 4, 8])
+    expect(withCameraKey(keys, 4, { z: 3 }).find((k) => k.t === 4).pose.z).toBe(3)
+    expect(withoutCameraKey(keys, 4).map((k) => k.t)).toEqual([0, 8])
+    expect(nearestCameraKey(keys, 7).t).toBe(8)
+    const [cam, ...more] = shotsOfKeys(keys)
+    expect(cameraPoseAt(cam, more, 4, 8).z).toBeCloseTo(2)
+    expect(cameraPoseAt(null, [], 1, 8)).toEqual(HOUSE)
   })
 })

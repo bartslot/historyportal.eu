@@ -5,13 +5,13 @@
     "babylon"
   ],
   "entries": {
-    "resources/js/app.js": 378516,
+    "resources/js/app.js": 397661,
     "resources/js/argument-map.js": 117821,
     "resources/js/gallery-scene.js": 4388,
     "resources/js/lesson-map.js": 1108938,
-    "resources/js/lesson-player.js": 240431,
-    "resources/js/race-device.js": 137679,
-    "resources/js/timemap/index.js": 1377302,
-    "resources/js/voyage-tour.js": 2378583
+    "resources/js/lesson-player.js": 249504,
+    "resources/js/race-device.js": 137902,
+    "resources/js/timemap/index.js": 1377585,
+    "resources/js/voyage-tour.js": 2379950
   }
 }

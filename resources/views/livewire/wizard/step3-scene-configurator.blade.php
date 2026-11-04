@@ -1401,7 +1401,7 @@
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
             /** Frame the start or the end of the camera move on the canvas. */
-            frame(end) { window.__stage25d?.frameCamera?.(end); this.sync(); },
+            frame(end) { window.__timelineKeying?.seekTo?.(end); this.sync(); },
             /** Back to the still camera: no move. */
             stillCamera() { window.__stage25d?.resetCamera?.(); this.sync(); },
             /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */

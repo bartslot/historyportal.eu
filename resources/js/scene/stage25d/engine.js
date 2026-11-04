@@ -12,7 +12,7 @@ import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
-import { HOUSE, layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { HOUSE, sceneDuration, layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -23,7 +23,7 @@ import { createAlphaMaps } from './alpha.js'
 import { attachInteraction } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
-import { endOf, panPose, wheelPose, withEnd } from './framing.js'
+import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
@@ -101,8 +101,8 @@ export async function createStage25d (host, opts = {}) {
   let pointer = null
   let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
   let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
-  let framing = null        // the Camera row is selected: the end of the move the canvas shows and moves, 'from' | 'to'
-  let framingView = false   // the canvas holds that end; playing or scrubbing shows the move itself again
+  let camMore = []          // and the shots after it (camera_more): one per pair of camera keys
+  let framing = false       // the Camera row is selected: the canvas's pointer moves the camera at the playhead
 
   const startLoop = () => {
     stage.engine.runRenderLoop(() => {
@@ -110,7 +110,7 @@ export async function createStage25d (host, opts = {}) {
       motionClock += Math.min(0.1, (now - last) / 1000)
       last = now
       stage.tick(now)
-      if (scene) stage.pose(framing && framingView ? framedScene() : scene, nowT(), motionClock)
+      if (scene) stage.pose(scene, nowT(), motionClock)
       stage.scene.render()
       pointer?.place()
     })
@@ -150,17 +150,31 @@ export async function createStage25d (host, opts = {}) {
     redraw()
     return saved
   }
-  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow })
-  /** While framing: the scene held still on the end being framed. */
-  const framedScene = () => { const p = endOf(camNow, framing); return { ...scene, camera: { from: p, to: p }, camera_more: [] } }
-  /** Move the end being framed: live, and saved (the editor's queue keeps the last of a drag). */
-  const frameTo = (pose) => {
-    if (!framing || !scene) return
-    camNow = withEnd(camNow, framing, pose)
-    scene = { ...scene, camera: camNow }
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow, camera_more: camMore })
+  const camLength = () => (scene ? sceneDuration(scene) : 8)
+  const camKeysNow = () => cameraKeys(camNow, camMore, camLength())
+  const camPoseNow = () => cameraPoseAt(camNow, camMore, nowT(), camLength())
+  /** The camera's keys changed: live, and saved (the editor's queue keeps the last of a drag). */
+  const storeCameraKeys = (keys) => {
+    const [first = null, ...rest] = shotsOfKeys(keys)
+    camNow = first
+    camMore = rest
+    if (scene) scene = { ...scene, camera: camNow, camera_more: camMore }
     seenEdit = liveSig()
-    if (api.sceneId != null) opts.onCommit?.(0, { camera: camNow }, api.sceneId)
+    if (api.sceneId != null) opts.onCommit?.(0, { camera: camNow, camera_more: camMore }, api.sceneId)
     window.dispatchEvent(new CustomEvent('stage25d-edited'))
+  }
+  /** Move the camera: with auto-key on, a key at the playhead (the first one past 0 also keeps where it was at 0, so it
+   *  moves from there); with it off, the key under the playhead, else the nearest. */
+  const frameTo = (pose) => {
+    if (!scene) return
+    const t = nowT()
+    const keys = camKeysNow()
+    if (window.__timelineKeying?.autoKey?.() || !keys.length) {
+      const seeded = !keys.length && t > 0 ? withCameraKey(keys, 0, camPoseNow()) : keys
+      return storeCameraKeys(withCameraKey(seeded, t, pose))
+    }
+    storeCameraKeys(withCameraKey(keys, nearestCameraKey(keys, t).t, pose))
   }
   /** Framing takes the canvas's pointer and wheel before the layer picking does. */
   const attachFraming = () => {
@@ -170,8 +184,7 @@ export async function createStage25d (host, opts = {}) {
       if (!framing) return
       take(e)
       canvas.setPointerCapture?.(e.pointerId)
-      framingView = true
-      pan = { x: e.clientX, y: e.clientY, pose: endOf(camNow, framing) }
+      pan = { x: e.clientX, y: e.clientY, pose: camPoseNow() }
       canvas.style.cursor = 'grabbing'
     }, { capture: true })
     canvas.addEventListener('pointermove', (e) => {
@@ -182,8 +195,8 @@ export async function createStage25d (host, opts = {}) {
     const end = (e) => { if (!pan) return; take(e); pan = null; canvas.style.cursor = framing ? 'grab' : '' }
     canvas.addEventListener('pointerup', end, { capture: true })
     canvas.addEventListener('pointercancel', end, { capture: true })
-    canvas.addEventListener('wheel', (e) => { if (!framing) return; take(e); framingView = true; frameTo(wheelPose(endOf(camNow, framing), e)) }, { capture: true, passive: false })
-    window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_camera') api.frameCamera(null) })
+    canvas.addEventListener('wheel', (e) => { if (!framing) return; take(e); frameTo(wheelPose(camPoseNow(), e)) }, { capture: true, passive: false })
+    window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_camera') api.frameCamera(false) })
   }
   /** The set as the teacher sees it now: a rebuild (an asset swap, a new layer) keeps every live edit. */
   const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow })
@@ -248,6 +261,7 @@ export async function createStage25d (host, opts = {}) {
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
       skyNow = { ...(next.set.skyLayer ?? {}) }
       camNow = next.camera
+      camMore = next.camera_more ?? []
       hidden = new Set()
       seenEdit = editSig(cfgNow)
       cfg = cfgNow
@@ -325,7 +339,8 @@ export async function createStage25d (host, opts = {}) {
       bands = bands.map((g, i) => take(g, cfgNow.set?.groundBands?.[i]))
       skyNow = take(skyNow, cfgNow.set?.skyLayer)
       camNow = cfgNow.camera ?? null
-      scene = scene ? { ...scene, camera: camNow } : scene
+      camMore = cfgNow.camera_more ?? []
+      scene = scene ? { ...scene, camera: camNow, camera_more: camMore } : scene
       cfg = cfgNow
       redraw()
       return true
@@ -352,7 +367,6 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The editor poses the scene at t seconds. */
     update (t) {
-      if (Math.max(0, t) !== manualT) framingView = false   // the playhead moved: show the move, not the framed end
       clock = null; manualT = Math.max(0, t)
     },
     /** The player follows a clock (the narration's currentTime). */
@@ -368,11 +382,11 @@ export async function createStage25d (host, opts = {}) {
       if (id === 'camera') {
         backdrop = null
         pointer?.select(null)
-        api.frameCamera(framing ?? 'from')
+        api.frameCamera(true)
         window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 's25_camera' } }))
         return
       }
-      api.frameCamera(null)
+      api.frameCamera(false)
       backdrop = isBackdrop(id) ? id : null
       pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !backdrop)
       if (backdrop) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${backdrop}` } }))
@@ -382,24 +396,25 @@ export async function createStage25d (host, opts = {}) {
     get backdrop () { return backdrop },
     get selection () { return pointer?.selected ?? null },
     /** Another scene is opening: nothing stays selected from the one before. */
-    clearSelection () { pointer?.select(null); api.frameCamera(null) },
-    /** Frame one end of the camera move on the canvas ('from' | 'to'), or stop framing (null). */
-    frameCamera (end) {
-      framing = end === 'from' || end === 'to' ? end : null
-      framingView = !!framing
+    clearSelection () { pointer?.select(null); api.frameCamera(false) },
+    /** The canvas's pointer moves the camera at the playhead (the Camera row is selected), or picks layers again. */
+    frameCamera (on) {
+      framing = !!on
       canvas.style.cursor = framing ? 'grab' : ''
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
-    /** What the Camera panel shows: the end being framed, and whether the scene has a move of its own. */
-    cameraInfo: () => ({ framing, moves: !!camNow, move: camNow, house: HOUSE }),
-    /** Back to the still house camera: no move. */
-    resetCamera () {
-      camNow = null
-      if (scene) scene = { ...scene, camera: null }
-      seenEdit = liveSig()
-      if (api.sceneId != null) opts.onCommit?.(0, { camera: null }, api.sceneId)
-      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    /** What the Camera panel and row show: its keys, and the pose at the playhead (the still house camera with no move). */
+    cameraInfo: () => ({ framing, moves: !!camNow, keys: camKeysNow(), pose: camPoseNow() }),
+    /** One value of the camera typed in its row: the same edit as a drag. */
+    setCameraValue (property, value) { frameTo({ ...camPoseNow(), [property]: value }) },
+    /** The diamond on a camera row: a key under the playhead goes, else one comes with the pose on screen. */
+    toggleCameraKey () {
+      const t = nowT()
+      const keys = camKeysNow()
+      storeCameraKeys(keys.some((k) => Math.abs(k.t - t) < 0.001) ? withoutCameraKey(keys, t) : withCameraKey(keys, t, camPoseNow()))
     },
+    /** Back to the still house camera: no move. */
+    resetCamera () { storeCameraKeys([]) },
     /** Is the stage at the scene's first frame with nothing hidden? Only then is its picture a thumbnail of the scene. */
     atStart () { return manualT === 0 && clock === null && hidden.size === 0 && !framing },
     /** What the inspector shows for a layer: its name, picture, depth and motion. */

@@ -31,11 +31,10 @@
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ __('Camera') }}</span>
         </div>
 
-        <div class="tabs tabs-box tabs-sm mt-3 w-full" role="tablist" aria-label="{{ __('Camera') }}" data-stage25d-camera>
+        {{-- Start and End move the playhead there; the frame at the playhead is what a drag changes. --}}
+        <div class="mt-3 grid grid-cols-2 gap-2" aria-label="{{ __('Camera') }}" data-stage25d-camera>
             @foreach ([['from', __('Start')], ['to', __('End')]] as [$end, $label])
-                <button type="button" role="tab" class="tab flex-1" data-camera-end="{{ $end }}"
-                        :class="cam?.framing === '{{ $end }}' && 'tab-active'" :aria-selected="cam?.framing === '{{ $end }}'"
-                        x-on:click="frame('{{ $end }}')">{{ $label }}</button>
+                <button type="button" class="btn btn-sm" data-camera-end="{{ $end }}" x-on:click="frame('{{ $end }}')">{{ $label }}</button>
             @endforeach
         </div>
         <p class="mt-2 text-xs text-panel-hint">{{ __('Drag the picture to move the camera. Scroll to go closer, pinch to zoom.') }}</p>

@@ -34,7 +34,7 @@ trait EditsStage25d
             return;   // a debounced save from a scene the teacher has since left
         }
         if (array_key_exists('camera', $patch)) {   // the camera move the teacher framed on the canvas
-            $this->storeStage25dCamera($scene, $patch['camera']);
+            $this->storeStage25dCamera($scene, $patch['camera'], $patch['camera_more'] ?? []);
 
             return;
         }
@@ -106,6 +106,8 @@ trait EditsStage25d
     }
 
     /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
+    private const CAMERA_MAX_SHOTS = 50;
+
     private const CAMERA_RANGE = ['x' => [-8.0, 8.0], 'y' => [0.3, 6.0], 'z' => [-4.0, 15.0], 'fov' => [20.0, 75.0]];
 
     /** The house camera (layout.ts HOUSE): what a pose field falls back to. */
@@ -115,22 +117,35 @@ trait EditsStage25d
      * config.stage25d.camera: a start and an end pose, held to the camera's range; null = the still house camera.
      * The director's own fields (move, ease, dur_s, at_s) stay as they were.
      */
-    private function storeStage25dCamera(Scene $scene, mixed $camera): void
+    /**
+     * The values a framed shot takes from the browser: its two poses, held to the range, and its place in time.
+     *
+     * @param  array<mixed>  $shot
+     * @return array<string, mixed>
+     */
+    private static function cameraShot(array $shot): array
+    {
+        $pose = fn (mixed $p): array => collect(self::CAMERA_RANGE)
+            ->map(fn (array $range, string $k) => round(max($range[0], min($range[1], is_numeric($p[$k] ?? null) ? (float) $p[$k] : self::CAMERA_HOUSE[$k])), 3))
+            ->all();
+        $time = fn (string $key): array => is_numeric($shot[$key] ?? null) ? [$key => round(max(0.0, min(3600.0, (float) $shot[$key])), 3)] : [];
+
+        return [...$time('at_s'), ...$time('dur_s'), 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
+    }
+
+    private function storeStage25dCamera(Scene $scene, mixed $camera, mixed $more = []): void
     {
         $config = $scene->config;
+        unset($config['stage25d']['camera_more']);
         if (! is_array($camera)) {
             unset($config['stage25d']['camera']);
         } else {
-            $pose = fn (mixed $p): array => collect(self::CAMERA_RANGE)
-                ->map(fn (array $range, string $k) => round(max($range[0], min($range[1], is_numeric($p[$k] ?? null) ? (float) $p[$k] : self::CAMERA_HOUSE[$k])), 3))
-                ->all();
-            $old = (array) ($config['stage25d']['camera'] ?? []);
-            $config['stage25d']['camera'] = [
-                'move' => 'framed', 'ease' => 'inOut', 'at_s' => 0,
-                ...$old,
-                'from' => $pose((array) ($camera['from'] ?? [])),
-                'to' => $pose((array) ($camera['to'] ?? [])),
-            ];
+            $old = (array) ($scene->config['stage25d']['camera'] ?? []);
+            $config['stage25d']['camera'] = ['move' => 'framed', 'ease' => 'inOut', 'at_s' => 0, ...$old, ...self::cameraShot($camera)];
+            $shots = array_map(fn (mixed $s): array => ['move' => 'framed', 'ease' => 'inOut', ...self::cameraShot((array) $s)], array_slice(array_values((array) $more), 0, self::CAMERA_MAX_SHOTS));
+            if ($shots !== []) {
+                $config['stage25d']['camera_more'] = $shots;
+            }
         }
         if ($config === $scene->config) {
             return;

@@ -196,6 +196,7 @@ export const animationTimeline = (config = {}) => ({
       canResetObject: (target) => this.canResetObject(target),
       resetObject: (target) => this.resetObject(target),
       time: () => this.time,
+      seekTo: (end) => { this.pause(); this.seek(end === 'to' ? this.duration : 0); this.revealPlayhead() },
       // A live edit still waiting for its pause: a re-fired scene:load must not overwrite it (stage25d adopt).
       pending: () => !!this._saves?.isPending(),
       // Selected keyframes own Backspace/Delete: the editor's object-delete key asks this first,
@@ -285,6 +286,7 @@ export const animationTimeline = (config = {}) => ({
       map.__timelineHooked = true
       const panel = () => document.querySelector('[data-timeline]')?._x_dataStack?.[0]
       map.on('move', () => { const p = panel(); if (p) p.canvasTick++ })
+      map.on('movestart', () => { if (!applyingCamera) panel()?.noteCanvasValues('camera') })
       map.on('moveend', () => {
         if (applyingCamera) return
         panel()?.recordCanvasEdit('camera', cameraFromMap(map))
@@ -293,14 +295,25 @@ export const animationTimeline = (config = {}) => ({
     hookMap()
   },
 
+  /** An object's values before the canvas moves it: what auto-key holds at 0 when a drag starts its first move. */
+  canvasSeen: {},
+
+  noteCanvasValues (target) {
+    this.canvasSeen[target] = Object.fromEntries(this.propertiesOf(target).map((p) => [p.key, this.valueAt(target, p.key)]))
+  },
+
   /** Canvas edit → keyframes, for animated properties whose value really changed. */
   recordCanvasEdit (target, values) {
     this.canvasTick++
     if (this.playing || this.drag || !this.autoKey) return
     const frame = sampleFrame(this.tracks.filter((t) => sortedKeys(t).length), this.time)[target] ?? {}
+    const seen = this.canvasSeen[target] ?? {}
+    this.canvasSeen[target] = { ...seen, ...values }
     let changed = false
     for (const [property, value] of Object.entries(values ?? {})) {
-      if (!Number.isFinite(value) || !this.isAnimated(target, property)) continue
+      if (!Number.isFinite(value)) continue
+      if (Number.isFinite(seen[property]) && Math.abs(seen[property] - value) >= 1e-3) this.armAutoKey(target, property, seen[property])
+      if (!this.isAnimated(target, property)) continue
       if (Math.abs((frame[property] ?? NaN) - value) < 1e-3) continue
       this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value }))
       changed = true
@@ -809,15 +822,11 @@ export const animationTimeline = (config = {}) => ({
     return (this.dioramaItem(target)?.keys ?? []).map((k) => ({ time: k.t, value: k.cell[i] }))
   },
 
-  /** The 3D camera row's keys: the move's start pose at its start, its end pose where it ends (the scene's end
-   *  unless the move has its own length). No move, no keys: the camera stands still. */
+  /** The 3D camera row's keys, one per framed moment. A move longer than the timeline ends at its edge. */
   stage25dCameraKeys (property) {
-    void this.canvasTick   // reactive: the teacher framed an end
-    const move = window.__stage25d?.cameraInfo?.()?.move
-    if (!move) return []
-    const start = Number(move.at_s) || 0
-    const end = Math.min(this.duration, start + (Number(move.dur_s) || this.duration))   // a move longer than the timeline ends at its edge
-    return [{ time: start, value: move.from?.[property] }, { time: end, value: move.to?.[property] }]
+    void this.canvasTick   // reactive: the teacher framed the camera
+    const keys = (window.__stage25d?.cameraInfo?.()?.keys ?? []).map((k) => ({ time: Math.min(this.duration, k.t), value: k.pose?.[property] }))
+    return keys.filter((k, i) => !keys.slice(i + 1).some((later) => sameTime(later.time, k.time)))
   },
 
   /** True when the item's picture has a walk animation: its clip is a walk, not a glide. */
@@ -1014,7 +1023,7 @@ export const animationTimeline = (config = {}) => ({
    * editing the value while the playhead sits on the key updates it (editKeyed / setValue).
    */
   toggleKey (target, property) {
-    if (kindOfTarget(target) === 's25cam') return   // framed on the canvas, not keyed here
+    if (kindOfTarget(target) === 's25cam') { window.__stage25d?.toggleCameraKey?.(); return }
     if (kindOfTarget(target) === 'dio') { window.__diorama?.keyHere(target.slice(4)); return }
     this.stopEasingPreview()
     const map = window.__lessonMap
@@ -1052,7 +1061,9 @@ export const animationTimeline = (config = {}) => ({
    */
   editKeyed (target, property, value, { flush = true } = {}) {
     this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
-    if (kindOfTarget(target) === 'dio' || !this.isAnimated(target, property)) return false
+    if (kindOfTarget(target) === 'dio') return false
+    this.armAutoKey(target, property)
+    if (!this.isAnimated(target, property)) return false
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     const v = isColor ? String(value ?? '') : Number(value)
     if (!isColor && !Number.isFinite(v)) return true
@@ -1063,6 +1074,15 @@ export const animationTimeline = (config = {}) => ({
     else this.saveSoon()
     this.announce()
     return true
+  },
+
+  /**
+   * Auto-key on and past the scene's start, a property with no keys yet starts moving here: a key at 0 holds the value it
+   * has now, and the edit that follows is keyed at the playhead. At 0 an edit only places the object.
+   */
+  armAutoKey (target, property, was = this.valueAt(target, property)) {
+    if (!this.autoKey || this.time <= 0 || this.isAnimated(target, property)) return
+    this.writeTrack(target, property, (track) => addKeyframe(track, { time: 0, value: was }))
   },
 
   /** Has this property anything Reset would take back? Only keys, so only an animated one. */
@@ -1140,9 +1160,9 @@ export const animationTimeline = (config = {}) => ({
       return cell ? Math.round(cell[DIO_AXIS[property]] * 100) / 100 : 0
     }
     const keys = this.keysOf(target, property)
-    if (kindOfTarget(target) === 's25cam') {   // what the move reads at the playhead; no move, the still house camera
-      const value = sampleFrame([{ target, property, keyframes: keys }], this.time)[target]?.[property]
-      return Number.isFinite(value) ? round2(value) : window.__stage25d?.cameraInfo?.()?.house?.[property] ?? 0
+    if (kindOfTarget(target) === 's25cam') {
+      void this.time
+      return round2(window.__stage25d?.cameraInfo?.()?.pose?.[property] ?? 0)
     }
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (keys.length) {
@@ -1184,7 +1204,7 @@ export const animationTimeline = (config = {}) => ({
   setValue (target, property, value, { flush = true } = {}) {
     const isColor = propertyFor(kindOfTarget(target), property)?.type === 'color'
     if (!isColor && !Number.isFinite(value)) return
-    if (kindOfTarget(target) === 's25cam') return   // framed on the canvas, not typed here
+    if (kindOfTarget(target) === 's25cam') { window.__stage25d?.setCameraValue?.(property, value); return }
     if (kindOfTarget(target) === 'dio') {
       // The stage applies the canvas rules: snapped, on its floor, recorded while auto-key is on.
       const id = target.slice(4)
@@ -1193,6 +1213,7 @@ export const animationTimeline = (config = {}) => ({
       window.__diorama?.placeCell(id, cell)
       return
     }
+    this.armAutoKey(target, property)
     const map = window.__lessonMap
     if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, { [property]: value }) }
     else if (kindOfTarget(target) === 's25' && !this.isAnimated(target, property)) window.__stage25d?.commitLayerProp?.(target.slice(4), property, value)   // a base value: saved on the layer itself
@@ -1300,9 +1321,9 @@ export const animationTimeline = (config = {}) => ({
     event.stopPropagation()
     this.pause()
     const id = keyId({ target, property, time })
-    if (kindOfTarget(target) === 's25cam') {   // the camera's keys are its two ends: a press frames that end
+    if (kindOfTarget(target) === 's25cam') {   // a press goes to that frame of the camera, to look at it or frame it again
       window.__stage25d?.select?.('camera')
-      window.__stage25d?.frameCamera?.(time > this.stage25dCameraKeys(property)[0]?.time ? 'to' : 'from')
+      this.seek(time)
       return
     }
     if (kindOfTarget(target) === 'dio') {   // select only: a diorama path moves in time as one clip
@@ -1367,6 +1388,7 @@ export const animationTimeline = (config = {}) => ({
     const target = this.targetFromObjectId(id)
     this.activeTarget = target
     if (!target) return
+    this.noteCanvasValues(target)
     // The 3D camera stays closed: its two keys are on its own row, and its panel frames them.
     if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
     this.$nextTick(() => {

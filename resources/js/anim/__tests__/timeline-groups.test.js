@@ -117,9 +117,10 @@ describe('the value field on the component', () => {
     expect(p.keysOf(TEXT, 'opacity').at(-1)).toMatchObject({ time: 1, value: 0.4 })
   })
 
-  it('does not key a property nobody has animated', () => {
+  it('does not key a property nobody has animated, with auto-key off', () => {
     const p = panel()
     p.time = 1
+    p.autoKey = false
     p.commitShown(TEXT, 'x', 40)
     expect(p.keysOf(TEXT, 'x')).toEqual([])
   })

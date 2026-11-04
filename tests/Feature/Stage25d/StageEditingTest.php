@@ -164,6 +164,24 @@ class StageEditingTest extends TestCase
         $this->assertSame(Lesson::SCENE_LENGTH_MIN_MS, $scene->lesson->fresh()->sceneLengthMs());
     }
 
+    public function test_camera_keys_past_the_first_pair_are_saved_as_shots_and_go_with_the_move(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $pose = ['x' => 1, 'y' => 2, 'z' => 3, 'fov' => 40];
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => ['at_s' => 0, 'dur_s' => 2, 'from' => $pose, 'to' => $pose], 'camera_more' => [['at_s' => 2, 'dur_s' => 6, 'from' => $pose, 'to' => [...$pose, 'x' => 99]]]], $scene->id);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertEquals(2, $stage['camera']['dur_s']);
+        $this->assertEquals(2, $stage['camera_more'][0]['at_s']);
+        $this->assertEquals(8, $stage['camera_more'][0]['to']['x']);
+
+        $editor->call('saveStage25dLayer', 0, ['camera' => null, 'camera_more' => []], $scene->id);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertArrayNotHasKey('camera', $stage);
+        $this->assertArrayNotHasKey('camera_more', $stage);
+    }
+
     public function test_the_lesson_tab_shows_the_lesson_with_a_layer_selected(): void
     {
         $this->editor($this->scene())->call('selectInspectorTarget', 's25_layer-0')

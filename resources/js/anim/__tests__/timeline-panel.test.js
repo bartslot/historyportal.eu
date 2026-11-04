@@ -65,9 +65,8 @@ describe('setValue records a keyframe at the playhead', () => {
     expect(keys(p, TEXT, 'x')[0].value).toBe(40)
   })
 
-  it('leaves an un-animated property alone, so a layer can still just be positioned', () => {
+  it('leaves an un-animated property alone at the scene\'s start, so a layer can still just be positioned', () => {
     const p = panel()
-    p.time = 3.601
 
     p.setValue(TEXT, 'x', 40)
 
@@ -492,22 +491,46 @@ describe('a stashed draft expires', () => {
 describe('the 3D camera row', () => {
   afterEach(() => { delete window.__stage25d })
 
-  it('shows the move\'s start and end as its keys, and none when the camera stands still', () => {
-    const move = { from: { x: 0, y: 1.6, z: 0, fov: 50 }, to: { x: 1, y: 2, z: 4, fov: 40 }, at_s: 0 }
-    window.__stage25d = { cameraInfo: () => ({ move }) }
+  it('shows the camera\'s keys and its pose at the playhead, ends at the timeline\'s edge, and hands edits to the stage', () => {
+    const pose = (z) => ({ x: 0, y: 1.6, z, fov: 50 })
+    const stage = { cameraInfo: () => ({ keys: [{ t: 0, pose: pose(0) }, { t: 8.45, pose: pose(4) }], pose: pose(2) }), setCameraValue: vi.fn(), toggleCameraKey: vi.fn() }
+    window.__stage25d = stage
     const p = panel([])
-    p.duration = 8
     expect(p.keysOf('s25cam', 'z')).toEqual([{ time: 0, value: 0 }, { time: 8, value: 4 }])
-    window.__stage25d = { cameraInfo: () => ({ move: { ...move, at_s: 1, dur_s: 3 } }) }
-    expect(p.keysOf('s25cam', 'fov').map((k) => k.time)).toEqual([1, 4])
-    window.__stage25d = { cameraInfo: () => ({ move: { ...move, dur_s: 8.45 } }) }
-    expect(p.keysOf('s25cam', 'x').map((k) => k.time)).toEqual([0, 8])
-    p.time = 2
-    window.__stage25d = { cameraInfo: () => ({ move: { ...move, dur_s: 4 } }) }
     expect(p.valueAt('s25cam', 'z')).toBe(2)
-    window.__stage25d = { cameraInfo: () => ({ move: null, house: { fov: 50 } }) }
-    expect(p.keysOf('s25cam', 'x')).toEqual([])
-    expect(p.valueAt('s25cam', 'fov')).toBe(50)
+    p.setValue('s25cam', 'z', 3)
+    expect(stage.setCameraValue).toHaveBeenCalledWith('z', 3)
+    p.toggleKey('s25cam', 'z')
+    expect(stage.toggleCameraKey).toHaveBeenCalled()
+    expect(p.$wire.setTimeline).not.toHaveBeenCalled()
+  })
+})
+
+describe('auto-key on a property with no keys yet', () => {
+  it('past the start: keeps the old value at 0 and keys the new one at the playhead', () => {
+    const p = panel([])
+    p.time = 2
+    p.setValue(TEXT, 'x', 40)
+    expect(p.keysOf(TEXT, 'x')).toEqual([expect.objectContaining({ time: 0, value: 12 }), expect.objectContaining({ time: 2, value: 40 })])
+  })
+
+  it('at the start, or with auto-key off: only places the object', () => {
+    const p = panel([])
+    p.setValue(TEXT, 'x', 40)
+    expect(p.keysOf(TEXT, 'x')).toEqual([])
+    p.time = 2
+    p.autoKey = false
+    p.setValue(TEXT, 'x', 50)
+    expect(p.keysOf(TEXT, 'x')).toEqual([])
+  })
+
+  it('a canvas drag keys only what it changed', () => {
+    const p = panel([])
+    p.time = 2
+    p.canvasSeen[TEXT] = { x: 12, y: 15 }
+    p.recordCanvasEdit(TEXT, { x: 30, y: 15 })
+    expect(p.keysOf(TEXT, 'x').map((k) => [k.time, k.value])).toEqual([[0, 12], [2, 30]])
+    expect(p.keysOf(TEXT, 'y')).toEqual([])
   })
 })
 
