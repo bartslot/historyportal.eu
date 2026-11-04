@@ -1267,6 +1267,11 @@
                            wire:change="setBackgroundMusic($event.target.checked)"
                            class="toggle toggle-sm shrink-0" />
                 </label>
+                @unless (auth()->user()?->isGuestDemo())
+                    <div class="mt-4" wire:ignore>
+                        <livewire:wizard.lesson-music :lesson="$lesson" :key="'lesson-music-'.$lesson->id" />
+                    </div>
+                @endunless
             </div>
             @endif
         </div>

@@ -9,7 +9,7 @@ import { MusicMixer, resolveSceneMusic, hasSceneMusic } from '../music-mixer.js'
 class FakeParam {
   constructor (v = 1) { this.value = v; this.events = [] }
   cancelScheduledValues () { this.events = [] }
-  setValueAtTime (v) { this.value = v }
+  setValueAtTime (v, t) { this.value = v; this.events.push(['set', v, t]) }
   linearRampToValueAtTime (v, t) { this.events.push(['ramp', v, t]); this.target = v }
   setTargetAtTime (v) { this.target = v }
 }
@@ -22,7 +22,7 @@ class FakeNode {
 
 class FakeSource extends FakeNode {
   constructor (ctx) { super(); ctx.sources.push(this); this.started = null; this.stopAt = null }
-  start (when, offset) { this.started = offset }
+  start (when, offset) { this.started = offset; this.when = when }
   stop (t) { this.stopAt = t ?? 0 }
 }
 
@@ -135,5 +135,41 @@ describe('MusicMixer load failure', () => {
     mixer.enterScene(mix(layer(1)))
     await flush(); await flush()
     expect(errors).toEqual(['1'])
+  })
+})
+
+describe('MusicMixer on the beat', () => {
+  it('waits for the next bar of the leaving track and fades over four bars', async () => {
+    // 120 BPM, first beat at 0.5 s: bars fall on 0.5, 2.5, 4.5 ... of the file.
+    const tracks = { 1: { url: '/one.mp3', bpm: 120, beat_offset: 0.5 }, 2: { url: '/two.mp3', bpm: 120, beat_offset: 0.25 } }
+    const mixer = new MusicMixer(tracks, { AudioContextCtor: FakeCtx, fetchFn })
+    mixer.enterScene(mix(layer(1)))
+    await flush()
+    const ctx = FakeCtx.last
+    ctx.currentTime = 3.1   // the file is at 3.1 s, so the next bar line is 4.5 s
+    mixer.enterScene(mix(layer(2)))
+    await flush()
+    const [one, two] = ctx.sources
+    const out = mixer._voices.get('2') ? one : null
+    expect(out).not.toBeNull()
+    const fadeOut = one.out[0].gain.events
+    expect(fadeOut).toContainEqual(['set', expect.any(Number), 4.5])
+    expect(fadeOut.at(-1)).toEqual(['ramp', 0, 4.5 + 8])
+    // The new track starts at the same moment, on a downbeat of its own (0.25 s into the file).
+    expect(two.when).toBeCloseTo(4.5)
+    expect(two.started).toBeCloseTo(0.25)
+    expect(mixer._voices.get('2').gain.gain.events.at(-1)).toEqual(['ramp', 0.6, 4.5 + 8])
+  })
+
+  it('falls back to the timed crossfade when no tempo is known', async () => {
+    const mixer = new MusicMixer(TRACKS, { AudioContextCtor: FakeCtx, fetchFn })
+    mixer.enterScene(mix(layer(1)))
+    await flush()
+    FakeCtx.last.currentTime = 3.1
+    mixer.enterScene(mix(layer(2)))
+    await flush()
+    const [one, two] = FakeCtx.last.sources
+    expect(one.out[0].gain.events.at(-1)).toEqual(['ramp', 0, 3.1 + 2])
+    expect(two.when).toBeCloseTo(3.1)
   })
 })

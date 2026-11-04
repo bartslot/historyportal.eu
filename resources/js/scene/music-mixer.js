@@ -14,15 +14,23 @@
  * volume (no restart on every scene), a track that left fades out, a new one fades in. Loops use
  * AudioBufferSourceNode's own loopStart/loopEnd, so they are sample-accurate with no gap.
  *
+ * A track with a tempo (music_tracks.bpm, or estimated from the audio) changes on the beat: the
+ * crossfade waits for the outgoing track's next bar and lasts a few bars (tempo.js). No tempo, then
+ * the scene's timed crossfade starts at once.
+ *
  * Same outward shape as BackgroundMusic (setMuted, setVolume, pause, resume, stop, destroy), so the
  * player's deck drives either one without knowing which it has.
  */
+
+import { estimateTempo, secondsToNextBar } from './tempo.js'
 
 const DUCK_TIME_CONSTANT = 0.25   // s; how quickly the music dips under a voice and comes back
 const MIN_RAMP = 0.05             // s; a 0 s fade would click
 const STOP_FADE = 2               // s; the end of a lesson fades out, never cuts
 // ponytail: decoded audio is ~60 MB per 3 min of stereo; keep a handful, stream from <audio> if lessons need more.
 const BUFFER_CACHE_SIZE = 6
+
+const BEAT_CROSSFADE_BARS = 4   // a music change on the beat fades over this many bars at least
 
 const clamp01 = v => Math.min(1, Math.max(0, Number(v) || 0))
 
@@ -44,8 +52,10 @@ export class MusicMixer {
    * @param {Record<string, {url: string, title?: string}>} tracks  library tracks by id
    * @param {{volume?: number, AudioContextCtor?: Function, fetchFn?: Function, onError?: Function}} opts
    */
-  constructor (tracks, { volume = 0.5, AudioContextCtor, fetchFn, onError } = {}) {
+  constructor (tracks, { volume = 0.5, AudioContextCtor, fetchFn, onError, onTempo } = {}) {
     this._onError = onError || null
+    this._onTempo = onTempo || null
+    this._tempos = new Map()   // track id → {bpm, beat_offset} | null
     this.tracks = tracks || {}
     this.base = clamp01(volume)
     this._Ctx = AudioContextCtor || globalThis.AudioContext || globalThis.webkitAudioContext
@@ -93,8 +103,10 @@ export class MusicMixer {
     this._applyDuck()
 
     const wanted = new Map((music?.layers || []).map(l => [String(l.track_id), l]))
-    for (const [id, voice] of [...this._voices]) {
-      if (!wanted.has(id)) this._retire(id, voice, Math.max(crossfade, Number(voice.layer.fade_out) || 0))
+    const leaving = [...this._voices].filter(([id]) => !wanted.has(id))
+    const change = this._changeTiming(leaving.length ? leaving : [...this._voices], crossfade)
+    for (const [id, voice] of leaving) {
+      this._retire(id, voice, Math.max(change.length, Number(voice.layer.fade_out) || 0), change.at)
     }
     for (const [id, layer] of wanted) {
       const voice = this._voices.get(id)
@@ -104,7 +116,7 @@ export class MusicMixer {
         this._setLoop(voice.source, layer)
         this._ramp(voice.gain.gain, clamp01(layer.volume), crossfade)
       } else {
-        this._open(id, layer, Math.max(crossfade, Number(layer.fade_in) || 0), gen)
+        this._open(id, layer, Math.max(change.length, Number(layer.fade_in) || 0), gen, change)
       }
     }
   }
@@ -178,7 +190,49 @@ export class MusicMixer {
     }
   }
 
-  async _open (id, layer, fadeIn, gen) {
+  /**
+   * When a music change starts and how long its fade lasts. On the beat when a playing track has a
+   * tempo: the next bar line of that track, over BEAT_CROSSFADE_BARS bars (or the scene's crossfade
+   * rounded up to whole bars, if longer). Otherwise now, over the scene's crossfade.
+   */
+  _changeTiming (voices, crossfade) {
+    const now = this._ctx.currentTime
+    for (const [id, voice] of voices) {
+      const tempo = this._tempos.get(id)
+      if (!tempo?.bpm) continue
+      const bar = 240 / tempo.bpm
+      return {
+        at: now + secondsToNextBar(this._position(voice), tempo),
+        length: Math.max(BEAT_CROSSFADE_BARS, Math.ceil(crossfade / bar)) * bar,
+        onBeat: true,
+      }
+    }
+    return { at: now, length: crossfade, onBeat: false }
+  }
+
+  /** Where in its file a voice is playing now, in seconds, loops folded in. */
+  _position (voice) {
+    const pos = voice.startPos + Math.max(0, this._ctx.currentTime - voice.startedAt)
+    const { source } = voice
+    const end = source.loopEnd || source.buffer?.duration || 0
+    if (!source.loop || pos <= end || end <= source.loopStart) return pos
+    return source.loopStart + (pos - source.loopStart) % (end - source.loopStart)
+  }
+
+  /** The track's tempo: from the library, else estimated once from the audio (and reported). */
+  _tempo (id, buffer) {
+    if (this._tempos.has(id)) return this._tempos.get(id)
+    const known = this.tracks[id]
+    let tempo = known?.bpm ? { bpm: Number(known.bpm), beat_offset: Number(known.beat_offset) || 0 } : null
+    if (!tempo) {
+      tempo = estimateTempo(buffer)
+      if (tempo) this._onTempo?.(id, tempo)
+    }
+    this._tempos.set(id, tempo)
+    return tempo
+  }
+
+  async _open (id, layer, fadeIn, gen, change = null) {
     const url = this.tracks[id]?.url
     if (!url) return
     let buffer
@@ -193,22 +247,31 @@ export class MusicMixer {
     if (gen !== this._gen || !this._ctx || this._voices.has(id)) return
 
     const ctx = this._ctx
+    const tempo = this._tempo(id, buffer)
     const source = ctx.createBufferSource()
     source.buffer = buffer
     this._setLoop(source, layer)
+    const at = Math.max(ctx.currentTime, change?.at ?? 0)
+    let startPos = Math.min(Math.max(0, Number(layer.offset) || 0), Math.max(0, buffer.duration - 0.05))
+    // On the beat, the new track comes in on a downbeat of its own too.
+    if (change?.onBeat && tempo?.bpm) {
+      const snapped = startPos + secondsToNextBar(startPos, tempo, 4, 0)
+      if (snapped < buffer.duration - 0.05) startPos = snapped
+    }
     const gain = ctx.createGain()
     gain.gain.setValueAtTime(0, ctx.currentTime)
-    gain.gain.linearRampToValueAtTime(clamp01(layer.volume), ctx.currentTime + Math.max(MIN_RAMP, fadeIn))
+    gain.gain.setValueAtTime(0, at)
+    gain.gain.linearRampToValueAtTime(clamp01(layer.volume), at + Math.max(MIN_RAMP, fadeIn))
     source.connect(gain)
     gain.connect(this._duckGain)
 
-    const voice = { source, gain, layer }
+    const voice = { source, gain, layer, startPos, startedAt: at }
     source.onended = () => {
       if (this._voices.get(id) === voice) this._voices.delete(id)
       try { gain.disconnect() } catch (_) { /* gone */ }
     }
     this._voices.set(id, voice)
-    source.start(0, Math.min(Math.max(0, Number(layer.offset) || 0), Math.max(0, buffer.duration - 0.05)))
+    source.start(at, startPos)
   }
 
   _setLoop (source, layer) {
@@ -220,18 +283,20 @@ export class MusicMixer {
     source.loopEnd = end > start ? Math.min(end, duration) : 0   // 0 = the end of the file
   }
 
-  _retire (id, voice, seconds) {
+  _retire (id, voice, seconds, at = this._ctx.currentTime) {
     if (this._voices.get(id) === voice) this._voices.delete(id)
     const t = Math.max(MIN_RAMP, seconds)
-    this._ramp(voice.gain.gain, 0, t)
-    try { voice.source.stop(this._ctx.currentTime + t + 0.05) } catch (_) { /* already stopped */ }
+    this._ramp(voice.gain.gain, 0, t, at)
+    try { voice.source.stop(at + t + 0.05) } catch (_) { /* already stopped */ }
   }
 
-  _ramp (param, to, seconds) {
+  /** Glide `param` to `to` over `seconds`, starting at ctx time `at` (holding its level until then). */
+  _ramp (param, to, seconds, at = this._ctx.currentTime) {
     const t = this._ctx.currentTime
     param.cancelScheduledValues(t)
     param.setValueAtTime(param.value, t)
-    param.linearRampToValueAtTime(to, t + Math.max(MIN_RAMP, seconds))
+    if (at > t) param.setValueAtTime(param.value, at)
+    param.linearRampToValueAtTime(to, Math.max(at, t) + Math.max(MIN_RAMP, seconds))
   }
 
   _buffer (url) {

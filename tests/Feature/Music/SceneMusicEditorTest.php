@@ -133,7 +133,7 @@ class SceneMusicEditorTest extends TestCase
 
         $tracks = MusicTrack::forScenes([$this->scene->fresh()]);
 
-        $this->assertSame(['url' => $this->track->url(), 'title' => 'Road ahead'], $tracks[$this->track->id]);
+        $this->assertSame(['url' => $this->track->url(), 'title' => 'Road ahead', 'bpm' => null, 'beat_offset' => null], $tracks[$this->track->id]);
         $this->assertSame([], MusicTrack::forScenes([]));
     }
 

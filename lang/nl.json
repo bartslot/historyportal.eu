@@ -2612,5 +2612,21 @@
     "Upload": "Uploaden",
     "seconds": "seconden",
     "A track could not be loaded.": "Een nummer kon niet worden geladen.",
-    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Plak de Suno-deellink, dan vult de titel zich in. Download daarna de MP3 bij Suno met een betaald abonnement en upload hem hier."
+    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Plak de Suno-deellink, dan vult de titel zich in. Download daarna de MP3 bij Suno met een betaald abonnement en upload hem hier.",
+    "+:count more in the scene": "+:count meer in de scène",
+    ":bpm BPM": ":bpm BPM",
+    "Add track": "Nummer toevoegen",
+    "BPM": "BPM",
+    "Beats per minute": "Tellen per minuut",
+    "Each row needs its own scene, between 1 and :count.": "Elke regel heeft een eigen scène nodig, tussen 1 en :count.",
+    "Each track plays from its scene until the next one takes over on the beat.": "Elk nummer speelt vanaf zijn scène tot het volgende het op de maat overneemt.",
+    "First beat (s)": "Eerste tel (s)",
+    "From scene": "Vanaf scène",
+    "Move track down": "Nummer omlaag",
+    "Move track up": "Nummer omhoog",
+    "Music by scene": "Muziek per scène",
+    "No music": "Geen muziek",
+    "Tempo unknown, so the change uses the timed crossfade.": "Tempo onbekend, dus de wissel gebruikt de gewone overgang.",
+    "The music library is empty.": "De muziekbibliotheek is leeg.",
+    "Track": "Nummer"
 }

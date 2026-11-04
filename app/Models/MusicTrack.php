@@ -13,11 +13,11 @@ use Illuminate\Support\Facades\Storage;
 /** A licensed music file in the shared library, picked per scene by the teacher. */
 class MusicTrack extends Model
 {
-    protected $fillable = ['user_id', 'title', 'source_url', 'licence', 'licence_note', 'path'];
+    protected $fillable = ['user_id', 'title', 'source_url', 'licence', 'licence_note', 'path', 'bpm', 'beat_offset'];
 
     protected function casts(): array
     {
-        return ['licence' => MusicLicence::class];
+        return ['licence' => MusicLicence::class, 'bpm' => 'float', 'beat_offset' => 'float'];
     }
 
     public function user(): BelongsTo
@@ -55,7 +55,7 @@ class MusicTrack extends Model
      * The tracks a lesson's scenes play, keyed by id, in the shape the player's mixer reads.
      *
      * @param  iterable<Scene>  $scenes
-     * @return array<int, array{url: string, title: string}>
+     * @return array<int, array{url: string, title: string, bpm: ?float, beat_offset: ?float}>
      */
     public static function forScenes(iterable $scenes): array
     {
@@ -68,7 +68,30 @@ class MusicTrack extends Model
         }
 
         return static::query()->whereIn('id', $ids)->get()
-            ->mapWithKeys(fn (self $t) => [$t->id => ['url' => $t->url(), 'title' => $t->title]])
+            ->mapWithKeys(fn (self $t) => [$t->id => $t->forMixer()])
             ->all();
+    }
+
+    /** @return array{url: string, title: string, bpm: ?float, beat_offset: ?float} */
+    public function forMixer(): array
+    {
+        return ['url' => $this->url(), 'title' => $this->title, 'bpm' => $this->bpm, 'beat_offset' => $this->beat_offset];
+    }
+
+    /**
+     * Keep a tempo for this track. The editor's estimate fills an empty one only; an admin's
+     * correction ($override) replaces whatever is there. Null bpm clears it (back to timed fades).
+     */
+    public function recordTempo(?float $bpm, ?float $beatOffset, bool $override): bool
+    {
+        if (! $override && $this->bpm !== null) {
+            return false;
+        }
+        $bpm = $bpm === null ? null : round(max(40.0, min(240.0, $bpm)), 1);
+
+        return $this->update([
+            'bpm' => $bpm,
+            'beat_offset' => $bpm === null ? null : round(max(0.0, min(10.0, (float) $beatOffset)), 3),
+        ]);
     }
 }

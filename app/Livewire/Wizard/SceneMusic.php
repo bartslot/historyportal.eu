@@ -10,6 +10,7 @@ use App\Models\Scene;
 use App\Support\SceneMusic as SceneMusicShape;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -53,6 +54,14 @@ class SceneMusic extends Component
         $this->authorizeScene($scene);
         $this->scene = $scene;
         $this->music = $scene->music;
+    }
+
+    /** Lesson settings > Music rewrote some scenes' music: show this scene's as it is now. */
+    #[On('lesson-music-changed')]
+    public function reload(): void
+    {
+        $this->scene->refresh();
+        $this->music = $this->scene->music;
     }
 
     /** "Continue the music from the scene before" on, or a mix of this scene's own (empty = silence). */
@@ -101,6 +110,7 @@ class SceneMusic extends Component
         $previous = array_pop($stack);
         $this->scene->update(['music' => $previous['m'] ?? null, 'music_undo' => $stack ?: null]);
         $this->music = $this->scene->music;
+        $this->dispatch('scene-music-changed');
     }
 
     /** A pasted Suno link fills an empty title with the song's own. */
@@ -138,7 +148,7 @@ class SceneMusic extends Component
 
         return view('livewire.wizard.scene-music', [
             'tracks' => $tracks,
-            'trackUrls' => $tracks->mapWithKeys(fn (MusicTrack $t) => [$t->id => ['url' => $t->url(), 'title' => $t->title]])->all(),
+            'trackUrls' => $tracks->mapWithKeys(fn (MusicTrack $t) => [$t->id => $t->forMixer()])->all(),
             'canUndo' => ! empty($this->scene->music_undo),
             'isAdmin' => (bool) auth()->user()?->isAdmin(),
             'licences' => MusicLicence::cases(),
@@ -161,6 +171,7 @@ class SceneMusic extends Component
             'music_undo' => array_slice($stack, -self::UNDO_DEPTH),
         ]);
         $this->music = $clean;
+        $this->dispatch('scene-music-changed');
     }
 
     private function authorizeScene(Scene $scene): void

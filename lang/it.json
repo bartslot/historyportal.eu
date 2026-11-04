@@ -2570,5 +2570,21 @@
     "Upload": "Carica",
     "seconds": "secondi",
     "A track could not be loaded.": "Non è stato possibile caricare un brano.",
-    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Incolla il link di condivisione di Suno e il titolo si compila. Poi scarica l'MP3 da Suno con un piano a pagamento e caricalo qui."
+    "Paste the Suno share link and the title fills in. Then download the MP3 from Suno on a paid plan and upload it here.": "Incolla il link di condivisione di Suno e il titolo si compila. Poi scarica l'MP3 da Suno con un piano a pagamento e caricalo qui.",
+    "+:count more in the scene": "+:count in più nella scena",
+    ":bpm BPM": ":bpm BPM",
+    "Add track": "Aggiungi brano",
+    "BPM": "BPM",
+    "Beats per minute": "Battiti al minuto",
+    "Each row needs its own scene, between 1 and :count.": "Ogni riga ha bisogno di una scena propria, tra 1 e :count.",
+    "Each track plays from its scene until the next one takes over on the beat.": "Ogni brano suona dalla sua scena finché il successivo non subentra a tempo.",
+    "First beat (s)": "Primo battito (s)",
+    "From scene": "Dalla scena",
+    "Move track down": "Sposta brano giù",
+    "Move track up": "Sposta brano su",
+    "Music by scene": "Musica per scena",
+    "No music": "Nessuna musica",
+    "Tempo unknown, so the change uses the timed crossfade.": "Tempo sconosciuto, quindi il cambio usa la dissolvenza normale.",
+    "The music library is empty.": "La libreria musicale è vuota.",
+    "Track": "Brano"
 }
