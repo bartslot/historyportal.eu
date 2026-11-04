@@ -328,8 +328,9 @@ export class Stage {
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
   }
 
-  /** The camera's own motion is on. Off for someone who asked for less motion; the editor also stills it while working. */
-  cameraAlive = !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+  /** The camera's own motion is on; the editor stills it while working. Someone who asked for less motion never gets it. */
+  cameraAlive = true
+  private readonly calm = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
 
   private faded = new Set<number>()
   private fadedTo = 1
@@ -450,7 +451,7 @@ export class Stage {
     const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
     const end = cameraAt(shot.cam, shot.t, sceneDuration(s))
     const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
-    const wobble = this.cameraAlive ? cameraWobble(s.camera_motion, clock) : { x: 0, y: 0, roll: 0 }
+    const wobble = this.cameraAlive && !this.calm ? cameraWobble(s.camera_motion, clock) : { x: 0, y: 0, roll: 0 }
     this.camera.position.set(c.x + wobble.x, c.y + wobble.y, c.z)
     this.camera.fov = c.fov
     const pitch = lookNum(this.look, 'housePitch')                 // degrees down (a teacher slider)

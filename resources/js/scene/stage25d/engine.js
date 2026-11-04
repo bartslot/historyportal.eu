@@ -45,8 +45,6 @@ const alphaMaps = new Map()   // one per library, kept across scenes: every pict
 /** A layer in front of the selected one, while they overlap (Bart 2026-11-05: 20% invisible). */
 const IN_FRONT_OPACITY = 0.8
 
-const REDUCED_MOTION = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-
 const alphaFor = (base) => { if (!alphaMaps.has(base)) alphaMaps.set(base, createAlphaMaps(base)); return alphaMaps.get(base) }
 
 /** One library per bundle per page; a failed load is forgotten so the next scene tries again. */
@@ -120,7 +118,7 @@ export async function createStage25d (host, opts = {}) {
       if (pointer) {
         stage.fadeLayers(selectionFade(), IN_FRONT_OPACITY)
         // in the editor the camera only moves on its own when it is what you are looking at: playing, or the Camera row
-        stage.cameraAlive = !REDUCED_MOTION() && stills === 0 && (framing || !!window.__timelineKeying?.playing?.())
+        stage.cameraAlive = stills === 0 && (framing || !!window.__timelineKeying?.playing?.())
       }
       if (scene) stage.pose(scene, nowT(), motionClock)
       stage.scene.render()
@@ -424,7 +422,7 @@ export async function createStage25d (host, opts = {}) {
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
     /** What the Camera panel and row show: its keys, and the pose at the playhead (the still house camera with no move). */
-    cameraInfo: () => ({ framing, moves: !!camNow, keys: camKeysNow(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
+    cameraInfo: () => ({ moves: !!camNow, keys: camKeysNow(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
     /** The camera's own motion: live, and saved. */
     setCameraMotion (patch) {
       camMotion = { kind: 'none', amount: 1, speed: 1, ...camMotion, ...patch }
@@ -439,7 +437,8 @@ export async function createStage25d (host, opts = {}) {
     toggleCameraKey () {
       const t = nowT()
       const keys = camKeysNow()
-      storeCameraKeys(keys.some((k) => Math.abs(k.t - t) < 0.001) ? withoutCameraKey(keys, t) : withCameraKey(keys, t, camPoseNow()))
+      const rest = withoutCameraKey(keys, t)
+      storeCameraKeys(rest.length < keys.length ? rest : withCameraKey(keys, t, camPoseNow()))
     },
     /** Back to the still house camera: no move. */
     resetCamera () { storeCameraKeys([]) },

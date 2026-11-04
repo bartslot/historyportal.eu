@@ -102,7 +102,6 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top } }
   const hitsAt = (x, y) => (stage()?.pickLayers(x, y) ?? []).filter((h) => alpha.opaque(h.asset, h.u, h.v, h.index))
-  const pickAt = (x, y) => hitsAt(x, y)[0] ?? null
 
   const select = (index, announce) => {
     selected = index
@@ -213,7 +212,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     }
     if (hoverQueued) return
     hoverQueued = true
-    requestAnimationFrame(() => { hoverQueued = false; canvas.style.cursor = pickAt(x, y) ? 'pointer' : '' })
+    requestAnimationFrame(() => { hoverQueued = false; canvas.style.cursor = hitsAt(x, y).length ? 'pointer' : '' })
   }
 
   const onUp = (e) => {

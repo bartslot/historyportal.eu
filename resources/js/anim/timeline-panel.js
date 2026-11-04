@@ -359,8 +359,6 @@ export const animationTimeline = (config = {}) => ({
   /** How far the tracks box has scrolled: a pinned row is held at its top by this much. */
   tracksScrolled: 0,
 
-  isPinned (object) { return isPinnedObject(object) },
-
   /** The ruler and the camera stay in view while the rows scroll under them. A transform, not position: sticky, because
    *  the lanes are their own (sideways) scroller and sticky would stop at their edge. */
   get rulerPinStyle () { return pinStyle(this.tracksScrolled, 6) },

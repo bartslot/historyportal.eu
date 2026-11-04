@@ -10,7 +10,7 @@ import { HOUSE, cameraAt, fovRad, shotAt } from '@stage25d/stage25d/layout'
 export const CAM_RANGE = { x: [-8, 8], y: [0.3, 6], z: [-4, 15], fov: [20, 75] }
 
 /** How far the camera may lean, degrees. Kept apart from CAM_RANGE: a pose without it is level. */
-export const ROLL_RANGE = [-45, 45]
+const ROLL_RANGE = [-45, 45]
 
 /** A drag moves the picture as if held at this distance (metres): the middle ground follows the pointer. */
 const GRAB_M = 10
@@ -60,10 +60,10 @@ export const cameraKeys = (cam, more, dur) => {
 }
 
 /** Keys with a pose at t: the key there replaced, or a new one. */
-export const withCameraKey = (keys, t, pose) =>
-  [...keys.filter((k) => Math.abs(k.t - t) >= SAME_S), { t, pose: clampPose(pose) }].sort((a, b) => a.t - b.t)
-
 export const withoutCameraKey = (keys, t) => keys.filter((k) => Math.abs(k.t - t) >= SAME_S)
+
+export const withCameraKey = (keys, t, pose) =>
+  [...withoutCameraKey(keys, t), { t, pose: clampPose(pose) }].sort((a, b) => a.t - b.t)
 
 /** The key nearest t, for an edit with auto-key off. */
 export const nearestCameraKey = (keys, t) => keys.reduce((best, k) => (Math.abs(k.t - t) < Math.abs(best.t - t) ? k : best), keys[0])

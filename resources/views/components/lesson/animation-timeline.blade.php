@@ -226,7 +226,7 @@
             {{-- Matches the ruler's height on the other side. Without it every lane sits one row
                  below the property it belongs to, and a keyframe on Altitude is drawn beside
                  Heading — which looks like a data bug and is a layout one. --}}
-            <div class="shrink-0" :style="'height: 38px;' + rulerPinStyle" data-timeline-ruler-spacer></div>
+            <div class="shrink-0" :style="'height: 38px;' + rulerPinStyle"></div>
 
             {{-- Adding a camera is not part of the empty state. It was, and that meant a map scene
                  with a single caption on it could never be given one: the button was inside the
@@ -465,7 +465,7 @@
                     <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
                              so a collapsed group still says when it moves. --}}
-                        <div class="relative" :style="'height: 38px;' + pinnedStyle(object)" :data-timeline-pinned="isPinned(object) ? 'true' : null">
+                        <div class="relative" :style="'height: 38px;' + pinnedStyle(object)">
                             {{-- Drag it to move everything this object does; click it to select all
                                  of its keys (Figma selects a layer's keys from its track). --}}
                             <div x-show="objectSpan(object.target)"
@@ -490,7 +490,6 @@
                                     <template x-for="key in keysOf(object.target, 'x')" :key="key.time">
                                         <span class="absolute grid cursor-pointer place-items-center"
                                               :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(9px + (var(--timeline-lane-h) - 13px) / 2)`"
-                                              data-timeline-camera-key
                                               x-on:pointerdown.stop="startKeyDrag($event, object.target, 'x', key.time)"
                                               x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)">
                                             <x-ui.keyframe-diamond solid on="false" />

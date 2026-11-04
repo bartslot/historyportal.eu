@@ -141,7 +141,7 @@ trait EditsTitleScreen
     public function setSceneLength(mixed $ms): void
     {
         $was = $this->lesson->sceneLengthMs() / 1000;
-        $ms = (int) max(Lesson::SCENE_LENGTH_MIN_MS, min(Lesson::SCENE_LENGTH_MAX_MS, (int) $ms));
+        $ms = max(Lesson::SCENE_LENGTH_MIN_MS, min(Lesson::SCENE_LENGTH_MAX_MS, (int) $ms));
         $seconds = $ms / 1000;
         $this->lesson->update(['scene_length_ms' => $ms]);
 
