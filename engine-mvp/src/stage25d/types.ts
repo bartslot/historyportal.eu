@@ -52,6 +52,22 @@ export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale
 export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys' | 'src'>>
 export interface GroundBand extends GroundBandProps { asset: string; z: number; src?: string }
 
+/** A bone of a picture: where it starts and ends in picture px, and the bone it hangs from. */
+export interface Joint { name: string; parent: string | null; from: [number, number]; to: [number, number] }
+
+/** A figure drawn from separate parts on one atlas (painted, cut): its bones and parts, back to front, in the px of its picture frame. */
+export interface Puppet {
+  atlas: string
+  width: number
+  height: number
+  bones: { name: string; parent: string | null; from: [number, number] }[]
+  /** quad: top-left, top-right, bottom-right, bottom-left; uv: u0, v0, u1, v1 on the atlas */
+  parts: { bone: string; quad: [number, number][]; uv: [number, number, number, number] }[]
+}
+
+/** A painted map of a picture's body parts. `parts`: back to front, a colour [r, g, b] and its part (bones.ts bodyParts). */
+export interface PartMap { src: string; parts: { colour: [number, number, number]; part: string }[] }
+
 export interface SceneLayer {
   need?: string | string[]
   /** the teacher's edited copy of the picture (a URL), drawn instead of the library file */
@@ -73,6 +89,14 @@ export interface SceneLayer {
   outline?: number
   /** hatching on the picture's shade side and in its ground shadow, 0..1 (default 0: none) */
   etch?: number
+  /** the picture's skeleton (bones.ts): with one, it is drawn as a mesh that bends */
+  rig?: Joint[]
+  /** which body part each pixel is (bones.ts): a flat colour map of the picture, each colour one part, back to front */
+  rigMap?: PartMap
+  /** a figure of separate parts, drawn instead of the picture (bones.ts) */
+  puppet?: Puppet
+  /** how far each bone is turned from the painted pose, degrees clockwise on screen */
+  bones?: Record<string, number>
   motion?: MotionKind | MotionSpec
   keys?: LayerKey[]
   /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */

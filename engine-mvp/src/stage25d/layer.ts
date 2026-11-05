@@ -2,7 +2,7 @@
 // vertex/fragment shader. Textures are uploaded PREMULTIPLIED (rgb * a, done here on the CPU), so filtering and
 // mipmaps never mix the colour of transparent pixels into the edge: no light or dark halos at any size.
 import {
-  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexData,
+  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexBuffer, VertexData,
   type Scene,
 } from '@babylonjs/core'
 import type { Asset, MotionSpec } from './types'
@@ -10,6 +10,7 @@ import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE } from './ground-gl'
+import type { BentPicture } from './bones'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
  *  it is ink (inkOf), and the depth's values; returns the colour. Defines lum, inkOf and LINE_BROWN. */
@@ -303,6 +304,8 @@ export interface LayerHandle {
   setLine(l: { fade: number; thin: number; haze: number; brown: number }, inkMul: number, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
   /** the teacher's ink: an outline this many 1080p px inside the edge, and hatching in the shade (0..1) */
   setInk(outline: number, etch: number): void
+  /** Draw the picture as this mesh, then turn its bones. */
+  setBent(bent: BentPicture, bones: Record<string, number>): void
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
 }
@@ -323,6 +326,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.disableDepthWrite = true          // planes never hide each other by depth: draw order (alphaIndex) does that
   mat.backFaceCulling = false
   const phase = (seed++ * 2.39996) % (Math.PI * 2) // golden-angle phases: neighbours never sway in step
+  let bentOf: BentPicture | null = null, bentSig = ''
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
@@ -346,6 +350,24 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
     },
     setBottomFade: (f) => { mat.setFloat('bottomFade', f) },
+    setBent: (bent, bones) => {
+      const sig = JSON.stringify(bones)
+      if (sig === bentSig && bentOf === bent) return
+      const [ax, ay] = asset.anchor ?? [0.5, 1]
+      const px = bent.bend(bones)
+      const positions = new Float32Array((px.length / 2) * 3)
+      for (let i = 0; i < px.length / 2; i++) {
+        positions[i * 3] = (px[i * 2] / bent.width - ax) * w
+        positions[i * 3 + 1] = (ay - px[i * 2 + 1] / bent.height) * h
+      }
+      if (bentOf === bent) mesh.updateVerticesData(VertexBuffer.PositionKind, positions)
+      else {
+        Object.assign(new VertexData(), { positions, uvs: bent.uvs, indices: bent.triangles }).applyToMesh(mesh, true)
+        bentOf = bent
+      }
+      mesh.refreshBoundingInfo()
+      bentSig = sig
+    },
     setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
     setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setAlive: (a) => {

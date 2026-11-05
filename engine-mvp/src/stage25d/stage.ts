@@ -17,6 +17,7 @@ import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { cellOf, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
+import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, type BentPicture } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -31,7 +32,7 @@ export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -158,9 +159,13 @@ export class Stage {
       let asset = resolveAsset(lib, layer, layer.depth)
       if (!asset) { misses.push({ need: layer.need ?? layer.asset, reason: 'no match' }); return }
       let tex
-      try { tex = await loadPremultiplied(urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
+      try { tex = await loadPremultiplied(layer.puppet?.atlas ?? urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
       if (token !== this.buildToken) return
       asset = editedAsset(asset, layer, tex)
+      const bent = layer.puppet ? bindPuppet(layer.puppet)
+        : layer.rig?.length && layer.rigMap ? await bindMappedPicture(urlOf(lib, asset, layer), layer.rigMap, layer.rig)
+          : layer.rig?.length ? bindPicture(await alphaOf(urlOf(lib, asset, layer)), layer.rig) : null
+      if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       handle.mesh.position.set(p.x, p.y, p.z)
@@ -179,7 +184,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)) })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -522,12 +527,14 @@ export class Stage {
       b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
+      if (b.bent) b.handle.setBent(b.bent, b.layer.bones ?? {})
       b.stain?.setEtch(b.layer.etch ?? 0)
       b.cast?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity)
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
-      b.handle.setAlive(aliveOf(this.look, kind, this.sunDir.x, this.footTint))
+      // the light runs across the picture's u: on an atlas that is not across the figure, so a puppet takes none yet
+      b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, this.footTint), ...(b.layer.puppet ? { light: 0 } : {}) })
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
       if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, t)))   // the scene's time: a seek shows the same frame

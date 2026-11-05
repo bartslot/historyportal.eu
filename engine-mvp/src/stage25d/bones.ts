@@ -1,0 +1,262 @@
+// Bones on one flat picture, with the Rigby2D runtime (vendor/rigby2d): its tracer makes a mesh from the picture's alpha,
+// its weights bind that mesh to a skeleton, its Pose bends it. The layer draws the bent vertices with its own shader.
+import { generateMesh } from '../vendor/rigby2d/core/meshgen.js'
+import { normalizeWeights } from '../vendor/rigby2d/core/meshgeom.js'
+import { classify } from '../vendor/rigby2d/core/bodyparts.js'
+import { makeBone, makeSlot, Skeleton } from '../vendor/rigby2d/core/model.js'
+import { Pose } from '../vendor/rigby2d/core/pose.js'
+import { transform } from '../vendor/rigby2d/core/math.js'
+import type { Joint, PartMap, Puppet } from './types'
+
+// fine enough to follow the gap between a hanging hand and the body: a coarse outline bridges it and they bend as one
+const MESH = { points: 500, threshold: 24, expand: 1, smoothing: 1, interior: 'high' }
+
+export interface BentPicture {
+  width: number
+  height: number
+  uvs: number[]
+  triangles: number[]
+  /** The vertices (picture px, flat x y) with these bones turned, degrees clockwise on screen. */
+  bend(bones: Record<string, number>): number[]
+}
+
+/** Pixels a part reaches past its border on the map, so a joint has no slit when it turns a little. */
+const PART_OVERLAP = 6
+
+/** Which entry of `parts` each pixel is: the nearest colour on the map, -1 where the picture is see-through. */
+export function labelPixels(map: { data: Uint8ClampedArray | Uint8Array }, alpha: { data: Uint8Array | Uint8ClampedArray }, parts: { colour: [number, number, number] }[]): Int8Array {
+  const labels = new Int8Array(alpha.data.length).fill(-1)
+  for (let i = 0; i < labels.length; i++) {
+    if (alpha.data[i] === 0) continue
+    let best = 0, bestD = Infinity
+    parts.forEach((p, n) => {
+      const d = (map.data[i * 4] - p.colour[0]) ** 2 + (map.data[i * 4 + 1] - p.colour[1]) ** 2 + (map.data[i * 4 + 2] - p.colour[2]) ** 2
+      if (d < bestD) { bestD = d; best = n }
+    })
+    labels[i] = best
+  }
+  return labels
+}
+
+/**
+ * A picture cut along its part map: one mesh per body part, each following only its own bones, drawn back to front.
+ * Moving an arm cannot touch the waistcoat: they share no vertex. Inside a part the mesh still bends, at the elbow, say.
+ */
+export function bindParts(alpha: { width: number; height: number; data: Uint8Array | Uint8ClampedArray }, labels: Int8Array, parts: { part: string }[], joints: Joint[]): BentPicture | null {
+  const { width: W, height: H } = alpha
+  const sk = new Skeleton()
+  const indexOf = new Map(joints.map((j, i) => [j.name, i + 1]))
+  const from = (name: string | null | undefined) => joints.find((j) => j.name === name)?.from ?? [0, 0]
+  for (const j of joints) {
+    const base = from(j.parent)
+    sk.bones.push(makeBone(j.name, j.parent ? indexOf.get(j.parent) ?? 0 : 0, transform(j.from[0] - base[0], j.from[1] - base[1], 0), Math.hypot(j.to[0] - j.from[0], j.to[1] - j.from[1])))
+  }
+  const partOfBone = bodyParts(joints)
+  const atts: { name: string; uvs: number[]; triangles: number[]; weights: unknown[]; type: string; image: string; hull: number; color: number[] }[] = []
+  parts.forEach((p, n) => {
+    let mask = Uint8Array.from(labels, (l) => (l === n ? 255 : 0))
+    for (let r = 0; r < PART_OVERLAP; r++) {   // grow over the neighbouring parts' paint, never over the air
+      const next = mask.slice()
+      for (let i = 0; i < mask.length; i++) {
+        if (mask[i] || labels[i] < 0) continue
+        if ((i % W > 0 && mask[i - 1]) || (i % W < W - 1 && mask[i + 1]) || mask[i - W] || mask[i + W]) next[i] = 255
+      }
+      mask = next
+    }
+    const mesh = generateMesh({ width: W, height: H, data: mask }, { ...MESH, points: 220 })
+    const bones = joints.filter((j) => partOfBone.get(j.name) === p.part).map((j) => ({ bone: indexOf.get(j.name), from: j.from, to: j.to }))
+    if (!mesh || !bones.length) return
+    const weights = weightsThroughShape(mesh.points, mesh.triangles, bones).map((list: { bone: number; weight: number }[], v: number) => list.map((w) => {
+      const origin = joints[w.bone - 1].from
+      return { ...w, x: mesh.points[v][0] - origin[0], y: mesh.points[v][1] - origin[1] }
+    }))
+    const att = { name: p.part, type: 'mesh', image: 'picture', uvs: mesh.uvs, triangles: mesh.triangles, hull: mesh.hull, weights, color: [1, 1, 1, 1] }
+    sk.slots.push(makeSlot(p.part, 0, att))
+    atts.push(att)
+  })
+  if (!atts.length) return null
+  const pose = new Pose(sk)
+  let offset = 0
+  const triangles = atts.flatMap((a) => { const t = a.triangles.map((i) => i + offset); offset += a.uvs.length / 2; return t })
+  return {
+    width: W, height: H, uvs: atts.flatMap((a) => a.uvs), triangles,
+    bend(bones) {
+      pose.reset(sk)
+      for (const [name, deg] of Object.entries(bones)) {
+        const i = indexOf.get(name)
+        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = deg
+      }
+      pose.updateWorld(sk)
+      return atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
+    },
+  }
+}
+
+/** A picture and its part map, read and bound. */
+export async function bindMappedPicture(url: string, map: PartMap, joints: Joint[]): Promise<BentPicture | null> {
+  const alpha = await alphaOf(url)
+  const colours = await rgbaOf(map.src, alpha.width, alpha.height)
+  return bindParts(alpha, labelPixels({ data: colours }, alpha, map.parts), map.parts, joints)
+}
+
+/** A picture's pixels at a given size. */
+function rgbaOf(url: string, width: number, height: number): Promise<Uint8ClampedArray> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onerror = () => reject(new Error(`picture ${url} did not load`))
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = width; c.height = height
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      g.imageSmoothingEnabled = false
+      g.drawImage(img, 0, 0, width, height)
+      resolve(g.getImageData(0, 0, width, height).data)
+    }
+    img.src = url
+  })
+}
+
+/** A picture's alpha, bound to its joints (picture px); null when the picture has nothing solid. */
+export function bindPicture(alpha: { width: number; height: number; data: Uint8Array | Uint8ClampedArray }, joints: Joint[]): BentPicture | null {
+  const mesh = generateMesh(alpha, MESH)
+  if (!mesh) return null
+  const sk = new Skeleton()
+  const indexOf = new Map(joints.map((j, i) => [j.name, i + 1]))
+  const from = (name: string | null | undefined) => joints.find((j) => j.name === name)?.from ?? [0, 0]
+  for (const j of joints) {
+    const parent = j.parent ? indexOf.get(j.parent) ?? 0 : 0
+    const base = from(j.parent)
+    sk.bones.push(makeBone(j.name, parent, transform(j.from[0] - base[0], j.from[1] - base[1], 0), Math.hypot(j.to[0] - j.from[0], j.to[1] - j.from[1])))
+  }
+  const parts = bodyParts(joints)
+  const segments = joints.map((j) => ({ bone: indexOf.get(j.name), from: j.from, to: j.to, part: parts.get(j.name) }))
+  const weights = weightsThroughShape(mesh.points, mesh.triangles, segments).map((list: { bone: number; weight: number }[], v: number) => list.map((w) => {
+    const origin = joints[w.bone - 1].from
+    return { ...w, x: mesh.points[v][0] - origin[0], y: mesh.points[v][1] - origin[1] }
+  }))
+  const att = { name: 'picture', type: 'mesh', image: 'picture', uvs: mesh.uvs, triangles: mesh.triangles, hull: mesh.hull, weights, color: [1, 1, 1, 1] }
+  sk.slots.push(makeSlot('picture', 0, att))
+  const pose = new Pose(sk)
+  return {
+    width: alpha.width, height: alpha.height, uvs: mesh.uvs, triangles: mesh.triangles,
+    bend(bones) {
+      pose.reset(sk)
+      for (const [name, deg] of Object.entries(bones)) {
+        const i = indexOf.get(name)
+        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = deg
+      }
+      pose.updateWorld(sk)
+      return pose.worldVertices(sk, 0, att)
+    },
+  }
+}
+
+const onSegment = (p: number[], a: number[], b: number[]) => {
+  const dx = b[0] - a[0], dy = b[1] - a[1]
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / Math.max(dx * dx + dy * dy, 1e-6)))
+  return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t)
+}
+
+/** The bones that start a body part of their own, by Rigby's name detector: what hangs from them moves with them. */
+const PART_STARTS = new Set(['upperarm', 'arm', 'thigh', 'leg', 'head', 'neck', 'tail', 'wing'])
+
+/** Each bone's body part: an arm, a leg, the head, or the core (chest and pelvis). A child is in its parent's part. */
+export function bodyParts(joints: Joint[]): Map<string, string> {
+  const parts = new Map<string, string>()
+  for (const j of joints) {
+    const role = classify(j.name)?.role
+    parts.set(j.name, PART_STARTS.has(role) ? j.name : (j.parent ? parts.get(j.parent) : null) ?? 'core')
+  }
+  return parts
+}
+
+/**
+ * Each vertex belongs to ONE body part, the one whose bone is nearest, and follows only that part's bones (Bart 11-05:
+ * moving an arm moves nothing else of the picture). Distance runs THROUGH the shape, along the mesh's edges: in a straight
+ * line (Rigby's autoWeights) a hanging hand would claim the breeches beside it across the air between them.
+ */
+export function weightsThroughShape(points: number[][], triangles: number[], bones: { bone?: number; from: number[]; to: number[]; part?: string }[]) {
+  const edges: [number, number][][] = points.map(() => [])
+  for (let t = 0; t + 2 < triangles.length; t += 3) {
+    for (const [a, b] of [[triangles[t], triangles[t + 1]], [triangles[t + 1], triangles[t + 2]], [triangles[t + 2], triangles[t]]]) {
+      const d = Math.hypot(points[a][0] - points[b][0], points[a][1] - points[b][1])
+      edges[a].push([b, d]); edges[b].push([a, d])
+    }
+  }
+  const through = bones.map((bone) => {
+    // from every vertex: start at its straight distance to the bone, then relax along the edges (Bellman-Ford, the meshes are small)
+    const straight = points.map((p) => onSegment(p, bone.from, bone.to))
+    const reach = Math.min(...straight) + 1
+    const dist = straight.map((d) => (d <= reach * 12 ? d : Infinity))
+    for (let changed = true; changed;) {
+      changed = false
+      for (let v = 0; v < points.length; v++) {
+        for (const [n, d] of edges[v]) if (dist[v] + d < dist[n] - 1e-6) { dist[n] = dist[v] + d; changed = true }
+      }
+    }
+    return dist
+  })
+  return points.map((_, v) => {
+    const nearest = through.reduce((best, d, i) => (d[v] < through[best][v] ? i : best), 0)
+    const raw = bones.flatMap((b, i) => (b.part === bones[nearest].part ? [{ bone: b.bone, weight: 1 / Math.pow(through[i][v] + 1, 4) }] : []))
+    const total = raw.reduce((sum, w) => sum + w.weight, 0)
+    return normalizeWeights(raw.map((w) => ({ bone: w.bone, weight: w.weight / total })))
+  })
+}
+
+/** A puppet on the Rigby2D runtime: each part follows its own bone rigidly, turning under its rounded joint ends. */
+export function bindPuppet(puppet: Puppet): BentPicture {
+  const sk = new Skeleton()
+  const indexOf = new Map(puppet.bones.map((b, i) => [b.name, i + 1]))
+  const from = (name: string | null) => puppet.bones.find((b) => b.name === name)?.from ?? [0, 0]
+  for (const b of puppet.bones) {
+    const base = from(b.parent)
+    sk.bones.push(makeBone(b.name, b.parent ? indexOf.get(b.parent) ?? 0 : 0, transform(b.from[0] - base[0], b.from[1] - base[1], 0), 0))
+  }
+  const atts = puppet.parts.map((p, i) => {
+    const origin = from(p.bone)
+    const [u0, v0, u1, v1] = p.uv
+    const att = {
+      name: `part${i}`, type: 'mesh', image: 'atlas', uvs: [u0, v0, u1, v0, u1, v1, u0, v1], triangles: [0, 1, 2, 0, 2, 3], hull: 4, color: [1, 1, 1, 1],
+      weights: p.quad.map(([x, y]) => [{ bone: indexOf.get(p.bone) ?? 0, weight: 1, x: x - origin[0], y: y - origin[1] }]),
+    }
+    sk.slots.push(makeSlot(att.name, 0, att))
+    return att
+  })
+  const pose = new Pose(sk)
+  return {
+    width: puppet.width, height: puppet.height,
+    uvs: atts.flatMap((a) => a.uvs),
+    triangles: atts.flatMap((a, i) => a.triangles.map((t) => t + i * 4)),   // in order: the first part is at the back
+    bend(bones) {
+      pose.reset(sk)
+      for (const [name, deg] of Object.entries(bones)) {
+        const i = indexOf.get(name)
+        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = deg
+      }
+      pose.updateWorld(sk)
+      return atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
+    },
+  }
+}
+
+/** The alpha of a picture at a url, one byte per pixel. */
+export function alphaOf(url: string): Promise<{ width: number; height: number; data: Uint8Array }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onerror = () => reject(new Error(`picture ${url} did not load`))
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth; c.height = img.naturalHeight
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      g.drawImage(img, 0, 0)
+      const rgba = g.getImageData(0, 0, c.width, c.height).data
+      const data = new Uint8Array(c.width * c.height)
+      for (let i = 0; i < data.length; i++) data[i] = rgba[i * 4 + 3]
+      resolve({ width: c.width, height: c.height, data })
+    }
+    img.src = url
+  })
+}
