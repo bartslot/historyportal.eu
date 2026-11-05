@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Llm;
 
+use App\Services\Local\LocalChatGptLlm;
 use App\Services\OpenAiLlmService;
 use InvalidArgumentException;
 
@@ -70,6 +71,10 @@ class LlmRouter
 
     public function build(LlmProfile $profile): OpenAiLlmService
     {
+        if ($profile->provider === 'chatgpt_local') {
+            return new LocalChatGptLlm;
+        }
+
         return new OpenAiLlmService(
             apiKey: $profile->apiKey,
             model: $profile->model,

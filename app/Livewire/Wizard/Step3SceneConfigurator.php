@@ -16,6 +16,7 @@ use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsDrawings;
 use App\Livewire\Wizard\Concerns\EditsImages;
+use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
@@ -79,6 +80,7 @@ class Step3SceneConfigurator extends Component
     use EditsDiorama;
     use EditsDrawings;
     use EditsImages;
+    use EditsWithSpark;
     use EditsMoment;
     use EditsPredict;
     use EditsQuizQuestions;
@@ -6003,7 +6005,7 @@ class Step3SceneConfigurator extends Component
         $instruction = trim($prompt) !== '' ? trim($prompt) : 'Improve the flow and clarity without changing the meaning.';
 
         try {
-            $rewritten = app(\App\Services\OpenAiLlmService::class)->text(
+            $rewritten = app(\App\Services\Llm\LlmRouter::class)->for('improve')->text(
                 'You rewrite ONE paragraph of a lesson narration that is read aloud by text-to-speech. '
                 .'Rules: spoken prose only — no markdown, headings, lists, quotes, or bracket tags; only use '
                 .'facts already present in the paragraph (never invent); keep roughly the same length unless the '

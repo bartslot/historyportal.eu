@@ -147,7 +147,7 @@ class OpenAiLlmService
         ]);
     }
 
-    private function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null): string
+    protected function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null): string
     {
         $payload = [
             'model'    => $model ?? $this->model ?? config('services.openai.model'),

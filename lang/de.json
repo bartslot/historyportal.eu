@@ -2627,5 +2627,10 @@
     "Click to change, double-click to edit": "Klicken zum Wechseln, Doppelklick zum Bearbeiten",
     "2D scenes": "2D-Szenen",
     "Copy values": "Werte kopieren",
-    "Paste values": "Werte einfügen"
+    "Paste values": "Werte einfügen",
+    "Change with ChatGPT": "Mit ChatGPT ändern",
+    "ChatGPT is changing this picture": "ChatGPT ändert dieses Bild",
+    "What should change?": "Was soll sich ändern?",
+    "ChatGPT could not change this picture. Is the ChatGPT app open?": "ChatGPT konnte dieses Bild nicht ändern. Ist die ChatGPT-App geöffnet?",
+    "This picture changed while ChatGPT worked, so its result was not used.": "Dieses Bild wurde geändert, während ChatGPT arbeitete, daher wurde das Ergebnis nicht verwendet."
 }

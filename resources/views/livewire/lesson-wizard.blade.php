@@ -15,6 +15,8 @@
         @php($isGuestDemo = (bool) auth()->user()?->isGuestDemo())
         @php($wizardExitUrl = $isGuestDemo ? route('home') : route('teacher.lessons.index'))
         @php($wizardExitLabel = $isGuestDemo ? __('Back to the home page') : __('Back to lessons'))
+        {{-- The editor (step 4) has it in its top bar. --}}
+        @if ((int) $step === 5)
         <a href="{{ $wizardExitUrl }}" wire:navigate
            class="btn btn-circle btn-sm fixed left-3 top-3 z-60 border-0 bg-transparent shadow-none hover:bg-white/10"
            data-tooltip="{{ $wizardExitLabel }}" aria-label="{{ $wizardExitLabel }}">
@@ -22,6 +24,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
         </a>
+        @endif
     @endif
 
     {{-- The step indicator is obsolete on the full-screen canvas editors (Configure/Play) —

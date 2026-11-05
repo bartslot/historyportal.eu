@@ -139,11 +139,19 @@ describe('BalloonLayer: balloons added in the editor', () => {
     expect(el.querySelector('.lp-balloon__tail .ink').getAttribute('d')).toBe('')
   })
 
-  it('shows every balloon in the editor, whatever the clock says', () => {
+  it('in the editor a balloon shows during its own time, and stays while it is selected', () => {
     const layer = new BalloonLayer(document.createElement('div'), () => null, { editable: true })
-    layer.setLines([{ ...balloon, start: 5, end: 6 }])
+    layer.setLines([{ ...balloon, id: 'bal_0', start: 5, end: 6 }])
     layer.update(0)
+    expect(layer.shown.size).toBe(0)
+    layer.update(5.5)
     expect(layer.shown.size).toBe(1)
+    layer.markSelected('bal_0')
+    layer.update(9)
+    expect(layer.shown.size).toBe(1)
+    layer.markSelected(null)
+    layer.update(9)
+    expect(layer.shown.size).toBe(0)
   })
 })
 

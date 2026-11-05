@@ -49,8 +49,16 @@ trait EditsImages
      */
     public function saveEditedImage(string $target, string $image, array $state = []): array
     {
+        return $this->applyEditedImage($this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null, $target, $image, $state);
+    }
+
+    /**
+     * @param  array<string,mixed>  $state
+     * @return array{ok: bool, url?: string}
+     */
+    private function applyEditedImage(?Scene $scene, string $target, string $image, array $state = []): array
+    {
         $at = EditedImages::target($target);
-        $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
         if ($at === null || $scene === null) {
             return ['ok' => false];
         }
@@ -181,7 +189,9 @@ trait EditsImages
             }
         }
         $this->storeStage25dSetPart($scene, $path, $next);
-        $this->selectSceneInternal($scene->id);   // the stage rebuilds with the other picture
+        if ((int) $this->selectedSceneId === $scene->id) {
+            $this->selectSceneInternal($scene->id);   // the stage rebuilds with the other picture
+        }
 
         return true;
     }

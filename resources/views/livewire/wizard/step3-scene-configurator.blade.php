@@ -1365,11 +1365,32 @@
     window.stage25dInspector = function stage25dInspector(id, names, poses) {
         const DOUBLE_CLICK_MS = 250;
         const HUD_HOLD_MS = 1500;
+        const SPARK_POLL_MS = 3000;
+        if (!window.Alpine.store('sparkBusy')) window.Alpine.store('sparkBusy', {});
+        /** Until the edit lands. Not while the picture editor is open: its Save would write its old pixels over the result. */
+        const followSpark = (wire, job, key) => {
+            const store = window.Alpine.store('sparkBusy');
+            store[key] = true;
+            const poll = async () => {
+                if (document.querySelector('[data-cutout]')) return setTimeout(poll, SPARK_POLL_MS);
+                const now = await wire.sparkStatus(job).catch(() => ({ status: 'failed' }));
+                if (now.status === 'running') return setTimeout(poll, SPARK_POLL_MS);
+                store[key] = false;
+            };
+            setTimeout(poll, SPARK_POLL_MS);
+        };
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, hud: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
-            init() { this.sync(); },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            init() {
+                this.sync();
+                // an edit that ran on through a reload lands too
+                if (@js(\App\Services\Local\LocalChatGpt::available()) && !window.__sparkResumed) {
+                    window.__sparkResumed = true;
+                    this.$wire.sparkPending().then((jobs) => jobs.forEach((j) => followSpark(this.$wire, j.job, j.key)));
+                }
+            },
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
@@ -1397,6 +1418,23 @@
             set motionKind(kind) { this.setMotion({ kind }); },
             /** An animation's playback: speed (fps scale) and where it starts (s). Live, one save, Cmd-Z undoes it. */
             setPlay(patch) { window.__stage25d?.setLayerPlay?.(id, patch); this.sync(); },
+            /** The spark: the edit runs on, whichever panel is open, until the server says it landed (EditsWithSpark). */
+            get sparkKey() { return `${window.__stage25d?.sceneId}:${window.__stage25d?.editTarget?.(id)?.id}`; },
+            get sparkBusy() { return !!window.Alpine.store('sparkBusy')?.[this.sparkKey]; },
+            async sendSpark() {
+                const text = this.sparkText.trim();
+                const target = window.__stage25d?.editTarget?.(id)?.id;
+                if (!text || !target) return;
+                this.sparkOpen = false;
+                this.sparkText = '';
+                const key = this.sparkKey;
+                const store = window.Alpine.store('sparkBusy');
+                store[key] = true;
+                const started = await this.$wire.sparkEdit(target, text).catch(() => null);
+                if (started?.ok) return followSpark(this.$wire, started.job, key);
+                store[key] = false;
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: @js(__('ChatGPT could not change this picture. Is the ChatGPT app open?')) } }));
+            },
             /** A click on the picture changes it, unless it was the start of a double-click, which edits it. */
             pickPicture() {
                 clearTimeout(this._picking);
@@ -1837,7 +1875,7 @@
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div data-editor-toolbar class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0 pl-16" style="background: var(--color-panel); border-bottom: 1px solid var(--color-panel-border)"
+    <div data-editor-toolbar class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0" style="background: var(--color-panel); border-bottom: 1px solid var(--color-panel-border)"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -1847,6 +1885,18 @@
          x-on:inspector-state.window="fmtOpen = $event.detail.open; if ($event.detail.view) fmtView = $event.detail.view">
         {{-- Left group: View menu + Play + insert tools --}}
         <div class="flex items-stretch gap-0.5">
+        {{-- The way out of the editor, in the bar with the rest of its buttons. --}}
+        @php
+            $isGuestDemo = (bool) auth()->user()?->isGuestDemo();
+            $wizardExitLabel = $isGuestDemo ? __('Back to the home page') : __('Back to lessons');
+        @endphp
+        <a href="{{ $isGuestDemo ? route('home') : route('teacher.lessons.index') }}" wire:navigate data-editor-exit
+           class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+           data-tooltip="{{ $wizardExitLabel }}" aria-label="{{ $wizardExitLabel }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+        </a>
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"

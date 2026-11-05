@@ -10,7 +10,7 @@
  */
 
 import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
-import { keyId, moveKeys, deleteKeys, snapToNearest } from './timeline-edit.js'
+import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
@@ -64,6 +64,8 @@ const dragMemory = new WeakMap()
 
 /** Copy values on a keyframe: `{ kind, values }`. Outside the panel, so a pose carries over to another scene. */
 let keyClip = null
+/** How long a let-go key takes to spring back out of another key's zone. */
+const KEY_SPRING_MS = 160
 /** Room the keyframe menu needs above the window's bottom edge, px. */
 const KEY_MENU_H = 120
 
@@ -726,7 +728,12 @@ export const animationTimeline = (config = {}) => ({
   onPointerUp () {
     if (this.drag) {
       const memory = dragMemory.get(this.drag.el)
-      if ((memory?.kind === 'key' && memory.moved) || memory?.kind === 'bezier') this.save()
+      if (memory?.kind === 'key' && memory.moved) {
+        this.springKey(memory.now ?? memory.rest, memory.rest ?? memory.anchorTime, (t) => { this.seek(memory.anchorTime + this.placeKeys(memory, t)) }, () => this.save())
+      } else if (memory?.kind === 'bezier') this.save()
+      if (memory?.kind === 'camkey' && memory.moved && memory.rest !== undefined) {
+        this.springKey(memory.at, memory.rest, (t) => { memory.at = window.__stage25d?.moveCameraKey?.(memory.at, t) ?? memory.at; this.selected = [keyId({ target: memory.target, property: 'x', time: memory.at })]; this.seek(memory.at) }, () => {})
+      }
       // A click on a key that was already part of a selection narrows the selection to it; a
       // Shift+click on a selected key takes it out. Both wait for the release, because the same
       // press might have been the start of dragging the whole selection.
@@ -779,6 +786,7 @@ export const animationTimeline = (config = {}) => ({
     const live = this.tracks.filter((t) => sortedKeys(t).length >= 2)
     const frame = sampleFrame(live, this.time)
     const map = window.__lessonMap
+    window.__balloons?.time?.(this.time)
 
     for (const [target, values] of Object.entries(frame)) {
       if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, values); continue }
@@ -1756,18 +1764,50 @@ export const animationTimeline = (config = {}) => ({
       snapped = snapTime(this.spans, wanted, tolerance)
     }
 
-    const { tracks, delta } = moveKeys(memory.baseTracks, memory.refs, snapped - memory.anchorTime, 0, this.duration)
-    this.tracks = tracks
-    this.selected = memory.refs.map((ref) => keyId({ ...ref, time: ref.time + delta }))
+    // ponytail: only the key under the pointer keeps its distance; a whole selection dragged together can still crowd a neighbour
+    const anchor = memory.refs.find((ref) => sameTime(ref.time, memory.anchorTime)) ?? memory.refs[0]
+    const moving = new Set(memory.refs.map(keyId))
+    const row = memory.baseTracks.find((t) => t.target === anchor.target && t.property === anchor.property)
+    const band = rubberBand(snapped, sortedKeys(row).map((k) => k.time).filter((time) => !moving.has(keyId({ target: anchor.target, property: anchor.property, time }))), 0, this.duration)
+    if (!band) return
+    memory.rest = band.rest
+    memory.now = band.at
+    const delta = this.placeKeys(memory, band.at)
     if (!event.shiftKey) this.seek(memory.anchorTime + delta)
     else this.applyFrame()
+  },
+
+  /** The dragged keys with the anchor at `time`. Returns how far they moved from where the drag began. */
+  placeKeys (memory, time) {
+    const { tracks, delta } = moveKeys(memory.baseTracks, memory.refs, time - memory.anchorTime, 0, this.duration)
+    this.tracks = tracks
+    this.selected = memory.refs.map((ref) => keyId({ ...ref, time: ref.time + delta }))
+    return delta
+  },
+
+  /** A let-go key springs back out of another key's zone, then `done`. */
+  springKey (from, to, place, done) {
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (still || Math.abs(from - to) < 0.001) { place(to); return done() }
+    const began = performance.now()
+    const step = (now) => {
+      const p = Math.min(1, (now - began) / KEY_SPRING_MS)
+      place(from + (to - from) * (1 - (1 - p) ** 3))
+      if (p < 1) requestAnimationFrame(step)
+      else done()
+    }
+    requestAnimationFrame(step)
   },
 
   /** A camera key along the timeline: the stage holds its keys, so it moves them. Alt places freely. */
   dragCameraKey (memory, event) {
     const wanted = memory.anchorTime + (event.clientX - memory.startX) / this.zoom
     const snapped = event.altKey ? wanted : snapTime(this.spans, wanted, toleranceSeconds(this.zoom))
-    memory.at = window.__stage25d?.moveCameraKey?.(memory.at, snapped) ?? memory.at
+    const others = (window.__stage25d?.cameraInfo?.()?.keys ?? []).map((k) => k.t).filter((t) => !sameTime(t, memory.at))
+    const band = rubberBand(snapped, others, 0, this.duration)
+    if (!band) return
+    memory.rest = band.rest
+    memory.at = window.__stage25d?.moveCameraKey?.(memory.at, band.at) ?? memory.at
     this.selected = [keyId({ target: memory.target, property: 'x', time: memory.at })]
     this.seek(memory.at)
   },

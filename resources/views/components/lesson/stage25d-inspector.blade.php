@@ -77,17 +77,35 @@
         </div>
 
         {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
-        <button type="button" class="sticky top-0 z-10 mt-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-md bg-base-200"
-                data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
-                x-on:click="pickPicture()" x-on:dblclick="editPicture()">
+        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200">
+            <button type="button" class="absolute inset-0 flex items-center justify-center"
+                    data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
+                    x-on:click="pickPicture()" x-on:dblclick="editPicture()">
                 <template x-if="info?.file && info?.anim">
                     <span class="s25-sheet" :style="`aspect-ratio: ${info.anim.w} / ${info.anim.h}; --cols: ${info.anim.cols}; --rows: ${info.anim.rows}; --row-s: ${info.anim.cols / info.anim.fps}s`">
                         <img :src="info.file" alt="" />
                     </span>
                 </template>
                 <img x-show="info?.file && !info?.anim" :src="info?.file" alt="" class="max-h-full max-w-full object-contain" />
-            <x-lesson.picture-hud />
-        </button>
+                <x-lesson.picture-hud />
+            </button>
+            {{-- The spark: type what to change, ChatGPT on this machine changes it (EditsWithSpark). Local only. --}}
+            @if (\App\Services\Local\LocalChatGpt::available())
+                <button type="button" class="btn btn-circle btn-xs absolute right-1 top-1" data-stage25d-spark
+                        :class="sparkBusy && 'animate-pulse'" :disabled="sparkBusy"
+                        :data-tooltip="sparkBusy ? @js(__('ChatGPT is changing this picture')) : @js(__('Change with ChatGPT'))"
+                        :aria-label="sparkBusy ? @js(__('ChatGPT is changing this picture')) : @js(__('Change with ChatGPT'))"
+                        x-show="info?.file" x-on:click="sparkOpen = !sparkOpen">
+                    <x-icons.sparkles class="h-3.5 w-3.5" />
+                </button>
+                <form class="absolute inset-x-1 bottom-1" x-show="sparkOpen" x-cloak data-stage25d-spark-form x-on:submit.prevent="sendSpark()">
+                    <input type="text" class="input input-xs w-full" maxlength="500" x-model="sparkText"
+                           x-effect="sparkOpen && requestAnimationFrame(() => $el.focus())"
+                           placeholder="{{ __('What should change?') }}" aria-label="{{ __('What should change?') }}"
+                           x-on:keydown.escape.stop="sparkOpen = false" />
+                </form>
+            @endif
+        </div>
 
         {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
              that is grouped with it (it moves along). --}}
@@ -99,7 +117,7 @@
                                 :data-stage25d-pose="m.id" x-on:click="pose(m.id)"
                                 class="flex h-12 items-center justify-center overflow-hidden rounded bg-base-200 ring-1"
                                 :class="m.id === series.asset ? 'ring-primary' : 'ring-transparent hover:ring-base-content/30'">
-                            <img :src="m.thumb ?? m.url" x-on:error.once="$el.src = m.url" alt="" draggable="false" loading="lazy" class="max-h-full max-w-full object-contain" />
+                            <img :src="m.thumb ?? m.url" x-on:error="$el.src === new URL(m.url, location.href).href || ($el.src = m.url)" alt="" draggable="false" loading="lazy" class="max-h-full max-w-full object-contain" />
                         </button>
                     </template>
                 </div>

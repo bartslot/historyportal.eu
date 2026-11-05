@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { moveKeys, deleteKeys, snapToNearest, keyId } from '../timeline-edit.js'
+import { moveKeys, deleteKeys, snapToNearest, keyId, rubberBand } from '../timeline-edit.js'
 
 const tracks = () => [
   { target: 'camera', property: 'zoom', keyframes: [{ time: 0, value: 3 }, { time: 2, value: 5 }, { time: 4, value: 6 }] },
@@ -57,3 +57,29 @@ describe('snapToNearest', () => {
 it('keyId is stable for the same key', () => {
   expect(keyId({ target: 'art:3', property: 'x', time: 1.5 })).toBe('art:3|x|1.5')
 })
+
+describe('rubberBand', () => {
+  it('leaves a key alone away from others', () => {
+    expect(rubberBand(1, [2, 3])).toEqual({ at: 1, rest: 1 })
+    expect(rubberBand(1.8, [2], 0, 8)).toEqual({ at: 1.8, rest: 1.8 })
+  })
+
+  it('stops at the edge of the zone, stretches in a little, and rests on the edge', () => {
+    const { at, rest } = rubberBand(1.9, [2], 0, 8)
+    expect(rest).toBeCloseTo(1.8)
+    expect(at).toBeCloseTo(1.825)
+    expect(at).toBeLessThan(1.9)
+  })
+
+  it('past the middle it goes to the far side: keys still pass each other', () => {
+    expect(rubberBand(2.05, [2], 0, 8).rest).toBeCloseTo(2.2)
+    expect(rubberBand(2.5, [2], 0, 8)).toEqual({ at: 2.5, rest: 2.5 })
+  })
+
+  it('takes the other side when that edge is taken or out of the scene, and gives up when there is no room', () => {
+    expect(rubberBand(0.05, [0.1], 0, 8).rest).toBeCloseTo(0.3)
+    expect(rubberBand(2.1, [2, 2.3], 0, 8).rest).toBeCloseTo(1.8)
+    expect(rubberBand(0.05, [0.1, 0.2], 0, 0.3)).toBeNull()
+  })
+})
+

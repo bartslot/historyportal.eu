@@ -101,7 +101,7 @@ export const stageScene = (cfg) => ({
 export async function createStage25d (host, opts = {}) {
   const canvas = document.createElement('canvas')
   canvas.className = 'stage25d-canvas'
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;'
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;visibility:hidden;'
   host.appendChild(canvas)
 
   let stage = null
@@ -306,6 +306,7 @@ export async function createStage25d (host, opts = {}) {
       stage.setLook(lookNow)
       const next = stageScene(cfgNow)
       await stage.build(next, lib)
+      canvas.style.visibility = ''   // the first pictures are ready: until then the host's colour, never the empty stage's paper
       scene = next
       layers = next.set.layers
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))

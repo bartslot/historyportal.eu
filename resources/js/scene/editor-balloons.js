@@ -43,6 +43,7 @@ export const typingIn = (host) => !!host && host.contains(document.activeElement
 let host = null
 let layer = null
 let sig = null
+let lastTime = 0
 
 /** A standard slide: its balloons over the whole stage. */
 export function showStageBalloons (parent, lines) {
@@ -62,6 +63,7 @@ export function showStageBalloons (parent, lines) {
   if (next === sig || typingIn(host)) return
   sig = next
   layer.setLines(lines || [])
+  layer.update(lastTime)
 }
 
 export function hideStageBalloons () {
@@ -75,5 +77,7 @@ if (typeof window !== 'undefined') {
   window.__balloons = {
     list: balloonRows, select: selectBalloon, selected: selectedBalloon, edit: editBalloon,
     patch: patchBalloon, text: setBalloonText, value: readBalloon,
+    /** The playhead moved: each balloon shows during its own time. */
+    time: (t) => { lastTime = t; layer?.update(t) },
   }
 }

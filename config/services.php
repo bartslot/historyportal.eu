@@ -77,6 +77,12 @@ return [
         'cwebp_path' => (string) env('CWEBP_PATH', 'cwebp'),
     ],
 
+    // ChatGPT on this machine (App\Services\Local\LocalChatGpt): on for local only, whatever a .env says elsewhere.
+    'chatgpt_local' => [
+        'enabled' => env('APP_ENV') === 'local',
+        'bin' => env('CHATGPT_CODEX_BIN', '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex'),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         // Dedicated key for image generation (gpt-image-1 needs a verified org); falls back to the main key.

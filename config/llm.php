@@ -89,6 +89,14 @@ return [
             'timeout' => (int) env('OPENROUTER_TIMEOUT', 120),
         ],
 
+        // ChatGPT on this machine, on the logged-in subscription (App\Services\Local\LocalChatGpt). A developer's Mac only.
+        'chatgpt_local' => [
+            'label' => 'ChatGPT (this machine)',
+            'base_url' => 'local://chatgpt',
+            'model' => 'chatgpt',
+            'timeout' => 300,
+        ],
+
         // Local, free, private — no key. Slow on a laptop, but nothing leaves the machine.
         'ollama' => [
             'label' => 'Ollama (local)',
@@ -126,6 +134,8 @@ return [
         // feedback on a child's WHY answer at a predict moment (App\Services\Predict): a small, cheap
         // model; JEV has already graded, this only writes 1-2 kind sentences
         'feedback' => env('LLM_ROLE_FEEDBACK', env('LLM_ROLE_MECHANICAL', 'openai')),
+        // a teacher asks to improve a text in the studio (the script panel's Rewrite text)
+        'improve' => env('LLM_ROLE_IMPROVE', env('LLM_ROLE_MECHANICAL', 'openai')),
     ],
 
     /** Role used when a call site asks for one that isn't configured. */

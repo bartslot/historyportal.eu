@@ -47,6 +47,25 @@ export const deleteKeys = (tracks, refs) => tracks
   .map((track) => ({ ...track, keyframes: (track.keyframes ?? []).filter((k) => !isIn(track, k, refs)) }))
   .filter((track) => track.keyframes.length)
 
+/** How close two keys of one row may be, seconds (Bart 11-05). */
+export const KEY_GAP_S = 0.2
+/** How far a key follows the pointer into another key's zone. */
+const RUBBER_SHARE = 0.25
+
+/**
+ * A dragged key near another: it stops at the edge of that key's zone and stretches in a little (`at`), and comes to rest
+ * on the edge (`rest`) when let go. Past the middle of the zone it goes to the far edge, so keys can still pass each other.
+ * Null when there is no room on either side.
+ */
+export const rubberBand = (wanted, others, lo = 0, hi = Infinity, gap = KEY_GAP_S) => {
+  const near = others.filter((o) => Math.abs(o - wanted) < gap).sort((a, b) => Math.abs(a - wanted) - Math.abs(b - wanted))[0]
+  if (near === undefined) return { at: wanted, rest: wanted }
+  const free = (t) => t >= lo && t <= hi && others.every((o) => Math.abs(o - t) >= gap - 1e-9)
+  const towards = wanted >= near ? 1 : -1
+  const rest = [near + towards * gap, near - towards * gap].find(free)
+  return rest === undefined ? null : { at: Math.max(lo, Math.min(hi, rest + (wanted - rest) * RUBBER_SHARE)), rest }
+}
+
 /** Nearest candidate within `tolerance`, else the time unchanged. */
 export const snapToNearest = (time, candidates, tolerance) => {
   let best = time

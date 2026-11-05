@@ -261,8 +261,9 @@ class Step3SceneConfiguratorTest extends TestCase
 
     public function test_regenerate_script_paragraph_returns_cleaned_rewrite(): void
     {
-        $this->mock(\App\Services\OpenAiLlmService::class, fn ($mock) => $mock
-            ->shouldReceive('text')->once()->andReturn('  "A tighter, punchier paragraph."  '));
+        $llm = \Mockery::mock(\App\Services\OpenAiLlmService::class);
+        $llm->shouldReceive('text')->once()->andReturn('  "A tighter, punchier paragraph."  ');
+        $this->mock(\App\Services\Llm\LlmRouter::class, fn ($mock) => $mock->shouldReceive('for')->with('improve')->andReturn($llm));
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
@@ -274,7 +275,7 @@ class Step3SceneConfiguratorTest extends TestCase
     public function test_regenerate_script_paragraph_ignores_a_stale_scene(): void
     {
         // No LLM should be called for a scene that is no longer selected.
-        $this->mock(\App\Services\OpenAiLlmService::class, fn ($mock) => $mock->shouldNotReceive('text'));
+        $this->mock(\App\Services\Llm\LlmRouter::class, fn ($mock) => $mock->shouldNotReceive('for'));
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])

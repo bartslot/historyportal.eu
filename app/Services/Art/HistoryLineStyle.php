@@ -29,6 +29,11 @@ final class HistoryLineStyle
         .'No decorative micro-detail. No synthetic texture. Keep large areas white and visually quiet. '
         .'If an object is ambiguous, simplify it rather than inventing detail.';
 
+    /** A picture already in the style being changed by a teacher's instruction (the spark). */
+    public const KEEP_IN_EDIT = 'Keep the picture in the History Lines style it is in: a confident dark ink contour of varying weight, '
+        .'ink fold lines, a few precise lines in the face, transparent watercolour washes with paper tooth and soft blooms. '
+        .'No glossy 3D, no airbrush, no blur, no text, no labels.';
+
     public const SAFETY = 'No readable text, no letters, no labels, no watermark, no gore.';
 
     /** Source → line master. Reference order: source first, then the two style anchors. */

@@ -275,7 +275,7 @@ export class BalloonLayer {
   /**
    * @param {(assetId: number) => DOMRect | null} [figureBox] where a figure layer is drawn now
    * @param {{editable?: boolean, onChange?: (id: string, patch: object) => void, onSelect?: (id: string|null) => void}} [opts]
-   *        editable: the editor's stage (balloon-edit.js): every balloon shows, whatever the clock says,
+   *        editable: the editor's stage (balloon-edit.js): a balloon shows during its time, and always while selected,
    *        and can be selected, dragged, typed in and given a tail.
    */
   constructor (host, figureBox = defaultFigureBox, opts = {}) {
@@ -306,8 +306,8 @@ export class BalloonLayer {
   update (t) {
     this._t = Number(t) || 0
     this.lines.forEach((line, i) => {
-      // No end = up to the scene's end. The editor shows every balloon all the time.
-      const on = this.editable || (this._t >= (Number(line.start) || 0) && this._t < (line.end ?? Infinity))
+      // No end = up to the scene's end. In the editor too (Bart 11-05), only the selected one stays, to be worked on.
+      const on = (this._t >= (Number(line.start) || 0) && this._t < (line.end ?? Infinity)) || (this.editable && line.id === this._selectedId)
       if (on && !this.shown.has(i)) this._show(i, line)
       else if (!on && this.shown.has(i)) this._hide(i)
     })
@@ -356,6 +356,7 @@ export class BalloonLayer {
       el.toggleAttribute('data-selected', this.lines[i]?.id === this._selectedId)
       this._place(el, this.lines[i])
     }
+    if (this.editable) this.update(this._t)   // a balloon outside its time shows while selected, and goes when it is not
   }
 
   _show (i, line) {
