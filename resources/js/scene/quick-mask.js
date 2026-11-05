@@ -257,6 +257,9 @@ function distanceToClear(data, w, h, max) {
     return d;
 }
 
+/** How coloured a light pixel may be and still be white paper: paper is near neutral, a shirt or skin is not. */
+const PAPER_MAX_CHROMA = 24;
+
 /**
  * White edges: within `px` of anything clear, a light pixel is part picture, part white paper, so (as cut() does at a
  * matte's edge) its alpha becomes how far it is from white and its colour is un-blended from white. Kills the halo.
@@ -268,6 +271,7 @@ export function defringe(data, w, h, px = CLEAN_DEFAULTS.fringe) {
     for (let p = 0; p < w * h; p++) {
         if (near[p] === 0 || near[p] > px) continue;
         const i = p * 4;
+        if (chroma(data, i) > PAPER_MAX_CHROMA) continue;   // a cream shirt or pale skin at the edge is the picture
         const a = Math.min(1, dist(data, i, [255, 255, 255]) / 120);
         if (a >= 1) continue;
         for (let c = 0; c < 3; c++) out[i + c] = a > 0.02 ? (data[i + c] - (1 - a) * 255) / a : data[i + c];

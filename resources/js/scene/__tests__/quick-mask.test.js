@@ -217,3 +217,15 @@ describe('remove a colour with one click', () => {
         expect(wandSelect(d, 5, 1, 2, 0, 30).some(Boolean)).toBe(false);
     });
 });
+
+describe('defringe keeps what is not paper', () => {
+  /** One opaque row next to a clear pixel: [clear, the pixel under test]. */
+  const edge = (r, g, b) => new Uint8ClampedArray([0, 0, 0, 0, r, g, b, 255])
+
+  it('peels a white fringe, and leaves a cream shirt or pale skin at the edge whole', () => {
+    expect(defringe(edge(248, 248, 246), 2, 1, 3)[7]).toBeLessThan(100)
+    expect(defringe(edge(250, 238, 205), 2, 1, 3)[7]).toBe(255)   // cream shirt
+    expect(defringe(edge(245, 215, 180), 2, 1, 3)[7]).toBe(255)   // skin
+  })
+})
+
