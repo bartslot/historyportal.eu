@@ -222,6 +222,22 @@ class StageEditingTest extends TestCase
         $this->assertArrayNotHasKey('camera_motion', $scene->fresh()->config['stage25d']);
     }
 
+    public function test_a_picture_keeps_its_outline_and_etched_shadow_within_range(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+
+        $editor->call('saveStage25dLayer', 0, ['outline' => 3.5, 'etch' => 0.4], $scene->id);
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertSame(3.5, $layer['outline']);
+        $this->assertSame(0.4, $layer['etch']);
+
+        $editor->call('saveStage25dLayer', 0, ['outline' => 99, 'etch' => 'nope'], $scene->id);
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertEquals(8, $layer['outline']);   // a whole number comes back from the JSON column as an int
+        $this->assertSame(0.4, $layer['etch']);
+    }
+
     public function test_the_lesson_tab_shows_the_lesson_with_a_layer_selected(): void
     {
         $this->editor($this->scene())->call('selectInspectorTarget', 's25_layer-0')

@@ -99,7 +99,7 @@ Effect.ShadersStore.stageStainVertexShader = `
 Effect.ShadersStore.stageStainFragmentShader = `
   precision highp float;
   varying vec2 vUV;
-  uniform float opacity, seed;
+  uniform float opacity, seed, etch, aspect;
   ${NOISE}
   void main(void) {
     vec2 p = vUV * 2.0 - 1.0;
@@ -108,7 +108,19 @@ Effect.ShadersStore.stageStainFragmentShader = `
     float rim = 0.78 + 0.22 * vnoise(vec2(ang * 2.2 + seed, seed));
     float r = length(p) / rim;
     float a = (1.0 - smoothstep(0.25, 1.0, r)) * (0.7 + 0.3 * fbm(vUV * 6.0 + seed)) * opacity;
-    gl_FragColor = vec4(vec3(0.27, 0.23, 0.18) * a, a);
+    vec3 colour = vec3(0.27, 0.23, 0.18);
+    // etched: the same shape in ink strokes, as many across whatever the size, denser toward the foot
+    if (etch > 0.0) {
+      vec2 q = vec2(vUV.x, vUV.y * aspect) * 16.0;
+      float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
+      float body = 1.0 - smoothstep(0.25, 1.0, r);
+      float wid = 0.08 + 0.32 * body;
+      float stroke = 1.0 - smoothstep(wid, wid + 0.12, abs(fract(t) - 0.5));
+      float gap = smoothstep(0.25, 0.4, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed)) + 0.4 * body);
+      a = mix(a, stroke * gap * step(0.02, body) * min(1.0, opacity * 1.6), etch);
+      colour = mix(colour, vec3(0.05, 0.045, 0.04), etch);
+    }
+    gl_FragColor = vec4(colour * a, a);
   }`
 
 /** One ground picture of the floor: its texture, the metres one tile covers, from how far out it lies. */
@@ -176,7 +188,7 @@ let stainSeed = 0
 /** A soft painted stain lying on the ground, centred on `parent`'s origin (its anchor), w x d metres. With `cast`,
  *  it is a cast shadow instead: `length` metres long from the anchor along `dir` (the light's direction on the ground,
  *  x and z), w wide. */
-export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene, cast?: { dir: [number, number]; length: number }): { mesh: Mesh; setOpacity(o: number): void } {
+export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene, cast?: { dir: [number, number]; length: number }): { mesh: Mesh; setOpacity(o: number): void; setEtch(e: number): void } {
   const mesh = MeshBuilder.CreatePlane(`stain${cast ? '-cast' : ''}:${parent.name}`, { width: w, height: cast ? cast.length : d }, scene)
   mesh.rotation.x = Math.PI / 2                 // flat on the floor
   if (cast) {                                   // turned along the light, starting at the anchor
@@ -186,14 +198,14 @@ export function makeStain(parent: TransformNode, w: number, d: number, scene: Sc
   } else mesh.position.set(0, 0.02, -d * 0.18)  // a little toward the camera: the dark core shows in front of the foot
   mesh.parent = parent
   const mat = new ShaderMaterial(mesh.name, scene, 'stageStain', {
-    attributes: ['position', 'uv'], uniforms: ['worldViewProjection', 'opacity', 'seed'], needAlphaBlending: true,
+    attributes: ['position', 'uv'], uniforms: ['worldViewProjection', 'opacity', 'seed', 'etch', 'aspect'], needAlphaBlending: true,
   })
   mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
   mat.disableDepthWrite = true
   mat.backFaceCulling = false
-  mat.setFloat('seed', (stainSeed++ * 7.31) % 97).setFloat('opacity', 0)
+  mat.setFloat('seed', (stainSeed++ * 7.31) % 97).setFloat('opacity', 0).setFloat('etch', 0).setFloat('aspect', (cast ? cast.length : d) / Math.max(w, 0.01))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true }
   mesh.isPickable = false
-  return { mesh, setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 } }
+  return { mesh, setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 }, setEtch: (e) => { mat.setFloat('etch', e) } }
 }

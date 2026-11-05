@@ -35,16 +35,14 @@
          runs out first, and the width follows it (--stw) instead of staying full width, which
          stretched the stage wider than 16:9 and cropped the picture differently at every drawer
          height (Bart, 2026-10-16). The leftover width is letterbox, centred. --}}
-    {{-- The editor's shell (Spotify layout): pure black behind and between the panels. The gap
-         between two panels is this black, so the panels are inset from it and never touch it. --}}
+    {{-- The editor's shell: the panels' own deep blue behind and between them; a panel reads by its border. --}}
     <div class="fixed inset-0 z-0" style="background: var(--color-shell)" aria-hidden="true"></div>
-    {{-- Black letterbox behind the 16:9 stage: fills the whole work area, so the bars beside
-         the stage are black for every scene kind, not the page slate. Same box as the stage's
+    {{-- The bars beside the 16:9 stage: the panels' colour for every scene kind, not the page slate. Same box as the stage's
          work area (rail, ruler, inspector, toolbar). --}}
     <div id="lesson-stage-letterbox" class="fixed z-0" wire:ignore
          style="left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px) + var(--editor-gap) / 2);
                 right: var(--work-right, 16rem); top: calc(4rem + var(--ruler-w, 0px)); bottom: 0;
-                background: var(--stage-letterbox);"></div>
+                background: var(--color-panel);"></div>
     <div class="fixed z-0 bg-slate-950" id="lesson-canvas-root"
          style="--work-left: calc(var(--rail-w, 11rem) + var(--objlist-w, 0px) + var(--ruler-w, 0px) + var(--editor-gap) / 2); --work-bottom: 0px;
                 --top-inset: calc(4rem + var(--ruler-w, 0px));
@@ -1365,10 +1363,12 @@
     // A stage25d layer's (or the scene's) Format panel: values are read off the live stage at the playhead and
     // written back through it, the way the canvas drag and the timeline row write them.
     window.stage25dInspector = function stage25dInspector(id, names, poses) {
+        const DOUBLE_CLICK_MS = 250;
+        const HUD_HOLD_MS = 1500;
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, hud: null, values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() { this.sync(); },
             sync() {
                 const stage = window.__stage25d;
@@ -1393,8 +1393,33 @@
                 this.sync();
             },
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
+            get motionKind() { return this.info?.motion?.kind ?? 'none'; },
+            set motionKind(kind) { this.setMotion({ kind }); },
             /** An animation's playback: speed (fps scale) and where it starts (s). Live, one save, Cmd-Z undoes it. */
             setPlay(patch) { window.__stage25d?.setLayerPlay?.(id, patch); this.sync(); },
+            /** A click on the picture changes it, unless it was the start of a double-click, which edits it. */
+            pickPicture() {
+                clearTimeout(this._picking);
+                this._picking = setTimeout(() => {
+                    this.$store.view.showTab('icons');
+                    this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: this.info?.role } })));
+                }, DOUBLE_CLICK_MS);
+            },
+            editPicture() {
+                clearTimeout(this._picking);
+                const target = window.__stage25d?.editTarget?.(id);
+                if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }));
+            },
+            /** The setting in hand: the picture shows what it changes (picture-hud), until a moment after the last touch. */
+            showHud(e) {
+                const d = e.target.dataset ?? {};
+                const key = d.stage25dField ?? d.stage25dInk ?? d.stage25dMotion ?? d.stage25dPlayField;
+                if (!key) return;
+                this.hud = key;
+                clearTimeout(this._hudOff);
+                this._hudOff = setTimeout(() => { this.hud = null; }, HUD_HOLD_MS);
+            },
+            setInk(patch) { window.__stage25d?.setLayerInk?.(id, patch); this.sync(); },
             /** Another picture of the same series (a pose, a facing); live, one save. */
             async pose(assetId) { await window.__stage25d?.swapAsset?.(id, assetId); this.sync(); },
             /** Another character in the same stance. */
@@ -1812,7 +1837,7 @@
     {{-- z-50: must out-stack the z-40 resize handles (rail + object list) — they are later
          fixed siblings, so at equal z they'd sit above this toolbar's DROPDOWNS and swallow
          clicks on menu items (View ▸ Object list was dead at the default rail width). --}}
-    <div data-editor-toolbar class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0 pl-16" style="background: var(--color-shell)"
+    <div data-editor-toolbar class="fixed right-0 top-0 z-50 flex h-16 items-center justify-between px-3 left-0 pl-16" style="background: var(--color-panel); border-bottom: 1px solid var(--color-panel-border)"
          wire:ignore
          {{-- fmtOpen/fmtView mirror the Format panel's state (broadcast by the aside via
               inspector-state) so toolbar buttons can show a proper OPEN state — the toolbar is
@@ -1859,38 +1884,6 @@
 
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
 
-        {{-- Tekenen: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
-        <div x-data="drawTool()" class="relative" x-on:keydown.escape.window="on && stop()" data-draw-tool>
-            <button type="button" x-on:click="toggle()"
-                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                    :class="on && 'bg-sky-500/15 text-panel-link'" :aria-pressed="on.toString()"
-                    data-tooltip="{{ __('Draw') }}" aria-label="{{ __('Draw') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
-            </button>
-            <div x-show="on" x-cloak class="fixed left-1/2 top-16 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-box border border-base-300 bg-base-200 px-3 py-2" data-draw-strip>
-                <div class="join">
-                    <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
-                    <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
-                    <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
-                </div>
-                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
-                    <template x-for="c in colours" :key="c">
-                        <button type="button" class="h-6 w-6 rounded-full border-2" :style="`background:${c}`"
-                                :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
-                    </template>
-                </div>
-                <div class="flex items-center gap-1" role="group" aria-label="{{ __('Thickness') }}">
-                    <template x-for="w in widths" :key="w">
-                        <button type="button" class="btn btn-ghost btn-sm btn-square" :class="width === w && 'bg-base-300'" x-on:click="pick('width', w)" :aria-label="w">
-                            <span class="block rounded-full bg-base-content" :style="`width:${w + 2}px;height:${w + 2}px`"></span>
-                        </button>
-                    </template>
-                </div>
-                <span class="loading loading-spinner loading-xs" x-show="busy > 0"></span>
-                <button type="button" class="btn btn-sm" x-on:click="stop()">{{ __('Done') }}</button>
-            </div>
-        </div>
-
         {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
         <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"
@@ -1901,7 +1894,8 @@
             </svg>
         </button>
 
-        <div class="relative">
+        {{-- Add, with the draw tool under Tools: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
+        <div class="relative" x-data="drawTool()" x-on:keydown.escape.window="on && stop()" data-draw-tool>
             <button type="button" @click="addOpen = !addOpen"
                     class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-panel-link'"
@@ -1965,6 +1959,37 @@
                     <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-rect', { detail: { side: 'right' } })); addOpen = false"
                             class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-primary hover:text-primary">{{ __('Right') }}</button>
                 </div>
+                <div class="my-1 border-t border-slate-700" role="separator"></div>
+                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Tools') }}</p>
+                {{-- It draws on the 2D stage's artwork; elsewhere it says so instead of doing nothing. --}}
+                <button type="button" x-on:click="toggle(); addOpen = false" :aria-pressed="on.toString()" data-draw-toggle :disabled="addOpen && !host()"
+                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200 disabled:pointer-events-none disabled:opacity-50" role="menuitem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                    <span class="flex-1">{{ __('Draw') }}</span>
+                    <span class="text-xs text-panel-hint" x-show="addOpen && !host()">{{ __('2D scenes') }}</span>
+                </button>
+            </div>
+            <div x-show="on" x-cloak class="fixed left-1/2 top-16 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-box border border-base-300 bg-base-200 px-3 py-2" data-draw-strip>
+                <div class="join">
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                </div>
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                    <template x-for="c in colours" :key="c">
+                        <button type="button" class="h-6 w-6 rounded-full border-2" :style="`background:${c}`"
+                                :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
+                    </template>
+                </div>
+                <div class="flex items-center gap-1" role="group" aria-label="{{ __('Thickness') }}">
+                    <template x-for="w in widths" :key="w">
+                        <button type="button" class="btn btn-ghost btn-sm btn-square" :class="width === w && 'bg-base-300'" x-on:click="pick('width', w)" :aria-label="w">
+                            <span class="block rounded-full bg-base-content" :style="`width:${w + 2}px;height:${w + 2}px`"></span>
+                        </button>
+                    </template>
+                </div>
+                <span class="loading loading-spinner loading-xs" x-show="busy > 0"></span>
+                <button type="button" class="btn btn-sm" x-on:click="stop()">{{ __('Done') }}</button>
             </div>
         </div>
         </div>

@@ -91,7 +91,7 @@ trait EditsStage25d
 
             return;
         }
-        $values = LayerKeys::clean($patch);
+        $values = [...LayerKeys::clean($patch), ...LayerKeys::ink($patch)];
         if (is_string($patch['asset'] ?? null) && $this->stage25dAssetLayer($bundle, $patch['asset']) !== null) {
             $values['asset'] = $patch['asset'];
         }

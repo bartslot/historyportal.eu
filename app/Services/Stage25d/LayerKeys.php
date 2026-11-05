@@ -35,6 +35,27 @@ final class LayerKeys
         return $out;
     }
 
+    /** A picture's ink (stage layer.ts): the outline in 1080p px inside its edge, the etched shadow 0..1. */
+    public const INK_RANGE = ['outline' => [0.0, 8.0], 'etch' => [0.0, 1.0]];
+
+    /**
+     * The ink values of a patch, held to their range.
+     *
+     * @param  array<string,mixed>  $values
+     * @return array<string,float>
+     */
+    public static function ink(array $values): array
+    {
+        $out = [];
+        foreach (self::INK_RANGE as $field => [$min, $max]) {
+            if (isset($values[$field]) && is_numeric($values[$field]) && is_finite((float) $values[$field])) {
+                $out[$field] = max($min, min($max, (float) $values[$field]));
+            }
+        }
+
+        return $out;
+    }
+
     /** The depths a teacher can put a picture at, far to near (the sky stays where it is). */
     public const DEPTHS = ['bg', 'mid', 'fg', 'near'];
 

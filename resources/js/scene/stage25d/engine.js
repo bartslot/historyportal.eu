@@ -20,10 +20,10 @@ import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
-import { attachInteraction, inFrontOf } from './interact.js'
+import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
-import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from './framing.js'
+import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
@@ -209,6 +209,7 @@ export async function createStage25d (host, opts = {}) {
     camNow = first
     camMore = rest
     if (scene) scene = { ...scene, camera: camNow, camera_more: camMore }
+    cfg = cfg && { ...cfg, camera: camNow, camera_more: camMore }   // a rebuild (a layer added) starts from cfg: it keeps this framing
     seenEdit = liveSig()
     if (api.sceneId != null) opts.onCommit?.(0, { camera: camNow, camera_more: camMore }, api.sceneId)
     window.dispatchEvent(new CustomEvent('stage25d-edited'))
@@ -468,6 +469,7 @@ export async function createStage25d (host, opts = {}) {
     setCameraMotion (patch) {
       camMotion = { kind: 'none', amount: 1, speed: 1, ...camMotion, ...patch }
       if (scene) scene = { ...scene, camera_motion: camMotion }
+      cfg = cfg && { ...cfg, camera_motion: camMotion }
       seenEdit = liveSig()
       if (api.sceneId != null) opts.onCommit?.(0, { cameraMotion: camMotion }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
@@ -480,6 +482,12 @@ export async function createStage25d (host, opts = {}) {
       const keys = camKeysNow()
       const rest = withoutCameraKey(keys, t)
       storeCameraKeys(rest.length < keys.length ? rest : withCameraKey(keys, t, camPoseNow()))
+    },
+    /** A camera key dragged along the timeline: its pose stays, its time changes. Returns where it landed. */
+    moveCameraKey (from, to) {
+      const { keys, t } = movedCameraKey(camKeysNow(), from, to, camLength())
+      storeCameraKeys(keys)
+      return t
     },
     /** Back to the still house camera: no move. */
     resetCamera () { storeCameraKeys([]) },
@@ -517,8 +525,11 @@ export async function createStage25d (host, opts = {}) {
         motion: motionOf(l, asset),
         anim: animOf(asset),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
+        ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
       }
     },
+    /** A picture's ink: its outline (px) and etched shadow (0..1). Live, and saved on the layer. */
+    setLayerInk (id, patch) { if (layerIndex(id) >= 0) commit(id, patch) },
     /** An animation's playback on one layer: speed (its fps scale) and where it starts (seconds). Live, and saved. */
     setLayerPlay (id, play) {
       const now = valuesOf(id)
@@ -643,6 +654,15 @@ export async function createStage25d (host, opts = {}) {
         const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y), floorOnly({}, a) ? 0 : (z) => stage.groundHeightAt(z)) : null
         const spot = layerOf(settle(hit ?? groundOf(layer.x, DEPTH_Z[depth])))
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }
+      }
+      // a character added from the shelf stands where the one in view stands, so the two are the same height
+      if (!at && a.layer === 'figure' && stage) {
+        const figures = layers.flatMap((l, index) => (assets.get(l.asset)?.layer === 'figure' && !hidden.has(`layer-${index}`) ? [{ index, box: stage.layerBox(index) }] : []))
+        const seen = figureInView(figures, pointer?.selected ?? null)
+        if (seen !== null) {
+          const now = layerAt(layers[seen], nowT())
+          layer = { asset: assetId, depth: layers[seen].depth, x: now.x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: zNow(seen), scale: now.scale ?? 1 }
+        }
       }
       layers = [...layers, layer]
       await api.show({ ...cfg, set: liveSet() })

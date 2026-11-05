@@ -88,7 +88,12 @@ export class Stage {
     })
     makeSheet(this.camera, (k) => Number(this.look[k] ?? 0))   // after the chain: the one paper sheet under it all
     this.fit()
-    window.addEventListener('resize', () => this.fit())
+    // a new size empties the canvas until the next frame and the page shows through it: draw in the same tick
+    window.addEventListener('resize', () => {
+      if (this.scene.isDisposed) return
+      this.fit()
+      this.scene.render()
+    })
   }
 
   /** Longest render side in device px (1080p by default; Retina at full ratio costs 4x the fill). */
@@ -516,6 +521,9 @@ export class Stage {
       // the paper's grain at the scale it has from the house camera, fixed to the picture (moves and zooms with it)
       b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
+      b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
+      b.stain?.setEtch(b.layer.etch ?? 0)
+      b.cast?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity)
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'

@@ -70,10 +70,10 @@
     --color-neutral:          oklch(33% 0.031 264);  /* #334155 slate-700 */
     --color-neutral-content:  oklch(98% 0.004 264);
 
-    /* Editor shell (Spotify layout): the black between and around the panels, and the panel
-       surface itself. --color-panel-label on --color-panel measures 5.2:1 (AA for 12px text). */
-    --color-shell:            #040814;
+    /* Editor shell: one deep blue behind, between and inside the panels (Bart 11-05: no black), so a
+       panel reads by its border. --color-panel-label on --color-panel measures 5.2:1 (AA for 12px text). */
     --color-panel:            #09101E;
+    --color-shell:            var(--color-panel);
     --color-panel-border:     #1F2E47;
     --editor-gap:             8px;
 
@@ -2202,8 +2202,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
   /* Wide enough for "Nederlands" + the caret at 390 px (it read "Nederlan…", pair test 10-24). */
   :root { --title-gutter: 16px; --title-lang-w: 9.5rem; }
 }
-/* The bars either side of the 16:9 lesson stage (editor + player). Pure black, one place. */
-:root { --stage-letterbox: #000; }
 .title-screen { scrollbar-width: none; }
 .title-screen::-webkit-scrollbar { display: none; }
 .title-gutter-x { padding-inline: var(--title-gutter); }
@@ -2267,6 +2265,20 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 /* ─── An animation's tile in the 3D Assets tab (script-editor.blade.php): a one-frame window over the sprite sheet.
        The sheet steps across a row (translate) and down the rows (transform), frame by frame, at the sheet's fps. ─── */
+/* The Motion row's pictures (x-ui.segmented `moves`): each moves the way its motion moves a layer, on hover only. */
+.motion-preview { transform-box: fill-box; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .tab:is(:hover, :has(:focus-visible)) .motion-preview-sway { animation: motion-sway 1.4s ease-in-out infinite alternate; }
+  .tab:is(:hover, :has(:focus-visible)) .motion-preview-drift { animation: motion-drift 2s ease-in-out infinite alternate; }
+  .tab:is(:hover, :has(:focus-visible)) .motion-preview-ripple { animation: motion-ripple 0.7s ease-in-out infinite alternate; }
+  .tab:is(:hover, :has(:focus-visible)) .motion-preview-flicker { animation: motion-flicker 0.22s linear infinite alternate; }
+  .tab:is(:hover, :has(:focus-visible)) .motion-preview-breathe { animation: motion-breathe 1.6s ease-in-out infinite alternate; }
+}
+@keyframes motion-sway { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+@keyframes motion-drift { from { transform: translateX(-4px); } to { transform: translateX(4px); } }
+@keyframes motion-ripple { from { transform: skewX(-10deg) translateY(1px); } to { transform: skewX(10deg) translateY(-1px); } }
+@keyframes motion-flicker { from { transform: scaleY(0.88); opacity: 0.65; } to { transform: scaleY(1.08); opacity: 1; } }
+@keyframes motion-breathe { from { transform: scale(0.92); } to { transform: scale(1.1); } }
 .s25-sheet { position: relative; display: block; height: 100%; max-width: 100%; overflow: hidden; }
 .s25-sheet > img {
   position: absolute; left: 0; top: 0; max-width: none;

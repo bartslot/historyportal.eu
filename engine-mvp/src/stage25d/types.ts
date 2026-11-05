@@ -69,6 +69,10 @@ export interface SceneLayer {
   rotation?: number
   /** the layer's own opacity before keys (default 1) */
   opacity?: number
+  /** a black line inside the picture's edge, in 1080p px (default 0: none) */
+  outline?: number
+  /** hatching on the picture's shade side and in its ground shadow, 0..1 (default 0: none) */
+  etch?: number
   motion?: MotionKind | MotionSpec
   keys?: LayerKey[]
   /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */

@@ -208,7 +208,11 @@ export function drawTool () {
     on: false, tool: 'pen', colour: COLOURS[0], width: WIDTHS[1], busy: 0,
     tools: TOOLS, colours: COLOURS, widths: WIDTHS,
     surface: null,
-    host () { return document.querySelector('.wizard-artwork-host') },
+    /** What the pen lies on: the 2D scene's layers, or its stage until the first line makes them. The 3D stage has none. */
+    host () {
+      if (document.querySelector('.wizard-stage25d-host')) return null
+      return document.querySelector('.wizard-artwork-host') ?? document.getElementById('lesson-canvas-root')
+    },
     toggle () { this.on ? this.stop() : this.start() },
     init () {
       // a save re-renders the stage and replaces the element the surface lies on: put it back, same pen

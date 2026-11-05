@@ -2621,5 +2621,9 @@
     "Discard": "Scarta",
     "Keep editing": "Continua a modificare",
     "Save your changes?": "Salvare le modifiche?",
-    "Clean up": "Pulisci"
+    "Clean up": "Pulisci",
+    "Outline": "Contorno",
+    "Etched shadow": "Ombra incisa",
+    "Click to change, double-click to edit": "Clicca per cambiare, doppio clic per modificare",
+    "2D scenes": "Scene 2D"
 }

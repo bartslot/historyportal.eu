@@ -5,7 +5,7 @@
 
 /** Layer fields that move or restyle a built picture (play: an animation's speed and start), and the speaker handle a balloon points at (`figure`: the stage
  *  only reads it to find a head). Anything else (asset, depth, need, flat) is a rebuild. */
-export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play']
+export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play', 'outline', 'etch']
 
 /** 'layer-3' -> 3; anything else (the camera) -> -1. */
 export const layerIndex = (id) => {

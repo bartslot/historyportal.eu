@@ -1102,7 +1102,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative'
             const host = document.createElement('div')
             host.className = 'wizard-stage25d-host'
-            host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;'   // only the stage's own canvas takes the pointer
+            host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--color-panel);'   // only the stage's own canvas takes the pointer; the 2D canvas under it never shows through
             parent.appendChild(host)
             _stage25dHost = host
             _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })

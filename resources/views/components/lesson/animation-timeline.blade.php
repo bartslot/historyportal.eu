@@ -484,11 +484,11 @@
                                     </div>
                                 </template>
                             </div>
-                            {{-- The 3D camera's two ends, on its own row: it stays closed and pinned, and a press frames that end. --}}
+                            {{-- The 3D camera's keys, on its own row: it stays closed and pinned, a press frames that key, a drag moves it. --}}
                             <template x-if="object.kind === 's25cam'">
                                 <div>
                                     <template x-for="key in keysOf(object.target, 'x')" :key="key.time">
-                                        <span class="absolute grid cursor-pointer place-items-center"
+                                        <span class="absolute grid cursor-grab touch-none place-items-center" data-timeline-camera-key
                                               :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(9px + (var(--timeline-lane-h) - 13px) / 2)`"
                                               x-on:pointerdown.stop="startKeyDrag($event, object.target, 'x', key.time)"
                                               x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)">

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // the house view: 2 m wide per metre of distance, to keep the numbers readable
 vi.mock('@stage25d/stage25d/layout', async (importOriginal) => ({ ...(await importOriginal()), GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
 
-const { attachInteraction, inFrontOf, pickOf } = await import('../interact.js')
+const { attachInteraction, figureInView, inFrontOf, pickOf } = await import('../interact.js')
 
 const rect = { left: 100, top: 50, width: 400, height: 225, right: 500, bottom: 275, x: 100, y: 50 }
 
@@ -208,3 +208,14 @@ describe('with something selected', () => {
   })
 })
 
+describe('figureInView', () => {
+  const box = (x0, x1) => ({ x0, x1, y0: 0.3, y1: 0.7, z: 5 })
+
+  it('takes the selected character, else the one nearest the middle, never one off screen', () => {
+    const boxes = [{ index: 1, box: box(0, 0.2) }, { index: 2, box: box(0.4, 0.6) }, { index: 3, box: box(1.2, 1.5) }, { index: 4, box: null }]
+    expect(figureInView(boxes, 1)).toBe(1)
+    expect(figureInView(boxes, null)).toBe(2)
+    expect(figureInView(boxes, 3)).toBe(2)
+    expect(figureInView([{ index: 3, box: box(1.2, 1.5) }], null)).toBe(null)
+  })
+})

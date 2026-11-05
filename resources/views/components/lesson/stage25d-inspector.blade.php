@@ -20,7 +20,8 @@
      written back through it, so this panel, the canvas drag and the timeline rows share one set of rules; the
      diamonds are the timeline's own. No help text: the controls are the explanation. --}}
 <div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names), @js($poses))"
-     x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()">
+     x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()"
+     x-on:focusin="showHud($event)" x-on:input="showHud($event)">
 
     @if ($layerId === 'camera')
         {{-- The camera: the canvas shows the start or the end of its move, and the teacher frames it right there.
@@ -75,18 +76,18 @@
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content" x-text="info?.label"></span>
         </div>
 
-        <div class="mt-3 flex items-center gap-3">
-            <div class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-base-200">
+        {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
+        <button type="button" class="sticky top-0 z-10 mt-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-md bg-base-200"
+                data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
+                x-on:click="pickPicture()" x-on:dblclick="editPicture()">
                 <template x-if="info?.file && info?.anim">
                     <span class="s25-sheet" :style="`aspect-ratio: ${info.anim.w} / ${info.anim.h}; --cols: ${info.anim.cols}; --rows: ${info.anim.rows}; --row-s: ${info.anim.cols / info.anim.fps}s`">
                         <img :src="info.file" alt="" />
                     </span>
                 </template>
                 <img x-show="info?.file && !info?.anim" :src="info?.file" alt="" class="max-h-full max-w-full object-contain" />
-            </div>
-            <button type="button" class="btn btn-sm btn-outline"
-                    x-on:click="$store.view.showTab('icons'); $nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: info?.role } })))">{{ __('Change picture') }}</button>
-        </div>
+            <x-lesson.picture-hud />
+        </button>
 
         {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
              that is grouped with it (it moves along). --}}
@@ -142,17 +143,27 @@
             @endforeach
         </div>
 
+        {{-- The picture's ink, drawn by the stage's shader: a black line inside its edge, hatching in its shade. --}}
+        <div class="mt-1 space-y-1" x-show="info?.ink">
+            <x-ui.panel-row :label="__('Outline')">
+                <input type="range" min="0" max="{{ \App\Services\Stage25d\LayerKeys::INK_RANGE['outline'][1] }}" step="0.25" class="range range-xs w-full" data-stage25d-ink="outline"
+                       aria-label="{{ __('Outline') }}" :value="info?.ink?.outline" x-on:input="setInk({ outline: Number($event.target.value) })" />
+            </x-ui.panel-row>
+            <x-ui.panel-row :label="__('Etched shadow')">
+                <input type="range" min="0" max="1" step="0.05" class="range range-xs w-full" data-stage25d-ink="etch"
+                       aria-label="{{ __('Etched shadow') }}" :value="info?.ink?.etch" x-on:input="setInk({ etch: Number($event.target.value) })" />
+            </x-ui.panel-row>
+        </div>
+
         <div class="divider my-2" role="presentation"></div>
 
         <div class="space-y-1" x-show="info">
-            <x-ui.panel-row :label="__('Motion')">
-                <select class="select select-xs w-full" data-stage25d-motion="kind"
-                        x-on:change="setMotion({ kind: $event.target.value })">
-                    @foreach (\App\Services\Stage25d\LayerKeys::MOTION_KINDS as $kind)
-                        <option value="{{ $kind }}" :selected="info?.motion?.kind === '{{ $kind }}'">{{ __(ucfirst($kind)) }}</option>
-                    @endforeach
-                </select>
-            </x-ui.panel-row>
+            {{-- Figma 2542:1938: one picture per motion, it moves that way on hover. --}}
+            <div class="space-y-1" data-stage25d-motion-kinds>
+                <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
+                <x-ui.segmented panel class="w-full" :name="'stage25d-motion-'.$layerId" tab-class="flex-1 px-0" model="motionKind"
+                                :options="collect(\App\Services\Stage25d\LayerKeys::MOTION_KINDS)->map(fn ($kind) => [$kind, __(ucfirst($kind)), ['moves' => $kind]])->all()" />
+            </div>
             {{-- An animation (VFX): how fast it plays (1 = the sheet's own fps, 0 holds a frame) and where it starts. --}}
             <template x-if="info?.anim">
                 <div class="space-y-1" data-stage25d-play>

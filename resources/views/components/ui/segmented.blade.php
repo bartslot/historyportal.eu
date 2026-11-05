@@ -4,8 +4,9 @@
     /**
      * [[value, label], …] — labels already translated by the caller. A third item is an icon: the
      * `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
-     * for a filled glyph (App\Support\TabIcons), or ['motion' => ms, 'factor' => f] for a
-     * movement's own curve that plays on hover. The tab then shows the icon, and the label becomes
+     * for a filled glyph (App\Support\TabIcons), ['motion' => ms, 'factor' => f] for a
+     * movement's own curve that plays on hover, or ['moves' => kind] for a picture that moves that
+     * way on hover (.motion-preview in app.css). The tab then shows the icon, and the label becomes
      * its tooltip and accessible name.
      */
     'options' => [],
@@ -60,6 +61,8 @@
                     <svg viewBox="{{ $optIcon['viewBox'] }}" fill="currentColor" class="{{ $optIcon['class'] ?? 'h-5 w-5' }}" aria-hidden="true">
                         <path d="{{ $optIcon['fill'] }}"/>
                     </svg>
+                @elseif (is_array($optIcon) && isset($optIcon['moves']))
+                    <x-icons.photo class="motion-preview motion-preview-{{ $optIcon['moves'] }} h-5 w-5" />
                 @elseif (is_array($optIcon))
                     {{-- A motion icon (Appear's speed): the movement's curve, distance over time, as
                          long as it takes. Hovering runs a dot along it at the real duration, so the

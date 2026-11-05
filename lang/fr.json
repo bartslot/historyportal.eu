@@ -2621,5 +2621,9 @@
     "Discard": "Abandonner",
     "Keep editing": "Continuer",
     "Save your changes?": "Enregistrer les modifications ?",
-    "Clean up": "Nettoyer"
+    "Clean up": "Nettoyer",
+    "Outline": "Contour",
+    "Etched shadow": "Ombre gravée",
+    "Click to change, double-click to edit": "Cliquez pour changer, double-cliquez pour modifier",
+    "2D scenes": "Scènes 2D"
 }

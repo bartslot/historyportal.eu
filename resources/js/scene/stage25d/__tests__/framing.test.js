@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CAM_RANGE, cameraKeys, cameraPoseAt, clampPose, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
+import { CAM_RANGE, cameraKeys, cameraPoseAt, clampPose, movedCameraKey, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
 
 const HOUSE = { x: 0, y: 1.6, z: 0, fov: 50 }
 
@@ -44,6 +44,19 @@ describe('camera framing', () => {
     expect(still.from).toEqual(still.to)
     expect(cameraKeys(still, none, 8)).toHaveLength(1)   // framing it again stays still, it does not start a move
     expect(shotsOfKeys([])).toEqual([])
+  })
+
+  it('a dragged key keeps its pose, stops short of its neighbours and stays in the scene', () => {
+    const keys = [{ t: 0, pose: HOUSE }, { t: 3, pose: { ...HOUSE, z: 4 } }, { t: 6, pose: { ...HOUSE, x: 1 } }]
+    const moved = movedCameraKey(keys, 3, 4.5, 8)
+    expect(moved.t).toBe(4.5)
+    expect(moved.keys[1]).toEqual({ t: 4.5, pose: { ...HOUSE, z: 4 } })
+    expect(movedCameraKey(keys, 3, 7, 8).t).toBeCloseTo(5.95)
+    expect(movedCameraKey(keys, 6, 99, 8).t).toBe(8)
+    expect(movedCameraKey(keys, 0, -1, 8).t).toBe(0)
+    expect(movedCameraKey(keys, 2, 4, 8)).toEqual({ keys, t: 2 })
+    const [first, ...rest] = shotsOfKeys(movedCameraKey(keys, 0, 1, 8).keys)
+    expect(cameraKeys(first, rest, 8).map((k) => k.t)).toEqual([1, 3, 6])
   })
 
   it('a key replaces the one at its time, or joins in order; the pose is read back in degrees', () => {

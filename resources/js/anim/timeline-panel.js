@@ -714,6 +714,7 @@ export const animationTimeline = (config = {}) => ({
 
     if (memory.kind === 'scrub') return this.seek(this.timeFromEvent(event))
     if (memory.kind === 'key') return this.dragKey(memory, event)
+    if (memory.kind === 'camkey') return this.dragCameraKey(memory, event)
     if (memory.kind === 'marquee') return this.updateMarquee(memory, event)
   },
 
@@ -1320,9 +1321,13 @@ export const animationTimeline = (config = {}) => ({
     event.stopPropagation()
     this.pause()
     const id = keyId({ target, property, time })
-    if (kindOfTarget(target) === 's25cam') {   // a press goes to that frame of the camera, to look at it or frame it again
+    if (kindOfTarget(target) === 's25cam') {   // a press goes to that frame of the camera, to look at it or frame it again; a drag moves the key
       window.__stage25d?.select?.('camera')
       this.seek(time)
+      const el = event.currentTarget
+      el.setPointerCapture?.(event.pointerId)
+      dragMemory.set(el, { kind: 'camkey', anchorTime: time, at: time, startX: event.clientX, startY: event.clientY, moved: false })
+      this.drag = { el }
       return
     }
     if (kindOfTarget(target) === 'dio') {   // select only: a diorama path moves in time as one clip
@@ -1718,6 +1723,14 @@ export const animationTimeline = (config = {}) => ({
     this.selected = memory.refs.map((ref) => keyId({ ...ref, time: ref.time + delta }))
     if (!event.shiftKey) this.seek(memory.anchorTime + delta)
     else this.applyFrame()
+  },
+
+  /** A camera key along the timeline: the stage holds its keys, so it moves them. Alt places freely. */
+  dragCameraKey (memory, event) {
+    const wanted = memory.anchorTime + (event.clientX - memory.startX) / this.zoom
+    const snapped = event.altKey ? wanted : snapTime(this.spans, wanted, toleranceSeconds(this.zoom))
+    memory.at = window.__stage25d?.moveCameraKey?.(memory.at, snapped) ?? memory.at
+    this.seek(memory.at)
   },
 
   /** Every edit replaces the track; nothing here mutates one in place. */

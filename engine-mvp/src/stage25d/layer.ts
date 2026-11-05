@@ -89,6 +89,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float bottomFade;                    // ground bands: alpha ramps to 0 over this share of the height, from the bottom
   uniform vec3 footTint, sunColour, shadeColour;
   uniform vec4 cell;                           // an animation: the frame's part of the sheet (u0, v0, du, dv), else 0 0 1 1
+  uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
   ${GL_NOISE}
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
@@ -97,6 +98,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
     return texture2D(tex, p);
   }
+  // past the image's own border counts as air, so a picture cut off by its border gets a line there too
+  bool past(vec2 p) { return p.x < 0.0 || p.y < 0.0 || p.x > uRepeat || p.y > 1.0; }
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
@@ -139,6 +142,37 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       s = mix(s, s * shadeColour, light * max(-side, 0.0) * 1.2);
       c.rgb = clamp(s, 0.0, 1.0) * c.a;
     }
+    // etched shadow: hatching on the side away from the light, hanging off the silhouette and the art's own ink lines
+    if (etch > 0.0 && c.a > 0.004) {
+      vec2 away = vec2(-sunSide * 0.09, 0.055 * width / max(height, 0.01));
+      float shade = 0.0;
+      for (int k = 1; k <= 6; k++) {
+        float f = float(k) / 6.0;
+        vec2 q = uv + away * f;
+        vec4 n = past(q) ? vec4(0.0) : tap(q);
+        float e = max(1.0 - n.a, n.a > 0.1 ? 0.6 * inkOf(n.rgb / n.a) : 0.0);
+        shade = max(shade, e * (1.0 - 0.75 * f));
+      }
+      vec2 h = px / 5.0;
+      float t = h.x + h.y + 0.6 * fbm(h * 0.18 + phase);
+      float wid = 0.06 + 0.26 * shade;
+      float stroke = 1.0 - smoothstep(wid, wid + 0.1, abs(fract(t) - 0.5));
+      float gap = smoothstep(0.62 - 0.6 * shade, 0.7 - 0.6 * shade, fbm(vec2((h.x - h.y) * 0.35, floor(t) * 3.1)));
+      c.rgb = mix(c.rgb / c.a, vec3(0.05, 0.045, 0.04), etch * stroke * gap * smoothstep(0.1, 0.35, shade)) * c.a;
+    }
+    // the outline: black inside the silhouette, over the art's own line, on a hard edge (no feather: it stays sharp)
+    if (outlineW > 0.0) {
+      float air = 0.0;
+      for (int k = 0; k < 12; k++) {
+        float a = float(k) * 0.5236;
+        vec2 d = vec2(cos(a), sin(a)) * pxUV * outlineW;
+        air = max(air, past(uv + d) ? 1.0 : 1.0 - tap(uv + d).a);
+        air = max(air, past(uv + d * 0.5) ? 1.0 : 1.0 - tap(uv + d * 0.5).a);
+      }
+      float inside = smoothstep(0.35, 0.65, tap(uv).a);
+      vec3 s = c.a > 0.004 ? c.rgb / c.a : vec3(0.0);
+      c = vec4(s * (1.0 - smoothstep(0.35, 0.65, air)) * inside, inside);
+    }
     // grounding: the foot takes the floor's colour along a ragged line, and a few blades of the floor stand in front
     if (grounding + grass > 0.0 && footM > 0.0 && c.a > 0.004) {
       float foot = clamp(footM / max(height, 0.01), 0.03, 0.12);
@@ -149,7 +183,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       if (vH < grass * foot * 1.4 * blade) c *= 1.0 - 0.85 * grass;
     }
     // a painted edge, never a scissor cut: the rim breaks up in the paper's grain and bleeds a little outward
-    if (edgeSoft > 0.0) {
+    if (edgeSoft > 0.0 && outlineW <= 0.0) {
       float amin = 1.0; vec4 acc = vec4(0.0);
       for (int k = 0; k < 8; k++) {
         float a = float(k) * 0.785398;
@@ -267,6 +301,8 @@ export interface LayerHandle {
   setGroundLine(f: number): void
   /** line by depth (look.ts lineOf) and the texture uv per 1080p screen px (look.ts pxUV) */
   setLine(l: { fade: number; thin: number; haze: number; brown: number }, inkMul: number, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
+  /** the teacher's ink: an outline this many 1080p px inside the edge, and hatching in the shade (0..1) */
+  setInk(outline: number, etch: number): void
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
 }
@@ -277,7 +313,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -292,6 +328,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
   mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
+  mat.setFloat('outlineW', 0).setFloat('etch', 0)
   mat.setVector4('cell', new Vector4(0, 0, 1, 1))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
@@ -309,6 +346,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
     },
     setBottomFade: (f) => { mat.setFloat('bottomFade', f) },
+    setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
     setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)

@@ -37,6 +37,15 @@ export const inFrontOf = (boxes, selected) => {
     && box.x0 < own.x1 && box.x1 > own.x0 && box.y0 < own.y1 && box.y1 > own.y0).map((b) => b.index)
 }
 
+/** The character the teacher is looking at: the selected one, else the one on screen nearest the middle of the view.
+ *  `boxes` is `[{ index, box }]` of the characters; null when none is on screen. */
+export const figureInView = (boxes, selected) => {
+  const seen = boxes.filter(({ box }) => box && box.x1 > 0 && box.x0 < 1 && box.y1 > 0 && box.y0 < 1)
+  if (seen.some((b) => b.index === selected)) return selected
+  const off = ({ x0, y0, x1, y1 }) => Math.hypot((x0 + x1) / 2 - 0.5, (y0 + y1) / 2 - 0.5)
+  return seen.reduce((best, b) => (!best || off(b.box) < off(best.box) ? b : best), null)?.index ?? null
+}
+
 /**
  * @param {object} c
  * @param {HTMLCanvasElement} c.canvas
