@@ -46,17 +46,25 @@ describe('camera framing', () => {
     expect(shotsOfKeys([])).toEqual([])
   })
 
-  it('a dragged key keeps its pose, stops short of its neighbours and stays in the scene', () => {
+  it('a dragged key keeps its pose, passes other keys both ways and stays in the scene', () => {
     const keys = [{ t: 0, pose: HOUSE }, { t: 3, pose: { ...HOUSE, z: 4 } }, { t: 6, pose: { ...HOUSE, x: 1 } }]
     const moved = movedCameraKey(keys, 3, 4.5, 8)
     expect(moved.t).toBe(4.5)
     expect(moved.keys[1]).toEqual({ t: 4.5, pose: { ...HOUSE, z: 4 } })
-    expect(movedCameraKey(keys, 3, 7, 8).t).toBeCloseTo(5.95)
+    expect(movedCameraKey(keys, 6, 1, 8).keys.map((k) => [k.t, k.pose.x])).toEqual([[0, 0], [1, 1], [3, 0]])   // the last goes before the middle one
+    expect(movedCameraKey(keys, 0, 7, 8).keys.map((k) => k.t)).toEqual([3, 6, 7])                                // the first goes past both
     expect(movedCameraKey(keys, 6, 99, 8).t).toBe(8)
-    expect(movedCameraKey(keys, 0, -1, 8).t).toBe(0)
+    expect(movedCameraKey(keys, 3, -1, 8).t).toBeCloseTo(0.05)                                                   // the start is taken: it stays beside that key
     expect(movedCameraKey(keys, 2, 4, 8)).toEqual({ keys, t: 2 })
     const [first, ...rest] = shotsOfKeys(movedCameraKey(keys, 0, 1, 8).keys)
     expect(cameraKeys(first, rest, 8).map((k) => k.t)).toEqual([1, 3, 6])
+  })
+
+  it('a dragged key landing on another hops over it, in the way it was going', () => {
+    const keys = [{ t: 0, pose: HOUSE }, { t: 3, pose: { ...HOUSE, z: 4 } }, { t: 8, pose: HOUSE }]
+    expect(movedCameraKey(keys, 8, 3, 8).t).toBeCloseTo(2.95)
+    expect(movedCameraKey(keys, 0, 3, 8).t).toBeCloseTo(3.05)
+    expect(movedCameraKey(keys, 3, 8, 8).t).toBeCloseTo(7.95)                                                    // past the end: stays inside
   })
 
   it('a key replaces the one at its time, or joins in order; the pose is read back in degrees', () => {

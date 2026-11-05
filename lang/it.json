@@ -2625,5 +2625,7 @@
     "Outline": "Contorno",
     "Etched shadow": "Ombra incisa",
     "Click to change, double-click to edit": "Clicca per cambiare, doppio clic per modificare",
-    "2D scenes": "Scene 2D"
+    "2D scenes": "Scene 2D",
+    "Copy values": "Copia i valori",
+    "Paste values": "Incolla i valori"
 }

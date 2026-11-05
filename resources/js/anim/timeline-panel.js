@@ -62,6 +62,11 @@ const MAX_ZOOM = 2000
  *  server has never heard of, and this state is invented client-side. */
 const dragMemory = new WeakMap()
 
+/** Copy values on a keyframe: `{ kind, values }`. Outside the panel, so a pose carries over to another scene. */
+let keyClip = null
+/** Room the keyframe menu needs above the window's bottom edge, px. */
+const KEY_MENU_H = 120
+
 /**
  * Where the playhead was, keyed by scene.
  *
@@ -1272,14 +1277,41 @@ export const animationTimeline = (config = {}) => ({
     return this.transportHasTheKeyboard && !isTypingTarget(event.target) && this.selected.length > 0
   },
 
-  /** The right-click menu on a keyframe: one action, remove THIS key. Null when closed. */
+  /** The right-click menu on a keyframe: copy or paste its values, or remove THIS key. Null when closed. */
   keyMenu: null,
 
   openKeyMenu (event, target, property, time) {
-    if (['dio', 's25cam'].includes(kindOfTarget(target))) return
+    if (kindOfTarget(target) === 'dio') return
     this.pause()
     this.selected = [keyId({ target, property, time })]
-    this.keyMenu = { top: Math.min(event.clientY, window.innerHeight - 48), left: Math.min(event.clientX, window.innerWidth - 200) }
+    this.keyMenu = {
+      top: Math.min(event.clientY, window.innerHeight - KEY_MENU_H), left: Math.min(event.clientX, window.innerWidth - 200),
+      target, time, canPaste: keyClip?.kind === kindOfTarget(target),
+    }
+  },
+
+  /** A key's values: the camera's whole pose, or every property of the object keyed at that moment. */
+  keyValuesAt (target, time) {
+    if (kindOfTarget(target) === 's25cam') return window.__stage25d?.cameraInfo?.()?.keys?.find((k) => sameTime(k.t, time))?.pose ?? {}
+    return Object.fromEntries(this.tracks.filter((t) => t.target === target)
+      .flatMap((t) => sortedKeys(t).filter((k) => sameTime(k.time, time)).map((k) => [t.property, k.value])))
+  },
+
+  copyMenuKey () {
+    const { target, time } = this.keyMenu
+    keyClip = { kind: kindOfTarget(target), values: this.keyValuesAt(target, time) }
+    this.keyMenu = null
+  },
+
+  pasteMenuKey () {
+    const { target, time } = this.keyMenu
+    this.keyMenu = null
+    if (!keyClip || keyClip.kind !== kindOfTarget(target)) return
+    if (keyClip.kind === 's25cam') { window.__stage25d?.setCameraKeyPose?.(time, keyClip.values); return }
+    for (const [property, value] of Object.entries(keyClip.values)) this.writeTrack(target, property, (track) => addKeyframe(track, { ...sortedKeys(track).find((k) => sameTime(k.time, time)), time, value }))
+    this.applyFrame()
+    this.save()
+    this.announce()
   },
 
   removeMenuKey () {
@@ -1296,6 +1328,11 @@ export const animationTimeline = (config = {}) => ({
       if (kindOfTarget(target) === 'dio') (dioTimes[target] ??= []).push(Number(time))
     }
     for (const [target, times] of Object.entries(dioTimes)) window.__diorama?.removeKeys(target.slice(4), [...new Set(times)])
+    // The camera's keys live on the stage.
+    for (const id of this.selected) {
+      const [target, , time] = id.split('|')
+      if (kindOfTarget(target) === 's25cam') window.__stage25d?.removeCameraKey?.(Number(time))
+    }
     this.tracks = deleteKeys(this.tracks, this.selectedRefs)
     this.selected = []
     this.applyFrame()
@@ -1321,12 +1358,13 @@ export const animationTimeline = (config = {}) => ({
     event.stopPropagation()
     this.pause()
     const id = keyId({ target, property, time })
-    if (kindOfTarget(target) === 's25cam') {   // a press goes to that frame of the camera, to look at it or frame it again; a drag moves the key
+    if (kindOfTarget(target) === 's25cam') {   // a press selects that frame of the camera and goes to it, to look at it or frame it again; a drag moves the key
       window.__stage25d?.select?.('camera')
+      this.selected = [id]
       this.seek(time)
       const el = event.currentTarget
       el.setPointerCapture?.(event.pointerId)
-      dragMemory.set(el, { kind: 'camkey', anchorTime: time, at: time, startX: event.clientX, startY: event.clientY, moved: false })
+      dragMemory.set(el, { kind: 'camkey', target, anchorTime: time, at: time, startX: event.clientX, startY: event.clientY, moved: false })
       this.drag = { el }
       return
     }
@@ -1730,6 +1768,7 @@ export const animationTimeline = (config = {}) => ({
     const wanted = memory.anchorTime + (event.clientX - memory.startX) / this.zoom
     const snapped = event.altKey ? wanted : snapTime(this.spans, wanted, toleranceSeconds(this.zoom))
     memory.at = window.__stage25d?.moveCameraKey?.(memory.at, snapped) ?? memory.at
+    this.selected = [keyId({ target: memory.target, property: 'x', time: memory.at })]
     this.seek(memory.at)
   },
 

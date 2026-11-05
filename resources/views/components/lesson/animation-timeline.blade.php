@@ -484,15 +484,17 @@
                                     </div>
                                 </template>
                             </div>
-                            {{-- The 3D camera's keys, on its own row: it stays closed and pinned, a press frames that key, a drag moves it. --}}
+                            {{-- The 3D camera's keys, on its own row: it stays closed and pinned, a press selects and frames that key, a drag moves it. --}}
                             <template x-if="object.kind === 's25cam'">
                                 <div>
                                     <template x-for="key in keysOf(object.target, 'x')" :key="key.time">
                                         <span class="absolute grid cursor-grab touch-none place-items-center" data-timeline-camera-key
                                               :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(9px + (var(--timeline-lane-h) - 13px) / 2)`"
                                               x-on:pointerdown.stop="startKeyDrag($event, object.target, 'x', key.time)"
-                                              x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)">
-                                            <x-ui.keyframe-diamond solid on="false" />
+                                              :aria-selected="isSelected(object.target, 'x', key.time) ? 'true' : 'false'"
+                                              x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)"
+                                              x-on:contextmenu.prevent.stop="openKeyMenu($event, object.target, 'x', key.time)">
+                                            <x-ui.keyframe-diamond solid on="isSelected(object.target, 'x', key.time)" />
                                         </span>
                                     </template>
                                 </div>
@@ -594,13 +596,15 @@
         </div>
     </div>
 
-    {{-- Right-click on a keyframe: remove that keyframe, and only that one. --}}
+    {{-- Right-click on a keyframe: its values to another key, or remove that keyframe and only that one. --}}
     <template x-if="keyMenu">
         <div class="fixed z-50 rounded-box border border-panel-hairline bg-base-200 p-1"
              data-timeline-key-menu
              :style="`top: ${keyMenu.top}px; left: ${keyMenu.left}px`"
              x-on:pointerdown.outside="keyMenu = null" x-on:pointerdown.stop>
             <ul class="menu menu-sm p-0">
+                <li><button type="button" class="text-xs" data-timeline-key-copy x-on:click="copyMenuKey()">{{ __('Copy values') }}</button></li>
+                <li :class="!keyMenu.canPaste && 'menu-disabled'"><button type="button" class="text-xs" data-timeline-key-paste :disabled="!keyMenu.canPaste" x-on:click="pasteMenuKey()">{{ __('Paste values') }}</button></li>
                 <li><button type="button" class="text-xs" data-timeline-key-remove x-on:click="removeMenuKey()">{{ __('Remove keyframe') }}</button></li>
             </ul>
         </div>

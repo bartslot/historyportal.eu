@@ -65,18 +65,20 @@ export const withoutCameraKey = (keys, t) => keys.filter((k) => Math.abs(k.t - t
 export const withCameraKey = (keys, t, pose) =>
   [...withoutCameraKey(keys, t), { t, pose: clampPose(pose) }].sort((a, b) => a.t - b.t)
 
-/** How close a dragged key comes to its neighbour, seconds: a shot between them keeps a length. */
+/** How close two camera keys may be, seconds: a shot between them keeps a length. */
 const KEY_GAP_S = 0.05
 
-/** The key at `from` dragged to `to`: it stops short of its neighbours and inside the scene, so the keys keep their order.
- *  Returns the keys and where it landed. */
+/** The key at `from` dragged to `to`, inside the scene: it passes other keys freely and hops over one it would land on
+ *  (two keys at one time would be one). The keys stay in time order. Returns them and where it landed. */
 export const movedCameraKey = (keys, from, to, dur) => {
-  const at = keys.findIndex((k) => Math.abs(k.t - from) < SAME_S)
-  if (at < 0) return { keys, t: from }
-  const min = at > 0 ? keys[at - 1].t + KEY_GAP_S : 0
-  const max = at < keys.length - 1 ? keys[at + 1].t - KEY_GAP_S : dur
-  const t = Math.round(Math.max(min, Math.min(max, to)) * 1000) / 1000
-  return { keys: keys.map((k, i) => (i === at ? { ...k, t } : k)), t }
+  const moving = keys.find((k) => Math.abs(k.t - from) < SAME_S)
+  if (!moving) return { keys, t: from }
+  const others = keys.filter((k) => k !== moving)
+  const wanted = Math.round(Math.max(0, Math.min(dur, to)) * 1000) / 1000
+  const under = others.find((k) => Math.abs(k.t - wanted) < KEY_GAP_S)
+  const past = under ? under.t + (wanted >= from ? KEY_GAP_S : -KEY_GAP_S) : wanted
+  const t = Math.round((past < 0 || past > dur ? under.t - Math.sign(past) * KEY_GAP_S : past) * 1000) / 1000
+  return { keys: [...others, { ...moving, t }].sort((p, q) => p.t - q.t), t }
 }
 
 /** The key nearest t, for an edit with auto-key off. */

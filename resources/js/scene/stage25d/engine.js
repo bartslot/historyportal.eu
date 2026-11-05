@@ -489,6 +489,9 @@ export async function createStage25d (host, opts = {}) {
       storeCameraKeys(keys)
       return t
     },
+    /** Another pose on the camera key at t (Paste values). */
+    setCameraKeyPose (t, pose) { storeCameraKeys(withCameraKey(camKeysNow(), t, pose)) },
+    removeCameraKey (t) { storeCameraKeys(withoutCameraKey(camKeysNow(), t)) },
     /** Back to the still house camera: no move. */
     resetCamera () { storeCameraKeys([]) },
     /** Is the stage at the scene's first frame with nothing hidden? Only then is its picture a thumbnail of the scene. */

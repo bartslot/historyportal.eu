@@ -6,8 +6,8 @@
     'property' => null,
     /** Marker only: an Alpine expression giving 'none' | 'here' | 'elsewhere'. */
     'state' => null,
-    /** Marker only: a key on a timeline lane — always filled; `on` (an Alpine expression) rings it
-     *  when selected, because a filled diamond cannot fill any further. */
+    /** Marker only: a key on a timeline lane — always filled, dim until `on` (an Alpine expression)
+     *  says it is selected: then bright and ringed. */
     'solid' => false,
     'on' => null,
 ])
@@ -68,8 +68,8 @@
 @else
     <span {{ $attributes->class(['grid h-[13px] w-[13px] shrink-0 place-items-center text-panel-label']) }} aria-hidden="true">
         @if ($solid)
-            <span class="{{ $shape }} border-white bg-white"
-                  @if ($on) x-bind:class="({{ $on }}) && 'outline outline-2 outline-offset-2 outline-white'" @endif></span>
+            <span class="{{ $shape }} border-panel-tile-glyph bg-panel-tile-glyph"
+                  @if ($on) x-bind:class="({{ $on }}) && '!border-white !bg-white outline outline-2 outline-offset-2 outline-white'" @endif></span>
         @elseif ($state)
             <span class="{{ $shape }} grid place-items-center border-current"
                   x-bind:class="({{ $state }}) === 'here' && 'border-timeline-mark bg-timeline-mark'">
