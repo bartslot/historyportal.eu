@@ -62,7 +62,7 @@ class ImageEditTest extends TestCase
         ]);
         $editor = $this->editor($scene);
 
-        $editor->call('saveEditedImage', 'art_7', self::png(), self::STATE)->assertReturned(['ok' => true]);
+        $editor->call('saveEditedImage', 'art_7', self::png(), self::STATE)->assertReturned(fn ($r) => $r['ok'] === true);
         $saved = $scene->fresh()->shots[0]['layers'][0];
         $this->assertStringStartsWith("lessons/{$scene->lesson_id}/edits/", $saved['path']);
         Storage::disk('public')->assertExists($saved['path']);
@@ -98,7 +98,7 @@ class ImageEditTest extends TestCase
         $editor = $this->editor($scene);
 
         foreach (['s25_layer-0', 's25_band-0', 's25_sky'] as $target) {
-            $editor->call('saveEditedImage', $target, self::png(), self::STATE)->assertReturned(['ok' => true]);
+            $editor->call('saveEditedImage', $target, self::png(), self::STATE)->assertReturned(fn ($r) => $r['ok'] === true);
         }
         $set = $scene->fresh()->config['stage25d']['set'];
         foreach ([$set['layers'][0], $set['groundBands'][0], $set['skyLayer']] as $row) {

@@ -29,6 +29,7 @@ trait EditsImages
      * @param  array<string,mixed>  $from
      * @return array{ok: bool, id?: int}
      */
+    #[Renderless] // the picture is untouched, and a render would pull the inspector off the selected layer
     public function saveCutout(string $image, string $title = '', array $from = []): array
     {
         $asset = Cutouts::save(auth()->user(), $image, $title, $from);
@@ -44,7 +45,7 @@ trait EditsImages
 
     /**
      * @param  array<string,mixed>  $state  the editor's design state (crop, colour, filters, drawings)
-     * @return array{ok: bool}
+     * @return array{ok: bool, url?: string} url: the new file, so the editor can have it in cache before it lifts
      */
     public function saveEditedImage(string $target, string $image, array $state = []): array
     {
@@ -71,7 +72,7 @@ trait EditsImages
             $this->dispatch('toast', type: 'success', message: __('Saved.'));
         }
 
-        return ['ok' => $saved];
+        return $saved ? ['ok' => true, 'url' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH)] : ['ok' => false];
     }
 
     /**

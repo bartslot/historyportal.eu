@@ -68,11 +68,14 @@ describe('double-click: the picture cleans itself', () => {
     expect(document.querySelector('[data-cutout]')).toBeNull()
   })
 
-  it('Save as asset sends the cut-out and what it was cut from, for its size in metres', async () => {
-    const { $, done } = await open({ from: { bundle: 'nl-prehistory', asset: 'meadow-band-01' } })
+  it('Save as asset sends the cut-out and what it was cut from, and stays with the work', async () => {
+    const { $ } = await open({ from: { bundle: 'nl-prehistory', asset: 'meadow-band-01' } })
     $('[data-cut-asset]').click()
-    await done
+    await flush()
     expect(wire.saveCutout).toHaveBeenCalledWith('data:image/webp;base64,CUT', 'Meadow', { bundle: 'nl-prehistory', asset: 'meadow-band-01', box_h: 150, height: 600 })
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    expect($('[data-cut-asset]').disabled).toBe(false)
+    $('[data-cut-back]').click()
   })
 
   it('offers Back to the original only on a picture edited before', async () => {
@@ -238,6 +241,37 @@ describe('the eraser and its tools', () => {
     await flush()
     expect(document.querySelector('[data-cutout]')).not.toBeNull()
     expect($('[data-cut-ask]').hidden).toBe(true)
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()
+  })
+
+  it('a request that fails stays in the editor, ready to try again, with the one toast', async () => {
+    let failHook
+    window.Livewire.hook = (_name, cb) => { failHook = cb; return () => {} }
+    wire.saveEditedImage.mockImplementationOnce(() => new Promise(() => {}))   // what Livewire does on a failed request
+    const toasts = []
+    const listen = (e) => toasts.push(e.detail)
+    window.addEventListener('toast', listen)
+    const { $ } = await open()
+    $('[data-cut-save]').click()
+    await flush()
+    const preventDefault = vi.fn()
+    failHook({ fail: (cb) => cb({ preventDefault }) })
+    await flush()
+    expect(preventDefault).toHaveBeenCalled()
+    expect(toasts.at(-1).type).toBe('error')
+    expect($('[data-cut-save]').disabled).toBe(false)
+    window.removeEventListener('toast', listen)
+    delete window.Livewire.hook
+    $('[data-cut-back]').click()
+  })
+
+  it('while the question is up the editor behind it takes no focus', async () => {
+    const { $ } = await withWork()
+    $('[data-cut-back]').click()
+    expect($('header').inert).toBe(true)
+    $('[data-cut-ask-stay]').click()
+    expect($('header').inert).toBe(false)
     $('[data-cut-back]').click()
     $('[data-cut-ask-discard]').click()
   })

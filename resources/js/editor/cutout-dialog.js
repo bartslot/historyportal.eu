@@ -53,6 +53,17 @@ const words = () => {
   try { return JSON.parse(document.querySelector('[data-cutout-labels]')?.dataset.cutoutLabels || '{}') } catch { return {} }
 }
 
+/** Waits for a Livewire call, or for its request to fail: then Livewire's promise never settles, and its raw error box stays away. */
+const called = (run) => new Promise((resolve, reject) => {
+  const off = window.Livewire?.hook?.('request', ({ fail }) => {
+    fail(({ preventDefault }) => { preventDefault?.(); reject(new Error('request failed')) })
+  })
+  Promise.resolve().then(run).then(resolve, reject).finally(() => off?.())
+})
+
+/** A saved picture in the browser's cache before the editor lifts: the stage behind shows it at once. */
+const preload = (url) => (url ? Object.assign(new Image(), { src: url }).decode().catch(() => {}) : null)
+
 const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }))
 
 /** A slider's readout and rail follow its value (range-fill.js does this for a hand on it, not for code). */
@@ -74,7 +85,7 @@ export async function openCutout (target) {
 
   const cameFrom = document.activeElement
   const root = document.createElement('div')
-  root.className = 'fixed inset-0 z-[9000] flex flex-col outline-none'
+  root.className = 'fixed inset-0 z-[9000] flex select-none flex-col outline-none'
   root.style.background = 'var(--color-shell)'
   root.tabIndex = -1
   root.setAttribute('role', 'dialog')
@@ -122,10 +133,15 @@ export async function openCutout (target) {
 
     // One way back. With work done it asks; without, it leaves at once
     const hasWork = () => state.canUndo || slid
-    const stay = () => { ask.hidden = true; root.focus() }
+    /** While the question is up, Tab stays in it. */
+    const setAsking = (on) => {
+      ask.hidden = !on
+      for (const el of root.children) if (el !== ask) el.inert = on
+    }
+    const stay = () => { setAsking(false); root.focus() }
     const leave = () => {
       if (!hasWork()) { close(); return }
-      ask.hidden = false
+      setAsking(true)
       $('[data-cut-ask-save]').focus()
     }
 
@@ -218,31 +234,35 @@ export async function openCutout (target) {
     compare.addEventListener('pointerdown', () => mask?.setCompare(true))
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) compare.addEventListener(ev, () => mask?.setCompare(false))
 
-    /** Run a save with its button held; closes on success, says so and stays on failure. No edit is ever lost. */
+    /** Run a save with its button held; says so and stays on failure, so no edit is ever lost. True when it worked. */
     const saving = async (button, run) => {
       button.disabled = true
       try {
-        const result = await run()
+        const result = await called(run)
         if (result?.ok === false) throw new Error('refused')
-        close()
+        await preload(result?.url)
+        return true
       } catch {
-        button.disabled = false
-        ask.hidden = true
+        setAsking(false)
         say('error', t('The picture could not be saved. Try again.'))
+        return false
+      } finally {
+        button.disabled = false
       }
     }
-    const save = (button) => mask && saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))
+    const save = async (button) => { if (mask && await saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))) close() }
     $('[data-cut-save]').addEventListener('click', (e) => save(e.currentTarget))
     $('[data-cut-back]').addEventListener('click', leave)
     $('[data-cut-ask-save]').addEventListener('click', (e) => save(e.currentTarget))
     $('[data-cut-ask-discard]').addEventListener('click', close)
     for (const b of root.querySelectorAll('[data-cut-ask-stay]')) b.addEventListener('click', stay)
     ask.addEventListener('pointerdown', (e) => { if (e.target === ask) stay() })
-    $('[data-cut-original]').addEventListener('click', (e) => saving(e.currentTarget, () => wire.resetEditedImage(target.id)))
+    $('[data-cut-original]').addEventListener('click', async (e) => { if (await saving(e.currentTarget, () => wire.resetEditedImage(target.id))) close() })
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
       if (!cut) return
       const from = target.from ? { ...target.from, box_h: cut.box.h, height: cut.height } : {}
+      // an asset of its own, the picture itself untouched: the editor stays, with the work in it
       saving(e.currentTarget, () => wire.saveCutout(cut.dataUrl, target.title || '', from))
     })
 
