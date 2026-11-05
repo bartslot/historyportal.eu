@@ -88,6 +88,19 @@ Effect.ShadersStore.stageGroundFragmentShader = `
     gl_FragColor = vec4(c, 1.0);
   }`
 
+/**
+ * Hatching that never shimmers: `t` runs one per stroke, `wid` is a stroke's half width in those units. The stroke's edge
+ * is as soft as one screen pixel; strokes too fine to draw (a far picture, a floor seen at a low angle) fade into their
+ * even tone, so they cannot beat against the pixels as a moire when the picture moves. Comments here hold no ';'.
+ */
+export const HATCH_GLSL = `
+  float hatched(float t, float wid, float gap, float gapMean) {
+    float px = fwidth(t);
+    float d = abs(fract(t) - 0.5);
+    float line = (1.0 - smoothstep(wid - px, wid + px, d)) * gap;
+    return mix(line, clamp(2.0 * wid, 0.0, 1.0) * gapMean, smoothstep(0.25, 0.6, px));
+  }`
+
 Effect.ShadersStore.stageStainVertexShader = `
   precision highp float;
   attribute vec3 position;
@@ -97,10 +110,12 @@ Effect.ShadersStore.stageStainVertexShader = `
   void main(void) { vUV = uv; gl_Position = worldViewProjection * vec4(position, 1.0); }`
 
 Effect.ShadersStore.stageStainFragmentShader = `
+  #extension GL_OES_standard_derivatives : enable
   precision highp float;
   varying vec2 vUV;
   uniform float opacity, seed, etch, aspect;
   ${NOISE}
+  ${HATCH_GLSL}
   void main(void) {
     vec2 p = vUV * 2.0 - 1.0;
     float ang = atan(p.y, p.x);
@@ -115,9 +130,8 @@ Effect.ShadersStore.stageStainFragmentShader = `
       float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
       float body = 1.0 - smoothstep(0.25, 1.0, r);
       float wid = 0.08 + 0.32 * body;
-      float stroke = 1.0 - smoothstep(wid, wid + 0.12, abs(fract(t) - 0.5));
       float gap = smoothstep(0.25, 0.4, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed)) + 0.4 * body);
-      a = mix(a, stroke * gap * step(0.02, body) * min(1.0, opacity * 1.6), etch);
+      a = mix(a, hatched(t, wid, gap, 0.8) * step(0.02, body) * min(1.0, opacity * 1.6), etch);
       colour = mix(colour, vec3(0.05, 0.045, 0.04), etch);
     }
     gl_FragColor = vec4(colour * a, a);

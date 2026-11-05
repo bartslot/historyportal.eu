@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   tailRoot, tailShape, thoughtTrail, thoughtRoot, tipShortOf, clampToView, cloudPath, ROOT_SHARE, TRAIL_SHARES,
-  outlinePoint, outlineT, bendFromPoint, curveMid, MAX_BEND,
-} from '../balloon-shape.js'
+  outlinePoint, outlineT, bendFromPoint, curveMid, MAX_BEND, TAIL_MAX_LEAN_DEG, rubberInView } from '../balloon-shape.js'
 import { onEdge } from '../balloon-edit.js'
 
 const rect = { left: 100, top: 100, w: 400, h: 140 }
@@ -41,8 +40,9 @@ describe('a pinned tail root (outline position)', () => {
 
   it('stays where it was pinned while the tip moves; auto snaps to the nearest edge', () => {
     const pinned = outlineT(rect, [500, 170])     // right edge
-    const a = tailShape(rect, [300, 500], { root: pinned })
-    const b = tailShape(rect, [150, 450], { root: pinned })
+    // both inside the angle a tail may lean (tips further out from that edge)
+    const a = tailShape(rect, [640, 300], { root: pinned })
+    const b = tailShape(rect, [700, 200], { root: pinned })
     expect(a.root).toEqual(b.root)
     expect(a.root[0]).toBe(500)
     expect(tailShape(rect, [300, 500]).root[1]).toBe(240)   // auto: the bottom edge, below the tip's way
@@ -192,3 +192,61 @@ describe('cloudPath', () => {
     expect((d.match(/ A /g) || []).length).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('a tail keeps out of the bubble', () => {
+  const rect = { left: 100, top: 100, w: 300, h: 100 }
+  const lean = (shape) => {
+    // its start: from the root toward the control point; the bubble's bottom edge has normal (0, 1)
+    const dx = shape.ctrl[0] - shape.root[0]
+    const dy = shape.ctrl[1] - shape.root[1]
+    return (Math.acos(dy / Math.hypot(dx, dy)) * 180) / Math.PI
+  }
+
+  it('a root pinned far along the edge slides toward the tip: the tail never runs flat along the bubble', () => {
+    // root at the bottom's left end (t = (w + h + w - small) / per), tip off to the right and just below
+    const t = (300 + 100 + 280) / 800
+    const shape = tailShape(rect, [430, 240], { bend: 0, root: t })
+    expect(shape.root[1]).toBe(200)
+    expect(lean(shape)).toBeLessThanOrEqual(TAIL_MAX_LEAN_DEG + 0.01)
+    expect(shape.root[0]).toBeGreaterThan(300)
+  })
+
+  it('a tail that cannot reach from that edge leaves from the one nearest the tip', () => {
+    const t = (300 + 100 + 280) / 800
+    const shape = tailShape(rect, [520, 190], { bend: 0, root: t })
+    expect(shape.root[0]).toBe(400)   // the right edge
+  })
+
+  it('a root behind the tip, on the far side of the bubble, moves to the near side', () => {
+    const top = 150 / 800
+    expect(tailShape(rect, [250, 320], { bend: 0, root: top }).root[1]).toBe(200)
+  })
+
+  it('a strong bend that would push its start past the limit eases off, one that stays inside is kept', () => {
+    const t = (300 + 100 + 150) / 800   // the middle of the bottom
+    const steep = tailShape(rect, [330, 300], { bend: 0.35, root: t })
+    expect(lean(steep)).toBeLessThanOrEqual(TAIL_MAX_LEAN_DEG + 0.01)
+    const gentle = tailShape(rect, [250, 320], { bend: 0.1, root: t })
+    expect(gentle.ctrl[0]).not.toBeCloseTo(gentle.root[0] + (gentle.tip[0] - gentle.root[0]) / 2)   // still bent
+  })
+})
+
+describe('rubberInView', () => {
+  const view = { x0: 0, y0: 0, x1: 400, y1: 300 }
+
+  it('leaves a point alone away from the edges', () => {
+    expect(rubberInView([200, 100], view, 28)).toEqual({ at: [200, 100], rest: [200, 100] })
+  })
+
+  it('stops the margin from an edge, stretches a little past it, rests on the margin', () => {
+    const { at, rest } = rubberInView([392, 100], view, 28)
+    expect(rest).toEqual([372, 100])
+    expect(at[0]).toBeCloseTo(377)
+    expect(rubberInView([500, 100], view, 28).at[0]).toBeLessThanOrEqual(400)
+  })
+
+  it('a view smaller than two margins rests in its middle', () => {
+    expect(rubberInView([5, 10], { x0: 0, y0: 0, x1: 40, y1: 40 }, 28).rest).toEqual([20, 20])
+  })
+})
+

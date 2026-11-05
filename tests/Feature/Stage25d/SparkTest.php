@@ -116,7 +116,7 @@ class SparkTest extends TestCase
 
         $this->assertStringContainsString('give him a hat', $seen['prompt']);
         $this->assertStringContainsString('History Lines', $seen['prompt'], 'a 3D scene is History Lines, whatever image_style says');
-        $this->assertStringContainsString('Transparent background', $seen['prompt']);
+        $this->assertStringContainsString('#00FF00', $seen['prompt'], 'a cut-out is made on green, never white paper or its own alpha');
 
         $this->assertSame('done', $editor->instance()->sparkStatus($job['job'])['status']);
         $src = $scene->fresh()->config['stage25d']['set']['layers'][0]['src'];

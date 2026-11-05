@@ -158,6 +158,7 @@ Student-facing API routes live under `/api/v1/` with Sanctum tokens — see `rou
 - **Design:** Dark blue color scheme (`#0f172a` base). NOT red. Custom "History" font family.
   DaisyUI theme `learningportal` is the single source of truth for all colours and component
   styles. Full brand guidelines: `docs/brand-guidelines.md`.
+- **Transparency:** any generated picture that needs a transparent background is made on solid pure `#00FF00` and keyed out (Bart, 2026-11-05: white paper cut-outs gave white rings and holes). Never white paper, never the model's own alpha.
 - **Avatar quality:** For v1, pre-render MP4 videos. Do NOT attempt real-time avatar
   streaming in v1.
 - **SiteGround deployment:** Uses MySQL in production. Set DB_CONNECTION=mysql in prod .env.

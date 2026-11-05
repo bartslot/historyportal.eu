@@ -9,7 +9,7 @@ import type { Asset, MotionSpec } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
-import { GL_NOISE } from './ground-gl'
+import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
@@ -70,6 +70,7 @@ Effect.ShadersStore.stageLayerVertexShader = `
   }`
 
 Effect.ShadersStore.stageLayerFragmentShader = `
+  #extension GL_OES_standard_derivatives : enable
   precision highp float;
   varying vec2 vUV;
   varying float vH;
@@ -99,6 +100,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
     return texture2D(tex, p);
   }
+  ${HATCH_GLSL}
   // past the image's own border counts as air, so a picture cut off by its border gets a line there too
   bool past(vec2 p) { return p.x < 0.0 || p.y < 0.0 || p.x > uRepeat || p.y > 1.0; }
   void main(void) {
@@ -157,9 +159,9 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       vec2 h = px / 5.0;
       float t = h.x + h.y + 0.6 * fbm(h * 0.18 + phase);
       float wid = 0.06 + 0.26 * shade;
-      float stroke = 1.0 - smoothstep(wid, wid + 0.1, abs(fract(t) - 0.5));
       float gap = smoothstep(0.62 - 0.6 * shade, 0.7 - 0.6 * shade, fbm(vec2((h.x - h.y) * 0.35, floor(t) * 3.1)));
-      c.rgb = mix(c.rgb / c.a, vec3(0.05, 0.045, 0.04), etch * stroke * gap * smoothstep(0.1, 0.35, shade)) * c.a;
+      float ink = hatched(t, wid, gap, 0.7 * smoothstep(0.1, 0.7, shade));
+      c.rgb = mix(c.rgb / c.a, vec3(0.05, 0.045, 0.04), etch * ink * smoothstep(0.1, 0.35, shade)) * c.a;
     }
     // the outline: black inside the silhouette, over the art's own line, on a hard edge (no feather: it stays sharp)
     if (outlineW > 0.0) {

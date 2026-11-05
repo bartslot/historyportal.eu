@@ -8,9 +8,26 @@
  *   • a double click types in it; a balloon just added opens that way with its words selected
  * Every finished gesture is one onChange(id, patch): one save on the server, one undo step.
  */
-import { DEFAULT_BEND, bendFromPoint, outlineT } from './balloon-shape.js'
+import { DEFAULT_BEND, bendFromPoint, outlineT, rubberInView } from './balloon-shape.js'
 import { MAX_SCALE, MIN_SCALE, fractionPoint } from './BalloonLayer.js'
 import { handleCss } from './ArtworkOverlay.js'
+
+/** How far a dragged tail tip keeps from the edge of its panel, px: the divider's grip lies there. */
+const TIP_EDGE_MARGIN_PX = 28
+const TIP_SPRING_MS = 160
+
+/** The tip back from where it stretched to. */
+function springTip (from, to, draw) {
+  if (Math.hypot(from[0] - to[0], from[1] - to[1]) < 0.5 || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return draw(to)
+  const began = performance.now()
+  const step = (now) => {
+    const p = Math.min(1, (now - began) / TIP_SPRING_MS)
+    const e = 1 - (1 - p) ** 3
+    draw([from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e])
+    if (p < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
 
 /** A press this close to the bubble's edge (px, inside) pulls out a tail instead of moving it. */
 export const EDGE_GRAB_PX = 10
@@ -221,6 +238,13 @@ function drag (layer, id, e, target, mode, onChange) {
   try { target.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointer */ }
 
   const tailWith = (part) => ({ tail: { ...(line.tail ?? {}), ...part } })
+  // the tip keeps off the edge of its panel, where the divider's grip is: past the margin it stretches, then springs back
+  let tipNow = null
+  let tipRest = null
+  const tipPatch = ([x, y]) => {
+    const tip = [x / (hr.width || 1), y / (hr.height || 1)]
+    return tailWith({ tip: layer.storedPoint ? layer.storedPoint(id, tip) : tip, bend: line.tail?.bend ?? DEFAULT_BEND })
+  }
   const gesture = (ev) => {
     if (mode === 'move') {
       const at = [startAt[0] + (ev.clientX - start.x) / (hr.width || 1), startAt[1] + (ev.clientY - start.y) / (hr.height || 1)]
@@ -235,8 +259,10 @@ function drag (layer, id, e, target, mode, onChange) {
     if (mode === 'root' && geom) return tailWith({ root: outlineT(geom.rect, local(ev)) })
     if (mode === 'bend' && geom?.shape) return tailWith({ bend: bendFromPoint(geom.shape.root, geom.shape.tip, local(ev)) })
     if (mode === 'tail') {
-      const tip = toFraction(layer, ev.clientX, ev.clientY)
-      return tailWith({ tip: layer.storedPoint ? layer.storedPoint(id, tip) : tip, bend: line.tail?.bend ?? DEFAULT_BEND })
+      const band = rubberInView(local(ev), layer._view(), TIP_EDGE_MARGIN_PX)
+      tipNow = band.at
+      tipRest = band.rest
+      return tipPatch(band.at)
     }
 
     return null
@@ -251,8 +277,14 @@ function drag (layer, id, e, target, mode, onChange) {
     target.removeEventListener('pointerup', up)
     target.removeEventListener('pointercancel', up)
     if (!patch) return
-    onChange?.(id, patch)
-    window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: balloonTarget(id), values: editedValues(patch) } }))
+    const save = () => {
+      onChange?.(id, patch)
+      window.dispatchEvent(new CustomEvent('scene-object-edited', { detail: { target: balloonTarget(id), values: editedValues(patch) } }))
+    }
+    if (mode !== 'tail' || !tipRest) return save()
+    patch = tipPatch(tipRest)   // what is saved is the resting place, at once: the spring is only the drawing
+    save()
+    springTip(tipNow, tipRest, (p) => layer.patchLine(id, tipPatch(p)))
   }
   target.addEventListener('pointermove', move)
   target.addEventListener('pointerup', up)

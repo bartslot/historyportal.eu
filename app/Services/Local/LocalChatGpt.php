@@ -17,6 +17,10 @@ final class LocalChatGpt
 {
     private const IMAGE_SUFFIXES = ['png', 'jpg', 'jpeg', 'webp'];
 
+    /** A picture that needs transparency is made on this and keyed out (FitEditedPicture; Bart 11-05, CLAUDE.md). */
+    private const GREEN_BACKGROUND = 'Put the subject on a solid, flat, pure #00FF00 green background that fills every part of the picture around it, '
+        .'including the gaps between arms and body: no shadow on it, no gradient, no texture, no white border around the subject, and no green anywhere in the subject itself.';
+
     public static function available(): bool
     {
         return (bool) config('services.chatgpt_local.enabled') && is_executable(self::bin());
@@ -45,7 +49,7 @@ final class LocalChatGpt
             $name = 'result.png';
             $prompt = 'Edit image 1. Change only what is asked below and keep everything else (composition, camera, style, '
                 ."colours, every object and person) exactly as it is.\n\n{$instruction}\n\n"
-                ."Generate the image and save it in the current folder as {$name}.".($transparent ? ' Transparent background (PNG with alpha).' : '');
+                ."Generate the image and save it in the current folder as {$name}.".($transparent ? ' '.self::GREEN_BACKGROUND : '');
             $reply = $this->run($prompt, [$source], $dir, $timeout);
             $made = collect(File::allFiles($dir))->first(fn ($f) => in_array(strtolower($f->getExtension()), self::IMAGE_SUFFIXES, true));
             if ($made === null) {

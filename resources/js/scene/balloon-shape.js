@@ -136,12 +136,68 @@ export function tipShortOf (from, target, gap) {
   return [from[0] + (dx / dist) * reach, from[1] + (dy / dist) * reach]
 }
 
+/** Share of the pointer's travel a dragged tip follows past the margin. */
+const TIP_RUBBER_SHARE = 0.25
+
+/**
+ * A dragged point near the edge of a view box {x0, y0, x1, y1}: it stops `margin` from the edge, stretches on a little
+ * (`at`), and comes to rest on the margin (`rest`) when let go.
+ */
+export function rubberInView (p, view, margin) {
+  const axis = (v, lo, hi) => {
+    const a = Math.min(lo + margin, (lo + hi) / 2)
+    const b = Math.max(hi - margin, (lo + hi) / 2)
+    const rest = clamp(v, a, b)
+    return [clamp(rest + (v - rest) * TIP_RUBBER_SHARE, lo, hi), rest]
+  }
+  const [x, restX] = axis(p[0], view.x0, view.x1)
+  const [y, restY] = axis(p[1], view.y0, view.y1)
+  return { at: [x, y], rest: [restX, restY] }
+}
+
 /** A point kept inside a view box {x0, y0, x1, y1}: a speaker off the panel gets a tail to its edge. */
 export const clampToView = (p, view) => [clamp(p[0], view.x0, view.x1), clamp(p[1], view.y0, view.y1)]
 
+/** How far a tail may lean from straight out of the bubble, degrees (Bart 11-05: never flat along it). */
+export const TAIL_MAX_LEAN_DEG = 55
+
+/** A tail's lean, degrees from its root's outward normal, for a tail heading along (dx, dy); 180 = back into the bubble. */
+const leanOf = (dx, dy, n) => (Math.acos(clamp((dx * n[0] + dy * n[1]) / (Math.hypot(dx, dy) || 1), -1, 1)) * 180) / Math.PI
+
+/**
+ * A pinned root that would make the tail lean too far slides along its edge toward the tip; if the end of that edge
+ * is not enough, the tail leaves from the edge nearest the tip instead, as an unpinned one does.
+ */
+function steerRoot (root, tip, rect, opts) {
+  const [nx, ny] = root.normal
+  const [ax, ay] = root.along
+  const out = (tip[0] - root.point[0]) * nx + (tip[1] - root.point[1]) * ny
+  const side = (tip[0] - root.point[0]) * ax + (tip[1] - root.point[1]) * ay
+  const reach = out * Math.tan((TAIL_MAX_LEAN_DEG * Math.PI) / 180)
+  if (out > 0 && Math.abs(side) <= reach) return root
+  const nearest = tailRoot(rect, tip, opts) ?? root
+  if (out <= 0) return nearest
+  const keep = (opts.radius ?? 0) + (opts.half ?? 0)
+  const slide = side - Math.sign(side) * reach
+  const point = [root.point[0] + ax * slide, root.point[1] + ay * slide]
+  const onEdge = ax ? point[0] >= rect.left + keep && point[0] <= rect.left + rect.w - keep : point[1] >= rect.top + keep && point[1] <= rect.top + rect.h - keep
+  return onEdge ? { ...root, point } : nearest
+}
+
+/** The bend a tail may keep: one that would push its start past the limit is eased until it does not. */
+function steerBend (bend, root, tip, normal) {
+  const dx = tip[0] - root[0]
+  const dy = tip[1] - root[1]
+  const lean = leanOf(dx, dy, normal)
+  const leaned = (b) => leanOf(dx / 2 - dy * b, dy / 2 + dx * b, normal)
+  if (leaned(bend) <= TAIL_MAX_LEAN_DEG || leaned(bend) <= lean) return bend
+  const room = Math.max(0, TAIL_MAX_LEAN_DEG - lean)
+  return Math.sign(bend) * Math.min(Math.abs(bend), Math.tan((room * Math.PI) / 180) / 2)
+}
+
 /**
  * The speech tail: a curved wedge from a narrow root on the nearest edge to `tip`, or from the
- * outline position `root` (0..1) when the teacher pinned it.
+ * outline position `root` (0..1) when the teacher pinned it. It never leans further than TAIL_MAX_LEAN_DEG.
  *
  * @returns {null | {root: [number, number], a: [number, number], b: [number, number], ctrl: [number, number],
  *                   tip: [number, number], half: number, fill: string, ink: string}}
@@ -153,8 +209,11 @@ export function tailShape (rect, tip, { bend = DEFAULT_BEND, radius = 0, root: p
   // drawn inside its box, so that line's centre lies half the pencil in from the box's edge.
   const inset = ink / 2
   const line = inset ? { left: rect.left + inset, top: rect.top + inset, w: rect.w - ink, h: rect.h - ink } : rect
-  const root = rootOf(line, tip, pinned, { radius: Math.max(0, radius - inset), half })
-  if (!root) return null
+  const edge = { radius: Math.max(0, radius - inset), half }
+  const placed = rootOf(line, tip, pinned, edge)
+  if (!placed) return null
+  const root = pinned === null ? placed : steerRoot(placed, tip, line, edge)
+  bend = steerBend(bend, root.point, tip, root.normal)
   const [rx, ry] = root.point
   const [tx, ty] = tip
   const [ax, ay] = root.along

@@ -11,13 +11,21 @@ use SplQueue;
 /**
  * ChatGPT's answer back in the picture's own frame. A library figure keeps its metres per pixel, so a result at another
  * pixel size would change the figure's size on stage: a cut-out's figure is laid over the old figure's box, feet on its
- * feet; an opaque picture fills the frame. A cut-out that came back on white paper loses the paper first.
+ * feet; an opaque picture fills the frame. A cut-out comes back on #00FF00, which is keyed out first.
  */
 final class FitEditedPicture
 {
     private const PAPER = 238;      // every channel at least this, reached from the border: paper
 
+    private const KEY_EDGE = 40;    // this much greener than red and blue: the edge of the green key begins
+
+    private const KEY_FULL = 140;   // and from here it is all background
+
     private const SOLID = 64;       // GD alpha (0 opaque .. 127 clear) below this counts as painted
+
+    private const TINT = 6;         // green leading by this much, too little to key: figure mixed with the background
+
+    private const TINT_REACH = 3;   // how many px in from clean colour such a mix is painted over
 
     /** @return string PNG bytes the size of `$source` */
     public static function fit(string $source, string $result): string
@@ -33,7 +41,10 @@ final class FitEditedPicture
 
         if (self::isCutOut($old)) {
             if (! self::isCutOut($new)) {
-                self::clearPaper($new);
+                self::keyGreen($new);
+                if (! self::isCutOut($new)) {
+                    self::clearPaper($new);   // it came back on white after all
+                }
             }
             [$ox0, $oy0, $ox1, $oy1] = self::box($old);
             [$nx0, $ny0, $nx1, $ny1] = self::box($new);
@@ -92,6 +103,102 @@ final class FitEditedPicture
         imagesavealpha($im, true);
 
         return $im;
+    }
+
+    /**
+     * The #00FF00 background out (Bart 11-05): a pixel as green as the key goes clear, one on the edge goes part clear
+     * and loses its green, so no fringe stays around hair and thin lines.
+     */
+    private static function keyGreen(GdImage $im): void
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $c = imagecolorat($im, $x, $y);
+                $r = ($c >> 16) & 0xFF;
+                $g = ($c >> 8) & 0xFF;
+                $b = $c & 0xFF;
+                $spill = $g - max($r, $b);
+                if ($spill <= self::KEY_EDGE) {
+                    continue;
+                }
+                $share = min(1.0, ($spill - self::KEY_EDGE) / (self::KEY_FULL - self::KEY_EDGE));   // 1: all background
+                imagesetpixel($im, $x, $y, imagecolorallocatealpha($im, $r, min($g, max($r, $b)), $b, (int) round($share * 127)));
+            }
+        }
+        self::paintOverTint($im);
+    }
+
+    /**
+     * A pixel that is part figure, part green keeps the see-through the key gave it, but takes its colour from the clean
+     * pixels around it: taking the green off alone leaves olive and yellow, and green too faint to key stays green.
+     */
+    private static function paintOverTint(GdImage $im): void
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $tinted = [];
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $c = imagecolorat($im, $x, $y);
+                $alpha = $c >> 24;
+                if ($alpha < 127 && ($alpha > 0 || (($c >> 8) & 0xFF) - max(($c >> 16) & 0xFF, $c & 0xFF) >= self::TINT)) {
+                    $tinted[$y * $w + $x] = true;
+                }
+            }
+        }
+        for ($pass = 0; $pass < self::TINT_REACH && $tinted !== []; $pass++) {
+            $painted = [];
+            foreach ($tinted as $at => $_) {
+                $x = $at % $w;
+                $y = intdiv($at, $w);
+                $around = self::cleanAround($im, $x, $y, $tinted);
+                if ($around !== null) {
+                    $alpha = imagecolorat($im, $x, $y) >> 24;
+                    $painted[$at] = ($alpha << 24) | $around;
+                }
+            }
+            foreach ($painted as $at => $colour) {
+                imagesetpixel($im, $at % $w, intdiv($at, $w), $colour);
+                unset($tinted[$at]);
+            }
+        }
+        // nothing clean within reach (a stray hair with green on both sides): at least no green left in it
+        foreach ($tinted as $at => $_) {
+            $x = $at % $w;
+            $y = intdiv($at, $w);
+            $c = imagecolorat($im, $x, $y);
+            $most = max(($c >> 16) & 0xFF, $c & 0xFF);
+            imagesetpixel($im, $x, $y, ($c & 0xFFFF00FF) | (min(($c >> 8) & 0xFF, $most) << 8));
+        }
+    }
+
+    /** @return int|null the mean RGB of the painted, untinted pixels next to this one; null when it has none */
+    private static function cleanAround(GdImage $im, int $x, int $y, array $tinted): ?int
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        [$r, $g, $b, $n] = [0, 0, 0, 0];
+        for ($dy = max(0, $y - 1); $dy <= min($h - 1, $y + 1); $dy++) {
+            for ($dx = max(0, $x - 1); $dx <= min($w - 1, $x + 1); $dx++) {
+                $c = imagecolorat($im, $dx, $dy);
+                if (isset($tinted[$dy * $w + $dx]) || ($c >> 24) >= self::SOLID) {
+                    continue;
+                }
+                $r += ($c >> 16) & 0xFF;
+                $g += ($c >> 8) & 0xFF;
+                $b += $c & 0xFF;
+                $n++;
+            }
+        }
+
+        if ($n === 0) {
+            return null;
+        }
+        [$r, $g, $b] = [(int) ($r / $n), (int) ($g / $n), (int) ($b / $n)];
+
+        return ($r << 16) | (min($g, max($r, $b)) << 8) | $b;
     }
 
     /** Paper reached from the border goes clear. Paper enclosed by the figure stays: it may be a white shirt. */
