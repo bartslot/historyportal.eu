@@ -38,6 +38,20 @@ class HomeMobilePerformanceTest extends TestCase
         $this->get('/')->assertSee('tour-scene-828.webp 828w', false);
     }
 
+    public function test_nothing_hidden_is_requested_before_the_first_paint(): void
+    {
+        // PageSpeed 2026-11-06: whatever starts before the first paint counts against LCP.
+        $this->get('/')
+            ->assertDontSee(' src="'.asset('assets/timewarp-cards.webp').'"', false)
+            ->assertSee('data-src="'.asset('assets/timewarp-cards.webp').'"', false)
+            ->assertSee('<img src="'.asset('assets/videocards.webp').'" alt="" loading="lazy"', false);
+    }
+
+    public function test_the_home_page_has_a_main_landmark(): void
+    {
+        $this->get('/')->assertSee('<main>', false);
+    }
+
     public function test_only_the_demo_sprite_sheets_are_high_priority(): void
     {
         $html = $this->get('/')->getContent();

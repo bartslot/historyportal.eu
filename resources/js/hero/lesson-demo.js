@@ -166,6 +166,8 @@ const typeInto = (timeline, target, text, position, charactersPerSecond) => {
     }, position);
 };
 
+const FIRST_PAINT_FALLBACK_MS = 300;
+
 const loadAtlas = (img) => {
     if (img.complete && img.naturalWidth > 0) {
         return Promise.resolve(img);
@@ -174,6 +176,22 @@ const loadAtlas = (img) => {
     return new Promise((resolve, reject) => {
         img.addEventListener('load', () => resolve(img), { once: true });
         img.addEventListener('error', reject, { once: true });
+    });
+};
+
+/** Resolves once the first frame is on screen. The timer is for a background tab, which has no frames. */
+const afterFirstPaint = () => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+    setTimeout(resolve, FIRST_PAINT_FALLBACK_MS);
+});
+
+/** Ask for the sprite sheets the hero left unrequested (data-src in hero.blade.php). */
+export const requestAtlases = (root) => {
+    root.querySelectorAll('source[data-srcset]').forEach((source) => {
+        source.srcset = source.dataset.srcset;
+    });
+    root.querySelectorAll('img[data-src]').forEach((img) => {
+        img.src = img.dataset.src;
     });
 };
 
@@ -583,7 +601,16 @@ export const setupHeroLessonDemo = async () => {
     const settings = loadSettings();
     let warp = null;
 
+    // The flat wheel stays out of the way (and undownloaded) for the drawn cardwheel; the tunnel
+    // variant draws over it.
+    if (settings.field !== 'cardwheel') {
+        root.querySelector('.wheel')?.classList.add('is-shown');
+    }
+
     if (canvas && atlas) {
+        await afterFirstPaint();
+        requestAtlases(root);
+
         try {
             // The lesson's own sheet is optional and must never hold up the hero: if it is
             // missing or slow, the tunnel runs on the generic cards alone.
