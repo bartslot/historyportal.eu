@@ -50,3 +50,13 @@ def test_unmapped_language_is_refused_not_a_crash():
     import pytest
     with pytest.raises(SystemExit, match="no native voice mapped for 'xx'"):
         n.voice_for({"lang": "xx"})
+
+
+def test_a_named_elevenlabs_narrator_wins_over_the_azure_mapping(tmp_path):
+    lesson = json.loads((HERE / "fixtures" / "minimal.json").read_text())
+    lesson["narrator"] = {"provider": "elevenlabs", "voice": "0lp4RIz96WD1RUtvEu3Q"}
+    voices: list = []
+    synth = fake_synth([])
+    out, _ = n.narrate(lesson, tmp_path, lambda text, voice: voices.append(voice) or synth(text, voice))
+    assert set(voices) == {"elevenlabs:0lp4RIz96WD1RUtvEu3Q"}
+    assert out["narration"]["provider"] == "elevenlabs" and out["narration"]["voice"] == "0lp4RIz96WD1RUtvEu3Q"

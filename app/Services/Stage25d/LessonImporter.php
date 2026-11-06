@@ -6,6 +6,7 @@ namespace App\Services\Stage25d;
 
 use App\Enums\LessonStatus;
 use App\Models\Lesson;
+use App\Models\Narrator;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,7 @@ final class LessonImporter
             $order = 0;
             $quizIndex = 0;
             foreach ($lesson['scenes'] as $s) {
-                $scene = $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report);
+                $scene = $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []));
                 $report['scenes']++;
                 $this->interaction($row, $s, $scene, $order, $quizIndex, $dryRun, $report);
             }
@@ -97,6 +98,12 @@ final class LessonImporter
             'game_type' => 'quiz',
             'status' => LessonStatus::Draft,
         ]);
+        // The narrator the lesson was read by (narrate.py's ElevenLabs voice), so a re-narration in the editor
+        // uses the same voice. Named by slug: ids differ between installs.
+        if ($slug = $lesson['narrator']['slug'] ?? null) {
+            $row->avatar_id = Narrator::where('slug', (string) $slug)->value('id')
+                ?? throw new InvalidArgumentException("lesson.json names narrator '{$slug}', which does not exist.");
+        }
         if ($existing?->trashed()) {
             $existing->restore();
         }
@@ -108,8 +115,9 @@ final class LessonImporter
     /**
      * @param  array<string,mixed>  $s
      * @param  array<string,mixed>  $report
+     * @param  array<string,mixed>  $narration  lesson.narration: the provider and voice that read the recordings
      */
-    private function storyScene(Lesson $lesson, array $s, int $order, string $bundle, string $lang, ?string $audioRoot, bool $dryRun, array &$report): Scene
+    private function storyScene(Lesson $lesson, array $s, int $order, string $bundle, string $lang, ?string $audioRoot, bool $dryRun, array &$report, array $narration = []): Scene
     {
         $script = trim((string) ($s['narration'] ?? ''));
         $stage = ['id' => (string) ($s['id'] ?? "s{$order}"), 'bundle' => (string) ($s['bundle'] ?? $bundle)];
@@ -167,7 +175,9 @@ final class LessonImporter
         if ($src !== null) {
             $path = "lessons/{$lesson->id}/scenes/{$scene->id}/narration.".pathinfo($src, PATHINFO_EXTENSION);
             Storage::disk('public')->put($path, (string) file_get_contents($src));
-            $scene->update(['audio_path' => $path, 'audio_script_hash' => sha1($script), 'audio_locale' => $lang]);
+            // provenance: who read it (narrate.py writes lesson.narration), so a downgrade check has something to compare
+            $scene->update(['audio_path' => $path, 'audio_script_hash' => sha1($script), 'audio_locale' => $lang,
+                'audio_provider' => $narration['provider'] ?? null, 'audio_voice' => $narration['voice'] ?? null]);
             $report['audio']++;
         } elseif ($script !== '' && $audioRoot !== null) {
             $report['warnings'][] = "{$stage['id']}: no recording at {$audioRoot}/".($s['audio'] ?? '?');

@@ -1579,7 +1579,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this.infoPlace = ''
       this.infoDate = ''
       this.sceneCaption = captionVisible(scene) ? { place: scene.location, year: scene.year || '' } : null
-      this.backdropShade = scene.config?.backdrop_shade !== false
+      // the 2.5D stage paints its own watercolour on paper: the 50% shade halved it (Bart, 11-03: "why so dark?")
+      this.backdropShade = scene.config?.backdrop_shade !== false && !isStage25d(scene)
 
       // Whatever was narrating belongs to the scene we are leaving — silence it before anything
       // else, or jumping chapters layers voice over voice.

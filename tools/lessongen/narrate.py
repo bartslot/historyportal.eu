@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Narrate a lesson.json shot by shot with Azure TTS and write the measured lengths back.
+"""Narrate a lesson.json shot by shot with Azure TTS (or the ElevenLabs voice the lesson names) and write the
+measured lengths back.
 
   narrate.py LESSON.json... [--dry-run]
 
 - Voice: the app's own mapping (app/Services/Support/NarrationVoice.php, AZURE_BY_LOCALE) for lesson.lang.
-  An unmapped language is refused: the app's fallback is an American voice.
+  An unmapped language is refused: the app's fallback is an American voice. A lesson with
+  "narrator": {"provider": "elevenlabs", "voice": "<voice id>"} is read by that ElevenLabs voice instead
+  (same model and settings as app/Services/ElevenLabsService.php).
 - Audio: ~/BartsMedia/historyportal/narration/<lesson id>/<scene id>.mp3, copied from a cache keyed by
   sha256(voice + text) in narration/_cache/, so an unchanged line is never sent to Azure again.
 - Writes scene.tts_s (measured seconds), scene.audio ("<lesson id>/<scene id>.mp3", relative to the narration
@@ -46,14 +49,19 @@ def azure_voices(repo: Path = REPO) -> dict[str, str]:
     return dict(re.findall(r"'([a-z]{2})'\s*=>\s*'([^']+)'", block.group(1)))
 
 
-def credentials() -> tuple[str, str]:
+def dotenv(prefix: str) -> dict[str, str]:
     env = dict(os.environ)
     for path in (REPO / ".env", MAIN_REPO / ".env"):
         if path.exists():
             for line in path.read_text().splitlines():
-                if line.startswith("AZURE_SPEECH_") and "=" in line:
+                if line.startswith(prefix) and "=" in line:
                     k, val = line.split("=", 1)
                     env.setdefault(k, val.strip().strip('"'))
+    return env
+
+
+def credentials() -> tuple[str, str]:
+    env = dotenv("AZURE_SPEECH_")
     if not env.get("AZURE_SPEECH_KEY") or not env.get("AZURE_SPEECH_REGION"):
         sys.exit("narrate: AZURE_SPEECH_KEY / AZURE_SPEECH_REGION missing")
     return env["AZURE_SPEECH_KEY"], env["AZURE_SPEECH_REGION"]
@@ -84,6 +92,34 @@ def azure_synth(text: str, voice: str) -> bytes:
     raise AssertionError("unreachable")
 
 
+def elevenlabs_synth(text: str, voice_id: str) -> bytes:
+    key = dotenv("ELEVENLABS_API_KEY").get("ELEVENLABS_API_KEY")
+    if not key:
+        sys.exit("narrate: ELEVENLABS_API_KEY missing")
+    req = urllib.request.Request(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128",
+        data=json.dumps({"text": text, "model_id": "eleven_multilingual_v2",
+                         "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}}).encode(),
+        headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+    )
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return resp.read()
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == RETRIES - 1:
+                raise RuntimeError(f"ElevenLabs TTS HTTP {e.code}: {e.read()[:300]!r}") from e
+            time.sleep(2 ** attempt)
+    raise AssertionError("unreachable")
+
+
+def synth_any(text: str, voice: str) -> bytes:
+    """`elevenlabs:<id>` goes to ElevenLabs, anything else is an Azure voice name."""
+    if voice.startswith("elevenlabs:"):
+        return elevenlabs_synth(text, voice.split(":", 1)[1])
+    return azure_synth(text, voice)
+
+
 def probe(path: Path) -> dict:
     """Length + loudness of an mp3 (ffprobe/ffmpeg): what the checker needs without listening."""
     dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
@@ -105,13 +141,16 @@ def text_hash(voice: str, text: str) -> str:
 
 
 def voice_for(lesson: dict) -> str:
+    named = lesson.get("narrator") or {}
+    if named.get("provider") == "elevenlabs" and named.get("voice"):
+        return f"elevenlabs:{named['voice']}"
     voice = azure_voices().get(lesson["lang"])
     if not voice:
         sys.exit(f"narrate: no native voice mapped for {lesson['lang']!r} in NarrationVoice.php (refusing the US fallback)")
     return voice
 
 
-def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str], bytes] = azure_synth) -> tuple[dict, dict]:
+def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str], bytes] = synth_any) -> tuple[dict, dict]:
     """New lesson with tts_s + audio per narrated shot, and a report {sent_chars, cached, sent, index}."""
     voice = voice_for(lesson)
     lesson = json.loads(json.dumps(lesson))
@@ -140,7 +179,9 @@ def narrate(lesson: dict, out_root: Path = OUT_ROOT, synth: Callable[[str, str],
     for old in out.glob("*.mp3"):  # scene ids shift when a shot is split: drop files no scene points at any more
         if old.stem not in report["index"]:
             old.unlink()
-    lesson["narration"] = {"provider": "azure", "voice": voice, "format": OUTPUT_FORMAT, "root": "~/BartsMedia/historyportal/narration"}
+    eleven = voice.startswith("elevenlabs:")
+    lesson["narration"] = {"provider": "elevenlabs" if eleven else "azure", "voice": voice.split(":", 1)[-1],
+                           "format": "mp3_44100_128" if eleven else OUTPUT_FORMAT, "root": "~/BartsMedia/historyportal/narration"}
     (out / "index.json").write_text(json.dumps({"lesson": lesson["id"], "voice": voice, "shots": report["index"]}, indent=1) + "\n")
     return lesson, report
 
