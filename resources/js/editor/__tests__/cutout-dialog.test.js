@@ -284,3 +284,87 @@ describe('the eraser and its tools', () => {
     expect(behind.inert).toBe(false)
   })
 })
+
+describe('one window for every mode of a picture', () => {
+  const fire = { cols: 4, rows: 2, frames: 8, fps: 12, w: 100, h: 200, loop: true, play: null }
+  const stageApi = () => ({ canvas: document.createElement('canvas'), time: 3, setLayerProp: vi.fn(), commitLayerProp: vi.fn(), setPeeking: vi.fn(), showPicture: vi.fn(), update: vi.fn() })
+  const openAnimation = async (stage = stageApi()) => ({ stage, ...(await open({ frames: fire, stage, stageId: 'layer-1' })) })
+  const pickMode = ($, value) => { const r = $(`[name="cut-mode"][value="${value}"]`); r.checked = true; r.dispatchEvent(new Event('change')) }
+
+  beforeEach(() => { vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1)) })
+
+  it('a plain picture shows no tabs and no Show scene outside the stage', async () => {
+    const { $ } = await open()
+    expect($('[name="cut-mode"]')).toBeNull()
+    expect($('[data-cut-scene]').hidden).toBe(true)
+    expect($('[data-cut-view]').hidden).toBe(false)
+    $('[data-cut-back]').click()
+  })
+
+  it('an animation opens on its frames, and its picture loads only when asked for', async () => {
+    const { $ } = await openAnimation()
+    expect($('[name="cut-mode"][value="frames"]').checked).toBe(true)
+    expect($('[data-slot-strip="frames"]').hidden).toBe(false)
+    expect($('[data-cut-view]').hidden).toBe(true)
+    expect(mask.setClean).not.toHaveBeenCalled()
+    pickMode($, 'picture')
+    await flush()
+    expect(mask.setClean).toHaveBeenLastCalledWith({ white: 0, fringe: 0, fade: 0 })   // a sheet is not cleaned as one picture
+    expect($('[data-cut-view]').hidden).toBe(false)
+    expect($('[data-slot-strip="frames"]').hidden).toBe(true)
+    $('[data-cut-back]').click()
+  })
+
+  it('undo follows the tab: Cmd-Z in Frames undoes a frame, not a stroke', async () => {
+    const { $ } = await openAnimation()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
+    expect($('[data-cut-undo]').disabled).toBe(false)
+    expect(document.querySelectorAll('[data-frame]')).toHaveLength(9)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true }))
+    expect(document.querySelectorAll('[data-frame]')).toHaveLength(8)
+    expect(mask.undo).not.toHaveBeenCalled()
+    $('[data-cut-back]').click()
+  })
+
+  it('one Save: frames go to the layer, an untouched picture is not saved, a toast says so', async () => {
+    const { $, stage, done } = await openAnimation()
+    const toast = vi.fn()
+    window.addEventListener('toast', toast, { once: true })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
+    $('[data-cut-save]').click()
+    await done
+    expect(stage.commitLayerProp).toHaveBeenCalledWith('layer-1', 'play', expect.objectContaining({ frames: [0, 0, 1, 2, 3, 4, 5, 6, 7] }))
+    expect(wire.saveEditedImage).not.toHaveBeenCalled()
+    expect(toast).toHaveBeenCalled()
+    expect(document.querySelector('[data-cutout]')).toBeNull()
+  })
+
+  it('leaving with work asks; Discard puts the stage back', async () => {
+    const { $, stage, done } = await openAnimation()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
+    $('[data-cut-back]').click()
+    expect($('[data-cut-ask]').hidden).toBe(false)
+    $('[data-cut-ask-discard]').click()
+    await done
+    expect(stage.setLayerProp).toHaveBeenLastCalledWith('layer-1', 'play', undefined)
+    expect(stage.commitLayerProp).not.toHaveBeenCalled()
+  })
+
+  it('Show scene puts the scene beside the work; the stage gets its picture back when nothing was saved', async () => {
+    const stage = stageApi()
+    const done = openCutout({ id: 's25_layer-1', title: 'Pieter', original: '/m.webp', el: document.getElementById('stage'), stage, stageId: 'layer-1' })
+    await flush()
+    const $ = (s) => document.querySelector(s)
+    expect($('[data-cut-scene]').hidden).toBe(false)
+    $('[data-cut-scene]').click()
+    expect($('[data-cut-scene-pane]').hidden).toBe(false)
+    expect($('[data-cut-view]').hidden).toBe(false)
+    expect($('[data-cut-scene]').getAttribute('aria-pressed')).toBe('true')
+    expect(stage.setPeeking).toHaveBeenCalledWith(true)
+    expect(stage.showPicture).toHaveBeenCalledWith('layer-1', 'data:image/webp;base64,CLEAN')   // a picture that opens cleaned: what Save would give
+    $('[data-cut-back]').click()
+    await done
+    expect(stage.showPicture).toHaveBeenLastCalledWith('layer-1', null)
+    expect(stage.setPeeking).toHaveBeenLastCalledWith(false)
+  })
+})

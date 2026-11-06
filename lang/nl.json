@@ -2676,5 +2676,11 @@
     "ChatGPT is changing this picture": "ChatGPT past deze afbeelding aan",
     "What should change?": "Wat moet er veranderen?",
     "ChatGPT could not change this picture. Is the ChatGPT app open?": "ChatGPT kon deze afbeelding niet aanpassen. Is de ChatGPT-app open?",
-    "This picture changed while ChatGPT worked, so its result was not used.": "Deze afbeelding is veranderd terwijl ChatGPT bezig was, dus het resultaat is niet gebruikt."
+    "This picture changed while ChatGPT worked, so its result was not used.": "Deze afbeelding is veranderd terwijl ChatGPT bezig was, dus het resultaat is niet gebruikt.",
+    "Bones": "Botten",
+    "Show scene": "Toon scène",
+    "Hide scene": "Verberg scène",
+    "Add a frame": "Frame toevoegen",
+    "All frames in order": "Alle frames op volgorde",
+    "Frame :n of :total": "Frame :n van :total"
 }

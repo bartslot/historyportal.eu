@@ -2634,5 +2634,11 @@
     "ChatGPT is changing this picture": "ChatGPT modifie cette image",
     "What should change?": "Que faut-il changer ?",
     "ChatGPT could not change this picture. Is the ChatGPT app open?": "ChatGPT n'a pas pu modifier cette image. L'application ChatGPT est-elle ouverte ?",
-    "This picture changed while ChatGPT worked, so its result was not used.": "Cette image a changé pendant que ChatGPT travaillait, le résultat n'a donc pas été utilisé."
+    "This picture changed while ChatGPT worked, so its result was not used.": "Cette image a changé pendant que ChatGPT travaillait, le résultat n'a donc pas été utilisé.",
+    "Bones": "Os",
+    "Show scene": "Afficher la scène",
+    "Hide scene": "Masquer la scène",
+    "Add a frame": "Ajouter une image",
+    "All frames in order": "Toutes les images dans l’ordre",
+    "Frame :n of :total": "Image :n sur :total"
 }

@@ -109,7 +109,7 @@ export interface SceneLayer {
    *  its height_m along the floor, drawn right after the floor and under everything that stands */
   flat?: boolean
   /** an animation's playback (sprite.ts frameAt): speed scales its fps (0 holds), offset = seconds into it at the start */
-  play?: { speed?: number; offset?: number }
+  play?: { speed?: number; offset?: number; frames?: number[]; loop?: boolean }
 }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }

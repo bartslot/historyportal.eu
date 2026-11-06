@@ -16,7 +16,7 @@ import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
 import { cellOf, frameAt, isAnimation } from './sprite'
-import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
+import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, type BentPicture } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
@@ -49,6 +49,8 @@ export class Stage {
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
   private bands: Band[] = []
+  private shownPictures = new Map<LayerHandle, RawTexture>()   // the editor's unsaved pictures on stage (showPicture)
+  private pictureToken = 0
   /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
   private strewn: Strewn[] = []
   private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
@@ -233,6 +235,8 @@ export class Stage {
     this.bands = bandsNext
     this.built = next
     this.sceneLib = lib
+    this.shownPictures.forEach((t) => t.dispose())   // the editor's unsaved pictures went with the old set
+    this.shownPictures.clear()
     // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
     const tileBands = slotsNext[0] ? (bandColours.get(lib.base + slotsNext[0].asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
     // with ground bands the floor is only the paper behind them: no tile can show between the painted strips
@@ -292,6 +296,25 @@ export class Stage {
   }
 
   /** Point the built layers at an edited scene's values (x, scale, motion, keys) without rebuilding. */
+  /**
+   * The picture editor's work on a built row before it is saved (same size as the row's file); null: the row's own file
+   * again. Only the material's texture changes: no rebuild, the texture goes when the next one comes.
+   */
+  async showPicture(row: { layer?: number; band?: number; sky?: boolean }, url: string | null): Promise<void> {
+    const band = row.band !== undefined ? this.bands.find((b) => b.index === row.band) : null
+    const built = row.band === undefined ? this.built.find((b) => b.index === (row.sky ? -1 : row.layer)) : null
+    const handle = band?.handle ?? built?.handle
+    if (!handle) return
+    const token = ++this.pictureToken
+    const base = this.sceneLib?.base ?? this.lib.base
+    const own = band ? band.band.src ?? base + band.asset.file : built!.layer.puppet?.atlas ?? urlOf({ base }, built!.asset, built!.layer)
+    const tex = url ? await pictureTexture(url, this.scene) : await loadPremultiplied(own, this.scene)
+    if (token !== this.pictureToken) { if (url) tex.dispose(); return }
+    handle.material.setTexture('tex', tex)
+    this.shownPictures.get(handle)?.dispose()
+    if (url) this.shownPictures.set(handle, tex); else this.shownPictures.delete(handle)
+  }
+
   rebind(s: Scene) {
     this.built.forEach((b) => { b.layer = b.index >= 0 ? s.set.layers[b.index] : skyLayerOf(s) })
     this.bands.forEach((b) => { b.band = s.set.groundBands?.[b.index] ?? b.band })

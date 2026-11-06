@@ -132,6 +132,7 @@ export async function createStage25d (host, opts = {}) {
   let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
   let camMore = []          // and the shots after it (camera_more): one per pair of camera keys
   let camMotion = null      // the camera's own motion (camera_motion): { kind, amount, speed }
+  let peeking = false       // the picture editor's Show scene is on: the scene as the class sees it, no faded layers
   let framing = false       // the Camera row is selected: the canvas's pointer moves the camera at the playhead
   // a cut-out just saved joins the library on stage at once: the Assets tab shows it, a drop adds it
   const onCutouts = () => {
@@ -197,7 +198,7 @@ export async function createStage25d (host, opts = {}) {
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
-    if (selected === null || stills > 0 || window.__timelineKeying?.playing?.()) return []
+    if (selected === null || stills > 0 || peeking || window.__timelineKeying?.playing?.()) return []
     return inFrontOf(layers.map((_, index) => ({ index, box: hidden.has(`layer-${index}`) ? null : stage.layerBox(index) })), selected)
   }
   const camLength = () => (scene ? sceneDuration(scene) : 8)
@@ -381,8 +382,21 @@ export async function createStage25d (host, opts = {}) {
         from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
         edited: !!row.src,
         el: host,
+        stage: api,
+        stageId: id,
+        // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
+        frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
       }
     },
+    /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
+    setPeeking (on) { peeking = !!on },
+    /** The picture editor's work on the stage before it is saved; null: the row's own file again. */
+    showPicture (id, url) {
+      const row = id === 'sky' ? { sky: true } : bandIndex(id) >= 0 ? { band: bandIndex(id) } : layerIndex(id) >= 0 ? { layer: layerIndex(id) } : null
+      return row ? stage?.showPicture(row, url) : null
+    },
+    /** Where the scene stands now, in seconds. */
+    get time () { return nowT() },
     /** Same set already on stage (an edit of x, y, scale, rotation, opacity or keys is not a different set). */
     matches: (cfg) => cfgSig === structureSig(cfg),
     /** The server's copy changed under us (an undo, a redo): take its layer values. Our own saves are skipped. */

@@ -1116,7 +1116,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const savesPending = stage25dLayerSaves.isPending() || stage25dLookSaves.isPending() || window.__timelineKeying?.pending?.()
             if (!stage.matches(cfg)) { if (!savesPending) { await stage.show(cfg); synced = true } }   // a rebuild now would drop an edit still waiting to be saved
             // A re-fired scene:load must not revert an edit still waiting to be saved.
-            else if (!savesPending) synced = stage.adopt(cfg)
+            // Nor one under the picture editor: its Frames and Bones tabs show their work on the stage before it is saved.
+            else if (!savesPending && !document.querySelector('[data-cutout]')) synced = stage.adopt(cfg)
             if (req !== _stage25dReq) return
             stage.sceneId = payload.sceneId
             window.__stage25d = stage

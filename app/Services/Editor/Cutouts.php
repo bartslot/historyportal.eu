@@ -82,7 +82,9 @@ final class Cutouts
         'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
-        'This picture cannot be opened here.',
+        'This picture cannot be opened here.', 'Saved.',
+        'Frames', 'Bones', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
+        'Add a frame', 'All frames in order', 'Frame :n of :total',
     ];
 
     /** @return array<string,string> */

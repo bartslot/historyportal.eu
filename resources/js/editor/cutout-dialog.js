@@ -23,13 +23,20 @@
  * ask (Save, Discard, Keep editing), without it they leave at once. Not a <dialog>: the top layer would hide the app's
  * one tooltip and its one toast.
  *
+ * Bart, 2026-11-06: "image editor, sprite editor and bone editor (these are in the same page) ... a button that shows the
+ * rest of the scene too". So one window with one Save, one undo and one way back, and a tab per mode this picture has:
+ * Picture always, Frames for an animation (frames-tab.js), Bones for a figure with a puppet. A mode other than Picture is
+ * { canUndo, canRedo, undo, redo, dirty, save, discard, key, show, hide, destroy }. Show scene: scene-peek.js.
+ *
  * Whatever drew the picture sends an `image-edit:open` window event with { id, title, original, el, from }:
  * ArtworkOverlay for a picture layer, the stage25d engine for a 3D layer, a ground band or the sky (`from` names
  * its bundle and library asset, for the cut-out's real size in metres).
  */
 import { mountQuickMask, CLEAN_DEFAULTS } from '../scene/quick-mask.js'
 import { mountPanZoom } from './pan-zoom.js'
-import { markup, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
+import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
+import { mountFrames } from './frames-tab.js'
+import { mountScenePeek } from './scene-peek.js'
 
 const ZOOM_STEP = 1.5
 const RING_MS = 700           // how long the eraser's size shows after its slider moved
@@ -66,13 +73,6 @@ const preload = (url) => (url ? Object.assign(new Image(), { src: url }).decode(
 
 const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }))
 
-/** A slider's readout and rail follow its value (range-fill.js does this for a hand on it, not for code). */
-const syncSlider = (input, readout) => {
-  const min = Number(input.min), max = Number(input.max)
-  readout.textContent = input.value
-  input.parentElement.style.setProperty('--range-t', String((Number(input.value) - min) / (max - min)))
-}
-
 let open = null
 
 /** Open the picture editor for one picture. Resolves when it closes (saved or not). */
@@ -92,9 +92,10 @@ export async function openCutout (target) {
   root.setAttribute('aria-modal', 'true')
   root.setAttribute('aria-label', target.title || t('Picture'))
   root.dataset.cutout = target.id
-  // an already cleaned picture starts at 0: cleaning it again would fade the bottom twice
-  const clean = target.edited ? { white: 0, fringe: 0, fade: 0 } : { ...CLEAN_DEFAULTS }
-  root.innerHTML = markup(t, clean)
+  const modes = ['picture', ...(target.frames ? ['frames'] : [])]
+  // an already cleaned picture starts at 0: cleaning it again would fade the bottom twice. A sheet of frames is no picture to clean as one
+  const clean = target.edited || target.frames ? { white: 0, fringe: 0, fade: 0 } : { ...CLEAN_DEFAULTS }
+  root.innerHTML = markup(t, clean, modes)
   // the app behind takes no keyboard focus while this is up
   const behind = [...document.body.children].filter((el) => !el.inert)
   for (const el of behind) el.inert = true
@@ -109,6 +110,10 @@ export async function openCutout (target) {
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
   const edges = { feather: 0, shift: 0 }
+  let mode = modes.at(-1)   // an animation opens on its frames
+  const others = {}         // the modes other than Picture, once made
+  const active = () => others[mode] ?? null
+  let peek = null
 
   open = new Promise((resolve) => {
     const ask = $('[data-cut-ask]')
@@ -119,9 +124,12 @@ export async function openCutout (target) {
       e.stopPropagation()
       if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"]')) { e.preventDefault(); view?.setSpace(false) }
     }
-    const close = () => {
+    const close = ({ saved = false } = {}) => {
       window.removeEventListener('keydown', keydown, true)
       window.removeEventListener('keyup', keyup, true)
+      if (!saved) for (const other of Object.values(others)) other.discard()
+      for (const other of Object.values(others)) other.destroy()
+      peek?.destroy({ saved })
       view?.destroy()
       mask?.destroy()
       root.remove()
@@ -132,24 +140,29 @@ export async function openCutout (target) {
     }
 
     // One way back. With work done it asks; without, it leaves at once
-    const hasWork = () => state.canUndo || slid
+    const pictureWork = () => state.canUndo || slid
+    const hasWork = () => pictureWork() || Object.values(others).some((other) => other.dirty())
     /** While the question is up, Tab stays in it. */
     const setAsking = (on) => {
       ask.hidden = !on
       for (const el of root.children) if (el !== ask) el.inert = on
     }
-    const stay = () => { setAsking(false); root.focus() }
+    const stay = () => { setAsking(false); root.focus(); others[mode]?.show() }
     const leave = () => {
       if (!hasWork()) { close(); return }
+      others[mode]?.hide()   // nothing plays behind the question
       setAsking(true)
       $('[data-cut-ask-save]').focus()
     }
 
     const refresh = (s = {}) => {
       state = { ...state, ...s }
-      $('[data-cut-undo]').disabled = !state.canUndo
-      $('[data-cut-redo]').disabled = !state.canRedo
+      $('[data-cut-undo]').disabled = !(active()?.canUndo() ?? state.canUndo)
+      $('[data-cut-redo]').disabled = !(active()?.canRedo() ?? state.canRedo)
+      peek?.pictureChanged()
     }
+    const undo = () => (active() ?? mask)?.undo()
+    const redo = () => (active() ?? mask)?.redo()
 
     // the eraser's size on the picture, round the pointer
     const viewport = $('[data-cut-view]')
@@ -218,13 +231,14 @@ export async function openCutout (target) {
       slid = true
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(apply)
+      peek?.pictureChanged()
     })
     for (const name of ['feather', 'shift']) live(name, edges, () => mask?.setEdges(edges))
     for (const name of ['white', 'fringe', 'fade']) live(name, clean, () => mask?.setClean(clean))
     $('[data-cut-everywhere]').addEventListener('change', (e) => mask?.setEverywhere(e.target.checked))
 
-    $('[data-cut-undo]').addEventListener('click', () => mask?.undo())
-    $('[data-cut-redo]').addEventListener('click', () => mask?.redo())
+    $('[data-cut-undo]').addEventListener('click', undo)
+    $('[data-cut-redo]').addEventListener('click', redo)
     $('[data-cut-zoom-in]').addEventListener('click', () => view?.zoomBy(ZOOM_STEP))
     $('[data-cut-zoom-out]').addEventListener('click', () => view?.zoomBy(1 / ZOOM_STEP))
     $('[data-cut-fit]').addEventListener('click', () => view?.fit())
@@ -250,14 +264,22 @@ export async function openCutout (target) {
         button.disabled = false
       }
     }
-    const save = async (button) => { if (mask && await saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))) close() }
+    /** One Save for the whole window: the picture when it changed (a picture with no other mode opens cleaned: that is a change), then each mode. */
+    const save = async (button) => {
+      const picture = mask && (pictureWork() || modes.length === 1)
+      if (picture && !await saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))) return
+      const dirty = Object.values(others).filter((other) => other.dirty())
+      for (const other of dirty) other.save()
+      if (!picture && dirty.length) say('success', t('Saved.'))
+      close({ saved: true })
+    }
     $('[data-cut-save]').addEventListener('click', (e) => save(e.currentTarget))
     $('[data-cut-back]').addEventListener('click', leave)
     $('[data-cut-ask-save]').addEventListener('click', (e) => save(e.currentTarget))
-    $('[data-cut-ask-discard]').addEventListener('click', close)
+    $('[data-cut-ask-discard]').addEventListener('click', () => close())
     for (const b of root.querySelectorAll('[data-cut-ask-stay]')) b.addEventListener('click', stay)
     ask.addEventListener('pointerdown', (e) => { if (e.target === ask) stay() })
-    $('[data-cut-original]').addEventListener('click', async (e) => { if (await saving(e.currentTarget, () => wire.resetEditedImage(target.id))) close() })
+    $('[data-cut-original]').addEventListener('click', async (e) => { if (await saving(e.currentTarget, () => wire.resetEditedImage(target.id))) close({ saved: true }) })
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
       if (!cut) return
@@ -273,10 +295,11 @@ export async function openCutout (target) {
       if (e.key === 'Escape') { e.preventDefault(); asking() ? stay() : leave(); return }
       if (asking()) return
       if (e.metaKey || e.ctrlKey) {
-        if (key === 'z') { e.preventDefault(); e.shiftKey ? mask?.redo() : mask?.undo() }
-        if (key === 'y') { e.preventDefault(); mask?.redo() }
+        if (key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }
+        if (key === 'y') { e.preventDefault(); redo() }
         return
       }
+      if (active()) { if (active().key(e)) e.preventDefault(); return }
       if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"]')) { e.preventDefault(); if (!e.repeat) view?.setSpace(true); ring.hidden = true }
       if (key === '[' || key === ']') {
         const now = Number($('[data-cut-esize]').value)
@@ -293,29 +316,68 @@ export async function openCutout (target) {
     window.addEventListener('keyup', keyup, true)
 
     setTool('erase')
-    mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), target.original, refresh, { surface: viewport })
-      .then((m) => {
-        mask = m
-        $('[data-cut-loading]').remove()
-        const { w, h } = mask.size
-        const stage = $('[data-cut-stage]')
-        stage.style.width = `${w}px`
-        stage.style.height = `${h}px`
-        view = mountPanZoom(viewport, stage, w, h, (v) => { $('[data-cut-fit]').textContent = `${Math.round(v.z * 100)}%` })
-        const { size, max } = eraserRange(w, h)
-        $('[data-cut-esize]').max = String(max)
-        setEraserSize(size)
-        ring.hidden = true
-        mask.setBrush({ softness: SOFTNESS / 100 })
-        mask.setTolerance(TOLERANCE)
-        mask.setEverywhere($('[data-cut-everywhere]').checked)
-        mask.setBrushSize($('[data-cut-size]').value)
-        setTool(tool)
-        mask.setClean(clean)   // opens already cleaned: the teacher only nudges
-        // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
-        if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
+    /** The picture and its tools, the first time its tab shows. */
+    let pictureAsked = false
+    const showPicture = () => {
+      if (pictureAsked) return
+      pictureAsked = true
+      mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), target.original, refresh, { surface: viewport })
+        .then((m) => {
+          mask = m
+          $('[data-cut-loading]').remove()
+          const { w, h } = mask.size
+          const stage = $('[data-cut-stage]')
+          stage.style.width = `${w}px`
+          stage.style.height = `${h}px`
+          view = mountPanZoom(viewport, stage, w, h, (v) => { $('[data-cut-fit]').textContent = `${Math.round(v.z * 100)}%` })
+          const { size, max } = eraserRange(w, h)
+          $('[data-cut-esize]').max = String(max)
+          setEraserSize(size)
+          ring.hidden = true
+          mask.setBrush({ softness: SOFTNESS / 100 })
+          mask.setTolerance(TOLERANCE)
+          mask.setEverywhere($('[data-cut-everywhere]').checked)
+          mask.setBrushSize($('[data-cut-size]').value)
+          setTool(tool)
+          mask.setClean(clean)   // opens already cleaned: the teacher only nudges
+          // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
+          if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
+          peek?.pictureChanged()
+        })
+        .catch(() => {
+          say('error', t('This picture cannot be opened here.'))
+          if (modes.length === 1) close()
+          else { pictureAsked = false; setMode(modes.at(-1)) }
+        })
+    }
+
+    /** Show one mode: its view, its strip and its panel; the others step back. */
+    const setMode = (next) => {
+      others[mode]?.hide()
+      mode = next
+      for (const el of root.querySelectorAll('[data-mode-for]')) el.hidden = el.dataset.modeFor !== next
+      for (const input of root.querySelectorAll('[name="cut-mode"]')) input.checked = input.value === next
+      if (next === 'picture') showPicture()
+      others[next]?.show()
+      refresh()
+    }
+    for (const input of root.querySelectorAll('[name="cut-mode"]')) input.addEventListener('change', () => { setMode(input.value); root.focus() })
+
+    if (target.stage) {
+      peek = mountScenePeek({
+        button: $('[data-cut-scene]'), label: $('[data-cut-scene-label]'), pane: $('[data-cut-scene-pane]'), t, stage: target.stage, stageId: target.stageId,
+        // what Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned
+        picture: () => (mask && (pictureWork() || modes.length === 1) ? mask.resultDataURL() : null),
       })
-      .catch(() => { close(); say('error', t('This picture cannot be opened here.')) })
+    }
+    if (target.frames) {
+      others.frames = mountFrames({
+        view: $('[data-slot-view="frames"]'), strip: $('[data-slot-strip="frames"]'), panel: $('[data-slot-panel="frames"]'),
+        t, sheet: target.original, frames: target.frames, stage: target.stage, stageId: target.stageId,
+        onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
+      })
+    }
+    setMode(mode)
   })
   return open
 }

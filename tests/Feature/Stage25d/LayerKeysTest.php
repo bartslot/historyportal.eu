@@ -173,6 +173,17 @@ class LayerKeysTest extends TestCase
         $this->assertSame(['speed' => 0.0], LayerKeys::play(['speed' => 0]));
     }
 
+    public function test_play_keeps_a_list_of_frames_on_the_sheet_and_a_real_loop(): void
+    {
+        $this->assertSame(['frames' => [3, 3, 0]], LayerKeys::play(['frames' => [3, 3, 0]], 48));
+        $this->assertSame(['frames' => [47]], LayerKeys::play(['frames' => [48, -1, '2', 1.5, 47]], 48), 'only frames on the sheet');
+        $this->assertNull(LayerKeys::play(['frames' => [99]], 48));
+        $this->assertNull(LayerKeys::play(['frames' => 'all']));
+        $this->assertCount(LayerKeys::PLAY_FRAMES_MAX, LayerKeys::play(['frames' => array_fill(0, 5000, 1)])['frames']);
+        $this->assertSame(['loop' => false], LayerKeys::play(['loop' => false]));
+        $this->assertNull(LayerKeys::play(['loop' => 'no']));
+    }
+
     /** @param  array<string,mixed>  $stage */
     private function sceneWith(array $stage): Scene
     {

@@ -75,13 +75,18 @@ final class LayerKeys
     /** The longest start offset into an animation, in seconds (a sheet is seconds long; this only stops a runaway). */
     private const PLAY_OFFSET_MAX = 600.0;
 
+    /** The longest list of frames one layer plays (the picture editor's Frames tab). */
+    public const PLAY_FRAMES_MAX = 600;
+
     /**
      * An animation's playback (engine-mvp stage25d/sprite.ts frameAt): speed scales its fps (0 holds a frame, up to 5),
-     * offset is where in it the scene starts (seconds). Null when the patch carries neither.
+     * offset is where in it the scene starts (seconds), frames is its own list of the sheet's frames, in the order it
+     * plays them, loop whether it starts over. Null when the patch carries none of these.
      *
-     * @return array{speed?:float,offset?:float}|null
+     * @param  int|null  $total  how many frames the sheet holds, when that is known
+     * @return array{speed?:float,offset?:float,frames?:list<int>,loop?:bool}|null
      */
-    public static function play(mixed $p): ?array
+    public static function play(mixed $p, ?int $total = null): ?array
     {
         if (! is_array($p)) {
             return null;
@@ -93,6 +98,15 @@ final class LayerKeys
         }
         if (($offset = $num($p['offset'] ?? null)) !== null) {
             $out['offset'] = max(0.0, min(self::PLAY_OFFSET_MAX, $offset));
+        }
+        if (is_array($p['frames'] ?? null)) {
+            $frames = array_values(array_filter($p['frames'], fn ($n) => is_int($n) && $n >= 0 && ($total === null || $n < $total)));
+            if ($frames !== []) {
+                $out['frames'] = array_slice($frames, 0, self::PLAY_FRAMES_MAX);
+            }
+        }
+        if (is_bool($p['loop'] ?? null)) {
+            $out['loop'] = $p['loop'];
         }
 
         return $out === [] ? null : $out;

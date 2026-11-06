@@ -101,7 +101,9 @@ trait EditsStage25d
         if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
             $values['motion'] = $motion;
         }
-        if (($play = LayerKeys::play($patch['play'] ?? null)) !== null) {   // an animation's speed and start
+        $sheet = LibraryBundle::asset($bundle, (string) ($layers[$index]['asset'] ?? ''));
+        $cells = is_array($sheet) && ($sheet['kind'] ?? null) === 'animation' ? (int) ($sheet['frames'] ?? ((int) ($sheet['cols'] ?? 1) * (int) ($sheet['rows'] ?? 1))) : null;
+        if (($play = LayerKeys::play($patch['play'] ?? null, $cells)) !== null) {   // an animation's speed, start and own order of frames
             $values['play'] = $play;
         }
         if ($values === []) {

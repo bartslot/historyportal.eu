@@ -251,21 +251,41 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       skylines.set(url, skylineRow(data, c.width, c.height))
       const ink = inkLevel(data, c.width, c.height)
       if (ink !== null) inkLevels.set(url, ink)
-      for (let i = 0; i < data.length; i += 4) {
-        const a = data[i + 3] / 255
-        data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)
-      }
-      // row 0 = the image's top; sampled with v = 0 at the top, so no flip anywhere
-      const tex = new RawTexture(data, c.width, c.height, Constants.TEXTUREFORMAT_RGBA, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE)
-      tex.anisotropicFilteringLevel = 8
-      tex.wrapV = Texture.CLAMP_ADDRESSMODE
-      resolve(tex)
+      resolve(premultipliedTexture(data, c.width, c.height, scene))
     }
     img.src = url
   })
   own.set(url, p)
   p.catch(() => own.delete(url))
   return p
+}
+
+function premultipliedTexture(data: Uint8ClampedArray, width: number, height: number, scene: Scene): RawTexture {
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3] / 255
+    data[i] = Math.round(data[i] * a); data[i + 1] = Math.round(data[i + 1] * a); data[i + 2] = Math.round(data[i + 2] * a)
+  }
+  // row 0 = the image's top; sampled with v = 0 at the top, so no flip anywhere
+  const tex = new RawTexture(data, width, height, Constants.TEXTUREFORMAT_RGBA, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE)
+  tex.anisotropicFilteringLevel = 8
+  tex.wrapV = Texture.CLAMP_ADDRESSMODE
+  return tex
+}
+
+/** A picture still being edited, as a texture: nothing about it is kept, it changes with every stroke. Its owner disposes it. */
+export function pictureTexture(url: string, scene: Scene): Promise<RawTexture> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onerror = () => reject(new Error('the edited picture did not load'))
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth; c.height = img.naturalHeight
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      g.drawImage(img, 0, 0)
+      resolve(premultipliedTexture(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height, scene))
+    }
+    img.src = url
+  })
 }
 
 const ROWS = 24 // enough rows for a smooth sway bend

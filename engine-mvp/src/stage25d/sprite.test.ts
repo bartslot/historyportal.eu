@@ -35,6 +35,26 @@ describe('sprite animation', () => {
     expect(frameAt({ ...fire, loop: false }, undefined, 100)).toBe(47)
   })
 
+  it('a layer plays its own list of frames: shuffled, repeated, some left out', () => {
+    const play = { frames: [5, 5, 2] }
+    expect(frameAt(fire, play, 0)).toBe(5)
+    expect(frameAt(fire, play, 1 / 12)).toBe(5)
+    expect(frameAt(fire, play, 2 / 12)).toBe(2)
+    expect(frameAt(fire, play, 3 / 12)).toBe(5)   // it wraps at the end of the list, not of the sheet
+  })
+
+  it('a frame that is not on the sheet is skipped, and an empty list plays them all', () => {
+    expect(frameAt(fire, { frames: [99, -1, 1.5, 7] }, 0)).toBe(7)
+    expect(frameAt(fire, { frames: [99] }, 1 / 12)).toBe(1)
+    expect(frameAt(fire, { frames: [] }, 1 / 12)).toBe(1)
+  })
+
+  it('a layer can loop or not, whatever the sheet says', () => {
+    expect(frameAt(fire, { loop: false }, 100)).toBe(47)
+    expect(frameAt({ ...fire, loop: false }, { loop: true }, 4)).toBe(0)
+    expect(frameAt(fire, { frames: [3, 4], loop: false }, 100)).toBe(4)
+  })
+
   it('a frame is its cell of the sheet, row by row from the top left', () => {
     expect(cellOf(fire, 0)).toEqual([0, 0, 1 / 12, 1 / 4])
     expect(cellOf(fire, 13)).toEqual([1 / 12, 1 / 4, 1 / 12, 1 / 4])
