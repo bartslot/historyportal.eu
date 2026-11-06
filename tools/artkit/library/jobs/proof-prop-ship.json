@@ -1,0 +1,17 @@
+{
+ "bundle": "_proof-nl-golden-age",
+ "era": "nl-golden-age",
+ "era_label": "c. 1600-1670",
+ "sheets": [
+  {"id": "prop-ship", "layer": "prop",
+   "subject": "Arranged in two rows of three: (1) a ship's lantern, (2) a brass telescope, (3) a wooden sea chest, (4) a wooden bucket, (5) an iron ship's anchor, (6) a bronze cannon on a wooden carriage.",
+   "assets": [
+    {"id": "lantern-01", "tags": ["lantern", "household", "ship"], "height_m": 0.5},
+    {"id": "telescope-01", "tags": ["telescope", "household", "ship"], "height_m": 0.25},
+    {"id": "sea-chest-01", "tags": ["chest", "household", "ship"], "height_m": 0.55},
+    {"id": "bucket-01", "tags": ["bucket", "household", "ship"], "height_m": 0.4},
+    {"id": "anchor-01", "tags": ["anchor", "cargo", "ship"], "height_m": 1.6},
+    {"id": "cannon-01", "tags": ["cannon", "cargo", "ship"], "height_m": 0.9}
+   ]}
+ ]
+}

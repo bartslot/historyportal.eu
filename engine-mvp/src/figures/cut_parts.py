@@ -1,6 +1,6 @@
 """Cut a puppet PARTS SHEET (Figma gpt-image, History Lines template) into parts + automatic landmarks.
 
-The sheet is a fixed grid (see PARTS_PROMPT in README "Puppet figures"): every part on its own, white around it.
+The sheet is a fixed grid (see PARTS_PROMPT in README "Puppet figures"): every part on its own, #00FF00 around it (white on older sheets).
 Nothing is hand-set: parts are found as connected shapes, given their slot by row and left-to-right order, and
 their joints come from the shape itself:
   limb (upper arm, forearm, thigh, shin): the long axis (PCA); a joint sits one half-width in from each end cap
@@ -16,11 +16,16 @@ usage: python3 cut_parts.py SHEET.png OUT_DIR --kind woman|man|voc --view 34|sid
 import argparse
 import json
 import os
+import sys
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 from scipy.cluster.vq import kmeans2
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/artkit"))
+import green_key
 
 ROWS = {  # slot names per row, left to right; a missing part may only be missing at the END of a row
     "woman": [["head_neutral", "head_happy", "head_worried", "head_surprised", "torso", "skirt"],
@@ -358,7 +363,11 @@ def main():
     ap.add_argument("--view", required=True, choices=("34", "side", "front"))
     a = ap.parse_args()
     rgb = np.asarray(Image.open(a.sheet).convert("RGB"))
-    alpha = alpha_of(rgb)
+    if green_key.is_green_sheet(rgb):  # keyed, then laid on white: everything after this works on a clean white sheet
+        clean, alpha = green_key.key(rgb)
+        rgb = (clean * alpha[..., None] + 255 * (1 - alpha[..., None])).round().astype(np.uint8)
+    else:
+        alpha = alpha_of(rgb)
     rows = rows_of(find_parts(alpha))
     os.makedirs(a.out, exist_ok=True)
     manifest, skin = {}, None
