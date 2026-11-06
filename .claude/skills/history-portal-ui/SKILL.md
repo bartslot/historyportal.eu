@@ -91,6 +91,17 @@ Two hands, doing different jobs.
 Small grey body text is a label wearing the wrong clothes. `.lp-card-label` carries **type only** —
 the 8px era and footer links wear it in white, the 12px section label in muted.
 
+## Sliders (Bart, 2026-11-06; Figma node 1471:2104)
+
+One slider everywhere in the wizard: a row of label, slider, value. Rail 7px with radius 3 in
+`--color-slider-track` (#222B3D), fill the same height in `--color-slider-fill` (#586291), round knob
+14px in `--color-slider-knob` (#D9D9D9). Value right-aligned, 12px Medium, `text-panel-value`.
+
+Build it with `<x-ui.slider-row>`, or by hand as `<span class="range-panel-knob"><input type="range"
+class="range range-panel"></span>` plus the value. Never DaisyUI's bare `range range-xs`: its fill is a
+knob-height shadow. `tests/Unit/WizardSliderTest.php` holds this. The Figma row labels at 8px; in a
+panel the 12px floor below wins.
+
 ## 4. Fade, do not clip
 
 Scrolling copy uses `.lp-card-fade`. A hard cut says the text ended; a fade says there is more.

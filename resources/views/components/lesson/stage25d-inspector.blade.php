@@ -59,8 +59,11 @@
             @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
                 <div x-show="cam?.motion?.kind !== 'none'">
                     <x-ui.panel-row :label="$label">
-                        <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-camera-motion="{{ $prop }}" aria-label="{{ $label }}"
-                               :value="cam?.motion?.{{ $prop }}" x-on:input="cameraMotion({ {{ $prop }}: Number($event.target.value) })" />
+                        <span class="range-panel-knob min-w-0 flex-1">
+                            <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-camera-motion="{{ $prop }}" aria-label="{{ $label }}"
+                                   :value="cam?.motion?.{{ $prop }}" x-on:input="cameraMotion({ {{ $prop }}: Number($event.target.value) })" />
+                        </span>
+                        <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(cam?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
                     </x-ui.panel-row>
                 </div>
             @endforeach
@@ -164,12 +167,18 @@
         {{-- The picture's ink, drawn by the stage's shader: a black line inside its edge, hatching in its shade. --}}
         <div class="mt-1 space-y-1" x-show="info?.ink">
             <x-ui.panel-row :label="__('Outline')">
-                <input type="range" min="0" max="{{ \App\Services\Stage25d\LayerKeys::INK_RANGE['outline'][1] }}" step="0.25" class="range range-xs w-full" data-stage25d-ink="outline"
-                       aria-label="{{ __('Outline') }}" :value="info?.ink?.outline" x-on:input="setInk({ outline: Number($event.target.value) })" />
+                <span class="range-panel-knob min-w-0 flex-1">
+                    <input type="range" min="0" max="{{ \App\Services\Stage25d\LayerKeys::INK_RANGE['outline'][1] }}" step="0.25" class="range range-panel" data-stage25d-ink="outline"
+                           aria-label="{{ __('Outline') }}" :value="info?.ink?.outline" x-on:input="setInk({ outline: Number($event.target.value) })" />
+                </span>
+                <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.ink?.outline ?? 0).toFixed(2)"></span>
             </x-ui.panel-row>
             <x-ui.panel-row :label="__('Etched shadow')">
-                <input type="range" min="0" max="1" step="0.05" class="range range-xs w-full" data-stage25d-ink="etch"
-                       aria-label="{{ __('Etched shadow') }}" :value="info?.ink?.etch" x-on:input="setInk({ etch: Number($event.target.value) })" />
+                <span class="range-panel-knob min-w-0 flex-1">
+                    <input type="range" min="0" max="1" step="0.05" class="range range-panel" data-stage25d-ink="etch"
+                           aria-label="{{ __('Etched shadow') }}" :value="info?.ink?.etch" x-on:input="setInk({ etch: Number($event.target.value) })" />
+                </span>
+                <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.ink?.etch ?? 0).toFixed(2)"></span>
             </x-ui.panel-row>
         </div>
 
@@ -186,9 +195,12 @@
             <template x-if="info?.anim">
                 <div class="space-y-1" data-stage25d-play>
                     <x-ui.panel-row :label="__('Play speed')">
-                        <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-stage25d-play-field="speed"
-                               aria-label="{{ __('Play speed') }}"
-                               :value="info?.play?.speed" x-on:change="setPlay({ speed: Number($event.target.value) })" />
+                        <span class="range-panel-knob min-w-0 flex-1">
+                            <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-stage25d-play-field="speed"
+                                   aria-label="{{ __('Play speed') }}"
+                                   :value="info?.play?.speed" x-on:change="setPlay({ speed: Number($event.target.value) })" />
+                        </span>
+                        <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.play?.speed ?? 1).toFixed(2)"></span>
                     </x-ui.panel-row>
                     <x-ui.panel-row :label="__('Start at')">
                         <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
@@ -205,9 +217,12 @@
             @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
                 <div x-show="info?.motion?.kind !== 'none'">
                 <x-ui.panel-row :label="$label">
-                    <input type="range" min="0" max="3" step="0.05" class="range range-xs w-full" data-stage25d-motion="{{ $prop }}"
-                           aria-label="{{ $label }}"
-                           :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
+                    <span class="range-panel-knob min-w-0 flex-1">
+                        <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-stage25d-motion="{{ $prop }}"
+                               aria-label="{{ $label }}"
+                               :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
+                    </span>
+                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
                 </x-ui.panel-row>
                 </div>
             @endforeach
@@ -221,9 +236,12 @@
             <template x-for="c in look" :key="c.key">
                 <label class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">
                     <span class="w-28 shrink-0 select-none text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label" x-text="names[c.key] ?? c.key"></span>
-                    <input type="range" class="range range-xs min-w-0 flex-1" :min="c.min" :max="c.max" :step="c.step"
-                           :value="c.value" :aria-label="names[c.key] ?? c.key" :data-stage25d-look="c.key"
-                           x-on:input="setLook(c.key, Number($event.target.value))" />
+                    <span class="range-panel-knob min-w-0 flex-1">
+                        <input type="range" class="range range-panel" :min="c.min" :max="c.max" :step="c.step"
+                               :value="c.value" :aria-label="names[c.key] ?? c.key" :data-stage25d-look="c.key"
+                               x-on:input="setLook(c.key, Number($event.target.value))" />
+                    </span>
+                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(c.value ?? 0).toFixed(2)"></span>
                 </label>
             </template>
         </div>
