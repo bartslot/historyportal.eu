@@ -20,6 +20,10 @@
     <main class="mx-auto max-w-4xl px-4 pb-16 pt-32 text-slate-300 sm:px-6">
         <h1 class="font-history text-4xl font-light tracking-tight text-white sm:text-5xl">{{ $title }}</h1>
         <p class="mt-4 text-lg leading-relaxed">{{ $description }}</p>
+        <p class="mt-4">
+            Op de basisschool gaan de tien tijdvakken waarschijnlijk naar zes:
+            <a href="{{ route('public.new-tijdvakken') }}" class="underline hover:text-white">wat er verandert en wat er al vaststaat</a>.
+        </p>
 
         @foreach ($sections as $type => $heading)
             @continue(! isset($goals[$type]))

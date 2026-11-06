@@ -70,6 +70,8 @@ Route::get('/articles/{slug}', [\App\Http\Controllers\Public\ArticleController::
 // each with the lessons that cover it. A Dutch system, so Dutch only (Bart, 2026-10-17).
 Route::get('/nl/curriculum', [\App\Http\Controllers\Public\CurriculumController::class, 'index'])
     ->name('public.curriculum');
+Route::get('/nl/nieuwe-tijdvakken', [\App\Http\Controllers\Public\CurriculumController::class, 'newTijdvakken'])
+    ->name('public.new-tijdvakken');
 Route::get('/nl/curriculum/{slug}', [\App\Http\Controllers\Public\CurriculumController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
     ->name('public.curriculum.goal');

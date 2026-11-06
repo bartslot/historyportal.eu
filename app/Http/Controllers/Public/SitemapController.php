@@ -48,6 +48,7 @@ class SitemapController extends Controller
 
             // The Dutch curriculum pages: Dutch only, so one URL each and no alternates.
             $entries[] = $this->url(route('public.curriculum'), '0.6', 'monthly', null, '');
+            $entries[] = $this->url(route('public.new-tijdvakken'), '0.7', 'monthly', null, '');
             foreach (\App\Models\CurriculumGoal::query()->orderBy('sort')->pluck('slug') as $slug) {
                 $entries[] = $this->url(route('public.curriculum.goal', $slug), '0.5', 'monthly', null, '');
             }

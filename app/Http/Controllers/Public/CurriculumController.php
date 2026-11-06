@@ -40,4 +40,14 @@ class CurriculumController extends Controller
 
         return view('marketing.curriculum.show', ['goal' => $goal, 'lessons' => $lessons]);
     }
+
+    /** The move from ten to six tijdvakken in primary school, with today's ten as the starting point. */
+    public function newTijdvakken(): View
+    {
+        app()->setLocale('nl');
+
+        $current = CurriculumGoal::query()->where('type', 'tijdvak')->get()->keyBy('code');
+
+        return view('marketing.curriculum.new-tijdvakken', ['current' => $current]);
+    }
 }
