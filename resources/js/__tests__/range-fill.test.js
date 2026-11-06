@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { fillPercent, initRangeFill } from '../ui/range-fill.js'
 
 /** A stand-in for the input, since only min/max/value are read. */
@@ -76,6 +76,35 @@ describe('range-fill keeps the drawn knob on the value', () => {
     input.value = '2'
     await settle()
     expect(wrap.style.getPropertyValue('--range-t')).toBe('0.2')
+  })
+
+  it('a Livewire morph that strips the wrapper style does not drop the knob to 0', () => {
+    const commits = []
+    window.Livewire = { hook: (name, fn) => { if (name === 'commit') commits.push(fn) } }
+    vi.stubGlobal('requestAnimationFrame', (fn) => fn())
+    const box = document.createElement('div')
+    initRangeFill(box)
+    const { wrap, input } = slider('5')
+    box.append(wrap)
+    input.value = '5'
+    wrap.removeAttribute('style')
+
+    commits[0]({ succeed: (fn) => fn() })
+
+    expect(wrap.style.getPropertyValue('--range-t')).toBe('0.5')
+    vi.unstubAllGlobals()
+    delete window.Livewire
+  })
+
+  it('the number beside the slider follows the hand, at its row\'s scale', () => {
+    const row = document.createElement('div')
+    const { wrap, input } = slider('0')
+    row.innerHTML = '<span data-key-display data-key-display-scale="100"></span>'
+    row.prepend(wrap)
+    document.body.append(row)
+    input.value = '4'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(row.querySelector('[data-key-display]').textContent).toBe('400')
   })
 
   it('leaves a plain range alone', () => {

@@ -53,7 +53,9 @@
                 body > *:not(main), main ~ *, [data-no-print] { display: none !important; }
                 * { color: #000 !important; background: transparent !important; border-color: #999 !important; }
                 main { padding: 0 !important; max-width: none !important; }
-                section { break-inside: avoid; }
+                html, body { background: #fff !important; color-scheme: light !important; }
+                [data-era], li { break-inside: avoid; }
+                h2 { break-after: avoid; }
             }
         </style>
     </x-slot:head>
@@ -78,7 +80,7 @@
             <h2 class="font-history text-2xl font-light text-white">Van tien naar zes</h2>
             <div class="mt-4 border-b border-white/10">
                 @foreach ($eras as $number => $era)
-                    <div class="border-t border-white/10 py-5">
+                    <div data-era class="border-t border-white/10 py-5">
                         <h3 class="font-semibold text-white">{{ $number + 1 }}. {{ $era['name'] }}</h3>
                         <p class="mt-1 text-sm">{{ $era['years'] }}</p>
 
@@ -134,7 +136,7 @@
             </ul>
             <p class="mt-6" data-no-print>
                 Op de pagina van elk tijdvak hierboven staan de lessen die we erbij hebben.
-                <a href="{{ route('public.lessons') }}" class="underline hover:text-white">Bekijk alle lessen</a>
+                <a href="{{ \App\Support\Seo::url('lessons') }}" class="underline hover:text-white">Bekijk alle lessen</a>
             </p>
         </section>
 
@@ -150,4 +152,5 @@
             </ul>
         </section>
     </main>
+    <x-landing.footer />
 </x-layouts.landing>

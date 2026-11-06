@@ -19,7 +19,7 @@
     <x-landing.header />
 
     <main class="mx-auto max-w-5xl px-4 pb-24 pt-32 sm:px-6">
-        <h1 class="font-history text-4xl font-light leading-tight tracking-tight text-white sm:text-5xl">{{ $title }}</h1>
+        <h1 class="font-history text-4xl font-light leading-tight tracking-tight break-words hyphens-auto text-white sm:text-5xl">{{ $title }}</h1>
 
         <div class="mt-10 border-t border-white/10 pt-8">
             <div class="grid gap-10 {{ $columns }}">

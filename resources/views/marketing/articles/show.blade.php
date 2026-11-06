@@ -25,7 +25,7 @@
         <a href="{{ Seo::url('articles') }}" class="link link-hover text-sm text-base-content/80">{{ __('Articles') }}</a>
 
         <article class="mt-6">
-            <h1 class="font-history text-4xl font-light leading-tight tracking-tight text-white sm:text-5xl">{{ $article['title'] }}</h1>
+            <h1 class="font-history text-4xl font-light leading-tight tracking-tight break-words hyphens-auto text-white sm:text-5xl">{{ $article['title'] }}</h1>
             <x-articles.meta :article="$article" class="mt-4" />
 
             @if ($article['image'])

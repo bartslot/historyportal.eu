@@ -239,7 +239,7 @@
                     <span class="range-panel-knob min-w-0 flex-1">
                         <input type="range" class="range range-panel" :min="c.min" :max="c.max" :step="c.step"
                                :value="c.value" :aria-label="names[c.key] ?? c.key" :data-stage25d-look="c.key"
-                               x-on:input="setLook(c.key, Number($event.target.value))" />
+                               x-on:input="c.value = Number($event.target.value); setLook(c.key, c.value)" />
                     </span>
                     <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(c.value ?? 0).toFixed(2)"></span>
                 </label>

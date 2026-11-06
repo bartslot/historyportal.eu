@@ -129,4 +129,5 @@
             </section>
         @endif
     </main>
+    <x-landing.footer />
 </x-layouts.landing>

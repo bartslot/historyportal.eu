@@ -251,7 +251,7 @@
     <button
         type="button"
         data-demo-skip
-        class="hero-skip btn btn-ghost btn-xs absolute bottom-8 right-6 z-30 uppercase tracking-widest text-white/35 hover:text-white/80"
+        class="hero-skip btn btn-ghost btn-xs absolute bottom-8 right-6 z-30 text-white/70 hover:text-white"
     >{{ __('Skip') }}</button>
 
 </section>

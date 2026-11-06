@@ -33,4 +33,5 @@
             </section>
         @endforeach
     </main>
+    <x-landing.footer />
 </x-layouts.landing>

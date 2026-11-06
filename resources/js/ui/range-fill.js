@@ -42,6 +42,12 @@ export function paintFill (input) {
   }
 }
 
+/** The number beside a slider row (<x-ui.slider-row>), from the slider's own value: it follows the hand. */
+export function showNumber (el) {
+  const display = el.closest('.range-panel-knob')?.parentElement?.querySelector('[data-key-display]')
+  if (display) display.textContent = String(Math.round(Number(el.value) * (Number(display.dataset.keyDisplayScale) || 1) * 100) / 100)
+}
+
 const isPanelRange = (el) =>
   el instanceof HTMLInputElement && el.type === 'range' && el.classList.contains('range-panel')
 
@@ -61,7 +67,7 @@ export function initRangeFill (root = document) {
   if (root.__rangeFillReady) return
   root.__rangeFillReady = true
 
-  const onEvent = (e) => { if (isPanelRange(e.target)) paintFill(e.target) }
+  const onEvent = (e) => { if (isPanelRange(e.target)) { paintFill(e.target); showNumber(e.target) } }
   root.addEventListener('input', onEvent)
   root.addEventListener('change', onEvent)
 
@@ -83,6 +89,15 @@ export function initRangeFill (root = document) {
     node.querySelectorAll?.('input.range-panel').forEach((el) => { if (isPanelRange(el)) paintFill(el) })
   }
   paintWithin(root.documentElement ?? root)
+
+  // A Livewire morph puts each wrapper's style attribute back to what the server sent. A row the
+  // server cannot compute (its value lives in Alpine) has none, so without this its knob and fill
+  // fell to 0 on the first round trip, with the real thumb still at its value (tester 2026-11-06).
+  const hookMorphs = () => window.Livewire?.hook('commit', ({ succeed }) => succeed(() => {
+    requestAnimationFrame(() => paintWithin(root.documentElement ?? root))
+  }))
+  if (window.Livewire) hookMorphs()
+  else document.addEventListener('livewire:init', hookMorphs, { once: true })
 
   if (typeof MutationObserver !== 'undefined') {
     new MutationObserver((records) => {

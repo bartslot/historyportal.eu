@@ -6,7 +6,7 @@
         [Seo::url('lessons'), __('Lessons')],
         [Seo::url('articles'), __('Articles')],
         app()->getLocale() === 'nl' ? [route('public.curriculum'), 'Kerndoelen en tijdvakken'] : null,
-        [route('about'), __('About')],
+        [Seo::url('about'), __('About')],
         [route('privacy'), __('Privacy')],
         [route('terms'), __('Terms')],
         ['https://www.linkedin.com/in/bslot/', 'LinkedIn'],

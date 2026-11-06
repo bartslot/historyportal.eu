@@ -15,7 +15,7 @@
 
 <header data-site-header class="site-header fixed inset-x-0 top-0 z-50">
     <div class="site-header__row mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="/#home" class="site-header__logo shrink-0" aria-label="{{ __('History Portal') }}">
+        <a href="{{ \App\Support\Locales::homeUrl(app()->getLocale()) }}#home" class="site-header__logo shrink-0" aria-label="{{ __('History Portal') }}">
             <img
                 src="{{ asset('assets/logo.svg') }}"
                 alt="History Portal"
@@ -27,7 +27,7 @@
 
         <nav class="site-nav flex items-center gap-5 sm:gap-8">
             <a href="{{ \App\Support\Seo::url('articles') }}" class="site-nav__link max-sm:hidden">{{ __('Articles') }}</a>
-            <a href="{{ route('about') }}" class="site-nav__link">{{ __('About') }}</a>
+            <a href="{{ \App\Support\Seo::url('about') }}" class="site-nav__link">{{ __('About') }}</a>
             <a href="{{ $actionUrl }}" class="site-nav__action">{{ $actionLabel }}</a>
         </nav>
     </div>
