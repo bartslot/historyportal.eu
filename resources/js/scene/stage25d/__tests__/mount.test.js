@@ -130,7 +130,7 @@ describe('stage25d live edits', () => {
     expect(saved).toEqual([
       [0, { band: { index: 0, z: 45 } }, 5],
       [0, { band: { index: 0, scale: 1.4 } }, 5],
-      [0, { band: { index: 0, motion: { kind: 'sway', amount: 0.5 } } }, 5],
+      [0, { band: { index: 0, motion: { kind: 'sway', amount: 0.5, speed: 1 } } }, 5],
     ])
 
     stage.setLayerKeys('sky', [{ t: 0, opacity: 0.2 }, { t: 2, opacity: 1 }])
