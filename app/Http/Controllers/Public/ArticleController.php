@@ -21,11 +21,13 @@ use Illuminate\View\View;
  */
 class ArticleController extends Controller
 {
+    private const INDEX_LIMIT = 50;
+
     public function __construct(private readonly WordPressContent $wordpress) {}
 
     public function index(): View
     {
-        $articles = $this->wordpress->posts(12);
+        $articles = $this->wordpress->posts(self::INDEX_LIMIT);
 
         return view('marketing.articles.index', [
             'articles' => $articles,

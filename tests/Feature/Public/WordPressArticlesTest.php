@@ -141,6 +141,64 @@ class WordPressArticlesTest extends TestCase
         $this->assertStringNotContainsString('/articles', $this->get(route('sitemap'))->getContent());
     }
 
+    public function test_reading_time_rounds_up_at_two_hundred_words_a_minute(): void
+    {
+        $words = fn (int $count) => '<p>'.str_repeat('woord ', $count).'</p>';
+
+        $this->fakeWordPress([
+            $this->wpPost(['slug' => 'exactly-two', 'content' => ['rendered' => $words(400)]]),
+            $this->wpPost(['slug' => 'just-over-two', 'content' => ['rendered' => $words(401)]]),
+            $this->wpPost(['slug' => 'short', 'content' => ['rendered' => $words(60)]]),
+        ]);
+
+        $minutes = app(WordPressContent::class)->posts(3)->pluck('reading_minutes', 'slug');
+
+        $this->assertSame(2, $minutes['exactly-two']);
+        $this->assertSame(3, $minutes['just-over-two']);
+        $this->assertSame(1, $minutes['short']);
+    }
+
+    public function test_reading_time_counts_what_a_reader_reads_and_not_the_markup(): void
+    {
+        // Elementor drops styles and scripts into the body; accented words count as one word.
+        $body = '<style>.a { color: red; }</style><script>var a = 1;</script>'
+            .'<p class="x" data-y="z">'.str_repeat('één geschiedenisles ', 100).'</p>';
+        $this->fakeWordPress([$this->wpPost(['content' => ['rendered' => $body.$body.$body]])]);
+
+        $this->assertSame(3, app(WordPressContent::class)->posts(1)->first()['reading_minutes']);
+    }
+
+    public function test_every_article_shows_its_own_reading_time(): void
+    {
+        $posts = collect([1, 2, 3, 4, 5])->map(fn (int $minutes) => $this->wpPost([
+            'slug' => "post-{$minutes}",
+            'title' => ['rendered' => "Post {$minutes}"],
+            'content' => ['rendered' => '<p>'.str_repeat('woord ', $minutes * 200).'</p>'],
+        ]))->all();
+        $this->fakeWordPress($posts);
+
+        $index = $this->get(route('public.articles'))->assertOk();
+
+        foreach ([1, 2, 3, 4, 5] as $minutes) {
+            $index->assertSee("{$minutes} min read");
+        }
+
+        $this->get(route('public.article', ['slug' => 'post-1']))->assertOk()->assertSee('1 min read');
+    }
+
+    public function test_the_three_newest_are_featured_and_the_rest_are_a_list(): void
+    {
+        $this->fakeWordPress(collect(range(1, 5))->map(fn (int $n) => $this->wpPost([
+            'slug' => "post-{$n}",
+            'title' => ['rendered' => "Post {$n}"],
+        ]))->all());
+
+        $html = $this->get(route('public.articles'))->assertOk()->getContent();
+
+        $this->assertSame(3, substr_count($html, 'data-article-featured'));
+        $this->assertSame(2, substr_count($html, 'data-article-row'));
+    }
+
     public function test_wordpress_is_asked_only_for_published_posts(): void
     {
         $this->fakeWordPress([$this->wpPost()]);

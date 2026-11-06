@@ -29,6 +29,9 @@ class WordPressContent
 
     private const TIMEOUT_SECONDS = 6;
 
+    /** A common adult reading speed for non-fiction, in any of our languages. */
+    private const WORDS_PER_MINUTE = 200;
+
     public function __construct(
         private readonly ?string $baseUrl = null,
     ) {}
@@ -131,6 +134,7 @@ class WordPressContent
             'title' => $title,
             'excerpt' => Str::limit($excerpt !== '' ? $excerpt : $this->plain($html), 220),
             'html' => $html,
+            'reading_minutes' => $this->readingMinutes($html),
             'published_at' => isset($item['date']) ? Carbon::parse($item['date']) : null,
             'updated_at' => isset($item['modified']) ? Carbon::parse($item['modified']) : null,
             'source_url' => (string) ($item['link'] ?? ''),
@@ -152,6 +156,15 @@ class WordPressContent
         }
 
         return Str::length(trim(strip_tags($item['html']))) >= 200;
+    }
+
+    private function readingMinutes(string $html): int
+    {
+        // strip_tags keeps what is inside <style> and <script>, and Elementor leaves both in a body.
+        $text = $this->plain((string) preg_replace('#<(style|script)\b.*?</\1>#is', ' ', $html));
+        $words = preg_match_all("/[\p{L}\p{N}'’-]+/u", $text);
+
+        return max(1, (int) ceil($words / self::WORDS_PER_MINUTE));
     }
 
     private function plain(string $html): string

@@ -27,13 +27,7 @@
 
         <article class="mt-6">
             <h1 class="font-history text-4xl font-light tracking-tight text-white sm:text-5xl">{{ $article['title'] }}</h1>
-            @if ($article['published_at'])
-                <p class="mt-3 text-sm text-slate-500">
-                    <time datetime="{{ $article['published_at']->toDateString() }}">
-                        {{ $article['published_at']->isoFormat('LL') }}
-                    </time>
-                </p>
-            @endif
+            <x-articles.meta :article="$article" class="mt-3" />
 
             <div class="wp-content mt-8 space-y-5 text-base leading-relaxed text-slate-300">
                 {!! $article['html'] !!}
