@@ -57,6 +57,13 @@ export function wireFor (el) {
   return null
 }
 
+/** A data url as a short blob: url. Null stays null. */
+const blobUrlOf = (dataUrl) => {
+  if (!dataUrl) return null
+  const [head, body] = dataUrl.split(',')
+  return URL.createObjectURL(new Blob([Uint8Array.from(atob(body), (c) => c.charCodeAt(0))], { type: head.slice(5).split(';')[0] }))
+}
+
 const words = () => {
   try { return JSON.parse(document.querySelector('[data-cutout-labels]')?.dataset.cutoutLabels || '{}') } catch { return {} }
 }
@@ -366,6 +373,18 @@ export async function openCutout (target) {
         })
     }
 
+    /** What Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned. */
+    const pictureNow = () => (mask && (pictureWork() || opensCleaned) ? mask.resultDataURL() : null)
+    /** The other tabs draw the picture as it is now, erased but not saved too. A short url: one tile each would repeat a data url. */
+    let workUrl = null
+    const showPictureWork = (other) => {
+      const picture = pictureNow()
+      if (!other || (!picture && !workUrl)) return
+      if (workUrl) URL.revokeObjectURL(workUrl)
+      workUrl = blobUrlOf(picture)
+      other.setPicture(workUrl)
+    }
+
     /** Show one mode: its view, its strip and its panel; the others step back. */
     const setMode = (next) => {
       others[mode]?.hide()
@@ -373,6 +392,7 @@ export async function openCutout (target) {
       for (const el of root.querySelectorAll('[data-mode-for]')) el.hidden = el.dataset.modeFor !== next
       for (const input of root.querySelectorAll('[name="cut-mode"]')) input.checked = input.value === next
       if (next === 'picture') showPicture()
+      else showPictureWork(others[next])
       others[next]?.show()
       refresh()
     }
@@ -381,8 +401,7 @@ export async function openCutout (target) {
     if (target.stage) {
       peek = mountScenePeek({
         button: $('[data-cut-scene]'), label: $('[data-cut-scene-label]'), pane: $('[data-cut-scene-pane]'), t, stage: target.stage, stageId: target.stageId,
-        // what Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned
-        picture: () => (mask && (pictureWork() || opensCleaned) ? mask.resultDataURL() : null),
+        picture: pictureNow,
       })
     }
     /** A mode's save reaches the server itself, so a failure can be told and the window can stay. */

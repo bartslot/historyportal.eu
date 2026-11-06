@@ -74,6 +74,52 @@ describe('the Bones tab', () => {
     expect(stage.setBones.mock.lastCall[1]['bone:head']).toBe(10)   // the layer's own pose stayed
   })
 
+  it('Add key at rest holds the rest, so a turned key later moves from it', () => {
+    const key = parts.strip.querySelector('[data-bn-key]')
+    key.click()
+    expect(key.textContent).toBe('Remove key')
+    expect(stage.setBones.mock.lastCall[2]).toEqual([expect.objectContaining({ t: 2, 'bone:head': 0, 'bone:forearm_n': 0 })])
+    const time = parts.strip.querySelector('[data-bn-time]')
+    time.value = '4'
+    time.dispatchEvent(new Event('input'))
+    slide('head', 20)
+    time.value = '3'
+    time.dispatchEvent(new Event('input'))
+    const head = Number(parts.panel.querySelector('[data-cut-bn-head]').value)
+    expect(head).toBeGreaterThan(0)
+    expect(head).toBeLessThan(20)
+  })
+
+  it('a forearm the body folded comes back in the same gesture', () => {
+    const uv = [0, 0, 1, 1]
+    tab = mount({
+      pose: { upperarm_n: 150, forearm_n: -120 },
+      puppet: {
+        atlas: '/a.png', width: 300, height: 400, facing: 1,
+        bones: [{ name: 'hips', parent: null, from: [150, 200] }, { name: 'chest', parent: 'hips', from: [150, 200] }, { name: 'upperarm_n', parent: 'chest', from: [70, 60] }, { name: 'forearm_n', parent: 'upperarm_n', from: [70, 130] }],
+        parts: [{ bone: 'hips', quad: quad(110, 200, 190, 400), uv }, { bone: 'forearm_n', quad: quad(55, 130, 85, 230), uv }, { bone: 'upperarm_n', quad: quad(55, 60, 85, 130), uv }, { bone: 'chest', quad: quad(110, 50, 190, 200), uv }],
+      },
+    })
+    const upper = parts.panel.querySelector('[data-cut-bn-upperarm_n]')
+    const forearm = () => stage.setBones.mock.lastCall[1]['bone:forearm_n']
+    const step = (value) => { upper.value = String(value); upper.dispatchEvent(new Event('input')) }
+    step(0)
+    expect(forearm()).toBeGreaterThan(-120)   // against the body: the hand stops at its edge
+    step(150)
+    expect(forearm()).toBe(-120)              // room again: back to what the teacher had
+    upper.dispatchEvent(new Event('change'))
+  })
+
+  it('shows the Picture tab\'s work without saving it, null brings the file back', () => {
+    const setSrc = vi.spyOn(HTMLImageElement.prototype, 'src', 'set')
+    tab.setPicture('blob:work')
+    expect(setSrc).toHaveBeenLastCalledWith('blob:work')
+    tab.setPicture(null)
+    expect(setSrc).toHaveBeenLastCalledWith('/a.png')
+    expect(saveLayer).not.toHaveBeenCalled()
+    setSrc.mockRestore()
+  })
+
   it('moving the playhead shows the pose there; Remove key takes it away', () => {
     tab = mount({ keys: [{ t: 2, 'bone:head': 0 }, { t: 4, 'bone:head': 20 }, { t: 3, x: 0.2 }] })
     const head = parts.panel.querySelector('[data-cut-bn-head]')

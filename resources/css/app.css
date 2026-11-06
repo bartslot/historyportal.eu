@@ -2253,20 +2253,24 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 /* ─── An animation's tile in the 3D Assets tab (script-editor.blade.php): a one-frame window over the sprite sheet.
        The sheet steps across a row (translate) and down the rows (transform), frame by frame, at the sheet's fps. ─── */
-/* The Motion row's pictures (x-ui.segmented `moves`): each moves the way its motion moves a layer, on hover only. */
+/* The Motion section's pictures (x-ui.segmented `moves`): each moves the way its motion moves a layer, as long as the section is open. */
 .motion-preview { transform-box: fill-box; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: no-preference) {
-  .tab:is(:hover, :has(:focus-visible)) .motion-preview-sway { animation: motion-sway 1.4s ease-in-out infinite alternate; }
-  .tab:is(:hover, :has(:focus-visible)) .motion-preview-drift { animation: motion-drift 2s ease-in-out infinite alternate; }
-  .tab:is(:hover, :has(:focus-visible)) .motion-preview-ripple { animation: motion-ripple 0.7s ease-in-out infinite alternate; }
-  .tab:is(:hover, :has(:focus-visible)) .motion-preview-flicker { animation: motion-flicker 0.22s linear infinite alternate; }
-  .tab:is(:hover, :has(:focus-visible)) .motion-preview-breathe { animation: motion-breathe 1.6s ease-in-out infinite alternate; }
+  .motion-preview-sway { animation: motion-sway 1.4s ease-in-out infinite alternate; }
+  .motion-preview-drift { animation: motion-drift 2s ease-in-out infinite alternate; }
+  .motion-preview-ripple { animation: motion-ripple 0.7s ease-in-out infinite alternate; }
+  .motion-preview-flicker { animation: motion-flicker 0.22s linear infinite alternate; }
+  .motion-preview-breathe { animation: motion-breathe 1.6s ease-in-out infinite alternate; }
+  .motion-preview-handheld { animation: motion-handheld 2.4s ease-in-out infinite alternate; }
+  .motion-preview-shake { animation: motion-shake 0.16s linear infinite alternate; }
 }
 @keyframes motion-sway { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
 @keyframes motion-drift { from { transform: translateX(-4px); } to { transform: translateX(4px); } }
 @keyframes motion-ripple { from { transform: skewX(-10deg) translateY(1px); } to { transform: skewX(10deg) translateY(-1px); } }
 @keyframes motion-flicker { from { transform: scaleY(0.88); opacity: 0.65; } to { transform: scaleY(1.08); opacity: 1; } }
 @keyframes motion-breathe { from { transform: scale(0.92); } to { transform: scale(1.1); } }
+@keyframes motion-handheld { from { transform: translate(-2px, 1px) rotate(-2deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } to { transform: translate(2px, 1px) rotate(-1deg); } }
+@keyframes motion-shake { from { transform: translate(-1.5px, 1px) rotate(-3deg); } to { transform: translate(1.5px, -1px) rotate(3deg); } }
 .s25-sheet { position: relative; display: block; height: 100%; max-width: 100%; overflow: hidden; }
 .s25-sheet > img {
   position: absolute; left: 0; top: 0; max-width: none;

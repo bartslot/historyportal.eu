@@ -1416,6 +1416,8 @@
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
             get motionKind() { return this.info?.motion?.kind ?? 'none'; },
             set motionKind(kind) { this.setMotion({ kind }); },
+            get cameraMotionKind() { return this.cam?.motion?.kind ?? 'none'; },
+            set cameraMotionKind(kind) { this.cameraMotion({ kind }); },
             /** An animation's playback: speed (fps scale) and where it starts (s). Live, one save, Cmd-Z undoes it. */
             setPlay(patch) { window.__stage25d?.setLayerPlay?.(id, patch); this.sync(); },
             /** The spark: the edit runs on, whichever panel is open, until the server says it landed (EditsWithSpark). */

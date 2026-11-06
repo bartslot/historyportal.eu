@@ -15,7 +15,7 @@ import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
-import { cellOf, frameAt, isAnimation } from './sprite'
+import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
@@ -25,7 +25,7 @@ import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
-import type { Asset, Depth, GroundBand, Lesson, Library, Puppet, Scene, SceneLayer } from './types'
+import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
@@ -164,7 +164,7 @@ export class Stage {
       const puppet = puppetOf(asset, layer, lib.base)
       try { tex = await loadPremultiplied(layer.src ?? puppet?.atlas ?? urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
       if (token !== this.buildToken) return
-      asset = editedAsset(asset, layer, tex, puppet)
+      asset = editedAsset(asset, layer, tex.getSize(), puppet)
       const bent = puppet ? bindPuppet(puppet)
         : layer.rig?.length && layer.rigMap ? await bindMappedPicture(urlOf(lib, asset, layer), layer.rigMap, layer.rig)
           : layer.rig?.length ? bindPicture(await alphaOf(urlOf(lib, asset, layer)), layer.rig) : null
@@ -463,7 +463,7 @@ export class Stage {
       if (!found) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
       const tex = await loadPremultiplied(urlOf(lib, found, g), this.scene).catch(() => null)
       if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); continue }
-      const asset = editedAsset(found, g, tex)
+      const asset = editedAsset(found, g, tex.getSize())
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
       const handle = makeLayer(asset, tex, w, h, 1, this.scene)
@@ -571,16 +571,6 @@ export class Stage {
 
 /** A picture's file: the teacher's edited copy (layer.src, written by the app's image editor) or the library's own. */
 const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) => layer?.src ?? lib.base + asset.file
-
-/** An edited copy may be cropped: it keeps the library's metres per pixel, so its own pixel size sets its shape. */
-const editedAsset = (asset: Asset, layer: { src?: string }, tex: RawTexture, puppet: Puppet | null): Asset => {
-  const src = layer.src ?? puppet?.atlas   // what a pick reads: on a puppet the uv is the atlas's, not the drawing's
-  if (!src) return asset
-  if (!asset.w || !asset.h) return { ...asset, src }
-  const { width, height } = puppet ?? tex.getSize()   // a puppet's texture is its atlas: its size is the drawing's, not the atlas's
-  const w = width / (isAnimation(asset) ? asset.cols! : 1), h = height / (isAnimation(asset) ? asset.rows! : 1)   // a sheet: one frame's size
-  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h), src }   // src: a pick reads the edited copy's alpha
-}
 
 /** A picture's uv per px, as uv of its atlas when it has one: the same grain, line and hatching on a part as on the drawing. */
 const fitted = (uvPerPx: readonly [number, number], fit: readonly [number, number] = [1, 1]) => [uvPerPx[0] * fit[0], uvPerPx[1] * fit[1]] as const

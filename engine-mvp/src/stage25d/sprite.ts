@@ -6,6 +6,21 @@ import type { Asset, SceneLayer } from './types'
 export const isAnimation = (a: Pick<Asset, 'kind' | 'cols' | 'rows'> | null | undefined): boolean =>
   a?.kind === 'animation' && (a.cols ?? 0) >= 1 && (a.rows ?? 0) >= 1
 
+/**
+ * The asset as a layer's own file changes it. An edited copy may be cropped: it keeps the library's metres per pixel, so its
+ * own pixel size sets its shape. A figure of parts is a drawing of the whole person at any pixel size: it stands at the library's
+ * height, and its texture is an atlas, so the drawing gives the shape. `src` is what a pick reads.
+ */
+export const editedAsset = (asset: Asset, layer: { src?: string }, size: { width: number, height: number }, puppet?: { atlas: string, width: number, height: number } | null): Asset => {
+  const src = layer.src ?? puppet?.atlas
+  if (!src) return asset
+  if (puppet) return { ...asset, w: puppet.width, h: puppet.height, src }
+  if (!asset.w || !asset.h) return { ...asset, src }
+  const sheet = isAnimation(asset)
+  const w = size.width / (sheet ? asset.cols! : 1), h = size.height / (sheet ? asset.rows! : 1)   // a sheet: one frame's size
+  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h), src }
+}
+
 export const FPS = 12
 
 /** How many frames a sheet holds. */

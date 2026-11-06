@@ -10,7 +10,7 @@ import { bonesAt } from '@stage25d/stage25d/layout'
 import { createHistory } from './history.js'
 import { secondsLabel } from './frames-tab.js'
 import { icon, ICONS, slider, syncSlider } from './cutout-markup.js'
-import { movableBones, matricesOf, jointAt, partUnder, turnBetween, poseFields, poseTimes, poseKeyAt, withPoseKey, withoutPoseKey } from './puppet-pose.js'
+import { movableBones, matricesOf, jointAt, partUnder, turnBetween, poseFields, poseTimes, poseKeyAt, wholePose, withPoseKey, withoutPoseKey } from './puppet-pose.js'
 
 const LABELS = { head: 'Neck', chest: 'Upper body', upperarm_n: 'Near upper arm', forearm_n: 'Near forearm', upperarm_f: 'Far upper arm', forearm_f: 'Far forearm' }
 const OPAQUE_ALPHA = 24
@@ -154,16 +154,20 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
   const render = () => { renderPanel(); renderStrip(); repaint() }
   const changed = () => { render(); toStage(); onChange() }
 
+  /** The forearm as it stood when this gesture began: the body may fold it on the way, it comes back when there is room again. */
+  let forearmAsked
   /** A bone turned at the playhead: a key when the figure has keys, else the layer's own pose. */
   const withTurn = (name, deg) => {
     const was = draft()
     // the body's say over the whole pose: an upper arm turned may bring the hand against the body
-    const pose = bent.safe({ ...poseNow(), [name]: deg })
-    if (poseTimes(was.keys).length) return { ...was, keys: withPoseKey(was.keys, now, pose) }
+    const asked = name !== 'forearm_n' && forearmAsked !== undefined ? { forearm_n: forearmAsked } : {}
+    const pose = bent.safe({ ...poseNow(), ...asked, [name]: deg })
+    if (poseTimes(was.keys).length) return { ...was, keys: withPoseKey(was.keys, now, wholePose(movable, pose)) }
     return { ...was, base: { ...was.base, [name]: pose[name], ...(pose.forearm_n !== undefined ? { forearm_n: pose.forearm_n } : {}) } }
   }
   /** One gesture, one undo: the first step goes on the history, the rest replace it. */
   const turn = (name, deg, first) => {
+    if (first) forearmAsked = turnOf('forearm_n')
     const next = withTurn(name, limit(name, deg))
     if (first) history.push(next); else history.replace(next)
     changed()
@@ -262,7 +266,7 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
   strip.querySelector('[data-bn-play]').addEventListener('click', play)
   strip.querySelector('[data-bn-key]').addEventListener('click', () => {
     const at = poseKeyAt(draft().keys, now)
-    history.push({ ...draft(), keys: at !== null ? withoutPoseKey(draft().keys, at) : withPoseKey(draft().keys, now, poseNow()) })
+    history.push({ ...draft(), keys: at !== null ? withoutPoseKey(draft().keys, at) : withPoseKey(draft().keys, now, wholePose(movable, poseNow())) })
     changed()
   })
   panel.querySelector('[data-bn-reset]').addEventListener('click', () => {
@@ -304,6 +308,8 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
     discard: () => { if (history.dirty) stage.setBones?.(stageId, poseFields(base), keys) },
     show: repaint,
     hide: stop,
+    /** The Picture tab's work, not saved yet: null is the file it opened with. */
+    setPicture: (url) => { img.src = url ?? atlas },
     destroy: () => { stop(); cancelAnimationFrame(frame); resized?.disconnect() },
     key: (e) => {
       if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"], button')) { if (!e.repeat) play(); return true }

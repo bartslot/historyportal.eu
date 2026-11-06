@@ -115,6 +115,18 @@ def test_there_is_paint_behind_the_neck_when_the_head_turns():
     assert bones.index('neck') < bones.index('head'), 'the neck goes behind the head'
 
 
+def test_the_jaw_in_the_hidden_paint_does_not_stay_behind_when_the_head_lifts():
+    rest, parts_map, under = figure()
+    parts_map[20:50, 120:135] = (*COLOURS['head'], 255)   # a jaw out past the neck, above the pivot row
+    rest[20:50, 120:135] = (230, 170, 140, 255)
+    parts_map[50:60, 80:120] = (*COLOURS['head'], 255)    # the neck at the pivot row: columns 80 to 119
+    rest[50:60, 80:120] = (230, 170, 140, 255)
+    under = rest.copy()
+    parts = dict(cut(rest, parts_map, under, JOINTS)[0])
+    assert parts['neck'][35, 128, 3] == 0, 'a spike of jaw stays under the chin'
+    assert parts['neck'][45, 100, 3] == 255, 'a hole opens where the head was'
+
+
 def test_the_collar_under_the_turning_point_stays_on_the_chest():
     rest, parts_map, under = figure()
     parts_map[50:60, 95:105] = (*COLOURS['head'], 255)   # the throat, below the head's pivot row

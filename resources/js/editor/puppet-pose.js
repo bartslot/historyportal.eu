@@ -72,6 +72,9 @@ export const poseTimes = (keys) => keys.filter((k) => Object.keys(k).some(isBone
 
 export const poseKeyAt = (keys, t) => poseTimes(keys).find((u) => Math.abs(u - t) < KEY_EPSILON) ?? null
 
+/** A pose with every bone named, 0 where it stands at rest: a key at rest holds that rest, or nothing moves from it. */
+export const wholePose = (movable, pose) => Object.fromEntries(movable.map((name) => [name, pose[name] ?? 0]))
+
 /** The keys with this whole pose at t; whatever else a key there holds (x, scale) stays. */
 export const withPoseKey = (keys, t, pose) => {
   const at = keys.findIndex((k) => Math.abs(k.t - t) < KEY_EPSILON)

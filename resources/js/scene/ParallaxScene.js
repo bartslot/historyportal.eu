@@ -193,7 +193,8 @@ export class ParallaxScene {
               ...(heroUrl ? [{ url: heroUrl, kind: 'figure', depth: HERO_PAN_FACTOR, scale: HERO_BASE_SCALE, sway: true }] : []),
             ]
           : [])
-    if (!specs.length) { replaces?.destroy(); return }
+    // Nothing to draw (figures on the scene's own gradient or colour): the flat picture under it goes now.
+    if (!specs.length) { replaces?.destroy(); hideFlatLayers(covers); return }
 
     injectStyles()
     // A panel that slides, wipes or dissolves in does so OVER the one before it.

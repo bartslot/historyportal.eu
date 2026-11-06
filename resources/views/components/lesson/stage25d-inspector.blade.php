@@ -49,25 +49,25 @@
                     <span class="text-panel-hint">°</span>
                 </label>
             </x-ui.panel-row>
-            <x-ui.panel-row :label="__('Motion')">
-                <select class="select select-xs w-full" data-camera-motion="kind" x-on:change="cameraMotion({ kind: $event.target.value })">
-                    @foreach ([['none', __('None')], ['sway', __('Sway')], ['handheld', __('Handheld')], ['shake', __('Shake')]] as [$kind, $label])
-                        <option value="{{ $kind }}" :selected="cam?.motion?.kind === '{{ $kind }}'">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </x-ui.panel-row>
-            @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
-                <div x-show="cam?.motion?.kind !== 'none'">
-                    <x-ui.panel-row :label="$label">
-                        <span class="range-panel-knob min-w-0 flex-1">
-                            <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-camera-motion="{{ $prop }}" aria-label="{{ $label }}"
-                                   :value="cam?.motion?.{{ $prop }}" x-on:input="cameraMotion({ {{ $prop }}: Number($event.target.value) })" />
-                        </span>
-                        <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(cam?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
-                    </x-ui.panel-row>
-                </div>
-            @endforeach
         </div>
+        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="cam" data-motion-section>
+            <x-slot:icon><img src="{{ asset('images/icons/motion.svg') }}" alt="" width="13" height="8" class="shrink-0" /></x-slot:icon>
+            <div class="space-y-1">
+                <x-ui.segmented panel class="w-full" name="stage25d-camera-motion" tab-class="flex-1 px-0" model="cameraMotionKind"
+                                :options="[['none', __('None'), ['moves' => 'none']], ['sway', __('Sway'), ['moves' => 'sway']], ['handheld', __('Handheld'), ['moves' => 'handheld']], ['shake', __('Shake'), ['moves' => 'shake']]]" />
+                @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
+                    <div x-show="cam?.motion?.kind !== 'none'">
+                        <x-ui.panel-row :label="$label">
+                            <span class="range-panel-knob min-w-0 flex-1">
+                                <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-camera-motion="{{ $prop }}" aria-label="{{ $label }}"
+                                       :value="cam?.motion?.{{ $prop }}" x-on:input="cameraMotion({ {{ $prop }}: Number($event.target.value) })" />
+                            </span>
+                            <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(cam?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
+                        </x-ui.panel-row>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.settings-section>
 
         <button type="button" class="btn btn-ghost btn-sm mt-3 w-full" data-camera-still x-show="cam?.moves" x-on:click="stillCamera()">
             {{ __('Keep the camera still') }}
@@ -182,18 +182,10 @@
             </x-ui.panel-row>
         </div>
 
-        <div class="divider my-2" role="presentation"></div>
-
         <div class="space-y-1" x-show="info">
-            {{-- Figma 2542:1938: one picture per motion, it moves that way on hover. --}}
-            <div class="space-y-1" data-stage25d-motion-kinds>
-                <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Motion') }}</span>
-                <x-ui.segmented panel class="w-full" :name="'stage25d-motion-'.$layerId" tab-class="flex-1 px-0" model="motionKind"
-                                :options="collect(\App\Services\Stage25d\LayerKeys::MOTION_KINDS)->map(fn ($kind) => [$kind, __(ucfirst($kind)), ['moves' => $kind]])->all()" />
-            </div>
             {{-- An animation (VFX): how fast it plays (1 = the sheet's own fps, 0 holds a frame) and where it starts. --}}
             <template x-if="info?.anim">
-                <div class="space-y-1" data-stage25d-play>
+                <div class="space-y-1 border-t border-panel-hairline pt-3" data-stage25d-play>
                     <x-ui.panel-row :label="__('Play speed')">
                         <span class="range-panel-knob min-w-0 flex-1">
                             <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-stage25d-play-field="speed"
@@ -214,19 +206,27 @@
                     </x-ui.panel-row>
                 </div>
             </template>
-            @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
-                <div x-show="info?.motion?.kind !== 'none'">
-                <x-ui.panel-row :label="$label">
-                    <span class="range-panel-knob min-w-0 flex-1">
-                        <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-stage25d-motion="{{ $prop }}"
-                               aria-label="{{ $label }}"
-                               :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
-                    </span>
-                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
-                </x-ui.panel-row>
-                </div>
-            @endforeach
         </div>
+        {{-- Figma 2607:2626, closed; 2542:1938 inside: one picture per motion, moving that way from the moment it opens. Anything else clicked closes it. --}}
+        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="info" data-motion-section>
+            <x-slot:icon><img src="{{ asset('images/icons/motion.svg') }}" alt="" width="13" height="8" class="shrink-0" /></x-slot:icon>
+            <div class="space-y-1" data-stage25d-motion-kinds>
+                <x-ui.segmented panel class="w-full" :name="'stage25d-motion-'.$layerId" tab-class="flex-1 px-0" model="motionKind"
+                                :options="collect(\App\Services\Stage25d\LayerKeys::MOTION_KINDS)->map(fn ($kind) => [$kind, __(ucfirst($kind)), ['moves' => $kind]])->all()" />
+                @foreach ([['amount', __('Amount')], ['speed', __('Speed')]] as [$prop, $label])
+                    <div x-show="info?.motion?.kind !== 'none'">
+                        <x-ui.panel-row :label="$label">
+                            <span class="range-panel-knob min-w-0 flex-1">
+                                <input type="range" min="0" max="3" step="0.05" class="range range-panel" data-stage25d-motion="{{ $prop }}"
+                                       aria-label="{{ $label }}"
+                                       :value="info?.motion?.{{ $prop }}" x-on:input="setMotion({ {{ $prop }}: Number($event.target.value) })" />
+                            </span>
+                            <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(info?.motion?.{{ $prop }} ?? 0).toFixed(2)"></span>
+                        </x-ui.panel-row>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.settings-section>
     @else
         {{-- The stage draws the picture itself; 2D switches this scene back to pictures and panels. --}}
         @if ($scene)

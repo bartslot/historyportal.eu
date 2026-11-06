@@ -141,6 +141,10 @@
                     </span>
                     <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="`${g.angle}°`"></span>
                 </div>
+                {{-- As with Use colour: the dropdown only shows the choice, a mis-click keeps the picture. --}}
+                @if ($bgType !== 'gradient')
+                    <button type="button" class="btn btn-xs" data-bg-apply-gradient @click="save()">{{ __('Use gradient') }}</button>
+                @endif
             </div>
 
             {{-- Video: a YouTube or Vimeo link, shown in an iframe behind everything. --}}

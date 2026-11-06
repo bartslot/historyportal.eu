@@ -109,6 +109,8 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
   const show = $(view, '[data-fr-show]')
   const ctx = show.getContext?.('2d') ?? null
 
+  let shownSheet = sheet   // the Picture tab's work when it has some, not saved yet
+
   /** The big picture: one cell of the sheet. */
   const paint = (cell) => {
     if (!ctx || !image) return
@@ -125,7 +127,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
   const renderTiles = () => {
     list.innerHTML = draft().frames.map((cell, i) => `
       <button type="button" class="flex shrink-0 flex-col items-center gap-0.5 rounded border p-0.5 outline-none focus-visible:border-primary" data-frame="${i}" aria-label="${t('Frame :n of :total').replace(':n', i + 1).replace(':total', draft().frames.length)}">
-        <span class="block h-16 rounded-sm" style="aspect-ratio:${ratio};${cellStyle(frames, cell, sheet)}"></span>
+        <span class="block h-16 rounded-sm" style="aspect-ratio:${ratio};${cellStyle(frames, cell, shownSheet)}"></span>
         <span class="text-xs tabular-nums text-panel-label">${i + 1}</span>
       </button>`).join('')
   }
@@ -274,8 +276,11 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
   })
   speed.addEventListener('change', () => { sliding = false })
   const cells = $(panel, '[data-fr-cells]')
-  cells.innerHTML = Array.from({ length: framesIn(frames) }, (_, cell) => `
-    <button type="button" class="rounded-sm border border-transparent hover:border-primary focus-visible:border-primary" data-cell="${cell}" aria-label="${t('Add a frame')} ${cell + 1}" style="aspect-ratio:${ratio};${cellStyle(frames, cell, sheet)}"></button>`).join('')
+  const renderCells = () => {
+    cells.innerHTML = Array.from({ length: framesIn(frames) }, (_, cell) => `
+    <button type="button" class="rounded-sm border border-transparent hover:border-primary focus-visible:border-primary" data-cell="${cell}" aria-label="${t('Add a frame')} ${cell + 1}" style="aspect-ratio:${ratio};${cellStyle(frames, cell, shownSheet)}"></button>`).join('')
+  }
+  renderCells()
   cells.addEventListener('click', (e) => {
     const el = e.target.closest?.('[data-cell]')
     if (!el) return
@@ -301,6 +306,14 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     discard: () => { if (history.dirty) stage.setLayerProp?.(stageId, 'play', frames.play ?? undefined) },
     show: () => { paintPicked() },
     hide: stop,
+    /** The Picture tab's work, not saved yet: null is the file it opened with. */
+    setPicture: (url) => {
+      shownSheet = url ?? sheet
+      img.src = shownSheet
+      renderTiles()
+      renderPicked()
+      renderCells()
+    },
     destroy: () => { stop(); sortable.destroy() },
     /** A key while this tab shows. True: it was for this tab. */
     key: (e) => {

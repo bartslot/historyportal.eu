@@ -226,7 +226,13 @@ def cut(rest, parts_map, under, joints):
     # hole in the collar, and no skin swings out at the jaw
     below = np.zeros_like(solid)
     below[pivot_row:] = True
-    around = capsule(solid.shape, j['head']['from'], j['head']['from'], NECK) & under_solid
+    # the hidden part keeps to the neck's own width above that row: the jaw in the waistcoat-off picture must not stay behind when the head lifts
+    neck_columns = np.where(mask['head'][pivot_row])[0]
+    within = np.ones_like(solid)
+    if neck_columns.size:
+        within = below.copy()
+        within[:, neck_columns.min():neck_columns.max() + 1] = True
+    around = capsule(solid.shape, j['head']['from'], j['head']['from'], NECK) & under_solid & within
     out.append(('neck', layered((rest, mask['head'] & below), (under, around & (mask['head'] | mask['chest'])))))
     out.append(('head', layered((rest, mask['head'] & ~below & ~paper_flecks(rest, mask['head'], pivot_row)),)))
     out.append(('chest', layered((rest, mask['chest']),)))

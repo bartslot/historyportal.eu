@@ -6,7 +6,7 @@
      * `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
      * for a filled glyph (App\Support\TabIcons), ['motion' => ms, 'factor' => f] for a
      * movement's own curve that plays on hover, or ['moves' => kind] for a picture that moves that
-     * way on hover (.motion-preview in app.css). The tab then shows the icon, and the label becomes
+     * way while it shows (.motion-preview in app.css). The tab then shows the icon, and the label becomes
      * its tooltip and accessible name.
      */
     'options' => [],
