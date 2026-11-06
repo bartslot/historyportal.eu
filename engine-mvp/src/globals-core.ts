@@ -3,5 +3,8 @@
 import * as core from '@babylonjs/core'
 import * as materials from '@babylonjs/materials'
 import earcut from 'earcut'
+// Babylon 9 loads material shaders on demand; under Vite that fetch gets index.html and the grid never compiles
+import '@babylonjs/materials/grid/grid.vertex'
+import '@babylonjs/materials/grid/grid.fragment'
 
 Object.assign(window, { BABYLON: { ...core, ...materials }, earcut })
