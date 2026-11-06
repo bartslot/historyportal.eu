@@ -57,7 +57,7 @@
         ],
         'objectLabels' => ['background' => __('Background')],
         'propertyLabels' => [
-            'bone:head' => __('The head'), 'bone:chest' => __('The chest'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
+            'bone:head' => __('Neck'), 'bone:chest' => __('Upper body'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'),
             'x' => __('Position').' X', 'y' => __('Position').' Y', 'z' => 'Z',
             'w' => __('Width'), 'width' => __('Width'), 'height' => __('Height'),

@@ -2683,8 +2683,6 @@
     "Add a frame": "Beeld toevoegen",
     "All frames in order": "Alle beelden op volgorde",
     "Frame :n of :total": "Beeld :n van :total",
-    "The head": "Hoofd",
-    "The chest": "Borst",
     "Near upper arm": "Bovenarm voor",
     "Near forearm": "Onderarm voor",
     "Far upper arm": "Bovenarm achter",
@@ -2694,5 +2692,7 @@
     "Remove key": "Keyframe verwijderen",
     "Time in the scene": "Tijd in de scène",
     "Remove from My cut-outs": "Verwijderen uit Mijn uitsneden",
-    "Removed from My cut-outs.": "Verwijderd uit Mijn uitsneden."
+    "Removed from My cut-outs.": "Verwijderd uit Mijn uitsneden.",
+    "Neck": "Nek",
+    "Upper body": "Bovenlijf"
 }

@@ -151,7 +151,7 @@ export async function openCutout (target) {
       for (const el of root.children) if (el !== ask) el.inert = on
     }
     // A button clicked with the mouse gives the keyboard back: Space plays, it does not press that button again
-    root.addEventListener('click', (e) => { if (e.detail > 0 && !asking() && e.target.closest?.('button') && !e.target.closest('[data-cut-ask]')) root.focus({ preventScroll: true }) })
+    root.addEventListener('click', (e) => { if (e.detail > 0 && !asking() && e.target.closest?.('button, label') && !e.target.closest('[data-cut-ask]')) root.focus({ preventScroll: true }) })
     const stay = () => { setAsking(false); root.focus(); others[mode]?.show() }
     const leave = () => {
       if (!hasWork()) { close(); return }

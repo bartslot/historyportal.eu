@@ -5,7 +5,9 @@ In:  the rest drawing (cut-out), its flat colour part map on the same canvas, th
      (only what the drawing hides is taken from it), and the joints in the drawing's px.
 Out: an atlas and a puppet json. Every visible pixel is the rest drawing's own, so at rest it IS the drawing.
 
-Parts, back to front: arms, legs (they never move: legs come from drawn poses), head, chest.
+Parts, back to front: the far arm, the legs (they never move: legs come from drawn poses), the near arm, the neck, the head,
+the chest. So a near hand swings in front of the breeches and a far one behind them; the chest stays on top because the sleeves
+go on under the waistcoat, so a near hand stops at its edge (bones.ts safe).
 Hidden parts come from the waistcoat-off picture: the sleeves up to the shoulder, the waistband, the neck. A forearm has
 nothing painted under its cuff, so a round cap of its own mirror image fills the outside of a bent elbow.
 
@@ -32,6 +34,8 @@ ELBOW_INSIDE = 18        # px inside the cuff that a forearm turns around
 NECK = 80                # radius of the neck's hidden part
 SLEEVE_MARGIN = 14       # px a sleeve's hidden part reaches past the sleeve's own width
 WAISTBAND = 120          # px of the breeches' hidden top above the waistcoat's hem
+EDGE_THREAD = 4          # px: thinner than twice this, a bit of the chest at a sleeve is not the waistcoat's
+SHIRT_FRONT = 2500       # px: a linen patch on the chest this big is the shirt front, smaller at a sleeve is the sleeve's
 
 COLOURS = {'arm_f': (0, 0, 255), 'arm_n': (255, 0, 0), 'leg_f': (255, 255, 0), 'leg_n': (0, 255, 0), 'chest': (0, 255, 255), 'head': (255, 0, 255)}
 
@@ -71,6 +75,23 @@ def true_edge(rgba, arm, chest):
     to_chest = arm & brown & (ndimage.distance_transform_edt(~chest) <= EDGE)
     to_arm = chest & linen & (ndimage.distance_transform_edt(~arm) <= EDGE)
     return (arm & ~to_chest) | to_arm, (chest & ~to_arm) | to_chest
+
+
+def loose_linen(rgba, arm, chest):
+    """Scraps of a sleeve's linen the map left on the chest, along the waistcoat's edge: left behind when the arm lifts. A small
+    pale patch close to the arm goes with the arm; the shirt front in the waistcoat's opening is big, and stays."""
+    r, b = rgba[..., 0].astype(int), rgba[..., 2].astype(int)
+    pale = chest & (r - b <= BROWN) & (rgba[..., :3].mean(axis=-1) >= 170)
+    found, n = ndimage.label(pale)
+    if n == 0:
+        return arm, chest
+    near = np.unique(found[ndimage.distance_transform_edt(~arm) <= 2 * EDGE])
+    sizes = ndimage.sum(pale, found, range(1, n + 1))
+    scraps = np.isin(found, [i for i in near if i > 0 and sizes[i - 1] < SHIRT_FRONT])
+    chest = chest & ~scraps
+    # and the ink specks and threads the map left at that edge: what only hangs on to the waistcoat by a thread
+    thin = chest & ~ndimage.binary_opening(chest, iterations=EDGE_THREAD) & (ndimage.distance_transform_edt(~(arm | scraps)) <= 2 * EDGE)
+    return arm | scraps | thin, chest & ~thin
 
 
 def facing_of(legs):
@@ -179,31 +200,35 @@ def cut(rest, parts_map, under, joints):
     mask = whole_parts({n: labels == names.index(n) for n in names})
     for arm in ('arm_f', 'arm_n'):
         mask[arm], mask['chest'] = true_edge(rest, mask[arm], mask['chest'])
+        mask[arm], mask['chest'] = loose_linen(rest, mask[arm], mask['chest'])
     under_solid = under[..., 3] > SOLID
     legs = mask['leg_f'] | mask['leg_n']
     j = {x['name']: x for x in joints}
-    out, elbows = [], {}
+    arms, elbows = {'f': [], 'n': []}, {}
     for side in ('f', 'n'):
         arm = mask[f'arm_{side}']
         fore = split_arm(rest, arm)
         fore_joint = j[f'forearm_{side}']
         cap = elbow_cap(rest, fore, fore_joint['from'], fore_joint['to'])
         elbows[f'forearm_{side}'] = elbow_of(fore, fore_joint['from'], fore_joint['to'])[0].round(2).tolist()
-        out.append((f'forearm_{side}', layered((rest, fore), (cap, cap[..., 3] > SOLID))))
+        arms[side].append((f'forearm_{side}', layered((rest, fore), (cap, cap[..., 3] > SOLID))))
         upper_joint = j[f'upperarm_{side}']
         sleeve = arm & ~fore
         width = 2 * np.percentile(ndimage.distance_transform_edt(sleeve)[sleeve], 95) if sleeve.any() else 40
         hidden = capsule(solid.shape, upper_joint['from'], upper_joint['to'], width / 2 + SLEEVE_MARGIN) & under_solid & mask['chest']
-        out.append((f'upperarm_{side}', layered((rest, sleeve), (under, hidden))))
+        arms[side].append((f'upperarm_{side}', layered((rest, sleeve), (under, hidden))))
     hem = np.where(mask['chest'].any(axis=1))[0].max()
     waist = np.zeros_like(solid)
     waist[hem - WAISTBAND:hem + 1] = True
-    out.append(('hips', layered((rest, legs), (under, waist & under_solid & mask['chest']))))
-    neck = capsule(solid.shape, j['head']['from'], j['head']['from'], NECK) & under_solid & mask['chest']
-    # behind the head, on the chest: what its neck covers, so turning the head opens no hole in the collar
-    throat = capsule(solid.shape, j['head']['from'], j['head']['from'], NECK) & under_solid & mask['head']
-    out.append(('neck', layered((under, throat),)))
-    out.append(('head', layered((rest, mask['head'] & ~paper_flecks(rest, mask['head'], int(j['head']['from'][1]))), (under, neck))))
+    out = [*arms['f'], ('hips', layered((rest, legs), (under, waist & under_solid & mask['chest']))), *arms['n']]
+    pivot_row = int(j['head']['from'][1])
+    # what lies under the turning point stays with the chest: the throat and the shirt's V. The head turning above it opens no
+    # hole in the collar, and no skin swings out at the jaw
+    below = np.zeros_like(solid)
+    below[pivot_row:] = True
+    around = capsule(solid.shape, j['head']['from'], j['head']['from'], NECK) & under_solid
+    out.append(('neck', layered((rest, mask['head'] & below), (under, around & (mask['head'] | mask['chest'])))))
+    out.append(('head', layered((rest, mask['head'] & ~below & ~paper_flecks(rest, mask['head'], pivot_row)),)))
     out.append(('chest', layered((rest, mask['chest']),)))
     return out, facing_of(legs), elbows
 

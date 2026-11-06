@@ -5,7 +5,7 @@ import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { isClipartLayer, backdropLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
-import { gradientCanvas } from './background-gradient.js'
+import { gradientCanvas, gradientCss } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
@@ -1009,6 +1009,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // forgot what the panel pointed at: the stage drops its box too, or the next tile click would change a picture the
     // teacher no longer sees selected.
     window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) window.__stage25d?.clearSelection?.() })
+    window.addEventListener('stage25d:deselect', () => window.__stage25d?.clearSelection?.())
     window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
     let _stage25d = null
     let _stage25dHost = null
@@ -1231,6 +1232,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             host.style.display = ''
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
+            // Figures with no backdrop picture stand on the scene's own gradient or colour, as in the player
+            host.style.background = bgLayers.length ? '' : (gradientCss(payload.gradient) || payload.backgroundColor || '#0f172a')
 
             // ── Background — only rebuild when the bg actually changes. Re-showing on every
             //    scene:load (a caption toggle, a script edit, a 3s poll) re-runs the 900ms fade =

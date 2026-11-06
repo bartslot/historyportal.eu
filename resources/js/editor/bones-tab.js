@@ -12,7 +12,7 @@ import { secondsLabel } from './frames-tab.js'
 import { icon, ICONS, slider, syncSlider } from './cutout-markup.js'
 import { movableBones, matricesOf, jointAt, partUnder, turnBetween, poseFields, poseTimes, poseKeyAt, withPoseKey, withoutPoseKey } from './puppet-pose.js'
 
-const LABELS = { head: 'The head', chest: 'The chest', upperarm_n: 'Near upper arm', forearm_n: 'Near forearm', upperarm_f: 'Far upper arm', forearm_f: 'Far forearm' }
+const LABELS = { head: 'Neck', chest: 'Upper body', upperarm_n: 'Near upper arm', forearm_n: 'Near forearm', upperarm_f: 'Far upper arm', forearm_f: 'Far forearm' }
 const OPAQUE_ALPHA = 24
 const FIT = 0.94           // of the view: room round the figure for a limb that swings out
 const HANDLE_REACH_PX = 18 // a press this close to a joint's dot takes that bone
@@ -35,6 +35,20 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
   let raf = 0
 
   const limit = (name, deg) => limitBone(name, Math.round(deg), puppet.facing)
+  // room on the canvas for every limb at its ends, so a raised hand never leaves it
+  const reach = (() => {
+    const ends = (name) => [limit(name, -FREE), 0, limit(name, FREE)]
+    const xs = [0, puppet.width], ys = [0, puppet.height]
+    for (const side of ['n', 'f']) {
+      for (const upper of ends(`upperarm_${side}`)) {
+        for (const fore of ends(`forearm_${side}`)) {
+          const v = bent.bend({ [`upperarm_${side}`]: upper, [`forearm_${side}`]: fore })
+          for (let i = 0; i < v.length; i += 2) { xs.push(v[i]); ys.push(v[i + 1]) }
+        }
+      }
+    }
+    return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }
+  })()
   const draft = () => history.now
   const poseNow = () => bonesAt({ ...poseFields(draft().base), keys: draft().keys }, now)
   const turnOf = (name) => poseNow()[name] ?? 0
@@ -73,8 +87,8 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
   /** The drawing's place on the canvas: its scale and corner. */
   const placement = () => {
     const { width, height } = canvas.getBoundingClientRect()
-    const scale = Math.min(width / puppet.width, height / puppet.height) * FIT
-    return { width, height, scale, x: (width - puppet.width * scale) / 2, y: (height - puppet.height * scale) / 2 }
+    const scale = Math.min(width / (reach.x1 - reach.x0), height / (reach.y1 - reach.y0)) * FIT
+    return { width, height, scale, x: (width - (reach.x1 + reach.x0) * scale) / 2, y: (height - (reach.y1 + reach.y0) * scale) / 2 }
   }
   const toDrawing = (e) => {
     const r = canvas.getBoundingClientRect()
@@ -121,7 +135,7 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
     const pose = poseNow()
     for (const name of movable) {
       const input = inputOf(name)
-      if (document.activeElement !== input || drag) input.value = String(Math.round(pose[name] ?? 0))
+      input.value = String(Math.round(pose[name] ?? 0))
       syncSlider(input, readoutOf(name))
       input.closest('label').style.color = name === picked ? 'var(--color-primary)' : ''
     }
@@ -142,9 +156,11 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
 
   /** A bone turned at the playhead: a key when the figure has keys, else the layer's own pose. */
   const withTurn = (name, deg) => {
-    const now_ = draft()
-    if (poseTimes(now_.keys).length) return { ...now_, keys: withPoseKey(now_.keys, now, { ...poseNow(), [name]: deg }) }
-    return { ...now_, base: { ...now_.base, [name]: deg } }
+    const was = draft()
+    // the body's say over the whole pose: an upper arm turned may bring the hand against the body
+    const pose = bent.safe({ ...poseNow(), [name]: deg })
+    if (poseTimes(was.keys).length) return { ...was, keys: withPoseKey(was.keys, now, pose) }
+    return { ...was, base: { ...was.base, [name]: pose[name], ...(pose.forearm_n !== undefined ? { forearm_n: pose.forearm_n } : {}) } }
   }
   /** One gesture, one undo: the first step goes on the history, the rest replace it. */
   const turn = (name, deg, first) => {
@@ -209,7 +225,7 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
     canvas.setPointerCapture?.(e.pointerId)
     picked = name
     const at = toDrawing(e)
-    drag = { name, from: at, start: turnOf(name), joint: jointAt(puppet, matrices(), name), moved: false }
+    drag = { name, from: at, turned: turnOf(name), joint: jointAt(puppet, matrices(), name), moved: false }
     render()
   })
   canvas.addEventListener('pointermove', (e) => {
@@ -223,9 +239,13 @@ export function mountBones ({ view, strip, panel, t, atlas, puppet, pose: base, 
     const onJoint = (p) => Math.hypot(p[0] - drag.joint[0], p[1] - drag.joint[1]) * placement().scale < PIVOT_PX
     if (onJoint(at)) return   // right on the pivot there is no angle to read
     if (onJoint(drag.from)) { drag.from = at; return }   // pressed on the dot: the turn counts from where the hand left it
-    const deg = drag.start + turnBetween(drag.joint, drag.from, at)
+    // step by step, held at the joint's end: a hand going round past the limit waits there, it does not jump to the other end
+    const deg = limit(drag.name, drag.turned + turnBetween(drag.joint, drag.from, at))
+    drag.from = at
+    drag.turned = deg
     turn(drag.name, deg, !drag.moved)
     drag.moved = true
+    drag.turned = turnOf(drag.name)
   })
   const endDrag = () => { if (drag) { drag = null; canvas.style.cursor = 'grab'; render() } }
   canvas.addEventListener('pointerup', endDrag)

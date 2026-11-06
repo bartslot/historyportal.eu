@@ -99,6 +99,34 @@ describe('a puppet keeps its joints human', () => {
   })
 })
 
+describe('a near arm and the body', () => {
+  const quad = (x0: number, y0: number, x1: number, y1: number): [number, number][] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+  const uv: [number, number, number, number] = [0, 0, 1, 1]
+  const figure = bindPuppet({
+    atlas: 'a.png', width: 300, height: 400, facing: 1,
+    bones: [
+      { name: 'hips', parent: null, from: [150, 200] }, { name: 'chest', parent: 'hips', from: [150, 200] },
+      { name: 'upperarm_n', parent: 'chest', from: [70, 60] }, { name: 'forearm_n', parent: 'upperarm_n', from: [70, 130] },
+    ],
+    parts: [
+      { bone: 'hips', quad: quad(110, 200, 190, 400), uv }, { bone: 'forearm_n', quad: quad(55, 130, 85, 230), uv }, { bone: 'upperarm_n', quad: quad(55, 60, 85, 130), uv },
+      { bone: 'chest', quad: quad(110, 50, 190, 200), uv },
+    ],
+  })
+
+  it('a hand swung across the body stops at its edge, the arm stays free elsewhere', () => {
+    expect(figure.safe({ forearm_n: -10 }).forearm_n).toBe(-10)
+    const held = figure.safe({ forearm_n: -120 }).forearm_n
+    expect(held).toBeGreaterThan(-120)
+    expect(held).toBeLessThan(-10)
+    expect(figure.safe({ forearm_n: -120, upperarm_n: 150 }).forearm_n).toBe(-120)   // the arm swung away: the same fold is clear of the body
+  })
+
+  it('the pose it draws is the safe one', () => {
+    expect(figure.bend({ forearm_n: -120 })).toEqual(figure.bend({ forearm_n: figure.safe({ forearm_n: -120 }).forearm_n }))
+  })
+})
+
 describe('weights through the shape', () => {
   it('a vertex beside a bone across a gap does not follow it: only the path through the shape counts', () => {
     // a U: two prongs joined at the bottom, 4 apart at the top. Vertices: left prong 0-1-2 going up, the base 2-3, right prong 3-4-5

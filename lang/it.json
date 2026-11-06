@@ -2641,8 +2641,6 @@
     "Add a frame": "Aggiungi un fotogramma",
     "All frames in order": "Tutti i fotogrammi in ordine",
     "Frame :n of :total": "Fotogramma :n di :total",
-    "The head": "Testa",
-    "The chest": "Busto",
     "Near upper arm": "Braccio davanti",
     "Near forearm": "Avambraccio davanti",
     "Far upper arm": "Braccio dietro",
@@ -2652,5 +2650,7 @@
     "Remove key": "Rimuovi chiave",
     "Time in the scene": "Tempo nella scena",
     "Remove from My cut-outs": "Rimuovi da I miei ritagli",
-    "Removed from My cut-outs.": "Rimosso da I miei ritagli."
+    "Removed from My cut-outs.": "Rimosso da I miei ritagli.",
+    "Neck": "Collo",
+    "Upper body": "Busto"
 }

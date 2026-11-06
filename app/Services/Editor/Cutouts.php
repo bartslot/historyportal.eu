@@ -88,7 +88,7 @@ final class Cutouts
         'This picture cannot be opened here.', 'Saved.',
         'Frames', 'Bones', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
         'Add a frame', 'All frames in order', 'Frame :n of :total',
-        'The head', 'The chest', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
+        'Neck', 'Upper body', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
     ];
 
     /** @return array<string,string> */

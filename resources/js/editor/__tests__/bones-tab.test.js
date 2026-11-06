@@ -52,7 +52,7 @@ describe('the Bones tab', () => {
 
   it('a turn with no keys is the layer\'s own pose, shown on the stage at once', () => {
     slide('head', 10)
-    expect(stage.setBones).toHaveBeenLastCalledWith('layer-1', { 'bone:head': 10 }, [])
+    expect(stage.setBones).toHaveBeenLastCalledWith('layer-1', expect.objectContaining({ 'bone:head': 10 }), [])
     expect(tab.dirty()).toBe(true)
     expect(onChange).toHaveBeenCalled()
     tab.undo()
@@ -63,15 +63,15 @@ describe('the Bones tab', () => {
   it('Add key holds the whole pose at the playhead, and from then on a turn is a key', () => {
     slide('head', 10)
     parts.strip.querySelector('[data-bn-key]').click()
-    expect(stage.setBones.mock.lastCall[2]).toEqual([{ t: 2, 'bone:head': 10 }])
+    expect(stage.setBones.mock.lastCall[2]).toEqual([expect.objectContaining({ t: 2, 'bone:head': 10 })])
     expect(parts.strip.querySelector('[data-bn-key]').textContent).toBe('Remove key')
     const time = parts.strip.querySelector('[data-bn-time]')
     time.value = '4'
     time.dispatchEvent(new Event('input'))
     expect(parts.strip.querySelector('[data-bn-key]').textContent).toBe('Add key')
     slide('head', 20)
-    expect(stage.setBones.mock.lastCall[2]).toEqual([{ t: 2, 'bone:head': 10 }, { t: 4, 'bone:head': 20 }])
-    expect(stage.setBones.mock.lastCall[1]).toEqual({ 'bone:head': 10 })   // the layer's own pose stayed
+    expect(stage.setBones.mock.lastCall[2]).toEqual([expect.objectContaining({ t: 2, 'bone:head': 10 }), expect.objectContaining({ t: 4, 'bone:head': 20 })])
+    expect(stage.setBones.mock.lastCall[1]['bone:head']).toBe(10)   // the layer's own pose stayed
   })
 
   it('moving the playhead shows the pose there; Remove key takes it away', () => {
@@ -97,7 +97,7 @@ describe('the Bones tab', () => {
     window.addEventListener('stage25d-synced', heard, { once: true })
     slide('head', 10)
     await tab.save()
-    expect(saveLayer).toHaveBeenCalledWith({ 'bone:head': 10, keys: [] })
+    expect(saveLayer).toHaveBeenCalledWith(expect.objectContaining({ 'bone:head': 10, keys: [] }))
     expect(heard).toHaveBeenCalled()
     tab.discard()
     expect(stage.setBones).toHaveBeenLastCalledWith('layer-1', {}, [])

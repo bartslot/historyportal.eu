@@ -512,6 +512,7 @@ trait EditsStage25d
         $this->storeStage25dConfig($scene, $config);
         $this->activeStage25dLayer = null;
         $this->selectSceneInternal($scene->id);   // the stage rebuilds, the timeline re-reads the layers
+        $this->dispatch('stage25d:deselect');   // or the selection box moves on to the next layer, and a second Delete takes that one
     }
 
     /**

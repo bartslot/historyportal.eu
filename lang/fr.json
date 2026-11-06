@@ -2641,8 +2641,6 @@
     "Add a frame": "Ajouter une image",
     "All frames in order": "Toutes les images dans l’ordre",
     "Frame :n of :total": "Image :n sur :total",
-    "The head": "Tête",
-    "The chest": "Buste",
     "Near upper arm": "Bras avant",
     "Near forearm": "Avant-bras avant",
     "Far upper arm": "Bras arrière",
@@ -2652,5 +2650,7 @@
     "Remove key": "Supprimer la clé",
     "Time in the scene": "Temps dans la scène",
     "Remove from My cut-outs": "Retirer de Mes découpes",
-    "Removed from My cut-outs.": "Retiré de Mes découpes."
+    "Removed from My cut-outs.": "Retiré de Mes découpes.",
+    "Neck": "Cou",
+    "Upper body": "Haut du corps"
 }

@@ -336,7 +336,12 @@ export async function createStage25d (host, opts = {}) {
       assets = new Map(lib.assets.map(a => [a.id, a]))
       libData = lib
       alpha = alphaFor(lib.base)
-      alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
+      // a first click reads the file the stage draws: an edited copy, a figure's atlas
+      alpha.prime(next.set.layers.map((l) => {
+        const a = assets.get(l.asset)
+        const src = a && (l.src ?? puppetOf(a, l, lib.base)?.atlas)
+        return src ? { ...a, src } : a
+      }).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
         attachFraming()
@@ -414,9 +419,11 @@ export async function createStage25d (host, opts = {}) {
       }
     },
     /** The Bones tab's work on the stage, before it is saved. */
-    setBones (id, fields, keys) { edit(id, { ...fields, keys }) },
-    /** The Bones tab's Save. */
-    commitBones (id, fields, keys) { commit(id, { ...fields, keys }) },
+    setBones (id, fields, keys) {
+      // the whole pose: a bone left out is back at its painted place (a discard, an undo to before the first turn)
+      const gone = Object.fromEntries(Object.keys(boneFields(valuesOf(id))).map((f) => [f, undefined]))
+      edit(id, { ...gone, ...fields, keys })
+    },
     /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
     setPeeking (on) { peeking = !!on },
     /** The picture editor's work on the stage before it is saved; null: the row's own file again. */
@@ -571,7 +578,8 @@ export async function createStage25d (host, opts = {}) {
         ground, showScale,
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        file: l.src ?? (asset ? `${libData.base}${asset.file}` : null),   // the edited copy, when there is one
+        // the edited copy, when there is one; a figure of parts is shown whole, never its atlas
+        file: asset?.file && puppetOf(asset, l) ? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
         motion: motionOf(l, asset),
         anim: animOf(asset),
         puppet: !!puppetOf(asset ?? {}, l),
@@ -589,9 +597,9 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Motion of one layer: kind, amount, speed. Live, and saved on the layer. */
     setLayerMotion (id, motion) {
-      const now = valuesOf(id)
-      if (!now) return
-      commit(id, { motion: { ...(typeof now.motion === 'object' ? now.motion : { kind: now.motion }), ...motion } })
+      // from what the row shows: a row with no motion of its own has its picture's, and the server takes no motion without a kind
+      const shown = api.layerInfo(id)?.motion
+      if (shown) commit(id, { motion: { ...shown, ...motion } })
     },
     /**
      * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. On the floor it

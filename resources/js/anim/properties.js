@@ -42,7 +42,7 @@ const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
   : null)
 
 /** The bones the timeline has rows for. ponytail: fixed to the upper body rest_puppet.py cuts; legs get rows when a puppet has them. */
-const BONE_NAMES = [['bone:head', 'Head'], ['bone:chest', 'Chest'], ['bone:upperarm_n', 'Near upper arm'], ['bone:forearm_n', 'Near forearm'], ['bone:upperarm_f', 'Far upper arm'], ['bone:forearm_f', 'Far forearm']]
+const BONE_NAMES = [['bone:head', 'Neck'], ['bone:chest', 'Upper body'], ['bone:upperarm_n', 'Near upper arm'], ['bone:forearm_n', 'Near forearm'], ['bone:upperarm_f', 'Far upper arm'], ['bone:forearm_f', 'Far forearm']]
 export const BONE_ROWS = BONE_NAMES.map(([key]) => key)
 
 const P = (key, label, interpolate, unit = '', group = null) => ({ key, label, interpolate, unit, group, type: interpolate === 'color' ? 'color' : 'number' })
