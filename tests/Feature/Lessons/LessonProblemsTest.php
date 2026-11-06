@@ -117,6 +117,13 @@ class LessonProblemsTest extends TestCase
         $this->assertSame(LessonProblems::BLOCKS, LessonProblems::worst(LessonProblems::for($lesson)));
     }
 
+    public function test_a_chosen_gradient_counts_as_the_scenes_backdrop(): void
+    {
+        $lesson = $this->lesson();
+        $this->scene($lesson, 1, ['image_path' => null, 'config' => ['background_gradient' => ['from' => '#223366', 'to' => '#aa6633', 'angle' => 135]]]);
+        $this->assertSame([], LessonProblems::for($lesson));
+    }
+
     public function test_a_scene_of_voice_lines_and_a_map_need_no_single_voice_or_picture(): void
     {
         $lesson = $this->lesson();

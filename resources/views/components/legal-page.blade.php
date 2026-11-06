@@ -12,7 +12,7 @@
 
     <main class="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
         <h1 class="font-history text-4xl font-light tracking-tight text-white sm:text-5xl">{{ $title }}</h1>
-        <p class="mt-3 text-sm text-slate-500">Last updated {{ $updated }}</p>
+        <p class="mt-3 text-sm text-base-content/70">Last updated {{ $updated }}</p>
 
         <div class="legal-copy mt-10 space-y-5 text-base leading-relaxed text-slate-300
                     [&_a]:text-primary [&_a]:underline [&_h2]:mt-12 [&_h2]:text-xl [&_h2]:font-semibold

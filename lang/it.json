@@ -1,5 +1,6 @@
 {
     " and ": " e ",
+    ":minutes min read": ":minutes min di lettura",
     "\":name\" is already in this class.": "\":name\" è già in questa classe.",
     "3 of 3 chosen. Clear a slot above to swap.": "3 su 3 scelti. Libera un posto qui sopra per cambiare.",
     "3D World": "Mondo 3D",
@@ -2635,6 +2636,8 @@
     "What should change?": "Cosa deve cambiare?",
     "ChatGPT could not change this picture. Is the ChatGPT app open?": "ChatGPT non ha potuto modificare questa immagine. L'app ChatGPT è aperta?",
     "This picture changed while ChatGPT worked, so its result was not used.": "Questa immagine è cambiata mentre ChatGPT lavorava, quindi il risultato non è stato usato.",
+    "Try it yourself": "Prova tu stesso",
+    "A scene from the lesson about Abel Tasman": "Una scena della lezione su Abel Tasman",
     "Bones": "Ossa",
     "Show scene": "Mostra la scena",
     "Hide scene": "Nascondi la scena",

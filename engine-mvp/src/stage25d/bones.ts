@@ -301,7 +301,8 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     if (!handOf || !bodyAt.length) return []
     const wanted = Math.abs(puppet.parts[foreAt].quad[1][0] - puppet.parts[foreAt].quad[0][0]) / 4
     place({})
-    return gaps().map((gap) => Math.min(wanted, gap ?? wanted))
+    // a figure drawn with its arm already in that part of the body: nothing to guard there
+    return gaps().map((gap) => (gap === null ? wanted : gap < 0 ? -Infinity : Math.min(wanted, gap)))
   })()
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
   const safe = (bones: Record<string, number>): Record<string, number> => {

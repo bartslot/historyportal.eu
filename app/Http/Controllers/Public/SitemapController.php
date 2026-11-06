@@ -60,6 +60,7 @@ class SitemapController extends Controller
             if ($articles->isNotEmpty()) {
                 $entries[] = $this->entry('articles', [], '0.7', 'weekly');
 
+                // An article is written in one language, so it gets one URL, like a lesson.
                 foreach ($articles as $article) {
                     $entries[] = $this->entry(
                         'article',
@@ -67,6 +68,7 @@ class SitemapController extends Controller
                         '0.6',
                         'monthly',
                         $article['updated_at']?->toAtomString(),
+                        $article['language'],
                     );
                 }
             }

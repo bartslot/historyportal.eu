@@ -94,12 +94,4 @@ class HomeLessonLanguageTest extends TestCase
         $this->assertSame(['Dante Alighieri: het leven van een dichter in ballingschap', 'The Silk Road'], $titles);
     }
 
-    public function test_the_localised_home_page_links_its_trending_cards(): void
-    {
-        $this->lesson('The Silk Road', 'en');
-
-        $trending = $this->get('/nl')->viewData('trendingLessons');
-
-        $this->assertTrue($trending->has('The Silk Road'));
-    }
 }

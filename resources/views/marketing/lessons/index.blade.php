@@ -70,7 +70,7 @@
                             <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-400">
                                 {{ Seo::lessonDescription($lesson) }}
                             </p>
-                            <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                            <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/70">
                                 @if ($lesson->grade_level)<span>{{ $lesson->grade_level }}</span>@endif
                                 @if ($lesson->duration_seconds)
                                     <span>{{ __(':minutes min', ['minutes' => (int) ceil($lesson->duration_seconds / 60)]) }}</span>
@@ -96,4 +96,5 @@
             </a>
         </section>
     </main>
+    <x-landing.footer />
 </x-layouts.landing>

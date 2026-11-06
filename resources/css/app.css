@@ -537,6 +537,42 @@
     outline: 2px solid var(--color-slider-fill);
     outline-offset: 2px;
 }
+
+/* An article's body: author HTML from WordPress, without our classes. Tailwind's reset strips its
+   headings, lists and margins, so they come back here. */
+.article-body {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: color-mix(in oklab, var(--color-base-content) 80%, transparent);
+}
+.article-body :where(p, ul, ol, blockquote, figure, pre, table) { margin-block: 1.25em; }
+.article-body :where(h2, h3, h4) {
+    margin-block: 2em 0.5em;
+    font-family: var(--font-history);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--color-base-content);
+}
+.article-body h2 { font-size: 1.75rem; }
+.article-body h3 { font-size: 1.375rem; }
+.article-body h4 { font-size: 1.125rem; }
+.article-body :where(strong, b) { color: var(--color-base-content); }
+.article-body a { color: var(--color-base-content); text-decoration: underline; text-underline-offset: 0.2em; }
+.article-body ul { padding-inline-start: 1.5em; list-style: disc; }
+.article-body ol { padding-inline-start: 1.5em; list-style: decimal; }
+.article-body li + li { margin-top: 0.5em; }
+.article-body blockquote {
+    padding-inline-start: 1.25em;
+    border-inline-start: 1px solid color-mix(in oklab, var(--color-base-content) 25%, transparent);
+    font-family: var(--font-history);
+    font-size: 1.25rem;
+    color: var(--color-base-content);
+}
+.article-body :where(img, video, iframe) { max-width: 100%; height: auto; border-radius: 0.5rem; }
+.article-body figcaption { margin-top: 0.5em; font-size: 0.875rem; }
+@media print {
+    .site-header, #contact { display: none !important; }
+}
 /* ─── Comic Relief (OFL) — self-hosted, the comic lessons' lettering ─── */
 @font-face {
     font-family: 'Comic Relief';
@@ -1390,10 +1426,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         color: var(--color-secondary);
     }
 
-    body.portal-exiting .landing-cursor {
-        opacity: 0;
-    }
-
 
 
     .landing-shell h1,
@@ -1408,32 +1440,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 }
 
 @layer components {
-    .landing-cursor {
-        /* Hidden until landing-cursor.js sees a mouse move (it then shows it fully white). Shown
-           by default it sat top-left on every phone and mid-poster on desktop (pair test 10-24). */
-        opacity: 0;
-        visibility: hidden;
-    }
-
-    @media (pointer: coarse), (hover: none) {
-        .landing-cursor {
-            display: none;
-        }
-    }
-
-    .landing-cursor--portal-bg {
-        border-color: rgba(255, 255, 255, 0.98);
-        background-color: rgba(255, 255, 255, 0.98);
-        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='black'/%3E%3Ccircle cx='32' cy='32' r='30' fill='white'/%3E%3Cpath d='M24 21 L42 32 L24 43 Z' fill='black'/%3E%3C/svg%3E");
-        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='black'/%3E%3Ccircle cx='32' cy='32' r='30' fill='white'/%3E%3Cpath d='M24 21 L42 32 L24 43 Z' fill='black'/%3E%3C/svg%3E");
-        -webkit-mask-size: 100% 100%;
-        mask-size: 100% 100%;
-        -webkit-mask-repeat: no-repeat;
-        mask-repeat: no-repeat;
-        -webkit-mask-position: center;
-        mask-position: center;
-    }
-
     .section-container {
         @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
     }
@@ -1456,9 +1462,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         content: '';
         position: absolute;
         inset: 0;
-        background: color-mix(in oklch, var(--color-base-100) 78%, transparent);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        background: var(--color-base-100);
         border-bottom: 1px solid rgba(148, 163, 184, 0.14);
         opacity: 0;
         transition: opacity 320ms var(--ease-enter);
@@ -2052,22 +2056,6 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     .qz-card, .qz-correct, .qz-wrong, .qz-score-bump, .qz-streak, .qz-star, .qz-rise,
     .qz-question, .qz-ghost-out {
         animation: none;
-    }
-}
-
-/* ─── The landing dot is the cursor ─────────────────────────────────────────
-   DELIBERATELY UNLAYERED. Everything in @layer loses to an unlayered rule, and the two things that
-   put the system pointer back are exactly that: Flickity ships its stylesheet through a JS import
-   (unlayered), and DaisyUI's .btn declares `cursor: pointer`. Inside @layer base this rule lost to
-   both, so the hand reappeared over every carousel arrow and every button — the places the dot
-   matters most.
-
-   `cursor` inherits, so the shell alone would be enough if nothing re-declared it. Things do, hence
-   the descendant selector. */
-@media (pointer: fine) {
-    .landing-shell,
-    .landing-shell * {
-        cursor: none !important;
     }
 }
 

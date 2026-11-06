@@ -246,7 +246,8 @@ class Scene extends Model
     {
         return in_array($this->kind, ['map', 'voyage', 'stage25d'], true)
             || filled($this->skybox_image_path)
-            || filled($this->world_pano_path);
+            || filled($this->world_pano_path)
+            || filled($this->config['background_gradient'] ?? null);   // chosen by the teacher, unlike the default colour
     }
 
     /** Anything a layer can sit on: a generated image, a map, a panorama, a chosen colour. */

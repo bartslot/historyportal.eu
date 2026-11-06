@@ -1,5 +1,6 @@
 {
     " and ": " en ",
+    ":minutes min read": ":minutes min lezen",
     "\":name\" is already in this class.": "\":name\" zit al in deze klas.",
     "+ New lesson": "+ Nieuwe les",
     "3 of 3 chosen. Clear a slot above to swap.": "3 van 3 gekozen. Maak hierboven een plek vrij om te wisselen.",
@@ -2677,6 +2678,8 @@
     "What should change?": "Wat moet er veranderen?",
     "ChatGPT could not change this picture. Is the ChatGPT app open?": "ChatGPT kon deze afbeelding niet aanpassen. Is de ChatGPT-app open?",
     "This picture changed while ChatGPT worked, so its result was not used.": "Deze afbeelding is veranderd terwijl ChatGPT bezig was, dus het resultaat is niet gebruikt.",
+    "Try it yourself": "Probeer het zelf",
+    "A scene from the lesson about Abel Tasman": "Een scène uit de les over Abel Tasman",
     "Bones": "Botten",
     "Show scene": "Toon scène",
     "Hide scene": "Verberg scène",

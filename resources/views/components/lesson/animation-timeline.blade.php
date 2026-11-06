@@ -204,7 +204,7 @@
                        :style="{ '--range-t': zoomSlider / 1000 }"
                        x-on:input="setZoomFromSlider($event.target.value)"
                        aria-label="{{ __('Zoom') }}" data-tooltip="{{ __('Zoom') }}"
-                       data-timeline-zoom class="range-panel range range-xs" />
+                       data-timeline-zoom class="range range-panel" />
             </span>
         </div>
     </div>

@@ -66,4 +66,5 @@
             @endif
         </section>
     </main>
+    <x-landing.footer />
 </x-layouts.landing>

@@ -184,6 +184,35 @@ final class Seo
     }
 
     /**
+     * Schema.org BlogPosting for one WordPress article, as normalised by WordPressContent.
+     *
+     * @param  array<string,mixed>  $article
+     * @return array<string,mixed>
+     */
+    public static function articleGraph(array $article): array
+    {
+        return array_filter([
+            '@context' => 'https://schema.org',
+            '@type' => 'BlogPosting',
+            'headline' => $article['title'],
+            'description' => $article['excerpt'],
+            'mainEntityOfPage' => self::url('article', ['slug' => $article['slug']], $article['language']),
+            'inLanguage' => Locales::region($article['language']),
+            'datePublished' => $article['published_at']?->toAtomString(),
+            'dateModified' => $article['updated_at']?->toAtomString(),
+            'image' => $article['image'],
+            // Named in full: the #organization node itself only lives on the home page's graph.
+            'author' => $organisation = [
+                '@type' => 'Organization',
+                '@id' => url('/').'#organization',
+                'name' => 'The Learning Portal',
+                'url' => url('/'),
+            ],
+            'publisher' => $organisation,
+        ], fn ($value) => $value !== null);
+    }
+
+    /**
      * Schema.org LearningResource for one lesson.
      *
      * @return array<string,mixed>

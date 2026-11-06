@@ -135,9 +135,11 @@
                            class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
                     <input type="color" x-model="g.to" @change="save()" aria-label="{{ __('To') }}"
                            class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
-                    <input type="range" min="0" max="359" step="1" x-model.number="g.angle" @change="save()"
-                           aria-label="{{ __('Angle') }}" class="range range-xs flex-1" />
-                    <span class="w-10 text-right font-mono text-xs text-panel-hint" x-text="`${g.angle}°`"></span>
+                    <span class="range-panel-knob min-w-0 flex-1">
+                        <input type="range" min="0" max="359" step="1" x-model.number="g.angle" @change="save()"
+                               aria-label="{{ __('Angle') }}" class="range range-panel" />
+                    </span>
+                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="`${g.angle}°`"></span>
                 </div>
             </div>
 

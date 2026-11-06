@@ -12,7 +12,7 @@
  * the time and a binding per element stops working on whichever row was re-rendered last.
  */
 
-import { paintFill } from './range-fill.js'
+import { paintFill, showNumber } from './range-fill.js'
 
 const keyOf = (el) => {
   const { keyTarget: target, keyProperty: property, keyScale } = el?.dataset ?? {}
@@ -63,12 +63,6 @@ const syncFields = () => {
     paintFill(el)
     showNumber(el)
   }
-}
-
-/** The number beside a keyed slider, from the slider's own value. */
-const showNumber = (el) => {
-  const display = el.closest('.range-panel-knob')?.parentElement?.querySelector('[data-key-display]')
-  if (display) display.textContent = String(Math.round(Number(el.value) * (Number(display.dataset.keyDisplayScale) || 1) * 100) / 100)
 }
 
 /**
