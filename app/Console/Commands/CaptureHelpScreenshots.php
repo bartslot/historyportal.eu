@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\HelpMedia;
 use App\Support\Locales;
 use App\Support\ProductTour;
+use App\Support\ResponsiveImage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -145,6 +146,11 @@ class CaptureHelpScreenshots extends Command
         if (! $process->isSuccessful()) {
             $this->newLine();
             $this->line(trim($process->getErrorOutput() ?: $process->getOutput()));
+        }
+
+        // The home page shows this shot through smaller copies; a recapture must not leave them old.
+        if ($process->isSuccessful() && is_file($scene = $directory.'/tour-scene'.ProductTour::EXTENSION)) {
+            ResponsiveImage::writeCopies($scene, [828, 1600]);
         }
 
         return $process->isSuccessful();
