@@ -205,6 +205,27 @@ export function weightsThroughShape(points: number[][], triangles: number[], bon
   })
 }
 
+/**
+ * How far a joint may turn from the painted pose, degrees clockwise on screen for a figure facing right. An elbow only
+ * folds towards the front of the body; an upper arm stays on its own side of it; head and chest turn a little.
+ */
+const JOINT_RANGE: [RegExp, number, number][] = [
+  [/^forearm_/, -140, 5],
+  [/^upperarm_n/, -10, 150],
+  [/^upperarm_f/, -150, 10],
+]
+const TURN_RANGE: Record<string, number> = { head: 25, chest: 12 }
+
+/** A bone's turn inside what the body can do; a bone not listed turns freely, a figure with no `facing` keeps its arms free. */
+export function limitBone(name: string, deg: number, facing?: 1 | -1): number {
+  const turn = TURN_RANGE[name]
+  if (turn !== undefined) return Math.max(-turn, Math.min(turn, deg))
+  const range = facing ? JOINT_RANGE.find(([re]) => re.test(name)) : undefined
+  if (!range) return deg
+  const limited = Math.max(range[1], Math.min(range[2], deg * facing!))
+  return limited * facing!
+}
+
 /** A puppet on the Rigby2D runtime: each part follows its own bone rigidly, turning under its rounded joint ends. */
 export function bindPuppet(puppet: Puppet): BentPicture {
   const sk = new Skeleton()
@@ -233,7 +254,7 @@ export function bindPuppet(puppet: Puppet): BentPicture {
       pose.reset(sk)
       for (const [name, deg] of Object.entries(bones)) {
         const i = indexOf.get(name)
-        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = deg
+        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = limitBone(name, deg, puppet.facing)
       }
       pose.updateWorld(sk)
       return atts.flatMap((a, i) => pose.worldVertices(sk, i, a))

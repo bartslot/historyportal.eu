@@ -25,14 +25,14 @@ import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
-import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
+import type { Asset, Depth, GroundBand, Lesson, Library, Puppet, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -168,6 +168,9 @@ export class Stage {
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
+      const atlas = tex.getSize()
+      const uvFit: readonly [number, number] = layer.puppet ? [layer.puppet.width / atlas.width, layer.puppet.height / atlas.height] : [1, 1]
+      handle.setUvFit(uvFit)
       handle.mesh.position.set(p.x, p.y, p.z)
       const flat = liesFlat(layer, asset)
       handle.mesh.alphaIndex = flat ? DECAL_SLOT : p.alphaIndex
@@ -184,7 +187,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -524,8 +527,8 @@ export class Stage {
       const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
       const line = lineOf(this.look, b.layer.depth)
       // the paper's grain at the scale it has from the house camera, fixed to the picture (moves and zooms with it)
-      b.handle.setPaper(paper, pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080))
-      b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), this.hazeTint)
+      b.handle.setPaper(paper, fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080), b.uvFit))
+      b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) b.handle.setBent(b.bent, b.layer.bones ?? {})
       b.stain?.setEtch(b.layer.etch ?? 0)
@@ -546,13 +549,16 @@ export class Stage {
 const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) => layer?.src ?? lib.base + asset.file
 
 /** An edited copy may be cropped: it keeps the library's metres per pixel, so its own pixel size sets its shape. */
-const editedAsset = (asset: Asset, layer: { src?: string }, tex: RawTexture): Asset => {
+const editedAsset = (asset: Asset, layer: { src?: string; puppet?: Puppet }, tex: RawTexture): Asset => {
   if (!layer.src) return asset
   if (!asset.w || !asset.h) return { ...asset, src: layer.src }
-  const { width, height } = tex.getSize()
+  const { width, height } = layer.puppet ?? tex.getSize()   // a puppet's texture is its atlas: its size is the drawing's, not the atlas's
   const w = width / (isAnimation(asset) ? asset.cols! : 1), h = height / (isAnimation(asset) ? asset.rows! : 1)   // a sheet: one frame's size
   return { ...asset, w, h, height_m: asset.height_m * (h / asset.h), src: layer.src }   // src: a pick reads the edited copy's alpha
 }
+
+/** A picture's uv per px, as uv of its atlas when it has one: the same grain, line and hatching on a part as on the drawing. */
+const fitted = (uvPerPx: readonly [number, number], fit: readonly [number, number] = [1, 1]) => [uvPerPx[0] * fit[0], uvPerPx[1] * fit[1]] as const
 
 /** The sky picture as a layer: set.sky, taking only its motion and the teacher's edited copy (src, the image editor)
  *  from set.skyLayer. Place, size, opacity and keys saved before 2026-11-03 are ignored: a moved or faded sky left a

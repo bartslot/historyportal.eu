@@ -60,6 +60,8 @@ export interface Puppet {
   atlas: string
   width: number
   height: number
+  /** which way the figure looks on screen, read from its feet: 1 right, -1 left. Arms are only limited with this set. */
+  facing?: 1 | -1
   bones: { name: string; parent: string | null; from: [number, number] }[]
   /** quad: top-left, top-right, bottom-right, bottom-left; uv: u0, v0, u1, v1 on the atlas */
   parts: { bone: string; quad: [number, number][]; uv: [number, number, number, number] }[]

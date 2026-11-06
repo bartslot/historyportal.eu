@@ -62,6 +62,43 @@ describe('a puppet of separate parts', () => {
   })
 })
 
+describe('a puppet keeps its joints human', () => {
+  const quad = (x0: number, y0: number, x1: number, y1: number): [number, number][] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+  const uv: [number, number, number, number] = [0, 0, 1, 1]
+  const figure = (facing: 1 | -1) => bindPuppet({
+    atlas: 'a.png', width: 100, height: 200, facing,
+    bones: [
+      { name: 'upperarm_n', parent: null, from: [50, 50] }, { name: 'forearm_n', parent: 'upperarm_n', from: [50, 100] },
+      { name: 'upperarm_f', parent: null, from: [50, 50] }, { name: 'forearm_f', parent: 'upperarm_f', from: [50, 100] },
+      { name: 'head', parent: null, from: [50, 40] }, { name: 'chest', parent: null, from: [50, 90] },
+    ],
+    parts: ['forearm_n', 'upperarm_n', 'forearm_f', 'upperarm_f', 'head', 'chest'].map((bone) => ({ bone, quad: quad(40, 50, 60, 150), uv })),
+  })
+  const part = (v: number[], n: number) => v.slice(n * 8, n * 8 + 8)
+  const FOREARM_N = 0, UPPER_N = 1, FOREARM_F = 2, HEAD = 4, CHEST = 5
+
+  it('an elbow never bends backwards, whichever way the figure faces', () => {
+    const right = figure(1)
+    expect(part(right.bend({ forearm_n: 90 }), FOREARM_N)).toEqual(part(right.bend({ forearm_n: 5 }), FOREARM_N))
+    expect(part(right.bend({ forearm_f: -90 }), FOREARM_F)).not.toEqual(part(right.bend({ forearm_f: 0 }), FOREARM_F))
+    const left = figure(-1)
+    expect(part(left.bend({ forearm_n: -90 }), FOREARM_N)).toEqual(part(left.bend({ forearm_n: -5 }), FOREARM_N))
+    expect(part(left.bend({ forearm_n: 90 }), FOREARM_N)).not.toEqual(part(left.bend({ forearm_n: 0 }), FOREARM_N))
+  })
+
+  it('an upper arm never crosses to the other side of the body', () => {
+    const f = figure(1)
+    expect(part(f.bend({ upperarm_n: -80 }), UPPER_N)).toEqual(part(f.bend({ upperarm_n: -10 }), UPPER_N))
+    expect(part(f.bend({ upperarm_n: 80 }), UPPER_N)).not.toEqual(part(f.bend({ upperarm_n: 0 }), UPPER_N))
+  })
+
+  it('head and chest turn a little, no more', () => {
+    const f = figure(1)
+    expect(part(f.bend({ head: 90 }), HEAD)).toEqual(part(f.bend({ head: 25 }), HEAD))
+    expect(part(f.bend({ chest: -90 }), CHEST)).toEqual(part(f.bend({ chest: -12 }), CHEST))
+  })
+})
+
 describe('weights through the shape', () => {
   it('a vertex beside a bone across a gap does not follow it: only the path through the shape counts', () => {
     // a U: two prongs joined at the bottom, 4 apart at the top. Vertices: left prong 0-1-2 going up, the base 2-3, right prong 3-4-5

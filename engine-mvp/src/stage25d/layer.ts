@@ -91,6 +91,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float bottomFade;                    // ground bands: alpha ramps to 0 over this share of the height, from the bottom
   uniform vec3 footTint, sunColour, shadeColour;
   uniform vec4 cell;                           // an animation: the frame's part of the sheet (u0, v0, du, dv), else 0 0 1 1
+  uniform vec2 uvFit;                          // the drawing's uv as uv of its atlas (a puppet), else 1 1
   uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
   ${GL_NOISE}
   ${LINE_BY_DEPTH_GLSL}
@@ -147,7 +148,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     // etched shadow: hatching on the side away from the light, hanging off the silhouette and the art's own ink lines
     if (etch > 0.0 && c.a > 0.004) {
-      vec2 away = vec2(-sunSide * 0.09, 0.055 * width / max(height, 0.01));
+      vec2 away = vec2(-sunSide * 0.09, 0.055 * width / max(height, 0.01)) * uvFit;
       float shade = 0.0;
       for (int k = 1; k <= 6; k++) {
         float f = float(k) / 6.0;
@@ -306,6 +307,8 @@ export interface LayerHandle {
   setLine(l: { fade: number; thin: number; haze: number; brown: number }, inkMul: number, uvPerPx: readonly [number, number], hazeTint: [number, number, number]): void
   /** the teacher's ink: an outline this many 1080p px inside the edge, and hatching in the shade (0..1) */
   setInk(outline: number, etch: number): void
+  /** the drawing's uv as uv of its atlas: a puppet's reach, so its hatching falls where the drawing's would */
+  setUvFit(fit: readonly [number, number]): void
   /** Draw the picture as this mesh, then turn its bones. */
   setBent(bent: BentPicture, bones: Record<string, number>): void
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
@@ -318,7 +321,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -336,6 +339,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
   mat.setFloat('outlineW', 0).setFloat('etch', 0)
   mat.setVector4('cell', new Vector4(0, 0, 1, 1))
+  mat.setVector2('uvFit', new Vector2(1, 1))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -371,6 +375,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       bentSig = sig
     },
     setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
+    setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])) },
     setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
