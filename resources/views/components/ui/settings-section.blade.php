@@ -30,7 +30,12 @@
             @endif
         },
      }"
-     @if ($closesOutside) x-on:click.outside="open = false" @endif
+     @if ($closesOutside)
+         x-on:click.outside="open = false"
+         x-on:keydown.escape="open = false"
+         x-on:focusout="$event.relatedTarget && !$el.contains($event.relatedTarget) && (open = false)"
+         x-effect="open && $nextTick(() => $el.scrollIntoView({ block: 'nearest' }))"
+     @endif
      {{ $attributes->class(['w-full border-t border-panel-hairline']) }}>
 
     <button type="button" x-on:click="open = !open"

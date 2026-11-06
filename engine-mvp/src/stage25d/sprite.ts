@@ -11,10 +11,15 @@ export const isAnimation = (a: Pick<Asset, 'kind' | 'cols' | 'rows'> | null | un
  * own pixel size sets its shape. A figure of parts is a drawing of the whole person at any pixel size: it stands at the library's
  * height, and its texture is an atlas, so the drawing gives the shape. `src` is what a pick reads.
  */
-export const editedAsset = (asset: Asset, layer: { src?: string }, size: { width: number, height: number }, puppet?: { atlas: string, width: number, height: number } | null): Asset => {
+export const editedAsset = (asset: Asset, layer: { src?: string }, size: { width: number, height: number }, puppet?: { atlas: string, width: number, height: number, parts?: { quad: [number, number][] }[] } | null): Asset => {
   const src = layer.src ?? puppet?.atlas
   if (!src) return asset
-  if (puppet) return { ...asset, w: puppet.width, h: puppet.height, src }
+  if (puppet) {
+    // its drawing has empty canvas above the hair and under the soles: the body stands at that height, the soles on the ground
+    const ys = puppet.parts?.flatMap((part) => part.quad.map(([, y]) => y)) ?? []
+    const top = ys.length ? Math.min(...ys) : 0, sole = ys.length ? Math.max(...ys) : puppet.height
+    return { ...asset, w: puppet.width, h: puppet.height, height_m: asset.height_m * (puppet.height / (sole - top)), anchor: [asset.anchor?.[0] ?? 0.5, sole / puppet.height], src }
+  }
   if (!asset.w || !asset.h) return { ...asset, src }
   const sheet = isAnimation(asset)
   const w = size.width / (sheet ? asset.cols! : 1), h = size.height / (sheet ? asset.rows! : 1)   // a sheet: one frame's size

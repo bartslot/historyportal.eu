@@ -30,6 +30,7 @@ import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheel
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
+const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
 
@@ -412,6 +413,7 @@ export async function createStage25d (host, opts = {}) {
         stageId: id,
         // a sky or a landscape: white in it is paint, nothing to clean away on opening
         plain: id === 'sky' || bandIndex(id) >= 0 || ['sky', 'bg'].includes(asset.layer),
+        figure: layerIndex(id) >= 0 && asset.layer === 'figure',
         // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
         frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
         // a figure of parts: its pose, its keys and the scene's time (the editor's Bones tab)
@@ -817,8 +819,13 @@ export async function createStage25d (host, opts = {}) {
     items: () => {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       // one numbering over the layers and the painted landscape (ground bands, nearest first): no two rows read alike
+      // a figure of parts says so: two Pieters on one stage are told apart by which one has bones
+      const named = (l, i) => {
+        const name = layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`
+        return puppetOf(assets.get(l.asset) ?? {}, l) ? `${name} (${BONES_NAME[lang] ?? BONES_NAME.en})` : name
+      }
       const labels = numbered([
-        ...layers.map((l, i) => layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`),
+        ...layers.map(named),
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [

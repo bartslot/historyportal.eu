@@ -86,7 +86,7 @@ final class Cutouts
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
         'This picture cannot be opened here.', 'Saved.',
-        'Frames', 'Bones', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
+        'Frames', 'Bones', 'This character has no bones yet', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
         'Add a frame', 'All frames in order', 'Frame :n of :total',
         'Neck', 'Upper body', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
     ];

@@ -2253,6 +2253,9 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 /* ─── An animation's tile in the 3D Assets tab (script-editor.blade.php): a one-frame window over the sprite sheet.
        The sheet steps across a row (translate) and down the rows (transform), frame by frame, at the sheet's fps. ─── */
+/* The picture editor: one pointer. While a tool's ring shows, no system cursor on top of it; with the ring hidden (panning, Space
+   held, a tool with no ring, a ring too small to see) the tool's own cursor shows, so there is never none. */
+[data-cut-view]:has(> [data-cut-ring]:not([hidden])), [data-cut-view]:has(> [data-cut-ring]:not([hidden])) * { cursor: none !important; }
 /* The Motion section's pictures (x-ui.segmented `moves`): each moves the way its motion moves a layer, as long as the section is open. */
 .motion-preview { transform-box: fill-box; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: no-preference) {

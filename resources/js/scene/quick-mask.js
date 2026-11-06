@@ -21,12 +21,12 @@ export function toleranceFromDrag(dx, dy) {
     return Math.min(MAX_TOL, 6 + Math.hypot(dx, dy) * 0.6);
 }
 
-/** Connected pixels within `tol` of the seed colour. Ink and already-clear pixels are walls (`anyColour`: ink is not). */
-export function floodSelect(data, w, h, sx, sy, tol, anyColour = false) {
+/** Connected pixels within `tol` of the seed colour (the clicked pixel's, unless told). Ink and already-clear pixels are walls (`anyColour`: ink is not). */
+export function floodSelect(data, w, h, sx, sy, tol, anyColour = false, seed = null) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
     if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
-    const seed = [data[s], data[s + 1], data[s + 2]];
+    seed ??= [data[s], data[s + 1], data[s + 2]];
     const stack = [sy * w + sx];
     mask[stack[0]] = 1;
     while (stack.length) {
@@ -44,11 +44,11 @@ export function floodSelect(data, w, h, sx, sy, tol, anyColour = false) {
 }
 
 /** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Ink and clear pixels never (`anyColour`: ink may). */
-export function colorSelect(data, w, h, sx, sy, tol, anyColour = false) {
+export function colorSelect(data, w, h, sx, sy, tol, anyColour = false, seed = null) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
     if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
-    const seed = [data[s], data[s + 1], data[s + 2]];
+    seed ??= [data[s], data[s + 1], data[s + 2]];
     for (let p = 0; p < w * h; p++) {
         const i = p * 4;
         if (data[i + 3] !== 0 && (anyColour || lum(data, i) >= INK_LUM) && dist(data, i, seed) <= tol) mask[p] = 1;
@@ -56,14 +56,114 @@ export function colorSelect(data, w, h, sx, sy, tol, anyColour = false) {
     return mask;
 }
 
+const SEED_PATCH = 2;      // px round a click that say which colour was meant
+const RIM_PASSES = 3;      // px a soft rim goes on past its colour
+const RIM_REACH = 2;       // that rim may lie this many tolerances from the spot's colour
+const RIM_LOOK = 3;        // px past a rim pixel where the colour beyond it is read
+const SPOT_PX = 600;       // up to this size a colour under the click is a spot, not a region
+const SPOT_PASSES = 14;    // px a spot goes on through its own hue
+const SPOT_LOOK = 8;       // px round a click where the surrounding colour is read
+const HUE_NEAR = 12;       // degrees: the same paint, light or dark
+const SAT_KEEP = 0.7;      // of the spot's saturation: paler than this is the region beside it, however close its hue
+const SAT_AROUND = 0.1;    // the surroundings count from this saturation: a pale shirt has a hue too
+const HUE_FAR = 36;        // degrees: other paint, whatever its brightness
+const SAT_MIN = 0.3;       // greyer than this has no hue to speak of
+const VALUE_MIN = 45;      // darker than this is a line, whatever its hue
+
+const SPOT_SAT = 0.45;     // cream, skin in the light and paper are no coloured spot: they behave as white does
+const hueOf = (r, g, b) => (Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180 / Math.PI + 360) % 360;
+const hueGap = (a, b) => { const gap = Math.abs(a - b) % 360; return gap > 180 ? 360 - gap : gap; };
+const satOf = (r, g, b) => { const hi = Math.max(r, g, b); return hi ? (hi - Math.min(r, g, b)) / hi : 0; };
+const isSpotColour = (r, g, b) => satOf(r, g, b) >= SPOT_SAT && Math.max(r, g, b) >= VALUE_MIN;
+const isColoured = (d, i) => isSpotColour(d[i], d[i + 1], d[i + 2]);
+/** A pixel's hue, or null where it is too grey or too dark to have one. */
+const paintHue = (d, i, satMin = SAT_MIN) =>
+    (d[i + 3] === 0 || Math.max(d[i], d[i + 1], d[i + 2]) < VALUE_MIN || satOf(d[i], d[i + 1], d[i + 2]) < satMin ? null : hueOf(d[i], d[i + 1], d[i + 2]));
+
+/**
+ * The colour a click means. Paint is mottled, so on a coloured spot one pixel can lie far from the spot's own colour: the
+ * middle value of what lies round the click and looks like it. White and grey stay the clicked pixel: paper needs no help.
+ */
+export function wandSeed(data, w, h, x, y, tol) {
+    const at = (y * w + x) * 4;
+    const own = [data[at], data[at + 1], data[at + 2]];
+    if (!isColoured(data, at)) return own;
+    const near = [[], [], []];
+    for (let yy = Math.max(0, y - SEED_PATCH); yy <= Math.min(h - 1, y + SEED_PATCH); yy++) {
+        for (let xx = Math.max(0, x - SEED_PATCH); xx <= Math.min(w - 1, x + SEED_PATCH); xx++) {
+            const i = (yy * w + xx) * 4;
+            if (data[i + 3] === 0 || dist(data, i, own) > tol * RIM_REACH) continue;
+            for (let c = 0; c < 3; c++) near[c].push(data[i + c]);
+        }
+    }
+    return near.map((values) => values.sort((a, b) => a - b)[values.length >> 1]);
+}
+
+/** Does this hue stand out against what lies round the click? A darker stain on hair of the same hue does not. */
+function standsOut(data, w, h, x, y, hue) {
+    const hues = [];
+    for (let yy = Math.max(0, y - SPOT_LOOK); yy <= Math.min(h - 1, y + SPOT_LOOK); yy++) {
+        for (let xx = Math.max(0, x - SPOT_LOOK); xx <= Math.min(w - 1, x + SPOT_LOOK); xx++) {
+            if (Math.max(Math.abs(xx - x), Math.abs(yy - y)) < SPOT_LOOK) continue;
+            const around = paintHue(data, (yy * w + xx) * 4, SAT_AROUND);
+            if (around !== null) hues.push(around);
+        }
+    }
+    if (!hues.length) return true;
+    const same = hues.filter((around) => hueGap(around, hue) <= HUE_FAR / 2).length;
+    return same * 2 < hues.length;
+}
+
+/**
+ * A coloured spot fades into what is around it, and that rim would stay as a halo of its colour. The selection goes on through
+ * a pixel that is nearer the spot's colour than the colour beyond it, and a small spot that stands out goes on through its own
+ * hue, light or dark. Lines stay walls; the region next to the spot stays, its colour is its own.
+ */
+function withRim(data, w, h, mask, seed, tol, anyColour, hue) {
+    const out = new Uint8Array(mask);
+    let edge = [];
+    for (let p = 0; p < w * h; p++) if (mask[p]) edge.push(p);
+    const spot = hue !== null && edge.length <= SPOT_PX;
+    const passes = spot ? SPOT_PASSES : RIM_PASSES;
+    for (let pass = 0; pass < passes && edge.length; pass++) {
+        const next = [];
+        for (const p of edge) {
+            const x = p % w, y = (p - x) / w;
+            for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const qx = x + dx, qy = y + dy;
+                if (qx < 0 || qx >= w || qy < 0 || qy >= h) continue;
+                const q = qy * w + qx, i = q * 4;
+                if (out[q] || data[i + 3] === 0) continue;
+                const own = spot ? paintHue(data, i, Math.max(SAT_MIN, satOf(...seed) * SAT_KEEP)) : null;
+                let takes = own !== null && hueGap(own, hue) <= HUE_NEAR;
+                if (!takes && pass < RIM_PASSES && (anyColour || lum(data, i) >= INK_LUM) && dist(data, i, seed) <= tol * RIM_REACH) {
+                    const bx = Math.max(0, Math.min(w - 1, qx + dx * RIM_LOOK)), by = Math.max(0, Math.min(h - 1, qy + dy * RIM_LOOK));
+                    const beyond = (by * w + bx) * 4;
+                    takes = data[beyond + 3] === 0 || dist(data, i, seed) < dist(data, i, [data[beyond], data[beyond + 1], data[beyond + 2]]);
+                }
+                if (!takes) continue;
+                out[q] = 1;
+                next.push(q);
+            }
+        }
+        edge = next;
+    }
+    return out;
+}
+
 /**
  * Remove a colour with one click (Bart, 2026-11-05: enclosed white holes in one click): what touches the click, or
  * `everywhere` all of it. A click on a light colour stops at the drawing's lines; a click on a dark colour means that
- * dark colour, so the lines are no walls then.
+ * dark colour, so the lines are no walls then. A coloured spot goes whole, with its rim (Bart, 2026-11-06).
  */
 export function wandSelect(data, w, h, x, y, tol, everywhere = false) {
-    const dark = lum(data, (y * w + x) * 4) < INK_LUM;
-    return (everywhere ? colorSelect : floodSelect)(data, w, h, x, y, tol, dark);
+    const at = (y * w + x) * 4;
+    const dark = lum(data, at) < INK_LUM;
+    const select = everywhere ? colorSelect : floodSelect;
+    if (data[at + 3] === 0 || !isColoured(data, at)) return select(data, w, h, x, y, tol, dark);
+    const seed = wandSeed(data, w, h, x, y, tol);
+    const hue = hueOf(...seed);
+    return withRim(data, w, h, select(data, w, h, x, y, tol, dark, seed), seed, tol, dark, standsOut(data, w, h, x, y, hue) ? hue : null);
 }
 
 /** Pixels within `ring` px of the selection, not in it. */
@@ -92,11 +192,14 @@ function ringAround(mask, w, h, ring) {
 export function cut(data, w, h, mask, seed, tol) {
     const out = new Uint8ClampedArray(data);
     const ring = ringAround(mask, w, h, EDGE_RING);
+    const seedHue = isSpotColour(...seed) ? hueOf(...seed) : null;
     for (let p = 0; p < w * h; p++) {
         const i = p * 4;
         if (mask[p]) { out[i + 3] = 0; continue; }
         if (!ring[p] || out[i + 3] === 0) continue;
-        const a = Math.min(1, dist(data, i, seed) / (tol + 90));
+        // beside a coloured spot, paint of another hue is no part of the spot, however close its brightness
+        const own = seedHue === null ? null : paintHue(data, i);
+        const a = Math.min(1, Math.max(dist(data, i, seed) / (tol + 90), own === null ? 0 : hueGap(own, seedHue) / HUE_FAR));
         if (a >= 1) continue;
         for (let c = 0; c < 3; c++) out[i + c] = a > 0.02 ? (data[i + c] - (1 - a) * seed[c]) / a : data[i + c];
         out[i + 3] = data[i + 3] * a;
@@ -530,10 +633,9 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     const removeColour = (x, y) => {
         const mask = wandSelect(shown.data, w, h, x, y, wandTol, everywhere);
         if (!mask.some(Boolean)) return;
-        const i = (y * w + x) * 4;
         const nextBring = new Uint8ClampedArray(bring);
         for (let p = 0; p < w * h; p++) if (mask[p]) nextBring[p] = 0;
-        push(cut(current, w, h, mask, [shown.data[i], shown.data[i + 1], shown.data[i + 2]], wandTol), selection, nextBring);
+        push(cut(current, w, h, mask, wandSeed(shown.data, w, h, x, y, wandTol), wandTol), selection, nextBring);
     };
 
     /** Outside the selection the picture is dimmed; the patches a stroke is taking show amber. */

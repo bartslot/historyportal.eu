@@ -49,6 +49,21 @@ describe('stage25d canvas interaction', () => {
     expect(stop).toHaveBeenCalled()
   })
 
+  it('a press in the selected box drags the selected picture, also with a nearer picture painted there; a plain click goes on to that one', () => {
+    const { canvas, api, onChange, stage } = setup()
+    api.select(5)
+    stage.worldXAt.mockImplementation((x) => x / 10)
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))   // layer 2 is painted here, in front of the selected 5
+    expect(api.selected).toBe(5)
+    canvas.dispatchEvent(pointer('pointermove', 260, 100))
+    expect(onChange.mock.calls[0][0]).toBe(5)
+    canvas.dispatchEvent(pointer('pointerup', 260, 100))
+    expect(api.selected).toBe(5)
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))
+    canvas.dispatchEvent(pointer('pointerup', 200, 100))
+    expect(api.selected).toBe(2)
+  })
+
   it('a press on the transparent margin of a picture picks nothing', () => {
     const { canvas, api } = setup({ opaque: () => false })
     canvas.dispatchEvent(pointer('pointerdown', 200, 100))

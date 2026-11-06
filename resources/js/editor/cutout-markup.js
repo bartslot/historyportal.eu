@@ -66,16 +66,21 @@ export const iconButton = (attr, label, d, key = '') => `
 /** The modes of one editor, in tab order: [value, label]. */
 export const MODES = [['picture', 'Picture'], ['frames', 'Frames'], ['bones', 'Bones']]
 
-/** The whole editor, in the page's words (t), with the clean-up at these strengths. Tabs show when it has more than one mode. */
-export function markup (t, clean, modes = ['picture']) {
+/**
+ * The whole editor, in the page's words (t), with the clean-up at these strengths. Tabs show when it has more than one mode,
+ * or for a figure, whose Bones tab says it has none yet: a teacher learns the tab exists, and on which Pieter to find it.
+ */
+export function markup (t, clean, modes = ['picture'], { figure = false } = {}) {
   const extra = modes.filter((m) => m !== 'picture')
+  const noBones = figure && !modes.includes('bones')
   return `
   <header class="relative flex h-14 shrink-0 items-center gap-2 pl-14 pr-3">
     <button type="button" class="btn btn-circle btn-sm absolute left-3 top-3 border-0 bg-transparent shadow-none hover:bg-white/10"
             data-cut-back data-tooltip="${t('Back to the scene')}" data-tooltip-key="Esc" aria-label="${t('Back to the scene')}">${icon(ICONS.back)}</button>
     <h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-panel-value" data-cut-title></h2>
-    ${extra.length ? `<div class="tabs tabs-box tabs-sm absolute left-1/2 top-2 -translate-x-1/2" role="radiogroup" aria-label="${t('Picture')}">
+    ${extra.length || noBones ? `<div class="tabs tabs-box tabs-sm absolute left-1/2 top-2 -translate-x-1/2" role="radiogroup" aria-label="${t('Picture')}">
       ${MODES.filter(([value]) => modes.includes(value)).map(([value, label]) => `<input type="radio" name="cut-mode" value="${value}" class="tab" aria-label="${t(label)}">`).join('')}
+      ${noBones ? `<span class="tab tab-disabled pointer-events-auto! cursor-not-allowed" role="radio" aria-checked="false" aria-disabled="true" data-cut-no-bones data-tooltip="${t('This character has no bones yet')}">${t('Bones')}</span>` : ''}
     </div>` : ''}
     <button type="button" class="btn btn-ghost btn-sm mr-1" data-cut-scene aria-pressed="false" hidden>${icon(ICONS.eye)}<span data-cut-scene-label>${t('Show scene')}</span></button>
     ${iconButton('data-cut-undo disabled', t('Undo'), ICONS.undo, 'Cmd Z')}

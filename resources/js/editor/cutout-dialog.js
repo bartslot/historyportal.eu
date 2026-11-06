@@ -41,6 +41,7 @@ import { mountScenePeek } from './scene-peek.js'
 
 const ZOOM_STEP = 1.5
 const RING_MS = 700           // how long the eraser's size shows after its slider moved
+const MIN_RING_PX = 6         // smaller than this a ring cannot be seen: the tool's own cursor shows instead
 
 /** The eraser for a picture this big: its starting size and the largest it goes, in picture pixels. */
 export function eraserRange (w, h) {
@@ -105,7 +106,7 @@ export async function openCutout (target) {
   // atlas is no picture to clean as one, and on a sky or a landscape white is paint (clouds), not paper.
   const opensCleaned = modes.length === 1 && !target.edited && !target.plain
   const clean = opensCleaned ? { ...CLEAN_DEFAULTS } : { white: 0, fringe: 0, fade: 0 }
-  root.innerHTML = markup(t, clean, modes)
+  root.innerHTML = markup(t, clean, modes, { figure: target.figure })
   // the app behind takes no keyboard focus while this is up
   const behind = [...document.body.children].filter((el) => !el.inert)
   for (const el of behind) el.inert = true
@@ -185,7 +186,7 @@ export async function openCutout (target) {
     }
     const showRing = (x, y) => {
       const px = ringPx()
-      ring.hidden = !px || !!view?.panning
+      ring.hidden = px < MIN_RING_PX || !!view?.panning
       if (ring.hidden) return
       ring.style.width = ring.style.height = `${px}px`
       ring.style.left = `${x}px`

@@ -67,9 +67,16 @@ describe('a layer with its own file', () => {
 
   it('a figure of parts stands at the library height, whatever its pixel size', () => {
     const asset = editedAsset(figure, {}, { width: 2048, height: 1907 }, { atlas: 'a.png', width: 724, height: 2172 })
-    expect(asset.height_m).toBe(1.573)
+    expect(asset.height_m).toBeCloseTo(1.573)
     expect([asset.w, asset.h]).toEqual([724, 2172])
     expect(asset.src).toBe('a.png')
+  })
+
+  it('its empty canvas does not count: the body is that height, the soles stand on the ground', () => {
+    const parts = [{ quad: [[0, 100], [10, 100], [10, 1100], [0, 1100]] as [number, number][] }]
+    const asset = editedAsset({ ...(figure as object), anchor: [0.4, 1] } as never, {}, { width: 1, height: 1 }, { atlas: 'a.png', width: 500, height: 1200, parts })
+    expect(asset.height_m).toBeCloseTo(1.573 * 1.2)
+    expect(asset.anchor).toEqual([0.4, 1100 / 1200])
   })
 
   it('an edited copy keeps the metres per pixel, so a crop is shorter', () => {

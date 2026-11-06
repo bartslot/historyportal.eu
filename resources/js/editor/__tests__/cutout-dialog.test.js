@@ -301,6 +301,17 @@ describe('one window for every mode of a picture', () => {
     $('[data-cut-back]').click()
   })
 
+  it('a figure with no bones still shows the tabs: Bones is there, off, and says why', async () => {
+    const { $ } = await open({ figure: true })
+    expect($('[name="cut-mode"][value="picture"]').checked).toBe(true)
+    expect($('[name="cut-mode"][value="bones"]')).toBeNull()
+    const bones = $('[data-cut-no-bones]')
+    expect(bones.getAttribute('aria-disabled')).toBe('true')
+    expect(bones.dataset.tooltip).toBeTruthy()
+    expect($('[data-cut-view]').hidden).toBe(false)
+    $('[data-cut-back]').click()
+  })
+
   it('an animation opens on its frames, and its picture loads only when asked for', async () => {
     const { $ } = await openAnimation()
     expect($('[name="cut-mode"][value="frames"]').checked).toBe(true)

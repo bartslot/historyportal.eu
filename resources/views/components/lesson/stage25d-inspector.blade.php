@@ -12,6 +12,7 @@
     $poses = [
         'stand' => __('Stand'), 'walk' => __('Walk'), 'point' => __('Point'), 'kneel' => __('Kneel'),
         'carry' => __('Carry'), 'push' => __('Push'), 'dig' => __('Dig'), 'sit' => __('Sit'),
+        'brace' => __('Brace'), 'climb' => __('Climb'), 'cling' => __('Cling on'), 'coil' => __('Coil rope'), 'crouch' => __('Crouch'), 'grip' => __('Grip'), 'haul' => __('Haul'), 'lookup' => __('Look up'), 'order' => __('Give orders'), 'rail' => __('At the rail'), 'reach' => __('Reach'), 'relief' => __('Relief'), 'row' => __('Row'), 'shield' => __('Shield eyes'), 'trumpet' => __('Trumpet'),
     ];
 @endphp
 
@@ -109,6 +110,11 @@
                 </form>
             @endif
         </div>
+        {{-- The way in that shows: a double-click on the picture does the same. It opens on what the picture has: its bones, its frames. --}}
+        <button type="button" class="btn btn-sm mt-2 w-full" data-stage25d-edit x-show="info?.file" x-on:click="editPicture()">
+            <x-icons.pencil class="h-4 w-4" />
+            <span x-text="info?.puppet ? @js(__('Edit bones')) : info?.anim ? @js(__('Edit frames')) : @js(__('Edit picture'))"></span>
+        </button>
 
         {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
              that is grouped with it (it moves along). --}}

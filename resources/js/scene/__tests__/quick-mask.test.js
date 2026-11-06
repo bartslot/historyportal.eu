@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wandSelect, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS } from '../quick-mask.js';
+import { wandSelect, wandSeed, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS } from '../quick-mask.js';
 
 // 7×3: white | ink column | white, with a soft grey pixel next to the ink on the left.
 //   W W g K W W W
@@ -187,6 +187,67 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
         expect(alpha(out)[10]).toBe(0);
         expect(alpha(d)[10]).toBe(255);
         expect(CLEAN_DEFAULTS.white).toBeGreaterThan(0);
+    });
+});
+
+describe('a coloured spot goes in one click', () => {
+    const W = 30, H = 20;
+    const RUST = [150, 80, 40], OCHRE = [190, 170, 50], INK = [20, 15, 10];
+    /** A rust field; an ochre spot at 8..14 with mottled paint and a soft rim; a line at x 18; more ochre behind it. */
+    const picture = () => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        const put = (x, y, c, a = 255) => d.set([...c, a], (y * W + x) * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) put(x, y, RUST);
+        for (let y = 7; y <= 13; y++) for (let x = 8; x <= 14; x++) {
+            const mottled = (x * 7 + y * 13) % 5 * 10;
+            put(x, y, [OCHRE[0] - mottled, OCHRE[1] - mottled, OCHRE[2]]);
+        }
+        for (let y = 6; y <= 14; y++) { put(7, y, [170, 125, 45]); put(15, y, [170, 125, 45]); }
+        for (let x = 7; x <= 15; x++) { put(x, 6, [170, 125, 45]); put(x, 14, [170, 125, 45]); }
+        for (let y = 0; y < H; y++) put(18, y, INK);
+        for (let y = 7; y <= 13; y++) for (let x = 21; x <= 26; x++) put(x, y, OCHRE);
+        put(11, 10, [120, 120, 30]);   // the click lands on a dark fleck of the same paint
+        return d;
+    };
+    const at = (m, x, y) => m[y * W + x];
+
+    it('takes the whole spot, though the click lands on an odd pixel of it', () => {
+        const m = wandSelect(picture(), W, H, 11, 10, 30);
+        for (let y = 7; y <= 13; y++) for (let x = 8; x <= 14; x++) expect(at(m, x, y), `${x},${y}`).toBe(1);
+    });
+
+    it('takes its soft rim, so no halo of its colour stays', () => {
+        const m = wandSelect(picture(), W, H, 11, 10, 30);
+        for (const [x, y] of [[7, 10], [15, 10], [11, 6], [11, 14]]) expect(at(m, x, y), `${x},${y}`).toBe(1);
+    });
+
+    it('leaves the region round it, and the same colour across a drawn line', () => {
+        const m = wandSelect(picture(), W, H, 11, 10, 30);
+        expect(at(m, 3, 10)).toBe(0);
+        expect(at(m, 18, 10)).toBe(0);
+        expect(at(m, 23, 10)).toBe(0);
+    });
+
+    it('Everywhere does take the same colour across the line, and the line stays', () => {
+        const m = wandSelect(picture(), W, H, 11, 10, 30, true);
+        expect(at(m, 23, 10)).toBe(1);
+        expect(at(m, 18, 10)).toBe(0);
+    });
+
+    it('a darker stain of the same hue as what lies round it does not eat its way out', () => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let p = 0; p < W * H; p++) d.set([180, 120, 80, 255], p * 4);
+        for (let y = 9; y <= 11; y++) for (let x = 14; x <= 16; x++) d.set([110, 72, 46, 255], (y * W + x) * 4);
+        const m = wandSelect(d, W, H, 15, 10, 30);
+        expect(m.reduce((a, b) => a + b, 0)).toBeLessThan(40);
+    });
+
+    it('white behaves as it did: one pixel means the colour, no rim', () => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let p = 0; p < W * H; p++) d.set([250, 248, 245, 255], p * 4);
+        for (let y = 0; y < H; y++) d.set([235, 200, 170, 255], (y * W + 10) * 4);
+        expect(Array.from(wandSelect(d, W, H, 3, 3, 8))).toEqual(Array.from(floodSelect(d, W, H, 3, 3, 8)));
+        expect(wandSeed(d, W, H, 3, 3, 8)).toEqual([250, 248, 245]);
     });
 });
 

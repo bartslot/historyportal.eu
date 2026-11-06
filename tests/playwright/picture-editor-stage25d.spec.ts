@@ -147,6 +147,8 @@ test.describe('a figure of parts', () => {
   test('a key at rest, a turned key later: the neck moves between them', async ({ page }) => {
     await open(page, PUPPET)
     await tab(page, 'bones')
+    const keysNow = () => page.evaluate((id) => (window as any).__stage25d.editTarget(id).bones.keys, PUPPET.layer)
+    const opened = await keysNow()
     const key = page.locator('[data-bn-key]')
     await time(page, 0)
     await key.click()
@@ -157,8 +159,7 @@ test.describe('a figure of parts', () => {
     expect(Number(await neck(page).inputValue())).toBeGreaterThan(0)
     expect(Number(await neck(page).inputValue())).toBeLessThan(20)
     await discard(page)
-    const fields = await page.evaluate((id) => (window as any).__stage25d.editTarget(id).bones, PUPPET.layer)
-    expect(fields.keys, 'a discard leaves no key behind').toEqual([])
+    expect(await keysNow(), 'a discard leaves no key behind').toEqual(opened)
   })
 
   test('a near forearm stops at the body, and comes back in the same gesture when the upper arm swings away', async ({ page }) => {
@@ -176,6 +177,44 @@ test.describe('a figure of parts', () => {
       el.dispatchEvent(new Event('change', { bubbles: true }))
     })
     expect(Number(await fore.inputValue()), 'back to what the teacher had').toBe(-90)
+    await discard(page)
+  })
+
+  test('every tool has one pointer: the ring alone, or a cursor of its own', async ({ page }) => {
+    await open(page, PUPPET)
+    await tab(page, 'picture')
+    await page.waitForFunction(() => !document.querySelector('[data-cut-loading]'), undefined, { timeout: 60_000 })
+    const art = (await page.locator('[data-cut-view]').boundingBox())!
+    const onPicture = async () => {
+      await page.mouse.move(art.x + art.width * 0.5, art.y + art.height * 0.5)
+      await page.mouse.move(art.x + art.width * 0.5 + 3, art.y + art.height * 0.5)
+    }
+    const pointer = () => page.evaluate(([x, y]) => {
+      const under = document.elementFromPoint(x, y)!
+      return { cursor: getComputedStyle(under).cursor, ring: !(document.querySelector('[data-cut-ring]') as HTMLElement).hidden }
+    }, [art.x + art.width * 0.5 + 3, art.y + art.height * 0.5])
+    const pick = (name: string) => page.locator(`[data-cut-tool="${name}"]`).click()
+
+    for (const name of ['erase', 'restore', 'brush']) {
+      await pick(name)
+      await onPicture()
+      expect(await pointer(), name).toEqual({ cursor: 'none', ring: true })
+    }
+    await pick('colour')
+    await onPicture()
+    expect(await pointer(), 'colour').toEqual({ cursor: 'crosshair', ring: false })
+    await pick('move')
+    await onPicture()
+    expect(await pointer(), 'hand').toEqual({ cursor: 'grab', ring: false })
+
+    await pick('erase')
+    await onPicture()
+    await page.keyboard.down('Space')
+    expect(await pointer(), 'Space held').toEqual({ cursor: 'grab', ring: false })
+    await page.keyboard.up('Space')
+    expect((await pointer()).cursor, 'Space let go, not moved yet: never none').not.toBe('none')
+    await onPicture()
+    expect(await pointer(), 'moved again').toEqual({ cursor: 'none', ring: true })
     await discard(page)
   })
 

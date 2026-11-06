@@ -129,7 +129,7 @@
 
             {{-- Gradient: two colours and a direction; the swatch previews it before it is saved. --}}
             <div x-show="bgType === 'gradient'" x-cloak x-data="{ g: @js($gradientDraft), save() { $wire.setBackgroundGradient(this.g.from, this.g.to, Number(this.g.angle)) } }" class="space-y-2">
-                <div class="h-10 rounded-md ring-1 ring-slate-700" :style="`background: linear-gradient(${g.angle}deg, ${g.from}, ${g.to})`"></div>
+                <div class="h-10 rounded-md ring-1 ring-slate-700" wire:ignore :style="`background: linear-gradient(${g.angle}deg, ${g.from}, ${g.to})`"></div>
                 <div class="flex items-center gap-2">
                     <input type="color" x-model="g.from" @change="save()" aria-label="{{ __('From') }}"
                            class="h-8 w-10 cursor-pointer rounded border border-slate-600 bg-transparent" />
@@ -139,7 +139,7 @@
                         <input type="range" min="0" max="359" step="1" x-model.number="g.angle" @change="save()"
                                aria-label="{{ __('Angle') }}" class="range range-panel" />
                     </span>
-                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="`${g.angle}°`"></span>
+                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" wire:ignore x-text="`${g.angle}°`"></span>
                 </div>
                 {{-- As with Use colour: the dropdown only shows the choice, a mis-click keeps the picture. --}}
                 @if ($bgType !== 'gradient')
