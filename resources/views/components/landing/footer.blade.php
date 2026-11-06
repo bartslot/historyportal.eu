@@ -1,56 +1,33 @@
+{{-- One note from a person, the places to go, the small print. Left aligned, hairline above, no band. --}}
 @php
-    $isTeacher = auth()->check() && auth()->user()->isTeacher();
+    use App\Support\Seo;
 
-    $socials = [
-        ['label' => 'LinkedIn', 'href' => 'https://www.linkedin.com/in/bslot/'],
-        ['label' => 'Instagram', 'href' => 'https://www.instagram.com/bart.travels/'],
-    ];
+    $links = array_filter([
+        [Seo::url('lessons'), __('Lessons')],
+        [Seo::url('articles'), __('Articles')],
+        app()->getLocale() === 'nl' ? [route('public.curriculum'), 'Kerndoelen en tijdvakken'] : null,
+        [route('about'), __('About')],
+        [route('privacy'), __('Privacy')],
+        [route('terms'), __('Terms')],
+        ['https://www.linkedin.com/in/bslot/', 'LinkedIn'],
+        ['https://www.instagram.com/bart.travels/', 'Instagram'],
+    ]);
 @endphp
 
-<footer id="contact" class="relative border-t border-white/10">
-    {{-- This band had a background (footer-bg.svg over a gradient) until dde6356 replaced the
-         declaration with the string "bg-blue-800" — a Tailwind class inside a style attribute,
-         which sets nothing. It has rendered flat ever since, and bg-cover/bg-center had no image
-         to size. public/footer-bg.svg is still there; what belongs here is a design decision. --}}
-    <div class="relative -mt-px">
-        <div class="section-container flex flex-col items-center justify-end py-12 text-center">
-            <p class="text-sm uppercase tracking-[0.8em] text-sky-50/70">{{ __('Contact') }}</p>
-            <h2 class="mt-3 font-history text-3xl text-white md:text-4xl">
-                {{ __('Tell me what you think of it.') }}
-            </h2>
+<footer id="contact" class="border-t border-white/10">
+    <div class="section-container py-12 sm:py-16">
+        <h2 class="font-history text-3xl tracking-tight text-white md:text-4xl">{{ __('Tell me what you think of it.') }}</h2>
+        <a href="mailto:info@historyportal.eu" class="link link-hover mt-3 inline-block text-lg text-base-content">info@historyportal.eu</a>
 
-            <div class="mt-8 flex flex-wrap justify-center gap-3">
-                @foreach ($socials as $social)
-                    <a
-                        href="{{ $social['href'] }}"
-                        target="_blank"
-                        rel="noreferrer"
-                        class="btn btn-sm btn-outline uppercase"
-                    >
-                        {{ $social['label'] }}
-                    </a>
-                @endforeach
-            </div>
+        <nav class="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-base-content/80" aria-label="{{ __('Legal') }}">
+            @foreach ($links as [$url, $label])
+                <a href="{{ $url }}" class="hover:text-white" @if (str_starts_with($url, 'https://www.')) target="_blank" rel="noreferrer" @endif>{{ $label }}</a>
+            @endforeach
+        </nav>
 
-            <div class="mt-8 flex flex-wrap justify-center gap-4">
-                
-                <a
-                    href="mailto:info@historyportal.eu"
-                    class="btn"
-                >
-                    {{ __("Let's talk") }}
-                </a>
-            </div>
-
-            <p class="mt-8 max-w-2xl text-sm leading-7 text-sky-50/80">
-                {{ __('© :year History Portal, part of The Learning Portal. All rights reserved.', ['year' => 2026]) }}
-{{ __('All lesson content, scripts, prompts, illustrations, images, animations, interface designs, games, downloadable materials, and platform content are owned by The Learning Portal or used under licence, unless stated otherwise. No part of this website or platform may be copied, reproduced, scraped, redistributed, sold, modified, or used to train AI systems without prior written permission.') }}
-            </p>
-
-            <nav class="mt-4 flex gap-6 text-sm text-sky-50/70" aria-label="{{ __('Legal') }}">
-                <a href="{{ route('privacy') }}" class="hover:text-white">{{ __('Privacy') }}</a>
-                <a href="{{ route('terms') }}" class="hover:text-white">{{ __('Terms') }}</a>
-            </nav>
-        </div>
+        <p class="mt-8 max-w-3xl text-xs leading-relaxed text-base-content/70">
+            {{ __('© :year History Portal, part of The Learning Portal. All rights reserved.', ['year' => 2026]) }}
+            {{ __('All lesson content, scripts, prompts, illustrations, images, animations, interface designs, games, downloadable materials, and platform content are owned by The Learning Portal or used under licence, unless stated otherwise. No part of this website or platform may be copied, reproduced, scraped, redistributed, sold, modified, or used to train AI systems without prior written permission.') }}
+        </p>
     </div>
 </footer>

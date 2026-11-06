@@ -72,16 +72,17 @@ class WordPressArticlesTest extends TestCase
         $response = $this->get(route('public.articles'))->assertOk();
 
         $response->assertDontSee('Project Title');
-        $response->assertSee(__('Nothing published here yet.'));
     }
 
-    public function test_an_empty_feed_asks_not_to_be_indexed(): void
+    public function test_an_empty_feed_still_lists_our_own_article_and_is_indexable(): void
     {
         $this->fakeWordPress([]);
 
         $this->get(route('public.articles'))
             ->assertOk()
-            ->assertSee('name="robots" content="noindex', escape: false);
+            ->assertSee('Van tien naar zes tijdvakken')
+            ->assertSee('href="'.route('public.new-tijdvakken').'"', escape: false)
+            ->assertSee('name="robots" content="index, follow', escape: false);
     }
 
     public function test_a_populated_feed_is_indexable(): void
@@ -99,7 +100,7 @@ class WordPressArticlesTest extends TestCase
 
         $this->get(route('public.articles'))
             ->assertOk()
-            ->assertSee(__('Nothing published here yet.'));
+            ->assertSee('Van tien naar zes tijdvakken');
     }
 
     public function test_a_wordpress_error_page_never_becomes_an_article(): void
@@ -281,7 +282,7 @@ class WordPressArticlesTest extends TestCase
         $html = $this->get(route('public.articles'))->assertOk()->getContent();
 
         $this->assertSame(3, substr_count($html, 'data-article-featured'));
-        $this->assertSame(2, substr_count($html, 'data-article-row'));
+        $this->assertSame(3, substr_count($html, 'data-article-row'));   // the other posts and our own article
     }
 
     public function test_wordpress_is_asked_only_for_published_posts(): void

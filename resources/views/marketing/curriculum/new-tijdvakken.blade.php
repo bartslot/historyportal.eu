@@ -2,7 +2,7 @@
      against the sources listed at the bottom. Update the status list when the decree moves. --}}
 @php
     $title = 'Van tien naar zes tijdvakken: wat verandert er op de basisschool';
-    $description = 'De basisschool gaat waarschijnlijk van tien naar zes tijdvakken. Welke tijdvakken samengaan, welke 16 ontwikkelingen erbij horen en wat er al vaststaat.';
+    $description = \App\Support\OwnArticles::TIJDVAKKEN_EXCERPT;
 
     // Names, years and developments: SLO, Ontwikkelingen in de tijd (2022), table 1.
     // `current` is our own comparison by years, and the page says so.
@@ -60,24 +60,25 @@
 
     <x-landing.header />
 
-    <main class="mx-auto max-w-4xl px-4 pb-16 pt-32 text-slate-300 sm:px-6">
-        <nav class="text-xs" aria-label="Kruimelpad" data-no-print>
-            <a href="{{ route('public.curriculum') }}" class="hover:text-primary">Curriculum</a>
+    <main class="mx-auto max-w-2xl px-4 pb-24 pt-32 text-base-content/80 sm:px-6">
+        <nav class="flex gap-4 text-sm" aria-label="Kruimelpad" data-no-print>
+            <a href="{{ \App\Support\Seo::url('articles') }}" class="link link-hover">{{ __('Articles') }}</a>
+            <a href="{{ route('public.curriculum') }}" class="link link-hover">Kerndoelen en tijdvakken</a>
         </nav>
 
-        <h1 class="mt-6 font-history text-4xl font-light tracking-tight text-white sm:text-5xl">Van tien naar zes tijdvakken</h1>
+        <h1 class="mt-6 font-history text-4xl font-light leading-tight tracking-tight text-white sm:text-5xl">Van tien naar zes tijdvakken</h1>
         <p class="mt-4 text-lg leading-relaxed">
             Het ministerie wil dat de basisschool vanaf 1 augustus 2027 met zes tijdvakken werkt in plaats van tien.
             Dat staat nog niet in de wet. Hier zie je welke tijdvakken samengaan, wat je klas per tijdvak leert en wat er al vaststaat.
         </p>
         <p class="mt-4 text-sm">Bijgewerkt op 4 november 2026.</p>
-        <button type="button" onclick="window.print()" class="btn btn-primary mt-5" data-no-print>Print dit overzicht</button>
+        <button type="button" onclick="window.print()" class="btn btn-ghost btn-sm mt-4 -ml-3" data-no-print>Print dit overzicht</button>
 
         <section class="mt-14">
             <h2 class="font-history text-2xl font-light text-white">Van tien naar zes</h2>
-            <div class="mt-4 space-y-4">
+            <div class="mt-4 border-b border-white/10">
                 @foreach ($eras as $number => $era)
-                    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                    <div class="border-t border-white/10 py-5">
                         <h3 class="font-semibold text-white">{{ $number + 1 }}. {{ $era['name'] }}</h3>
                         <p class="mt-1 text-sm">{{ $era['years'] }}</p>
 

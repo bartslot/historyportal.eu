@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Services\WordPressContent;
+use App\Support\OwnArticles;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -15,9 +16,8 @@ use Illuminate\View\View;
  * The marketing site is the editor; this is the reader. Nothing is stored here, so a post is live on
  * the subdomain as soon as WordPress publishes it and the 30-minute cache turns over.
  *
- * When there is nothing publishable — which is the case while the WordPress side still only holds
- * Elementor's placeholder posts — the index renders an honest empty state and asks not to be
- * indexed, so an empty page never enters the search index.
+ * The index also lists the articles that are pages in this app (OwnArticles), so it is never empty,
+ * whatever WordPress holds or however it is doing.
  */
 class ArticleController extends Controller
 {
@@ -27,11 +27,11 @@ class ArticleController extends Controller
 
     public function index(): View
     {
-        $articles = $this->wordpress->posts(self::INDEX_LIMIT);
-
         return view('marketing.articles.index', [
-            'articles' => $articles,
-            'noindex' => $articles->isEmpty(),
+            'articles' => $this->wordpress->posts(self::INDEX_LIMIT)
+                ->concat(OwnArticles::all())
+                ->sortByDesc('published_at')
+                ->values(),
         ]);
     }
 

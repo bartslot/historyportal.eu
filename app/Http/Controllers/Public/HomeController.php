@@ -8,7 +8,6 @@ use App\Enums\LessonStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Support\Locales;
-use App\Support\TrendingTopics;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,9 +16,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * The landing page, for `/` and every `/{locale}`.
  *
- * One controller because there used to be two closures: the English one cached and linked the
- * trending cards, the localised one did neither and had no language filter, so the Dutch page
- * opened with a French lesson. Lessons shown follow the hero's rule (App\Support\DemoLesson): the
+ * One controller because there used to be two closures: the English one cached, the localised one
+ * did not and had no language filter, so the Dutch page opened with a French lesson. Lessons shown follow the hero's rule (App\Support\DemoLesson): the
  * page's own language first, then English, never a third language.
  */
 class HomeController extends Controller
@@ -36,7 +34,6 @@ class HomeController extends Controller
 
         return view('historyportal', [
             'playableLessons' => $this->playableLessons($language),
-            'trendingLessons' => $this->trendingLessons(),
         ]);
     }
 
@@ -79,20 +76,6 @@ class HomeController extends Controller
         return $lessons->reject(fn (Lesson $lesson) => $lesson->language !== $language
             && $lesson->translation_group !== null
             && in_array($lesson->translation_group, $groupsInOwnLanguage, true));
-    }
-
-    /**
-     * The five curated cards, keyed by lesson title so each poster links to its real lesson.
-     * Ascending on purpose: keyBy keeps the LAST row for a duplicate title, so a rebuilt lesson
-     * (same title, higher id) wins.
-     */
-    private function trendingLessons(): Collection
-    {
-        return Cache::remember('home.trending_lessons', now()->addMinutes(self::CACHE_MINUTES), fn () => $this->publicPlayable()
-            ->whereIn('title', TrendingTopics::lessonTitles())
-            ->orderBy('id')
-            ->get()
-            ->keyBy('title'));
     }
 
     /** Published or previewable, openable by code, with at least one narrated scene. */

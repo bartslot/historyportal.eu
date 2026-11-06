@@ -43,10 +43,10 @@
         @unless ($bare)
             {{-- Title block --}}
             <div class="absolute inset-x-0 bottom-0 p-4 text-white">
-                <p class="truncate text-2xs font-medium uppercase tracking-wide text-primary/90">
-                    {{ __(\Illuminate\Support\Str::ucfirst((string) $lesson->subject)) }}@if ($lesson->era) · {{ $lesson->era }}@endif
-                </p>
-                <h3 class="mt-1 text-base font-semibold leading-tight tracking-tight text-white line-clamp-2">
+                @if ($lesson->era)
+                    <p class="mb-1 truncate text-xs font-medium text-white/80">{{ $lesson->era }}</p>
+                @endif
+                <h3 class="text-base font-semibold leading-tight tracking-tight text-white line-clamp-2">
                     {{ $lesson->title ?: $lesson->topic }}
                 </h3>
             </div>
