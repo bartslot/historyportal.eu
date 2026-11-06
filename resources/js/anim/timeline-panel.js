@@ -99,6 +99,9 @@ const DRAFT_MAX_AGE_MS = 10 * 60 * 1000
  * duration is editable, and word-snap still works across whatever range is shown.
  */
 const DEFAULT_DURATION = 8
+/** Room after the timeline's end: the inspector's resize handle reaches into the panel (.lp-resize, 6 px past the gap) and took
+ *  the press meant for a key on the very end, resizing the inspector instead (Bart, 2026-11-05). */
+const LANE_END_PAD_PX = 28
 
 /** One press of an arrow key on the timeline, in seconds; with Shift. */
 const SCRUB_S = 0.1
@@ -412,7 +415,9 @@ export const animationTimeline = (config = {}) => ({
   groupLabel (group) { return config.groupLabels?.[group.id] ?? group.labelKey },
 
   /** The object's groups, each with its rows. */
-  groupsOf (target) { return groupsFor(kindOfTarget(target)) },
+  groupsOf (target) { return groupsFor(kindOfTarget(target)).filter((g) => g.id !== 'bones' || this.hasBones(target)) },
+  /** A stage25d layer drawn from a puppet: only that one has Bones rows. */
+  hasBones (target) { return !!window.__stage25d?.layerInfo?.(String(target).slice(4))?.puppet },
 
   /** A group is open unless the teacher closed it; the choice is remembered with the scene. */
   isSectionOpen (target, groupId) { return this.openGroups[sectionKey(target, groupId)] !== false },
@@ -548,7 +553,7 @@ export const animationTimeline = (config = {}) => ({
     this.save()
   },
 
-  propertiesOf (target) { return propertiesFor(kindOfTarget(target)) },
+  propertiesOf (target) { return propertiesFor(kindOfTarget(target)).filter((p) => p.group !== 'bones' || this.hasBones(target)) },
 
   trackFor (target, property) {
     return this.tracks.find((t) => t.target === target && t.property === property) ?? null
@@ -567,7 +572,7 @@ export const animationTimeline = (config = {}) => ({
   fittedZoom: 100,
 
   measureFit () {
-    const width = (this.$refs.lanes?.clientWidth ?? 0) - 2 * LANE_PAD_PX
+    const width = (this.$refs.lanes?.clientWidth ?? 0) - LANE_PAD_PX - LANE_END_PAD_PX
     if (width > 0 && this.duration > 0) this.fittedZoom = fitZoom(width, this.duration)
   },
 
@@ -578,7 +583,7 @@ export const animationTimeline = (config = {}) => ({
 
   get ticks () { return ticksFor(this.duration, tickStep(this.zoom)) },
   get playheadX () { return this.xOf(this.time) },
-  get contentWidth () { return Math.max(0, this.duration * this.zoom) + 2 * LANE_PAD_PX },
+  get contentWidth () { return Math.max(0, this.duration * this.zoom) + LANE_PAD_PX + LANE_END_PAD_PX },
   get readout () { return formatTime(this.time) },
 
   /**
@@ -808,6 +813,9 @@ export const animationTimeline = (config = {}) => ({
     if (!stage?.items) return
     const own = (t) => kindOfTarget(t.target) === 's25'
     this.tracks = [...this.tracks.filter((t) => !own(t)), ...tracksFromKeys(stage.items())]
+    // a key past the stored length (a scene's narration is longer than its first timeline) stays reachable
+    const lastKey = Math.max(0, ...this.tracks.filter(own).flatMap((t) => t.keyframes.map((k) => k.time)))
+    if (lastKey > this.duration) { this.duration = lastKey; this.measureFit() }
   },
 
   /** Hand the stage25d layers their keys, as the timeline holds them now: it eases them exactly as the player will. */

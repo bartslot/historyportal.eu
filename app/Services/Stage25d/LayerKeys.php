@@ -12,7 +12,10 @@ namespace App\Services\Stage25d;
 final class LayerKeys
 {
     /** The fields a key may set; the timeline's rows for a layer (resources/js/anim/properties.js `s25`). */
-    public const FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation'];
+    public const FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation', ...self::BONES];
+
+    /** A figure's bones (engine-mvp stage25d/bones.ts): a turn in degrees, a field like any other. The body's limits are the stage's (limitBone). */
+    public const BONES = ['bone:head', 'bone:chest', 'bone:upperarm_n', 'bone:forearm_n', 'bone:upperarm_f', 'bone:forearm_f'];
 
     /** What a field may hold: a typo or a runaway drag never leaves the picture off the planet. */
     private const RANGE = ['x' => [-2.0, 3.0], 'z' => [2.0, 120.0], 'y' => [-50.0, 50.0], 'scale' => [0.01, 20.0], 'opacity' => [0.0, 1.0], 'rotation' => [-3600.0, 3600.0]];
@@ -26,7 +29,7 @@ final class LayerKeys
     public static function clean(array $values): array
     {
         $out = [];
-        foreach (self::RANGE as $field => [$min, $max]) {
+        foreach ([...self::RANGE, ...array_fill_keys(self::BONES, [-180.0, 180.0])] as $field => [$min, $max]) {
             if (isset($values[$field]) && is_numeric($values[$field]) && is_finite((float) $values[$field])) {
                 $out[$field] = max($min, min($max, (float) $values[$field]));
             }

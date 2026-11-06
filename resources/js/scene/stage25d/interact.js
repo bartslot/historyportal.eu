@@ -139,7 +139,11 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onDown = (e) => {
     if (e.button !== 0) return
     const { x, y } = local(e)
-    const { hit, next } = pickOf(hitsAt(x, y), selected)
+    const { hit: painted, next } = pickOf(hitsAt(x, y), selected)
+    // The selected picture's whole box is it, the air in it too: it stays selected and drags. A flame on show may be small
+    const was = rectOf()
+    const inBox = was && x >= was.left && x <= was.left + was.width && y >= was.top && y <= was.top + was.height
+    const hit = painted ?? (inBox ? { index: selected } : null)
     if (!hit) {
       if (onEmpty(x, y)) e.stopPropagation()   // a backdrop was selected: not "the scene"
       return

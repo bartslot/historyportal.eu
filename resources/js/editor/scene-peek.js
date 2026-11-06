@@ -30,8 +30,8 @@ export function mountScenePeek ({ button, label, pane, t, stage, stageId, pictur
   }
 
   const pushPicture = () => {
-    const url = picture()
-    if (!url || url === shownUrl) return
+    const url = picture()   // null: no work left on the picture, after an undo: the row's own file again
+    if (url === shownUrl) return
     shownUrl = url
     stage.showPicture?.(stageId, url)
   }

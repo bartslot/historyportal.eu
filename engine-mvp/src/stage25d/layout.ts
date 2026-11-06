@@ -237,14 +237,34 @@ export function layerAt(layer: SceneLayer, t: number): LayerNow {
   if (!all.length) return base
   const out = { ...base }
   for (const f of LAYER_FIELDS) {
-    const keys = all.filter((k) => k[f] !== undefined).sort((a, b) => a.t - b.t)
-    if (!keys.length) continue
-    const first = keys[0], last = keys[keys.length - 1]
-    if (t <= first.t) { out[f] = first[f] as number; continue }
-    if (t >= last.t) { out[f] = last[f] as number; continue }
-    const i = keys.findIndex((k) => k.t > t)
-    const a = keys[i - 1], b = keys[i]
-    out[f] = lerp(a[f] as number, b[f] as number, ease('inOut', (t - a.t) / (b.t - a.t)))
+    const keyed = keyedAt(all, f, t)
+    if (keyed !== null) out[f] = keyed
+  }
+  return out
+}
+
+/** One field along the keys that name it, eased in-out between them; null when no key names it. */
+function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): number | null {
+  const keys = all.filter((k) => k[field] !== undefined).sort((a, b) => a.t - b.t)
+  if (!keys.length) return null
+  const first = keys[0], last = keys[keys.length - 1]
+  if (t <= first.t) return first[field] as number
+  if (t >= last.t) return last[field] as number
+  const i = keys.findIndex((k) => k.t > t)
+  const a = keys[i - 1], b = keys[i]
+  return lerp(a[field] as number, b[field] as number, ease('inOut', (t - a.t) / (b.t - a.t)))
+}
+
+/** A bone's turn is a field like x or scale: `bone:head` on the layer, and on its keys. */
+export const BONE_PREFIX = 'bone:'
+
+/** Each bone's turn at time t, by name: degrees clockwise on screen from the painted pose. */
+export function bonesAt(layer: SceneLayer, t: number): Record<string, number> {
+  const all = layer.keys ?? []
+  const fields = new Set([...Object.keys(layer), ...all.flatMap((k) => Object.keys(k))].filter((f) => f.startsWith(BONE_PREFIX)))
+  const out: Record<string, number> = {}
+  for (const f of fields) {
+    out[f.slice(BONE_PREFIX.length)] = keyedAt(all, f as keyof LayerKey, t) ?? (layer[f as keyof SceneLayer] as number | undefined) ?? 0
   }
   return out
 }

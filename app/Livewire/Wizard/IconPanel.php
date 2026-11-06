@@ -216,10 +216,28 @@ class IconPanel extends Component
         'history-line' => ['figures' => 'Characters', 'backdrops' => 'Backdrops', 'props' => 'Misc', 'nature' => 'Nature', 'architecture' => 'Architecture'],
     ];
 
-    /** A cut-out was just saved (EditsImages::saveCutout): open its tab, so the teacher sees it there. */
-    #[On('cutouts-changed')]
-    public function showCutouts(): void
+    /** A cut-out off this shelf; scenes that use it keep showing it. */
+    public function removeCutout(int $id): void
     {
+        if (! Cutouts::remove(auth()->user(), $id)) {
+            return;
+        }
+        $this->dispatch('cutouts-changed', id: $id, removed: 'cut-'.$id);
+        $this->dispatch('toast', type: 'success', message: __('Removed from My cut-outs.'));
+    }
+
+    /** A cut-out was just saved (EditsImages::saveCutout): open its tab, so the teacher sees it there. A removed one: stay, and leave the tab when it was the last. */
+    #[On('cutouts-changed')]
+    public function showCutouts(?string $removed = null): void
+    {
+        if ($removed !== null) {
+            unset($this->collections, $this->icons);
+            if ($this->collection === self::CUTOUTS && ! in_array(self::CUTOUTS, $this->collections, true)) {
+                $this->selectCollection($this->collections[0] ?? '');
+            }
+
+            return;
+        }
         unset($this->collections, $this->icons, $this->groups);
         $this->selectCollection(self::CUTOUTS);
     }

@@ -226,6 +226,13 @@ export function limitBone(name: string, deg: number, facing?: 1 | -1): number {
   return limited * facing!
 }
 
+/** The figure a layer draws: its own, or its library asset's (an atlas named without a path lies beside the asset's file). */
+export function puppetOf(asset: { puppet?: Puppet }, layer: { puppet?: Puppet }, base = ''): Puppet | null {
+  const puppet = layer.puppet ?? asset.puppet
+  if (!puppet) return null
+  return /^(\/|https?:|data:)/.test(puppet.atlas) ? puppet : { ...puppet, atlas: base + puppet.atlas }
+}
+
 /** A puppet on the Rigby2D runtime: each part follows its own bone rigidly, turning under its rounded joint ends. */
 export function bindPuppet(puppet: Puppet): BentPicture {
   const sk = new Skeleton()

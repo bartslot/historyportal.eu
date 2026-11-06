@@ -36,14 +36,21 @@ trait UndoesSceneEdits
 
     private function afterHistoryStep(int $sceneId, string $message): void
     {
+        $layer = $this->activeStage25dLayer;
         $this->activeDioramaId = null;
         $this->activeStage25dLayer = null;          // what it pointed at may be gone now
         $this->selectSceneInternal($sceneId);   // re-fires scene:load: the stage and panels redraw
+        // A layer that is still there stays selected: an undo is a step back, not a click on nothing (Bart, 2026-11-05)
+        $layers = $this->lesson->scenes()->find($sceneId)?->config['stage25d']['set']['layers'] ?? [];
+        $keep = $layer !== null && preg_match('/^layer-(\d+)$/', $layer, $m) === 1 && isset($layers[(int) $m[1]]);
+        if ($keep) {
+            $this->selectInspectorTarget('s25_'.$layer);
+        }
         // The Timeline tab keeps its own copy of the tracks (it outlives a morph on purpose, see
         // SESSIONS in timeline-panel.js), so it is handed the restored ones. Without this, Cmd-Z
         // restored a removed keyframe on the server while the panel kept showing it gone.
         $timeline = $this->lesson->scenes()->find($sceneId)?->config['timeline'] ?? [];
-        $this->dispatch('timeline-restored', timeline: $timeline);
+        $this->dispatch('timeline-restored', timeline: $timeline, keepSelection: $keep);
         $this->dispatch('toast', type: 'info', message: $message);
     }
 }

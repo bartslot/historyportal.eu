@@ -106,10 +106,18 @@ trait EditsStage25d
         if (($play = LayerKeys::play($patch['play'] ?? null, $cells)) !== null) {   // an animation's speed, start and own order of frames
             $values['play'] = $play;
         }
-        if ($values === []) {
+        $keys = is_array($patch['keys'] ?? null)   // the picture editor's Bones tab saves a pose with its keys
+            ? LayerKeys::sanitize($patch['keys'], max((float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds))
+            : null;
+        if ($values === [] && $keys === null) {
             return;
         }
         $layers[$index] = [...$layers[$index], ...$values];
+        if ($keys === []) {
+            unset($layers[$index]['keys']);
+        } elseif ($keys !== null) {
+            $layers[$index]['keys'] = $keys;
+        }
         $this->storeStage25dLayers($scene, $layers);
     }
 

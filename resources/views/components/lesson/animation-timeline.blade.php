@@ -57,6 +57,8 @@
         ],
         'objectLabels' => ['background' => __('Background')],
         'propertyLabels' => [
+            'bone:head' => __('The head'), 'bone:chest' => __('The chest'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
+            'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'),
             'x' => __('Position').' X', 'y' => __('Position').' Y', 'z' => 'Z',
             'w' => __('Width'), 'width' => __('Width'), 'height' => __('Height'),
             'scale' => __('Scale'), 'rotation' => __('Rotate'), 'blur' => __('Blur'),
@@ -70,7 +72,7 @@
         ],
         'groupLabels' => [
             'transform' => __('Transform'), 'appearance' => __('Appearance'), 'tail' => __('Tail'),
-            'arrow' => __('Arrow'), 'position' => __('Position'), 'view' => __('Viewing angle'),
+            'arrow' => __('Arrow'), 'position' => __('Position'), 'view' => __('Viewing angle'), 'bones' => __('Bones'),
         ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"

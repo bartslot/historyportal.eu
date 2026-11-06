@@ -43,6 +43,16 @@ trait EditsImages
         return ['ok' => true, 'id' => $asset->id];
     }
 
+    /** A cut-out off the 3D shelf; scenes that use it keep showing it. */
+    #[Renderless]
+    public function removeCutout(int $id): void
+    {
+        if (Cutouts::remove(auth()->user(), $id)) {
+            $this->dispatch('cutouts-changed', id: $id, removed: 'cut-'.$id);
+            $this->dispatch('toast', type: 'success', message: __('Removed from My cut-outs.'));
+        }
+    }
+
     /**
      * @param  array<string,mixed>  $state  the editor's design state (crop, colour, filters, drawings)
      * @return array{ok: bool, url?: string} url: the new file, so the editor can have it in cache before it lifts

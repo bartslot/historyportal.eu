@@ -47,11 +47,26 @@ describe('the timeline sees stage25d layers', () => {
   })
 
   it('offers x, distance, y, scale, angle and opacity, shown in readable units', () => {
-    expect(propertiesFor('s25').map((p) => p.key)).toEqual(['x', 'z', 'y', 'scale', 'rotation', 'opacity'])
+    expect(propertiesFor('s25').filter((p) => p.group !== 'bones').map((p) => p.key)).toEqual(['x', 'z', 'y', 'scale', 'rotation', 'opacity'])
     expect(displayOf('s25', 'z')).toMatchObject({ scale: 1, unit: 'm' })
     expect(displayOf('s25', 'x')).toMatchObject({ scale: 100, unit: '%' })
     expect(displayOf('s25', 'opacity')).toMatchObject({ scale: 100, unit: '%' })
     expect(displayOf('s25', 'y').unit).toBe('m')
+  })
+
+  it('a bone is a keyed field like the others: its keys round-trip, a pose is keyed as one group, in degrees', () => {
+    const items = [{ id: 'layer-1', keys: [{ t: 1, 'bone:head': 12, x: 0.2 }] }]
+    expect(keysFromTracks(tracksFromKeys(items))).toEqual({ 'layer-1': [{ t: 1, x: 0.2, 'bone:head': 12 }] })
+    expect(propertiesFor('s25').filter((p) => p.group === 'bones').map((p) => p.key)).toContain('bone:forearm_n')
+    expect(displayOf('s25', 'bone:head').unit).toBe('°')
+  })
+})
+
+describe('a bone on the stage', () => {
+  it('turning a bone is an edit, never a rebuild', () => {
+    const cfg = (layer) => ({ bundle: 'b', set: { layers: [{ asset: 'a', depth: 'mid', ...layer }] } })
+    expect(structureSig(cfg({ 'bone:head': 10 }))).toBe(structureSig(cfg({ 'bone:head': 20 })))
+    expect(editSig(cfg({ 'bone:head': 10 }))).not.toBe(editSig(cfg({ 'bone:head': 20 })))
   })
 })
 

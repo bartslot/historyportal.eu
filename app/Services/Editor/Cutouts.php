@@ -22,6 +22,9 @@ final class Cutouts
 {
     public const SOURCE = 'cutout';
 
+    /** Taken off the teacher's shelf. Row and file stay: a scene may still show it, and a class has to keep seeing it. */
+    public const REMOVED = 'cutout-removed';
+
     /** A standing thing with no known size (cut from a normal scene's picture) is this tall in a 3D scene. */
     public const DEFAULT_HEIGHT_M = 2.0;
 
@@ -85,6 +88,7 @@ final class Cutouts
         'This picture cannot be opened here.', 'Saved.',
         'Frames', 'Bones', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
         'Add a frame', 'All frames in order', 'Frame :n of :total',
+        'The head', 'The chest', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
     ];
 
     /** @return array<string,string> */
@@ -97,6 +101,12 @@ final class Cutouts
     public static function of(User $user): Collection
     {
         return SvgAsset::query()->where('user_id', $user->id)->where('source', self::SOURCE)->latest()->get();
+    }
+
+    /** Off the teacher's shelf; only their own, and only once. */
+    public static function remove(User $user, int $id): bool
+    {
+        return SvgAsset::query()->whereKey($id)->where('user_id', $user->id)->where('source', self::SOURCE)->update(['source' => self::REMOVED]) === 1;
     }
 
     /**
@@ -118,6 +128,7 @@ final class Cutouts
             'height_m' => $a->height_m ?: self::DEFAULT_HEIGHT_M,
             'name' => ['nl' => $a->title, 'en' => $a->title],
             'cutout' => true,
+            ...($a->source === self::REMOVED ? ['removed' => true] : []),
         ];
     }
 
@@ -152,8 +163,9 @@ final class Cutouts
                 }
             }
         }
-        $rows = SvgAsset::query()->where('source', self::SOURCE)
-            ->where(fn ($q) => $q->whereIn('id', $ids)->when($user, fn ($q) => $q->orWhere('user_id', $user->id)))
+        $rows = SvgAsset::query()
+            ->where(fn ($q) => $q->whereIn('source', [self::SOURCE, self::REMOVED])->whereIn('id', $ids))
+            ->when($user, fn ($q) => $q->orWhere(fn ($q) => $q->where('source', self::SOURCE)->where('user_id', $user->id)))
             ->latest()->get();
 
         return $rows->map(fn (SvgAsset $a) => self::stageRow($a))->values()->all();

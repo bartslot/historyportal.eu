@@ -97,7 +97,8 @@
             <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
                 {{-- One tile per picture, and one per series (a character's poses and facings), with its count. --}}
                 <template x-for="t in shown" :key="t.id">
-                    <button type="button" draggable="true" class="relative flex cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
+                    <div class="group relative">
+                    <button type="button" draggable="true" class="relative flex w-full cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', t.asset.id); $event.dataTransfer.effectAllowed = 'copy'"
                             x-on:click="pick(t)" :title="t.asset.label" :data-stage25d-tile="t.id">
                         <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
@@ -115,6 +116,11 @@
                         <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
                         <span x-show="t.count > 1" class="badge badge-sm badge-neutral absolute right-1.5 top-1.5" x-text="t.count" data-series-count></span>
                     </button>
+                    {{-- A teacher's own cut-out can go; scenes that use it keep showing it. --}}
+                    <button type="button" x-show="t.asset.cutout" x-cloak x-on:click="$wire.removeCutout(Number(String(t.asset.id).slice(4)))"
+                            data-tooltip="{{ __('Remove from My cut-outs') }}" aria-label="{{ __('Remove from My cut-outs') }}"
+                            class="btn btn-xs btn-square btn-neutral absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"><x-icons.x-mark class="h-3.5 w-3.5" /></button>
+                    </div>
                 </template>
             </div>
         </div>

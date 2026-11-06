@@ -2680,7 +2680,19 @@
     "Bones": "Botten",
     "Show scene": "Toon scène",
     "Hide scene": "Verberg scène",
-    "Add a frame": "Frame toevoegen",
-    "All frames in order": "Alle frames op volgorde",
-    "Frame :n of :total": "Frame :n van :total"
+    "Add a frame": "Beeld toevoegen",
+    "All frames in order": "Alle beelden op volgorde",
+    "Frame :n of :total": "Beeld :n van :total",
+    "The head": "Hoofd",
+    "The chest": "Borst",
+    "Near upper arm": "Bovenarm voor",
+    "Near forearm": "Onderarm voor",
+    "Far upper arm": "Bovenarm achter",
+    "Far forearm": "Onderarm achter",
+    "Reset pose": "Houding herstellen",
+    "Add key": "Keyframe toevoegen",
+    "Remove key": "Keyframe verwijderen",
+    "Time in the scene": "Tijd in de scène",
+    "Remove from My cut-outs": "Verwijderen uit Mijn uitsneden",
+    "Removed from My cut-outs.": "Verwijderd uit Mijn uitsneden."
 }

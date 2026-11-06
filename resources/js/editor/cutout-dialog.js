@@ -25,7 +25,7 @@
  *
  * Bart, 2026-11-06: "image editor, sprite editor and bone editor (these are in the same page) ... a button that shows the
  * rest of the scene too". So one window with one Save, one undo and one way back, and a tab per mode this picture has:
- * Picture always, Frames for an animation (frames-tab.js), Bones for a figure with a puppet. A mode other than Picture is
+ * Picture always, Frames for an animation (frames-tab.js), Bones for a figure with a puppet (bones-tab.js). A mode other than Picture is
  * { canUndo, canRedo, undo, redo, dirty, save, discard, key, show, hide, destroy }. Show scene: scene-peek.js.
  *
  * Whatever drew the picture sends an `image-edit:open` window event with { id, title, original, el, from }:
@@ -36,6 +36,7 @@ import { mountQuickMask, CLEAN_DEFAULTS } from '../scene/quick-mask.js'
 import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
+import { mountBones } from './bones-tab.js'
 import { mountScenePeek } from './scene-peek.js'
 
 const ZOOM_STEP = 1.5
@@ -92,9 +93,11 @@ export async function openCutout (target) {
   root.setAttribute('aria-modal', 'true')
   root.setAttribute('aria-label', target.title || t('Picture'))
   root.dataset.cutout = target.id
-  const modes = ['picture', ...(target.frames ? ['frames'] : [])]
-  // an already cleaned picture starts at 0: cleaning it again would fade the bottom twice. A sheet of frames is no picture to clean as one
-  const clean = target.edited || target.frames ? { white: 0, fringe: 0, fade: 0 } : { ...CLEAN_DEFAULTS }
+  const modes = ['picture', ...(target.frames ? ['frames'] : []), ...(target.bones ? ['bones'] : [])]
+  // An already cleaned picture starts at 0: cleaning it again would fade the bottom twice. A sheet of frames or a figure's
+  // atlas is no picture to clean as one, and on a sky or a landscape white is paint (clouds), not paper.
+  const opensCleaned = modes.length === 1 && !target.edited && !target.plain
+  const clean = opensCleaned ? { ...CLEAN_DEFAULTS } : { white: 0, fringe: 0, fade: 0 }
   root.innerHTML = markup(t, clean, modes)
   // the app behind takes no keyboard focus while this is up
   const behind = [...document.body.children].filter((el) => !el.inert)
@@ -110,7 +113,7 @@ export async function openCutout (target) {
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
   const edges = { feather: 0, shift: 0 }
-  let mode = modes.at(-1)   // an animation opens on its frames
+  let mode = modes.at(-1)   // an animation opens on its frames, a figure on its bones
   const others = {}         // the modes other than Picture, once made
   const active = () => others[mode] ?? null
   let peek = null
@@ -122,14 +125,14 @@ export async function openCutout (target) {
     const keydown = (e) => onKey(e)
     const keyup = (e) => {
       e.stopPropagation()
-      if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"]')) { e.preventDefault(); view?.setSpace(false) }
+      if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"], button')) { e.preventDefault(); view?.setSpace(false) }
     }
-    const close = ({ saved = false } = {}) => {
+    const close = ({ saved = false, pictureSaved = saved } = {}) => {
       window.removeEventListener('keydown', keydown, true)
       window.removeEventListener('keyup', keyup, true)
       if (!saved) for (const other of Object.values(others)) other.discard()
       for (const other of Object.values(others)) other.destroy()
-      peek?.destroy({ saved })
+      peek?.destroy({ saved: pictureSaved })
       view?.destroy()
       mask?.destroy()
       root.remove()
@@ -147,6 +150,8 @@ export async function openCutout (target) {
       ask.hidden = !on
       for (const el of root.children) if (el !== ask) el.inert = on
     }
+    // A button clicked with the mouse gives the keyboard back: Space plays, it does not press that button again
+    root.addEventListener('click', (e) => { if (e.detail > 0 && !asking() && e.target.closest?.('button') && !e.target.closest('[data-cut-ask]')) root.focus({ preventScroll: true }) })
     const stay = () => { setAsking(false); root.focus(); others[mode]?.show() }
     const leave = () => {
       if (!hasWork()) { close(); return }
@@ -264,14 +269,21 @@ export async function openCutout (target) {
         button.disabled = false
       }
     }
-    /** One Save for the whole window: the picture when it changed (a picture with no other mode opens cleaned: that is a change), then each mode. */
+    /** The modes' work, one after the other. False: one failed, the window stays with all of it. */
+    const saveOthers = async (button) => {
+      for (const other of Object.values(others)) {
+        if (other.dirty() && !await saving(button, () => other.save())) return false
+      }
+      return true
+    }
+    /** One Save for the whole window: each mode, then the picture when it changed (one that opened cleaned has). The picture last: its save rebuilds the stage from the server's copy. */
     const save = async (button) => {
-      const picture = mask && (pictureWork() || modes.length === 1)
+      const modesChanged = Object.values(others).some((other) => other.dirty())
+      if (!await saveOthers(button)) return
+      const picture = mask && (pictureWork() || opensCleaned)
       if (picture && !await saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))) return
-      const dirty = Object.values(others).filter((other) => other.dirty())
-      for (const other of dirty) other.save()
-      if (!picture && dirty.length) say('success', t('Saved.'))
-      close({ saved: true })
+      if (!picture && modesChanged) say('success', t('Saved.'))
+      close({ saved: true, pictureSaved: !!picture })
     }
     $('[data-cut-save]').addEventListener('click', (e) => save(e.currentTarget))
     $('[data-cut-back]').addEventListener('click', leave)
@@ -279,7 +291,10 @@ export async function openCutout (target) {
     $('[data-cut-ask-discard]').addEventListener('click', () => close())
     for (const b of root.querySelectorAll('[data-cut-ask-stay]')) b.addEventListener('click', stay)
     ask.addEventListener('pointerdown', (e) => { if (e.target === ask) stay() })
-    $('[data-cut-original]').addEventListener('click', async (e) => { if (await saving(e.currentTarget, () => wire.resetEditedImage(target.id))) close({ saved: true }) })
+    $('[data-cut-original]').addEventListener('click', async (e) => {
+      const button = e.currentTarget
+      if (await saveOthers(button) && await saving(button, () => wire.resetEditedImage(target.id))) close({ saved: true })
+    })
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
       if (!cut) return
@@ -367,13 +382,22 @@ export async function openCutout (target) {
       peek = mountScenePeek({
         button: $('[data-cut-scene]'), label: $('[data-cut-scene-label]'), pane: $('[data-cut-scene-pane]'), t, stage: target.stage, stageId: target.stageId,
         // what Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned
-        picture: () => (mask && (pictureWork() || modes.length === 1) ? mask.resultDataURL() : null),
+        picture: () => (mask && (pictureWork() || opensCleaned) ? mask.resultDataURL() : null),
       })
     }
+    /** A mode's save reaches the server itself, so a failure can be told and the window can stay. */
+    const saveLayer = (patch) => wire.saveStage25dLayer(Number(target.stageId.slice('layer-'.length)), patch, target.stage.sceneId)
     if (target.frames) {
       others.frames = mountFrames({
         view: $('[data-slot-view="frames"]'), strip: $('[data-slot-strip="frames"]'), panel: $('[data-slot-panel="frames"]'),
-        t, sheet: target.original, frames: target.frames, stage: target.stage, stageId: target.stageId,
+        t, sheet: target.original, frames: target.frames, stage: target.stage, stageId: target.stageId, saveLayer,
+        onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
+      })
+    }
+    if (target.bones) {
+      others.bones = mountBones({
+        view: $('[data-slot-view="bones"]'), strip: $('[data-slot-strip="bones"]'), panel: $('[data-slot-panel="bones"]'),
+        t, ...target.bones, stage: target.stage, stageId: target.stageId, saveLayer,
         onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
       })
     }

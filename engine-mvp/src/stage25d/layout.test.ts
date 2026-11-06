@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import { cameraWobble } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
@@ -497,3 +497,22 @@ describe('cameraWobble', () => {
   })
 })
 
+
+describe('bonesAt', () => {
+  it('a bone holds its own turn, and no field means no turn', () => {
+    expect(bonesAt({ depth: 'fg', 'bone:head': 12 }, 3)).toEqual({ head: 12 })
+    expect(bonesAt({ depth: 'fg' }, 3)).toEqual({})
+  })
+
+  it('moves along the keys that name it, like x', () => {
+    const layer = { depth: 'fg' as const, 'bone:head': 40, keys: [{ t: 0, 'bone:head': 0 }, { t: 2, 'bone:head': 20 }, { t: 1, x: 0.3 }] }
+    expect(bonesAt(layer, 0).head).toBe(0)
+    expect(bonesAt(layer, 1).head).toBeCloseTo(10)
+    expect(bonesAt(layer, 9).head).toBe(20)
+  })
+
+  it('a bone with no key keeps the layer\'s turn while another one moves', () => {
+    const layer = { depth: 'fg' as const, 'bone:chest': 5, keys: [{ t: 0, 'bone:head': 1 }] }
+    expect(bonesAt(layer, 4)).toEqual({ chest: 5, head: 1 })
+  })
+})

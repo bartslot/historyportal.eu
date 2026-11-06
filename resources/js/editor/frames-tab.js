@@ -60,9 +60,12 @@ export const cellStyle = (frames, cell, sheet) => {
   return `background-image:url('${sheet}');background-size:${cols * 100}% ${rows * 100}%;background-position:${x}% ${y}%;background-repeat:no-repeat;`
 }
 
+/** Seconds with one decimal, as the page's language writes them. */
+export const secondsLabel = (seconds, lang = document.documentElement.lang || 'en') => `${new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(seconds)} s`
+
 const secondsOf = (draft, fps) => (draft.speed > 0 ? draft.frames.length / (fps * draft.speed) : 0)
 
-export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stageId, onChange = () => {}, onTime = () => {} }) {
+export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stageId, saveLayer, onChange = () => {}, onTime = () => {} }) {
   const fps = frames.fps ?? FPS
   const opened = { frames: sequenceOf(frames, frames.play), speed: frames.play?.speed ?? 1, loop: frames.play?.loop ?? frames.loop !== false }
   const history = createHistory(opened)
@@ -95,7 +98,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     </div>
     <div class="flex min-h-0 flex-col gap-1 border-t pt-3" style="border-color: var(--color-panel-border);">
       <h3 class="pb-1 text-sm font-semibold text-panel-value">${t('Add a frame')}</h3>
-      <div class="grid max-h-72 grid-cols-6 gap-1 overflow-y-auto" data-fr-cells></div>
+      <div class="grid grid-cols-6 gap-1" data-fr-cells></div>
     </div>
     <span class="flex-1"></span>
     <div class="flex flex-col gap-2 border-t pt-3" style="border-color: var(--color-panel-border);">
@@ -138,7 +141,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
       el.style.background = i === tile ? 'var(--color-base-300)' : ''
     }
     $(strip, '[data-fr-where]').textContent = t('Frame :n of :total').replace(':n', (tile ?? a) + 1).replace(':total', n)
-    $(strip, '[data-fr-length]').textContent = `${secondsOf(draft(), fps).toFixed(1)} s`
+    $(strip, '[data-fr-length]').textContent = secondsLabel(secondsOf(draft(), fps))
     $(strip, '[data-fr-delete]').disabled = Math.abs(a - b) + 1 >= n
     $(strip, '[data-fr-duplicate]').disabled = n >= MAX_FRAMES
     $(panel, '[data-fr-all]').disabled = JSON.stringify(draft().frames) === JSON.stringify(Array.from({ length: framesIn(frames) }, (_, c) => c))
@@ -168,7 +171,8 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     onChange()
   }
   const change = (patch, nextPicked = picked) => {
-    if (history.push({ ...draft(), ...patch })) { picked = nextPicked; refreshAll() }
+    if (history.push({ ...draft(), ...patch })) { picked = nextPicked; refreshAll(); return true }
+    return false
   }
 
   const reveal = (i) => list.children[i]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
@@ -248,7 +252,8 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     forceFallback: true,   // the browser's own drag ghost is a screenshot of the wrong size
     onEnd: ({ oldIndex, newIndex }) => {
       if (oldIndex === newIndex) return
-      change({ frames: moved(draft().frames, oldIndex, newIndex) }, [newIndex, newIndex])
+      // two of the same frame swapped is no change, but the drag moved the tiles: they go back in order
+      if (!change({ frames: moved(draft().frames, oldIndex, newIndex) }, [newIndex, newIndex])) { renderTiles(); renderPicked() }
     },
   })
   $(strip, '[data-fr-play]').addEventListener('click', play)
@@ -292,14 +297,14 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     undo: () => { if (history.undo()) refreshAll() },
     redo: () => { if (history.redo()) refreshAll() },
     dirty: () => history.dirty,
-    save: () => stage.commitLayerProp?.(stageId, 'play', playOf(draft(), frames)),
+    save: () => saveLayer({ play: playOf(draft(), frames) }),
     discard: () => { if (history.dirty) stage.setLayerProp?.(stageId, 'play', frames.play ?? undefined) },
     show: () => { paintPicked() },
     hide: stop,
     destroy: () => { stop(); sortable.destroy() },
     /** A key while this tab shows. True: it was for this tab. */
     key: (e) => {
-      if (e.target.matches?.('input[type="range"]') && ['ArrowLeft', 'ArrowRight'].includes(e.key)) return false
+      if (e.target.matches?.('input[type="range"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return false
       const key = e.key.toLowerCase()
       if (e.code === 'Space' && !e.target.matches?.('input[type="checkbox"], button')) { if (!e.repeat) play(); return true }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {

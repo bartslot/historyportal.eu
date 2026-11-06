@@ -2640,5 +2640,17 @@
     "Hide scene": "Masquer la scène",
     "Add a frame": "Ajouter une image",
     "All frames in order": "Toutes les images dans l’ordre",
-    "Frame :n of :total": "Image :n sur :total"
+    "Frame :n of :total": "Image :n sur :total",
+    "The head": "Tête",
+    "The chest": "Buste",
+    "Near upper arm": "Bras avant",
+    "Near forearm": "Avant-bras avant",
+    "Far upper arm": "Bras arrière",
+    "Far forearm": "Avant-bras arrière",
+    "Reset pose": "Réinitialiser la pose",
+    "Add key": "Ajouter une clé",
+    "Remove key": "Supprimer la clé",
+    "Time in the scene": "Temps dans la scène",
+    "Remove from My cut-outs": "Retirer de Mes découpes",
+    "Removed from My cut-outs.": "Retiré de Mes découpes."
 }

@@ -43,7 +43,7 @@ describe('what the layer saves', () => {
 })
 
 describe('the tab', () => {
-  let stage, parts, tab, onChange
+  let stage, parts, tab, onChange, saveLayer
   const t = (en) => en
   const tiles = () => [...parts.strip.querySelectorAll('[data-frame]')]
   const press = (key, extra = {}) => tab.key({ key, code: key === ' ' ? 'Space' : key, target: document.body, ...extra })
@@ -55,7 +55,8 @@ describe('the tab', () => {
     parts = { view: document.getElementById('v'), strip: document.getElementById('s'), panel: document.getElementById('p') }
     stage = { setLayerProp: vi.fn(), commitLayerProp: vi.fn() }
     onChange = vi.fn()
-    tab = mountFrames({ ...parts, t, sheet: '/s.webp', frames: fire, stage, stageId: 'layer-2', onChange })
+    saveLayer = vi.fn()
+    tab = mountFrames({ ...parts, t, sheet: '/s.webp', frames: fire, stage, stageId: 'layer-2', onChange, saveLayer })
   })
 
   it('opens with every frame, nothing to lose, nothing on the stage changed', () => {
@@ -132,7 +133,7 @@ describe('the tab', () => {
   it('Save stores what the stage shows; leaving without it puts back what it opened with', () => {
     press('d')
     tab.save()
-    expect(stage.commitLayerProp).toHaveBeenCalledWith('layer-2', 'play', expect.objectContaining({ frames: [0, 0, 1, 2, 3, 4, 5, 6, 7] }))
+    expect(saveLayer).toHaveBeenCalledWith({ play: expect.objectContaining({ frames: [0, 0, 1, 2, 3, 4, 5, 6, 7] }) })
     tab.discard()
     expect(stage.setLayerProp).toHaveBeenLastCalledWith('layer-2', 'play', undefined)
   })

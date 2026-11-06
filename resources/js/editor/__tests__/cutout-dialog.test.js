@@ -24,7 +24,7 @@ beforeEach(() => {
   root.setAttribute('wire:id', 'w1')
   root.innerHTML = '<div id="stage"></div>'
   document.body.appendChild(root)
-  wire = { saveEditedImage: vi.fn(async () => ({ ok: true })), resetEditedImage: vi.fn(async () => {}), saveCutout: vi.fn(async () => ({ ok: true, id: 9 })) }
+  wire = { saveStage25dLayer: vi.fn(async () => {}), saveEditedImage: vi.fn(async () => ({ ok: true })), resetEditedImage: vi.fn(async () => {}), saveCutout: vi.fn(async () => ({ ok: true, id: 9 })) }
   window.Livewire = { find: vi.fn(() => wire) }
 })
 
@@ -287,7 +287,7 @@ describe('the eraser and its tools', () => {
 
 describe('one window for every mode of a picture', () => {
   const fire = { cols: 4, rows: 2, frames: 8, fps: 12, w: 100, h: 200, loop: true, play: null }
-  const stageApi = () => ({ canvas: document.createElement('canvas'), time: 3, setLayerProp: vi.fn(), commitLayerProp: vi.fn(), setPeeking: vi.fn(), showPicture: vi.fn(), update: vi.fn() })
+  const stageApi = () => ({ canvas: document.createElement('canvas'), time: 3, sceneId: 77, setLayerProp: vi.fn(), commitLayerProp: vi.fn(), setPeeking: vi.fn(), showPicture: vi.fn(), update: vi.fn() })
   const openAnimation = async (stage = stageApi()) => ({ stage, ...(await open({ frames: fire, stage, stageId: 'layer-1' })) })
   const pickMode = ($, value) => { const r = $(`[name="cut-mode"][value="${value}"]`); r.checked = true; r.dispatchEvent(new Event('change')) }
 
@@ -333,7 +333,7 @@ describe('one window for every mode of a picture', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
     $('[data-cut-save]').click()
     await done
-    expect(stage.commitLayerProp).toHaveBeenCalledWith('layer-1', 'play', expect.objectContaining({ frames: [0, 0, 1, 2, 3, 4, 5, 6, 7] }))
+    expect(wire.saveStage25dLayer).toHaveBeenCalledWith(1, { play: expect.objectContaining({ frames: [0, 0, 1, 2, 3, 4, 5, 6, 7] }) }, 77)
     expect(wire.saveEditedImage).not.toHaveBeenCalled()
     expect(toast).toHaveBeenCalled()
     expect(document.querySelector('[data-cutout]')).toBeNull()
@@ -347,7 +347,51 @@ describe('one window for every mode of a picture', () => {
     $('[data-cut-ask-discard]').click()
     await done
     expect(stage.setLayerProp).toHaveBeenLastCalledWith('layer-1', 'play', undefined)
-    expect(stage.commitLayerProp).not.toHaveBeenCalled()
+    expect(wire.saveStage25dLayer).not.toHaveBeenCalled()
+  })
+
+  it('a save of the frames that fails says so and stays, with the work', async () => {
+    const { $ } = await openAnimation()
+    wire.saveStage25dLayer = vi.fn(async () => { throw new Error('offline') })
+    const toast = vi.fn()
+    window.addEventListener('toast', toast, { once: true })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }))
+    $('[data-cut-save]').click()
+    await flush()
+    expect(toast.mock.calls[0][0].detail.type).toBe('error')
+    expect($('[data-cut-undo]').disabled).toBe(false)
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    wire.saveStage25dLayer = vi.fn(async () => {})
+    $('[data-cut-back]').click()
+    $('[data-cut-ask-discard]').click()
+  })
+
+  it('an undo all the way back gives the stage its own picture again', async () => {
+    vi.useFakeTimers()
+    const stage = stageApi()
+    const done = openCutout({ id: 's25_layer-1', title: 'Pieter', original: '/m.webp', el: document.getElementById('stage'), stage, stageId: 'layer-1', plain: true })
+    await vi.advanceTimersByTimeAsync(1)
+    const onChange = (await import('../../scene/quick-mask.js')).mountQuickMask.mock.lastCall[3]
+    const $ = (s) => document.querySelector(s)
+    $('[data-cut-scene]').click()
+    expect(stage.showPicture).not.toHaveBeenCalled()   // a sky with no work on it: nothing to show yet
+    onChange({ canUndo: true })
+    await vi.advanceTimersByTimeAsync(400)
+    expect(stage.showPicture).toHaveBeenLastCalledWith('layer-1', 'data:image/webp;base64,CLEAN')
+    onChange({ canUndo: false })
+    await vi.advanceTimersByTimeAsync(400)
+    expect(stage.showPicture).toHaveBeenLastCalledWith('layer-1', null)
+    vi.useRealTimers()
+    $('[data-cut-back]').click()
+    await done
+  })
+
+  it('a sky opens with its white as it is, and Save without work changes nothing', async () => {
+    const { $, done } = await open({ plain: true })
+    expect(mask.setClean).toHaveBeenLastCalledWith({ white: 0, fringe: 0, fade: 0 })
+    $('[data-cut-save]').click()
+    await done
+    expect(wire.saveEditedImage).not.toHaveBeenCalled()
   })
 
   it('Show scene puts the scene beside the work; the stage gets its picture back when nothing was saved', async () => {

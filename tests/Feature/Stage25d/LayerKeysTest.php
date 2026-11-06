@@ -165,6 +165,46 @@ class LayerKeysTest extends TestCase
         $this->assertEquals(5.0, $scene->fresh()->config['stage25d']['set']['layers'][0]['play']['speed'], 'a non-number changes nothing');
     }
 
+    public function test_a_bone_is_a_field_of_a_layer_and_of_its_keys(): void
+    {
+        $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid', 'keys' => [['t' => 1, 'x' => 0.2]]]]]]);
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveStage25dLayer', 0, ['bone:head' => 12, 'bone:forearm_n' => 999, 'bone:nope' => 3, 'keys' => [['t' => 2, 'bone:chest' => -5, 'bone:nope' => 1], ['t' => 'x']]], $scene->id);
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertEquals(12.0, $layer['bone:head']);
+        $this->assertEquals(180.0, $layer['bone:forearm_n'], 'held to a turn');
+        $this->assertArrayNotHasKey('bone:nope', $layer);
+        $this->assertEquals([['t' => 2.0, 'bone:chest' => -5.0]], $layer['keys']);
+
+        $editor->call('saveStage25dLayer', 0, ['keys' => []], $scene->id);
+        $this->assertArrayNotHasKey('keys', $scene->fresh()->config['stage25d']['set']['layers'][0], 'an empty list takes the keys away');
+    }
+
+    public function test_an_undo_keeps_a_layer_that_is_still_there_selected(): void
+    {
+        $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid']]]]);
+        Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('selectInspectorTarget', 's25_layer-0')
+            ->call('saveStage25dLayer', 0, ['x' => 0.2], $scene->id)
+            ->call('undoLastEdit')
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => $params['keepSelection'] === true)
+            ->assertSet('activeStage25dLayer', 'layer-0');
+    }
+
+    public function test_an_undo_lets_go_of_a_layer_that_is_gone(): void
+    {
+        $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid']]]]);
+        Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('duplicateStage25dLayers', [0])
+            ->call('selectInspectorTarget', 's25_layer-1')
+            ->call('undoLastEdit')
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => $params['keepSelection'] === false)
+            ->assertSet('activeStage25dLayer', null);
+    }
+
     public function test_play_reads_only_numbers(): void
     {
         $this->assertNull(LayerKeys::play(null));
