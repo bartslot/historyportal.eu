@@ -25,6 +25,8 @@ import * as THREE from 'three'
 import { GLTFLoader }    from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { FBXLoader }     from 'three/examples/jsm/loaders/FBXLoader.js'
+import { attachAccessory, detachAccessory } from './avatar-accessories.js'
+import { guardKnees, guardArms, characterForward } from './pose-guards.js'
 
 // TODO(3d-worlds): Gaussian-splat worlds are parked, not abandoned.
 // `@sparkjsdev/spark` was a static import here, which made it a static import of the wizard too:
@@ -1014,18 +1016,7 @@ export class Avatar3DPlayer {
     }
 
     // Compute target quaternions for "to"
-    this._poseTo = {}
-    for (const name of affected) {
-      const bone = this._boneMap[name]
-      const restQ = this._boneRestQ[name]
-      if (!bone || !restQ) continue
-
-      const [rx, ry, rz] = nextPose[name] ?? [0, 0, 0]
-      const offset = new THREE.Quaternion()
-      offset.setFromEuler(new THREE.Euler(rx * DEG, ry * DEG, rz * DEG, 'XYZ'))
-      // Post-multiply: rotate in the bone's own local space
-      this._poseTo[name] = restQ.clone().multiply(offset)
-    }
+    this._poseTo = this._poseTargets(nextPose, affected)
 
     // Hips vertical offset (sitting)
     const hipsRestY      = this._boneRestY
@@ -1123,8 +1114,10 @@ export class Avatar3DPlayer {
     this._boneRestQ = {}
     gltf.scene.traverse((node) => {
       if (node.isBone || node.type === 'Bone') {
-        this._boneMap[node.name]   = node
-        this._boneRestQ[node.name] = node.quaternion.clone()
+        // Mixamo-spec rigs (Tripo, Mixamo FBX) name bones "mixamorig:Hips" → "mixamorigHips" after GLTFLoader
+        const name = node.name.replace(/^mixamorig:?/, '')
+        this._boneMap[name]   = node
+        this._boneRestQ[name] = node.quaternion.clone()
       }
     })
     const hips = this._boneMap['Hips']
@@ -1140,6 +1133,19 @@ export class Avatar3DPlayer {
     this._fitCameraToCharacter()
 
     window.dispatchEvent(new CustomEvent('avatar3d:loadend'))
+  }
+
+  /** Load a rigid accessory GLB (hat, helmet) and bind it to a bone of the current character. */
+  async wearAccessory (glbUrl, options) {
+    if (!this._characterRoot) throw new Error('[Avatar3D] load a character before adding accessories')
+    const gltf = await new GLTFLoader().loadAsync(glbUrl)
+    gltf.scene.traverse((node) => { if (node.isMesh) node.castShadow = true })
+    return attachAccessory(this._characterRoot, gltf.scene, options)
+  }
+
+  /** Take an accessory off again; the character underneath is unchanged. */
+  removeAccessory (id) {
+    return this._characterRoot ? detachAccessory(this._characterRoot, id) : false
   }
 
   /** Compute model bounding box and reposition camera + controls to frame the full body. */
@@ -1190,20 +1196,30 @@ export class Avatar3DPlayer {
     this._headZoomY = headY
   }
 
+  /**
+   * Target quaternions for a pose: rest * local Euler offset, then corrected by the anatomy guards, because the
+   * same local offset bends a knee backwards on a rig whose bones are rolled differently, and drives an A-pose
+   * arm through the torso (pose-guards.js).
+   */
+  _poseTargets (pose, names) {
+    const targets = {}
+    for (const name of names) {
+      const restQ = this._boneRestQ[name]
+      if (!this._boneMap[name] || !restQ) continue
+      const [rx, ry, rz] = pose[name] ?? [0, 0, 0]
+      const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx * DEG, ry * DEG, rz * DEG, 'XYZ'))
+      targets[name] = restQ.clone().multiply(offset)   // post-multiply: rotate in the bone's own local space
+    }
+    const forward = characterForward(this._boneMap, this._characterRoot)
+    return guardArms(this._boneMap, guardKnees(this._boneMap, this._boneRestQ, targets, forward), forward)
+  }
+
   /** Apply a pose instantly (no interpolation) — used on first load. */
   _applyPoseInstant (poseName) {
     const pose = POSES[poseName]
     if (!pose) return
-    for (const [name, val] of Object.entries(pose)) {
-      if (name.startsWith('_')) continue
-      const bone = this._boneMap[name]
-      const restQ = this._boneRestQ[name]
-      if (!bone || !restQ) continue
-      const [rx, ry, rz] = val
-      const offset = new THREE.Quaternion()
-      offset.setFromEuler(new THREE.Euler(rx * DEG, ry * DEG, rz * DEG, 'XYZ'))
-      bone.quaternion.copy(restQ).multiply(offset)
-    }
+    const targets = this._poseTargets(pose, Object.keys(pose).filter(k => !k.startsWith('_')))
+    for (const [name, q] of Object.entries(targets)) this._boneMap[name].quaternion.copy(q)
     const hips = this._boneMap['Hips']
     if (hips) hips.position.y = this._boneRestY + (pose._hipsY ?? 0)
   }
