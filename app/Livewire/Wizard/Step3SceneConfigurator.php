@@ -6100,7 +6100,9 @@ class Step3SceneConfigurator extends Component
         if ($notReady->isNotEmpty()) {
             // Name the offending scenes (and why) so the teacher knows exactly what to fix,
             // instead of a blanket "every scene must be ready".
-            $labels = $notReady->map(function (Scene $s): string {
+            $rail = $this->lesson->scenes()->orderBy('order')->pluck('id')->values();
+            $railNumber = fn (Scene $s): int => ((int) $rail->search($s->id)) + 1;   // as the rail counts, not the stored order
+            $labels = $notReady->map(function (Scene $s) use ($railNumber): string {
                 $kind = $s->kind === 'game'
                     ? ucfirst((string) ($s->game_type ?: 'game'))
                     : ucfirst((string) $s->kind);
@@ -6108,15 +6110,14 @@ class Step3SceneConfigurator extends Component
                 // image and narration audio"); else the checker's words (LessonProblems) as the dot and
                 // the Problems view say it, without their full stop since the notice adds its own.
                 $checker = \App\Support\LessonProblems::forScene($s)[0]['message'] ?? null;
-                $unfinishedQuiz = $s->kind === 'game' && $s->game_type === 'quiz' && $s->status === 'pending';
-                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? ($unfinishedQuiz ? __('a question is not finished') : null) ?? match ((string) $s->status) {
+                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? match ((string) $s->status) {
                     'generating' => __('still generating'),
                     'failed' => __('failed, regenerate it'),
                     'pending' => __('not generated yet'),
                     default => (string) $s->status,
                 };
 
-                return __('Scene :n (:kind): :why', ['n' => $s->order, 'kind' => $kind, 'why' => $why]);
+                return __('Scene :n (:kind): :why', ['n' => $railNumber($s), 'kind' => $kind, 'why' => $why]);
             })->all();
 
             $this->publishOk = false;

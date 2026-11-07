@@ -82,6 +82,10 @@ final class LessonProblems
         } elseif ($scene->audio_provider !== null && $scene->narrationWasDowngraded()) {
             $out[] = $problem('audio', __('Read by a stand-in voice, not the lesson\'s narrator.'), self::OUTDATED, 'audio');
         }
+        // A quiz is ready once it has a finished question and nothing half-typed (EditsQuizQuestions::autosaveQuiz)
+        if ($scene->kind === 'game' && $scene->game_type === 'quiz' && $scene->status === 'pending') {
+            $out[] = $problem(null, __('A question in this quiz is not finished.'), self::BLOCKS, null);
+        }
 
         return $out;
     }

@@ -104,6 +104,12 @@ trait EditsQuizQuestions
             ], array_slice($kept, 0, self::QUIZ_MAX_QUESTIONS)));
         }
 
+        foreach ($this->quizDraft as $i => $q) {
+            if ($errors = self::draftErrors($q)) {
+                $this->quizErrors[$i] = $errors;
+            }
+        }
+
         // A quiz with nothing in it yet still has its slots: the stage shows the card, to type on or to generate
         if ($this->quizDraft === [] && $this->quizDraftSceneId) {
             $count = (int) (Scene::find($this->quizDraftSceneId)?->quiz_question_count ?: \App\Services\QuizPrompt::DEFAULT_QUESTION_COUNT);
@@ -504,20 +510,9 @@ trait EditsQuizQuestions
             $isComplete = self::draftIsComplete($q);
 
             if (! $isComplete) {
-                // Only nag about questions the teacher has actually started.
                 if (! $isUntouched) {
                     $unfinished = true;
-                    $errors = [];
-                    if ($question === '') {
-                        $errors[] = 'Question text is required.';
-                    }
-                    if (count($filled) < 2) {
-                        $errors[] = 'Add at least two answer options.';
-                    }
-                    if ($correctValue === '') {
-                        $errors[] = 'The correct answer field is empty.';
-                    }
-                    $this->quizErrors[$i] = $errors;
+                    $this->quizErrors[$i] = self::draftErrors($q);
                 }
 
                 continue;
@@ -632,6 +627,23 @@ trait EditsQuizQuestions
             unset($config['quiz_draft']);
             $scene->update(['config' => $config]);
         }
+    }
+
+    /** What a started, unfinished question still needs; nothing for a finished or an untouched one. */
+    private static function draftErrors(array $q): array
+    {
+        $question = trim((string) ($q['question'] ?? ''));
+        $options = array_map(fn ($o) => trim((string) $o), $q['options'] ?? []);
+        $filled = array_values(array_filter($options, fn ($o) => $o !== ''));
+        if (self::draftIsComplete($q) || ($question === '' && $filled === [])) {
+            return [];
+        }
+
+        return array_values(array_filter([
+            $question === '' ? __('Question text is required.') : null,
+            count($filled) < 2 ? __('Add at least two answer options.') : null,
+            ($options[(int) ($q['correct_index'] ?? 0)] ?? '') === '' ? __('The correct answer field is empty.') : null,
+        ]));
     }
 
     /** A question autosave will persist: a prompt, two filled answers, and a filled correct one. */
