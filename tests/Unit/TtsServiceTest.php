@@ -9,6 +9,17 @@ use Tests\TestCase;
 
 class TtsServiceTest extends TestCase
 {
+    /** Offline, the Mac reads the lesson in its own language, never in an American voice. */
+    public function test_the_offline_voice_follows_the_lessons_language(): void
+    {
+        $this->assertSame('Xander', TtsService::macVoice('nl'));
+        $this->assertSame('Xander', TtsService::macVoice('nl-NL'));
+        $this->assertSame('Anna', TtsService::macVoice(null, 'de-DE-KatjaNeural'));
+        $this->assertSame('Daniel', TtsService::macVoice(null, 'en-GB-Ollie:DragonHDLatestNeural'));
+        $this->assertSame('Daniel', TtsService::macVoice(null, '7p1Ofvcwsv7UBPoFNcpI'), 'an ElevenLabs id says no language: British English');
+        $this->assertSame('Daniel', TtsService::macVoice('es'));
+    }
+
     public function test_prepare_speech_text_strips_markdown_headers_and_labels(): void
     {
         $service = new TtsService();

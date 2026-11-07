@@ -22,6 +22,21 @@ class TtsService
     /** The voice that rung actually spoke with — not the one the caller asked for. */
     private ?string $generatedVoice = null;
 
+    /** The language of the text being read, so the offline rung speaks it in that language. */
+    private ?string $speechLocale = null;
+
+    /** This Mac's own voices, one per language, none American: the offline rung (Bart, 11-07: work on the road). */
+    public const MAC_VOICES = ['nl' => 'Xander', 'en' => 'Daniel', 'de' => 'Anna', 'fr' => 'Thomas', 'it' => 'Alice'];
+
+    /** The Mac voice for a language, from the locale when known, else from an Azure voice id (nl-NL-…). */
+    public static function macVoice(?string $locale, string $voiceId = ''): string
+    {
+        $lang = $locale !== null && $locale !== '' ? strtolower(substr($locale, 0, 2))
+            : (preg_match('/^([a-z]{2})-[A-Z]{2}-/', $voiceId, $m) === 1 ? $m[1] : null);
+
+        return self::MAC_VOICES[$lang] ?? self::MAC_VOICES['en'];
+    }
+
     private function lessonDisk()
     {
         return Storage::disk('public');
@@ -121,8 +136,9 @@ class TtsService
         return $this->sourceAudio;
     }
 
-    public function generateAudioRaw(string $text, string $voiceId, float $speed = 1.0, string $provider = 'auto', ?array &$timingData = null): ?string
+    public function generateAudioRaw(string $text, string $voiceId, float $speed = 1.0, string $provider = 'auto', ?array &$timingData = null, ?string $locale = null): ?string
     {
+        $this->speechLocale = $locale ?? (preg_match('/^([a-z]{2})-[A-Z]{2}-/', $voiceId, $m) === 1 ? $m[1] : null);
         $audio = $this->generateFromProviders($text, $voiceId, $speed, $provider, $timingData);
         $this->sourceAudio = $audio;
         $from = $this->generatedAudioExtension;
@@ -578,8 +594,13 @@ PY;
             $m4aPath = $basePath.'.m4a';
             @unlink($basePath);
 
-            $command = '/usr/bin/say -o '.escapeshellarg($m4aPath).' '.escapeshellarg($text);
-            exec($command, $output, $exitCode);
+            // In the lesson's language: without -v the Mac read every lesson in its own system voice.
+            $voice = self::macVoice($this->speechLocale);
+            exec('/usr/bin/say -v '.escapeshellarg($voice).' -o '.escapeshellarg($m4aPath).' '.escapeshellarg($text), $output, $exitCode);
+            if ($exitCode !== 0 || ! file_exists($m4aPath)) {   // that voice is not installed on this Mac
+                $voice = 'say';
+                exec('/usr/bin/say -o '.escapeshellarg($m4aPath).' '.escapeshellarg($text), $output, $exitCode);
+            }
 
             if ($exitCode !== 0 || ! file_exists($m4aPath)) {
                 Log::warning('TtsService: macOS say fallback failed');
@@ -621,7 +642,7 @@ PY;
             // this is exactly the downgrade that went unnoticed for months.
             Log::warning('[TTS] FELL BACK TO macOS `say` — the lesson narrator\'s voice was NOT used.');
             $this->generatedProvider = 'macos_say';
-            $this->generatedVoice = 'say';
+            $this->generatedVoice = $voice;
 
             return $audioContent;
         } catch (\Throwable $e) {

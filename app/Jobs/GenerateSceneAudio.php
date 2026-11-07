@@ -60,6 +60,7 @@ class GenerateSceneAudio implements ShouldQueue
                 (float) ($narrator?->voice_speed ?? 1.0),
                 $provider,
                 $timing,
+                $locale,
             );
             if ($audio === null) {
                 throw new \RuntimeException('TTS service returned no audio.');
