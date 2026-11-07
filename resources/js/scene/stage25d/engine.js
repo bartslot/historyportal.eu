@@ -640,7 +640,12 @@ export async function createStage25d (host, opts = {}) {
       }
       const i = layerIndex(id)
       if (i < 0 || !layers[i] || !assets.has(assetId) || layers[i].asset === assetId) return
-      layers = layers.map((l, n) => (n === i ? { ...l, asset: assetId } : l))
+      // an edited copy belongs to the picture it was made from: kept, it drew over every pose picked after it
+      layers = layers.map((l, n) => {
+        if (n !== i) return l
+        const { src, edit_state: editState, original_src: originalSrc, ...rest } = l
+        return { ...rest, asset: assetId }
+      })
       await api.show({ ...cfg, set: liveSet() })
       opts.onCommit?.(i, { asset: assetId }, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))

@@ -398,6 +398,27 @@ class StageEditingTest extends TestCase
         $this->assertCount(3, $scene->fresh()->config['stage25d']['set']['layers']);
     }
 
+    public function test_picking_another_pose_drops_the_edited_copy_of_the_old_one(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'fig-moeder-point-01', 'layer' => 'figure', 'file' => 'p.webp'],
+            ['id' => 'fig-moeder-stand-01', 'layer' => 'figure', 'file' => 's.webp'],
+        ]]));
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['layers'] = [['asset' => 'fig-moeder-point-01', 'depth' => 'fg', 'x' => 0.5, 'src' => '/storage/lessons/1/edits/a.webp', 'edit_state' => ['white' => 50]]];
+        $scene->update(['config' => $config]);
+
+        $this->editor($scene)->call('saveStage25dLayer', 0, ['x' => 0.4], $scene->id);
+        $this->assertSame('/storage/lessons/1/edits/a.webp', $scene->fresh()->config['stage25d']['set']['layers'][0]['src'], 'a move keeps the edit');
+
+        $this->editor($scene)->call('saveStage25dLayer', 0, ['asset' => 'fig-moeder-stand-01'], $scene->id);
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertSame('fig-moeder-stand-01', $layer['asset']);
+        $this->assertArrayNotHasKey('src', $layer);
+        $this->assertArrayNotHasKey('edit_state', $layer);
+    }
+
     public function test_the_sky_picture_can_be_swapped_for_another_sky_only(): void
     {
         Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [

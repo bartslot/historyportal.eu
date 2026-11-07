@@ -107,6 +107,10 @@ trait EditsStage25d
         if ($values === []) {
             return;
         }
+        if (isset($values['asset']) && $values['asset'] !== ($layers[$index]['asset'] ?? null)) {
+            // An edited copy belongs to the picture it was made from: kept, it drew over every pose picked after it.
+            unset($layers[$index]['src'], $layers[$index]['edit_state'], $layers[$index]['original_src']);
+        }
         $layers[$index] = [...$layers[$index], ...$values];
         $this->storeStage25dLayers($scene, $layers);
     }
