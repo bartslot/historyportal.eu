@@ -203,6 +203,8 @@ export const animationTimeline = (config = {}) => ({
       value: (target, property) => this.valueAt(target, property),
       edit: (target, property, value, options) => this.editKeyed(target, property, value, options),
       reset: (target, property) => this.resetProperty(target, property),
+      // a row's name in the teacher's language (the stage's bone handles say which bone they turn)
+      label: (key) => config.propertyLabels?.[key] ?? null,
       canResetObject: (target) => this.canResetObject(target),
       resetObject: (target) => this.resetObject(target),
       time: () => this.time,
@@ -1080,7 +1082,7 @@ export const animationTimeline = (config = {}) => ({
    * playhead — updating the key there, or adding one between keys (After Effects). Returns false on
    * a property that is not animated, so the panel saves the plain value as it always did.
    */
-  editKeyed (target, property, value, { flush = true } = {}) {
+  editKeyed (target, property, value, { flush = true, hold = false } = {}) {
     this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (kindOfTarget(target) === 'dio') return false
     this.armAutoKey(target, property)
@@ -1092,7 +1094,7 @@ export const animationTimeline = (config = {}) => ({
     writeObjectProperty(target, property, v)   // draws the layer or balloon on the canvas now
     this.writeTrack(target, property, (track) => addKeyframe(track, { time: this.time, value: v }))
     if (flush) this.save()
-    else this.saveSoon()
+    else if (!hold) this.saveSoon()   // hold: a drag still going on (a bone on the stage); its last edit saves
     this.announce()
     return true
   },

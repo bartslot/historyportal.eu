@@ -12,8 +12,10 @@
  * down = nearer) and snaps to quarter steps of the grid, the corner handles change the distance (a nearer picture is a
  * bigger one; its real height never changes), and the grid is drawn while editing. Backdrops that span the view (sky
  * picture, bg strips) and sky-depth pictures are not on the ground: they still move by x and scale by size.
+ * A figure of parts (a puppet) also shows a handle on each bone it can turn; a drag turns that bone (`bone:head`).
  */
-import { viewWidthAt } from '@stage25d/stage25d/layout'
+import { BONE_PREFIX, viewWidthAt } from '@stage25d/stage25d/layout'
+import { turnBetween } from '../../editor/puppet-pose.js'
 import { handleCss } from '../ArtworkOverlay.js'
 import { settle, pointForSizeRatio, alongSight, gridPieces, groundOf, layerOf } from './floor.js'
 
@@ -62,8 +64,9 @@ export const figureInView = (boxes, selected) => {
  * @param {() => number[]} c.eye                                where the camera stands on the ground, [x, z]
  * @param {(index: number) => void} [c.onSettled]               a drag along the ground ended
  * @param {(x: number, y: number) => boolean} [c.onEmpty]       a press on no standing picture; true when it selected a backdrop
+ * @param {(bone: string) => string} [c.boneLabel]             a bone's name for its handle, in the teacher's language
  */
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone }) {
   let selected = null
   let drag = null
   let hoverQueued = false
@@ -92,6 +95,38 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     return h
   })
   host.appendChild(box)
+
+  // A figure of parts: a handle on each bone it can turn, at the bone's far end; a drag turns the bone round its joint.
+  // 32 px to grab (the control sizes), a small dot to see; above the box, so a press on it never moves the figure.
+  const bones = document.createElement('div')
+  bones.dataset.stage25dBones = ''
+  bones.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4;'
+  host.appendChild(bones)
+  const boneDots = new Map()
+  const boneDot = (name) => {
+    if (boneDots.has(name)) return boneDots.get(name)
+    const d = document.createElement('div')
+    d.dataset.boneHandle = name
+    d.setAttribute('aria-label', boneLabel(name))
+    d.dataset.tooltip = boneLabel(name)
+    d.style.cssText = 'position:absolute;width:32px;height:32px;margin:-16px 0 0 -16px;display:none;place-items:center;cursor:grab;touch-action:none;pointer-events:auto;'
+    const dot = document.createElement('span')
+    dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid ${SKY};box-sizing:border-box;`
+    d.appendChild(dot)
+    d.addEventListener('pointerdown', onBoneDown(name))
+    for (const type of ['pointermove', 'pointerup', 'pointercancel']) d.addEventListener(type, type === 'pointermove' ? onMoveEvent : onUp)
+    bones.appendChild(d)
+    boneDots.set(name, d)
+    return d
+  }
+  const placeBones = (r, h) => {
+    const seen = selected === null || !r ? null : stage()?.jointsOnScreen?.(selected)
+    const shown = new Set(seen?.joints.map((j) => j.name) ?? [])
+    for (const j of seen?.joints ?? []) {
+      Object.assign(boneDot(j.name).style, { display: 'grid', left: `${j.tip[0] * r.width + r.left - h.left}px`, top: `${j.tip[1] * r.height + r.top - h.top}px` })
+    }
+    for (const [name, d] of boneDots) if (!shown.has(name)) d.style.display = 'none'
+  }
 
   // The ground grid while editing (never in the player: this file is the editor's), drawn by the stage on the ground
   // itself, under the pictures: a faint pencil line in the theme's neutral ink (amber vanishes into painted grass).
@@ -128,10 +163,11 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   const place = () => {
     const b = rectOf()
-    if (!b) { box.style.display = 'none'; return }
+    if (!b) { box.style.display = 'none'; placeBones(null); return }
     const r = canvas.getBoundingClientRect()
     const h = host.getBoundingClientRect()
     Object.assign(box.style, { display: 'block', left: `${b.left + r.left - h.left}px`, top: `${b.top + r.top - h.top}px`, width: `${b.width}px`, height: `${b.height}px` })
+    placeBones(r, h)
   }
 
   const clampTo = (value, min, max) => Math.min(max, Math.max(min, value))
@@ -185,8 +221,38 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
-  const onMoveEvent = (e) => {
+  /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. */
+  function onBoneDown (name) {
+    return (e) => {
+      if (e.button !== 0 || selected === null) return
+      const seen = stage()?.jointsOnScreen?.(selected)
+      const joint = seen?.joints.find((j) => j.name === name)
+      if (!joint) return
+      e.stopPropagation()
+      e.preventDefault()
+      const r = canvas.getBoundingClientRect()
+      const { x, y } = local(e)
+      drag = {
+        mode: 'bone', name, index: selected, id: e.pointerId, el: e.currentTarget,
+        at: [joint.at[0] * r.width, joint.at[1] * r.height], last: [x, y],
+        deg: valueOf(selected, `${BONE_PREFIX}${name}`) ?? 0, sense: seen.mirrored ? -1 : 1,
+      }
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    }
+  }
+
+  function onMoveEvent (e) {
     const { x, y } = local(e)
+    if (drag?.mode === 'bone') {
+      // clockwise on screen is clockwise for the bone, unless the figure shows mirrored; held to the joint's limits as it goes,
+      // so turning back from past a limit moves at once
+      const turned = drag.deg + turnBetween(drag.at, drag.last, [x, y]) * drag.sense
+      drag.deg = stage()?.boneLimit?.(drag.index, drag.name, clampTo(turned, -180, 180)) ?? turned
+      drag.last = [x, y]
+      drag.sent = e.shiftKey ? Math.round(drag.deg / 15) * 15 : Math.round(drag.deg * 10) / 10
+      onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { hold: true })   // shown at once, saved when let go
+      return
+    }
     if (drag?.mode === 'move' && drag.ground) {
       // Slide along the ground: the feet go where the pointer moved them on screen, onto the ground there, snapped.
       const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1], drag.lift, drag.index)
@@ -233,6 +299,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onUp = (e) => {
     if (!drag) return
     drag.el.releasePointerCapture?.(drag.id)
+    if (drag.mode === 'bone' && drag.sent !== undefined) onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { done: true })   // one save
     const index = drag.index
     const moved = (drag.mode === 'move' && drag.ground) || drag.byDistance
     const next = drag.next != null && Math.hypot(e.clientX - drag.pressed[0], e.clientY - drag.pressed[1]) < CLICK_PX ? drag.next : null
@@ -262,6 +329,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     destroy () {
       window.removeEventListener('scene-object-selected', onOther)
       box.remove()
+      bones.remove()
       stage()?.setGrid?.(null)
       chip.remove()
     },

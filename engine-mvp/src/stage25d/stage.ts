@@ -16,8 +16,8 @@ import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
-import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, skylines, type LayerHandle } from './layer'
-import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture } from './bones'
+import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
+import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -170,7 +170,10 @@ export class Stage {
           : layer.rig?.length ? bindPicture(await alphaOf(urlOf(lib, asset, layer)), layer.rig) : null
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
+      // a figure of parts reads its ink off the drawing put back together, so a cut between parts draws no line
+      const rest = puppet ? await restDrawing(puppet, this.scene).catch(() => undefined) : undefined
+      if (token !== this.buildToken) return
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest)
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -370,6 +373,29 @@ export class Stage {
     const pts = b.handle.mesh.getBoundingInfo().boundingBox.vectorsWorld.map((v) => Vector3.Project(v, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view))
     const xs = pts.map((p) => p.x * kx), ys = pts.map((p) => p.y * ky)
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
+  }
+
+  /** A figure's joints on screen as shares of the canvas, in the pose drawn now; null for a layer that is no figure of parts.
+   *  `mirrored`: the drawing shows mirrored, so a clockwise drag on screen turns its bones the other way. */
+  jointsOnScreen(index: number): { mirrored: boolean; joints: { name: string; at: [number, number]; tip: [number, number] }[] } | null {
+    const b = this.built.find((n) => n.index === index)
+    const bent = b?.bent
+    if (!b || !bent || !('joints' in bent)) return null
+    const view = this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight())
+    const kx = 1 / this.engine.getRenderWidth(), ky = 1 / this.engine.getRenderHeight()
+    const on = ([x, y]: [number, number]): [number, number] => {
+      const p = Vector3.Project(b.handle.worldOf(bent, x, y), Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view)
+      return [p.x * kx, p.y * ky]
+    }
+    const o = on([0, 0]), right = on([bent.width, 0]), down = on([0, bent.height])
+    const mirrored = (right[0] - o[0]) * (down[1] - o[1]) - (right[1] - o[1]) * (down[0] - o[0]) < 0
+    return { mirrored, joints: (bent as BentPuppet).joints().map((j) => ({ name: j.name, at: on(j.at), tip: on(j.tip) })) }
+  }
+
+  /** A turn held to the figure's own limits (a knee, an elbow); unchanged on a layer that is no figure of parts. */
+  boneLimit(index: number, name: string, deg: number): number {
+    const bent = this.built.find((n) => n.index === index)?.bent
+    return bent && 'limit' in bent ? (bent as BentPuppet).limit(name, deg) : deg
   }
 
   /** The camera's own motion is on; the editor stills it while working. Someone who asked for less motion never gets it. */

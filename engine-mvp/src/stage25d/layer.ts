@@ -5,7 +5,7 @@ import {
   Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexBuffer, VertexData,
   type Scene,
 } from '@babylonjs/core'
-import type { Asset, MotionSpec } from './types'
+import type { Asset, MotionSpec, Puppet } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
@@ -48,7 +48,14 @@ Effect.ShadersStore.stageLayerVertexShader = `
   uniform float time, kind, amount, speed, phase, height, width;
   varying vec2 vUV;
   varying float vH;
+  #ifdef REST
+  attribute vec2 uv2;     // where this corner sits in the drawing at rest (a figure of parts: restDrawing)
+  varying vec2 vRest;
+  #endif
   void main(void) {
+    #ifdef REST
+    vRest = uv2;
+    #endif
     vec3 p = position;
     float h = clamp(p.y / max(height, 0.001), 0.0, 1.0);   // 0 at the ground point, 1 at the top
     if (kind == 1.0) {          // sway: bends from the base, top moves most, two beats so it never ticks like a metronome
@@ -104,6 +111,22 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   ${HATCH_GLSL}
   // past the image's own border counts as air, so a picture cut off by its border gets a line there too
   bool past(vec2 p) { return p.x < 0.0 || p.y < 0.0 || p.x > uRepeat || p.y > 1.0; }
+  #ifdef REST
+  uniform sampler2D rest;
+  uniform vec2 restScale;   // uv of the atlas to uv of the drawing (1 / uvFit)
+  varying vec2 vRest;
+  #endif
+  // what lies \`off\` (uv of this picture) away from here, for the ink's air and lines: on a figure of parts the drawing as
+  // it was drawn (a cut between two parts is no edge), elsewhere the picture itself; past its border is air
+  vec4 around(vec2 uv, vec2 off) {
+    #ifdef REST
+    vec2 q = vRest + off * restScale;
+    return (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) ? vec4(0.0) : texture2D(rest, q);
+    #else
+    vec2 q = uv + off;
+    return past(q) ? vec4(0.0) : tap(q);
+    #endif
+  }
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
@@ -123,7 +146,11 @@ Effect.ShadersStore.stageLayerFragmentShader = `
         vec3 best = s; float bl = lum(s), edge = 1.0;
         for (int k = 0; k < 4; k++) {
           vec2 d = k == 0 ? vec2(1, 0) : k == 1 ? vec2(-1, 0) : k == 2 ? vec2(0, 1) : vec2(0, -1);
+          #ifdef REST
+          vec4 n = around(uv, d * pxUV * lineThin);
+          #else
           vec4 n = tap(uv + d * pxUV * lineThin);
+          #endif
           if (n.a > 0.9) { vec3 ns = n.rgb / n.a; float nl = lum(ns); if (nl > bl) { best = ns; bl = nl; } }
           else edge = min(edge, n.a);
         }
@@ -152,8 +179,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float shade = 0.0;
       for (int k = 1; k <= 6; k++) {
         float f = float(k) / 6.0;
-        vec2 q = uv + away * f;
-        vec4 n = past(q) ? vec4(0.0) : tap(q);
+        vec4 n = around(uv, away * f);
         float e = max(1.0 - n.a, n.a > 0.1 ? 0.6 * inkOf(n.rgb / n.a) : 0.0);
         shade = max(shade, e * (1.0 - 0.75 * f));
       }
@@ -170,8 +196,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       for (int k = 0; k < 12; k++) {
         float a = float(k) * 0.5236;
         vec2 d = vec2(cos(a), sin(a)) * pxUV * outlineW;
-        air = max(air, past(uv + d) ? 1.0 : 1.0 - tap(uv + d).a);
-        air = max(air, past(uv + d * 0.5) ? 1.0 : 1.0 - tap(uv + d * 0.5).a);
+        air = max(air, 1.0 - around(uv, d).a);
+        air = max(air, 1.0 - around(uv, d * 0.5).a);
       }
       float inside = smoothstep(0.35, 0.65, tap(uv).a);
       vec3 s = c.a > 0.004 ? c.rgb / c.a : vec3(0.0);
@@ -331,22 +357,59 @@ export interface LayerHandle {
   setUvFit(fit: readonly [number, number]): void
   /** Draw the picture as this mesh, then turn its bones. */
   setBent(bent: BentPicture, bones: Record<string, number>): void
+  /** A point of the bent drawing (its px) in the world, where setBent put it. */
+  worldOf(bent: BentPicture, px: number, py: number): Vector3
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
 }
 
 let seed = 0
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene): LayerHandle {
+/**
+ * A figure of parts put back together as it was drawn: every part of the atlas in its place at rest, back to front. The
+ * shader reads its air and lines here, so a cut between two parts (the neck under the head) is no edge to outline or
+ * hatch, while the real silhouette still is; its corners carry their place in it (restUvs), so the ink travels with
+ * each part when the figure moves. Cached per atlas and scene.
+ */
+export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
+  const own = textures.get(scene) ?? new Map<string, Promise<RawTexture>>()
+  textures.set(scene, own)
+  const key = `rest:${puppet.atlas}`
+  const hit = own.get(key)
+  if (hit) return hit
+  const p = new Promise<RawTexture>((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onerror = () => reject(new Error(`atlas ${puppet.atlas} did not load`))
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = puppet.width; c.height = puppet.height
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      const aw = img.naturalWidth, ah = img.naturalHeight
+      for (const { quad: [[x0, y0], , [x1, y1]], uv: [u0, v0, u1, v1] } of puppet.parts) {
+        g.drawImage(img, u0 * aw, v0 * ah, (u1 - u0) * aw, (v1 - v0) * ah, x0, y0, x1 - x0, y1 - y0)
+      }
+      resolve(premultipliedTexture(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height, scene))
+    }
+    img.src = puppet.atlas
+  })
+  own.set(key, p)
+  p.catch(() => own.delete(key))
+  return p
+}
+
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture): LayerHandle {
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
-    attributes: ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit'],
-    samplers: ['tex'],
+    attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale'],
+    samplers: rest ? ['tex', 'rest'] : ['tex'],
+    defines: rest ? ['#define REST'] : [],
     needAlphaBlending: true,
   })
   tex.wrapU = uRepeat !== 1 ? Texture.WRAP_ADDRESSMODE : Texture.CLAMP_ADDRESSMODE
   mat.setTexture('tex', tex)
+  if (rest) mat.setTexture('rest', rest)
   mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
   mat.disableDepthWrite = true          // planes never hide each other by depth: draw order (alphaIndex) does that
   mat.backFaceCulling = false
@@ -388,14 +451,18 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       }
       if (bentOf === bent) mesh.updateVerticesData(VertexBuffer.PositionKind, positions)
       else {
-        Object.assign(new VertexData(), { positions, uvs: bent.uvs, indices: bent.triangles }).applyToMesh(mesh, true)
+        Object.assign(new VertexData(), { positions, uvs: bent.uvs, ...(bent.restUvs ? { uvs2: bent.restUvs } : {}), indices: bent.triangles }).applyToMesh(mesh, true)
         bentOf = bent
       }
       mesh.refreshBoundingInfo()
       bentSig = sig
     },
+    worldOf: (bent, px, py) => {
+      const [ax, ay] = asset.anchor ?? [0.5, 1]
+      return Vector3.TransformCoordinates(new Vector3((px / bent.width - ax) * w, (ay - py / bent.height) * h, 0), mesh.getWorldMatrix())
+    },
     setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
-    setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])) },
+    setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
     setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)

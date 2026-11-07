@@ -60,6 +60,20 @@ describe('a puppet of separate parts', () => {
     expect(hand[8]).toBeCloseTo(40, 5)                     // the arm itself did not move
     expect(hand[4]).toBeLessThan(40)                       // the hand swung left around the wrist
   })
+
+  it('names each joint where it stands now, its handle at the next joint or the middle of its part', () => {
+    bent.bend({})
+    const rest = Object.fromEntries(bent.joints().map((j) => [j.name, j]))
+    const r = (p: number[]) => p.map((n) => Math.round(n) + 0)   // + 0: no -0
+    expect(r(rest.arm.at)).toEqual([50, 50])
+    expect(r(rest.arm.tip)).toEqual([50, 100])          // the wrist hangs off it
+    expect(r(rest.hand.tip)).toEqual([50, 115])         // nothing hangs off a hand: the middle of its part
+    bent.bend({ arm: 90 })
+    const turned = Object.fromEntries(bent.joints().map((j) => [j.name, j]))
+    expect(r(turned.arm.at)).toEqual([50, 50])   // the shoulder stays put
+    expect(r(turned.arm.tip)).toEqual([0, 50])   // the wrist went round it, clockwise
+    expect(r(turned.hand.at)).toEqual([0, 50])
+  })
 })
 
 describe('a puppet keeps its joints human', () => {

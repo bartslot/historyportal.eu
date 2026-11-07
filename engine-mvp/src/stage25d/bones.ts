@@ -15,6 +15,8 @@ export interface BentPicture {
   width: number
   height: number
   uvs: number[]
+  /** A figure of parts: where each vertex sits in the drawing at rest, as uv of the drawing (layer.ts restDrawing). */
+  restUvs?: number[]
   triangles: number[]
   /** The vertices (picture px, flat x y) with these bones turned, degrees clockwise on screen. */
   bend(bones: Record<string, number>): number[]
@@ -236,6 +238,19 @@ export function puppetOf(asset: { puppet?: Puppet }, layer: { puppet?: Puppet },
 export interface BentPuppet extends BentPicture {
   /** These turns as the body allows them: a joint's own limits, and a near hand stays out of the body it is drawn behind. */
   safe(bones: Record<string, number>): Record<string, number>
+  /** One turn held to its joint's limits (limitBone, with the figure's facing). */
+  limit(name: string, deg: number): number
+  /** The bones a teacher can turn, in the pose bend() last placed, in puppet px: `at` the joint it turns round, `tip` the
+   *  point a handle grabs (the next joint along, or the middle of its part when nothing hangs off it). */
+  joints(): { name: string; at: [number, number]; tip: [number, number] }[]
+}
+
+/** Where a rigid part stands now: the point p of the drawing carried by the turn and shift from its rest corners to these. */
+function carried(quad: [number, number][], v: number[], [x, y]: [number, number]): [number, number] {
+  const angle = Math.atan2(v[3] - v[1], v[2] - v[0]) - Math.atan2(quad[1][1] - quad[0][1], quad[1][0] - quad[0][0])
+  const cos = Math.cos(angle), sin = Math.sin(angle)
+  const dx = x - quad[0][0], dy = y - quad[0][1]
+  return [v[0] + cos * dx - sin * dy, v[1] + sin * dx + cos * dy]
 }
 
 const GUARD_STEP = 3       // degrees a forearm is taken back at a time until it is clear of the body
@@ -304,6 +319,7 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     // a figure drawn with its arm already in that part of the body: nothing to guard there
     return gaps().map((gap) => (gap === null ? wanted : gap < 0 ? -Infinity : Math.min(wanted, gap)))
   })()
+  let last: number[] = []   // the vertices bend() placed last: the pose on screen, for joints()
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
   const safe = (bones: Record<string, number>): Record<string, number> => {
     if (!handOf || !bodyAt.length || !puppet.facing) return bones
@@ -318,11 +334,26 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   return {
     width: puppet.width, height: puppet.height,
     uvs: atts.flatMap((a) => a.uvs),
+    restUvs: puppet.parts.flatMap((p) => p.quad.flatMap(([x, y]) => [x / puppet.width, y / puppet.height])),
     triangles: atts.flatMap((a, i) => a.triangles.map((t) => t + i * 4)),   // in order: the first part is at the back
     safe,
+    limit: (name, deg) => limitBone(name, deg, puppet.facing),
     bend(bones) {
       place(safe(bones))
-      return atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
+      last = atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
+      return last
+    },
+    joints() {
+      if (!last.length) this.bend({})
+      const partOf = (name: string) => puppet.parts.findIndex((p) => p.bone === name)
+      return puppet.bones.flatMap((b) => {
+        const at = partOf(b.name)
+        if (at < 0 || b.name === 'hips') return []   // the hips stay where they stand (puppet-pose movableBones)
+        const quad = puppet.parts[at].quad, v = last.slice(at * 8, at * 8 + 8)
+        const child = puppet.bones.find((c) => c.parent === b.name && partOf(c.name) >= 0)
+        const mid: [number, number] = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2]
+        return [{ name: b.name, at: carried(quad, v, b.from), tip: carried(quad, v, child ? child.from : mid) }]
+      })
     },
   }
 }

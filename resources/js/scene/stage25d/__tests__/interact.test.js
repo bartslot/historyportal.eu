@@ -124,6 +124,67 @@ describe('stage25d canvas interaction', () => {
     expect(deg).toBeCloseTo(90, 0)
   })
 
+  describe('a figure of parts', () => {
+    // the neck's joint at canvas (80, 90), its handle straight above it at (80, 67.5)
+    const joints = (mirrored = false) => vi.fn(() => ({ mirrored, joints: [{ name: 'head', at: [0.2, 0.4], tip: [0.2, 0.3] }] }))
+    const bone = (over = {}) => setup({ ...over, stage: { jointsOnScreen: joints(over.mirrored), boneLimit: vi.fn((i, name, deg) => deg), ...over.stage }, values: { 'bone:head': 0, ...over.values } })
+    const drag = (el, from, to) => {
+      el.dispatchEvent(pointer('pointerdown', 100 + from[0], 50 + from[1]))
+      el.dispatchEvent(pointer('pointermove', 100 + to[0], 50 + to[1]))
+    }
+
+    it('shows a 32 px handle at the far end of each bone it can turn', () => {
+      const { host, api } = bone()
+      api.select(2)
+      const dot = host.querySelector('[data-bone-handle="head"]')
+      expect(dot.style.display).toBe('grid')
+      expect([dot.style.left, dot.style.top, dot.style.width]).toEqual(['80px', '67.5px', '32px'])
+    })
+
+    it('a drag on the handle turns the bone round its joint, clockwise on screen, and never moves the figure', () => {
+      const { host, api, onChange } = bone()
+      api.select(2)
+      drag(host.querySelector('[data-bone-handle="head"]'), [80, 67.5], [102.5, 90])   // swept a quarter round to the right
+      expect(onChange.mock.calls.map(([, prop]) => prop)).toEqual(['bone:head'])
+      expect(onChange.mock.calls[0][2]).toBeCloseTo(90, 0)
+      expect(onChange.mock.calls[0][3]).toEqual({ hold: true })   // shown, not saved while it moves
+    })
+
+    it('letting go saves the last turn once', () => {
+      const { host, api, onChange } = bone()
+      api.select(2)
+      const dot = host.querySelector('[data-bone-handle="head"]')
+      drag(dot, [80, 67.5], [102.5, 90])
+      dot.dispatchEvent(pointer('pointerup', 100 + 102.5, 50 + 90))
+      const saves = onChange.mock.calls.filter(([, , , opts]) => opts?.done)
+      expect(saves).toHaveLength(1)
+      expect(saves[0][2]).toBeCloseTo(90, 0)
+    })
+
+    it('turns the other way on a figure that shows mirrored', () => {
+      const { host, api, onChange } = bone({ mirrored: true })
+      api.select(2)
+      drag(host.querySelector('[data-bone-handle="head"]'), [80, 67.5], [102.5, 90])
+      expect(onChange.mock.calls.at(-1)[2]).toBeCloseTo(-90, 0)
+    })
+
+    it('stops at the joint\'s limit, and turning back moves at once', () => {
+      const { host, api, onChange } = bone({ stage: { boneLimit: vi.fn((i, name, deg) => Math.min(30, deg)) } })
+      api.select(2)
+      const dot = host.querySelector('[data-bone-handle="head"]')
+      drag(dot, [80, 67.5], [102.5, 90])                              // 90 asked, 30 allowed
+      expect(onChange.mock.calls.at(-1)[2]).toBe(30)
+      dot.dispatchEvent(pointer('pointermove', 100 + 80 + 22.5 * Math.sin(Math.PI / 4), 50 + 90 - 22.5 * Math.cos(Math.PI / 4)))   // back by 45
+      expect(onChange.mock.calls.at(-1)[2]).toBeCloseTo(-15, 0)
+    })
+
+    it('a picture that is no figure of parts gets no bone handles', () => {
+      const { host, api } = setup({ stage: { jointsOnScreen: vi.fn(() => null) } })
+      api.select(2)
+      expect(host.querySelectorAll('[data-bone-handle]')).toHaveLength(0)
+    })
+  })
+
   it('lets go when another object is selected elsewhere', () => {
     const { api } = setup()
     api.select(2)

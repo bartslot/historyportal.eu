@@ -374,7 +374,8 @@ export async function createStage25d (host, opts = {}) {
         })
         pointer = attachInteraction({
           canvas, host, stage: () => stage, alpha: { opaque: paintAt },
-          valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
+          valueOf: (i, prop) => (isBoneField(prop) ? api.readLayerProp(`layer-${i}`, prop) : prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
+          boneLabel: (bone) => window.__timelineKeying?.label?.(`bone:${bone}`) ?? bone,
           onGround, byDistance,
           // the feet slide over the ground as it rises into the far landscape, at their own height above it (a ground
           // strip stays on the floor itself: layout.ts isGroundStrip)
@@ -384,7 +385,7 @@ export async function createStage25d (host, opts = {}) {
           onSettled: (i) => api.settleBand(i),
           // a press on no standing picture selects the backdrop painted there: a ground band, a far strip, the sky
           onEmpty: (x, y) => backdropAt(x, y),
-          onChange: (i, prop, v) => api.moveLayer(`layer-${i}`, prop, v),
+          onChange: (i, prop, v, opts) => api.moveLayer(`layer-${i}`, prop, v, opts),
         })
       }
       if ((pointer?.selected ?? -1) >= layers.length) pointer.select(null)   // its layer is gone (a delete, an undo)
@@ -477,10 +478,12 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The player follows a clock (the narration's currentTime). */
     play (getT) { clock = () => lead + getT() },
-    /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer. */
-    moveLayer (id, prop, value) {
-      if (window.__timelineKeying?.edit?.(`s25:${id}`, prop, value, { flush: false })) return
-      api.commitLayerProp(id, prop, value)
+    /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer.
+     *  `hold`: show it, save nothing yet (a gesture still going on); `done`: the gesture's last value, saved now. */
+    moveLayer (id, prop, value, { hold = false, done = false } = {}) {
+      if (window.__timelineKeying?.edit?.(`s25:${id}`, prop, value, { flush: done, hold })) return
+      if (hold) api.setLayerProp(id, prop, value)
+      else api.commitLayerProp(id, prop, value)
     },
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. A backdrop row (the sky, a
      *  ground band) has no box: it is the selection for the panel and the Assets tab. */
