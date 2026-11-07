@@ -123,7 +123,7 @@ test.describe('a plain figure', () => {
     const running = () => section.evaluate((el) => [...el.querySelectorAll('.motion-preview')].reduce((n, p) => n + p.getAnimations().length, 0))
 
     await expect(head).toHaveAttribute('aria-expanded', 'false')
-    await expect(head.locator('img[src$="icons/motion.svg"]')).toBeVisible()
+    await expect(head.locator('[style*="icons/motion.svg"]')).toBeVisible()
     expect(await running()).toBe(0)
 
     await head.click()

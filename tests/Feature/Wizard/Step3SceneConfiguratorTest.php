@@ -607,6 +607,29 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertSame('pending', $this->s2->fresh()->status, 'an empty quiz keeps the lesson from publishing');
     }
 
+    public function test_a_half_typed_question_and_its_empty_slots_come_back_after_a_reload_and_keep_the_lesson_from_publishing(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 2, 'status' => 'pending']);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Who sailed?')
+            ->set('quizDraft.0.options', ['Tasman', 'Cook', '', ''])
+            ->set('quizDraft.1.question', 'Unfinished…');
+
+        $this->assertSame('pending', $this->s2->fresh()->status, 'a started question without answers keeps the quiz from being ready');
+
+        $again = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id);
+        $this->assertCount(2, $again->get('quizDraft'));
+        $this->assertSame('Unfinished…', $again->get('quizDraft')[1]['question']);
+
+        $again->set('quizDraft.1.options', ['Yes', 'No', '', '']);
+        $this->assertSame('ready', $this->s2->fresh()->status);
+    }
+
     public function test_a_failed_generate_keeps_what_the_teacher_typed_and_touches_no_other_quiz(): void
     {
         $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1]);

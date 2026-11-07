@@ -52,7 +52,7 @@
             </x-ui.panel-row>
         </div>
         <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="cam" data-motion-section>
-            <x-slot:icon><img src="{{ asset('images/icons/motion.svg') }}" alt="" width="13" height="8" class="shrink-0" /></x-slot:icon>
+            <x-slot:icon><span class="h-2 w-[13px] shrink-0 bg-current text-panel-title" aria-hidden="true" style="mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat; -webkit-mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat"></span></x-slot:icon>
             <div class="space-y-1">
                 <x-ui.segmented panel class="w-full" name="stage25d-camera-motion" tab-class="flex-1 px-0" model="cameraMotionKind"
                                 :options="[['none', __('None'), ['moves' => 'none']], ['sway', __('Sway'), ['moves' => 'sway']], ['handheld', __('Handheld'), ['moves' => 'handheld']], ['shake', __('Shake'), ['moves' => 'shake']]]" />
@@ -215,7 +215,7 @@
         </div>
         {{-- Figma 2607:2626, closed; 2542:1938 inside: one picture per motion, moving that way from the moment it opens. Anything else clicked closes it. --}}
         <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="info" data-motion-section>
-            <x-slot:icon><img src="{{ asset('images/icons/motion.svg') }}" alt="" width="13" height="8" class="shrink-0" /></x-slot:icon>
+            <x-slot:icon><span class="h-2 w-[13px] shrink-0 bg-current text-panel-title" aria-hidden="true" style="mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat; -webkit-mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat"></span></x-slot:icon>
             <div class="space-y-1" data-stage25d-motion-kinds>
                 <x-ui.segmented panel class="w-full" :name="'stage25d-motion-'.$layerId" tab-class="flex-1 px-0" model="motionKind"
                                 :options="collect(\App\Services\Stage25d\LayerKeys::MOTION_KINDS)->map(fn ($kind) => [$kind, __(ucfirst($kind)), ['moves' => $kind]])->all()" />

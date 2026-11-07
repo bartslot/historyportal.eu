@@ -90,6 +90,20 @@ trait EditsQuizQuestions
                 'explanation' => (string) ($q->explanation ?? ''),
             ])->values()->all();
 
+        // What the teacher typed but did not finish is kept on the scene (autosaveQuiz): a reload brings it back, slots and all
+        $kept = $this->quizDraftSceneId ? (Scene::find($this->quizDraftSceneId)?->config['quiz_draft'] ?? null) : null;
+        if (is_array($kept) && $kept !== []) {
+            $this->quizDraft = array_values(array_map(fn ($q) => [
+                'id' => null,
+                'question' => (string) ($q['question'] ?? ''),
+                'image_path' => $q['image_path'] ?? null,
+                'options' => $this->padOptions((array) ($q['options'] ?? [])),
+                'correct_index' => (int) ($q['correct_index'] ?? 0),
+                'asks_ahead' => (bool) ($q['asks_ahead'] ?? false),
+                'explanation' => (string) ($q['explanation'] ?? ''),
+            ], array_slice($kept, 0, self::QUIZ_MAX_QUESTIONS)));
+        }
+
         // A quiz with nothing in it yet still has its slots: the stage shows the card, to type on or to generate
         if ($this->quizDraft === [] && $this->quizDraftSceneId) {
             $count = (int) (Scene::find($this->quizDraftSceneId)?->quiz_question_count ?: \App\Services\QuizPrompt::DEFAULT_QUESTION_COUNT);
@@ -292,6 +306,7 @@ trait EditsQuizQuestions
             return;
         }
 
+        $this->forgetKeptQuizDraft();
         $this->loadQuizDraft();
         $this->autosaveQuiz();
         $this->dispatch('toast', message: __('Quiz generated.'), type: 'success');
@@ -456,6 +471,7 @@ trait EditsQuizQuestions
     {
         $this->quizErrors = [];
         $clean = [];
+        $unfinished = false;   // a question the teacher started and did not finish
 
         foreach ($this->quizDraft as $i => $q) {
             $question = trim((string) ($q['question'] ?? ''));
@@ -470,6 +486,7 @@ trait EditsQuizQuestions
             if (! $isComplete) {
                 // Only nag about questions the teacher has actually started.
                 if (! $isUntouched) {
+                    $unfinished = true;
                     $errors = [];
                     if ($question === '') {
                         $errors[] = 'Question text is required.';
@@ -518,14 +535,18 @@ trait EditsQuizQuestions
             }
         });
 
-        // Flip the quiz scene's readiness with its content: a quiz is "ready" once it has at
-        // least one complete question, otherwise it stays "pending". Without this a manually
-        // added quiz scene never leaves 'pending' and silently blocks the whole lesson from
-        // publishing (the publish gate requires every scene to be 'ready').
-        if ($this->quizDraftSceneId) {
-            $this->lesson->scenes()
-                ->whereKey($this->quizDraftSceneId)
-                ->update(['status' => $clean === [] ? 'pending' : 'ready']);
+        // Flip the quiz scene's readiness with its content: "ready" once it has a complete question and no started one
+        // left unfinished, else "pending", which keeps the lesson from publishing (the gate requires every scene ready).
+        // A half-typed question would otherwise be dropped from the class's quiz without a word.
+        // The whole draft, unfinished questions and empty slots too, is kept on the scene so a reload brings it back.
+        if ($this->quizDraftSceneId && ($scene = Scene::find($this->quizDraftSceneId))) {
+            $scene->update([
+                'status' => $clean === [] || $unfinished ? 'pending' : 'ready',
+                'config' => [...($scene->config ?? []), 'quiz_draft' => array_map(
+                    fn (array $q) => array_intersect_key($q, array_flip(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])),
+                    array_values($this->quizDraft),
+                )],
+            ]);
         }
 
         // No draft reload: reloading would clobber half-typed questions mid-edit.
@@ -566,6 +587,17 @@ trait EditsQuizQuestions
         }
 
         $this->autosaveQuiz();
+    }
+
+    /** A generated set replaces what was typed: the kept draft goes, the saved questions are the draft again. */
+    private function forgetKeptQuizDraft(): void
+    {
+        $scene = $this->quizDraftSceneId ? Scene::find($this->quizDraftSceneId) : null;
+        if ($scene && isset($scene->config['quiz_draft'])) {
+            $config = $scene->config;
+            unset($config['quiz_draft']);
+            $scene->update(['config' => $config]);
+        }
     }
 
     /** A question autosave will persist: a prompt, two filled answers, and a filled correct one. */
