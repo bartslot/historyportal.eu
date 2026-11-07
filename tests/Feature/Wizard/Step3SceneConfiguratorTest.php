@@ -459,7 +459,7 @@ class Step3SceneConfiguratorTest extends TestCase
             ->call('addQuizQuestion')
             ->set('quizDraft.0.options', ['Correct', 'Wrong A', 'Wrong B', 'Wrong C'])
             ->set('quizDraft.0.correct_index', 0)
-            ->assertSeeHtml('wire:model.blur="quizDraft.0.options.0"')
+            ->assertSeeHtml('wire:model.live.debounce.800ms="quizDraft.0.options.0"')
             ->set('quizDraft.0.options.0', 'Corrected by teacher')
             ->assertSet('quizDraft.0.options.0', 'Corrected by teacher');
     }
@@ -628,6 +628,34 @@ class Step3SceneConfiguratorTest extends TestCase
 
         $again->set('quizDraft.1.options', ['Yes', 'No', '', '']);
         $this->assertSame('ready', $this->s2->fresh()->status);
+    }
+
+    public function test_an_undo_brings_the_saved_questions_and_the_readiness_along_and_slots_survive_a_reload(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1, 'status' => 'pending']);
+        \App\Services\Editor\SceneHistory::enable();
+
+        $editor = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Q1')->set('quizDraft.0.options', ['A', 'B', '', ''])
+            ->call('addQuizQuestion');
+        $this->assertSame(2, $this->s2->fresh()->quiz_question_count, 'the Questions field follows the slots');
+
+        $editor->set('quizDraft.1.question', 'Q2')->set('quizDraft.1.options', ['C', 'D', '', '']);
+        $this->assertSame(2, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count());
+
+        $this->travel(5)->seconds();   // its own undo step, not merged with the typing before it
+        $editor->call('removeQuizQuestion', 1);
+        $this->assertSame(1, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count());
+
+        $editor->call('undoLastEdit');
+        $this->assertSame(2, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count(), 'the player gets back what the editor shows');
+        $this->assertCount(2, $editor->get('quizDraft'));
+
+        $editor->call('addQuizQuestion');
+        $again = Livewire::actingAs($this->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])->call('selectScene', $this->s2->id);
+        $this->assertCount(3, $again->get('quizDraft'), 'an empty slot survives a reload');
     }
 
     public function test_a_failed_generate_keeps_what_the_teacher_typed_and_touches_no_other_quiz(): void

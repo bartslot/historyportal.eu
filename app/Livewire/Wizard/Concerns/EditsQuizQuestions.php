@@ -137,6 +137,7 @@ trait EditsQuizQuestions
             'asks_ahead' => false,
             'explanation' => '',
         ];
+        $this->autosaveQuiz();
     }
 
     /** The teacher's picture for question $index: stored like any upload (WebP), then saved with the question. */
@@ -197,6 +198,22 @@ trait EditsQuizQuestions
             unset($this->quizDraft[count($this->quizDraft) - 1]);
             $this->quizDraft = array_values($this->quizDraft);
         }
+        $this->autosaveQuiz();
+    }
+
+    /**
+     * After an undo or a redo the scene holds an older draft: the saved questions and the scene's readiness follow it, so the
+     * editor, the player and the publish check never disagree.
+     */
+    public function quizFollowsRestoredDraft(Scene $scene): void
+    {
+        if ($scene->kind !== 'game' || ($scene->game_type ?? null) !== 'quiz') {
+            return;
+        }
+        $this->quizDraftSceneId = $scene->id;
+        $this->quizDraft = [];
+        $this->loadQuizDraft();
+        $this->autosaveQuiz();
     }
 
     /** Current quiz difficulty (1-3 stars) for the inspector UI. */
@@ -540,7 +557,12 @@ trait EditsQuizQuestions
         // A half-typed question would otherwise be dropped from the class's quiz without a word.
         // The whole draft, unfinished questions and empty slots too, is kept on the scene so a reload brings it back.
         if ($this->quizDraftSceneId && ($scene = Scene::find($this->quizDraftSceneId))) {
+            $count = max(1, count($this->quizDraft));
+            if ((int) ($this->selectedScene['id'] ?? 0) === $scene->id) {
+                $this->selectedScene['quiz_question_count'] = $count;
+            }
             $scene->update([
+                'quiz_question_count' => $count,
                 'status' => $clean === [] || $unfinished ? 'pending' : 'ready',
                 'config' => [...($scene->config ?? []), 'quiz_draft' => array_map(
                     fn (array $q) => array_intersect_key($q, array_flip(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])),

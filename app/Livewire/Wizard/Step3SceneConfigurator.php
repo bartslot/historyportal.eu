@@ -6108,7 +6108,8 @@ class Step3SceneConfigurator extends Component
                 // image and narration audio"); else the checker's words (LessonProblems) as the dot and
                 // the Problems view say it, without their full stop since the notice adds its own.
                 $checker = \App\Support\LessonProblems::forScene($s)[0]['message'] ?? null;
-                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? match ((string) $s->status) {
+                $unfinishedQuiz = $s->kind === 'game' && $s->game_type === 'quiz' && $s->status === 'pending';
+                $why = $this->missingAssetReason($s) ?? ($checker !== null ? rtrim($checker, '.') : null) ?? ($unfinishedQuiz ? __('a question is not finished') : null) ?? match ((string) $s->status) {
                     'generating' => __('still generating'),
                     'failed' => __('failed, regenerate it'),
                     'pending' => __('not generated yet'),

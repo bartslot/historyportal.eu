@@ -22,6 +22,7 @@ trait UndoesSceneEdits
     {
         $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
         if ($scene && SceneHistory::undo($scene)) {
+            $this->quizFollowsRestoredDraft($scene->fresh());
             $this->afterHistoryStep($scene->id, __('Undone.'));
         }
     }
@@ -30,6 +31,7 @@ trait UndoesSceneEdits
     {
         $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
         if ($scene && SceneHistory::redo($scene)) {
+            $this->quizFollowsRestoredDraft($scene->fresh());
             $this->afterHistoryStep($scene->id, __('Redone.'));
         }
     }

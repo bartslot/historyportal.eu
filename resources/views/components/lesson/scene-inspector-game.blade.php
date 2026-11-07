@@ -135,7 +135,7 @@
                     {{-- Question + AI-generate: drafts the question WITH its linked correct answer
                          and three plausible distractors as one unit. --}}
                     <div class="relative">
-                        <textarea wire:model.blur="quizDraft.{{ $i }}.question" rows="2" maxlength="140"
+                        <textarea wire:model.live.debounce.800ms="quizDraft.{{ $i }}.question" rows="2" maxlength="140"
                                   placeholder="{{ __('Type a question, or let AI draft one…') }}"
                                   class="textarea textarea-sm textarea-bordered bg-slate-900 w-full pr-9"></textarea>
                         <button type="button" wire:click="generateQuizQuestion({{ $i }})"
@@ -195,7 +195,7 @@
                                     {{-- Editable like any option — teachers own their answers. Only the
                                          AI-redraw stays distractor-only (a redrawn "correct" answer would
                                          silently change what the question tests). --}}
-                                    <input type="text" wire:model.blur="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
+                                    <input type="text" wire:model.live.debounce.800ms="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
                                            class="input input-xs input-bordered flex-1 bg-success/10 border-success/50 text-success"
                                            data-tooltip="{{ __('Correct answer. Edit it freely, and drag to reorder.') }}" />
                                     <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/20 text-success"
@@ -203,7 +203,7 @@
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                     </span>
                                 @else
-                                    <input type="text" wire:model.blur="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
+                                    <input type="text" wire:model.live.debounce.800ms="quizDraft.{{ $i }}.options.{{ $oi }}" maxlength="60"
                                            placeholder="{{ __('Answer') }} {{ $letter }}"
                                            class="input input-xs input-bordered bg-slate-900 flex-1" />
                                     <button type="button" wire:click="regenerateQuizOption({{ $i }}, {{ $oi }})"
