@@ -33,8 +33,9 @@ final class LessonProblems
     public static function for(Lesson $lesson): array
     {
         $out = [];
-        foreach ($lesson->scenes()->ordered()->get() as $scene) {
-            array_push($out, ...self::forScene($scene));
+        foreach ($lesson->scenes()->ordered()->get()->values() as $position => $scene) {
+            // numbered as the rail counts, not by the stored order (which may skip, or start at 50 for an added scene)
+            array_push($out, ...array_map(fn (array $p) => [...$p, 'order' => $position + 1], self::forScene($scene)));
         }
 
         return $out;
