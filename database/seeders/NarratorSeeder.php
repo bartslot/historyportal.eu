@@ -66,6 +66,23 @@ class NarratorSeeder extends Seeder
             'portrait_path' => null,
             'intro_video_path' => null,
         ],
+        [
+            // English Tasman narrator (Bart, 2026-11-03): ElevenLabs "Grandfather Joe", older British RP male.
+            'slug' => 'grandfather-joe',
+            'name' => 'Grandfather Joe',
+            'short_name' => 'Joe',
+            'avatar_title' => 'narrator',
+            'description' => 'English storyteller for the History Portal webcomics.',
+            'subject' => 'history',
+            'voice_provider' => 'elevenlabs',
+            'voice_id' => '0lp4RIz96WD1RUtvEu3Q',
+            'voice_speed' => 1.0,
+            'voice_pitch' => 1.0,
+            'presentation_mode' => 'framed',
+            'is_active' => true,
+            'portrait_path' => null,
+            'intro_video_path' => null,
+        ],
     ];
 
     public function run(): void

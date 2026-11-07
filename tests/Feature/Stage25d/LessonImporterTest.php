@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Stage25d;
 
 use App\Models\Lesson;
+use App\Models\Narrator;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Stage25d\LessonImporter;
@@ -120,6 +121,29 @@ class LessonImporterTest extends TestCase
     {
         $lesson = $this->lesson();
         $lesson['bundle'] = '../etc';
+        $this->expectException(InvalidArgumentException::class);
+        app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+    }
+
+    public function test_the_named_narrator_becomes_the_lesson_narrator(): void
+    {
+        $joe = Narrator::factory()->create(['slug' => 'grandfather-joe']);
+        $lesson = $this->lesson();
+        $lesson['narrator'] = ['slug' => 'grandfather-joe', 'provider' => 'elevenlabs', 'voice' => 'x'];
+        $lesson['narration'] = ['provider' => 'elevenlabs', 'voice' => 'x'];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $row = Lesson::findOrFail($r['lesson_id']);
+        $this->assertSame($joe->id, $row->avatar_id);
+        $voiced = $row->scenes()->whereNotNull('audio_path')->first();
+        $this->assertSame(['elevenlabs', 'x'], [$voiced->audio_provider, $voiced->audio_voice]);
+    }
+
+    public function test_an_unknown_narrator_is_refused(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['narrator'] = ['slug' => 'nobody'];
         $this->expectException(InvalidArgumentException::class);
         app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
     }

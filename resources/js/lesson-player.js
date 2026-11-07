@@ -37,6 +37,7 @@ import { sameOriginMediaUrl } from './media-url.js'
 import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
 import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
+import { silentWavUrl, sceneSeconds } from './silent-audio.js'
 
 // Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
 // Player chrome idle timing (Bart 2026-10-14: "auto hide when the mouse doesn't move after 1
@@ -1582,7 +1583,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this.infoPlace = ''
       this.infoDate = ''
       this.sceneCaption = captionVisible(scene) ? { place: scene.location, year: scene.year || '' } : null
-      this.backdropShade = scene.config?.backdrop_shade !== false
+      // the 2.5D stage paints its own watercolour on paper: the 50% shade halved it (Bart, 11-03: "why so dark?")
+      this.backdropShade = scene.config?.backdrop_shade !== false && !isStage25d(scene)
 
       // Whatever was narrating belongs to the scene we are leaving — silence it before anything
       // else, or jumping chapters layers voice over voice.
@@ -1725,7 +1727,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // No narration audio (e.g. a not-yet-narrated scene): hold on the visual for its set duration
       // (or a short default), then advance — never build `new Audio(null)`, which would hang the queue.
       if (!scene.audio_url) {
-        const holdMs = (Number(scene.duration_seconds) > 0 ? Number(scene.duration_seconds) : 4) * 1000
+        const holdMs = sceneSeconds(scene) * 1000
         // Pausable: a paused class stays on this scene, and resume continues the hold (pair test 10-24).
         this._noAudioHold?.cancel()
         this._noAudioHold = createPausableTimeout(() => this._afterSceneAudio(index, scene), holdMs, { paused: this.playbackPaused })
@@ -1766,6 +1768,14 @@ Alpine.data('lessonGame', (lesson) => ({
         this._momentAtTime(scene, a)
       })
       if (onEnded) a.addEventListener('ended', () => { if (this._audio === a) onEnded() }, { once: true })
+      // A missing file or no network: the track errors and never ends, so the stage, the captions and the move
+      // on all stood still. Silence of the scene's own length takes its place and every one of them carries on.
+      a.addEventListener('error', () => {
+        if (this._audio !== a || a.src.startsWith('blob:')) return
+        console.warn('lesson-player: narration did not load, playing the scene silently', scene.audio_url)
+        a.src = silentWavUrl(sceneSeconds(scene))
+        if (!this.playbackPaused) a.play().catch(() => {})
+      })
       a.play().catch(e => console.warn('lesson-player: autoplay blocked', e))
       return a
     },

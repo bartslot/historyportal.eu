@@ -92,18 +92,22 @@
 
              No fetchpriority=high: with the demo running the drawn cardwheel hides this picture
              before it is ever seen, so its 139 KB only took bandwidth from the atlases below that
-             the demo waits on (PageSpeed mobile, 2026-11-04: LCP 6.3 s on slow 4G). --}}
-        <img src="{{ asset('assets/videocards.webp') }}" alt=""
+             the demo waits on (PageSpeed mobile, 2026-11-04: LCP 6.3 s on slow 4G). loading=lazy
+             plus display:none under .js-hero-demo means those visitors never download it at all. --}}
+        <img src="{{ asset('assets/videocards.webp') }}" alt="" loading="lazy"
              width="1280" height="1280"
              class="pointer-events-none absolute wheel z-10" />
         {{-- The drawn field: hero/cardwheel.js (default) or hero/timewarp.js, from one sprite sheet. --}}
         <canvas data-timewarp-canvas class="hero-timewarp pointer-events-none absolute inset-0 z-20 h-full w-full" aria-hidden="true"></canvas>
     </div>
+    {{-- The canvas's sprite sheets. data-src, not src: nothing on screen needs them for the first
+         paint, and anything requested before it counts against LCP. lesson-demo.js asks for them
+         right after that paint, and not at all with reduced motion. --}}
     @if ($warpAtlas)
         <img
             data-timewarp-lesson-atlas
             data-cells="{{ $warpAtlas['cells'] }}"
-            src="{{ $warpAtlas['url'] }}"
+            data-src="{{ $warpAtlas['url'] }}"
             alt=""
             class="hero-timewarp-atlas"
             fetchpriority="high"
@@ -113,8 +117,8 @@
     @endif
 
     <picture class="hero-timewarp-atlas" aria-hidden="true">
-        <source srcset="{{ asset('assets/timewarp-cards.avif') }}" type="image/avif">
-        <img data-timewarp-atlas src="{{ asset('assets/timewarp-cards.webp') }}" alt="" width="640" height="960" fetchpriority="high" decoding="async">
+        <source data-srcset="{{ asset('assets/timewarp-cards.avif') }}" type="image/avif">
+        <img data-timewarp-atlas data-src="{{ asset('assets/timewarp-cards.webp') }}" alt="" width="640" height="960" fetchpriority="high" decoding="async">
     </picture>
 
     {{-- Act one: the lesson asks for itself.

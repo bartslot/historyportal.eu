@@ -10,11 +10,13 @@
         />
     </x-slot:head>
     <x-landing.header />
+    <main>
     <x-landing.hero />
     <x-landing.lessons :lessons="$playableLessons ?? collect()" />
     <x-landing.hour />
     {{-- Pricing hidden 2026-11-02 (Bart): the price put teachers off before they saw the value. Restore by uncommenting. --}}
     {{-- <x-landing.pricing /> --}}
     <x-landing.faq />
+    </main>
     <x-landing.footer />
 </x-layouts.landing>

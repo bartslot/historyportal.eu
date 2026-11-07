@@ -3,7 +3,10 @@
 {{-- The one lesson poster card, app-wide: the landing carousel and the hero's finished lesson
      draw the same thing. Width and row-positioning classes come from the caller, because a
      carousel cell and a hero card sit differently but ARE the same card. --}}
-@php $cover = $lesson->tallCardImageUrl(); @endphp
+@php
+    $cover = $lesson->tallCardImageUrl();
+    $coverSrcset = $cover ? \App\Support\ResponsiveImage::srcset($cover) : null;
+@endphp
 
 <a
     href="{{ route('lesson.play', $lesson->lesson_code) }}"
@@ -15,6 +18,10 @@
 
         @if ($cover)
             <img src="{{ $cover }}" alt="{{ $lesson->title }}"
+                 @if ($coverSrcset)
+                     srcset="{{ $coverSrcset }}"
+                     sizes="{{ $bare ? '(min-width: 640px) 19rem, 15rem' : '(min-width: 1024px) 17rem, (min-width: 640px) 16rem, 15rem' }}"
+                 @endif
                  {{-- The hero poster (bare) is above the fold: load it at once, but not first. The
                       demo keeps it hidden until the very end, so high priority only starved the
                       sprite sheets the demo waits on. --}}

@@ -41,6 +41,29 @@ export function labelArrows (element) {
     });
 }
 
+/**
+ * Flickity marks every card but the selected one aria-hidden, while their links stay focusable: a
+ * screen reader or an AI agent saw one lesson of eleven, and PageSpeed fails the row for it. Every
+ * card stays in the accessibility tree; tabbing to one brings it into view.
+ */
+export function exposeCells (flickity) {
+    const show = () => flickity.cells.forEach((cell) => cell.element.removeAttribute('aria-hidden'));
+
+    show();
+    flickity.on('select', show);
+
+    // A focused off-screen link makes the browser scroll the clipped viewport, which Flickity's own
+    // positioning knows nothing about.
+    flickity.viewport.addEventListener('scroll', () => { flickity.viewport.scrollLeft = 0; });
+    flickity.element.addEventListener('focusin', ({ target }) => {
+        const cell = flickity.getParentCell(target);
+
+        if (cell && target.matches(':focus-visible')) {
+            flickity.selectCell(cell.element);
+        }
+    });
+}
+
 /** Mount every carousel inside `root` that is not mounted already. */
 export function initCarousels (root = document) {
     root.querySelectorAll('.js-disney-carousel').forEach((element) => {
@@ -50,8 +73,9 @@ export function initCarousels (root = document) {
             return;
         }
 
-        new Flickity(element, CAROUSEL_OPTIONS);
+        const flickity = new Flickity(element, CAROUSEL_OPTIONS);
         labelArrows(element);
+        exposeCells(flickity);
     });
 }
 

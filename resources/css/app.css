@@ -1484,12 +1484,22 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         to   { opacity: 1; transform: none; }
     }
 
-    .site-header__logo,
+    /* The logo moves but never fades: it is the page's Largest Contentful Paint on a phone, and
+       Chrome does not count it as painted until a fade from opacity 0 has finished. With the fade,
+       PageSpeed reported 5.6 s for an 11 KB picture that arrived in 270 ms (2026-11-06). */
+    @keyframes site-logo-rise {
+        from { transform: translate3d(0, -10px, 0); }
+        to   { transform: none; }
+    }
+
+    .site-header__logo {
+        animation: site-logo-rise 620ms var(--ease-enter) backwards 60ms;
+    }
+
     .site-nav > * {
         animation: site-header-rise 620ms var(--ease-enter) backwards;
     }
 
-    .site-header__logo { animation-delay: 60ms; }
     .site-nav > :nth-child(1) { animation-delay: 200ms; }
     .site-nav > :nth-child(2) { animation-delay: 260ms; }
     .site-nav > :nth-child(3) { animation-delay: 320ms; }
@@ -1679,6 +1689,12 @@ html[data-inspector-w] aside[data-resizable-drawer] {
            whole point here — the hero crops it. */
         max-width: none;
         max-height: none;
+    }
+
+    /* The drawn cardwheel replaces this picture before anyone sees it, so with the demo running it
+       is not rendered, and with loading=lazy not downloaded either: 136 KB saved on a phone. */
+    .js-hero-demo .wheel:not(.is-shown) {
+        display: none;
     }
 
     .hero-revealed .wheel {

@@ -106,7 +106,7 @@ class LessonComposerTest extends TestCase
             ->assertSuccessful()
             ->assertSee('Roman expansion')
             ->assertSee(ModuleType::TimelineMap->label())
-            ->assertSee('coming soon');   // the non-editable placeholder, not a crash
+            ->assertSee('Coming soon');   // the non-editable placeholder, not a crash
     }
 
     public function test_delete_module_removes_it(): void

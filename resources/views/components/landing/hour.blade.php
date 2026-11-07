@@ -4,9 +4,11 @@
     use App\Support\DemoLesson;
     use App\Support\HelpMedia;
     use App\Support\ProductTour;
+    use App\Support\ResponsiveImage;
     use App\Support\Seo;
 
     $scene = HelpMedia::find('tour-scene', null, ProductTour::EXTENSION);
+    $sceneSrcset = $scene ? ResponsiveImage::srcset(asset($scene['relative'])) : null;
     $moments = [
         [__('The lesson stops and asks'), __('Questions appear while it plays, and the class answers on their own screens. You see where the room stands before you carry on.')],
         [__('Then the game starts'), __('Teams of three or four take a role, make a call, and live with what it costs. This is the part they are still arguing about at the door.')],
@@ -21,6 +23,10 @@
 
         @if ($scene)
             <img src="{{ asset($scene['relative']) }}" alt="{{ __('A scene from the lesson about Abel Tasman') }}"
+                 @if ($sceneSrcset)
+                     srcset="{{ $sceneSrcset }}"
+                     sizes="(min-width: 1280px) 76rem, 100vw"
+                 @endif
                  width="2880" height="1800" loading="lazy" decoding="async"
                  data-reveal="cards" class="mt-8 h-auto w-full rounded-xl">
         @endif
