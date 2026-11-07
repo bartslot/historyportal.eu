@@ -658,6 +658,26 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertCount(3, $again->get('quizDraft'), 'an empty slot survives a reload');
     }
 
+    public function test_the_questions_and_timing_fields_keep_the_draft_as_it_is_now(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1, 'quiz_timing' => 'after', 'status' => 'pending']);
+
+        $editor = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Q1')->set('quizDraft.0.options', ['A', 'B', '', ''])
+            ->set('selectedScene.quiz_question_count', 3);
+
+        $this->assertCount(3, $this->s2->fresh()->config['quiz_draft']);
+        $this->assertSame(3, $this->s2->fresh()->quiz_question_count);
+
+        $editor->set('selectedScene.quiz_timing', 'both')->call('saveSelected');   // the select's own change saves the panel's copy
+        $kept = $this->s2->fresh()->config['quiz_draft'];
+        $this->assertCount(3, $kept, 'the timing field saved the scene with the draft as it is now');
+        $this->assertSame('Q1', $kept[0]['question']);
+        $this->assertSame('both', $this->s2->fresh()->quiz_timing);
+    }
+
     public function test_a_failed_generate_keeps_what_the_teacher_typed_and_touches_no_other_quiz(): void
     {
         $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1]);

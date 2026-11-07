@@ -245,6 +245,7 @@ trait EditsQuizQuestions
         $scene = Scene::find($this->quizDraftSceneId);
         if ($scene) {
             $scene->update(['config' => array_merge($scene->config ?? [], ['quiz_scope' => $scope])]);
+            $this->keepSelectedConfig($scene);
         }
     }
 
@@ -265,6 +266,7 @@ trait EditsQuizQuestions
         $scene = Scene::find($this->quizDraftSceneId);
         if ($scene) {
             $scene->update(['config' => array_merge($scene->config ?? [], ['quiz_shuffle' => $mode])]);
+            $this->keepSelectedConfig($scene);
         }
     }
 
@@ -281,6 +283,7 @@ trait EditsQuizQuestions
         $scene = Scene::find($this->quizDraftSceneId);
         if ($scene) {
             $scene->update(['config' => array_merge($scene->config ?? [], ['quiz_difficulty' => $level])]);
+            $this->keepSelectedConfig($scene);
         }
     }
 
@@ -558,9 +561,6 @@ trait EditsQuizQuestions
         // The whole draft, unfinished questions and empty slots too, is kept on the scene so a reload brings it back.
         if ($this->quizDraftSceneId && ($scene = Scene::find($this->quizDraftSceneId))) {
             $count = max(1, count($this->quizDraft));
-            if ((int) ($this->selectedScene['id'] ?? 0) === $scene->id) {
-                $this->selectedScene['quiz_question_count'] = $count;
-            }
             $scene->update([
                 'quiz_question_count' => $count,
                 'status' => $clean === [] || $unfinished ? 'pending' : 'ready',
@@ -569,6 +569,10 @@ trait EditsQuizQuestions
                     array_values($this->quizDraft),
                 )],
             ]);
+            if ((int) ($this->selectedScene['id'] ?? 0) === $scene->id) {
+                $this->selectedScene['quiz_question_count'] = $count;
+            }
+            $this->keepSelectedConfig($scene);
         }
 
         // No draft reload: reloading would clobber half-typed questions mid-edit.
@@ -609,6 +613,14 @@ trait EditsQuizQuestions
         }
 
         $this->autosaveQuiz();
+    }
+
+    /** The panel's copy of the scene saves its fields with saveSelected: it must carry the config just written, or it writes the old one back. */
+    private function keepSelectedConfig(Scene $scene): void
+    {
+        if ((int) ($this->selectedScene['id'] ?? 0) === $scene->id) {
+            $this->selectedScene['config'] = $scene->config;
+        }
     }
 
     /** A generated set replaces what was typed: the kept draft goes, the saved questions are the draft again. */
