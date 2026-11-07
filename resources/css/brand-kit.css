@@ -382,3 +382,11 @@
 .textarea-xs {
   font-size: var(--text-xs);
 }
+
+/* Controls in the teacher app are 32 or 44 px tall, no third size (Bart, 2026-11-06): 32 inside panels and rows, 44 for primary
+   actions and the top bar. Measured by tests/playwright/control-heights-stage25d.spec.ts. Unlayered, so this beats DaisyUI's layers.
+   Picture tiles (a scene, a pose, a frame, an asset) are content, not controls: they keep the picture's size. */
+[data-surface="teacher"] :is(.btn, .input, .select) { --size: 2.75rem; }
+[data-surface="teacher"] :is(.btn-xs, .btn-sm, .input-xs, .input-sm, .select-xs, .select-sm) { --size: 2rem; }
+[data-surface="teacher"] .tabs > .tab { --tab-height: 2.75rem; height: 2.75rem; }
+[data-surface="teacher"] :is(.tabs-xs, .tabs-sm, .tabs-panel) > .tab { --tab-height: 2rem; height: 2rem; }

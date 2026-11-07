@@ -113,7 +113,7 @@
         {{-- The way in that shows: a double-click on the picture does the same. It opens on what the picture has: its bones, its frames. --}}
         <button type="button" class="btn btn-sm mt-2 w-full" data-stage25d-edit x-show="info?.file" x-on:click="editPicture()">
             <x-icons.pencil class="h-4 w-4" />
-            <span x-text="info?.puppet ? @js(__('Edit bones')) : info?.anim ? @js(__('Edit frames')) : @js(__('Edit picture'))"></span>
+            <span x-text="info?.anim ? @js(__('Edit frames')) : @js(__('Edit picture'))"></span>
         </button>
 
         {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
@@ -234,10 +234,6 @@
             </div>
         </x-ui.settings-section>
     @else
-        {{-- The stage draws the picture itself; 2D switches this scene back to pictures and panels. --}}
-        @if ($scene)
-            <x-lesson.scene-mode-tabs :scene="$scene" />
-        @endif
         <div class="space-y-1">
             <template x-for="c in look" :key="c.key">
                 <label class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">

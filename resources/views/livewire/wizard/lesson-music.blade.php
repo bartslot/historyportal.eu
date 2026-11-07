@@ -32,12 +32,12 @@
                         @endforeach
                     </select>
                 </label>
-                <div class="flex shrink-0 flex-col">
-                    <button type="button" class="btn btn-ghost btn-xs h-4 min-h-0 px-1" wire:click="moveRow({{ $i }}, -1)" @disabled($i === 0)
+                <div class="flex shrink-0">
+                    <button type="button" class="btn btn-ghost btn-xs px-1" wire:click="moveRow({{ $i }}, -1)" @disabled($i === 0)
                             aria-label="{{ __('Move track up') }}" title="{{ __('Move track up') }}">
                         <x-icons.chevron-down class="h-3 w-3 rotate-180" />
                     </button>
-                    <button type="button" class="btn btn-ghost btn-xs h-4 min-h-0 px-1" wire:click="moveRow({{ $i }}, 1)" @disabled($i === count($rows) - 1)
+                    <button type="button" class="btn btn-ghost btn-xs px-1" wire:click="moveRow({{ $i }}, 1)" @disabled($i === count($rows) - 1)
                             aria-label="{{ __('Move track down') }}" title="{{ __('Move track down') }}">
                         <x-icons.chevron-down class="h-3 w-3" />
                     </button>

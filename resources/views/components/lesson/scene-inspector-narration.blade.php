@@ -24,7 +24,7 @@
     {{-- Blade has @checked/@selected/@disabled but NO @open directive — it would emit a literal
          `@open(...)` attribute and the disclosure would stay shut. --}}
     <details wire:ignore.self @if ($needsScript) open @endif class="border-t border-slate-700/50 pt-2">
-        <summary class="cursor-pointer list-none text-2xs font-semibold uppercase tracking-widest text-panel-hint transition hover:text-slate-300">
+        <summary class="flex h-8 cursor-pointer list-none items-center text-2xs font-semibold uppercase tracking-widest text-panel-hint transition hover:text-slate-300">
             {{ __('Scene details') }}
             @if ($needsScript)
                 <span class="ml-1 normal-case tracking-normal text-primary/80">{{ __('add the story text') }}</span>
@@ -111,7 +111,7 @@
 
             <button type="button" wire:click="deleteScene({{ $scene->id }})"
                     wire:confirm="{{ __('Delete this scene?') }}"
-                    class="text-xs text-error/80 underline transition hover:text-error">{{ __('Delete scene') }}</button>
+                    class="h-8 text-xs text-error/80 underline transition hover:text-error">{{ __('Delete scene') }}</button>
         </div>
     </details>
 </div>

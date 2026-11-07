@@ -26,6 +26,12 @@ behind the help icon. If a paragraph is doing a label's job, make it a label.
 Adding an option is easy and is almost always the wrong answer — decide, and let the design carry
 the decision. ([HIG: Simplicity](https://developer.apple.com/design/human-interface-guidelines/design-principles#Simplicity))
 
+**Sizes.** Every control in the teacher app is 32 or 44 px tall, no third size (Bart, 2026-11-06): 32 inside
+panels and rows, 44 for primary actions and the top bar. The DaisyUI sizes land there by themselves (`resources/css/brand-kit.css`):
+`btn-xs` and `btn-sm` are 32, `btn` is 44, and the same for inputs, selects and tabs. A hand-made control takes `h-8` or `h-11`, never
+`h-5`, `h-6`, `h-7` or `h-10`: a small glyph keeps its look inside a 32 px hit box. Only picture tiles are exempt. Measured in
+the browser by `tests/playwright/control-heights-stage25d.spec.ts`.
+
 **Chrome.** Hairlines, not boxes. No shadows. If a separator reads as a line rather than as a
 change of section, it is too strong.
 

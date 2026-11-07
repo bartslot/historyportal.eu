@@ -40,7 +40,7 @@
 
     <button type="button" x-on:click="open = !open"
             :aria-expanded="open ? 'true' : 'false'"
-            class="flex w-full items-center justify-between px-4 py-3 text-left">
+            class="flex h-8 w-full items-center justify-between px-4 text-left">
         <span class="flex items-center gap-2">
             {{ $icon ?? '' }}
             <span class="text-2xs font-semibold tracking-wide text-panel-title">{{ $title }}</span>

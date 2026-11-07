@@ -67,7 +67,7 @@
                     <span class="text-2xs text-panel-hint">{{ __('Difficulty') }}</span>
                     @foreach ([1 => __('Easy'), 2 => __('Medium'), 3 => __('Hard')] as $level => $label)
                         <button type="button" wire:click="setQuizDifficulty({{ $level }})"
-                                class="transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-panel-hint hover:text-panel-hint' }}"
+                                class="grid h-8 w-6 place-items-center transition {{ $quizDifficulty >= $level ? 'text-primary hover:text-primary' : 'text-panel-hint hover:text-panel-hint' }}"
                                 data-tooltip="{{ $label }}" aria-label="{{ __('Set difficulty to :label', ['label' => $label]) }}"
                                 aria-pressed="{{ $quizDifficulty === $level ? 'true' : 'false' }}">
                             <x-icons.star />
@@ -89,13 +89,14 @@
                         <option value="off" @selected($quizShuffle === 'off')>{{ __('Off') }}</option>
                     </select>
                 </div>
+                @php $quizHasText = collect($quizDraft)->contains(fn ($q) => trim((string) ($q['question'] ?? '')) !== '' || collect($q['options'] ?? [])->contains(fn ($o) => trim((string) $o) !== '')); @endphp
                 <button type="button" wire:click="regenerateAllQuizQuestions"
+                        @if ($quizHasText) wire:confirm="{{ __('This replaces the questions and answers you have now.') }}" @endif
                         wire:loading.attr="disabled" wire:target="regenerateAllQuizQuestions"
-                        class="btn btn-xs btn-outline gap-1"
-                        data-tooltip="{{ __('Regenerate every question at the current difficulty') }}">
+                        class="btn btn-xs btn-outline gap-1" data-quiz-generate>
                     <span wire:loading.remove wire:target="regenerateAllQuizQuestions"><x-icons.ai-generate class="w-3.5 h-3.5" /></span>
                     <span wire:loading wire:target="regenerateAllQuizQuestions" class="loading loading-spinner loading-xs"></span>
-                    {{ __('Regenerate all') }}
+                    {{ __('Generate questions and answers') }}
                 </button>
             </div>
 
@@ -111,8 +112,9 @@
                 </div>
             @endif
 
-            {{-- Two-up on the wide game workspace; stacks on small screens. --}}
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {{-- By the room it has, not the window's: in the inspector's narrow panel a card takes the whole width. --}}
+            <div class="@container">
+            <div class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
             @forelse ($quizDraft as $i => $q)
                 <div class="rounded-box border border-slate-700/70 bg-base-200/50 p-3 space-y-2"
                      wire:key="quiz-q-{{ $i }}">
@@ -127,7 +129,7 @@
                             @endif
                         </span>
                         <button type="button" wire:click="removeQuizQuestion({{ $i }})"
-                                class="text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
+                                class="h-8 text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
                     </div>
 
                     {{-- Question + AI-generate: drafts the question WITH its linked correct answer
@@ -157,7 +159,7 @@
                         </label>
                         @if (! empty($q['image_path']))
                             <button type="button" wire:click="removeQuizImage({{ $i }})"
-                                    class="text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
+                                    class="h-8 text-error/80 hover:text-error text-2xs underline">{{ __('Remove') }}</button>
                         @endif
                         <span wire:loading wire:target="quizImageUploads.{{ $i }}" class="loading loading-spinner loading-xs"></span>
                     </div>
@@ -224,8 +226,9 @@
                     @endif
                 </div>
             @empty
-                <p class="text-xs text-panel-hint md:col-span-2">{{ __('No questions yet. Add one below, then hit the sparkle to draft it.') }}</p>
+                <p class="text-xs text-panel-hint @3xl:col-span-2">{{ __('No questions yet. Add one below, then hit the sparkle to draft it.') }}</p>
             @endforelse
+            </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -347,5 +350,5 @@
 
     <button type="button" wire:click="deleteScene({{ $scene->id }})"
             wire:confirm="Delete this game segment?"
-            class="text-error/80 hover:text-error text-xs underline mt-2">{{ __('Delete segment') }}</button>
+            class="h-8 text-error/80 hover:text-error text-xs underline mt-2">{{ __('Delete segment') }}</button>
 </div>

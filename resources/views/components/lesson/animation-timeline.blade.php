@@ -110,7 +110,7 @@
               :data-tooltip="playing ? @js(__('Pause')) : @js(__('Play'))"
               data-tooltip-key="{{ __('Space') }}">
         <button type="button" x-on:click="playing ? pause() : play()" data-timeline-play
-                class="grid h-7 w-7 cursor-pointer place-items-center rounded text-panel-value
+                class="grid h-8 w-8 cursor-pointer place-items-center rounded text-panel-value
                        hover:text-white"
                 aria-keyshortcuts="Space"
                 :aria-label="playing ? @js(__('Pause')) : @js(__('Play'))">
@@ -129,7 +129,7 @@
         <button type="button" x-on:click="autoKey = !autoKey; remember()" data-timeline-autokey
                 :aria-pressed="autoKey ? 'true' : 'false'"
                 :class="autoKey ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
-                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
+                class="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
                 :data-tooltip="autoKey ? @js(__('Auto-keyframe on')) : @js(__('Auto-keyframe off'))"
                 :aria-label="autoKey ? @js(__('Auto-keyframe on')) : @js(__('Auto-keyframe off'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
@@ -148,7 +148,7 @@
                    :value="Math.round(time * 1000)"
                    x-on:change="seek(Number($event.target.value) / 1000)"
                    data-timeline-time
-                   class="h-7 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
+                   class="h-8 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
             <span class="text-xs text-panel-label">ms</span>
         </label>
 
@@ -157,7 +157,7 @@
             <input type="number" min="100" step="100" :value="Math.round(duration * 1000)"
                    x-on:change="setDuration(Number($event.target.value) / 1000)"
                    data-timeline-duration
-                   class="h-7 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
+                   class="h-8 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
             <span class="text-xs text-panel-label">ms</span>
         </label>
 
@@ -165,7 +165,7 @@
         <button type="button" x-on:click="loop = !loop; remember()" data-timeline-loop
                 :aria-pressed="loop ? 'true' : 'false'"
                 :class="loop ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
-                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
+                class="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
                 :data-tooltip="loop ? @js(__('Looping')) : @js(__('Loop'))"
                 :aria-label="loop ? @js(__('Looping')) : @js(__('Loop'))">
             {{-- Repeat, not refresh (Bart, 2026-10-17: "isn't there a hero icon for repeating?"). --}}
@@ -178,7 +178,7 @@
              rows themselves say which half of the pair the next press gives you. --}}
         <button type="button" x-on:click="toggleAllGroups()" data-timeline-collapse-all
                 :aria-expanded="anyGroupOpen ? 'true' : 'false'"
-                class="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:text-white"
+                class="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:text-white"
                 :data-tooltip="anyGroupOpen ? @js(__('Collapse all')) : @js(__('Expand all'))"
                 :aria-label="anyGroupOpen ? @js(__('Collapse all')) : @js(__('Expand all'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
@@ -228,7 +228,7 @@
             {{-- Matches the ruler's height on the other side. Without it every lane sits one row
                  below the property it belongs to, and a keyframe on Altitude is drawn beside
                  Heading — which looks like a data bug and is a layout one. --}}
-            <div class="shrink-0" :style="'height: 38px;' + rulerPinStyle"></div>
+            <div class="shrink-0" :style="'height: 32px;' + rulerPinStyle"></div>
 
             {{-- Adding a camera is not part of the empty state. It was, and that meant a map scene
                  with a single caption on it could never be given one: the button was inside the
@@ -260,7 +260,7 @@
                     <div class="flex w-full items-center border-t border-panel-hairline"
                          :class="activeTarget === object.target && 'bg-white/5'"
                          :data-timeline-active="activeTarget === object.target ? 'true' : 'false'"
-                         :style="'height: 38px;' + pinnedStyle(object)">
+                         :style="'height: 32px;' + pinnedStyle(object)">
                     {{-- Double-click: every property of this object back to what it was before it
                          was keyed. A gesture rather than a "Reset all" button, which took the room
                          the name needs (Bart, 2026-10-16). --}}
@@ -268,7 +268,7 @@
                             x-on:dblclick="canResetObject(object.target) && resetObject(object.target)"
                             :data-tooltip="canResetObject(object.target) ? @js(__('Double-click to reset all')) : null"
                             class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pl-4 text-left"
-                            style="height: 38px" :data-timeline-group="object.target">
+                            style="height: 32px" :data-timeline-group="object.target">
 {{-- The same glyph as the object list (window.__objIcons): T for text, a half for a panel, a
      picture for artwork and diorama items. A camera gets Bart's glyph from the file (13x8). --}}
                         <span x-show="object.kind !== 'camera'" aria-hidden="true"
@@ -284,7 +284,7 @@
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
                             :aria-label="openGroups[object.target] ? @js(__('Collapse')) : @js(__('Expand'))"
-                            class="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
+                            class="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                              class="h-3 w-3 transition-transform"
                              :class="openGroups[object.target] && 'rotate-90'" aria-hidden="true">
@@ -302,7 +302,7 @@
                             :data-timeline-eye="object.target"
                             :aria-pressed="isHidden(object.target) ? 'true' : 'false'"
                             :class="isHidden(object.target) ? 'text-panel-label' : 'text-panel-icon'"
-                            class="mr-3 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-white/5 hover:text-white"
+                            class="mr-3 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded hover:bg-white/5 hover:text-white"
                             :data-tooltip="isHidden(object.target) ? @js(__('Show')) : @js(__('Hide'))"
                             :aria-label="isHidden(object.target) ? @js(__('Show')) : @js(__('Hide'))">
                         <svg x-show="!isHidden(object.target)" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -346,7 +346,7 @@
                                             :aria-label="isAnimated(object.target, property.key) ? @js(__('Stop animating')) : @js(__('Animate'))"
                                             :data-tooltip="isAnimated(object.target, property.key) ? @js(__('Stop animating')) : @js(__('Animate'))"
                                             :class="isAnimated(object.target, property.key) ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
-                                            class="grid h-5 w-5 cursor-pointer place-items-center rounded hover:text-white">
+                                            class="grid h-8 w-5 cursor-pointer place-items-center rounded hover:text-white">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                                         </svg>
@@ -365,7 +365,7 @@
                                                :value="valueAt(object.target, property.key) || '#ffffff'"
                                                x-on:input="setValue(object.target, property.key, $event.target.value, { flush: false })"
                                                x-on:change="setValue(object.target, property.key, $event.target.value)"
-                                               class="h-[21px] w-full min-w-0 cursor-pointer rounded bg-panel-hairline px-0.5" />
+                                               class="h-8 w-full min-w-0 cursor-pointer rounded bg-panel-hairline px-0.5" />
                                     </template>
                                     {{-- The value at the playhead, in the Format panel's unit. Drag it to scrub,
                                          click to type; Enter keeps, Escape gives the old number back, the
@@ -374,7 +374,7 @@
                                     <template x-if="property.type !== 'color'">
                                         <span data-scrub
                                               x-on:click="$el.querySelector('input').focus(); $el.querySelector('input').select()"
-                                              class="flex h-[21px] min-w-0 cursor-col-resize items-center rounded bg-panel-hairline pl-1.5 pr-1.5 focus-within:cursor-text">
+                                              class="flex h-8 min-w-0 cursor-col-resize items-center rounded bg-panel-hairline pl-1.5 pr-1.5 focus-within:cursor-text">
                                             <input type="number" data-timeline-value
                                                    :step="displayFor(object.target, property.key).step"
                                                    :value="shownValue(object.target, property.key)"
@@ -396,7 +396,7 @@
                                             :disabled="prevKeyTime(object.target) === null"
                                             :data-timeline-prev="object.target"
                                             data-tooltip="{{ __('Previous keyframe') }}"
-                                            class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
+                                            class="grid h-8 w-5 shrink-0 place-items-center rounded text-panel-label hover:bg-white/5 disabled:opacity-25">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
                                         </svg>
@@ -407,14 +407,14 @@
                                             :aria-pressed="hasKeyHere(object.target, property.key) ? 'true' : 'false'"
                                             :aria-label="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
                                             :data-tooltip="hasKeyHere(object.target, property.key) ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
-                                            class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 hover:text-white">
+                                            class="grid h-8 w-5 shrink-0 place-items-center rounded text-panel-label hover:bg-white/5 hover:text-white">
                                         <x-ui.keyframe-diamond state="keyState(object.target, property.key)" />
                                     </button>
                                     <button type="button" x-on:click.prevent="jumpKey(object.target, 1)"
                                             :disabled="nextKeyTime(object.target) === null"
                                             :data-timeline-next="object.target"
                                             data-tooltip="{{ __('Next keyframe') }}"
-                                            class="shrink-0 rounded p-0.5 text-panel-label hover:bg-white/5 disabled:opacity-25">
+                                            class="grid h-8 w-5 shrink-0 place-items-center rounded text-panel-label hover:bg-white/5 disabled:opacity-25">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
                                         </svg>
@@ -450,7 +450,7 @@
                  x-on:pointerdown="startMarquee($event)">
 
                 {{-- Ruler --}}
-                <div class="relative shrink-0 cursor-col-resize select-none" :style="'height: 38px;' + rulerPinStyle"
+                <div class="relative shrink-0 cursor-col-resize select-none" :style="'height: 32px;' + rulerPinStyle"
                      data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
                         <span class="absolute top-1.5 text-xs text-panel-label"
@@ -467,14 +467,14 @@
                     <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
                              so a collapsed group still says when it moves. --}}
-                        <div class="relative" :style="'height: 38px;' + pinnedStyle(object)">
+                        <div class="relative" :style="'height: 32px;' + pinnedStyle(object)">
                             {{-- Drag it to move everything this object does; click it to select all
                                  of its keys (Figma selects a layer's keys from its track). --}}
                             <div x-show="objectSpan(object.target)"
                                  class="absolute cursor-grab rounded-[3px]"
                                  :data-timeline-bar-group="object.target"
                                  x-on:pointerdown="startObjectBar($event, object.target)"
-                                 :style="barStyle(objectSpan(object.target)) + '; top: 9px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                 :style="barStyle(objectSpan(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
                                 {{-- A diorama item's path is one clip: its body moves it in time, its
                                      ends stretch it (slower) or squeeze it (faster). --}}
                                 <template x-if="object.kind === 'dio'">
@@ -491,7 +491,7 @@
                                 <div>
                                     <template x-for="key in keysOf(object.target, 'x')" :key="key.time">
                                         <span class="absolute grid cursor-grab touch-none place-items-center" data-timeline-camera-key
-                                              :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(9px + (var(--timeline-lane-h) - 13px) / 2)`"
+                                              :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc(5px + (var(--timeline-lane-h) - 13px) / 2)`"
                                               x-on:pointerdown.stop="startKeyDrag($event, object.target, 'x', key.time)"
                                               :aria-selected="isSelected(object.target, 'x', key.time) ? 'true' : 'false'"
                                               x-on:dblclick.stop="jumpToKey(object.target, 'x', key.time)"
@@ -525,7 +525,7 @@
                                         <div>
                                             <template x-for="time in sectionKeyTimes(object.target, group.id)" :key="time">
                                                 <span class="pointer-events-none absolute grid place-items-center"
-                                                      :style="`left: ${Math.round(xOf(time) - 6.5)}px; top: calc((var(--timeline-lane-h) - 13px) / 2)`"
+                                                      :style="`left: ${Math.round(xOf(time) - 6.5)}px; top: calc((var(--timeline-row-pitch) - 13px) / 2)`"
                                                       data-timeline-summary-diamond>
                                                     <x-ui.keyframe-diamond solid on="false" />
                                                 </span>
@@ -546,7 +546,7 @@
                                     <div x-show="spanOf(object.target, property.key)"
                                          class="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[2px]"
                                          :data-timeline-bar="object.target + ':' + property.key"
-                                         :style="barStyle(spanOf(object.target, property.key)) + '; top: 0; height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
+                                         :style="barStyle(spanOf(object.target, property.key)) + '; top: var(--timeline-lane-top); height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
                                         <span class="select-none truncate px-2 text-xs font-medium text-white/90"
                                               x-text="property.label"></span>
                                     </div>
@@ -558,7 +558,7 @@
                                              :class="isOpenSegment(object.target, property.key, segment.index) && 'bg-white/20'"
                                              :data-timeline-segment="object.target + ':' + property.key + ':' + segment.index"
                                              :data-tooltip="easingLabel(segment.easing)"
-                                             :style="barStyle(segment) + '; top: 0; height: var(--timeline-lane-h)'"
+                                             :style="barStyle(segment) + '; top: var(--timeline-lane-top); height: var(--timeline-lane-h)'"
                                              x-on:pointerdown="startSegment($event, object.target, property.key, segment.index)"></div>
                                     </template>
                                     {{-- Click selects (filled), Shift+click adds, drag moves the whole
@@ -566,7 +566,7 @@
                                          gestures. Delete/Backspace removes what is selected. --}}
                                     <template x-for="key in keysOf(object.target, property.key)" :key="key.time">
                                         <span class="absolute grid cursor-grab place-items-center"
-                                              :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc((var(--timeline-lane-h) - 13px) / 2)`"
+                                              :style="`left: ${Math.round(xOf(key.time) - 6.5)}px; top: calc((var(--timeline-row-pitch) - 13px) / 2)`"
                                               :data-timeline-diamond="object.target + ':' + property.key"
                                               :data-key-id="object.target + '|' + property.key + '|' + key.time"
                                               :aria-selected="isSelected(object.target, property.key, key.time) ? 'true' : 'false'"

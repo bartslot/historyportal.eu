@@ -141,7 +141,7 @@
             popovertarget="scene-menu-{{ $scene->id }}"
             title="{{ __('Scene options') }}"
             aria-label="{{ __('Scene options') }}"
-            class="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full
+            class="absolute -right-2 -top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full
                    border border-slate-600 bg-slate-900 text-slate-300 opacity-0 transition
                    hover:border-primary hover:text-white
                    focus-visible:opacity-100 group-hover/thumb:opacity-100">

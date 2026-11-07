@@ -68,6 +68,23 @@ describe('double-click: the picture cleans itself', () => {
     expect(document.querySelector('[data-cutout]')).toBeNull()
   })
 
+  it('a picture larger than the server takes is not sent: the editor says so with both sizes and keeps the work', async () => {
+    const limit = Object.assign(document.createElement('div'), { hidden: true })
+    limit.dataset.cutoutLimit = '10'
+    document.body.appendChild(limit)
+    const toasts = []
+    window.addEventListener('toast', (e) => toasts.push(e.detail))
+    const { $ } = await open()
+    $('[data-cut-save]').click()
+    await flush()
+    expect(wire.saveEditedImage).not.toHaveBeenCalled()
+    expect(toasts.at(-1).type).toBe('error')
+    expect(toasts.at(-1).message).toMatch(/MB/)
+    expect(document.querySelector('[data-cutout]')).not.toBeNull()
+    limit.remove()
+    $('[data-cut-back]').click()
+  })
+
   it('Save as asset sends the cut-out and what it was cut from, and stays with the work', async () => {
     const { $ } = await open({ from: { bundle: 'nl-prehistory', asset: 'meadow-band-01' } })
     $('[data-cut-asset]').click()
@@ -297,17 +314,6 @@ describe('one window for every mode of a picture', () => {
     const { $ } = await open()
     expect($('[name="cut-mode"]')).toBeNull()
     expect($('[data-cut-scene]').hidden).toBe(true)
-    expect($('[data-cut-view]').hidden).toBe(false)
-    $('[data-cut-back]').click()
-  })
-
-  it('a figure with no bones still shows the tabs: Bones is there, off, and says why', async () => {
-    const { $ } = await open({ figure: true })
-    expect($('[name="cut-mode"][value="picture"]').checked).toBe(true)
-    expect($('[name="cut-mode"][value="bones"]')).toBeNull()
-    const bones = $('[data-cut-no-bones]')
-    expect(bones.getAttribute('aria-disabled')).toBe('true')
-    expect(bones.dataset.tooltip).toBeTruthy()
     expect($('[data-cut-view]').hidden).toBe(false)
     $('[data-cut-back]').click()
   })

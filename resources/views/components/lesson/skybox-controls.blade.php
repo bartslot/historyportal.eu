@@ -40,7 +40,6 @@
     @endif
 
     @if ($scene->kind === 'narration')
-        <x-lesson.scene-mode-tabs :scene="$scene" />
     @endif
 
     {{-- ── 2D: pictures, panels, Ken Burns ──────────────────────────────────── --}}

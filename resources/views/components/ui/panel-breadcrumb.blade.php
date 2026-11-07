@@ -12,7 +12,7 @@
      The chevron is the repo's Heroicon rather than the file's export — same glyph, and it already
      themes with currentColor. --}}
 <button type="button" {{ $attributes->class([
-        'flex shrink-0 items-center gap-1.5 rounded-full pr-2 text-xs font-medium',
+        'flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-2 text-xs font-medium',
         'text-panel-label transition-colors hover:text-base-content',
     ]) }}>
     <x-icons.chevron-left class="h-3 w-3 shrink-0" />

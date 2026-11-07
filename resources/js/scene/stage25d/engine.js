@@ -65,7 +65,6 @@ if (typeof window !== 'undefined') {
 }
 /** An animation's sheet, for a tile that plays it (CSS steps): null for a still picture. */
 /** A layer's own pose, by bone name. */
-const bonesOfLayer = (l) => Object.fromEntries(Object.entries(boneFields(l)).map(([k, deg]) => [k.slice(5), deg]))
 const animOf = (a) => (isAnimation(a) ? { cols: a.cols, rows: a.rows, frames: a.frames ?? a.cols * a.rows, fps: a.fps ?? 12, w: a.w, h: a.h } : null)
 
 /** What a picture dragged out of the Assets tab carries: the library asset id. */
@@ -413,18 +412,9 @@ export async function createStage25d (host, opts = {}) {
         stageId: id,
         // a sky or a landscape: white in it is paint, nothing to clean away on opening
         plain: id === 'sky' || bandIndex(id) >= 0 || ['sky', 'bg'].includes(asset.layer),
-        figure: layerIndex(id) >= 0 && asset.layer === 'figure',
         // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
         frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
-        // a figure of parts: its pose, its keys and the scene's time (the editor's Bones tab)
-        bones: puppet ? { puppet, atlas: new URL(row.src ?? puppet.atlas, location.href).href, pose: bonesOfLayer(row), keys: row.keys ?? [], duration: camLength(), time: nowT() } : null,
       }
-    },
-    /** The Bones tab's work on the stage, before it is saved. */
-    setBones (id, fields, keys) {
-      // the whole pose: a bone left out is back at its painted place (a discard, an undo to before the first turn)
-      const gone = Object.fromEntries(Object.keys(boneFields(valuesOf(id))).map((f) => [f, undefined]))
-      edit(id, { ...gone, ...fields, keys })
     },
     /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
     setPeeking (on) { peeking = !!on },
@@ -768,7 +758,10 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {
-      return LOOK_KEYS.map((key) => {
+      const can = stage?.strewable ?? { grass: true, bushes: true }
+      // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky }
+      return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }
       })

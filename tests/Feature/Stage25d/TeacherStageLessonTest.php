@@ -130,45 +130,21 @@ class TeacherStageLessonTest extends TestCase
         $this->assertSame('meadow-band-01', $scene->config['stage25d']['set']['groundBands'][0]['asset']);
     }
 
-    public function test_a_scene_switches_between_2d_and_3d_and_each_side_keeps_its_setup(): void
+    public function test_a_scene_is_2d_or_3d_from_the_moment_it_is_made_and_the_editor_cannot_change_that(): void
     {
         $lesson = $this->lesson();
-        $scene = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Farmers carry stones to the hunebed',
-            'status' => 'pending', 'image_path' => 'lessons/1/a.webp', 'scene_view' => 'slideshow']);
+        $flat = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'Farmers carry stones', 'status' => 'pending', 'image_path' => 'lessons/1/a.webp', 'scene_view' => 'slideshow']);
+        $stage = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'stage25d', 'script_segment' => 'x', 'status' => 'ready', 'config' => ['stage25d' => ['set' => ['layers' => []]]]]);
 
-        $c = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
-            ->call('selectScene', $scene->id)
-            ->assertSeeHtml('data-scene-mode')
-            ->call('setSceneMode', '3d');
+        $component = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
+        $this->assertFalse(method_exists($component->instance(), 'setSceneMode'));
 
-        $scene->refresh();
-        $this->assertSame('stage25d', $scene->kind);
-        $this->assertSame('ready', $scene->status);
-        $this->assertContains('hunebed-long-01', array_column($scene->config['stage25d']['set']['layers'], 'asset'), 'built from the words');
-        $stage = $scene->config['stage25d'];
+        $component->call('selectScene', $flat->id)->assertDontSeeHtml('data-scene-mode')
+            ->call('selectScene', $stage->id)->assertDontSeeHtml('data-scene-mode');
 
-        $c->call('setSceneMode', '2d');
-        $scene->refresh();
-        $this->assertSame('narration', $scene->kind);
-        $this->assertSame('slideshow', $scene->scene_view);
-        $this->assertSame('lessons/1/a.webp', $scene->image_path, 'the 2D picture is still there');
-
-        $c->call('setSceneMode', '3d');
-        $this->assertSame($stage, $scene->fresh()->config['stage25d'], 'back to the same 3D set');
-    }
-
-    public function test_no_switch_to_3d_without_a_bundle_and_only_story_scenes_switch(): void
-    {
-        $lesson = $this->lesson(['era' => 'Tijd van regenten en vorsten (1600-1700)', 'topic' => 'Tasman']);
-        $story = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'x', 'status' => 'ready']);
-        $map = Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'map', 'status' => 'ready']);
-
-        $c = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
-            ->call('selectScene', $story->id)->call('setSceneMode', '3d')
-            ->call('selectScene', $map->id)->call('setSceneMode', '3d');
-
-        $this->assertSame('narration', $story->fresh()->kind);
-        $this->assertSame('map', $map->fresh()->kind);
+        $this->assertSame('narration', $flat->fresh()->kind);
+        $this->assertSame('lessons/1/a.webp', $flat->fresh()->image_path);
+        $this->assertSame('stage25d', $stage->fresh()->kind);
     }
 
     public function test_no_3d_scene_without_a_bundle_for_the_era(): void

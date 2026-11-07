@@ -278,6 +278,13 @@ export class Stage {
 
   /** (Re)strew the ground when the scene or the look's Gras / Horizon changed: pure plan (strew.ts), one mesh set per
    *  picture file (scatter-gl.ts). */
+  /** What can grow on this scene's ground: its tags decide (scatter.ts), so a deck or a stone floor has neither. */
+  get strewable(): { grass: boolean; bushes: boolean } {
+    const src = this.strewSrc
+    if (!src) return { grass: false, bushes: false }
+    return { grass: strewPlan({ ...src, grass: 1, bushes: 0 }).length > 0, bushes: strewPlan({ ...src, grass: 0, bushes: 1 }).length > 0 }
+  }
+
   private strew(grass: number, bushes: number) {
     const src = this.strewSrc
     const key = src ? `${src.sceneId}:${grass}:${bushes}:${src.slots.length}` : ''

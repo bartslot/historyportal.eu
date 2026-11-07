@@ -57,7 +57,10 @@
                        @if ($model) x-model="{{ $model }}" @endif
                        @if ($onChange) x-on:change="{{ $onChange }}" @endif
                        @checked($value !== null && (string) $value === (string) $optValue) />
-                @if (is_array($optIcon) && isset($optIcon['fill']))
+                @if (is_array($optIcon) && isset($optIcon['mask']))
+                    <span class="{{ $optIcon['class'] ?? 'h-5 w-5' }} bg-current" aria-hidden="true"
+                          style="mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat; -webkit-mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat"></span>
+                @elseif (is_array($optIcon) && isset($optIcon['fill']))
                     <svg viewBox="{{ $optIcon['viewBox'] }}" fill="currentColor" class="{{ $optIcon['class'] ?? 'h-5 w-5' }}" aria-hidden="true">
                         <path d="{{ $optIcon['fill'] }}"/>
                     </svg>

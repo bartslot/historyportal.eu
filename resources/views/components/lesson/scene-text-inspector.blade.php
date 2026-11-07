@@ -67,7 +67,7 @@
     </div>
 
     <x-ui.panel-tabs class="mb-1" name="text-tabs-{{ $id }}"
-                     :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE]]">
+                     :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
         <x-slot:breadcrumb>
             <x-ui.panel-breadcrumb :label="__('Scene')" wire:click="clearActiveText"
                                    x-on:click="window.__lessonTextLayer?.select?.(null); window.__clearLayerGuard?.()" />

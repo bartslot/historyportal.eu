@@ -16,7 +16,6 @@ use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsDrawings;
 use App\Livewire\Wizard\Concerns\EditsImages;
-use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\EditsMoment;
 use App\Livewire\Wizard\Concerns\EditsPredict;
 use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
@@ -28,6 +27,7 @@ use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
+use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
 use App\Livewire\Wizard\Concerns\RestylesImages;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
@@ -80,7 +80,6 @@ class Step3SceneConfigurator extends Component
     use EditsDiorama;
     use EditsDrawings;
     use EditsImages;
-    use EditsWithSpark;
     use EditsMoment;
     use EditsPredict;
     use EditsQuizQuestions;
@@ -92,6 +91,7 @@ class Step3SceneConfigurator extends Component
     use EditsStoryGame;
     use EditsTeamGame;
     use EditsTitleScreen;
+    use EditsWithSpark;
     use FixesLessonProblems;
     use RestylesImages;
     use UndoesSceneEdits;
@@ -502,7 +502,7 @@ class Step3SceneConfigurator extends Component
             'quizQuestionCount' => $scene->quiz_question_count,
             // Quiz scenes preview their actual questions on the canvas.
             'quizQuestions' => $scene->kind === 'game' && ($scene->game_type ?? null) === 'quiz'
-                ? self::stageQuizQuestions($this->lesson->quizQuestions, $scene->id)
+                ? $this->stageQuizSlides($scene)
                 : [],
             'quizTiming' => $scene->quiz_timing,
             'strategyGameId' => $scene->strategy_game_id,
@@ -3219,41 +3219,6 @@ class Step3SceneConfigurator extends Component
         }
 
         return $clean;
-    }
-
-    /**
-     * A story scene is 2D (pictures, comic panels, Ken Burns) or 3D (the painted stage). The other side's
-     * setup stays in the row, so switching back brings it back: the 2D picture in image_path, the 3D set in
-     * config.stage25d. A first switch to 3D builds the set from the scene's words, from the era's bundle.
-     */
-    public function setSceneMode(string $mode): void
-    {
-        $scene = $this->selectedSceneModel;
-        if (! $scene || ! in_array($scene->kind, ['narration', 'stage25d'], true)) {
-            return;
-        }
-
-        if ($mode === '2d' && $scene->kind === 'stage25d') {
-            $scene->update(['kind' => 'narration', 'scene_view' => 'slideshow']);
-        } elseif ($mode === '3d' && $scene->kind === 'narration') {
-            $config = $scene->config ?? [];
-            if (! isset($config['stage25d'])) {
-                $bundle = $this->eraStageBundle;
-                if ($bundle === null) {
-                    $this->dispatch('toast', type: 'warning', message: __('This era has no 3D set yet.'));
-                    $this->selectSceneInternal($scene->id);
-
-                    return;
-                }
-                $config['stage25d'] = StageSet::forScene($bundle, 's'.$scene->order, (string) $scene->script_segment);
-            }
-            $scene->update(['kind' => 'stage25d', 'status' => 'ready', 'config' => $config]);
-        } else {
-            return;
-        }
-
-        unset($this->selectedSceneModel, $this->scenes);
-        $this->selectSceneInternal($scene->id);
     }
 
     public function setSceneView(string $view): void

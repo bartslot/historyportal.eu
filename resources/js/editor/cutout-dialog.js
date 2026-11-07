@@ -25,7 +25,7 @@
  *
  * Bart, 2026-11-06: "image editor, sprite editor and bone editor (these are in the same page) ... a button that shows the
  * rest of the scene too". So one window with one Save, one undo and one way back, and a tab per mode this picture has:
- * Picture always, Frames for an animation (frames-tab.js), Bones for a figure with a puppet (bones-tab.js). A mode other than Picture is
+ * Picture always, Frames for an animation (frames-tab.js). A mode other than Picture is
  * { canUndo, canRedo, undo, redo, dirty, save, discard, key, show, hide, destroy }. Show scene: scene-peek.js.
  *
  * Whatever drew the picture sends an `image-edit:open` window event with { id, title, original, el, from }:
@@ -36,7 +36,6 @@ import { mountQuickMask, CLEAN_DEFAULTS } from '../scene/quick-mask.js'
 import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
-import { mountBones } from './bones-tab.js'
 import { mountScenePeek } from './scene-peek.js'
 
 const ZOOM_STEP = 1.5
@@ -82,6 +81,11 @@ const preload = (url) => (url ? Object.assign(new Image(), { src: url }).decode(
 
 const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }))
 
+/** The biggest picture the server takes in one save, in bytes of its data URL (Cutouts::maxPictureBytes). */
+const limitBytes = () => Number(document.querySelector('[data-cutout-limit]')?.dataset.cutoutLimit) || Infinity
+const MB = 1024 * 1024
+const megabytes = (bytes) => (Math.ceil((bytes / MB) * 10) / 10).toLocaleString(document.documentElement.lang || undefined)
+
 let open = null
 
 /** Open the picture editor for one picture. Resolves when it closes (saved or not). */
@@ -101,12 +105,12 @@ export async function openCutout (target) {
   root.setAttribute('aria-modal', 'true')
   root.setAttribute('aria-label', target.title || t('Picture'))
   root.dataset.cutout = target.id
-  const modes = ['picture', ...(target.frames ? ['frames'] : []), ...(target.bones ? ['bones'] : [])]
+  const modes = ['picture', ...(target.frames ? ['frames'] : [])]
   // An already cleaned picture starts at 0: cleaning it again would fade the bottom twice. A sheet of frames or a figure's
   // atlas is no picture to clean as one, and on a sky or a landscape white is paint (clouds), not paper.
   const opensCleaned = modes.length === 1 && !target.edited && !target.plain
   const clean = opensCleaned ? { ...CLEAN_DEFAULTS } : { white: 0, fringe: 0, fade: 0 }
-  root.innerHTML = markup(t, clean, modes, { figure: target.figure })
+  root.innerHTML = markup(t, clean, modes)
   // the app behind takes no keyboard focus while this is up
   const behind = [...document.body.children].filter((el) => !el.inert)
   for (const el of behind) el.inert = true
@@ -121,7 +125,7 @@ export async function openCutout (target) {
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
   const edges = { feather: 0, shift: 0 }
-  let mode = modes.at(-1)   // an animation opens on its frames, a figure on its bones
+  let mode = modes.at(-1)   // an animation opens on its frames
   const others = {}         // the modes other than Picture, once made
   const active = () => others[mode] ?? null
   let peek = null
@@ -261,6 +265,13 @@ export async function openCutout (target) {
     compare.addEventListener('pointerdown', () => mask?.setCompare(true))
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) compare.addEventListener(ev, () => mask?.setCompare(false))
 
+    /** A picture larger than the server takes: said plainly, nothing sent, the work stays. */
+    const fits = (dataUrl) => {
+      if (dataUrl.length <= limitBytes()) return true
+      setAsking(false)
+      say('error', t('This picture is too big to save here: :size MB, the most is :max MB.').replace(':size', megabytes(dataUrl.length)).replace(':max', megabytes(limitBytes())))
+      return false
+    }
     /** Run a save with its button held; says so and stays on failure, so no edit is ever lost. True when it worked. */
     const saving = async (button, run) => {
       button.disabled = true
@@ -289,7 +300,8 @@ export async function openCutout (target) {
       const modesChanged = Object.values(others).some((other) => other.dirty())
       if (!await saveOthers(button)) return
       const picture = mask && (pictureWork() || opensCleaned)
-      if (picture && !await saving(button, () => wire.saveEditedImage(target.id, mask.resultDataURL(), {}))) return
+      const url = picture ? mask.resultDataURL() : null
+      if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, {})))) return
       if (!picture && modesChanged) say('success', t('Saved.'))
       close({ saved: true, pictureSaved: !!picture })
     }
@@ -305,7 +317,7 @@ export async function openCutout (target) {
     })
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
-      if (!cut) return
+      if (!cut || !fits(cut.dataUrl)) return
       const from = target.from ? { ...target.from, box_h: cut.box.h, height: cut.height } : {}
       // an asset of its own, the picture itself untouched: the editor stays, with the work in it
       saving(e.currentTarget, () => wire.saveCutout(cut.dataUrl, target.title || '', from))
@@ -411,13 +423,6 @@ export async function openCutout (target) {
       others.frames = mountFrames({
         view: $('[data-slot-view="frames"]'), strip: $('[data-slot-strip="frames"]'), panel: $('[data-slot-panel="frames"]'),
         t, sheet: target.original, frames: target.frames, stage: target.stage, stageId: target.stageId, saveLayer,
-        onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
-      })
-    }
-    if (target.bones) {
-      others.bones = mountBones({
-        view: $('[data-slot-view="bones"]'), strip: $('[data-slot-strip="bones"]'), panel: $('[data-slot-panel="bones"]'),
-        t, ...target.bones, stage: target.stage, stageId: target.stageId, saveLayer,
         onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
       })
     }

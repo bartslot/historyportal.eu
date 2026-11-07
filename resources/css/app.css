@@ -193,7 +193,8 @@
     --color-timeline-bar: #2f6fb8;        /* a property's own span */
     --color-timeline-bar-group: #3b3f6b;  /* the object's span, summarising its properties */
     --timeline-lane-h: 1.3125rem;     /* 21px */
-    --timeline-row-pitch: 1.5rem;     /* 24px — lane plus its gap */
+    --timeline-row-pitch: 2rem;       /* 32px: a control's height, lane plus its gap */
+    --timeline-lane-top: calc((var(--timeline-row-pitch) - var(--timeline-lane-h)) / 2);
     --timeline-label-col: 21rem;      /* 336px — labels and value fields, lanes start after it */
 }
 
@@ -2253,6 +2254,8 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 
 /* ─── An animation's tile in the 3D Assets tab (script-editor.blade.php): a one-frame window over the sprite sheet.
        The sheet steps across a row (translate) and down the rows (transform), frame by frame, at the sheet's fps. ─── */
+/* A blank field on the quiz's stage card says what goes there. */
+.hp-quiz-empty:empty::before { content: attr(data-placeholder); opacity: 0.5; pointer-events: none; }
 /* The picture editor: one pointer. While a tool's ring shows, no system cursor on top of it; with the ring hidden (panning, Space
    held, a tool with no ring, a ring too small to see) the tool's own cursor shows, so there is never none. */
 [data-cut-view]:has(> [data-cut-ring]:not([hidden])), [data-cut-view]:has(> [data-cut-ring]:not([hidden])) * { cursor: none !important; }

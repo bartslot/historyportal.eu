@@ -1042,6 +1042,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // each of them is drawn on one small stage off screen (the same stage as the editor's) and its first frame saved.
     let _otherStillsDone = false
     const OTHER_STILLS_DELAY_MS = 6000
+    const STILL_WAIT_MS = 1000
     const fillOtherStills = () => {
         if (_otherStillsDone) return
         _otherStillsDone = true
@@ -1061,6 +1062,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 stage = await mountStage25d(host)
                 for (const s of scenes) {
                     try {
+                        // a scene's textures block the page for seconds: never under a teacher's hand in the picture editor
+                        while (document.querySelector('[data-cutout]')) await new Promise((resolve) => setTimeout(resolve, STILL_WAIT_MS))
                         await stage.show(s.config)
                         stage.update(0)
                         const frame = await stage.still()
@@ -1430,11 +1433,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // which autosaves and sends the questions back as quiz:questions-updated.
     quizEditor   = new Scene.QuizEditorSlides(timerEl, {
         onEdit: (edit) => window.Livewire?.dispatch('quizStageEdited', edit),
+        onGenerate: () => window.Livewire?.dispatch('quizStageGenerate'),
         onCorrectFocus: () => window.dispatchEvent(new CustomEvent('toast', { detail: {
             type: 'warning',
             message: t('This is the correct answer. Editing it changes what counts as right.'),
         } })),
     })
+    window.addEventListener('quiz:generate-failed', () => quizEditor.generateFailed())
     window.addEventListener('quiz:questions-updated', (e) => {
         if (quizEditor.isVisible && e.detail?.sceneId === quizEditor.sceneId) quizEditor.update(e.detail.questions)
     })

@@ -6,7 +6,6 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\QuizQuestion;
 use App\Models\Scene;
-use Illuminate\Support\Collection;
 use App\Services\Support\WebpEncoder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
@@ -90,6 +89,23 @@ trait EditsQuizQuestions
                 'asks_ahead' => (bool) $q->asks_ahead,
                 'explanation' => (string) ($q->explanation ?? ''),
             ])->values()->all();
+
+        // A quiz with nothing in it yet still has its slots: the stage shows the card, to type on or to generate
+        if ($this->quizDraft === [] && $this->quizDraftSceneId) {
+            $count = (int) (Scene::find($this->quizDraftSceneId)?->quiz_question_count ?: \App\Services\QuizPrompt::DEFAULT_QUESTION_COUNT);
+            $this->syncQuizDraftCount($count);
+        }
+    }
+
+    /** What the stage's slides show for the scene: the draft, blank questions too. */
+    private function stageQuizSlides(Scene $scene): array
+    {
+        $this->syncQuizDraftFor($scene);
+
+        return array_map(
+            fn (array $q) => array_intersect_key($q, array_flip(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])),
+            array_values($this->quizDraft),
+        );
     }
 
     public function addQuizQuestion(): void
@@ -238,27 +254,47 @@ trait EditsQuizQuestions
     }
 
     /**
-     * Regenerate the WHOLE question set at the current difficulty via the same job the
-     * pipeline uses (objective coverage + duplicate-stem validation included), then reload
-     * the draft. Runs inline — the teacher watches a spinner, not a queue.
+     * Generate THIS quiz's questions and answers at the current difficulty, via the same job the pipeline uses (objective
+     * coverage + duplicate-stem validation included), then reload the draft. Only on a click: it costs money. Runs inline: the
+     * teacher watches a spinner, not a queue. The job clears the scene's questions first, so a failure writes the draft back.
      */
+    #[On('quizStageGenerate')]
     public function regenerateAllQuizQuestions(): void
     {
         if ($this->guestDemoCannotGenerate()) {
+            $this->dispatch('quiz:generate-failed');
+
             return;
         }
 
+        $status = $this->lesson->status;
+        $failed = function (string $message, string $type): void {
+            $this->autosaveQuiz();
+            $this->dispatch('toast', message: $message, type: $type);
+            $this->dispatch('quiz:generate-failed');
+        };
+
         try {
-            (new \App\Jobs\GenerateLessonQuiz($this->lesson->id))
+            (new \App\Jobs\GenerateLessonQuiz($this->lesson->id, null, $this->quizDraftSceneId))
                 ->handle(app(\App\Services\OpenAiLlmService::class));
         } catch (\Throwable $e) {
-            $this->dispatch('toast', message: 'Quiz regeneration failed — try again.', type: 'error');
+            report($e);
+            $failed(__('The quiz could not be generated. Try again.'), 'error');
+
+            return;
+        } finally {
+            $this->lesson->update(['status' => $status]);   // the job marks a lesson as just generated: this one stays what it was
+        }
+
+        if ($this->quizDraftSceneId && ! $this->lesson->quizQuestions()->where('scene_id', $this->quizDraftSceneId)->exists()) {
+            $failed(__('There is no story before this quiz yet, so there is nothing to ask about.'), 'warning');
 
             return;
         }
 
         $this->loadQuizDraft();
-        $this->dispatch('toast', message: 'Quiz regenerated.', type: 'success');
+        $this->autosaveQuiz();
+        $this->dispatch('toast', message: __('Quiz generated.'), type: 'success');
     }
 
     /**
@@ -502,16 +538,15 @@ trait EditsQuizQuestions
         if ($this->quizDraftSceneId) {
             $this->dispatch('quiz:questions-updated',
                 sceneId: $this->quizDraftSceneId,
-                questions: self::stageQuizQuestions($this->lesson->quizQuestions, $this->quizDraftSceneId),
+                questions: array_map(
+                    fn (array $q) => array_intersect_key($q, array_flip(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])),
+                    array_values($this->quizDraft),
+                ),
             );
         }
     }
 
-    /**
-     * An edit typed straight onto the stage (QuizEditorSlides.js). The stage shows the SAVED set,
-     * which skips incomplete drafts and empty option slots, so its indexes are mapped back onto the
-     * draft before the text lands there. Then the same autosave as an inspector edit.
-     */
+    /** An edit typed straight onto the stage (QuizEditorSlides.js), which shows the draft itself. Then the same autosave as an inspector edit. */
     #[On('quizStageEdited')]
     public function quizStageEdited(int $question, ?int $option, string $text): void
     {
@@ -520,24 +555,14 @@ trait EditsQuizQuestions
             return;
         }
 
-        $complete = array_keys(array_filter($this->quizDraft, fn ($q) => self::draftIsComplete($q)));
-        $draftIndex = $complete[$question] ?? null;
-        if ($draftIndex === null) {
+        if (! isset($this->quizDraft[$question]) || ($option !== null && ($option < 0 || $option >= self::QUIZ_OPTION_COUNT))) {
             return;
         }
 
         if ($option === null) {
-            $this->quizDraft[$draftIndex]['question'] = $text;
+            $this->quizDraft[$question]['question'] = $text;
         } else {
-            $filledSlots = array_keys(array_filter(
-                $this->quizDraft[$draftIndex]['options'] ?? [],
-                fn ($o) => trim((string) $o) !== '',
-            ));
-            $slot = $filledSlots[$option] ?? null;
-            if ($slot === null) {
-                return;
-            }
-            $this->quizDraft[$draftIndex]['options'][$slot] = $text;
+            $this->quizDraft[$question]['options'][$option] = $text;
         }
 
         $this->autosaveQuiz();
@@ -552,19 +577,6 @@ trait EditsQuizQuestions
         return trim((string) ($q['question'] ?? '')) !== ''
             && count($filled) >= 2
             && ($options[(int) ($q['correct_index'] ?? 0)] ?? '') !== '';
-    }
-
-    /**
-     * What the stage shows for one quiz scene: its own questions, else a legacy scene-less pool.
-     *
-     * @param  Collection<int, QuizQuestion>  $pool
-     * @return list<array<string, mixed>>
-     */
-    private static function stageQuizQuestions(Collection $pool, int $sceneId): array
-    {
-        return $pool->where('scene_id', $sceneId)->values()
-            ->whenEmpty(fn () => $pool->whereNull('scene_id')->values())
-            ->map->only(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values()->all();
     }
 
     /** @deprecated Autosave replaced the manual save — kept for any stray callers. */

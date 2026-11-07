@@ -86,12 +86,37 @@ final class Cutouts
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
         'This picture cannot be opened here.', 'Saved.',
-        'Frames', 'Bones', 'This character has no bones yet', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
+        'Frames', 'This picture is too big to save here: :size MB, the most is :max MB.', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
         'Add a frame', 'All frames in order', 'Frame :n of :total',
         'Neck', 'Upper body', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
     ];
 
     /** @return array<string,string> */
+    /**
+     * The biggest picture a save can carry, in bytes of its data URL: PHP refuses a larger request before Laravel runs, and
+     * Livewire hears nothing back. The editor checks before it sends and says so, keeping the work (Bart, 2026-11-07).
+     */
+    public static function maxPictureBytes(): int
+    {
+        $bytes = static function (string $value): int {
+            $value = trim($value);
+            $number = (int) $value;
+
+            return match (strtolower(substr($value, -1))) {
+                'g' => $number * 1024 ** 3,
+                'm' => $number * 1024 ** 2,
+                'k' => $number * 1024,
+                default => $number,
+            };
+        };
+        $limits = array_filter([$bytes((string) ini_get('post_max_size')), $bytes((string) ini_get('upload_max_filesize'))]);
+
+        return max(0, ($limits ? min($limits) : 8 * 1024 ** 2) - self::REQUEST_OVERHEAD_BYTES);
+    }
+
+    /** What a Livewire request carries besides the picture: the component's snapshot and the call. */
+    private const REQUEST_OVERHEAD_BYTES = 256 * 1024;
+
     public static function labels(): array
     {
         return collect(self::LABELS)->mapWithKeys(fn (string $en) => [$en => __($en)])->all();
