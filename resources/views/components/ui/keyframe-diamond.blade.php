@@ -59,7 +59,7 @@
             :aria-pressed="state === 'here' ? 'true' : 'false'"
             :aria-label="state === 'here' ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
             :data-tooltip="state === 'here' ? @js(__('Remove keyframe')) : @js(__('Add keyframe'))"
-            {{ $attributes->class(['grid h-[13px] w-[13px] shrink-0 cursor-pointer place-items-center rounded-sm text-panel-label hover:text-base-content focus-visible:outline focus-visible:outline-1 focus-visible:outline-base-content']) }}>
+            {{ $attributes->class(['grid h-8 w-[13px] shrink-0 cursor-pointer place-items-center rounded-sm text-panel-label hover:text-base-content focus-visible:outline focus-visible:outline-1 focus-visible:outline-base-content']) }}>
         <span class="{{ $shape }} grid place-items-center border-current"
               :class="state === 'here' && 'border-timeline-mark bg-timeline-mark'">
             <span x-show="state === 'elsewhere'" class="block h-[3px] w-[3px] bg-current"></span>

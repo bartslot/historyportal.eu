@@ -12,7 +12,8 @@ import { loadLibrary } from '@stage25d/stage25d/library'
 import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
-import { HOUSE, sceneDuration, layerAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { puppetOf } from '@stage25d/stage25d/bones'
+import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -22,13 +23,14 @@ import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf }
 import { createAlphaMaps } from './alpha.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
-import { structureSig, editSig, layerIndex, EDITABLE } from './live.js'
+import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
 import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
+const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
 
@@ -54,12 +56,15 @@ export const withCutouts = (lib, rows = ownCutouts()) => {
 if (typeof window !== 'undefined') {
   window.addEventListener('cutouts-changed', (e) => {
     const row = e.detail?.stage
-    if (!row?.id) return
-    cutoutRows = [row, ...ownCutouts().filter((a) => a.id !== row.id)]
+    const gone = e.detail?.removed
+    if (!row?.id && !gone) return
+    // a removed one stays a row of the library while a scene on stage uses it: only the shelf stops offering it
+    cutoutRows = gone ? ownCutouts().map((a) => (a.id === gone ? { ...a, removed: true } : a)) : [row, ...ownCutouts().filter((a) => a.id !== row.id)]
     window.dispatchEvent(new CustomEvent('stage25d-cutouts'))
   })
 }
 /** An animation's sheet, for a tile that plays it (CSS steps): null for a still picture. */
+/** A layer's own pose, by bone name. */
 const animOf = (a) => (isAnimation(a) ? { cols: a.cols, rows: a.rows, frames: a.frames ?? a.cols * a.rows, fps: a.fps ?? 12, w: a.w, h: a.h } : null)
 
 /** What a picture dragged out of the Assets tab carries: the library asset id. */
@@ -114,6 +119,8 @@ export async function createStage25d (host, opts = {}) {
   let clock = null
   let lead = 0   // the narration starts this many seconds into the scene (director's narration_at_s)
   let motionClock = 0
+  let heldAt = -1           // the scene's time at the last frame
+  let framesAhead = 0       // how far animations ran on while that time stood still
   let last = performance.now()
   let destroyed = false
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
@@ -132,6 +139,7 @@ export async function createStage25d (host, opts = {}) {
   let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
   let camMore = []          // and the shots after it (camera_more): one per pair of camera keys
   let camMotion = null      // the camera's own motion (camera_motion): { kind, amount, speed }
+  let peeking = false       // the picture editor's Show scene is on: the scene as the class sees it, no faded layers
   let framing = false       // the Camera row is selected: the canvas's pointer moves the camera at the playhead
   // a cut-out just saved joins the library on stage at once: the Assets tab shows it, a drop adds it
   const onCutouts = () => {
@@ -145,7 +153,8 @@ export async function createStage25d (host, opts = {}) {
   const startLoop = () => {
     stage.engine.runRenderLoop(() => {
       const now = performance.now()
-      motionClock += Math.min(0.1, (now - last) / 1000)
+      const step = Math.min(0.1, (now - last) / 1000)
+      motionClock += step
       last = now
       stage.tick(now)
       if (pointer) {
@@ -153,7 +162,14 @@ export async function createStage25d (host, opts = {}) {
         // in the editor the camera only moves on its own when it is what you are looking at: playing, or the Camera row
         stage.cameraAlive = stills === 0 && (framing || !!window.__timelineKeying?.playing?.())
       }
-      if (scene) stage.pose(scene, nowT(), motionClock)
+      if (scene) {
+        // The class is waiting on a question with the narration stopped: a fire keeps burning. In the editor a frame is
+        // the playhead's, so a seek shows the same one every time (no clock there).
+        const t = nowT()
+        if (clock && t === heldAt) framesAhead += step
+        heldAt = t
+        stage.pose(scene, t, motionClock, undefined, t + framesAhead)
+      }
       stage.scene.render()
       pointer?.place()
     })
@@ -197,7 +213,7 @@ export async function createStage25d (host, opts = {}) {
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
-    if (selected === null || stills > 0 || window.__timelineKeying?.playing?.()) return []
+    if (selected === null || stills > 0 || peeking || window.__timelineKeying?.playing?.()) return []
     return inFrontOf(layers.map((_, index) => ({ index, box: hidden.has(`layer-${index}`) ? null : stage.layerBox(index) })), selected)
   }
   const camLength = () => (scene ? sceneDuration(scene) : 8)
@@ -320,10 +336,17 @@ export async function createStage25d (host, opts = {}) {
       assets = new Map(lib.assets.map(a => [a.id, a]))
       libData = lib
       alpha = alphaFor(lib.base)
-      alpha.prime(next.set.layers.map((l) => assets.get(l.asset)).filter(Boolean))
+      // a first click reads the file the stage draws: an edited copy, a figure's atlas
+      alpha.prime(next.set.layers.map((l) => {
+        const a = assets.get(l.asset)
+        const src = a && (l.src ?? puppetOf(a, l, lib.base)?.atlas)
+        return src ? { ...a, src } : a
+      }).filter(Boolean))
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
         attachFraming()
+        /** Is there paint under a pick? On an animation: in the frame on show. */
+        const paintAt = (a, u, v, i) => !hidden.has(`layer-${i}`) && alpha.opaque(a, u, v, isAnimation(a) ? frameAt(a, layers[i]?.play, nowT()) : undefined)
         window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== `s25_${backdrop}`) backdrop = null })
         canvas.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes(DROP_TYPE)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } })
         canvas.addEventListener('drop', (e) => {
@@ -341,13 +364,16 @@ export async function createStage25d (host, opts = {}) {
           const r = canvas.getBoundingClientRect()
           const x = e.clientX - r.left, y = e.clientY - r.top
           if (x < 0 || y < 0 || x > r.width || y > r.height || !stage) return
-          const hit = stage.pickLayers(x, y).find((h) => alpha.opaque(h.asset, h.u, h.v, h.index))
-          const id = hit ? `layer-${hit.index}` : (backdropAt(x, y) ? backdrop : null)
+          const hit = stage.pickLayers(x, y).find((h) => paintAt(h.asset, h.u, h.v, h.index))
+          // the selected picture's whole box is it: the frame of an animation on show may be small
+          const box = pointer?.selected === null || pointer?.selected === undefined ? null : stage.layerBox(pointer.selected)
+          const inside = box && x / r.width >= box.x0 && x / r.width <= box.x1 && y / r.height >= box.y0 && y / r.height <= box.y1
+          const id = hit ? `layer-${hit.index}` : inside ? `layer-${pointer.selected}` : (backdropAt(x, y) ? backdrop : null)
           const target = id && api.editTarget(id)
           if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }))
         })
         pointer = attachInteraction({
-          canvas, host, stage: () => stage, alpha: { opaque: (a, u, v, i) => !hidden.has(`layer-${i}`) && alpha.opaque(a, u, v, isAnimation(a) ? frameAt(a, layers[i]?.play, nowT()) : undefined) },   // an animation: the frame on show
+          canvas, host, stage: () => stage, alpha: { opaque: paintAt },
           valueOf: (i, prop) => (prop === 'z' ? zNow(i) : layerAt(layers[i], nowT())[prop]),
           onGround, byDistance,
           // the feet slide over the ground as it rises into the far landscape, at their own height above it (a ground
@@ -373,16 +399,32 @@ export async function createStage25d (host, opts = {}) {
       const row = id === 'sky' ? (cfg?.set?.sky ? skyNow : null) : bandIndex(id) >= 0 ? bands[bandIndex(id)] : layers[layerIndex(id)]
       const asset = id === 'sky' ? skyAsset() : assets.get(row?.asset)
       if (!row || !asset || !libData) return null
+      const puppet = layerIndex(id) >= 0 ? puppetOf(asset, row, libData.base) : null
       return {
         id: `s25_${id}`,
         title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        original: row.src ? new URL(row.src, location.href).href : libData.base + asset.file,
+        original: row.src ? new URL(row.src, location.href).href : puppet ? new URL(puppet.atlas, location.href).href : libData.base + asset.file,
         // an edited copy has its own pixel size: no metres from the library's
         from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
         edited: !!row.src,
         el: host,
+        stage: api,
+        stageId: id,
+        // a sky or a landscape: white in it is paint, nothing to clean away on opening
+        plain: id === 'sky' || bandIndex(id) >= 0 || ['sky', 'bg'].includes(asset.layer),
+        // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
+        frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
       }
     },
+    /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
+    setPeeking (on) { peeking = !!on },
+    /** The picture editor's work on the stage before it is saved; null: the row's own file again. */
+    showPicture (id, url) {
+      const row = id === 'sky' ? { sky: true } : bandIndex(id) >= 0 ? { band: bandIndex(id) } : layerIndex(id) >= 0 ? { layer: layerIndex(id) } : null
+      return row ? stage?.showPicture(row, url) : null
+    },
+    /** Where the scene stands now, in seconds. */
+    get time () { return nowT() },
     /** Same set already on stage (an edit of x, y, scale, rotation, opacity or keys is not a different set). */
     matches: (cfg) => cfgSig === structureSig(cfg),
     /** The server's copy changed under us (an undo, a redo): take its layer values. Our own saves are skipped. */
@@ -393,6 +435,8 @@ export async function createStage25d (host, opts = {}) {
       const take = (now, from) => {
         const next = { ...now }
         for (const f of EDITABLE) { if (from?.[f] === undefined) delete next[f]; else next[f] = from[f] }
+        for (const f of Object.keys(next)) if (isBoneField(f)) delete next[f]
+        Object.assign(next, boneFields(from))
         return next
       }
       layers = layers.map((l, i) => take(l, cfgNow.set?.layers?.[i]))
@@ -418,6 +462,7 @@ export async function createStage25d (host, opts = {}) {
     /** What the row shows at the playhead, for its field. */
     readLayerProp (id, prop) {
       const l = valuesOf(id)
+      if (l && isBoneField(prop)) return bonesAt(l, nowT())[prop.slice(5)] ?? 0
       const v = !l ? null : prop === 'z' && layerIndex(id) >= 0 ? zNow(layerIndex(id)) : prop === 'z' ? (layerAt(l, nowT()).z ?? l.z) : layerAt(l, nowT())[prop]
       return Number.isFinite(v) ? v : null
     },
@@ -525,9 +570,11 @@ export async function createStage25d (host, opts = {}) {
         ground, showScale,
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
-        file: l.src ?? (asset ? `${libData.base}${asset.file}` : null),   // the edited copy, when there is one
+        // the edited copy, when there is one; a figure of parts is shown whole, never its atlas
+        file: asset?.file && puppetOf(asset, l) ? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
         motion: motionOf(l, asset),
         anim: animOf(asset),
+        puppet: !!puppetOf(asset ?? {}, l),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
       }
@@ -542,9 +589,9 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Motion of one layer: kind, amount, speed. Live, and saved on the layer. */
     setLayerMotion (id, motion) {
-      const now = valuesOf(id)
-      if (!now) return
-      commit(id, { motion: { ...(typeof now.motion === 'object' ? now.motion : { kind: now.motion }), ...motion } })
+      // from what the row shows: a row with no motion of its own has its picture's, and the server takes no motion without a kind
+      const shown = api.layerInfo(id)?.motion
+      if (shown) commit(id, { motion: { ...shown, ...motion } })
     },
     /**
      * The object list was dragged: `order` is the layer indexes front first, `moved` the one dragged. On the floor it
@@ -590,7 +637,7 @@ export async function createStage25d (host, opts = {}) {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       // a sprite sheet (the ground's clumps) is cut into its cells, never placed whole
-      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet').map((a) => ({ id: a.id, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
+      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet' && !a.removed).map((a) => ({ id: a.id, cutout: !!a.cutout, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),
@@ -716,7 +763,10 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {
-      return LOOK_KEYS.map((key) => {
+      const can = stage?.strewable ?? { grass: true, bushes: true }
+      // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky }
+      return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }
       })
@@ -767,8 +817,13 @@ export async function createStage25d (host, opts = {}) {
     items: () => {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       // one numbering over the layers and the painted landscape (ground bands, nearest first): no two rows read alike
+      // a figure of parts says so: two Pieters on one stage are told apart by which one has bones
+      const named = (l, i) => {
+        const name = layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`
+        return puppetOf(assets.get(l.asset) ?? {}, l) ? `${name} (${BONES_NAME[lang] ?? BONES_NAME.en})` : name
+      }
       const labels = numbered([
-        ...layers.map((l, i) => layerLabel(l, assets.get(l.asset), lang) || `layer ${i + 1}`),
+        ...layers.map(named),
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [

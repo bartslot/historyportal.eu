@@ -21,6 +21,15 @@ afterEach(() => {
   delete window.__parallax
 })
 
+describe('a panel with nothing to draw', () => {
+  it('hides the flat picture under it, so figures stand on the scene\'s own gradient', () => {
+    const flat = document.createElement('div')
+    flat.style.opacity = '1'
+    new ParallaxScene(host()).show({ layers: null, covers: [flat] })
+    expect(flat.style.opacity).toBe('0')
+  })
+})
+
 describe('computeLayerTransforms (pure)', () => {
   const MOTION = { panX: -4, panY: 2, zoom: 1.1 }
 

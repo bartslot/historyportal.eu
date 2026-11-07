@@ -5,7 +5,7 @@ import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { isClipartLayer, backdropLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
-import { gradientCanvas } from './background-gradient.js'
+import { gradientCanvas, gradientCss } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
@@ -1005,9 +1005,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // A base value the teacher set on a layer (a field, not a key): saved into set.layers[index], no scene:load.
     const stage25dLayerSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:layer', save), DIO_MOVE_PAUSE_MS)
     // The server copied a layer: select the copy (its index) once the stage has it.
-    // An undo, a redo or a deleted balloon closes the layer panel (the server forgets what it pointed at): the stage
-    // drops its box too, or the next tile click would change a picture the teacher no longer sees selected.
-    window.addEventListener('timeline-restored', () => window.__stage25d?.clearSelection?.())
+    // An undo or a redo keeps a layer that is still there selected. When it is gone (or a balloon was deleted) the server
+    // forgot what the panel pointed at: the stage drops its box too, or the next tile click would change a picture the
+    // teacher no longer sees selected.
+    window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) window.__stage25d?.clearSelection?.() })
+    window.addEventListener('stage25d:deselect', () => window.__stage25d?.clearSelection?.())
     window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
     let _stage25d = null
     let _stage25dHost = null
@@ -1040,6 +1042,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // each of them is drawn on one small stage off screen (the same stage as the editor's) and its first frame saved.
     let _otherStillsDone = false
     const OTHER_STILLS_DELAY_MS = 6000
+    const STILL_WAIT_MS = 1000
     const fillOtherStills = () => {
         if (_otherStillsDone) return
         _otherStillsDone = true
@@ -1059,6 +1062,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 stage = await mountStage25d(host)
                 for (const s of scenes) {
                     try {
+                        // a scene's textures block the page for seconds: never under a teacher's hand in the picture editor
+                        while (document.querySelector('[data-cutout]')) await new Promise((resolve) => setTimeout(resolve, STILL_WAIT_MS))
                         await stage.show(s.config)
                         stage.update(0)
                         const frame = await stage.still()
@@ -1116,7 +1121,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const savesPending = stage25dLayerSaves.isPending() || stage25dLookSaves.isPending() || window.__timelineKeying?.pending?.()
             if (!stage.matches(cfg)) { if (!savesPending) { await stage.show(cfg); synced = true } }   // a rebuild now would drop an edit still waiting to be saved
             // A re-fired scene:load must not revert an edit still waiting to be saved.
-            else if (!savesPending) synced = stage.adopt(cfg)
+            // Nor one under the picture editor: its Frames and Bones tabs show their work on the stage before it is saved.
+            else if (!savesPending && !document.querySelector('[data-cutout]')) synced = stage.adopt(cfg)
             if (req !== _stage25dReq) return
             stage.sceneId = payload.sceneId
             window.__stage25d = stage
@@ -1229,6 +1235,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
             host.style.display = ''
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
+            // Figures with no backdrop picture stand on the scene's own gradient or colour, as in the player
+            host.style.background = bgLayers.length ? '' : (gradientCss(payload.gradient) || payload.backgroundColor || '#0f172a')
 
             // ── Background — only rebuild when the bg actually changes. Re-showing on every
             //    scene:load (a caption toggle, a script edit, a 3s poll) re-runs the 900ms fade =
@@ -1425,11 +1433,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // which autosaves and sends the questions back as quiz:questions-updated.
     quizEditor   = new Scene.QuizEditorSlides(timerEl, {
         onEdit: (edit) => window.Livewire?.dispatch('quizStageEdited', edit),
+        onGenerate: () => window.Livewire?.dispatch('quizStageGenerate'),
         onCorrectFocus: () => window.dispatchEvent(new CustomEvent('toast', { detail: {
             type: 'warning',
             message: t('This is the correct answer. Editing it changes what counts as right.'),
         } })),
     })
+    window.addEventListener('quiz:generate-failed', () => quizEditor.generateFailed())
     window.addEventListener('quiz:questions-updated', (e) => {
         if (quizEditor.isVisible && e.detail?.sceneId === quizEditor.sceneId) quizEditor.update(e.detail.questions)
     })

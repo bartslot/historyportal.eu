@@ -22,6 +22,9 @@ final class Cutouts
 {
     public const SOURCE = 'cutout';
 
+    /** Taken off the teacher's shelf. Row and file stay: a scene may still show it, and a class has to keep seeing it. */
+    public const REMOVED = 'cutout-removed';
+
     /** A standing thing with no known size (cut from a normal scene's picture) is this tall in a 3D scene. */
     public const DEFAULT_HEIGHT_M = 2.0;
 
@@ -82,10 +85,38 @@ final class Cutouts
         'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
-        'This picture cannot be opened here.',
+        'This picture cannot be opened here.', 'Saved.',
+        'Frames', 'This picture is too big to save here: :size MB, the most is :max MB.', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
+        'Add a frame', 'All frames in order', 'Frame :n of :total',
+        'Neck', 'Upper body', 'Near upper arm', 'Near forearm', 'Far upper arm', 'Far forearm', 'Reset pose', 'Add key', 'Remove key', 'Time in the scene',
     ];
 
     /** @return array<string,string> */
+    /**
+     * The biggest picture a save can carry, in bytes of its data URL: PHP refuses a larger request before Laravel runs, and
+     * Livewire hears nothing back. The editor checks before it sends and says so, keeping the work (Bart, 2026-11-07).
+     */
+    public static function maxPictureBytes(): int
+    {
+        $bytes = static function (string $value): int {
+            $value = trim($value);
+            $number = (int) $value;
+
+            return match (strtolower(substr($value, -1))) {
+                'g' => $number * 1024 ** 3,
+                'm' => $number * 1024 ** 2,
+                'k' => $number * 1024,
+                default => $number,
+            };
+        };
+        $limits = array_filter([$bytes((string) ini_get('post_max_size')), $bytes((string) ini_get('upload_max_filesize'))]);
+
+        return max(0, ($limits ? min($limits) : 8 * 1024 ** 2) - self::REQUEST_OVERHEAD_BYTES);
+    }
+
+    /** What a Livewire request carries besides the picture: the component's snapshot and the call. */
+    private const REQUEST_OVERHEAD_BYTES = 256 * 1024;
+
     public static function labels(): array
     {
         return collect(self::LABELS)->mapWithKeys(fn (string $en) => [$en => __($en)])->all();
@@ -95,6 +126,12 @@ final class Cutouts
     public static function of(User $user): Collection
     {
         return SvgAsset::query()->where('user_id', $user->id)->where('source', self::SOURCE)->latest()->get();
+    }
+
+    /** Off the teacher's shelf; only their own, and only once. */
+    public static function remove(User $user, int $id): bool
+    {
+        return SvgAsset::query()->whereKey($id)->where('user_id', $user->id)->where('source', self::SOURCE)->update(['source' => self::REMOVED]) === 1;
     }
 
     /**
@@ -116,6 +153,7 @@ final class Cutouts
             'height_m' => $a->height_m ?: self::DEFAULT_HEIGHT_M,
             'name' => ['nl' => $a->title, 'en' => $a->title],
             'cutout' => true,
+            ...($a->source === self::REMOVED ? ['removed' => true] : []),
         ];
     }
 
@@ -150,8 +188,9 @@ final class Cutouts
                 }
             }
         }
-        $rows = SvgAsset::query()->where('source', self::SOURCE)
-            ->where(fn ($q) => $q->whereIn('id', $ids)->when($user, fn ($q) => $q->orWhere('user_id', $user->id)))
+        $rows = SvgAsset::query()
+            ->where(fn ($q) => $q->whereIn('source', [self::SOURCE, self::REMOVED])->whereIn('id', $ids))
+            ->when($user, fn ($q) => $q->orWhere(fn ($q) => $q->where('source', self::SOURCE)->where('user_id', $user->id)))
             ->latest()->get();
 
         return $rows->map(fn (SvgAsset $a) => self::stageRow($a))->values()->all();

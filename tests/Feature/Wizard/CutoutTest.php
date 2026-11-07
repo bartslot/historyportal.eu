@@ -122,4 +122,31 @@ class CutoutTest extends TestCase
         $this->assertSame('../../'.$used->svg_path, $rows[0]['file'], 'relative to the bundle folder');
         $this->assertCount(2, Cutouts::forStage($teacher, $scene->lesson), 'the editor: all of the teacher\'s own');
     }
+
+    public function test_a_cut_out_can_leave_the_shelf_and_a_scene_keeps_showing_it(): void
+    {
+        $teacher = \App\Models\User::factory()->create();
+        $other = \App\Models\User::factory()->create();
+        $asset = \App\Models\SvgAsset::create([
+            'user_id' => $teacher->id, 'source' => \App\Services\Editor\Cutouts::SOURCE, 'source_ref' => 'x', 'source_url' => '',
+            'title' => 'Cut-out', 'license' => 'Own', 'svg_path' => 'cutouts/1/x.webp', 'width' => 10, 'height' => 20,
+        ]);
+
+        $this->assertFalse(\App\Services\Editor\Cutouts::remove($other, $asset->id), 'only their own');
+        $this->assertTrue(\App\Services\Editor\Cutouts::remove($teacher, $asset->id));
+        $this->assertFalse(\App\Services\Editor\Cutouts::remove($teacher, $asset->id), 'only once');
+        $this->assertSame([], \App\Services\Editor\Cutouts::forStage($teacher), 'off the shelf');
+        $this->assertCount(0, \App\Services\Editor\Cutouts::of($teacher));
+
+        $lesson = \App\Models\Lesson::create([
+            'teacher_id' => $teacher->id, 'topic' => 'x', 'subject' => 'history', 'grade_level' => '6', 'image_style' => 'cinematic', 'status' => \App\Enums\LessonStatus::ScenesReady,
+        ]);
+        \App\Models\Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d', 'script_segment' => 'x', 'duration_seconds' => 8, 'status' => 'ready',
+            'config' => ['stage25d' => ['set' => ['layers' => [['asset' => 'cut-'.$asset->id, 'depth' => 'mid']]]]],
+        ]);
+        $rows = \App\Services\Editor\Cutouts::forStage($teacher, $lesson->fresh());
+        $this->assertSame('cut-'.$asset->id, $rows[0]['id'], 'a scene that uses it still draws it');
+        $this->assertTrue($rows[0]['removed']);
+    }
 }

@@ -92,15 +92,17 @@
                 </template>
                 <input type="search" x-model="query" placeholder="{{ __('Search') }}" aria-label="{{ __('Search') }}"
                        class="input input-xs ml-auto w-40" />
-                <span class="badge badge-sm" x-text="selected === null ? @js(__('Add')) : @js(__('Replace'))"></span>
             </div>
             <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
                 {{-- One tile per picture, and one per series (a character's poses and facings), with its count. --}}
                 <template x-for="t in shown" :key="t.id">
-                    <button type="button" draggable="true" class="relative flex cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
+                    <div class="group relative">
+                    <button type="button" draggable="true" class="relative flex w-full cursor-grab flex-col items-stretch gap-1 rounded-md p-1 text-left hover:bg-base-200 active:cursor-grabbing"
                             x-on:dragstart="$event.dataTransfer.setData('application/x-lp-stage25d', t.asset.id); $event.dataTransfer.effectAllowed = 'copy'"
-                            x-on:click="pick(t)" :title="t.asset.label" :data-stage25d-tile="t.id">
-                        <span class="flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
+                            x-on:click="pick(t)" :title="(selected === null ? @js(__('Add')) : @js(__('Replace'))) + ': ' + t.asset.label" :data-stage25d-tile="t.id">
+                        <span class="relative flex h-16 items-center justify-center overflow-hidden rounded bg-base-200">
+                            {{-- With something selected a click replaces it: a surprise unless the tile says so. --}}
+                            <span x-show="selected !== null" x-cloak class="absolute inset-x-0 bottom-0 z-10 hidden bg-base-100/90 py-0.5 text-center text-xs font-medium text-base-content group-hover:block group-focus-within:block">{{ __('Replace') }}</span>
                             {{-- An animation (VFX) plays in its tile: the sheet steps frame by frame behind a one-frame window. --}}
                             <template x-if="t.asset.anim">
                                 <span class="s25-sheet" data-stage25d-anim
@@ -115,6 +117,11 @@
                         <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
                         <span x-show="t.count > 1" class="badge badge-sm badge-neutral absolute right-1.5 top-1.5" x-text="t.count" data-series-count></span>
                     </button>
+                    {{-- A teacher's own cut-out can go; scenes that use it keep showing it. --}}
+                    <button type="button" x-show="t.asset.cutout" x-cloak x-on:click="$wire.removeCutout(Number(String(t.asset.id).slice(4)))"
+                            data-tooltip="{{ __('Remove from My cut-outs') }}" aria-label="{{ __('Remove from My cut-outs') }}"
+                            class="btn btn-xs btn-square btn-neutral absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"><x-icons.x-mark class="h-3.5 w-3.5" /></button>
+                    </div>
                 </template>
             </div>
         </div>
@@ -134,7 +141,7 @@
             {{ __('No narration yet. Write a few lines here and they will be read aloud over this scene.') }}
         </p>
         <button type="button" x-on:click="addNarration()"
-                class="flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-primary hover:text-amber-200">
+                class="h-8 flex items-center gap-1.5 rounded-lg border border-slate-600/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-primary hover:text-amber-200">
             <!-- <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
             </svg> -->
@@ -157,7 +164,7 @@
                     <div class="flex gap-3">
                         {{-- Timecode seeks; the paragraph is editable in place. --}}
                         <button type="button" x-on:click="seek(i)"
-                                class="mt-0.5 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-panel-hint transition hover:text-primary"
+                                class="-mt-1.5 h-8 w-9 shrink-0 cursor-pointer text-right font-mono text-2xs tabular-nums text-panel-hint transition hover:text-primary"
                                 x-text="fmt(starts[i] ?? 0)"></button>
                         {{-- contenteditable paragraph. white-space:pre-wrap keeps soft newlines (single
                              Enter). Double Enter splits into a new box; Backspace at start merges up.
@@ -241,7 +248,7 @@
             </button>
 
             <button type="button" x-show="hasAudio && !dirty" x-on:click="toggle()" :disabled="!ready"
-                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-slate-950 transition hover:brightness-110 disabled:opacity-40"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-slate-950 transition hover:brightness-110 disabled:opacity-40"
                     :title="playing ? @js(__('Pause')) : @js(__('Play'))"
                     aria-label="{{ __('Play narration') }}">
                 <svg x-show="!playing" viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z"/></svg>

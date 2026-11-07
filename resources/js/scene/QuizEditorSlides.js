@@ -12,7 +12,8 @@
  * green and labelled, and focusing it calls `onCorrectFocus` so the teacher is warned before
  * changing what counts as right.
  *
- * Answers are shown in stored order, never shuffled, so `option` in an edit is the stored index.
+ * Answers are shown in stored order, never shuffled, so `option` in an edit is the stored index. A quiz just added shows the same
+ * card with its fields empty and ready to type on, and a button that generates them: only on that click, it costs money.
  */
 import { t } from '../i18n.js'
 import { LETTERS, SCRIM, CARD_STILL, quizImage, answerChip } from './QuizOverlay.js'
@@ -45,10 +46,12 @@ export class QuizEditorSlides {
    * @param {{ onEdit?: (edit: {question: number, option: number|null, text: string}) => void,
    *           onCorrectFocus?: () => void }} [opts]
    */
-  constructor(hostEl, { onEdit = null, onCorrectFocus = null } = {}) {
+  constructor(hostEl, { onEdit = null, onCorrectFocus = null, onGenerate = null } = {}) {
     this.host = hostEl
     this.onEdit = onEdit
     this.onCorrectFocus = onCorrectFocus
+    this.onGenerate = onGenerate
+    this._generating = false
     this._questions = []
     this._index = 0
     this._sceneId = null
@@ -68,9 +71,10 @@ export class QuizEditorSlides {
 
   /** Fresh questions from the server. Held back while an edit is in progress, so typing is never clobbered. */
   update(questions) {
-    const list = Array.isArray(questions) ? questions.filter(q => q?.question) : []
+    const list = Array.isArray(questions) ? questions.filter(Boolean) : []
     if (this._editing()) { this._pending = list; return }
     this._questions = list
+    this._generating = false
     if (!list.length) { this.hide(); return }
     this._index = Math.min(this._index, list.length - 1)
     this._render()
@@ -86,6 +90,12 @@ export class QuizEditorSlides {
       this._resize = new ResizeObserver(() => this._fit())
       this._resize.observe(this.host)
     }
+  }
+
+  /** The generate button's click came back with nothing: it is a button again. */
+  generateFailed() {
+    this._generating = false
+    if (this._questions.length) this._render()
   }
 
   hide() {
@@ -114,6 +124,7 @@ export class QuizEditorSlides {
     if (!q) return
     const total = this._questions.length
     const correct = Number(q.correct_index)
+    const empty = this._questions.every(row => !row.question && !(row.options || []).some(Boolean))
 
     const rows = (q.options || []).slice(0, LETTERS.length).map((opt, i) => {
       const isCorrect = i === correct
@@ -127,7 +138,7 @@ export class QuizEditorSlides {
         <div data-row="${i}" class="${tone} relative flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-lg font-medium">
           ${answerChip(i)}
           <span data-edit="option" data-opt="${i}" ${isCorrect ? 'data-correct' : ''} contenteditable="plaintext-only" spellcheck="true"
-                class="${EDITABLE} min-w-0 flex-1 px-1">${escapeHtml(opt)}</span>
+                data-placeholder="${escapeHtml(`${t('Answer')} ${LETTERS[i]}`)}" class="${EDITABLE} hp-quiz-empty min-w-0 flex-1 px-1">${escapeHtml(opt)}</span>
           ${badge}
         </div>`
     }).join('')
@@ -141,10 +152,13 @@ export class QuizEditorSlides {
         <div data-slide class="relative flex shrink-0 items-center justify-center"
              style="width: ${SLIDE_W}px; height: ${SLIDE_H}px">
           <div class="${CARD_STILL} relative max-h-[calc(100%-2rem)] w-[46rem] overflow-y-auto px-16 py-8">
-            <div data-edit="question" contenteditable="plaintext-only" spellcheck="true"
-                 class="${EDITABLE} ${q.image_path ? 'mb-4' : 'mb-6'} text-center text-3xl leading-snug font-medium">${escapeHtml(q.question)}</div>
+            <div data-edit="question" contenteditable="plaintext-only" spellcheck="true" data-placeholder="${escapeHtml(t('Type the question'))}"
+                 class="${EDITABLE} hp-quiz-empty ${q.image_path ? 'mb-4' : 'mb-6'} text-center text-3xl leading-snug font-medium">${escapeHtml(q.question)}</div>
             ${quizImage(q)}
             <div class="${q.image_path ? 'grid grid-cols-2' : 'flex flex-col'} gap-2.5">${rows}</div>
+            ${empty ? `<button type="button" data-generate class="btn btn-primary mt-5 w-full" ${this._generating ? 'disabled' : ''}>
+              ${this._generating ? '<span class="loading loading-spinner loading-sm"></span>' : ''}${escapeHtml(t('Generate questions and answers'))}
+            </button>` : ''}
             ${total > 1 ? `<div class="mt-5 flex items-center justify-center gap-1.5">${dots}</div>
             <div class="mt-1.5 text-center text-sm text-base-content/60">${this._index + 1} / ${total}</div>` : ''}
           </div>
@@ -158,6 +172,11 @@ export class QuizEditorSlides {
   }
 
   _wire(q) {
+    this.host.querySelector('[data-generate]')?.addEventListener('click', () => {
+      this._generating = true
+      this._render()
+      this.onGenerate?.()
+    })
     this.host.querySelectorAll('[data-nav]').forEach(btn =>
       btn.addEventListener('click', () => this.go(this._index + Number(btn.dataset.nav))))
     this.host.querySelectorAll('[data-dot]').forEach(dot =>

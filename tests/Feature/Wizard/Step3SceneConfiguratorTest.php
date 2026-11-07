@@ -459,7 +459,7 @@ class Step3SceneConfiguratorTest extends TestCase
             ->call('addQuizQuestion')
             ->set('quizDraft.0.options', ['Correct', 'Wrong A', 'Wrong B', 'Wrong C'])
             ->set('quizDraft.0.correct_index', 0)
-            ->assertSeeHtml('wire:model.blur="quizDraft.0.options.0"')
+            ->assertSeeHtml('wire:model.live.debounce.800ms="quizDraft.0.options.0"')
             ->set('quizDraft.0.options.0', 'Corrected by teacher')
             ->assertSet('quizDraft.0.options.0', 'Corrected by teacher');
     }
@@ -569,15 +569,14 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertSame('Why did the empire fall?', $saved->first()->question);
         $this->assertTrue($component->get('quizSaved'));
         $this->assertNotEmpty($component->get('quizErrors')[1] ?? null, 'Half-typed question shows inline errors');
-        $this->assertCount(2, $component->get('quizDraft'), 'Draft keeps the incomplete question');
+        $this->assertSame('Unfinished question…', $component->get('quizDraft')[1]['question'], 'Draft keeps the incomplete question');
     }
 
     public function test_a_stage_edit_lands_on_the_question_the_stage_showed(): void
     {
         $this->s2->update(['game_type' => 'quiz']);
 
-        // The stage shows SAVED questions only, so its index 0 is draft 1 here (draft 0 is
-        // half-typed), and its option 1 is draft slot 2 (slot 1 is empty).
+        // The stage shows the draft itself: an index on it is that question and that slot, half-typed or not.
         $component = Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('selectScene', $this->s2->id)
@@ -586,12 +585,115 @@ class Step3SceneConfiguratorTest extends TestCase
             ->set('quizDraft.0.question', 'Unfinished question…')
             ->set('quizDraft.1.question', 'Why did the empire fall?')
             ->set('quizDraft.1.options', ['Overexpansion', '', 'Bad weather', 'Aliens'])
-            ->dispatch('quizStageEdited', question: 0, option: 1, text: 'Plague')
+            ->dispatch('quizStageEdited', question: 1, option: 1, text: 'Plague')
             ->assertDispatched('quiz:questions-updated');
 
-        $this->assertSame('Plague', $component->get('quizDraft')[1]['options'][2]);
+        $this->assertSame('Plague', $component->get('quizDraft')[1]['options'][1]);
         $this->assertSame('Unfinished question…', $component->get('quizDraft')[0]['question']);
-        $this->assertSame(['Overexpansion', 'Plague', 'Aliens'], $this->lesson->quizQuestions()->first()->options);
+        $this->assertSame(['Overexpansion', 'Plague', 'Bad weather', 'Aliens'], $this->lesson->quizQuestions()->first()->options);
+    }
+
+    public function test_a_quiz_just_added_has_blank_slots_for_the_stage_and_blank_slots_save_nothing(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 2, 'status' => 'pending']);
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id);
+
+        $this->assertCount(2, $component->get('quizDraft'));
+        $this->assertSame(['', '', '', ''], $component->get('quizDraft')[0]['options']);
+        $this->assertSame(0, $this->lesson->quizQuestions()->count());
+        $this->assertSame('pending', $this->s2->fresh()->status, 'an empty quiz keeps the lesson from publishing');
+    }
+
+    public function test_a_half_typed_question_and_its_empty_slots_come_back_after_a_reload_and_keep_the_lesson_from_publishing(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 2, 'status' => 'pending']);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Who sailed?')
+            ->set('quizDraft.0.options', ['Tasman', 'Cook', '', ''])
+            ->set('quizDraft.1.question', 'Unfinished…');
+
+        $this->assertSame('pending', $this->s2->fresh()->status, 'a started question without answers keeps the quiz from being ready');
+
+        $again = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id);
+        $this->assertCount(2, $again->get('quizDraft'));
+        $this->assertSame('Unfinished…', $again->get('quizDraft')[1]['question']);
+
+        $again->set('quizDraft.1.options', ['Yes', 'No', '', '']);
+        $this->assertSame('ready', $this->s2->fresh()->status);
+    }
+
+    public function test_an_undo_brings_the_saved_questions_and_the_readiness_along_and_slots_survive_a_reload(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1, 'status' => 'pending']);
+        \App\Services\Editor\SceneHistory::enable();
+
+        $editor = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Q1')->set('quizDraft.0.options', ['A', 'B', '', ''])
+            ->call('addQuizQuestion');
+        $this->assertSame(2, $this->s2->fresh()->quiz_question_count, 'the Questions field follows the slots');
+
+        $editor->set('quizDraft.1.question', 'Q2')->set('quizDraft.1.options', ['C', 'D', '', '']);
+        $this->assertSame(2, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count());
+
+        $this->travel(5)->seconds();   // its own undo step, not merged with the typing before it
+        $editor->call('removeQuizQuestion', 1);
+        $this->assertSame(1, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count());
+
+        $editor->call('undoLastEdit');
+        $this->assertSame(2, $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->count(), 'the player gets back what the editor shows');
+        $this->assertCount(2, $editor->get('quizDraft'));
+
+        $editor->call('addQuizQuestion');
+        $again = Livewire::actingAs($this->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])->call('selectScene', $this->s2->id);
+        $this->assertCount(3, $again->get('quizDraft'), 'an empty slot survives a reload');
+    }
+
+    public function test_the_questions_and_timing_fields_keep_the_draft_as_it_is_now(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1, 'quiz_timing' => 'after', 'status' => 'pending']);
+
+        $editor = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Q1')->set('quizDraft.0.options', ['A', 'B', '', ''])
+            ->set('selectedScene.quiz_question_count', 3);
+
+        $this->assertCount(3, $this->s2->fresh()->config['quiz_draft']);
+        $this->assertSame(3, $this->s2->fresh()->quiz_question_count);
+
+        $editor->set('selectedScene.quiz_timing', 'both')->call('saveSelected');   // the select's own change saves the panel's copy
+        $kept = $this->s2->fresh()->config['quiz_draft'];
+        $this->assertCount(3, $kept, 'the timing field saved the scene with the draft as it is now');
+        $this->assertSame('Q1', $kept[0]['question']);
+        $this->assertSame('both', $this->s2->fresh()->quiz_timing);
+    }
+
+    public function test_a_failed_generate_keeps_what_the_teacher_typed_and_touches_no_other_quiz(): void
+    {
+        $this->s2->update(['game_type' => 'quiz', 'quiz_question_count' => 1]);
+        $other = $this->lesson->quizQuestions()->create(['scene_id' => $this->s1->id, 'order' => 0, 'question' => 'Elsewhere', 'options' => ['A', 'B'], 'correct_index' => 0, 'points' => 10]);
+        $this->mock(\App\Services\OpenAiLlmService::class, fn ($mock) => $mock->shouldReceive('json')->andThrow(new \RuntimeException('down')));
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s2->id)
+            ->set('quizDraft.0.question', 'Mine')
+            ->set('quizDraft.0.options', ['Yes', 'No', '', ''])
+            ->call('regenerateAllQuizQuestions')
+            ->assertDispatched('quiz:generate-failed');
+
+        $this->assertSame('Mine', $this->lesson->quizQuestions()->where('scene_id', $this->s2->id)->first()?->question);
+        $this->assertNotNull($other->fresh(), 'another quiz scene keeps its questions');
     }
 
     public function test_quiz_autosave_marks_the_scene_ready_once_it_has_a_complete_question(): void

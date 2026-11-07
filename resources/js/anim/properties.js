@@ -41,6 +41,10 @@ const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
   ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
   : null)
 
+/** The bones the timeline has rows for. ponytail: fixed to the upper body rest_puppet.py cuts; legs get rows when a puppet has them. */
+const BONE_NAMES = [['bone:head', 'Neck'], ['bone:chest', 'Upper body'], ['bone:upperarm_n', 'Near upper arm'], ['bone:forearm_n', 'Near forearm'], ['bone:upperarm_f', 'Far upper arm'], ['bone:forearm_f', 'Far forearm']]
+export const BONE_ROWS = BONE_NAMES.map(([key]) => key)
+
 const P = (key, label, interpolate, unit = '', group = null) => ({ key, label, interpolate, unit, group, type: interpolate === 'color' ? 'color' : 'number' })
 
 /**
@@ -147,6 +151,8 @@ const REGISTRY = {
     P('scale', 'Scale', 'linear', '%'),
     P('rotation', 'Angle', 'linear', '°'),
     P('opacity', 'Opacity', 'linear', ''),
+    // a figure of parts: one row per bone, keyed together as one pose (only on a layer that has a puppet: timeline-panel propertiesOf)
+    ...BONE_NAMES.map(([key, label]) => P(key, label, 'linear', '°', 'bones')),
   ],
   /**
    * A stage25d camera move (config.stage25d.camera): one key at its start pose, one at its end. Read-only on the

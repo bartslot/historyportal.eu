@@ -1012,7 +1012,7 @@
             <x-ui.segmented name="inspector-subject" class="tabs-sm w-full" tab-class="flex-1"
                             :value="$panelView === 'settings' ? 'settings' : 'scene'"
                             :options="[['scene', __('Selection')], ['settings', __('Lesson')]]"
-                            on-change="$wire.call($event.target.value === 'settings' ? 'openSettings' : 'openFormat')" />
+                            on-change="$event.target.value === 'settings' ? $wire.openSettings() : $wire.openFormat().then(() => { const at = window.__stage25d?.selection; if (at !== null && at !== undefined) $wire.selectInspectorTarget('s25_layer-' + at) })" />
         </div>
         <div x-show="inspectorOpen"
              x-transition.opacity.duration.150ms
@@ -1045,7 +1045,7 @@
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
                 <x-ui.panel-tabs class="mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE]]">
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
                              JS dedupe guard, or the layer stays visibly selected with nothing
@@ -1087,7 +1087,7 @@
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
                 <x-ui.panel-tabs name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Animate'), \App\Support\TabIcons::ANIMATE], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
                 @unless (auth()->user()?->isGuestDemo())
@@ -1416,6 +1416,8 @@
             setMotion(patch) { window.__stage25d?.setLayerMotion?.(id, patch); this.sync(); },
             get motionKind() { return this.info?.motion?.kind ?? 'none'; },
             set motionKind(kind) { this.setMotion({ kind }); },
+            get cameraMotionKind() { return this.cam?.motion?.kind ?? 'none'; },
+            set cameraMotionKind(kind) { this.cameraMotion({ kind }); },
             /** An animation's playback: speed (fps scale) and where it starts (s). Live, one save, Cmd-Z undoes it. */
             setPlay(patch) { window.__stage25d?.setLayerPlay?.(id, patch); this.sync(); },
             /** The spark: the edit runs on, whichever panel is open, until the server says it landed (EditsWithSpark). */
@@ -1482,7 +1484,7 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null,
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
             sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
@@ -1891,7 +1893,7 @@
             $wizardExitLabel = $isGuestDemo ? __('Back to the home page') : __('Back to lessons');
         @endphp
         <a href="{{ $isGuestDemo ? route('home') : route('teacher.lessons.index') }}" wire:navigate data-editor-exit
-           class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+           class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
            data-tooltip="{{ $wizardExitLabel }}" aria-label="{{ $wizardExitLabel }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
@@ -1900,7 +1902,7 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-panel-link'"
                     data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
@@ -1937,7 +1939,7 @@
         {{-- Play → the real player over the editor, from the selected scene (the play overlay below) --}}
         <button type="button" data-play-lesson
                 onclick="Livewire.dispatch('lesson:play')"
-                class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                 data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
@@ -1947,7 +1949,7 @@
         {{-- Add, with the draw tool under Tools: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
         <div class="relative" x-data="drawTool()" x-on:keydown.escape.window="on && stop()" data-draw-tool>
             <button type="button" @click="addOpen = !addOpen"
-                    class="grid h-10 w-10 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                     :class="addOpen && 'bg-sky-500/15 text-panel-link'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
                     data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
@@ -2027,7 +2029,7 @@
                 </div>
                 <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
                     <template x-for="c in colours" :key="c">
-                        <button type="button" class="h-6 w-6 rounded-full border-2" :style="`background:${c}`"
+                        <button type="button" class="h-8 w-8 rounded-full border-2" :style="`background:${c}`"
                                 :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
                     </template>
                 </div>
@@ -2056,14 +2058,14 @@
                     data-problems-count="{{ $problemCount }}" data-severity="{{ $problemSeverity }}"
                     data-tooltip="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
                     aria-label="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
-                    @class(['flex h-10 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
+                    @class(['flex h-11 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
                             'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
                             'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
                 <x-icons.exclamation-triangle class="h-6 w-6" /><span>{{ $problemCount }}</span>
             </button>
         @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="grid h-10 w-10 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-11 w-11 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
@@ -2075,7 +2077,7 @@
              used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
-                class="grid h-10 w-10 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                class="grid h-11 w-11 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                 data-tour="settings"
                 :class="fmtOpen && 'bg-sky-500/15 text-panel-link'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
@@ -2105,7 +2107,7 @@
              re-renders; it takes the server's answer, since sharing can be refused. --}}
         <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="grid h-10 w-10 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
                     :class="open && 'bg-primary/15'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
@@ -2789,7 +2791,7 @@
     {{-- Uitknippen's words in this language (resources/js/editor/cutout-dialog.js reads them). --}}
     {{-- The teacher's own cut-outs, and the ones this lesson's 3D scenes use: rows of the 3D library (stage25d/engine.js). --}}
     <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode(\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson)) }}"></div>
-    <div hidden wire:ignore data-cutout-labels="{{ json_encode(\App\Services\Editor\Cutouts::labels()) }}"></div>
+    <div hidden wire:ignore data-cutout-labels="{{ json_encode(\App\Services\Editor\Cutouts::labels()) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
 
     {{-- Scene rail (vertical, left edge) --}}
     <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
@@ -3217,7 +3219,7 @@
                     class="h-full w-full border-0" title="{{ __('Play the lesson') }}"></iframe>
         </template>
         <button type="button" x-on:click="close()" data-play-close
-                class="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+                class="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
                 data-tooltip="{{ __('Close') }}" aria-label="{{ __('Close') }}">
             <x-icons.x-mark class="h-5 w-5" />
         </button>

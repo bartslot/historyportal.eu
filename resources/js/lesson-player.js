@@ -1034,6 +1034,9 @@ Alpine.data('lessonGame', (lesson) => ({
         // planes under figures that stood still (Bart, 2026-10-16).
         const motion = { panX: 0, panY: 0, zoom: 1 }
         const fit = this._bgFit === 'contain' ? 'contain' : 'cover'
+        // Figures with no backdrop picture stand on the scene's own gradient or colour, not on the scene before
+        const noBackdrop = !shot.bg_url && !backdropLayers(shot.layers ?? []).length
+        host.style.background = noBackdrop ? (gradientCss(this._bgGradient) || this._bgMatte || '#0f172a') : ''
 
         // The panel before stays on screen until this one is drawn (ParallaxScene `replaces`), and
         // one that slides, wipes or dissolves in keeps it underneath meanwhile. Removing it first
@@ -1694,6 +1697,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // How the background fills the stage: 'cover' (fill, crop) or 'contain' (whole image, bars).
       this._bgFit = scene.config?.background_fit || scene.background_fit || 'cover'
       this._bgMatte = scene.background_color || null
+      this._bgGradient = scene.background_gradient || null
 
       // How this scene replaces the one before it (Animate tab). Read before the swap below so
       // _showBgImage / _showFlatColor apply it to whichever layer is coming in.

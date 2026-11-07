@@ -14,10 +14,10 @@ import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt } from './layout'
-import { cellOf, frameAt, isAnimation } from './sprite'
-import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, skylines, type LayerHandle } from './layer'
-import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, type BentPicture } from './bones'
+import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
+import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, skylines, type LayerHandle } from './layer'
+import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -25,7 +25,7 @@ import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
 import { LessonDoc } from './edits'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
-import type { Asset, Depth, GroundBand, Lesson, Library, Puppet, Scene, SceneLayer } from './types'
+import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
 /** The stage's own look: History Lines pencil lines on 3D edges, a light paper grain over everything. */
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
@@ -49,6 +49,8 @@ export class Stage {
   private strip: { top: number; h: number; order: number } | null = null
   private nearTex: RawTexture | null = null
   private bands: Band[] = []
+  private shownPictures = new Map<LayerHandle, RawTexture>()   // the editor's unsaved pictures on stage (showPicture)
+  private pictureToken = 0
   /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
   private strewn: Strewn[] = []
   private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
@@ -159,17 +161,18 @@ export class Stage {
       let asset = resolveAsset(lib, layer, layer.depth)
       if (!asset) { misses.push({ need: layer.need ?? layer.asset, reason: 'no match' }); return }
       let tex
-      try { tex = await loadPremultiplied(layer.puppet?.atlas ?? urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
+      const puppet = puppetOf(asset, layer, lib.base)
+      try { tex = await loadPremultiplied(layer.src ?? puppet?.atlas ?? urlOf(lib, asset, layer), this.scene) } catch { misses.push({ need: layer.need ?? layer.asset, reason: `file did not load: ${layer.src ?? asset.file}` }); return }
       if (token !== this.buildToken) return
-      asset = editedAsset(asset, layer, tex)
-      const bent = layer.puppet ? bindPuppet(layer.puppet)
+      asset = editedAsset(asset, layer, tex.getSize(), puppet)
+      const bent = puppet ? bindPuppet(puppet)
         : layer.rig?.length && layer.rigMap ? await bindMappedPicture(urlOf(lib, asset, layer), layer.rigMap, layer.rig)
           : layer.rig?.length ? bindPicture(await alphaOf(urlOf(lib, asset, layer)), layer.rig) : null
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene)
       const atlas = tex.getSize()
-      const uvFit: readonly [number, number] = layer.puppet ? [layer.puppet.width / atlas.width, layer.puppet.height / atlas.height] : [1, 1]
+      const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
       handle.mesh.position.set(p.x, p.y, p.z)
       const flat = liesFlat(layer, asset)
@@ -233,6 +236,8 @@ export class Stage {
     this.bands = bandsNext
     this.built = next
     this.sceneLib = lib
+    this.shownPictures.forEach((t) => t.dispose())   // the editor's unsaved pictures went with the old set
+    this.shownPictures.clear()
     // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
     const tileBands = slotsNext[0] ? (bandColours.get(lib.base + slotsNext[0].asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
     // with ground bands the floor is only the paper behind them: no tile can show between the painted strips
@@ -273,6 +278,13 @@ export class Stage {
 
   /** (Re)strew the ground when the scene or the look's Gras / Horizon changed: pure plan (strew.ts), one mesh set per
    *  picture file (scatter-gl.ts). */
+  /** What can grow on this scene's ground: its tags decide (scatter.ts), so a deck or a stone floor has neither. */
+  get strewable(): { grass: boolean; bushes: boolean } {
+    const src = this.strewSrc
+    if (!src) return { grass: false, bushes: false }
+    return { grass: strewPlan({ ...src, grass: 1, bushes: 0 }).length > 0, bushes: strewPlan({ ...src, grass: 0, bushes: 1 }).length > 0 }
+  }
+
   private strew(grass: number, bushes: number) {
     const src = this.strewSrc
     const key = src ? `${src.sceneId}:${grass}:${bushes}:${src.slots.length}` : ''
@@ -292,6 +304,25 @@ export class Stage {
   }
 
   /** Point the built layers at an edited scene's values (x, scale, motion, keys) without rebuilding. */
+  /**
+   * The picture editor's work on a built row before it is saved (same size as the row's file); null: the row's own file
+   * again. Only the material's texture changes: no rebuild, the texture goes when the next one comes.
+   */
+  async showPicture(row: { layer?: number; band?: number; sky?: boolean }, url: string | null): Promise<void> {
+    const band = row.band !== undefined ? this.bands.find((b) => b.index === row.band) : null
+    const built = row.band === undefined ? this.built.find((b) => b.index === (row.sky ? -1 : row.layer)) : null
+    const handle = band?.handle ?? built?.handle
+    if (!handle) return
+    const token = ++this.pictureToken
+    const base = this.sceneLib?.base ?? this.lib.base
+    const own = band ? band.band.src ?? base + band.asset.file : built!.layer.src ?? puppetOf(built!.asset, built!.layer, base)?.atlas ?? urlOf({ base }, built!.asset, built!.layer)
+    const tex = url ? await pictureTexture(url, this.scene) : await loadPremultiplied(own, this.scene)
+    if (token !== this.pictureToken) { if (url) tex.dispose(); return }
+    handle.material.setTexture('tex', tex)
+    this.shownPictures.get(handle)?.dispose()
+    if (url) this.shownPictures.set(handle, tex); else this.shownPictures.delete(handle)
+  }
+
   rebind(s: Scene) {
     this.built.forEach((b) => { b.layer = b.index >= 0 ? s.set.layers[b.index] : skyLayerOf(s) })
     this.bands.forEach((b) => { b.band = s.set.groundBands?.[b.index] ?? b.band })
@@ -439,7 +470,7 @@ export class Stage {
       if (!found) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
       const tex = await loadPremultiplied(urlOf(lib, found, g), this.scene).catch(() => null)
       if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); continue }
-      const asset = editedAsset(found, g, tex)
+      const asset = editedAsset(found, g, tex.getSize())
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
       const handle = makeLayer(asset, tex, w, h, 1, this.scene)
@@ -460,7 +491,7 @@ export class Stage {
   }
 
   /** Pose everything for t seconds into scene s. */
-  pose(s: Scene, t: number, clock: number, hold?: { t: number; breath_m?: number; breath_s?: number }) {
+  pose(s: Scene, t: number, clock: number, hold?: { t: number; breath_m?: number; breath_s?: number }, frameT = t) {
     const shot = shotAt(s, t)                       // a directed scene plays camera, then each of camera_more
     const end = cameraAt(shot.cam, shot.t, sceneDuration(s))
     const c = hold ? breathe(end, hold.t, hold) : end   // a held frame breathes around where the shot ended
@@ -530,32 +561,23 @@ export class Stage {
       b.handle.setPaper(paper, fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080), b.uvFit))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
-      if (b.bent) b.handle.setBent(b.bent, b.layer.bones ?? {})
+      if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
       b.stain?.setEtch(b.layer.etch ?? 0)
       b.cast?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity)
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
       // the light runs across the picture's u: on an atlas that is not across the figure, so a puppet takes none yet
-      b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, this.footTint), ...(b.layer.puppet ? { light: 0 } : {}) })
+      b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, this.footTint), ...(puppetOf(b.asset, b.layer) ? { light: 0 } : {}) })
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
-      if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, t)))   // the scene's time: a seek shows the same frame
+      if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, frameT)))   // the scene's time: a seek shows the same frame
     }
   }
 }
 
 /** A picture's file: the teacher's edited copy (layer.src, written by the app's image editor) or the library's own. */
 const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) => layer?.src ?? lib.base + asset.file
-
-/** An edited copy may be cropped: it keeps the library's metres per pixel, so its own pixel size sets its shape. */
-const editedAsset = (asset: Asset, layer: { src?: string; puppet?: Puppet }, tex: RawTexture): Asset => {
-  if (!layer.src) return asset
-  if (!asset.w || !asset.h) return { ...asset, src: layer.src }
-  const { width, height } = layer.puppet ?? tex.getSize()   // a puppet's texture is its atlas: its size is the drawing's, not the atlas's
-  const w = width / (isAnimation(asset) ? asset.cols! : 1), h = height / (isAnimation(asset) ? asset.rows! : 1)   // a sheet: one frame's size
-  return { ...asset, w, h, height_m: asset.height_m * (h / asset.h), src: layer.src }   // src: a pick reads the edited copy's alpha
-}
 
 /** A picture's uv per px, as uv of its atlas when it has one: the same grain, line and hatching on a part as on the drawing. */
 const fitted = (uvPerPx: readonly [number, number], fit: readonly [number, number] = [1, 1]) => [uvPerPx[0] * fit[0], uvPerPx[1] * fit[1]] as const

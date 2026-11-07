@@ -74,6 +74,17 @@ class LessonProblemsTest extends TestCase
         $this->assertSame([], LessonProblems::for($lesson));
     }
 
+    public function test_an_unfinished_quiz_is_a_problem_numbered_as_the_rail_counts(): void
+    {
+        $lesson = $this->lesson();
+        $this->scene($lesson, 1);
+        $quiz = Scene::create(['lesson_id' => $lesson->id, 'order' => 50, 'kind' => 'game', 'game_type' => 'quiz', 'status' => 'pending']);
+
+        $problem = $this->only($lesson, $quiz);
+        $this->assertSame(2, $problem['order'], 'the second scene on the rail, whatever its stored order');
+        $this->assertSame(LessonProblems::BLOCKS, $problem['severity']);
+    }
+
     public function test_a_failed_narration_says_the_class_hears_the_old_voice_and_offers_re_narrate(): void
     {
         $lesson = $this->lesson();

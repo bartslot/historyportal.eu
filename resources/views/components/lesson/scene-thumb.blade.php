@@ -44,7 +44,7 @@
     @if ($scene->kind === 'map')
         <div class="w-full h-full bg-sky-800/30 border border-sky-600/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
             <x-lesson.icon-map class="h-8 w-8 opacity-90" />
-            <span class="text-2xs leading-snug opacity-70">{{ $scene->year ?? '—' }}</span>
+            <span class="text-2xs leading-snug opacity-70">{{ $scene->year ?? '' }}</span>
         </div>
     @elseif ($scene->kind === 'game')
         <div class="w-full h-full bg-teal-700/30 border border-teal-600/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
@@ -67,7 +67,7 @@
                 <x-lesson.icon-voyage-overview class="h-9 w-auto opacity-90" />
             @else
                 <x-lesson.icon-voyage class="h-8 w-8 opacity-90" />
-                <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+                <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '' }}</span>
             @endif
         </div>
     @elseif ($scene->kind === 'video')
@@ -77,7 +77,7 @@
     @elseif ($scene->kind === 'gallery')
         <div class="w-full h-full bg-violet-800/30 border border-violet-500/30 flex flex-col items-center justify-center gap-1 px-2 text-white [&>*]:shrink-0">
             <x-lesson.icon-slideshow class="h-8 w-8 opacity-90" />
-            <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '—' }}</span>
+            <span class="text-2xs leading-snug opacity-70 truncate max-w-[90%]">{{ $scene->location ?? '' }}</span>
         </div>
     @else
         {{-- Placeholder sits underneath; a present image covers it. If the image 404s
@@ -94,9 +94,9 @@
         @endif
         <span class="absolute bottom-0 inset-x-0 bg-black/55 text-2xs text-white px-1 py-0.5 text-left truncate">
             @if ($scene->kind === 'stage25d')
-                {{ $scene->location ?: ($scene->chapter_name ?: ($scene->config['stage25d']['beat'] ?? '—')) }}
+                {{ $scene->location ?: ($scene->chapter_name ?: ($scene->config['stage25d']['beat'] ?? '')) }}
             @else
-                {{ $scene->year ?? '—' }} · {{ $scene->location ?? '—' }}
+                {{ collect([$scene->year, $scene->location])->filter()->implode(' · ') }}
             @endif
         </span>
     @endif
@@ -141,7 +141,7 @@
             popovertarget="scene-menu-{{ $scene->id }}"
             title="{{ __('Scene options') }}"
             aria-label="{{ __('Scene options') }}"
-            class="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full
+            class="absolute -right-2 -top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full
                    border border-slate-600 bg-slate-900 text-slate-300 opacity-0 transition
                    hover:border-primary hover:text-white
                    focus-visible:opacity-100 group-hover/thumb:opacity-100">

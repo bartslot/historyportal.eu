@@ -33,8 +33,9 @@ final class LessonProblems
     public static function for(Lesson $lesson): array
     {
         $out = [];
-        foreach ($lesson->scenes()->ordered()->get() as $scene) {
-            array_push($out, ...self::forScene($scene));
+        foreach ($lesson->scenes()->ordered()->get()->values() as $position => $scene) {
+            // numbered as the rail counts, not by the stored order (which may skip, or start at 50 for an added scene)
+            array_push($out, ...array_map(fn (array $p) => [...$p, 'order' => $position + 1], self::forScene($scene)));
         }
 
         return $out;
@@ -81,6 +82,10 @@ final class LessonProblems
             $out[] = $problem('audio', __('The voice belongs to an older text.'), self::OUTDATED, 'audio');
         } elseif ($scene->audio_provider !== null && $scene->narrationWasDowngraded()) {
             $out[] = $problem('audio', __('Read by a stand-in voice, not the lesson\'s narrator.'), self::OUTDATED, 'audio');
+        }
+        // A quiz is ready once it has a finished question and nothing half-typed (EditsQuizQuestions::autosaveQuiz)
+        if ($scene->kind === 'game' && $scene->game_type === 'quiz' && $scene->status === 'pending') {
+            $out[] = $problem(null, __('A question in this quiz is not finished.'), self::BLOCKS, null);
         }
 
         return $out;

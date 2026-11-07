@@ -115,6 +115,45 @@ def test_there_is_paint_behind_the_neck_when_the_head_turns():
     assert bones.index('neck') < bones.index('head'), 'the neck goes behind the head'
 
 
+def test_the_jaw_in_the_hidden_paint_does_not_stay_behind_when_the_head_lifts():
+    rest, parts_map, under = figure()
+    parts_map[20:50, 120:135] = (*COLOURS['head'], 255)   # a jaw out past the neck, above the pivot row
+    rest[20:50, 120:135] = (230, 170, 140, 255)
+    parts_map[50:60, 80:120] = (*COLOURS['head'], 255)    # the neck at the pivot row: columns 80 to 119
+    rest[50:60, 80:120] = (230, 170, 140, 255)
+    under = rest.copy()
+    parts = dict(cut(rest, parts_map, under, JOINTS)[0])
+    assert parts['neck'][35, 128, 3] == 0, 'a spike of jaw stays under the chin'
+    assert parts['neck'][45, 100, 3] == 255, 'a hole opens where the head was'
+
+
+def test_the_collar_under_the_turning_point_stays_on_the_chest():
+    rest, parts_map, under = figure()
+    parts_map[50:60, 95:105] = (*COLOURS['head'], 255)   # the throat, below the head's pivot row
+    rest[50:60, 95:105] = (230, 170, 140, 255)
+    parts = dict(cut(rest, parts_map, under, JOINTS)[0])
+    assert parts['head'][55, 100, 3] == 0, 'the head carries the throat with it'
+    assert parts['neck'][55, 100, 3] == 255 and tuple(parts['neck'][55, 100, :3]) == (230, 170, 140), 'the throat is gone'
+
+
+def test_a_scrap_of_sleeve_on_the_chest_goes_with_the_arm_and_the_shirt_front_stays():
+    rest, parts_map, under = figure()
+    scrap = rest.copy()
+    scrap[70:74, 70:74] = (240, 235, 225, 255)            # a scrap of linen on the chest, at the sleeve
+    parts = dict(cut(scrap, parts_map, under, JOINTS)[0])
+    assert parts['upperarm_n'][72, 72, 3] == 255, 'the scrap stayed on the chest'
+    assert parts['chest'][72, 72, 3] == 0
+    rest[80:130, 99:102] = (240, 235, 225, 255)           # the shirt front: too far from either sleeve
+    parts = dict(cut(rest, parts_map, under, JOINTS)[0])
+    assert parts['chest'][100, 100, 3] == 255, 'the shirt front left'
+
+
+def test_the_near_arm_goes_over_the_legs_and_under_the_waistcoat_the_far_arm_behind_them():
+    rest, parts_map, under = figure()
+    bones = [b for b, _ in cut(rest, parts_map, under, JOINTS)[0]]
+    assert bones.index('forearm_f') < bones.index('hips') < bones.index('forearm_n') < bones.index('upperarm_n') < bones.index('chest')
+
+
 def test_a_stray_speck_on_the_map_joins_the_part_around_it():
     rest, parts_map, under = figure()
     parts_map[250:253, 80:83] = (*COLOURS['head'], 255)    # a speck of head colour on the leg

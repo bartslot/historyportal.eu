@@ -226,8 +226,23 @@ export function limitBone(name: string, deg: number, facing?: 1 | -1): number {
   return limited * facing!
 }
 
+/** The figure a layer draws: its own, or its library asset's (an atlas named without a path lies beside the asset's file). */
+export function puppetOf(asset: { puppet?: Puppet }, layer: { puppet?: Puppet }, base = ''): Puppet | null {
+  const puppet = layer.puppet ?? asset.puppet
+  if (!puppet) return null
+  return /^(\/|https?:|data:)/.test(puppet.atlas) ? puppet : { ...puppet, atlas: base + puppet.atlas }
+}
+
+export interface BentPuppet extends BentPicture {
+  /** These turns as the body allows them: a joint's own limits, and a near hand stays out of the body it is drawn behind. */
+  safe(bones: Record<string, number>): Record<string, number>
+}
+
+const GUARD_STEP = 3       // degrees a forearm is taken back at a time until it is clear of the body
+const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow to hand, that have to stay out of it
+
 /** A puppet on the Rigby2D runtime: each part follows its own bone rigidly, turning under its rounded joint ends. */
-export function bindPuppet(puppet: Puppet): BentPicture {
+export function bindPuppet(puppet: Puppet): BentPuppet {
   const sk = new Skeleton()
   const indexOf = new Map(puppet.bones.map((b, i) => [b.name, i + 1]))
   const from = (name: string | null) => puppet.bones.find((b) => b.name === name)?.from ?? [0, 0]
@@ -246,17 +261,67 @@ export function bindPuppet(puppet: Puppet): BentPicture {
     return att
   })
   const pose = new Pose(sk)
+  const place = (bones: Record<string, number>) => {
+    pose.reset(sk)
+    for (const [name, deg] of Object.entries(bones)) {
+      const i = indexOf.get(name)
+      if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = limitBone(name, deg, puppet.facing)
+    }
+    pose.updateWorld(sk)
+  }
+  // The near arm is drawn behind the chest (at rest its sleeve goes under the waistcoat), so a hand swung across the body
+  // would vanish into it and come out on the other side. It stops at the chest's edge instead; over the legs it is in front.
+  const foreAt = puppet.parts.findIndex((p) => p.bone === 'forearm_n')
+  const bodyAt = puppet.parts.flatMap((p, i) => (p.bone === 'chest' && puppet.parts.indexOf(p) > foreAt ? [i] : []))
+  const handOf = (() => {
+    if (foreAt < 0) return null
+    const q = puppet.parts[foreAt].quad, joint = from('forearm_n')
+    const mids = q.map((p, i) => [(p[0] + q[(i + 1) % 4][0]) / 2, (p[1] + q[(i + 1) % 4][1]) / 2])
+    const far = mids.reduce((best, m, i) => (Math.hypot(m[0] - joint[0], m[1] - joint[1]) > Math.hypot(mids[best][0] - joint[0], mids[best][1] - joint[1]) ? i : best), 0)
+    return [far, (far + 1) % 4]
+  })()
+  const side = bodyAt.length ? Math.sign(from('forearm_n')[0] - (puppet.parts[bodyAt[0]].quad[0][0] + puppet.parts[bodyAt[0]].quad[1][0]) / 2) || 1 : 1
+  /** How far the forearm stands outside each part of the body, along the side it hangs on; null where no point of it is level with that part. */
+  const gaps = (): (number | null)[] => {
+    const fore = pose.worldVertices(sk, foreAt, atts[foreAt]) as number[]
+    const mid = (a: number, b: number) => [(fore[a * 2] + fore[b * 2]) / 2, (fore[a * 2 + 1] + fore[b * 2 + 1]) / 2]
+    const hand = mid(handOf![0], handOf![1])
+    const elbow = mid((handOf![0] + 2) % 4, (handOf![1] + 2) % 4)
+    const along = ALONG_FOREARM.map((t) => [elbow[0] + (hand[0] - elbow[0]) * t, elbow[1] + (hand[1] - elbow[1]) * t])
+    return bodyAt.map((i) => {
+      const v = pose.worldVertices(sk, i, atts[i]) as number[]
+      const xs = [v[0], v[2], v[4], v[6]], ys = [v[1], v[3], v[5], v[7]]
+      const edge = side > 0 ? Math.max(...xs) : Math.min(...xs)
+      const level = along.filter((p) => p[1] >= Math.min(...ys) && p[1] <= Math.max(...ys)).map((p) => (p[0] - edge) * side)
+      return level.length ? Math.min(...level) : null
+    })
+  }
+  // room the hand keeps: a quarter of its width, or what the drawing gives it where it already hangs close (a puffed-out breeches leg)
+  const room = (() => {
+    if (!handOf || !bodyAt.length) return []
+    const wanted = Math.abs(puppet.parts[foreAt].quad[1][0] - puppet.parts[foreAt].quad[0][0]) / 4
+    place({})
+    // a figure drawn with its arm already in that part of the body: nothing to guard there
+    return gaps().map((gap) => (gap === null ? wanted : gap < 0 ? -Infinity : Math.min(wanted, gap)))
+  })()
+  const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
+  const safe = (bones: Record<string, number>): Record<string, number> => {
+    if (!handOf || !bodyAt.length || !puppet.facing) return bones
+    let deg = limitBone('forearm_n', bones.forearm_n ?? 0, puppet.facing)
+    place({ ...bones, forearm_n: deg })
+    while (!handClear() && deg !== 0) {
+      deg = deg > 0 ? Math.max(0, deg - GUARD_STEP) : Math.min(0, deg + GUARD_STEP)
+      place({ ...bones, forearm_n: deg })
+    }
+    return deg === (bones.forearm_n ?? 0) ? bones : { ...bones, forearm_n: deg }
+  }
   return {
     width: puppet.width, height: puppet.height,
     uvs: atts.flatMap((a) => a.uvs),
     triangles: atts.flatMap((a, i) => a.triangles.map((t) => t + i * 4)),   // in order: the first part is at the back
+    safe,
     bend(bones) {
-      pose.reset(sk)
-      for (const [name, deg] of Object.entries(bones)) {
-        const i = indexOf.get(name)
-        if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = limitBone(name, deg, puppet.facing)
-      }
-      pose.updateWorld(sk)
+      place(safe(bones))
       return atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
     },
   }

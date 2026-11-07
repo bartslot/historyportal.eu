@@ -191,6 +191,10 @@
                         <button type="button" x-show="series === null" x-on:click="series = @js($title)" data-series-count
                                 class="badge badge-sm badge-neutral absolute bottom-1 right-1" aria-label="{{ __(':title, :n pictures', ['title' => $title, 'n' => $members->count()]) }}">{{ $members->count() }}</button>
                     @endif
+                    @if ($icon->source === \App\Services\Editor\Cutouts::SOURCE)
+                        <button type="button" wire:click="removeCutout({{ $icon->id }})" data-tooltip="{{ __('Remove from My cut-outs') }}" aria-label="{{ __('Remove from My cut-outs') }}"
+                                class="btn btn-xs btn-square btn-neutral absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><x-icons.x-mark class="h-3.5 w-3.5" /></button>
+                    @endif
                     @if ($canRestyle)
                         @if ($restyle?->isActive())
                             <span class="absolute inset-0 flex items-center justify-center bg-base-100/70" data-restyle="running" role="status" aria-label="{{ $restyle->step >= 2 ? __('Restyling 2/2: colour…') : __('Restyling 1/2: ink…') }}">

@@ -142,6 +142,16 @@
                 "--port=8271"
             ],
             "port": 8271
+        },
+        {
+            "//": "The picture editor worktree (image-editor). APP_URL in its .env is pinned to :8034.",
+            "name": "serve-editor",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "cd public && PHP_CLI_SERVER_WORKERS=4 SESSION_COOKIE=hp_editor php -d upload_max_filesize=64M -d post_max_size=64M -S 127.0.0.1:8034 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"
+            ],
+            "port": 8034
         }
     ]
 }

@@ -101,10 +101,15 @@ trait EditsStage25d
         if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
             $values['motion'] = $motion;
         }
-        if (($play = LayerKeys::play($patch['play'] ?? null)) !== null) {   // an animation's speed and start
+        $sheet = LibraryBundle::asset($bundle, (string) ($layers[$index]['asset'] ?? ''));
+        $cells = is_array($sheet) && ($sheet['kind'] ?? null) === 'animation' ? (int) ($sheet['frames'] ?? ((int) ($sheet['cols'] ?? 1) * (int) ($sheet['rows'] ?? 1))) : null;
+        if (($play = LayerKeys::play($patch['play'] ?? null, $cells)) !== null) {   // an animation's speed, start and own order of frames
             $values['play'] = $play;
         }
-        if ($values === []) {
+        $keys = is_array($patch['keys'] ?? null)   // the picture editor's Bones tab saves a pose with its keys
+            ? LayerKeys::sanitize($patch['keys'], max((float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds))
+            : null;
+        if ($values === [] && $keys === null) {
             return;
         }
         if (isset($values['asset']) && $values['asset'] !== ($layers[$index]['asset'] ?? null)) {
@@ -112,6 +117,11 @@ trait EditsStage25d
             unset($layers[$index]['src'], $layers[$index]['edit_state'], $layers[$index]['original_src']);
         }
         $layers[$index] = [...$layers[$index], ...$values];
+        if ($keys === []) {
+            unset($layers[$index]['keys']);
+        } elseif ($keys !== null) {
+            $layers[$index]['keys'] = $keys;
+        }
         $this->storeStage25dLayers($scene, $layers);
     }
 
@@ -506,6 +516,7 @@ trait EditsStage25d
         $this->storeStage25dConfig($scene, $config);
         $this->activeStage25dLayer = null;
         $this->selectSceneInternal($scene->id);   // the stage rebuilds, the timeline re-reads the layers
+        $this->dispatch('stage25d:deselect');   // or the selection box moves on to the next layer, and a second Delete takes that one
     }
 
     /**

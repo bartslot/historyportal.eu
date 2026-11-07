@@ -486,7 +486,7 @@ class StageEditingTest extends TestCase
             ->assertSeeHtml('data-stage25d-inspector="layer-0"');
         $editor->call('selectInspectorTarget', 's25_layer-9')->assertSet('activeStage25dLayer', null);
         $editor->call('selectInspectorTarget', '')->assertSeeHtml('data-stage25d-look')
-            ->assertSeeHtml('data-scene-mode')->assertSeeHtml('data-segment="3d"')->assertSee('Scene details');
+            ->assertDontSeeHtml('data-scene-mode')->assertSee('Scene details');   // a scene is 2D or 3D for good (Bart, 2026-11-07)
         $this->assertStringContainsString('hook', $this->editor($scene)->html(), 'the rail caption falls back to the beat');
     }
 }

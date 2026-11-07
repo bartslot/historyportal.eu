@@ -21,6 +21,8 @@ export interface Asset {
   placeholder?: boolean
   qa?: { score?: number }
   /** an animation (sprite.ts): `file` is a sheet of cols x rows frames, w x h is ONE frame */
+  /** a figure of separate parts (bones.ts): a layer of this asset draws it */
+  puppet?: Puppet
   kind?: 'animation' | 'sheet'
   /** a sprite sheet (scatter.ts): ONE picture cut into cells, each with its own tags and height (rect: uv [u0, v0, du, dv]) */
   cells?: { tags: string[]; height_m: number; rect: [number, number, number, number] }[]
@@ -46,7 +48,7 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
-export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number }
+export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number; [bone: `bone:${string}`]: number | undefined }
 
 /** The values a backdrop (a ground band, the sky picture) takes from a layer. */
 export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys' | 'src'>>
@@ -97,8 +99,8 @@ export interface SceneLayer {
   rigMap?: PartMap
   /** a figure of separate parts, drawn instead of the picture (bones.ts) */
   puppet?: Puppet
-  /** how far each bone is turned from the painted pose, degrees clockwise on screen */
-  bones?: Record<string, number>
+  /** how far a bone is turned from the painted pose, degrees clockwise on screen (layout.ts bonesAt) */
+  [bone: `bone:${string}`]: number | undefined
   motion?: MotionKind | MotionSpec
   keys?: LayerKey[]
   /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */
@@ -109,7 +111,7 @@ export interface SceneLayer {
    *  its height_m along the floor, drawn right after the floor and under everything that stands */
   flat?: boolean
   /** an animation's playback (sprite.ts frameAt): speed scales its fps (0 holds), offset = seconds into it at the start */
-  play?: { speed?: number; offset?: number }
+  play?: { speed?: number; offset?: number; frames?: number[]; loop?: boolean }
 }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }

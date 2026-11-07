@@ -4,9 +4,10 @@
  * (`s25:layer-3` / `x` / keyframes `{ time, value }`). This is the one place that converts between them, both ways.
  */
 import { sameTime } from './keyframes.js'
+import { BONE_ROWS } from './properties.js'
 
 /** The properties of a layer the engine can move (engine-mvp stage25d/layout.ts layerAt). */
-export const LAYER_KEY_FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation']
+export const LAYER_KEY_FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation', ...BONE_ROWS]
 
 /** Layers' keys → timeline tracks. `items`: `[{ id: 'layer-3', keys: [...] }]` (stage.items()). */
 export const tracksFromKeys = (items) => items.flatMap((item) => LAYER_KEY_FIELDS.flatMap((property) => {

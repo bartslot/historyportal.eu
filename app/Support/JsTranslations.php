@@ -277,6 +277,9 @@ final class JsTranslations
     {
         return [
             'Correct answer' => __('Correct answer'),
+            'Answer' => __('Answer'),
+            'Type the question' => __('Type the question'),
+            'Generate questions and answers' => __('Generate questions and answers'),
             'This is the correct answer. Editing it changes what counts as right.' => __('This is the correct answer. Editing it changes what counts as right.'),
             'Previous question' => __('Previous question'),
             'Next question' => __('Next question'),

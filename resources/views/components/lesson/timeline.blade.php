@@ -85,7 +85,7 @@
                     <button type="button"
                             data-no-drag data-rail-gap
                             wire:click="openAddSceneAfter({{ $loop->first ? 0 : $scenes->values()[$loop->index - 1]->id }})"
-                            class="flex h-5 w-full items-center justify-center text-white/30 transition-colors hover:text-primary"
+                            class="flex h-8 w-full items-center justify-center text-white/30 transition-colors hover:text-primary"
                             data-tooltip="{{ __('Add scene here') }}" aria-label="{{ __('Add scene here') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
