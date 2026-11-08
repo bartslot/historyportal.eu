@@ -23,7 +23,8 @@ const X_MAX = 2
 const CLICK_PX = 4
 
 /** Which of the pictures under the pointer (nearest first) a press takes, and where a click on it goes next. */
-export const pickOf = (hits, selected) => {
+export const pickOf = (all, selected) => {
+  const hits = all.filter((h, n) => all.findIndex((o) => o.index === h.index) === n)   // a figure's overlapping parts each report: one picture
   const at = hits.findIndex((h) => h.index === selected)
   if (at < 0) return { hit: hits[0] ?? null, next: null }
   return { hit: hits[at], next: hits.length > 1 ? hits[(at + 1) % hits.length].index : null }
