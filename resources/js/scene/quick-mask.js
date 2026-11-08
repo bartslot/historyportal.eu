@@ -7,6 +7,7 @@
 
 import { line, union, applyStroke, compose, wholeBox } from './erase-brush.js';
 import { applyInk, solid, cloned, colourAt } from './paint-brush.js';
+import { loadImage } from './load-image.js';
 
 export const INK_LUM = 90;          // darker than this is a line: never selected
 const PAPER_SAT = 0.15, PAPER_VALUE = 200;   // white and cream paper: only that is un-blended at a cut's edge
@@ -568,16 +569,6 @@ export const BRUSH_WORK_PX = 640;
  * Returns { undo, reset, setMode, setBrushSize, setEdges, setEverywhere, clearSelection, cutout, toBlob, toDataURL, destroy }.
  */
 export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, { surface = canvas, onPick = () => {}, onNeedSource = () => {} } = {}) {
-    // Reading pixels needs a same-origin image. A /storage URL carries APP_URL's host, which is not
-    // always the page's own (a second local server, say), so load it from this origin instead.
-    const loadImage = async (from) => {
-        const u = new URL(from, location.href);
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.src = u.origin !== location.origin && u.pathname.startsWith('/storage/') ? location.origin + u.pathname : u.href;
-        await image.decode();
-        return image;
-    };
     const img = await loadImage(url);
     const w = img.naturalWidth, h = img.naturalHeight;
     for (const c of [canvas, overlay]) { c.width = w; c.height = h; }
@@ -922,6 +913,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setClean(next) { clean = { ...clean, ...next }; paint(); },
         /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
         resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
+        /** The pixels it opened on and the pixels now: what a save onto a figure's sheet compares (puppet-sheet.js). */
+        pixels: () => ({ opened: original, edited: shown.data }),
         cancelPress,
         setMode(next) {
             cancelPress();

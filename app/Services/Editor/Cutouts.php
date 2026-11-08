@@ -83,7 +83,7 @@ final class Cutouts
     private const LABELS = [
         'Back to the scene', 'Picture', 'Save', 'Undo', 'Redo', 'Tools', 'Erase', 'Bring back', 'Remove colour', 'Select a part', 'Hand',
         'Paint', 'Pipette', 'Clone stamp', 'Colour', 'Opacity', 'Option/Alt-click where to copy from, then paint.',
-        'Click a colour in the picture to paint with it.', 'Press on a colour and drag to take more of it.', 'Option/Alt-click where to copy from first.',
+        'Click a colour in the picture to paint with it.', 'Press on a colour and drag to take more of it.', 'Some paint lies outside the parts of this figure and was left out.', 'Option/Alt-click where to copy from first.',
         'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',

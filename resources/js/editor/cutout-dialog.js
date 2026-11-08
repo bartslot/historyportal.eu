@@ -38,6 +38,7 @@ import { flashTooltip } from '../tooltip.js'
 import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
+import { figureFromSheet, writeBack, sheetDataUrl } from './puppet-sheet.js'
 import { mountScenePeek } from './scene-peek.js'
 
 const ZOOM_STEP = 1.5
@@ -123,6 +124,8 @@ export async function openCutout (target) {
 
   let mask = null
   let view = null
+  let figure = null      // a boned figure: its sheet, and the whole figure the editor works on (puppet-sheet.js)
+  let figureUrls = []
   let state = { canUndo: false, canRedo: false, selected: false }
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
@@ -149,6 +152,7 @@ export async function openCutout (target) {
       peek?.destroy({ saved: pictureSaved })
       view?.destroy()
       mask?.destroy()
+      figureUrls.forEach((url) => URL.revokeObjectURL(url))
       root.remove()
       for (const el of behind) el.inert = false
       cameFrom?.focus?.({ preventScroll: true })
@@ -312,10 +316,13 @@ export async function openCutout (target) {
     const save = async (button) => {
       const modesChanged = Object.values(others).some((other) => other.dirty())
       if (!await saveOthers(button)) return
-      const picture = mask && (pictureWork() || opensCleaned)
-      const url = picture ? mask.resultDataURL() : null
+      const work = mask && (pictureWork() || opensCleaned)
+      const back = work && figure ? sheetNow() : null
+      const picture = work && (!figure || back.touched > 0)   // a figure's work may not reach its sheet: a selection, paint outside every part
+      const url = picture ? pictureUrl(back) : null
       if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, {})))) return
       if (!picture && modesChanged) say('success', t('Saved.'))
+      if (back?.lost) say('error', t('Some paint lies outside the parts of this figure and was left out.'))
       close({ saved: true, pictureSaved: !!picture })
     }
     $('[data-cut-save]').addEventListener('click', (e) => save(e.currentTarget))
@@ -369,7 +376,13 @@ export async function openCutout (target) {
     const showPicture = () => {
       if (pictureAsked) return
       pictureAsked = true
-      mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), target.original, refresh, { surface: viewport, onPick: picked, onNeedSource: needSource })
+      const opening = target.puppet ? figureFromSheet(target.puppet, target.puppet.sheet) : Promise.resolve(null)
+      opening
+        .then((whole) => {
+          figure = whole
+          if (whole) figureUrls.push(whole.url)
+          return mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), whole?.url ?? target.original, refresh, { surface: viewport, onPick: picked, onNeedSource: needSource })
+        })
         .then((m) => {
           mask = m
           $('[data-cut-loading]').remove()
@@ -390,7 +403,9 @@ export async function openCutout (target) {
           setTool(tool)
           mask.setClean(clean)   // opens already cleaned: the teacher only nudges
           // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
-          if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
+          if (target.puppet && target.edited) {
+            figureFromSheet(target.puppet, target.puppet.atlas).then((first) => { figure.first = first.sheet; figureUrls.push(first.url); return mask.setSource(first.url) }).catch(() => {})
+          } else if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
           peek?.pictureChanged()
         })
         .catch(() => {
@@ -400,8 +415,11 @@ export async function openCutout (target) {
         })
     }
 
+    /** The picture as the stage loads it. A boned figure: its sheet, with the figure's edits written back. */
+    const sheetNow = () => { const { opened, edited } = mask.pixels(); return writeBack(figure.sheet, opened, edited, target.puppet, figure.first) }
+    const pictureUrl = (back = figure ? sheetNow() : null) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height) : mask.resultDataURL())
     /** What Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned. */
-    const pictureNow = () => (mask && (pictureWork() || opensCleaned) ? mask.resultDataURL() : null)
+    const pictureNow = () => (mask && (pictureWork() || opensCleaned) ? pictureUrl() : null)
     /** The other tabs draw the picture as it is now, erased but not saved too. A short url: one tile each would repeat a data url. */
     let workUrl = null
     const showPictureWork = (other) => {

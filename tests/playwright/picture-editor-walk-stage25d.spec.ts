@@ -641,6 +641,223 @@ test('sizes: every control of every tool is 32 or 44 tall, no text under 12 px, 
   await leaveAndDiscard(page)
 })
 
+// ---- a boned figure: layer-1 is Pieter of parts. The editor shows him whole, a save goes onto his sheet.
+const BONED = 'layer-1', BONED_INDEX = 1
+const SHEET = '/storage/library/tasman-1642/puppets/pieter-rigid.png'
+const HOLE_AT = [358, 880]      // chest over hips: two parts deep
+const PAINT_AT = [358, 460]     // the vest over the collar: two parts deep, well away from the hole
+const puppetOfLayer = (page: Page) => page.evaluate((i) => (window as any).__stage25d.config.set.layers[i].puppet, BONED_INDEX)
+/** Where points of the figure are on screen, measured off the two elbow handles (a handle sits at its bone's tip: the elbow, in figure px). */
+const figureOnStage = (page: Page, points: number[][]) => page.evaluate(async (points) => {
+  ;(window as any).__stage25d.select('layer-1')
+  await new Promise((done) => setTimeout(done, 400))
+  const centre = (bone: string) => { const r = document.querySelector(`[data-bone-handle="${bone}"]`)!.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2] }
+  const near = centre('upperarm_n'), far = centre('upperarm_f')
+  ;(window as any).__stage25d.clearSelection()
+  const NEAR = [124.06, 785.83], FAR = [557.31, 791.35]
+  const scale = (far[0] - near[0]) / (FAR[0] - NEAR[0])
+  return points.map(([x, y]) => [Math.round(near[0] + (x - NEAR[0]) * scale), Math.round(near[1] + (y - NEAR[1]) * Math.abs(scale))])
+}, points)
+const opensAt = async (page: Page, at: number[]) => {
+  await page.mouse.dblclick(at[0], at[1])
+  await page.waitForTimeout(600)
+  const id = await page.locator('[data-cutout]').getAttribute('data-cutout', { timeout: 500 }).catch(() => null)
+  if (id) {
+    await page.waitForFunction(() => !document.querySelector('[data-cut-loading]'), undefined, { timeout: 60_000 })
+    await leaveAndDiscard(page)
+  }
+  return id
+}
+
+test('a boned figure opens whole, at rest, not cleaned, and leaving or saving without an edit writes nothing', async ({ page }) => {
+  await open(page, BONED)
+  expect(await page.locator('[data-cut-art]').evaluate((c: HTMLCanvasElement) => [c.width, c.height]), 'the figure, not its sheet').toEqual([724, 2172])
+  expect(await page.locator('[data-cut-white]').inputValue(), 'no automatic clean-up').toBe('0')
+  expect(await page.locator('[data-cut-fringe]').inputValue()).toBe('0')
+  await expect(page.locator('[data-cut-undo]')).toBeDisabled()
+
+  const puppet = await puppetOfLayer(page)
+  const differing = await page.locator('[data-cut-art]').evaluate(async (c: HTMLCanvasElement, [sheet, puppet]: any) => {
+    const img = new Image(); img.src = sheet; await img.decode()
+    const own = document.createElement('canvas'); own.width = c.width; own.height = c.height
+    const g = own.getContext('2d', { willReadFrequently: true })!
+    for (const { quad: [[x0, y0], , [x1, y1]], uv: [u0, v0, u1, v1] } of puppet.parts) g.drawImage(img, u0 * img.naturalWidth, v0 * img.naturalHeight, (u1 - u0) * img.naturalWidth, (v1 - v0) * img.naturalHeight, x0, y0, x1 - x0, y1 - y0)
+    const want = g.getImageData(0, 0, c.width, c.height).data, got = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
+    let n = 0
+    for (let i = 0; i < got.length; i += 4) if (Math.abs(want[i + 3] - got[i + 3]) > 2 || (want[i + 3] > 8 && Math.hypot(want[i] - got[i], want[i + 1] - got[i + 1], want[i + 2] - got[i + 2]) > 6)) n++
+    return n
+  }, [SHEET, puppet])
+  expect(differing, 'parts in the stage order, as the stage puts them together').toBe(0)
+
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-cutout]'), 'nothing to lose').toHaveCount(0)
+  await openLayer(page, BONED)
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+  await load(page)
+  expect(await savedSrc(page, BONED_INDEX), 'Save without an edit writes no sheet').toBeNull()
+})
+
+test('a boned figure: edits land on its sheet, bones still bend, erased paint no longer picks, reopen, Bring back, the original', async ({ page }) => {
+  await open(page, BONED)
+  const puppet = await puppetOfLayer(page)
+  await page.keyboard.press(']')
+  for (let i = 0; i < 4; i++) await page.keyboard.press(']')
+  await tool(page, 'e', 'erase')
+  await stroke(page, [HOLE_AT[0] - 60, HOLE_AT[1]], [HOLE_AT[0] + 60, HOLE_AT[1]])
+  expect(await alpha(page, HOLE_AT), 'a hole through the belly').toBe(0)
+  await tool(page, 'p', 'paint')
+  await setSwatch(page, '#00ff00')
+  await stroke(page, [PAINT_AT[0] - 10, PAINT_AT[1]], [PAINT_AT[0] + 10, PAINT_AT[1]])
+  expect(near(await pixel(page, PAINT_AT), [0, 255, 0], 3)).toBe(true)
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+
+  // straight after the save, no reload: the first double-click is right
+  await page.waitForFunction((i) => !!(window as any).__stage25d?.config?.set?.layers?.[i]?.src, BONED_INDEX, { timeout: 30_000 })
+  await page.waitForFunction(() => document.querySelector('[data-stage25d-ready="1"]'), undefined, { timeout: 60_000 })
+  await page.waitForTimeout(1500)
+  const [belly, face] = await figureOnStage(page, [HOLE_AT, [340, 200]])
+  expect(await opensAt(page, belly), 'the erased belly is no figure any more').not.toBe('s25_layer-1')
+  expect(await opensAt(page, face), 'his face still is').toBe('s25_layer-1')
+
+  await load(page)
+  const src = await savedSrc(page, BONED_INDEX)
+  expect(src, 'a new sheet').toMatch(/\/storage\/lessons\//)
+  const report = await page.evaluate(async ([saved, first, puppet, hole, paint]: any) => {
+    const read = async (url: string) => {
+      const img = new Image(); img.src = url; await img.decode()
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight
+      const g = c.getContext('2d', { willReadFrequently: true })!; g.drawImage(img, 0, 0)
+      return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }
+    }
+    const [a, b] = await Promise.all([read(saved), read(first)])
+    let changed = 0, opaqueChanged = 0
+    for (let i = 0; i < a.d.length; i += 4) {
+      if (Math.abs(a.d[i + 3] - b.d[i + 3]) > 2) changed++
+      if (a.d[i + 3] === 255 && b.d[i + 3] === 255 && Math.hypot(a.d[i] - b.d[i], a.d[i + 1] - b.d[i + 1], a.d[i + 2] - b.d[i + 2]) > 3) opaqueChanged++
+    }
+    const cells = ([x, y]: number[]) => puppet.parts
+      .filter(({ quad: [[x0, y0], , [x1, y1]] }: any) => x >= x0 && x < x1 && y >= y0 && y < y1)
+      .map(({ quad: [[x0, y0]], uv: [u0, v0] }: any) => (Math.floor(v0 * b.h + y - y0 + 0.5) * b.w + Math.floor(u0 * b.w + x - x0 + 0.5)) * 4)
+    const at = (d: Uint8ClampedArray, i: number) => [...d.slice(i, i + 4)]
+    return {
+      size: [a.w, a.h], firstSize: [b.w, b.h], changed, opaqueChanged,
+      hole: cells(hole).map((i: number) => at(a.d, i)), paintNow: cells(paint).map((i: number) => at(a.d, i)), paintBefore: cells(paint).map((i: number) => at(b.d, i)),
+    }
+  }, [src, SHEET, puppet, HOLE_AT, PAINT_AT])
+  expect(report.size, 'the sheet keeps its size').toEqual(report.firstSize)
+  expect(report.hole.length, 'the hole is two parts deep').toBeGreaterThan(1)
+  for (const cell of report.hole) expect(cell[3], 'erased on every part there').toBeLessThan(16)
+  expect(report.paintNow.length, 'the paint is two parts deep').toBeGreaterThan(1)
+  expect(near(report.paintNow.at(-1)!, [0, 255, 0], 12), 'paint on the part on top').toBe(true)
+  expect(report.paintNow[0], 'the paint hidden under it is untouched').toEqual(report.paintBefore[0])
+  expect(report.changed, 'the rest of the sheet').toBeLessThan(200000)
+  expect(report.opaqueChanged).toBeLessThan(40000)
+
+  // bones bend the edited sheet
+  const shot = () => page.locator('[data-stage25d-ready] canvas, #lesson-canvas-root canvas').first().screenshot()
+  const still = await shot()
+  await page.evaluate(() => { const s = (window as any).__stage25d; s.setLayerProp('layer-1', 'bone:upperarm_n', -50); s.setLayerProp('layer-1', 'bone:head', 15) })
+  await page.waitForTimeout(800)
+  expect(Buffer.compare(await shot(), still), 'the figure moved').not.toBe(0)
+  await page.evaluate(() => { const s = (window as any).__stage25d; s.setLayerProp('layer-1', 'bone:upperarm_n', 0); s.setLayerProp('layer-1', 'bone:head', 0) })
+
+  // the Selection panel shows him whole and edited
+  await page.evaluate(() => (window as any).__stage25d.select('layer-1'))
+  await page.waitForFunction(() => String((window as any).__stage25d.layerInfo('layer-1').file).startsWith('blob:'), undefined, { timeout: 15_000 })
+  const preview = await page.evaluate(async (point) => {
+    const url = (window as any).__stage25d.layerInfo('layer-1').file
+    const img = new Image(); img.src = url; await img.decode()
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight
+    const g = c.getContext('2d', { willReadFrequently: true })!; g.drawImage(img, 0, 0)
+    return { size: [c.width, c.height], alpha: g.getImageData(point[0], point[1], 1, 1).data[3] }
+  }, HOLE_AT)
+  expect(preview.size, 'the figure, not the sheet').toEqual([724, 2172])
+  expect(preview.alpha, 'with the hole').toBeLessThan(16)
+  await page.evaluate(() => (window as any).__stage25d.clearSelection())
+
+  // reopen: the edited figure; Bring back reaches the first sheet
+  await openLayer(page, BONED)
+  expect(await page.locator('[data-cut-art]').evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([724, 2172])
+  expect(await alpha(page, HOLE_AT), 'the hole is saved').toBeLessThan(16)
+  expect(near(await pixel(page, PAINT_AT), [0, 255, 0], 12), 'and the paint').toBe(true)
+  await page.waitForTimeout(800)
+  await tool(page, 'b', 'restore')
+  await stroke(page, [HOLE_AT[0] - 20, HOLE_AT[1]], [HOLE_AT[0] + 20, HOLE_AT[1]])
+  expect(await alpha(page, HOLE_AT), 'Bring back reaches past the save').toBeGreaterThan(200)
+  await undo(page)
+
+  await expect(page.locator('[data-cut-original]')).toBeVisible()
+  await page.locator('[data-cut-original]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+  await load(page)
+  expect(await savedSrc(page, BONED_INDEX), 'the sheet goes').toBeNull()
+  await openLayer(page, BONED)
+  expect(await alpha(page, HOLE_AT), 'whole again').toBe(255)
+  await leaveAndDiscard(page)
+})
+
+test('a boned figure: work that never reaches the sheet writes none, and paint outside every part is told', async ({ page }) => {
+  await open(page, BONED)
+  await tool(page, 's', 'brush')
+  await stroke(page, [300, 700], [420, 700])
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+  await load(page)
+  expect(await savedSrc(page, BONED_INDEX), 'a selection alone').toBeNull()
+
+  await openLayer(page, BONED)
+  await tool(page, 'p', 'paint')
+  await stroke(page, [690, 100], [700, 100])
+  await page.locator('[data-cut-save]').click()
+  await expect(page.getByText(/outside the parts/)).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+  await load(page)
+  expect(await savedSrc(page, BONED_INDEX), 'paint outside every part').toBeNull()
+})
+
+test('a boned figure: Bring back into a saved hole returns the paint to the arm that had it', async ({ page }) => {
+  const SHOULDER = [191, 444]      // the vest's rect over the near arm: the vest has no paint here
+  await open(page, BONED)
+  const puppet = await puppetOfLayer(page)
+  const size = page.locator('[data-cut-esize]')
+  for (let i = 0; i < 6 && Number(await size.inputValue()) > 26; i++) await page.keyboard.press('[')
+  await tool(page, 'e', 'erase')
+  await stroke(page, [SHOULDER[0] - 2, SHOULDER[1]], [SHOULDER[0] + 2, SHOULDER[1]])
+  expect(await alpha(page, SHOULDER), 'the hole').toBe(0)
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+
+  await load(page)
+  await openLayer(page, BONED)
+  await page.waitForTimeout(800)
+  await tool(page, 'b', 'restore')
+  await stroke(page, [SHOULDER[0] - 4, SHOULDER[1]], [SHOULDER[0] + 4, SHOULDER[1]])
+  expect(await alpha(page, SHOULDER), 'back').toBeGreaterThan(200)
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+
+  await load(page)
+  const src = await savedSrc(page, BONED_INDEX)
+  const cells = await page.evaluate(async ([saved, puppet, [x, y]]: any) => {
+    const img = new Image(); img.src = saved; await img.decode()
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight
+    const g = c.getContext('2d', { willReadFrequently: true })!; g.drawImage(img, 0, 0)
+    const cell = (bone: string) => {
+      const { quad: [[x0, y0]], uv: [u0, v0] } = puppet.parts.filter((p: any) => p.bone === bone).at(-1)
+      return [...g.getImageData(Math.floor(u0 * c.width + x - x0 + 0.5), Math.floor(v0 * c.height + y - y0 + 0.5), 1, 1).data]
+    }
+    return { arm: cell('upperarm_n'), vest: cell('chest') }
+  }, [src, puppet, SHOULDER])
+  expect(cells.arm[3], 'the arm has its sleeve back').toBeGreaterThan(200)
+  expect(cells.vest[3], 'the vest gains no paint it never had').toBeLessThan(16)
+  await page.locator('[data-stage25d-ready]').first().waitFor()
+  await openLayer(page, BONED)
+  await page.locator('[data-cut-original]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+})
+
 test('Save with nothing done leaves the layer as it was', async ({ page }) => {
   await open(page)
   const src = await savedSrc(page, 2)

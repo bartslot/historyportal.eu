@@ -172,7 +172,7 @@ export class Stage {
       if (token !== this.buildToken) return
       const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
       // a figure of parts reads its ink off the drawing put back together, so a cut between parts draws no line
-      const rest = puppet ? await restDrawing(puppet, this.scene).catch(() => undefined) : undefined
+      const rest = puppet ? await restDrawing(layer.src ? { ...puppet, atlas: layer.src } : puppet, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest)
       const atlas = tex.getSize()

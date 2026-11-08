@@ -13,6 +13,7 @@ import { headOnScreen } from '@stage25d/play/frame'
 import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
+import { figureFromSheet } from '../../editor/puppet-sheet.js'
 import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
@@ -129,6 +130,18 @@ export async function createStage25d (host, opts = {}) {
   let hidden = new Set()    // rows the eye took off the canvas, 'layer-<i>' or 'band-<n>' (never saved)
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
+  const figures = new Map()  // a boned figure's edited sheet -> that figure put together (blob:), or 'loading'
+  /** The Selection panel shows a boned figure whole: an edited one has to be put together from its sheet. */
+  const loadFigure = (l) => {
+    const a = assets.get(l.asset)
+    const puppet = a && l.src ? puppetOf(a, l, libData.base) : null
+    if (!puppet || figures.has(l.src)) return
+    figures.set(l.src, 'loading')
+    figureFromSheet(puppet, l.src)
+      .then(({ url }) => { figures.set(l.src, url); window.dispatchEvent(new CustomEvent('stage25d-synced')) })
+      .catch(() => figures.delete(l.src))
+  }
+  const figureUrl = (l) => { const f = figures.get(l.src); return f && f !== 'loading' ? f : null }
   // library:sync's small copy for a shelf tile (an animation's tile plays its sheet); a tile falls back to url without it
   const thumbOf = (a) => (isAnimation(a) ? null : a.cutout ? libData.base + a.file : libData.base + 'thumbs/' + a.file)
   let alpha = null
@@ -342,6 +355,7 @@ export async function createStage25d (host, opts = {}) {
         const src = a && (l.src ?? puppetOf(a, l, lib.base)?.atlas)
         return src ? { ...a, src } : a
       }).filter(Boolean))
+      if (opts.editable) next.set.layers.forEach(loadFigure)
       if (opts.editable && !pointer) {
         canvas.style.pointerEvents = 'auto'
         attachFraming()
@@ -401,6 +415,7 @@ export async function createStage25d (host, opts = {}) {
       const asset = id === 'sky' ? skyAsset() : assets.get(row?.asset)
       if (!row || !asset || !libData) return null
       const puppet = layerIndex(id) >= 0 ? puppetOf(asset, row, libData.base) : null
+      const onPage = (url) => new URL(url, location.href).href
       return {
         id: `s25_${id}`,
         title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
@@ -412,7 +427,10 @@ export async function createStage25d (host, opts = {}) {
         stage: api,
         stageId: id,
         // a sky or a landscape: white in it is paint, nothing to clean away on opening
-        plain: id === 'sky' || bandIndex(id) >= 0 || ['sky', 'bg'].includes(asset.layer),
+        // and a boned figure's paper is its sheet's: cleaning would write on it unasked
+        plain: !!puppet || id === 'sky' || bandIndex(id) >= 0 || ['sky', 'bg'].includes(asset.layer),
+        // a boned figure: the editor shows it whole and saves onto this sheet (`atlas`: the sheet it had at first)
+        puppet: puppet ? { ...puppet, atlas: onPage(puppet.atlas), sheet: onPage(row.src ?? puppet.atlas) } : null,
         // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
         frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
       }
@@ -574,7 +592,7 @@ export async function createStage25d (host, opts = {}) {
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         // the edited copy, when there is one; a figure of parts is shown whole, never its atlas
-        file: asset?.file && puppetOf(asset, l) ? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
+        file: asset?.file && puppetOf(asset, l) ? figureUrl(l) ?? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
         motion: motionOf(l, asset),
         anim: animOf(asset),
         puppet: !!puppetOf(asset ?? {}, l),
@@ -654,7 +672,7 @@ export async function createStage25d (host, opts = {}) {
       if (!series || !libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       const l = layers[layerIndex(id)]
-      const own = l.src && !puppetOf(a, l) ? l.src : null   // a pose the teacher edited shows as edited; a boned figure's src is its parts sheet
+      const own = puppetOf(a, l) ? figureUrl(l) : l.src ?? null   // a pose the teacher edited shows as edited; a boned figure's src is its parts sheet, so it shows put together
       const row = (m) => ({ id: m.id, url: libData.base + m.file, thumb: own && m.id === a.id ? own : thumbOf(m), ...poseOf(m) })
       return {
         series,
