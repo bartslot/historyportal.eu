@@ -251,6 +251,134 @@ describe('a coloured spot goes in one click', () => {
     });
 });
 
+describe('press and drag: the further you drag, the more of the colour goes', () => {
+    const W = 40, H = 10;
+    /** A row of paint that fades step by step from `from` to `to` along x, with a drawn line at x 30. */
+    const fading = (from, to) => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const t = Math.min(1, x / 29);
+            d.set(x === 30 ? [20, 15, 10, 255] : [...from.map((c, i) => Math.round(c + (to[i] - c) * t)), 255], (y * W + x) * 4);
+        }
+        return d;
+    };
+    const count = (m) => m.reduce((a, b) => a + b, 0);
+
+    it('a press starts from the set tolerance, and the drag adds to it, up to the cap', () => {
+        expect(toleranceFromDrag(0, 0, 30)).toBe(30);
+        expect(toleranceFromDrag(0, 100, 30)).toBe(90);
+        expect(toleranceFromDrag(5000, 0, 30)).toBe(180);
+    });
+
+    for (const [name, from, to] of [
+        ['white paper', [252, 250, 246], [150, 140, 120]],
+        ['a blue coat', [40, 90, 220], [90, 50, 130]],
+        ['red paint', [210, 40, 30], [150, 90, 20]],
+    ]) {
+        it(`${name}: a wider reach takes more, keeps what it had, and stops at the line`, () => {
+            const d = fading(from, to);
+            const near = wandSelect(d, W, H, 0, 5, 15), far = wandSelect(d, W, H, 0, 5, 70);
+            expect(count(near)).toBeGreaterThan(0);
+            expect(count(far)).toBeGreaterThan(count(near));
+            near.forEach((v, p) => { if (v) expect(far[p]).toBe(1); });
+            expect(far[5 * W + 30]).toBe(0);
+            expect(far[5 * W + 35]).toBe(0);
+        });
+    }
+});
+
+describe('tester round on the press and drag', () => {
+    const W = 40, H = 10;
+    const INK = [20, 15, 10];
+    const field = (paint) => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) d.set([...(x === 20 ? INK : paint), 255], (y * W + x) * 4);
+        return d;
+    };
+
+    for (const [name, paint] of [['dark hair', [106, 57, 21]], ['a shoe', [95, 41, 7]], ['red just under the ink limit', [210, 40, 30]]]) {
+        it(`${name}: however far the drag, a drawn line still holds it`, () => {
+            const m = wandSelect(field(paint), W, H, 5, 5, 180);
+            expect(m[5 * W + 5]).toBe(1);
+            expect(m[5 * W + 20], 'the line').toBe(0);
+            expect(m[5 * W + 30], 'past the line').toBe(0);
+        });
+    }
+
+    it('a press on a coloured spot stays with its hue: white and another colour never go, however far', () => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) d.set([...(x < 10 ? [210, 40, 30] : x < 25 ? [252, 250, 246] : [60, 160, 70]), 255], (y * W + x) * 4);
+        const m = wandSelect(d, W, H, 5, 5, 180);
+        expect(m[5 * W + 5]).toBe(1);
+        expect(m[5 * W + 18], 'white').toBe(0);
+        expect(m[5 * W + 32], 'green').toBe(0);
+    });
+
+    it('a press on the ink stays with the ink, however far: dark paint beside it is paint', () => {
+        const d = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) d.set([...(x < 10 ? [5, 0, 0] : [113, 58, 15]), 255], (y * W + x) * 4);
+        const m = wandSelect(d, W, H, 5, 5, 180);
+        expect(m[5 * W + 5]).toBe(1);
+        expect(m[5 * W + 20], 'the brown').toBe(0);
+    });
+
+    it('Alt keeps apart two cuts with only a drawn line left between them, even a worn one', () => {
+        const original = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) original.set([100, 100, 100, 255], (y * W + x) * 4);
+        const data = new Uint8ClampedArray(original);
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) data[(y * W + x) * 4 + 3] = x === 20 ? 150 : 0;   // the line, half clear from both cuts
+        const out = restore(data, original, W, H, 5, 5);
+        expect(out[(5 * W + 5) * 4 + 3]).toBe(255);
+        expect(out[(5 * W + 20) * 4 + 3], 'the line comes back with it').toBe(255);
+        expect(out[(5 * W + 21) * 4 + 3], 'the far cut stays, up to the line').toBe(0);
+        expect(out[(5 * W + 30) * 4 + 3]).toBe(0);
+    });
+
+    it('skin is no paper: a line beside a cut in it is not blackened', () => {
+        const skin = [226, 176, 140], line = [60, 31, 16];
+        const d = new Uint8ClampedArray(4 * 4);
+        d.set([...skin, 255], 0); d.set([...line, 255], 4); d.set([...line, 255], 8); d.set([...line, 255], 12);
+        const out = cut(d, 4, 1, new Uint8Array([1, 0, 0, 0]), skin, 30);
+        expect([...out.slice(4, 7)]).toEqual(line);
+    });
+
+    it('a press on the line itself still takes the line', () => {
+        const m = wandSelect(field([250, 250, 250]), W, H, 20, 5, 30);
+        expect(m[2 * W + 20]).toBe(1);
+        expect(m[5 * W + 5]).toBe(0);
+    });
+
+    it('Alt brings back only the cut it was pressed on, though both reach the clear outside', () => {
+        // a figure from x 2..37 with a soft outline at x 2 and x 37; two cuts open to the left and right edges of it
+        const original = new Uint8ClampedArray(W * H * 4);
+        for (let y = 1; y < H - 1; y++) for (let x = 2; x <= 37; x++) original.set([100, 100, 100, x === 2 || x === 37 ? 120 : 255], (y * W + x) * 4);
+        const data = new Uint8ClampedArray(original);
+        for (let y = 2; y <= 7; y++) {
+            for (let x = 2; x <= 8; x++) data[(y * W + x) * 4 + 3] = 0;
+            for (let x = 31; x <= 37; x++) data[(y * W + x) * 4 + 3] = 0;
+        }
+        const out = restore(data, original, W, H, 5, 5);
+        expect(out[(5 * W + 5) * 4 + 3]).toBe(255);
+        expect(out[(5 * W + 34) * 4 + 3], 'the other cut stays').toBe(0);
+    });
+
+    it('Alt on what was never cut brings nothing back: no step to undo', () => {
+        const original = new Uint8ClampedArray(W * H * 4);
+        for (let y = 0; y < H; y++) for (let x = 10; x < 30; x++) original.set([100, 100, 100, 255], (y * W + x) * 4);
+        expect(restore(original, original, W, H, 20, 5), 'solid').toBeNull();
+        expect(restore(original, original, W, H, 2, 5), 'clear from the start').toBeNull();
+    });
+
+    it('beside a coloured cut the neighbour keeps its own colour: no complementary fringe', () => {
+        const rust = [150, 80, 40], pale = [155, 122, 97];
+        const d = new Uint8ClampedArray(4 * 4);
+        d.set([...rust, 255], 0); d.set([...pale, 255], 4); d.set([...pale, 255], 8); d.set([...pale, 255], 12);
+        const out = cut(d, 4, 1, new Uint8Array([1, 0, 0, 0]), rust, 30);
+        expect([...out.slice(4, 7)]).toEqual(pale);
+        expect(out[7]).toBeGreaterThan(0);
+    });
+});
+
 describe('remove a colour with one click', () => {
     // 5x1: white, ink, white, ink, white
     const row = () => {

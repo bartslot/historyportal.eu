@@ -340,7 +340,7 @@ export async function openCutout (target) {
     const onKey = (e) => {
       e.stopPropagation()
       const key = e.key.toLowerCase()
-      if (e.key === 'Escape') { e.preventDefault(); asking() ? stay() : leave(); return }
+      if (e.key === 'Escape') { e.preventDefault(); if (!mask?.cancelPress()) asking() ? stay() : leave(); return }
       if (asking()) return
       if (e.metaKey || e.ctrlKey) {
         if (key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }

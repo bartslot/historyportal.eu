@@ -9,50 +9,63 @@ import { line, union, applyStroke, compose, wholeBox } from './erase-brush.js';
 import { applyInk, solid, cloned, colourAt } from './paint-brush.js';
 
 export const INK_LUM = 90;          // darker than this is a line: never selected
+const PAPER_SAT = 0.15, PAPER_VALUE = 200;   // white and cream paper: only that is un-blended at a cut's edge
 export const EDGE_RING = 2;         // px around a cut that are un-blended from the removed colour
 const MAX_TOL = 180;
+const START_TOL = 6;
+const RED_FILM = new Uint32Array(new Uint8Array([244, 63, 94, 150]).buffer)[0];   // what a press will take, like Instant Alpha
 const UNDO_DEPTH = 40;
 // ponytail: history shares its arrays, but a colour cut copies the picture: the steps kept shrink for a very big one
 const UNDO_BYTES = 6e8;
 
 const lum = (d, i) => (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
 const dist = (d, i, c) => Math.hypot(d[i] - c[0], d[i + 1] - c[1], d[i + 2] - c[2]) / Math.sqrt(3);
+/** dist(d, i, c) <= tol, without the root: this runs per pixel on every frame of a drag. */
+const within = (d, i, c, tol) => {
+    const r = d[i] - c[0], g = d[i + 1] - c[1], b = d[i + 2] - c[2];
+    return r * r + g * g + b * b <= 3 * tol * tol;
+};
 
-export function toleranceFromDrag(dx, dy) {
-    return Math.min(MAX_TOL, 6 + Math.hypot(dx, dy) * 0.6);
+/** The press starts at `from`; the further the drag, the wider the match. */
+export function toleranceFromDrag(dx, dy, from = START_TOL) {
+    return Math.min(MAX_TOL, from + Math.hypot(dx, dy) * 0.6);
 }
 
-/** Connected pixels within `tol` of the seed colour (the clicked pixel's, unless told). Ink and already-clear pixels are walls (`anyColour`: ink is not). */
-export function floodSelect(data, w, h, sx, sy, tol, anyColour = false, seed = null) {
+/** Connected pixels within `tol` of the seed colour (the clicked pixel's, unless told). Already-clear pixels and what is darker than `walls` stop it. */
+export function floodSelect(data, w, h, sx, sy, tol, walls = INK_LUM, seed = null, like = null) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
-    if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
+    if (data[s + 3] === 0 || lum(data, s) < walls) return mask;
     seed ??= [data[s], data[s + 1], data[s + 2]];
-    const stack = [sy * w + sx];
-    mask[stack[0]] = 1;
-    while (stack.length) {
-        const p = stack.pop();
-        const x = p % w, y = (p - x) / w;
-        for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
-            if (q < 0 || mask[q]) continue;
-            const i = q * 4;
-            if (data[i + 3] === 0 || (!anyColour && lum(data, i) < INK_LUM) || dist(data, i, seed) > tol) continue;
-            mask[q] = 1;
-            stack.push(q);
-        }
+    const stack = new Int32Array(w * h);
+    let top = 0;
+    const visit = (q) => {
+        const i = q * 4;
+        if (mask[q] || data[i + 3] === 0 || lum(data, i) < walls || !within(data, i, seed, tol) || (like && !like(data, i))) return;
+        mask[q] = 1;
+        stack[top++] = q;
+    };
+    mask[sy * w + sx] = 1;
+    stack[top++] = sy * w + sx;
+    while (top) {
+        const p = stack[--top], x = p % w;
+        if (x > 0) visit(p - 1);
+        if (x < w - 1) visit(p + 1);
+        if (p >= w) visit(p - w);
+        if (p < w * (h - 1)) visit(p + w);
     }
     return mask;
 }
 
-/** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Ink and clear pixels never (`anyColour`: ink may). */
-export function colorSelect(data, w, h, sx, sy, tol, anyColour = false, seed = null) {
+/** Every pixel within `tol` of the seed colour, connected or not ("Everywhere"). Clear pixels and what is darker than `walls` never. */
+export function colorSelect(data, w, h, sx, sy, tol, walls = INK_LUM, seed = null, like = null) {
     const mask = new Uint8Array(w * h);
     const s = (sy * w + sx) * 4;
-    if (data[s + 3] === 0 || (!anyColour && lum(data, s) < INK_LUM)) return mask;
+    if (data[s + 3] === 0 || lum(data, s) < walls) return mask;
     seed ??= [data[s], data[s + 1], data[s + 2]];
     for (let p = 0; p < w * h; p++) {
         const i = p * 4;
-        if (data[i + 3] !== 0 && (anyColour || lum(data, i) >= INK_LUM) && dist(data, i, seed) <= tol) mask[p] = 1;
+        if (data[i + 3] !== 0 && lum(data, i) >= walls && within(data, i, seed, tol) && (!like || like(data, i))) mask[p] = 1;
     }
     return mask;
 }
@@ -70,6 +83,10 @@ const SAT_AROUND = 0.1;    // the surroundings count from this saturation: a pal
 const HUE_FAR = 36;        // degrees: other paint, whatever its brightness
 const SAT_MIN = 0.3;       // greyer than this has no hue to speak of
 const VALUE_MIN = 45;      // darker than this is a line, whatever its hue
+const DARK_PAINT_WALL = 0.75;   // pressed on dark paint: a drawn line is what is this much darker than it
+const INK_MAX_TOL = 40;    // pressed on the ink itself: however far the drag, the ink and no more
+const PAINT_HUE = 70;      // degrees a press on a colour may wander, so white or another colour never joins it
+const PAINT_SAT = 0.4;     // of the press's saturation: greyer than this is not that colour any more
 
 const SPOT_SAT = 0.45;     // cream, skin in the light and paper are no coloured spot: they behave as white does
 const hueOf = (r, g, b) => (Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180 / Math.PI + 360) % 360;
@@ -120,11 +137,17 @@ function standsOut(data, w, h, x, y, hue) {
  * a pixel that is nearer the spot's colour than the colour beyond it, and a small spot that stands out goes on through its own
  * hue, light or dark. Lines stay walls; the region next to the spot stays, its colour is its own.
  */
-function withRim(data, w, h, mask, seed, tol, anyColour, hue) {
+function withRim(data, w, h, mask, seed, tol, walls, hue) {
     const out = new Uint8Array(mask);
-    let edge = [];
-    for (let p = 0; p < w * h; p++) if (mask[p]) edge.push(p);
-    const spot = hue !== null && edge.length <= SPOT_PX;
+    // only the pixels on its border can spread: a big region's inside is skipped
+    let edge = [], size = 0;
+    for (let p = 0; p < w * h; p++) {
+        if (!mask[p]) continue;
+        size++;
+        const x = p % w;
+        if ((x > 0 && !mask[p - 1]) || (x < w - 1 && !mask[p + 1]) || (p >= w && !mask[p - w]) || (p < w * (h - 1) && !mask[p + w])) edge.push(p);
+    }
+    const spot = hue !== null && size <= SPOT_PX;
     const passes = spot ? SPOT_PASSES : RIM_PASSES;
     for (let pass = 0; pass < passes && edge.length; pass++) {
         const next = [];
@@ -137,7 +160,7 @@ function withRim(data, w, h, mask, seed, tol, anyColour, hue) {
                 if (out[q] || data[i + 3] === 0) continue;
                 const own = spot ? paintHue(data, i, Math.max(SAT_MIN, satOf(...seed) * SAT_KEEP)) : null;
                 let takes = own !== null && hueGap(own, hue) <= HUE_NEAR;
-                if (!takes && pass < RIM_PASSES && (anyColour || lum(data, i) >= INK_LUM) && dist(data, i, seed) <= tol * RIM_REACH) {
+                if (!takes && pass < RIM_PASSES && lum(data, i) >= walls && dist(data, i, seed) <= tol * RIM_REACH) {
                     const bx = Math.max(0, Math.min(w - 1, qx + dx * RIM_LOOK)), by = Math.max(0, Math.min(h - 1, qy + dy * RIM_LOOK));
                     const beyond = (by * w + bx) * 4;
                     takes = data[beyond + 3] === 0 || dist(data, i, seed) < dist(data, i, [data[beyond], data[beyond + 1], data[beyond + 2]]);
@@ -152,19 +175,32 @@ function withRim(data, w, h, mask, seed, tol, anyColour, hue) {
     return out;
 }
 
+/** Is this pixel still the colour the press is on? "the same hue" (Bart, 2026-11-08): reach widens a colour, it never turns into another. */
+const samePaint = (hue, sat) => (d, i) => {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    return satOf(r, g, b) >= sat * PAINT_SAT && hueGap(hueOf(r, g, b), hue) <= PAINT_HUE;
+};
+
+/** What stops a press here: the drawing's lines. A press on dark paint needs a darker line than a light one; a press on the ink itself means the ink, nothing stops it. */
+function wallsFor(data, at) {
+    const l = lum(data, at);
+    if (l >= INK_LUM) return INK_LUM;
+    return isColoured(data, at) ? l * DARK_PAINT_WALL : 0;
+}
+
 /**
  * Remove a colour with one click (Bart, 2026-11-05: enclosed white holes in one click): what touches the click, or
- * `everywhere` all of it. A click on a light colour stops at the drawing's lines; a click on a dark colour means that
- * dark colour, so the lines are no walls then. A coloured spot goes whole, with its rim (Bart, 2026-11-06).
+ * `everywhere` all of it. A press stops at the drawing's lines however far it is dragged (wallsFor). A coloured spot
+ * goes whole, with its rim (Bart, 2026-11-06).
  */
 export function wandSelect(data, w, h, x, y, tol, everywhere = false) {
     const at = (y * w + x) * 4;
-    const dark = lum(data, at) < INK_LUM;
+    const walls = wallsFor(data, at);
     const select = everywhere ? colorSelect : floodSelect;
-    if (data[at + 3] === 0 || !isColoured(data, at)) return select(data, w, h, x, y, tol, dark);
+    if (data[at + 3] === 0 || !isColoured(data, at)) return select(data, w, h, x, y, walls === 0 ? Math.min(tol, INK_MAX_TOL) : tol, walls);
     const seed = wandSeed(data, w, h, x, y, tol);
     const hue = hueOf(...seed);
-    return withRim(data, w, h, select(data, w, h, x, y, tol, dark, seed), seed, tol, dark, standsOut(data, w, h, x, y, hue) ? hue : null);
+    return withRim(data, w, h, select(data, w, h, x, y, tol, walls, seed, samePaint(hue, satOf(...seed))), seed, tol, walls, standsOut(data, w, h, x, y, hue) ? hue : null);
 }
 
 /** Pixels within `ring` px of the selection, not in it. */
@@ -194,6 +230,7 @@ export function cut(data, w, h, mask, seed, tol) {
     const out = new Uint8ClampedArray(data);
     const ring = ringAround(mask, w, h, EDGE_RING);
     const seedHue = isSpotColour(...seed) ? hueOf(...seed) : null;
+    const paper = satOf(...seed) < PAPER_SAT && Math.max(...seed) >= PAPER_VALUE;
     for (let p = 0; p < w * h; p++) {
         const i = p * 4;
         if (mask[p]) { out[i + 3] = 0; continue; }
@@ -202,17 +239,20 @@ export function cut(data, w, h, mask, seed, tol) {
         const own = seedHue === null ? null : paintHue(data, i);
         const a = Math.min(1, Math.max(dist(data, i, seed) / (tol + 90), own === null ? 0 : hueGap(own, seedHue) / HUE_FAR));
         if (a >= 1) continue;
-        for (let c = 0; c < 3; c++) out[i + c] = a > 0.02 ? (data[i + c] - (1 - a) * seed[c]) / a : data[i + c];
+        // paper un-blends cleanly; un-blending from a colour pushes its neighbour to that colour's opposite, or to black
+        if (paper && a > 0.02) for (let c = 0; c < 3; c++) out[i + c] = (data[i + c] - (1 - a) * seed[c]) / a;
         out[i + 3] = data[i + 3] * a;
     }
     return out;
 }
 
-/** Undo a cut locally: the clear region connected to the press gets the original pixels back. */
+/** Undo a cut locally: the cut the press is on, and only that one, gets the original pixels back. Null: nothing was cut there. */
 export function restore(data, original, w, h, sx, sy) {
-    const out = new Uint8ClampedArray(data);
     const start = sy * w + sx;
-    if (data[start * 4 + 3] > 0) return out;
+    // fully cut pixels only: the picture's own clear round it, and a line half worn by the cuts on both sides, keep two cuts apart
+    const wasCut = (p) => data[p * 4 + 3] === 0 && original[p * 4 + 3] > 0;
+    if (data[start * 4 + 3] > 0 || !wasCut(start)) return null;
+    const out = new Uint8ClampedArray(data);
     const seen = new Uint8Array(w * h);
     const stack = [start];
     seen[start] = 1;
@@ -220,14 +260,14 @@ export function restore(data, original, w, h, sx, sy) {
         const p = stack.pop();
         const x = p % w;
         for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
-            if (q < 0 || q >= w * h || seen[q]) continue;
+            if (q < 0 || q >= w * h || seen[q] || !wasCut(q)) continue;
             seen[q] = 1;
-            if (data[q * 4 + 3] < 255) stack.push(q);   // clear + half-clear edge pixels
+            stack.push(q);
         }
     }
     const ring = ringAround(seen, w, h, EDGE_RING);
     for (let p = 0; p < w * h; p++) {
-        if (!seen[p] && !ring[p]) continue;
+        if (!seen[p] && (!ring[p] || data[p * 4 + 3] === 0)) continue;   // the rim comes back with it, the cut beyond it stays
         for (let c = 0; c < 4; c++) out[p * 4 + c] = original[p * 4 + c];
     }
     return out;
@@ -573,7 +613,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     let base = new Uint8ClampedArray(original);       // the cuts + the clean-up + the edge
     const shown = new ImageData(new Uint8ClampedArray(original), w, h);   // what is on the canvas, and what a click reads
     let brush = { size: 12, softness: 0.2 };          // the eraser: diameter in picture pixels, how much of it fades
-    let wandTol = null;                               // a tolerance set: one click removes the colour, no drag
+    let wandTol = START_TOL;                          // how far the colour tool's press reaches before any drag
     let comparing = false;
     let source = original;                            // what Bring back and Before show: the picture before any editing
 
@@ -609,11 +649,12 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         if (history.length > undoDepth) history.shift();
         future = [];
     };
-    const push = (next, nextSelection = selection, nextBring = bring) => {
+    const push = (next, nextSelection = selection, nextBring = bring, nextInk = ink) => {
         remember(snapshot());
         current = next;
         selection = nextSelection;
         bring = nextBring;
+        ink = nextInk;
         paint();
         showSelection();
         emit();
@@ -637,13 +678,13 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         compose(base, source, erase, bring, w, touched, shown.data, ink);
         ctx.putImageData(shown, 0, 0, touched.x0, touched.y0, touched.x1 - touched.x0 + 1, touched.y1 - touched.y0 + 1);
     };
-    /** One click with the colour tool: that colour goes at once, on what is on screen now. */
-    const removeColour = (x, y) => {
-        const mask = wandSelect(shown.data, w, h, x, y, wandTol, everywhere);
-        if (!mask.some(Boolean)) return;
-        const nextBring = new Uint8ClampedArray(bring);
-        for (let p = 0; p < w * h; p++) if (mask[p]) nextBring[p] = 0;
-        push(cut(current, w, h, mask, wandSeed(shown.data, w, h, x, y, wandTol), wandTol), selection, nextBring);
+    /** The colour tool lets go: that colour goes, on what is on screen now, paint included. */
+    const removeColour = (x, y, tol) => {
+        const mask = wandSelect(shown.data, w, h, x, y, tol, everywhere);
+        if (!mask.some(Boolean)) { showSelection(); emit(); return; }
+        const nextBring = new Uint8ClampedArray(bring), nextInk = new Uint8ClampedArray(ink);
+        for (let p = 0; p < w * h; p++) if (mask[p]) { nextBring[p] = 0; nextInk[p * 4 + 3] = 0; }
+        push(cut(current, w, h, mask, wandSeed(shown.data, w, h, x, y, tol), tol), selection, nextBring, nextInk);
     };
 
     /** Outside the selection the picture is dimmed; the patches a stroke is taking show amber. */
@@ -689,14 +730,11 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             showSelection(brushSelect(selection, workLabels(), drag.stroke, { remove: drag.remove }));
             return;
         }
-        octx.clearRect(0, 0, w, h);
-        drag.mask = (everywhere ? colorSelect : floodSelect)(current, w, h, drag.x, drag.y, drag.tol);
-        const tint = octx.createImageData(w, h);
-        for (let p = 0; p < w * h; p++) {
-            if (!drag.mask[p]) continue;
-            tint.data.set([244, 63, 94, 150], p * 4);   // the selection shows as a red film, like Instant Alpha
-        }
-        octx.putImageData(tint, 0, 0);
+        const mask = wandSelect(shown.data, w, h, drag.x, drag.y, drag.tol, everywhere);
+        drag.tint ??= octx.createImageData(w, h);
+        drag.film ??= new Uint32Array(drag.tint.data.buffer);
+        for (let p = 0; p < w * h; p++) drag.film[p] = mask[p] ? RED_FILM : 0;
+        octx.putImageData(drag.tint, 0, 0);
     };
 
     /** A round dab of the brush into the stroke, at a point in picture pixels. */
@@ -759,7 +797,6 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             strokeTo(point);
             return;
         }
-        if (mode === 'colour' && wandTol !== null && !e.altKey) { removeColour(x, y); return; }
         if (mode === 'brush') {
             drag = { brush: true, remove: e.altKey || erasing, stroke: new Uint8Array(ww * wh), last: [x, y] };
             workLabels();
@@ -767,9 +804,12 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             preview();
             return;
         }
-        if (e.altKey) { push(restore(current, original, w, h, x, y)); return; }
-        const i = (y * w + x) * 4;
-        drag = { x, y, sx: e.clientX, sy: e.clientY, tol: toleranceFromDrag(0, 0), seed: [current[i], current[i + 1], current[i + 2]] };
+        if (e.altKey) {
+            const back = restore(current, original, w, h, x, y);
+            if (back) push(back);
+            return;
+        }
+        drag = { x, y, sx: e.clientX, sy: e.clientY, tol: wandTol };
         preview();
         emit(Math.round(drag.tol));
     };
@@ -783,7 +823,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             for (let i = 1; i <= steps; i++) dab(lx + ((x - lx) * i) / steps, ly + ((y - ly) * i) / steps);
             drag.last = [x, y];
         } else {
-            drag.tol = toleranceFromDrag(e.clientX - drag.sx, e.clientY - drag.sy);
+            drag.tol = toleranceFromDrag(e.clientX - drag.sx, e.clientY - drag.sy, wandTol);
             emit(Math.round(drag.tol));
         }
         if (!frame) frame = requestAnimationFrame(preview);
@@ -809,11 +849,20 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             push(current, brushSelect(selection, workLabels(), d.stroke, { remove: d.remove }));
             return;
         }
-        octx.clearRect(0, 0, w, h);
-        const mask = (everywhere ? colorSelect : floodSelect)(current, w, h, d.x, d.y, d.tol);
-        if (mask.some(Boolean)) push(cut(current, w, h, mask, d.seed, d.tol));
-        else { showSelection(); emit(); }
+        removeColour(d.x, d.y, d.tol);
     };
+
+    /** A press still held comes to nothing: Esc, or another tool. Strokes already on the picture are left to undo. True: there was one. */
+    const cancelPress = () => {
+        if (!drag || drag.eraser || drag.ink) return false;
+        if (frame) { cancelAnimationFrame(frame); frame = 0; }
+        drag = null;
+        showSelection();
+        return true;
+    };
+
+    /** The browser took the pointer away: a held press comes to nothing, a stroke ends where it got to. */
+    const cancelled = () => { if (!cancelPress()) up(); };
 
     /** The picture as it will be saved: the cuts, the selection (when there is one), the edge; cropped. */
     const cutout = () => {
@@ -840,7 +889,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     surface.addEventListener('pointerdown', down);
     surface.addEventListener('pointermove', move);
     surface.addEventListener('pointerup', up);
-    surface.addEventListener('pointercancel', up);
+    surface.addEventListener('pointercancel', cancelled);
     emit();
 
     return {
@@ -849,8 +898,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         redo() { if (!drag && future.length) { history.push(snapshot()); backTo(future.pop()); } },
         /** The eraser: its diameter in picture pixels, and how much of it fades (0..1). */
         setBrush(next) { brush = { ...brush, ...next }; },
-        /** A tolerance turns the colour tool into one click; null puts press-and-drag back. */
-        setTolerance(tol) { wandTol = tol === null ? null : Number(tol); },
+        /** How far a press with the colour tool reaches before any drag: a plain click takes this much. */
+        setTolerance(tol) { wandTol = Number(tol); },
         /** A picture reopened after a save: Bring back reaches past it to this one. A different size (a crop) cannot line up, so it is left. */
         async setSource(from) {
             const image = await loadImage(from);
@@ -873,7 +922,9 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setClean(next) { clean = { ...clean, ...next }; paint(); },
         /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
         resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
+        cancelPress,
         setMode(next) {
+            cancelPress();
             mode = ['brush', 'erase', 'restore', 'paint', 'pipette', 'clone'].includes(next) ? next : 'colour';
             canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair';
             showSelection();   // the clone stamp's cross goes with it
@@ -896,7 +947,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         toBlob: () => new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.8)),
         toDataURL: () => canvas.toDataURL('image/webp', 0.9),
         destroy() {
-            for (const [t, f] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', up]]) {
+            for (const [t, f] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', cancelled]]) {
                 surface.removeEventListener(t, f);
             }
         },

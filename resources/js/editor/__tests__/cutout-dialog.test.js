@@ -4,7 +4,7 @@ import { openCutout, wireFor, eraserRange } from '../cutout-dialog.js'
 const mask = {
   size: { w: 300, h: 450 },
   setMode: vi.fn(), setBrushSize: vi.fn(), setClean: vi.fn(), setEdges: vi.fn(), setEverywhere: vi.fn(), undo: vi.fn(), redo: vi.fn(), destroy: vi.fn(),
-  setBrush: vi.fn(), setTolerance: vi.fn(), setCompare: vi.fn(), setPaint: vi.fn(),
+  setBrush: vi.fn(), setTolerance: vi.fn(), setCompare: vi.fn(), cancelPress: vi.fn(() => false), setPaint: vi.fn(),
   resultDataURL: () => 'data:image/webp;base64,CLEAN',
   cutout: () => ({ dataUrl: 'data:image/webp;base64,CUT', box: { x: 0, y: 40, w: 100, h: 150 }, width: 400, height: 600 }),
 }

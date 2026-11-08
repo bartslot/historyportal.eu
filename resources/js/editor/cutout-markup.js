@@ -140,6 +140,7 @@ export function markup (t, clean, modes = ['picture']) {
         </div>
         <p class="text-xs text-panel-hint" data-cut-for="clone" hidden>${t('Option/Alt-click where to copy from, then paint.')}</p>
         <p class="text-xs text-panel-hint" data-cut-for="pipette" hidden>${t('Click a colour in the picture to paint with it.')}</p>
+        <p class="text-xs text-panel-hint" data-cut-for="colour" hidden>${t('Press on a colour and drag to take more of it.')}</p>
         <div data-cut-for="colour" hidden>
           ${slider('tol', t('Tolerance'), 1, MAX_TOLERANCE, TOLERANCE)}
           <label class="flex h-8 cursor-pointer items-center gap-2 text-sm text-panel-value">

@@ -252,6 +252,68 @@ test.describe('paint, pipette and clone stamp', () => {
     expect(await painted(page, '[data-cut-film]'), 'and comes back with it').toBeGreaterThan(0)
     await discard(page)
   })
+
+  test('remove colour: press on a coloured spot, drag, the red area grows and shrinks live, let go cuts it', async ({ page }) => {
+    await open(page, FIGURE)
+    await page.waitForFunction(() => !document.querySelector('[data-cut-loading]'), undefined, { timeout: 60_000 })
+    await page.keyboard.press('w')
+    await expect(page.locator('[name="cut-tool"][value="colour"]')).toBeChecked()
+
+    // a coloured pixel with its own colour all round: a spot of paint, not a line
+    const spot = await page.locator('[data-cut-art]').evaluate((c: HTMLCanvasElement) => {
+      const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
+      const coloured = (x: number, y: number) => {
+        const i = (y * c.width + x) * 4, hi = Math.max(d[i], d[i + 1], d[i + 2]), lo = Math.min(d[i], d[i + 1], d[i + 2])
+        return d[i + 3] === 255 && hi > 90 && (hi - lo) / hi > 0.45
+      }
+      for (let y = 6; y < c.height - 6; y += 3) for (let x = 6; x < c.width - 6; x += 3) {
+        if ([[0, 0], [-5, 0], [5, 0], [0, -5], [0, 5]].every(([a, b]) => coloured(x + a, y + b))) return { x: x / c.width, y: y / c.height }
+      }
+      return null
+    })
+    expect(spot, 'the figure has a coloured spot').not.toBeNull()
+    const art = (await page.locator('[data-cut-art]').boundingBox())!
+    const at = [Math.round(art.x + art.width * spot!.x), Math.round(art.y + art.height * spot!.y)]   // a mouse event's position is whole px
+    const before = await pixelAt(page, at[0], at[1])
+
+    await page.mouse.move(at[0], at[1])
+    await page.mouse.down()
+    const film = () => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))))).then(() => painted(page, '[data-cut-film]'))
+    const pressed = await film()
+    expect(pressed, 'a press shows what it takes').toBeGreaterThan(0)
+    await page.mouse.move(at[0] + 90, at[1], { steps: 8 })
+    const wider = await film()
+    expect(wider, 'dragging takes more').toBeGreaterThan(pressed)
+    await page.mouse.move(at[0] + 200, at[1], { steps: 8 })
+    const widest = await film()
+    expect(widest).toBeGreaterThanOrEqual(wider)
+    await page.mouse.move(at[0] + 2, at[1], { steps: 8 })
+    expect(await film(), 'dragging back takes less').toBeLessThan(widest)
+    await page.mouse.move(at[0] + 90, at[1], { steps: 8 })
+    await film()
+    expect((await pixelAt(page, at[0], at[1]))[3], 'nothing is cut while the button is down').toBe(before[3])
+    await page.mouse.up()
+
+    expect((await pixelAt(page, at[0], at[1]))[3], 'letting go cuts it').toBe(0)
+    expect(await painted(page, '[data-cut-film]'), 'and the red is gone').toBe(0)
+    await page.locator('[data-cut-undo]').click()
+    expect(await pixelAt(page, at[0], at[1]), 'one undo brings it all back').toEqual(before)
+
+    // a plain click takes what the press showed, no drag needed
+    await page.mouse.click(at[0], at[1])
+    expect((await pixelAt(page, at[0], at[1]))[3]).toBe(0)
+    await page.locator('[data-cut-undo]').click()
+
+    // paint is a colour like any other
+    await page.keyboard.press('p')
+    await page.locator('[data-cut-colour]').evaluate((el: HTMLInputElement) => { el.value = '#00ff00'; el.dispatchEvent(new Event('input', { bubbles: true })) })
+    await stroke(page, [at[0] - 6, at[1]], [at[0] + 6, at[1]])
+    expect((await pixelAt(page, at[0], at[1]))[1]).toBeGreaterThan(200)
+    await page.keyboard.press('w')
+    await page.mouse.click(at[0], at[1])
+    expect((await pixelAt(page, at[0], at[1]))[3], 'the painted spot goes too').toBe(0)
+    await discard(page)
+  })
 })
 
 test.describe('a sheet with something erased', () => {
