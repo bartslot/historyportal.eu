@@ -650,7 +650,9 @@ export async function createStage25d (host, opts = {}) {
       const series = seriesOf(a)
       if (!series || !libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      const row = (m) => ({ id: m.id, url: libData.base + m.file, thumb: thumbOf(m), ...poseOf(m) })
+      const l = layers[layerIndex(id)]
+      const own = l.src && !puppetOf(a, l) ? l.src : null   // a pose the teacher edited shows as edited; a boned figure's src is its parts sheet
+      const row = (m) => ({ id: m.id, url: libData.base + m.file, thumb: own && m.id === a.id ? own : thumbOf(m), ...poseOf(m) })
       return {
         series,
         asset: a.id,
