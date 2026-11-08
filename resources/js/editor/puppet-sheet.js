@@ -42,7 +42,7 @@ export async function figureFromSheet (puppet, sheetUrl) {
  * A change goes on the part showing there and leaves the paint hidden under it, which an arm uncovers when it moves. Where
  * the result is not solid the parts under it are cleared too, or they would show through what was erased.
  * Into a hole every part has lost, paint goes back on the part that first held paint there (`first`: the sheet before any
- * edit), and what lay hidden under it returns.
+ * edit). Under anything solid, what a hole had taken from the hidden parts returns.
  * `lost`: edited pixels no part reaches, which a sheet cannot hold. `touched`: pixels that did land on the sheet.
  * ponytail: a part stored larger than it is drawn gets one sheet pixel per figure pixel; every sheet so far is 1:1.
  */
@@ -65,7 +65,7 @@ export function writeBack (sheet, opened, edited, puppet, first = sheet) {
     out.set(edited.subarray(i, i + 4), part)
     touched++
     if (edited[i + 3] < 255) for (const at of under) { if (at !== part) out[at + 3] = 0 }
-    else if (showing === undefined) for (const at of under) { if (at !== part) out.set(first.data.subarray(at, at + 4), at) }
+    else for (const at of under) { if (at !== part && out[at + 3] === 0) out.set(first.data.subarray(at, at + 4), at) }
   }
   return { pixels: out, lost, touched }
 }

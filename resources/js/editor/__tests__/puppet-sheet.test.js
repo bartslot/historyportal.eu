@@ -95,6 +95,16 @@ describe('a boned figure saved back onto its sheet', () => {
     expect(cells[1], 'under it, as it first was').toEqual(R)
   })
 
+  it('a hole with a soft edge healed: the paint hidden under the half-clear rim comes back too', () => {
+    const first = sheetOf()
+    const sheet = sheetOf(); sheet.data[1 * 4 + 3] = 0; sheet.data[3 * 4 + 3] = 90   // the rim: front half clear, the back cleared under it
+    const was = px(R, [0, 0, 200, 90], B, B)
+    const edited = new Uint8ClampedArray(was); edited.set(B, 1 * 4)
+    const cells = cellsOf(writeBack(sheet, was, edited, puppet, first).pixels)
+    expect(cells[3]).toEqual(B)
+    expect(cells[1], 'the hidden back part').toEqual(R)
+  })
+
   it('says how many pixels landed on the sheet: paint outside every part is none', () => {
     const small = { width: 4, height: 1, parts: [{ quad: [[0, 0], [2, 0], [2, 1], [0, 1]], uv: [0, 0, 1, 1] }] }
     const sheet = { data: px(R, R), width: 2, height: 1 }

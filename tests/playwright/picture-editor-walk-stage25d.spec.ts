@@ -660,8 +660,9 @@ const figureOnStage = (page: Page, points: number[][]) => page.evaluate(async (p
 }, points)
 const opensAt = async (page: Page, at: number[]) => {
   await page.mouse.dblclick(at[0], at[1])
-  await page.waitForTimeout(600)
-  const id = await page.locator('[data-cutout]').getAttribute('data-cutout', { timeout: 500 }).catch(() => null)
+  // one double-click, never repeated: it may be slow on a software GPU (3.6 s measured), it must not get lost
+  const opened = await page.waitForSelector('[data-cutout]', { timeout: 10_000 }).catch(() => null)
+  const id = opened ? await opened.getAttribute('data-cutout') : null
   if (id) {
     await page.waitForFunction(() => !document.querySelector('[data-cut-loading]'), undefined, { timeout: 60_000 })
     await leaveAndDiscard(page)
@@ -699,7 +700,9 @@ test('a boned figure opens whole, at rest, not cleaned, and leaving or saving wi
 })
 
 test('a boned figure: edits land on its sheet, bones still bend, erased paint no longer picks, reopen, Bring back, the original', async ({ page }) => {
-  await open(page, BONED)
+  await load(page)
+  const [belly, face] = await figureOnStage(page, [HOLE_AT, [340, 200]])   // before the save: afterwards nothing waits
+  await openLayer(page, BONED)
   const puppet = await puppetOfLayer(page)
   await page.keyboard.press(']')
   for (let i = 0; i < 4; i++) await page.keyboard.press(']')
@@ -713,12 +716,8 @@ test('a boned figure: edits land on its sheet, bones still bend, erased paint no
   await page.locator('[data-cut-save]').click()
   await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
 
-  // straight after the save, no reload: the first double-click is right
-  await page.waitForFunction((i) => !!(window as any).__stage25d?.config?.set?.layers?.[i]?.src, BONED_INDEX, { timeout: 30_000 })
-  await page.waitForFunction(() => document.querySelector('[data-stage25d-ready="1"]'), undefined, { timeout: 60_000 })
-  await page.waitForTimeout(1500)
-  const [belly, face] = await figureOnStage(page, [HOLE_AT, [340, 200]])
-  expect(await opensAt(page, belly), 'the erased belly is no figure any more').not.toBe('s25_layer-1')
+  // straight after the save, no reload and no waiting: the first double-clicks are right
+  expect(await opensAt(page, belly), 'the erased belly is no figure any more: the sky behind it opens').toBe('s25_sky')
   expect(await opensAt(page, face), 'his face still is').toBe('s25_layer-1')
 
   await load(page)
@@ -782,7 +781,6 @@ test('a boned figure: edits land on its sheet, bones still bend, erased paint no
   expect(await page.locator('[data-cut-art]').evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([724, 2172])
   expect(await alpha(page, HOLE_AT), 'the hole is saved').toBeLessThan(16)
   expect(near(await pixel(page, PAINT_AT), [0, 255, 0], 12), 'and the paint').toBe(true)
-  await page.waitForTimeout(800)
   await tool(page, 'b', 'restore')
   await stroke(page, [HOLE_AT[0] - 20, HOLE_AT[1]], [HOLE_AT[0] + 20, HOLE_AT[1]])
   expect(await alpha(page, HOLE_AT), 'Bring back reaches past the save').toBeGreaterThan(200)
@@ -831,8 +829,7 @@ test('a boned figure: Bring back into a saved hole returns the paint to the arm 
 
   await load(page)
   await openLayer(page, BONED)
-  await page.waitForTimeout(800)
-  await tool(page, 'b', 'restore')
+  await tool(page, 'b', 'restore')   // at once: no waiting for the first sheet
   await stroke(page, [SHOULDER[0] - 4, SHOULDER[1]], [SHOULDER[0] + 4, SHOULDER[1]])
   expect(await alpha(page, SHOULDER), 'back').toBeGreaterThan(200)
   await page.locator('[data-cut-save]').click()

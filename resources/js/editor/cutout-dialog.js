@@ -376,12 +376,17 @@ export async function openCutout (target) {
     const showPicture = () => {
       if (pictureAsked) return
       pictureAsked = true
-      const opening = target.puppet ? figureFromSheet(target.puppet, target.puppet.sheet) : Promise.resolve(null)
+      // an edited figure brings the sheet it first had, so Bring back reaches that from the very first stroke
+      const firstSheet = target.puppet && target.edited ? figureFromSheet(target.puppet, target.puppet.atlas).catch(() => null) : null
+      const opening = target.puppet ? Promise.all([figureFromSheet(target.puppet, target.puppet.sheet), firstSheet]) : Promise.resolve([null, null])
       opening
-        .then((whole) => {
+        .then(async ([whole, first]) => {
           figure = whole
-          if (whole) figureUrls.push(whole.url)
-          return mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), whole?.url ?? target.original, refresh, { surface: viewport, onPick: picked, onNeedSource: needSource })
+          for (const made of [whole, first]) if (made) figureUrls.push(made.url)
+          if (first) figure.first = first.sheet
+          const opened = await mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), whole?.url ?? target.original, refresh, { surface: viewport, onPick: picked, onNeedSource: needSource })
+          if (first) await opened.setSource(first.url).catch(() => {})
+          return opened
         })
         .then((m) => {
           mask = m
@@ -403,9 +408,7 @@ export async function openCutout (target) {
           setTool(tool)
           mask.setClean(clean)   // opens already cleaned: the teacher only nudges
           // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
-          if (target.puppet && target.edited) {
-            figureFromSheet(target.puppet, target.puppet.atlas).then((first) => { figure.first = first.sheet; figureUrls.push(first.url); return mask.setSource(first.url) }).catch(() => {})
-          } else if (target.edited) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
+          if (target.edited && !target.puppet) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
           peek?.pictureChanged()
         })
         .catch(() => {

@@ -88,6 +88,14 @@ describe('the tab', () => {
     expect(numbers()).toEqual(['1', '2', '3', '4', '7', '7', '8'])
   })
 
+  it('the status counts by the same number as the tile', () => {
+    const where = () => parts.strip.querySelector('[data-fr-where]').textContent
+    tiles()[4].click()
+    expect(where()).toBe('Frame 5 of 8')
+    press('Delete')
+    expect(where(), 'the frame after the deleted one').toBe('Frame 6 of 8')
+  })
+
   it('duplicate shows on the stage at once, and undo takes it back', () => {
     press('d')
     expect(tiles()).toHaveLength(9)

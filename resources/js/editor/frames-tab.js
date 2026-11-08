@@ -126,7 +126,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
 
   const renderTiles = () => {
     list.innerHTML = draft().frames.map((cell, i) => `
-      <button type="button" class="flex shrink-0 flex-col items-center gap-0.5 rounded border p-0.5 outline-none focus-visible:border-primary" data-frame="${i}" aria-label="${t('Frame :n of :total').replace(':n', i + 1).replace(':total', draft().frames.length)}">
+      <button type="button" class="flex shrink-0 flex-col items-center gap-0.5 rounded border p-0.5 outline-none focus-visible:border-primary" data-frame="${i}" aria-label="${t('Frame :n of :total').replace(':n', cell + 1).replace(':total', framesIn(frames))}">
         <span class="block h-16 rounded-sm" style="aspect-ratio:${ratio};${cellStyle(frames, cell, shownSheet)}"></span>
         <span class="text-xs tabular-nums text-panel-label">${cell + 1}</span>
       </button>`).join('')
@@ -142,7 +142,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
       el.style.borderColor = on ? 'var(--color-primary)' : 'transparent'
       el.style.background = i === tile ? 'var(--color-base-300)' : ''
     }
-    $(strip, '[data-fr-where]').textContent = t('Frame :n of :total').replace(':n', (tile ?? a) + 1).replace(':total', n)
+    $(strip, '[data-fr-where]').textContent = t('Frame :n of :total').replace(':n', draft().frames[tile ?? a] + 1).replace(':total', framesIn(frames))   // the sheet's number, as on the tile
     $(strip, '[data-fr-length]').textContent = secondsLabel(secondsOf(draft(), fps))
     $(strip, '[data-fr-delete]').disabled = Math.abs(a - b) + 1 >= n
     $(strip, '[data-fr-duplicate]').disabled = n >= MAX_FRAMES
