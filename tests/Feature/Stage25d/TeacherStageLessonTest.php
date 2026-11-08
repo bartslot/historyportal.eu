@@ -147,17 +147,17 @@ class TeacherStageLessonTest extends TestCase
         $this->assertSame('stage25d', $stage->fresh()->kind);
     }
 
-    public function test_no_3d_scene_without_a_bundle_for_the_era(): void
+    public function test_a_lesson_without_a_bundle_for_its_era_can_still_add_a_3d_scene(): void
     {
-        $lesson = $this->lesson(['era' => 'Tijd van regenten en vorsten (1600-1700)', 'topic' => 'Tasman']);
+        $lesson = $this->lesson(['era' => null, 'topic' => 'Tasman']);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'script_segment' => 'x', 'status' => 'ready']);
 
         Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
             ->set('addSceneOpen', true)
-            ->assertDontSeeHtml('data-add-stage25d')
+            ->assertSeeHtml('data-add-stage25d')
             ->call('addScene', 'stage25d');
 
-        $this->assertSame(0, $lesson->scenes()->where('kind', 'stage25d')->count());
+        $this->assertSame(1, $lesson->scenes()->where('kind', 'stage25d')->count());
     }
 
     public function test_3d_is_a_visual_style_only_when_the_era_has_a_bundle(): void

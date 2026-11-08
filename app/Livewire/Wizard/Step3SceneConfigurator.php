@@ -4217,11 +4217,14 @@ class Step3SceneConfigurator extends Component
         }
     }
 
-    /** The painted stage bundle of the lesson's era (LibraryEra::stageBundle): what a new 3D scene is built from. */
+    /** What a new 3D scene is built from: the painted bundle of the lesson's era, else the one its 3D scenes use, else the first there is. */
     #[Computed]
     public function eraStageBundle(): ?string
     {
-        return \App\Support\LibraryEra::stageBundleFor($this->lesson);
+        return \App\Support\LibraryEra::stageBundleFor($this->lesson)
+            ?? $this->stageBundles()[0]
+            ?? \App\Services\Stage25d\LibraryBundle::names()[0]
+            ?? null;
     }
 
     /** @return list<string> the painted stage bundles this lesson's stage25d scenes use */
@@ -5295,7 +5298,7 @@ class Step3SceneConfigurator extends Component
         ];
 
         // A 3D scene: the era's painted backdrop (sky, far ground, a ground band) on the house camera, born ready;
-        // the teacher drags the rest in from the Decor shelf. Not offered without a bundle for the era.
+        // the teacher drags the rest in from the Decor shelf.
         if ($kind === 'stage25d') {
             $bundle = $this->eraStageBundle;
             if ($bundle === null) {
