@@ -82,8 +82,8 @@ final class Cutouts
     /** Every word Uitknippen shows (resources/js/editor/cutout-dialog.js), English => this language. */
     private const LABELS = [
         'Back to the scene', 'Picture', 'Save', 'Undo', 'Redo', 'Tools', 'Erase', 'Bring back', 'Remove colour', 'Select a part', 'Hand',
-        'Paint', 'Pipette', 'Clone stamp', 'Colour', 'Opacity', 'Alt-click where to copy from, then paint.',
-        'Click a colour in the picture to paint with it.', 'Alt-click where to copy from first.',
+        'Paint', 'Pipette', 'Clone stamp', 'Colour', 'Opacity', 'Option/Alt-click where to copy from, then paint.',
+        'Click a colour in the picture to paint with it.', 'Option/Alt-click where to copy from first.',
         'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',

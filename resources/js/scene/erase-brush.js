@@ -47,12 +47,14 @@ export const union = (a, b) => (!a ? b : !b ? a : {
 
 /**
  * Work out the two masks inside `box` from what they were when the stroke began. `restore` false: the stroke makes the
- * pixels clear. True: it brings them back as they were in the original picture.
+ * pixels clear. True: it brings them back as they were in the original picture. Either way it takes away the paint and
+ * clone stamp's `ink` there too, when the stroke carries it (paint-brush.js).
  */
 export function applyStroke(cov, box, w, from, to, restore = false) {
     for (let y = box.y0; y <= box.y1; y++) {
         for (let p = y * w + box.x0, end = y * w + box.x1; p <= end; p++) {
             const k = cov[p] / 255;
+            if (from.ink) to.ink[p * 4 + 3] = from.ink[p * 4 + 3] * (1 - k);
             if (restore) {
                 to.erase[p] = from.erase[p] + (255 - from.erase[p]) * k;
                 to.bring[p] = Math.max(from.bring[p], cov[p]);
@@ -65,22 +67,21 @@ export function applyStroke(cov, box, w, from, to, restore = false) {
 }
 
 /**
- * The final pixels inside `box`, written into `out`: `base` (cuts + clean-up), the paint and clone stamp's `ink` over it
- * (paint-brush.js, straight RGBA; optional), then `bring` and `erase` on top.
+ * The final pixels inside `box`, written into `out`: `base` (cuts + clean-up), with `bring` and `erase` on top, then the
+ * paint and clone stamp's `ink` over all of it (paint-brush.js, straight RGBA; optional): paint shows wherever it is laid,
+ * also on a spot erased or brought back before. Erase and Bring back take ink away themselves (applyStroke).
  */
 export function compose(base, original, erase, bring, w, box, out, ink = null) {
-    const px = [0, 0, 0, 0];
     for (let y = box.y0; y <= box.y1; y++) {
         for (let p = y * w + box.x0, end = y * w + box.x1; p <= end; p++) {
             const i = p * 4;
             const b = bring[p] / 255;
-            px[0] = base[i]; px[1] = base[i + 1]; px[2] = base[i + 2]; px[3] = base[i + 3];
-            if (ink && ink[i + 3] > 0) over(px, 0, ink[i], ink[i + 1], ink[i + 2], ink[i + 3], px);
-            const baseA = px[3];
+            const baseA = base[i + 3];
             // a clear pixel's colour means nothing: what comes back has the original's own
             const k = baseA === 0 && b > 0 ? 1 : b;
-            for (let c = 0; c < 3; c++) out[i + c] = px[c] + (original[i + c] - px[c]) * k;
+            for (let c = 0; c < 3; c++) out[i + c] = base[i + c] + (original[i + c] - base[i + c]) * k;
             out[i + 3] = (baseA + (original[i + 3] - baseA) * b) * (erase[p] / 255);
+            if (ink && ink[i + 3] > 0) over(out, i, ink[i], ink[i + 1], ink[i + 2], ink[i + 3], out);
         }
     }
     return out;

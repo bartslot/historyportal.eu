@@ -632,7 +632,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         if (!touched) return;
         drag.box = union(drag.box, touched);
         if (drag.ink) applyInk(drag.cov, touched, w, drag.from.ink, ink, drag.colourAt, drag.opacity);
-        else applyStroke(drag.cov, touched, w, drag.from, { erase, bring }, drag.restore);
+        else applyStroke(drag.cov, touched, w, drag.from, { erase, bring, ink }, drag.restore);
         compose(base, source, erase, bring, w, touched, shown.data, ink);
         ctx.putImageData(shown, 0, 0, touched.x0, touched.y0, touched.x1 - touched.x0 + 1, touched.y1 - touched.y0 + 1);
     };
@@ -747,9 +747,10 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             return;
         }
         if (stroking) {
-            const from = { erase, bring };
+            const from = { erase, bring, ink };
             erase = new Uint8ClampedArray(erase);
             bring = new Uint8ClampedArray(bring);
+            ink = new Uint8ClampedArray(ink);   // the stroke takes paint away too
             const point = onImage(e);
             drag = { eraser: true, restore: mode === 'restore', from, cov: new Uint8Array(w * h), last: point, box: null };
             strokeTo(point);
@@ -791,12 +792,12 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         drag = null;
         if (d.eraser) {
             // a stroke wholly off the picture changed nothing: no step to undo
-            if (d.box) { remember({ current, selection, erase: d.from.erase, bring: d.from.bring, ink }); emit(); }
-            else ({ erase, bring } = d.from);
+            if (d.box) { remember({ current, selection, erase: d.from.erase, bring: d.from.bring, ink: d.from.ink }); emit(); }
+            else ({ erase, bring, ink } = d.from);
             return;
         }
         if (d.ink) {
-            if (d.clone) showSelection();
+            if (d.clone) showCloneSource(d.last);   // the cross stays where the next stroke copies from
             if (d.box) { remember({ current, selection, erase, bring, ink: d.from.ink }); emit(); }
             else ink = d.from.ink;
             return;
@@ -869,7 +870,11 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setClean(next) { clean = { ...clean, ...next }; paint(); },
         /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
         resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
-        setMode(next) { mode = ['brush', 'erase', 'restore', 'paint', 'pipette', 'clone'].includes(next) ? next : 'colour'; canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair'; },
+        setMode(next) {
+            mode = ['brush', 'erase', 'restore', 'paint', 'pipette', 'clone'].includes(next) ? next : 'colour';
+            canvas.style.cursor = mode === 'brush' ? 'cell' : 'crosshair';
+            showSelection();   // the clone stamp's cross goes with it
+        },
         /** The paint brush and the clone stamp: the colour [r, g, b] the brush paints, and how strongly both lay it (0..1). */
         setPaint(next) { paintWith = { ...paintWith, ...next }; },
         /** Where the clone stamp copies from, picture px; null: it has to be chosen again (Alt-click). */

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { over, applyInk, solid, cloned, colourAt, toHex, fromHex } from '../paint-brush.js'
-import { compose, line } from '../erase-brush.js'
+import { compose, line, applyStroke } from '../erase-brush.js'
 
 const px = (...rgba) => new Uint8ClampedArray(rgba)
 
@@ -52,11 +52,21 @@ describe('paint, pipette and clone stamp maths', () => {
     expect(fromHex('#0f172a')).toEqual([15, 23, 42])
   })
 
-  it('ink shows over the picture; Bring back takes it back to the original, the eraser takes it away', () => {
+  it('ink shows over everything, a spot erased or brought back before too', () => {
     const base = px(100, 100, 100, 255), original = px(100, 100, 100, 255), ink = px(255, 0, 0, 255), box = { x0: 0, y0: 0, x1: 0, y1: 0 }
     const out = (erase, bring) => [...compose(base, original, px(erase), px(bring), 1, box, new Uint8ClampedArray(4), ink)]
     expect(out(255, 0)).toEqual([255, 0, 0, 255])
-    expect(out(255, 255)).toEqual([100, 100, 100, 255])
-    expect(out(0, 0)[3]).toBe(0)
+    expect(out(0, 0)).toEqual([255, 0, 0, 255])      // erased first, painted after: the paint
+    expect(out(255, 255)).toEqual([255, 0, 0, 255])  // brought back first, painted after: the paint
+  })
+
+  it('an Erase or Bring back stroke takes the ink away where it goes', () => {
+    const box = { x0: 0, y0: 0, x1: 1, y1: 0 }, cov = new Uint8Array([255, 0])
+    for (const restore of [false, true]) {
+      const from = { erase: px(255, 255), bring: px(0, 0), ink: px(255, 0, 0, 255, 0, 0, 255, 255) }
+      const to = { erase: new Uint8ClampedArray(2), bring: new Uint8ClampedArray(2), ink: new Uint8ClampedArray(from.ink) }
+      applyStroke(cov, box, 2, from, to, restore)
+      expect([to.ink[3], to.ink[7]]).toEqual([0, 255])   // under the stroke gone, beside it kept
+    }
   })
 })

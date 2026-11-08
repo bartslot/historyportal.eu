@@ -174,7 +174,7 @@ describe('the eraser and its tools', () => {
     mountQuickMask.mock.lastCall[4].onNeedSource()
     vi.runOnlyPendingTimers()
     const tip = document.querySelector('.lp-tip')
-    expect(tip?.textContent).toContain('Alt-click where to copy from first.')
+    expect(tip?.textContent).toContain('Option/Alt-click where to copy from first.')
     expect($('[data-cut-tool="clone"]').dataset.tooltip).toBe('Clone stamp')   // its own tooltip comes back
     vi.useRealTimers()
     $('[data-cut-back]').click()

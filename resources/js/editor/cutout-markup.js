@@ -58,7 +58,7 @@ export const syncSlider = (input, readout) => {
 
 /** One <x-ui.slider-row>: label, rail, value. */
 export const slider = (name, label, min, max, value, unit = '') => `
-  <label class="flex items-center gap-2 py-1">
+  <label class="flex h-8 items-center gap-2">
     <span class="w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">${label}</span>
     <span class="range-panel-knob min-w-0 flex-1" style="--range-t: ${(value - min) / (max - min)}">
       <input type="range" min="${min}" max="${max}" step="1" value="${value}" class="range range-panel" aria-label="${label}" data-cut-${name}>
@@ -138,11 +138,11 @@ export function markup (t, clean, modes = ['picture']) {
         <div data-cut-for="paint clone" hidden>
           ${slider('opacity', t('Opacity'), 1, 100, 100, '%')}
         </div>
-        <p class="text-xs text-panel-hint" data-cut-for="clone" hidden>${t('Alt-click where to copy from, then paint.')}</p>
+        <p class="text-xs text-panel-hint" data-cut-for="clone" hidden>${t('Option/Alt-click where to copy from, then paint.')}</p>
         <p class="text-xs text-panel-hint" data-cut-for="pipette" hidden>${t('Click a colour in the picture to paint with it.')}</p>
         <div data-cut-for="colour" hidden>
           ${slider('tol', t('Tolerance'), 1, MAX_TOLERANCE, TOLERANCE)}
-          <label class="flex cursor-pointer items-center gap-2 py-1 text-sm text-panel-value">
+          <label class="flex h-8 cursor-pointer items-center gap-2 text-sm text-panel-value">
             <input type="checkbox" class="checkbox checkbox-sm" data-cut-everywhere>${t('Everywhere')}
           </label>
         </div>

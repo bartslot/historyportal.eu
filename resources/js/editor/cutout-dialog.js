@@ -254,7 +254,7 @@ export async function openCutout (target) {
       setTool('paint')
     }
     // the clone stamp pressed before it knows where to copy from: its tool says how, instead of painting nothing
-    const needSource = () => setTimeout(() => flashTooltip(root.querySelector('[data-cut-tool="clone"]'), t('Alt-click where to copy from first.')))
+    const needSource = () => setTimeout(() => flashTooltip(root.querySelector('[data-cut-tool="clone"]'), t('Option/Alt-click where to copy from first.')))
     let frame = 0
     const live = (name, group, apply) => onSlide(name, (v) => {
       group[name] = v

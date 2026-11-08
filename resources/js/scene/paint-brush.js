@@ -1,8 +1,9 @@
 // Paint, the pipette and the clone stamp (Bart, 2026-11-07: "the clone stamp tool and the pipet in the editor - and
-// brushes"). Pure functions on typed arrays; the canvas side is in quick-mask.js. One more layer lies over the cuts and
-// the clean-up, under the eraser's two masks (erase-brush.js compose):
+// brushes"). Pure functions on typed arrays; the canvas side is in quick-mask.js. One more layer lies over everything
+// else, the eraser's two masks included (erase-brush.js compose):
 //   ink  straight RGBA the size of the picture: what was painted or cloned; alpha 0 = nothing there
-// so Bring back takes paint back to the original, the eraser takes it away, undo steps over it and Save writes one picture.
+// so paint shows on a spot erased before; an Erase or Bring back stroke takes the ink away where it goes (applyStroke),
+// undo steps over it, and Save writes one picture.
 // A stroke's coverage is the eraser's (`line` into `cov`, the highest dab per pixel), so a stroke never builds up on itself.
 
 /**

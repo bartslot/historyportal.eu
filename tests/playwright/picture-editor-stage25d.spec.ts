@@ -217,6 +217,19 @@ test.describe('paint, pipette and clone stamp', () => {
     await page.locator('[data-cut-undo]').click()
     expect(await pixelAt(page, mid[0], mid[1])).toEqual(before)
 
+    // erased first, then painted: the paint shows (it lies over the eraser), and a new erase takes it away
+    await page.keyboard.press('e')
+    await stroke(page, [mid[0] - 20, mid[1]], [mid[0] + 20, mid[1]])
+    expect((await pixelAt(page, mid[0], mid[1]))[3]).toBe(0)
+    await page.keyboard.press('p')
+    await stroke(page, [mid[0] - 20, mid[1]], [mid[0] + 20, mid[1]])
+    expect((await pixelAt(page, mid[0], mid[1])).slice(0, 2)).toEqual([255, 0])
+    await page.keyboard.press('e')
+    await stroke(page, [mid[0] - 20, mid[1]], [mid[0] + 20, mid[1]])
+    expect((await pixelAt(page, mid[0], mid[1]))[3]).toBe(0)
+    for (let i = 0; i < 3; i++) await page.locator('[data-cut-undo]').click()
+    expect(await pixelAt(page, mid[0], mid[1])).toEqual(before)
+
     await page.keyboard.press('k')
     await page.mouse.click(mid[0], mid[1])
     await expect(page.locator('.lp-tip.is-visible')).toContainText(/Alt/)
