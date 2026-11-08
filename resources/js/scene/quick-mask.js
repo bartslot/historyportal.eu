@@ -569,6 +569,7 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     let paintWith = { colour: [15, 23, 42], opacity: 1 };
     let cloneFrom = null;                              // where the clone stamp copies from (Alt-click), picture px
     let cloneOffset = null;                            // that, minus where its first stroke began: kept until a new Alt-click
+    let crossAt = null;                                // where the cross shows: the spot the next stroke copies from
     let base = new Uint8ClampedArray(original);       // the cuts + the clean-up + the edge
     const shown = new ImageData(new Uint8ClampedArray(original), w, h);   // what is on the canvas, and what a click reads
     let brush = { size: 12, softness: 0.2 };          // the eraser: diameter in picture pixels, how much of it fades
@@ -648,6 +649,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     /** Outside the selection the picture is dimmed; the patches a stroke is taking show amber. */
     const showSelection = (taking = null) => {
         octx.clearRect(0, 0, w, h);
+        // the clone stamp's cross shows as long as it has a source: after an undo, back from another tool
+        if (mode === 'clone' && cloneFrom && crossAt) drawCross(...crossAt);
         if (!selectedAny() && !taking) return;
         const film = new ImageData(ww, wh);
         for (let p = 0; p < ww * wh; p++) {
@@ -673,10 +676,10 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             octx.stroke();
         }
     };
-    /** While the clone stamp paints, the cross follows where it copies from. */
+    /** While the clone stamp paints, the cross follows where it copies from; after, it stays there. */
     const showCloneSource = (point) => {
+        if (point && cloneOffset) crossAt = [point[0] + cloneOffset[0], point[1] + cloneOffset[1]];
         showSelection();
-        if (point && cloneOffset) drawCross(point[0] + cloneOffset[0], point[1] + cloneOffset[1]);
     };
 
     const preview = () => {
@@ -731,8 +734,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
             if (x < 0 || y < 0 || x >= w || y >= h) return;
             cloneFrom = onImage(e);
             cloneOffset = null;
+            crossAt = cloneFrom;
             showSelection();
-            drawCross(...cloneFrom);
             return;
         }
         if (mode === 'clone' && !cloneFrom) { onNeedSource(); return; }
