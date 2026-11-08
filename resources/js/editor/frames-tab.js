@@ -128,7 +128,7 @@ export function mountFrames ({ view, strip, panel, t, sheet, frames, stage, stag
     list.innerHTML = draft().frames.map((cell, i) => `
       <button type="button" class="flex shrink-0 flex-col items-center gap-0.5 rounded border p-0.5 outline-none focus-visible:border-primary" data-frame="${i}" aria-label="${t('Frame :n of :total').replace(':n', i + 1).replace(':total', draft().frames.length)}">
         <span class="block h-16 rounded-sm" style="aspect-ratio:${ratio};${cellStyle(frames, cell, shownSheet)}"></span>
-        <span class="text-xs tabular-nums text-panel-label">${i + 1}</span>
+        <span class="text-xs tabular-nums text-panel-label">${cell + 1}</span>
       </button>`).join('')
   }
 

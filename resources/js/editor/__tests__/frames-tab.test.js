@@ -76,6 +76,18 @@ describe('the tab', () => {
     expect(own.dirty()).toBe(false)
   })
 
+  it('a tile carries its own frame number: a deleted number is gone from the strip, not taken over by the next frame', () => {
+    const numbers = () => tiles().map((el) => el.querySelector('span:last-child').textContent)
+    expect(numbers()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8'])
+    tiles()[4].click()
+    press('Delete')
+    expect(numbers()).toEqual(['1', '2', '3', '4', '6', '7', '8'])
+    press('Delete')
+    expect(numbers()).toEqual(['1', '2', '3', '4', '7', '8'])
+    press('d')
+    expect(numbers()).toEqual(['1', '2', '3', '4', '7', '7', '8'])
+  })
+
   it('duplicate shows on the stage at once, and undo takes it back', () => {
     press('d')
     expect(tiles()).toHaveLength(9)

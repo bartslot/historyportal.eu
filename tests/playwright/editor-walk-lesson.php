@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  *   php artisan tinker --execute='require "tests/playwright/editor-walk-lesson.php";'
  *
- * Prints PW_EDITOR_WALK=<lesson>/<scene>. Local database only. layer-0 is an edited figure, layer-2 a drawn test card
+ * Prints PW_EDITOR_WALK=<lesson>/<scene>/<scene with an animation>. Local database only. layer-0 is an edited figure, layer-2 a drawn test card
  * whose every region is known to the spec (white, a hole behind a drawn line, a blue coat, a red spot, a green field).
  */
 
@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 
 const WALK_TITLE = 'Editor walk (throwaway)';
 const WALK_FROM_SCENE = 9967;
+const WALK_FROM_ANIMATION_SCENE = 9969;   // layer-7 plays a sheet of 48 frames
 
 throw_unless(in_array(DB::connection()->getConfig('host'), ['127.0.0.1', 'localhost'], true), RuntimeException::class, 'Local database only.');
 
@@ -73,4 +74,9 @@ $scene->lesson_id = $lesson->id;
 $scene->config = $config;
 $scene->save();
 
-echo "PW_EDITOR_WALK={$lesson->id}/{$scene->id}".PHP_EOL;
+$animation = Scene::findOrFail(WALK_FROM_ANIMATION_SCENE)->replicate();
+$animation->lesson_id = $lesson->id;
+$animation->order = $scene->order + 1;
+$animation->save();
+
+echo "PW_EDITOR_WALK={$lesson->id}/{$scene->id}/{$animation->id}".PHP_EOL;

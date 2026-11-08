@@ -4,13 +4,13 @@ import { test, expect, type Page } from '@playwright/test'
  * The whole picture editor, walked the way a teacher does: real mouse, real keys, every check on pixels or on what was saved.
  * It saves, so it runs on a throwaway lesson, made fresh each time:
  *
- *   php artisan tinker --execute='require "tests/playwright/editor-walk-lesson.php";'      # prints PW_EDITOR_WALK=<lesson>/<scene>
- *   PW_EDITOR_WALK=<lesson>/<scene> PW_BASE_URL=http://localhost:8034 \
+ *   php artisan tinker --execute='require "tests/playwright/editor-walk-lesson.php";'      # prints PW_EDITOR_WALK=<lesson>/<scene>/<animation scene>
+ *   PW_EDITOR_WALK=<lesson>/<scene>/<animation scene> PW_BASE_URL=http://localhost:8034 \
  *     npx playwright test picture-editor-walk --config=playwright.stage25d.config.ts --workers=1
  *
  * layer-2 is a test card of 600 x 600 (editor-walk-lesson.php), so every region's colour is known here.
  */
-const [LESSON, SCENE] = (process.env.PW_EDITOR_WALK ?? '').split('/')
+const [LESSON, SCENE, ANIMATION_SCENE] = (process.env.PW_EDITOR_WALK ?? '').split('/')
 test.skip(!LESSON, 'set PW_EDITOR_WALK')
 test.setTimeout(240_000)
 test.use({ viewport: { width: 1280, height: 900 } })
@@ -34,9 +34,9 @@ test.beforeEach(({ page }) => {
 })
 test.afterEach(() => { expect(errors, 'no script errors').toEqual([]) })
 
-const load = async (page: Page) => {
+const load = async (page: Page, scene = SCENE) => {
   await page.addInitScript(SILENT)
-  await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`, { waitUntil: 'load' })
+  await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${scene}`, { waitUntil: 'load' })
   await page.waitForFunction(() => document.querySelector('[data-stage25d-ready="1"]') && (window as any).__stage25d?.config, undefined, { timeout: 180_000 })
 }
 const openLayer = async (page: Page, layer: string) => {
@@ -856,6 +856,91 @@ test('a boned figure: Bring back into a saved hole returns the paint to the arm 
   await openLayer(page, BONED)
   await page.locator('[data-cut-original]').click()
   await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+})
+
+// ---- an animation: layer-7 of the second scene plays a sheet of 48 frames, its own list on `play.frames`
+const FIRE = 'layer-7', FIRE_INDEX = 7, ALL_FIRE = 48
+const openFire = async (page: Page) => {
+  await load(page, ANIMATION_SCENE)
+  await page.evaluate((id) => { window.dispatchEvent(new CustomEvent('image-edit:open', { detail: (window as any).__stage25d.editTarget(id) })) }, FIRE)
+  await page.waitForSelector('[data-frame]')
+}
+const fireTiles = (page: Page) => page.locator('[data-frame]')
+const firePlay = (page: Page) => page.evaluate((id) => (window as any).__stage25d.editTarget(id).frames.play ?? null, FIRE)   // the row the stage draws, not the config it was built from
+const saveFire = async (page: Page) => {
+  await page.locator('[data-cut-save]').click()
+  await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 30_000 })
+}
+const allBut = (...gone: number[]) => Array.from({ length: ALL_FIRE }, (_, n) => n).filter((n) => !gone.includes(n))
+
+test('Frames: deleted frames stay deleted, in the middle and at the end, through Save, reopen and reload', async ({ page }) => {
+  await openFire(page)
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE)
+  await fireTiles(page).nth(24).click()
+  await page.locator('[data-fr-delete]').click()
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE - 1)
+  await page.locator('[data-fr-delete]').click()
+  await expect(fireTiles(page), 'frames 25 and 26, by hand').toHaveCount(ALL_FIRE - 2)
+  // a tile says which frame of the sheet it is: the next frame must not take over the deleted number
+  await expect(fireTiles(page).nth(23).locator('span').last()).toHaveText('24')
+  await expect(fireTiles(page).nth(24).locator('span').last(), 'the numbers 25 and 26 are gone').toHaveText('27')
+  await saveFire(page)
+  expect((await firePlay(page))?.frames, 'on the stage straight after Save').toEqual(allBut(24, 25))
+
+  // reopened without a reload
+  await page.evaluate((id) => { window.dispatchEvent(new CustomEvent('image-edit:open', { detail: (window as any).__stage25d.editTarget(id) })) }, FIRE)
+  await page.waitForSelector('[data-frame]')
+  await expect(fireTiles(page), 'still gone after reopening').toHaveCount(ALL_FIRE - 2)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-cutout]')).toHaveCount(0)
+
+  await openFire(page)
+  await expect(fireTiles(page), 'still gone after a reload').toHaveCount(ALL_FIRE - 2)
+  expect((await firePlay(page))?.frames, 'and saved').toEqual(allBut(24, 25))
+
+  // the last two, with the keyboard this time
+  await fireTiles(page).nth(ALL_FIRE - 3).click()
+  await page.keyboard.press('Delete')
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE - 3)
+  await fireTiles(page).nth(ALL_FIRE - 4).click()
+  await page.keyboard.press('Backspace')
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE - 4)
+  await saveFire(page)
+  await openFire(page)
+  await expect(fireTiles(page), 'the last frames stay gone').toHaveCount(ALL_FIRE - 4)
+  expect((await firePlay(page))?.frames).toEqual(allBut(24, 25, 46, 47))
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-cutout]')).toHaveCount(0)
+})
+
+test('Frames: duplicates deleted again, and All frames in order, leave the sheet whole', async ({ page }) => {
+  await openFire(page)
+  await page.locator('[data-fr-all]').click()
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE)
+  await saveFire(page)
+  await openFire(page)
+  await expect(fireTiles(page), 'all frames again').toHaveCount(ALL_FIRE)
+  expect((await firePlay(page))?.frames, 'with no list of its own').toBeUndefined()
+
+  // two copies added at the end, then deleted: back to exactly the sheet
+  await fireTiles(page).nth(ALL_FIRE - 1).click()
+  await page.locator('[data-fr-duplicate]').click()
+  await page.locator('[data-fr-duplicate]').click()
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE + 2)
+  await saveFire(page)
+  await openFire(page)
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE + 2)
+  await fireTiles(page).nth(ALL_FIRE + 1).click()
+  await page.locator('[data-fr-delete]').click()
+  await fireTiles(page).nth(ALL_FIRE).click()
+  await page.locator('[data-fr-delete]').click()
+  await expect(fireTiles(page)).toHaveCount(ALL_FIRE)
+  await saveFire(page)
+  expect((await firePlay(page))?.frames, 'straight after Save').toBeUndefined()
+  await openFire(page)
+  await expect(fireTiles(page), 'the copies stay deleted').toHaveCount(ALL_FIRE)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-cutout]')).toHaveCount(0)
 })
 
 test('Save with nothing done leaves the layer as it was', async ({ page }) => {
