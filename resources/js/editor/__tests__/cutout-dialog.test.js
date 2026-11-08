@@ -4,7 +4,7 @@ import { openCutout, wireFor, eraserRange } from '../cutout-dialog.js'
 const mask = {
   size: { w: 300, h: 450 },
   setMode: vi.fn(), setBrushSize: vi.fn(), setClean: vi.fn(), setEdges: vi.fn(), setEverywhere: vi.fn(), undo: vi.fn(), redo: vi.fn(), destroy: vi.fn(),
-  setBrush: vi.fn(), setTolerance: vi.fn(), setCompare: vi.fn(),
+  setBrush: vi.fn(), setTolerance: vi.fn(), setCompare: vi.fn(), setPaint: vi.fn(),
   resultDataURL: () => 'data:image/webp;base64,CLEAN',
   cutout: () => ({ dataUrl: 'data:image/webp;base64,CUT', box: { x: 0, y: 40, w: 100, h: 150 }, width: 400, height: 600 }),
 }
@@ -138,7 +138,7 @@ describe('the eraser and its tools', () => {
 
   it('shows the size and softness for Erase and Bring back, the tolerance for Remove colour', async () => {
     const { $ } = await open()
-    const forErase = $('[data-cut-for="erase restore"]'), forColour = $('[data-cut-for="colour"]')
+    const forErase = $('[data-cut-for="erase restore paint clone"]'), forColour = $('[data-cut-for="colour"]')
     expect([forErase.hidden, forColour.hidden]).toEqual([false, true])
     $('[data-cut-tool="colour"] input').click()
     expect(mask.setMode).toHaveBeenLastCalledWith('colour')
@@ -146,6 +146,37 @@ describe('the eraser and its tools', () => {
     $('[data-cut-tool="restore"] input').click()
     expect(mask.setMode).toHaveBeenLastCalledWith('restore')
     expect(forErase.hidden).toBe(false)
+    $('[data-cut-back]').click()
+  })
+
+  it('paint: the swatch is a colour picker, the pipette fills it and goes back to the brush', async () => {
+    const { mountQuickMask } = await import('../../scene/quick-mask.js')
+    const { $ } = await open()
+    $('[data-cut-tool="paint"] input').click()
+    expect(mask.setMode).toHaveBeenLastCalledWith('paint')
+    const swatch = $('[data-cut-colour]')
+    expect(swatch.type).toBe('color')
+    expect($('[data-cut-for="paint"]').hidden).toBe(false)
+    swatch.value = '#336699'
+    swatch.dispatchEvent(new Event('input'))
+    expect(mask.setPaint).toHaveBeenLastCalledWith({ colour: [51, 102, 153] })
+    $('[data-cut-tool="pipette"] input').click()
+    mountQuickMask.mock.lastCall[4].onPick([10, 20, 30])   // a click in the picture with the pipette
+    expect(swatch.value).toBe('#0a141e')
+    expect(mask.setMode).toHaveBeenLastCalledWith('paint')
+    $('[data-cut-back]').click()
+  })
+
+  it('the clone stamp without a source says so on its tool, a moment after the press', async () => {
+    const { mountQuickMask } = await import('../../scene/quick-mask.js')
+    const { $ } = await open()
+    vi.useFakeTimers()
+    mountQuickMask.mock.lastCall[4].onNeedSource()
+    vi.runOnlyPendingTimers()
+    const tip = document.querySelector('.lp-tip')
+    expect(tip?.textContent).toContain('Alt-click where to copy from first.')
+    expect($('[data-cut-tool="clone"]').dataset.tooltip).toBe('Clone stamp')   // its own tooltip comes back
+    vi.useRealTimers()
     $('[data-cut-back]').click()
   })
 

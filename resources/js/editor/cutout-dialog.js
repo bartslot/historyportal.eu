@@ -33,6 +33,8 @@
  * its bundle and library asset, for the cut-out's real size in metres).
  */
 import { mountQuickMask, CLEAN_DEFAULTS } from '../scene/quick-mask.js'
+import { fromHex, toHex } from '../scene/paint-brush.js'
+import { flashTooltip } from '../tooltip.js'
 import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
@@ -186,7 +188,7 @@ export async function openCutout (target) {
     const ring = $('[data-cut-ring]')
     const ringPx = () => {
       if (tool === 'brush') return Number($('[data-cut-size]').value)
-      return tool === 'erase' || tool === 'restore' ? Number($('[data-cut-esize]').value) * (view?.view.z ?? 1) : 0
+      return ['erase', 'restore', 'paint', 'clone'].includes(tool) ? Number($('[data-cut-esize]').value) * (view?.view.z ?? 1) : 0
     }
     const showRing = (x, y) => {
       const px = ringPx()
@@ -242,6 +244,17 @@ export async function openCutout (target) {
     onSlide('size', (v) => { mask?.setBrushSize(v); peekRing() })
     onSlide('soft', (v) => mask?.setBrush({ softness: v / 100 }))
     onSlide('tol', (v) => mask?.setTolerance(v))
+    onSlide('opacity', (v) => mask?.setPaint({ opacity: v / 100 }))
+    // the swatch is the browser's own colour picker; the pipette fills it too
+    const colourInput = $('[data-cut-colour]')
+    colourInput.addEventListener('input', () => mask?.setPaint({ colour: fromHex(colourInput.value) }))
+    const picked = (rgb) => {
+      colourInput.value = toHex(rgb)
+      mask?.setPaint({ colour: rgb })
+      setTool('paint')
+    }
+    // the clone stamp pressed before it knows where to copy from: its tool says how, instead of painting nothing
+    const needSource = () => setTimeout(() => flashTooltip(root.querySelector('[data-cut-tool="clone"]'), t('Alt-click where to copy from first.')))
     let frame = 0
     const live = (name, group, apply) => onSlide(name, (v) => {
       group[name] = v
@@ -356,7 +369,7 @@ export async function openCutout (target) {
     const showPicture = () => {
       if (pictureAsked) return
       pictureAsked = true
-      mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), target.original, refresh, { surface: viewport })
+      mountQuickMask($('[data-cut-art]'), $('[data-cut-film]'), target.original, refresh, { surface: viewport, onPick: picked, onNeedSource: needSource })
         .then((m) => {
           mask = m
           $('[data-cut-loading]').remove()
@@ -373,6 +386,7 @@ export async function openCutout (target) {
           mask.setTolerance(TOLERANCE)
           mask.setEverywhere($('[data-cut-everywhere]').checked)
           mask.setBrushSize($('[data-cut-size]').value)
+          mask.setPaint({ colour: fromHex(colourInput.value), opacity: Number($('[data-cut-opacity]').value) / 100 })
           setTool(tool)
           mask.setClean(clean)   // opens already cleaned: the teacher only nudges
           // reopened after a save: Bring back reaches the picture from before any editing, when it can be found

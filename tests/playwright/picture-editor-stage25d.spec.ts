@@ -182,6 +182,59 @@ test.describe('a plain figure', () => {
   })
 })
 
+test.describe('paint, pipette and clone stamp', () => {
+  test.skip(!FIGURE.layer, 'set PW_EDITOR_FIGURE')
+
+  /** The picture's pixel under a point on screen. */
+  const pixelAt = (page: Page, x: number, y: number) => page.locator('[data-cut-art]').evaluate((c: HTMLCanvasElement, [x, y]) => {
+    const r = c.getBoundingClientRect()
+    return [...c.getContext('2d')!.getImageData(Math.floor(((x - r.left) * c.width) / r.width), Math.floor(((y - r.top) * c.height) / r.height), 1, 1).data]
+  }, [x, y])
+  const stroke = async (page: Page, from: number[], to: number[]) => {
+    await page.mouse.move(from[0], from[1])
+    await page.mouse.down()
+    await page.mouse.move(to[0], to[1], { steps: 12 })
+    await page.mouse.up()
+  }
+
+  test('the pipette picks a colour for the brush, paint undoes, the clone stamp asks for its source and copies it', async ({ page }) => {
+    await open(page, FIGURE)
+    await page.waitForFunction(() => !document.querySelector('[data-cut-loading]'), undefined, { timeout: 60_000 })
+    const art = (await page.locator('[data-cut-art]').boundingBox())!
+    const mid = [art.x + art.width * 0.5, art.y + art.height * 0.45]
+
+    await page.keyboard.press('i')
+    await page.mouse.click(mid[0], mid[1])
+    await expect(page.locator('[name="cut-tool"][value="paint"]')).toBeChecked()
+    expect(await page.locator('[data-cut-colour]').inputValue()).not.toBe('#0f172a')
+
+    await page.locator('[data-cut-colour]').evaluate((el: HTMLInputElement) => { el.value = '#ff0000'; el.dispatchEvent(new Event('input', { bubbles: true })) })
+    const before = await pixelAt(page, mid[0], mid[1])
+    await stroke(page, [mid[0] - 20, mid[1]], [mid[0] + 20, mid[1]])
+    const red = await pixelAt(page, mid[0], mid[1])
+    expect(red[0]).toBeGreaterThan(200)
+    expect(red[1]).toBeLessThan(60)
+    await page.locator('[data-cut-undo]').click()
+    expect(await pixelAt(page, mid[0], mid[1])).toEqual(before)
+
+    await page.keyboard.press('k')
+    await page.mouse.click(mid[0], mid[1])
+    await expect(page.locator('.lp-tip.is-visible')).toContainText(/Alt/)
+    expect(await pixelAt(page, mid[0], mid[1]), 'nothing painted without a source').toEqual(before)
+
+    const from = [art.x + art.width * 0.5, art.y + art.height * 0.3]
+    const to = [art.x + art.width * 0.5, art.y + art.height * 0.6]
+    await page.keyboard.down('Alt')
+    await page.mouse.click(from[0], from[1])
+    await page.keyboard.up('Alt')
+    const want = await pixelAt(page, from[0], from[1])
+    await stroke(page, to, [to[0] + 1, to[1]])
+    const got = await pixelAt(page, to[0], to[1])
+    expect(Math.hypot(got[0] - want[0], got[1] - want[1], got[2] - want[2]), 'the copy matches its source').toBeLessThan(30)
+    await discard(page)
+  })
+})
+
 test.describe('a sheet with something erased', () => {
   test.skip(!SPRITE.layer, 'set PW_EDITOR_SPRITE')
 

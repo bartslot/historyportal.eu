@@ -14,8 +14,11 @@ export const SOFTNESS = 20        // % of the eraser that fades
 
 export const icon = (d, size = 'h-5 w-5') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="${size}" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${d}"/></svg>`
 
-// Heroicons outline; Heroicons has no eraser, so that one is drawn on the same grid and stroke
+// Heroicons outline; Heroicons has no eraser and no clone stamp, so those are drawn on the same grid and stroke
 export const ICONS = {
+  paint: 'm16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125',
+  pipette: 'm15 11.25 1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 1 0-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25l-8.47 8.47c-.34.34-.8.53-1.28.53s-.94.19-1.28.53l-.97.97-.75-.75.97-.97c.34-.34.53-.8.53-1.28s.19-.94.53-1.28L12.75 9M15 11.25 12.75 9',
+  clone: 'M9.75 3.75h4.5v3.5a2.25 2.25 0 0 1-1.125 1.95V12h4.125a1.5 1.5 0 0 1 1.5 1.5v3H5.25v-3a1.5 1.5 0 0 1 1.5-1.5h4.125V9.2A2.25 2.25 0 0 1 9.75 7.25v-3.5ZM5.25 20.25h13.5',
   eye: 'M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   play: 'M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z',
   pause: 'M15.75 5.25v13.5m-7.5-13.5v13.5',
@@ -38,6 +41,9 @@ export const ICONS = {
 export const TOOLS = [
   ['erase', 'Erase', 'E'],
   ['restore', 'Bring back', 'B'],
+  ['paint', 'Paint', 'P'],
+  ['pipette', 'Pipette', 'I'],
+  ['clone', 'Clone stamp', 'K'],
   ['colour', 'Remove colour', 'W'],
   ['brush', 'Select a part', 'S'],
   ['move', 'Hand', 'H'],
@@ -119,10 +125,21 @@ export function markup (t, clean, modes = ['picture']) {
       <div class="flex flex-1 flex-col gap-3" data-mode-for="picture">
       <div class="flex flex-col gap-1">
         <h3 class="pb-1 text-sm font-semibold text-panel-value" data-cut-tool-name></h3>
-        <div data-cut-for="erase restore">
+        <div data-cut-for="paint" hidden>
+          <label class="flex h-8 items-center gap-2">
+            <span class="w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label">${t('Colour')}</span>
+            <input type="color" value="#0f172a" class="h-8 w-14 cursor-pointer rounded border bg-transparent p-0.5" style="border-color: var(--color-panel-border);" aria-label="${t('Colour')}" data-cut-colour>
+          </label>
+        </div>
+        <div data-cut-for="erase restore paint clone">
           ${slider('esize', t('Size'), 1, 60, 12, 'px')}
           ${slider('soft', t('Softness'), 0, 100, SOFTNESS, '%')}
         </div>
+        <div data-cut-for="paint clone" hidden>
+          ${slider('opacity', t('Opacity'), 1, 100, 100, '%')}
+        </div>
+        <p class="text-xs text-panel-hint" data-cut-for="clone" hidden>${t('Alt-click where to copy from, then paint.')}</p>
+        <p class="text-xs text-panel-hint" data-cut-for="pipette" hidden>${t('Click a colour in the picture to paint with it.')}</p>
         <div data-cut-for="colour" hidden>
           ${slider('tol', t('Tolerance'), 1, MAX_TOLERANCE, TOLERANCE)}
           <label class="flex cursor-pointer items-center gap-2 py-1 text-sm text-panel-value">

@@ -5,6 +5,7 @@
 //   bring  0 = leave, 255 = the original pixel comes back (Bring back also undoes what the clean-up took)
 // One stroke collects its coverage in `cov` (the highest dab per pixel, so going over a spot twice in one stroke does
 // not build up), and is worked out from the masks as they were when the stroke began.
+import { over } from './paint-brush.js';
 
 /** A brush radius small enough to mean "this one pixel". */
 const ONE_PIXEL = 1;
@@ -63,16 +64,22 @@ export function applyStroke(cov, box, w, from, to, restore = false) {
     }
 }
 
-/** The final pixels inside `box`, written into `out`: `base` (cuts + clean-up), with `bring` and `erase` on top. */
-export function compose(base, original, erase, bring, w, box, out) {
+/**
+ * The final pixels inside `box`, written into `out`: `base` (cuts + clean-up), the paint and clone stamp's `ink` over it
+ * (paint-brush.js, straight RGBA; optional), then `bring` and `erase` on top.
+ */
+export function compose(base, original, erase, bring, w, box, out, ink = null) {
+    const px = [0, 0, 0, 0];
     for (let y = box.y0; y <= box.y1; y++) {
         for (let p = y * w + box.x0, end = y * w + box.x1; p <= end; p++) {
             const i = p * 4;
             const b = bring[p] / 255;
-            const baseA = base[i + 3];
+            px[0] = base[i]; px[1] = base[i + 1]; px[2] = base[i + 2]; px[3] = base[i + 3];
+            if (ink && ink[i + 3] > 0) over(px, 0, ink[i], ink[i + 1], ink[i + 2], ink[i + 3], px);
+            const baseA = px[3];
             // a clear pixel's colour means nothing: what comes back has the original's own
             const k = baseA === 0 && b > 0 ? 1 : b;
-            for (let c = 0; c < 3; c++) out[i + c] = base[i + c] + (original[i + c] - base[i + c]) * k;
+            for (let c = 0; c < 3; c++) out[i + c] = px[c] + (original[i + c] - px[c]) * k;
             out[i + 3] = (baseA + (original[i + 3] - baseA) * b) * (erase[p] / 255);
         }
     }
