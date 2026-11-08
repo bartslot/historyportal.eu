@@ -6,7 +6,7 @@
 import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3,
+  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3, VertexBuffer,
   type LinesMesh, type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
@@ -15,6 +15,7 @@ import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
@@ -343,7 +344,12 @@ export class Stage {
       const uv = hit.getTextureCoordinates()
       if (!b || !uv || b.index < 0 || b.asset.tileable_x || ['sky', 'bg', 'ground'].includes(b.asset.layer)) continue
       if (isGroundStrip(b.asset) && (hit.pickedPoint?.y ?? 0) < 0) continue   // a strip's body under the floor is hidden by it
-      out.push({ index: b.index, asset: b.asset, u: uv.x, v: uv.y })
+      // a figure of parts is one mesh and a pick gives its nearest triangle, often a part's empty corner over paint: read every part there
+      const mesh = b.handle.mesh
+      const at = puppetOf(b.asset, b.layer) && hit.pickedPoint ? Vector3.TransformCoordinates(hit.pickedPoint, Matrix.Invert(mesh.getWorldMatrix())) : null
+      const positions = mesh.getVerticesData(VertexBuffer.PositionKind), uvs = mesh.getVerticesData(VertexBuffer.UVKind), indices = mesh.getIndices()
+      const parts = at && positions && uvs && indices ? uvsUnder(positions, uvs, indices, at.x, at.y) : []
+      for (const [u, v] of parts.length ? parts : [[uv.x, uv.y]]) out.push({ index: b.index, asset: b.asset, u, v })
     }
     return out
   }

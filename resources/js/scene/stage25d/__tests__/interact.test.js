@@ -286,6 +286,11 @@ describe('with something selected', () => {
     expect(pickOf([], 1).hit).toBe(null)
   })
 
+  it('counts a figure whose parts each report once as one picture', () => {
+    const parts = [{ index: 2, u: 0.1 }, { index: 2, u: 0.4 }]
+    expect(pickOf(parts, 2)).toEqual({ hit: parts[0], next: null })
+  })
+
   it('fades only nearer layers that overlap the selected one', () => {
     const box = (x0, x1, z) => ({ x0, x1, y0: 0, y1: 1, z })
     const boxes = [
