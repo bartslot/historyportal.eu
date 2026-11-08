@@ -126,6 +126,8 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       Object.assign(boneDot(j.name).style, { display: 'grid', left: `${j.tip[0] * r.width + r.left - h.left}px`, top: `${j.tip[1] * r.height + r.top - h.top}px` })
     }
     for (const [name, d] of boneDots) if (!shown.has(name)) d.style.display = 'none'
+    // a figure scales evenly: its corners do that, so the side handles make room for the bones (a forearm sits right there)
+    for (const side of handles.slice(4)) side.style.display = shown.size ? 'none' : ''
   }
 
   // The ground grid while editing (never in the player: this file is the editor's), drawn by the stage on the ground
@@ -247,9 +249,10 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       // clockwise on screen is clockwise for the bone, unless the figure shows mirrored; held to the joint's limits as it goes,
       // so turning back from past a limit moves at once
       const turned = drag.deg + turnBetween(drag.at, drag.last, [x, y]) * drag.sense
-      drag.deg = stage()?.boneLimit?.(drag.index, drag.name, clampTo(turned, -180, 180)) ?? turned
+      const limit = (deg) => stage()?.boneLimit?.(drag.index, drag.name, deg) ?? deg
+      drag.deg = limit(clampTo(turned, -180, 180))
       drag.last = [x, y]
-      drag.sent = e.shiftKey ? Math.round(drag.deg / 15) * 15 : Math.round(drag.deg * 10) / 10
+      drag.sent = limit(e.shiftKey ? Math.round(drag.deg / 15) * 15 : Math.round(drag.deg * 10) / 10)   // a snap stays inside the limit too
       onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { hold: true })   // shown at once, saved when let go
       return
     }

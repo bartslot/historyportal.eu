@@ -178,6 +178,22 @@ describe('stage25d canvas interaction', () => {
       expect(onChange.mock.calls.at(-1)[2]).toBeCloseTo(-15, 0)
     })
 
+    it('Shift snaps to 15 degrees without passing the joint\'s limit', () => {
+      const { host, api, onChange } = bone({ stage: { boneLimit: vi.fn((i, name, deg) => Math.max(-25, Math.min(25, deg))) } })
+      api.select(2)
+      const dot = host.querySelector('[data-bone-handle="head"]')
+      dot.dispatchEvent(pointer('pointerdown', 100 + 80, 50 + 67.5))
+      dot.dispatchEvent(Object.assign(pointer('pointermove', 100 + 102.5, 50 + 90), { shiftKey: true }))   // 90 asked, 25 allowed; 30 snapped
+      expect(onChange.mock.calls.at(-1)[2]).toBe(25)
+    })
+
+    it('hides the side scale handles while the bone handles show: a figure scales by its corners', () => {
+      const { host, api } = bone()
+      api.select(2)
+      const sides = [...host.querySelectorAll('[data-scale-handle]')].slice(4)
+      expect(sides.map((h) => h.style.display)).toEqual(['none', 'none', 'none', 'none'])
+    })
+
     it('a picture that is no figure of parts gets no bone handles', () => {
       const { host, api } = setup({ stage: { jointsOnScreen: vi.fn(() => null) } })
       api.select(2)

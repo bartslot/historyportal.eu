@@ -253,7 +253,8 @@ function carried(quad: [number, number][], v: number[], [x, y]: [number, number]
   return [v[0] + cos * dx - sin * dy, v[1] + sin * dx + cos * dy]
 }
 
-const GUARD_STEP = 3       // degrees a forearm is taken back at a time until it is clear of the body
+const TIP_REACH = 1.6   // a last bone's handle: this far from its joint, in steps of joint-to-middle-of-its-part
+const GUARD_STEP = 3      // degrees a forearm is taken back at a time until it is clear of the body
 const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow to hand, that have to stay out of it
 
 /** A puppet on the Rigby2D runtime: each part follows its own bone rigidly, turning under its rounded joint ends. */
@@ -350,9 +351,17 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
         const at = partOf(b.name)
         if (at < 0 || b.name === 'hips') return []   // the hips stay where they stand (puppet-pose movableBones)
         const quad = puppet.parts[at].quad, v = last.slice(at * 8, at * 8 + 8)
-        const child = puppet.bones.find((c) => c.parent === b.name && partOf(c.name) >= 0)
-        const mid: [number, number] = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2]
-        return [{ name: b.name, at: carried(quad, v, b.from), tip: carried(quad, v, child ? child.from : mid) }]
+        const children = puppet.bones.filter((c) => c.parent === b.name && partOf(c.name) >= 0)
+        const [[x0, y0], , [x1, y1]] = quad
+        const mid: [number, number] = [(x0 + x1) / 2, (y0 + y1) / 2]
+        // one bone hanging off it: the handle at that joint (an elbow); several (the upper body): the middle of its part;
+        // none (a head, a forearm without a hand): out toward its far end, so it stays clear of the joint's other handles
+        const reach: [number, number] = [
+          Math.min(x1, Math.max(x0, b.from[0] + (mid[0] - b.from[0]) * TIP_REACH)),
+          Math.min(y1, Math.max(y0, b.from[1] + (mid[1] - b.from[1]) * TIP_REACH)),
+        ]
+        const tip = children.length === 1 ? children[0].from : children.length ? mid : reach
+        return [{ name: b.name, at: carried(quad, v, b.from), tip: carried(quad, v, tip) }]
       })
     },
   }
