@@ -154,9 +154,9 @@ export function clearOf (at, box, others, view, margin, mouthX = null) {
 export const STAGE25D_FIGURE = 'stage25d:'
 
 /** The drawn box of a figure layer (ArtworkOverlay marks each layer node with its asset id). */
-const defaultFigureBox = (assetId) => {
+const defaultFigureBox = (assetId, figure = null) => {
   // A figure painted on the 2.5D stage (kind stage25d): 'stage25d:<char>', its head box comes from the stage.
-  if (typeof assetId === 'string' && assetId.startsWith(STAGE25D_FIGURE)) return window.__stage25d?.figureBox?.(assetId.slice(STAGE25D_FIGURE.length)) ?? null
+  if (typeof assetId === 'string' && assetId.startsWith(STAGE25D_FIGURE)) return window.__stage25d?.figureBox?.(assetId.slice(STAGE25D_FIGURE.length), !!figure?.whole) ?? null
   const img = document.querySelector(`[data-layer-id="art_${assetId}"] img`)
 
   return img ? img.getBoundingClientRect() : null
@@ -416,7 +416,7 @@ export class BalloonLayer {
 
   /** The speaker's mouth in host px, from where its figure is drawn right now; null = off-frame. */
   _mouth (line) {
-    const box = line.figure ? this.figureBox(line.figure.asset_id) : null
+    const box = line.figure ? this.figureBox(line.figure.asset_id, line.figure) : null
     if (!box || !box.width) return null
     const hr = this.host.getBoundingClientRect()
     const [fx, fy] = line.figure.mouth

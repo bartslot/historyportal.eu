@@ -26,6 +26,8 @@ final class StageSet
     /** Poses a scene's words can ask for; a figure stands otherwise. */
     private const POSES = ['walk', 'carry', 'push', 'dig', 'kneel', 'sit', 'point'];
 
+    private const BARE_FLOOR = '#d8cfbc';
+
     /** People from a later time painted into a bundle for one lesson (nl-prehistory: the 1912 dig); only when named. */
     private const CAMEOS = ['holwerda', 'titia'];
 
@@ -36,6 +38,14 @@ final class StageSet
         $assets = collect(LibraryBundle::assets($bundle));
 
         return self::stage($bundle, $id, self::backdrop($assets, []));
+    }
+
+    /** @return array<string,mixed> config.stage25d of a scene the teacher fills: no sky, a bare floor (a colour is no picture) */
+    public static function blank(string $bundle, string $id): array
+    {
+        LibraryBundle::assertName($bundle);
+
+        return self::stage($bundle, $id, ['ground' => self::BARE_FLOOR]);
     }
 
     /** @return array<string,mixed> config.stage25d for a scene the pipeline planned, its pictures picked by its words */

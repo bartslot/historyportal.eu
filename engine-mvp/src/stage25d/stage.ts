@@ -58,6 +58,7 @@ export class Stage {
   private strewKey = ''
   private smoke: ReturnType<typeof makeSmoke>[] = []
   private birds: ReturnType<typeof makeBirds>
+  private hasSky = true
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
   private nearAsset: Asset | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
@@ -154,6 +155,7 @@ export class Stage {
     const token = ++this.buildToken
     const next: Built[] = []
     const wanted: { layer: SceneLayer; order: number; index: number }[] = []
+    this.hasSky = !!s.set.sky
     if (s.set.sky) wanted.push({ layer: skyLayerOf(s), order: 0, index: -1 })
     const perDepth: Record<string, number> = { sky: 1 }
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
@@ -563,7 +565,7 @@ export class Stage {
     this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
     this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
-    this.birds.update(clock, lookNum(this.look, 'birds'))
+    this.birds.update(clock, this.hasSky ? lookNum(this.look, 'birds') : 0)   // no birds in a sky that is not there
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land)

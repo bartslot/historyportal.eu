@@ -56,6 +56,20 @@
          data-flag="{{ $lesson->territoryFlagUrl() }}"
          wire:ignore>
         <canvas id="lesson-canvas" class="w-full h-full block"></canvas>
+        {{-- A new 3D scene is two empty parts: the plus on each opens the pictures that fit it. --}}
+        <div x-data="{ parts: [], sync () { this.parts = window.__stage25d?.empty ?? [] }, fill (part) { window.Alpine.store('view').showTab('icons'); this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: part, fill: part } }))) } }"
+             x-init="sync()" x-on:stage25d-synced.window="sync()" x-show="$store.view.stage25d && parts.length" x-cloak data-stage25d-empty
+             class="pointer-events-none absolute inset-0 z-[3] flex flex-col">
+            @foreach (['sky' => __('Sky'), 'ground' => __('Ground')] as $part => $label)
+                <div class="flex flex-1 items-center justify-center">
+                    <button type="button" x-show="parts.includes(@js($part))" x-on:click="fill(@js($part))" data-stage25d-fill="{{ $part }}"
+                            class="pointer-events-auto flex size-40 flex-col items-center justify-center gap-1 rounded-box border border-dashed border-base-100/40 text-base-100 transition-colors hover:border-base-100 hover:bg-base-100/10">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-20" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <span class="text-sm">{{ $label }}</span>
+                    </button>
+                </div>
+            @endforeach
+        </div>
         {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
         <div class="lp-grain pointer-events-none absolute inset-0 z-3"></div>
         {{-- Scene overlay (flag + territory title). z-[6] so it sits ABOVE the map preview (z-[5]),
@@ -1483,15 +1497,20 @@
     // selected layer, or adds a layer when none is selected.
     window.stage25dAssets = function stage25dAssets() {
         return {
-            lib: null, kind: 'all', query: '', selected: null,
+            lib: null, kind: 'all', query: '', selected: null, fill: null,
             labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
-            sync() { this.lib = window.__stage25d?.library?.() ?? null; this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null; },
+            sync() {
+                this.lib = window.__stage25d?.library?.() ?? null;
+                this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null;
+                if (!(window.__stage25d?.empty ?? []).includes(this.fill)) this.fill = null;   // that part has its picture now, or this is another scene
+            },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
-            replace(kind) { this.sync(); this.query = ''; this.kind = this.kinds.includes(kind) ? kind : 'all'; },
+            replace(kind, fill = null) { this.fill = fill; this.sync(); this.query = ''; this.kind = this.kinds.includes(kind) ? kind : 'all'; },
             // A ground band takes only strips of ground and the sky only skies (the stage refuses anything else): selected,
             // those are the one shelf. Everything else picks from every shelf.
             get kinds() {
+                if (this.fill) return [this.fill];
                 if (/^band-\d+$/.test(String(this.selected))) return ['band'];
                 if (this.selected === 'sky') return ['sky'];
                 return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.shelf))];
@@ -1510,6 +1529,8 @@
             pick(tile) {
                 const stage = window.__stage25d;
                 if (!stage) return;
+                if (this.fill === 'sky') return void stage.swapAsset('sky', tile.asset.id);
+                if (this.fill === 'ground') return void stage.setGroundSlots([{ asset: tile.asset.id, from_m: 0 }]);
                 const at = stage.selection;
                 if (stage.backdrop) stage.swapAsset(stage.backdrop, tile.asset.id);
                 else if (at !== null && tile.series && stage.seriesOfLayer?.('layer-' + at)) stage.switchCharacter('layer-' + at, tile.series);
@@ -2891,7 +2912,7 @@
                     <x-lesson.scene-type-thumb kind="video" />
                     <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
                 </button>
-                {{-- A 3D scene: only when the lesson's era has a painted stage bundle to build it from. --}}
+                {{-- A 3D scene: whenever there is a painted stage bundle to build it from. --}}
                 @if ($this->eraStageBundle && ($lesson->game_type ?? null) !== 'voyage')
                     <button type="button" wire:click="addScene('stage25d')" data-add-stage25d
                             class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">

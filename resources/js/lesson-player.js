@@ -1100,6 +1100,7 @@ Alpine.data('lessonGame', (lesson) => ({
           shots: scene.shots || [],
           lines: this._splitLines(scene.config?.lines),
           matte: scene.background_color || null,
+          gradient: scene.background_gradient || null,
         })
         // The split stage is opaque from its first frame (gutter colour), so the flat layers under
         // it can go now. Left up, the next scene's fade or crossfade showed their old picture.

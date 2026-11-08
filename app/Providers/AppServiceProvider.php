@@ -46,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // a local server on any port shows its own pictures, not those of whichever port APP_URL names
+        if ($this->app->isLocal() && ! $this->app->runningInConsole()) {
+            config(['filesystems.disks.public.url' => request()->getSchemeAndHttpHost().'/storage']);
+        }
+
         // `artisan serve` hands the built-in server a scrubbed environment, keeping only the
         // variables on this list. PHP_INI_SCAN_DIR was not on it, so the dev server ran on the
         // compiled defaults — a 2 MB upload ceiling — and every image past that failed in the

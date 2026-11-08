@@ -518,6 +518,13 @@ export async function createStage25d (host, opts = {}) {
       pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !backdrop)
       if (backdrop) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${backdrop}` } }))
     },
+    /** The parts of the scene with no picture yet: 'sky', 'ground'. */
+    get empty () {
+      const set = cfg?.set
+      if (!set) return []
+      const bare = String(set.ground ?? '').startsWith('#') && !set.groundSlots?.length && !set.groundBands?.length
+      return [...(set.sky ? [] : ['sky']), ...(bare ? ['ground'] : [])]
+    },
     get skySelected () { return backdrop === 'sky' },
     /** The selected backdrop row ('sky', 'band-<n>'), or null. */
     get backdrop () { return backdrop },
@@ -778,7 +785,8 @@ export async function createStage25d (host, opts = {}) {
       if (!cfg || !Array.isArray(rows)) return
       const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)) }))
       const keep = hidden
-      await api.show({ ...cfg, look: lookNow, set: { ...liveSet(), groundSlots: slots } })   // the sliders' live values too
+      const { ground, ...set } = liveSet()   // a bare floor's colour would wash over the picture
+      await api.show({ ...cfg, look: lookNow, set: { ...set, ...(String(ground ?? '').startsWith('#') ? {} : { ground }), groundSlots: slots } })   // the sliders' live values too
       hidden = keep
       redraw()
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
@@ -827,9 +835,14 @@ export async function createStage25d (host, opts = {}) {
     /** The config on stage now (tests and the editor read it). */
     get config () { return cfg },
     /** The head of the figure that speaks as `char`, as a DOMRect on screen (balloon tails point at it); null when out of frame. */
-    figureBox (char) {
+    figureBox (char, whole = false) {
       const layer = layers.find(l => l.figure === char)
       if (!layer?.asset) return null
+      if (whole) {   // the whole picture as drawn now: a mouth found on the picture lands on it in any pose
+        const b = stage?.layerBox(layers.indexOf(layer))
+        const c = canvas.getBoundingClientRect()
+        return b ? new DOMRect(c.left + b.x0 * c.width, c.top + b.y0 * c.height, (b.x1 - b.x0) * c.width, (b.y1 - b.y0) * c.height) : null
+      }
       const head = headOnScreen(scene, layer, heights.get(layer.asset) ?? 1.7, nowT())
       if (!head) return null
       const r = canvas.getBoundingClientRect()

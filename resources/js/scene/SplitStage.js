@@ -14,6 +14,7 @@ import { ArtworkOverlay } from './ArtworkOverlay.js'
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
 import { backdropLayers, isClipartLayer } from './layer-filters.js'
 import { cropImage, fade, backgroundSource } from './background-crop.js'
+import { gradientCss } from './background-gradient.js'
 import { splitLayout, focusPosition, normalizeSplit, normalizeFocus, paneCount, moveDivider, stepDivider, panFocus, wheelZoom, panelForLine } from './split-layout.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -73,10 +74,10 @@ export class SplitStage {
   }
 
   /**
-   * @param {{split: {layout:string, at:number[]}, shots: object[], lines?: object[], matte?: string|null,
+   * @param {{split: {layout:string, at:number[]}, shots: object[], lines?: object[], matte?: string|null, gradient?: object|null,
    *          loop?: boolean, selected?: number|null}} scene
    */
-  show ({ split, shots = [], lines = [], matte = null, loop = false, selected = null } = {}) {
+  show ({ split, shots = [], lines = [], matte = null, gradient = null, loop = false, selected = null } = {}) {
     this.destroy()
     this._split = normalizeSplit(split)
     if (!this._split) return
@@ -86,7 +87,7 @@ export class SplitStage {
     this.host.appendChild(root)
     this._root = root
 
-    this.panels = Array.from({ length: paneCount(this._split) }, (_, i) => this._panel(root, shots[i] || {}, i, matte, loop))
+    this.panels = Array.from({ length: paneCount(this._split) }, (_, i) => this._panel(root, shots[i] || {}, i, gradientCss(gradient) || matte, loop))
     this._dividers = []
     this.setLines(lines)
     this._layout()
