@@ -81,8 +81,8 @@ class SeriesAndGroupsTest extends TestCase
         $this->assertTrue($line['group']);
         $this->assertSame('stage25d:dorpeling-a-2', $line['figure']['asset_id']);
         $this->assertSame(1, $line['figure']['facing']);
-        $this->assertGreaterThan(0, $line['at'][0], 'in front of a face that looks right');
-        $this->assertLessThan(0, $line['at'][1], 'above the mouth');
+        $this->assertArrayNotHasKey('at', $line, 'it finds its own place above the mouth');
+        $this->assertTrue($line['figure']['whole']);
 
         // the layer that already speaks keeps its handle; facing left puts the balloon on the left
         $this->travel(2)->seconds();   // edits closer together are one undo step (SceneHistory::MERGE_SECONDS)
@@ -90,7 +90,7 @@ class SeriesAndGroupsTest extends TestCase
         $config = $scene->fresh()->config;
         $this->assertSame('dorpeling-a', $config['stage25d']['set']['layers'][0]['figure']);
         $this->assertSame(-1, $config['lines'][1]['figure']['facing']);
-        $this->assertLessThan(0, $config['lines'][1]['at'][0]);
+        $this->assertArrayNotHasKey('at', $config['lines'][1]);
 
         $editor->call('undoLastEdit');
         $this->assertCount(1, $scene->fresh()->config['lines']);
@@ -105,9 +105,9 @@ class SeriesAndGroupsTest extends TestCase
         $scene = $this->scene([['asset' => 'fig-dorpeling-a-stand-01', 'depth' => 'mid', 'x' => 0.4]]);
         $this->editor($scene)->call('addStage25dBalloon', 0)->call('addStage25dBalloon', 0);
 
-        [$first, $second] = $scene->fresh()->config['lines'];
-        $this->assertEqualsWithDelta($first['at'][1] - 0.1, $second['at'][1], 0.001, 'a step further above the mouth');
-        $this->assertNotEquals($first['at'][0], $second['at'][0]);
+        $lines = $scene->fresh()->config['lines'];
+        $this->assertCount(2, $lines);
+        $this->assertArrayNotHasKey('at', $lines[1], 'the balloon layer keeps them clear of each other');
     }
 
     public function test_only_a_character_takes_a_grouped_balloon(): void

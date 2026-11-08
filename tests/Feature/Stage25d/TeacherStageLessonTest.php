@@ -127,7 +127,9 @@ class TeacherStageLessonTest extends TestCase
         $scene = $lesson->scenes()->where('kind', 'stage25d')->sole();
         $this->assertSame('ready', $scene->status);
         $this->assertSame('nl-prehistory', $scene->config['stage25d']['bundle']);
-        $this->assertSame('meadow-band-01', $scene->config['stage25d']['set']['groundBands'][0]['asset']);
+        $this->assertStringStartsWith('#', $scene->config['stage25d']['set']['ground']);   // a new 3D scene is empty: the teacher picks a sky and a ground
+        $this->assertArrayNotHasKey('sky', $scene->config['stage25d']['set']);
+        $this->assertSame([], $scene->config['stage25d']['set']['layers']);
     }
 
     public function test_a_scene_is_2d_or_3d_from_the_moment_it_is_made_and_the_editor_cannot_change_that(): void

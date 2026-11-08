@@ -5297,8 +5297,8 @@ class Step3SceneConfigurator extends Component
             'status' => in_array($kind, ['map', 'voyage', 'gallery', 'video'], true) ? 'ready' : 'pending',
         ];
 
-        // A 3D scene: the era's painted backdrop (sky, far ground, a ground band) on the house camera, born ready;
-        // the teacher drags the rest in from the Decor shelf.
+        // A 3D scene: two empty parts, the sky and the ground, on the house camera, born ready; a plus on each opens
+        // the pictures that fit (stage25d `empty`), the rest comes from the Decor shelf.
         if ($kind === 'stage25d') {
             $bundle = $this->eraStageBundle;
             if ($bundle === null) {
@@ -5308,7 +5308,7 @@ class Step3SceneConfigurator extends Component
                 ...$payload,
                 'status' => 'ready',
                 'duration_seconds' => 8,
-                'config' => ['stage25d' => StageSet::starter($bundle, 's'.$next)],
+                'config' => ['stage25d' => StageSet::blank($bundle, 's'.$next)],
             ]);
             $this->placeSceneAfterSelected($scene, $insertAfterSceneId);
             $this->selectSceneInternal($scene->id);

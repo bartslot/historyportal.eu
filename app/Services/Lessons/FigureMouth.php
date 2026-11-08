@@ -80,14 +80,25 @@ final class FigureMouth
     /** @return array{0: float, 1: float} */
     public static function predict(string $ref): array
     {
-        $file = self::file($ref);
-        $img = @imagecreatefromstring((string) file_get_contents($file))
-            ?: throw new InvalidArgumentException("FigureMouth: cannot read {$file}.");
+        return self::onPicture(self::file($ref), self::pose($ref));
+    }
+
+    /**
+     * The predicted mouth on any picture file, for pictures outside resources/icons (the painted stage's).
+     *
+     * @return array{0: float, 1: float}
+     */
+    public static function onPicture(string $file, string $pose = 'standing'): array
+    {
+        $img = is_file($file) ? @imagecreatefromstring((string) file_get_contents($file)) : false;
+        if (! $img) {
+            throw new InvalidArgumentException("FigureMouth: cannot read {$file}.");
+        }
         $w = imagesx($img);
         $h = imagesy($img);
 
         [$top, $bottom] = self::drawnRows($img, $w, $h);
-        $pxPerCm = ($bottom - $top + 1) / self::SHOWN_CM[self::pose($ref)];
+        $pxPerCm = ($bottom - $top + 1) / self::SHOWN_CM[$pose];
         $mouthY = $top + self::MOUTH_CM * $pxPerCm;
         $x = self::bandCentre($img, $w, $top, (int) $mouthY);
 

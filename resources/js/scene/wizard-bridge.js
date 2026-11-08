@@ -904,6 +904,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             shots,
             lines: payload.config?.lines || [],
             matte: payload.backgroundColor || null,
+            gradient: payload.backgroundGradient ?? payload.config?.background_gradient ?? null,
             loop: true,
             selected: panel,
         })

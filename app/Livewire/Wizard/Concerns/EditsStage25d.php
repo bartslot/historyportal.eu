@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Services\Lessons\FigureMouth;
 use App\Services\Editor\Cutouts;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
 use App\Services\Support\SpeechBalloons;
+use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use Livewire\Attributes\On;
 
 /**
@@ -126,6 +129,9 @@ trait EditsStage25d
     }
 
     /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
+    /** From the middle of the head to the nose, as a share of the figure's height. */
+    private const NOSE_SHARE = 0.03;
+
     private const CAMERA_MAX_SHOTS = 50;
 
     private const CAMERA_MOTION_KINDS = ['none', 'sway', 'handheld', 'shake'];
@@ -284,6 +290,9 @@ trait EditsStage25d
             unset($config['stage25d']['set']['groundSlots']);
         } else {
             $config['stage25d']['set']['groundSlots'] = $clean;
+            if (str_starts_with((string) ($config['stage25d']['set']['ground'] ?? ''), '#')) {
+                unset($config['stage25d']['set']['ground']);   // a bare floor's colour would wash over the picture
+            }
         }
         $this->storeStage25dConfig($scene, $config);
     }
@@ -442,7 +451,6 @@ trait EditsStage25d
     }
 
     /** Where a grouped balloon's middle sits from its speaker's mouth, shares of the stage: up, in front of the face. */
-    private const BALLOON_OFFSET = [0.09, -0.16];
 
     /**
      * A speech balloon grouped with a character on the stage (config.lines): its tail points at the figure's head and it
@@ -464,12 +472,12 @@ trait EditsStage25d
         $facing = LibraryBundle::facingOf($asset) === 'left' ? -1 : 1;
         $lines = array_values((array) ($config['lines'] ?? []));
         $assetId = 'stage25d:'.$handle;
-        $own = collect($lines)->where('figure.asset_id', $assetId)->count();
         $lines[] = [
-            ...SpeechBalloons::make($kind, null),
-            'figure' => ['asset_id' => $assetId, 'mouth' => [0.5, 0.3], 'facing' => $facing],
+            ...array_diff_key(SpeechBalloons::make($kind, null), ['at' => true]),
+            // `whole`: the mouth is on the whole picture, not on the head box the imported lines use. No `at`: the balloon
+            // finds its own place above the mouth, on the side the face looks to, or the other when that is off the stage
+            'figure' => ['asset_id' => $assetId, 'mouth' => self::mouthOn((string) $scene->config['stage25d']['bundle'], $asset, $facing), 'facing' => $facing, 'whole' => true],
             'group' => true,
-            'at' => SpeechBalloons::stacked([self::BALLOON_OFFSET[0] * $facing, self::BALLOON_OFFSET[1]], $own, $facing, -1),
         ];
         $config['lines'] = $lines;
         $scene->update(['config' => $config]);
@@ -479,6 +487,24 @@ trait EditsStage25d
         $this->panelView = 'scene';
         $this->selectSceneInternal($scene->id);
         $this->dispatch('balloon:added', id: $this->activeBalloonId);
+    }
+
+    /**
+     * Where a balloon's tail points on a figure's picture (0..1): the mouth, a little towards the nose.
+     *
+     * @param  array<string,mixed>  $asset
+     * @return array{0: float, 1: float}
+     */
+    private static function mouthOn(string $bundle, array $asset, int $facing): array
+    {
+        try {
+            [$x, $y] = FigureMouth::onPicture(Storage::disk('public')->path((string) LibraryBundle::assetPath($bundle, (string) $asset['id'])));
+        } catch (InvalidArgumentException) {
+            [$x, $y] = [0.5, 0.13];
+        }
+        $tall = isset($asset['w'], $asset['h']) && $asset['w'] > 0 ? $asset['h'] / $asset['w'] : 1.0;
+
+        return [round(max(0.0, min(1.0, $x + $facing * self::NOSE_SHARE * $tall)), 4), $y];
     }
 
     /**

@@ -106,6 +106,15 @@ describe('a pane picture', () => {
 })
 
 describe('a panel colour', () => {
+  it('paints the scene gradient on a panel without its own colour', () => {
+    const host = document.createElement('div')
+    const s = new SplitStage(host)
+    s.show({ split: { dir: 'v', at: 0.5 }, matte: '#7f1414', gradient: { from: '#7f1414', to: '#000000', angle: 180 }, shots: [{ layers: [] }, { layers: [], background_color: '#123456' }] })
+    const [a, b] = host.querySelectorAll('.lp-split__panel')
+    expect(a.style.background).toContain('linear-gradient')
+    expect(b.style.background).not.toContain('linear-gradient')
+  })
+
   it('fills that panel only; the other keeps the scene matte', () => {
     const host = document.createElement('div')
     document.body.appendChild(host)

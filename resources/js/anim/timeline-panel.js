@@ -1472,6 +1472,8 @@ export const animationTimeline = (config = {}) => ({
     else if (kind === 's25') window.__stage25d?.select?.(id)
     else if (kind === 's25cam') window.__stage25d?.select?.('camera')
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
+    // the background has no selection of its own: choosing its row lets go of whatever was selected on the stage
+    else if (kind === 'bg') window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `bg_${id}` } }))
   },
 
   // ── Bars. Drag one to move the whole animation; click between two keys to choose easing ────
