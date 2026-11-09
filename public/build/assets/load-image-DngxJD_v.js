@@ -1,0 +1,1 @@
+async function i(a){const n=new URL(a,location.href),o=new Image;return o.crossOrigin="anonymous",o.src=n.origin!==location.origin&&n.pathname.startsWith("/storage/")?location.origin+n.pathname:n.href,await o.decode(),o}export{i as l};
