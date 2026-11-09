@@ -74,9 +74,9 @@ final class SpeechBalloons
      * @param  array{0: float, 1: float}  $at
      * @return array{0: float, 1: float}
      */
-    public static function stacked(array $at, int $nth, int $across = 1, int $down = 1): array
+    public static function stacked(array $at, int $nth): array
     {
-        return [round($at[0] + $across * 0.04 * $nth, 3), round($at[1] + $down * 0.1 * ($nth % 3), 3)];
+        return [round($at[0] + 0.04 * $nth, 3), round($at[1] + 0.1 * ($nth % 3), 3)];
     }
 
     /** @return array<string, mixed> */

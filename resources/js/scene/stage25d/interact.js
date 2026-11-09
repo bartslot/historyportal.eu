@@ -115,7 +115,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid ${SKY};box-sizing:border-box;`
     d.appendChild(dot)
     d.addEventListener('pointerdown', onBoneDown(name))
-    for (const type of ['pointermove', 'pointerup', 'pointercancel']) d.addEventListener(type, type === 'pointermove' ? onMoveEvent : onUp)
+    follow(d)
     bones.appendChild(d)
     boneDots.set(name, d)
     return d
@@ -316,11 +316,12 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onOther = (e) => { if (selected !== null && e.detail?.id !== `s25_layer-${selected}`) { selected = null; place() } }
 
   canvas.addEventListener('pointerdown', onDown)
-  for (const el of [canvas, ...handles, grip]) {
+  function follow (el) {
     el.addEventListener('pointermove', onMoveEvent)
     el.addEventListener('pointerup', onUp)
     el.addEventListener('pointercancel', onUp)
   }
+  [canvas, ...handles, grip].forEach(follow)
   handles.forEach((h) => h.addEventListener('pointerdown', onHandleDown('scale')))
   grip.addEventListener('pointerdown', onHandleDown('rotate'))
   window.addEventListener('scene-object-selected', onOther)

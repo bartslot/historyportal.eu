@@ -128,10 +128,10 @@ trait EditsStage25d
         $this->storeStage25dLayers($scene, $layers);
     }
 
-    /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
     /** From the middle of the head to the nose, as a share of the figure's height. */
     private const NOSE_SHARE = 0.03;
 
+    /** How far a framed camera may go (metres, lens in degrees): framing.js CAM_RANGE. */
     private const CAMERA_MAX_SHOTS = 50;
 
     private const CAMERA_MOTION_KINDS = ['none', 'sway', 'handheld', 'shake'];
@@ -449,8 +449,6 @@ trait EditsStage25d
     {
         return $z < 4.9 ? 'near' : ($z < 12.4 ? 'fg' : ($z < 39.2 ? 'mid' : 'bg'));
     }
-
-    /** Where a grouped balloon's middle sits from its speaker's mouth, shares of the stage: up, in front of the face. */
 
     /**
      * A speech balloon grouped with a character on the stage (config.lines): its tail points at the figure's head and it

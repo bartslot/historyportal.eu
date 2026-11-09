@@ -124,7 +124,7 @@ let flashTimer = 0
  * A control's tooltip from code, with these words, for a moment: a tool that cannot work yet says what it needs (the
  * clone stamp before it has a source). Call it after the press that asked: a press hides every tooltip.
  */
-export function flashTooltip (el, text, ms = FLASH_MS) {
+export function flashTooltip (el, text) {
   if (!el) return
   const was = el.dataset.tooltip
   el.dataset.tooltip = text
@@ -132,7 +132,7 @@ export function flashTooltip (el, text, ms = FLASH_MS) {
   if (was === undefined) delete el.dataset.tooltip
   else el.dataset.tooltip = was
   clearTimeout(flashTimer)
-  flashTimer = setTimeout(() => { if (current === el) hide() }, ms)
+  flashTimer = setTimeout(() => { if (current === el) hide() }, FLASH_MS)
 }
 
 export function initTooltips () {
