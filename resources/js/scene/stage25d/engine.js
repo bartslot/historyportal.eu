@@ -90,7 +90,7 @@ function libraryOf (bundle) {
 /** The director's scene fields the stage reads, from config.stage25d. */
 export const stageScene = (cfg) => ({
   id: cfg.id ?? 'scene',
-  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null, groundBands: [], near: null } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
+  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
   camera: cfg.camera ?? null,
   camera_more: cfg.camera_more ?? [],
   camera_motion: cfg.camera_motion ?? null,
@@ -353,7 +353,6 @@ export async function createStage25d (host, opts = {}) {
         startLoop()
       }
       lookNow = { ...(cfgNow.look ?? {}) }
-      stage.bare = !!cfgNow.world?.src   // a world is the floor and the sky: the stage's own hide
       stage.setLook(lookNow)
       const next = stageScene(cfgNow)
       await stage.build(next, lib)
@@ -852,7 +851,7 @@ export async function createStage25d (host, opts = {}) {
     /** The floor's ground pictures near to far (rows: the scene's own, else its one ground) and the bundle's grounds to
      *  pick from (options), at most `max` rows. */
     groundSlots () {
-      if (!libData || !cfg || cfg.world?.src) return null   // a world is the floor
+      if (!libData || !cfg) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from }))
       const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
@@ -885,7 +884,7 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, ...(cfg?.world?.src ? { groundDetail: false, groundWash: false, groundGrain: false, grass: false, grassSway: false, horizonBushes: false } : {}) }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }

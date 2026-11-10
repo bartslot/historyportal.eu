@@ -1,6 +1,7 @@
 /**
  * A Gaussian-splat world on the stage (config.stage25d.world: { src, x, y, z, scale, rot }), e.g. a World Labs
- * world, that builds itself around the class over the scene's first seconds (look.worldReveal, 0 = there at once).
+ * world, under the scene the teacher made (Bart, 2026-11-10): it takes the painted sky's place, and the floor, the near
+ * band, the figures and every layer stay on top of it. It builds itself around the class over the scene's first seconds (look.worldReveal, 0 = there at once).
  * The splat loader only downloads for a scene that has a world.
  */
 
@@ -45,6 +46,7 @@ export async function loadWorld (babylonScene, world) {
   ])
   const { meshes } = await ImportMeshAsync(world.src, babylonScene, { pluginExtension: '.spz' })   // a signed URL has no .spz at its end
   const mesh = meshes.find((m) => m.getClassName?.().startsWith('GaussianSplatting')) ?? meshes[0]
+  mesh.alphaIndex = -1   // drawn before every picture of the set: the world lies under the scene, the scene on top
   const axes = mesh.scaling.clone()   // the loader's own axis flip, kept under every size
   const place = (w) => {
     const p = worldPlace(w)
