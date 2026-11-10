@@ -152,11 +152,11 @@ describe('inkLevel and nearOptions', () => {
   })
 })
 
-describe('defaultNear: a scene without set.near gets the bundle near ground', () => {
+describe('defaultNear: only the near band a scene names', () => {
   const a = (id: string, layer: Asset['layer']): Asset => ({ id, layer, tags: [], file: '', w: 4096, h: 630, anchor: [0.5, 1], height_m: 5, motion: 'none' })
   const lib = { version: 1, bundle: 'b', style: '', assets: [a('z-heath', 'near_ground'), a('a-meadow', 'near_ground'), a('quay', 'fg')] } as Library
-  it('first near_ground by id; its own choice wins; none = none', () => {
-    expect(defaultNear(undefined, lib)).toBe('a-meadow')
+  it('none picked for it; its own choice wins; none = none', () => {
+    expect(defaultNear(undefined, lib)).toBeNull()
     expect(defaultNear('quay', lib)).toBe('quay')
     expect(defaultNear('none', lib)).toBeNull()
     expect(defaultNear(undefined, { ...lib, assets: [a('quay', 'fg')] })).toBeNull()

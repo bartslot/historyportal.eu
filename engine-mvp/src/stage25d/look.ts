@@ -31,7 +31,7 @@ export const STAGE_SHEET: Record<string, number> = {
   // amount), bushes breaking the horizon. On for every scene, the teacher turns each down or off.
   groundWash: 0.5, groundGrain: 1, grass: 0.5, grassSway: 0.15, horizonBushes: 0.5,
   edgeSoft: 0.8, grounding: 0.8, grassOverlap: 0.6, sunLight: 0.6, castShadow: 0.55,
-  cloudDrift: 0.4, smoke: 0.6, birds: 0.4,
+  cloudDrift: 0.4,
   // a splat world (config.stage25d.world) builds itself around the class over this many seconds; 0 = there at once
   worldReveal: 7,
   // ...and is painted in our style (flat colour, calmer, its far edge left to the paper); 0 = as captured

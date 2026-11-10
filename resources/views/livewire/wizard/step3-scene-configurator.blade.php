@@ -60,7 +60,7 @@
         <div x-data="{ parts: [], sync () { this.parts = window.__stage25d?.empty ?? [] }, fill (part) { window.Alpine.store('view').showTab('icons'); this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: part, fill: part } }))) } }"
              x-init="sync()" x-on:stage25d-synced.window="sync()" x-show="$store.view.stage25d && parts.length" x-cloak data-stage25d-empty
              class="pointer-events-none absolute inset-0 z-[3] flex flex-col">
-            @foreach (['sky' => __('Sky'), 'ground' => __('Ground')] as $part => $label)
+            @foreach (['sky' => __('Sky'), 'ground' => __('Terrain')] as $part => $label)
                 <div class="flex flex-1 items-center justify-center">
                     <button type="button" x-show="parts.includes(@js($part))" x-on:click="fill(@js($part))" data-stage25d-fill="{{ $part }}"
                             class="pointer-events-auto flex size-40 flex-col items-center justify-center gap-1 rounded-box border border-dashed border-base-100/40 text-base-100 transition-colors hover:border-base-100 hover:bg-base-100/10">
@@ -1401,7 +1401,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1413,7 +1413,7 @@
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; this.world = stage.worldInfo?.() ?? null; return; }
+                if (!id) { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; return; }
                 if (id === 'camera') {
                     this.cam = stage.cameraInfo?.() ?? null;
                     this.camFrames = stage.cameraFrames?.(this.camPreview) ?? null;
@@ -1527,11 +1527,6 @@
                 keying?.play?.();
             },
             cameraMotion(patch) { window.__stage25d?.setCameraMotion?.(patch); this.sync(); },
-            /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */
-            async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); this.sync(); },
-            groundRow(i, patch) { this.setGround(this.ground.rows.map((r, n) => (n === i ? { ...r, ...patch } : r))); },
-            addGround() { const last = this.ground.rows.at(-1); this.setGround([...this.ground.rows, { asset: last?.asset ?? this.ground.options[0]?.id, from_m: (last?.from_m ?? 0) + 40 }]); },
-            removeGround(i) { this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
         };
     };
 
@@ -1540,7 +1535,7 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null, fill: null,
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Ground'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
             sync() {
                 this.lib = window.__stage25d?.library?.() ?? null;
@@ -1555,6 +1550,7 @@
                 if (this.fill) return [this.fill];
                 if (/^band-\d+$/.test(String(this.selected))) return ['band'];
                 if (this.selected === 'sky') return ['sky'];
+                if (this.selected === 'terrain') return ['ground'];
                 return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.shelf))];
             },
             /** The shelf on show: the chosen one when the selection takes it, else the selection's own. */
@@ -1647,7 +1643,7 @@
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 // Grouped under "Scene" (Bart, 2026-11-10): one ground and one sky, never copied or deleted, only swapped.
                 const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop || i.scenery)
-                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
+                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.id === 'terrain' ? @js(__('Terrain')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
                 const s25Sky = s25Backdrop.length ? [{ id: '__s25scene__', icon: 'group', label: @js(__('Scene')), bg: true, group: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });

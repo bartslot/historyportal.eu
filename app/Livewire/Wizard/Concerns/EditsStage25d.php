@@ -256,7 +256,7 @@ trait EditsStage25d
     /** The scene look sliders the panel offers, with the range each may take (engine-mvp stage25d/look.ts LOOK_RANGE). */
     private const LOOK_RANGES = [
         'sheetGrain' => [0, 1], 'groundDetail' => [0, 1], 'sunLight' => [0, 1], 'castShadow' => [0, 1],
-        'smoke' => [0, 1], 'birds' => [0, 1], 'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
+        'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
         'groundWash' => [0, 1], 'groundGrain' => [0.5, 3], 'grass' => [0, 1], 'grassSway' => [0, 1], 'horizonBushes' => [0, 1],
         'worldReveal' => [0, 20], 'worldPaint' => [0, 1],
     ];

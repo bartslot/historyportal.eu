@@ -10,7 +10,6 @@ import {
   type LinesMesh, type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { makeBirds, makeSmoke, smokes } from './life'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
@@ -56,8 +55,6 @@ export class Stage {
   private strewn: Strewn[] = []
   private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
   private strewKey = ''
-  private smoke: ReturnType<typeof makeSmoke>[] = []
-  private birds: ReturnType<typeof makeBirds>
   private hasSky = true
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
   private nearAsset: Asset | null = null
@@ -85,7 +82,6 @@ export class Stage {
     this.sceneLib = lib
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook([], null, lib))
-    this.birds = makeBirds(this.scene, BIRD_Z_M, viewWidthAt(BIRD_Z_M), BIRD_SLOT)
     createLookChain(this.scene, this.camera, {
       num: (k: string) => Number(this.look[k] ?? 0),
       inkColor: () => String(this.look.inkColor ?? 'pencil'),
@@ -251,12 +247,6 @@ export class Stage {
     const look = this.groundLook(slotsNext, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
     this.horizonTint = look.tint
     this.strip = strip
-    // smoke from every fire in the scene, rebuilt with it
-    this.smoke.forEach((m) => m.dispose())
-    this.smoke = next.filter((b) => smokes(b.asset) && STANDING.includes(b.layer.depth) && !b.flat).map((b) => {
-      const p = placeLayer(b.asset, b.layer, b.order)
-      return makeSmoke(this.scene, new Vector3(b.handle.mesh.position.x, p.h * 0.6, p.z), Math.min(Math.max(p.h * 0.8, 0.5), 3), p.alphaIndex)
-    })
     this.footTint = tileBands.length ? mean3(tileBands) : look.base
     this.nearTex = nearTex
     this.nearAsset = nearAsset
@@ -565,8 +555,6 @@ export class Stage {
     })
     this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
     this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
-    this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
-    this.birds.update(clock, this.hasSky ? lookNum(this.look, 'birds') : 0)   // no birds in a sky that is not there
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land)
@@ -637,9 +625,6 @@ const GRID_FADE_START_M = 40
 const GRID_FADE_END_M = 120
 
 /** A cast shadow's length per metre of height: the sun's run over its fall. */
-/** Birds cross the far sky just beyond the far landscape, drawn with the sky (before the floor and the strips). */
-const BIRD_Z_M = 110
-const BIRD_SLOT = 900
 const castLength = (d: Vector3) => Math.min(1.5, Math.hypot(d.x, d.z) / Math.max(-d.y, 0.2))
 const mean3 = (cs: [number, number, number][]): [number, number, number] => [0, 1, 2].map((i) => cs.reduce((s, c) => s + c[i], 0) / cs.length) as [number, number, number]
 

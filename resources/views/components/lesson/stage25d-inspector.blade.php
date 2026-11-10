@@ -5,7 +5,7 @@
     $isBackdrop = $layerId === 'sky' || str_starts_with((string) $layerId, 'band-');
     $names = [
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
-        'castShadow' => __('Shadows'), 'smoke' => __('Smoke'), 'birds' => __('Birds'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
+        'castShadow' => __('Shadows'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
         'groundWash' => __('Watercolour'), 'groundGrain' => __('Grain size'), 'grass' => __('Grass'), 'grassSway' => __('Grass sway'), 'horizonBushes' => __('Horizon bushes'),
         'worldReveal' => __('Build-up'), 'worldPaint' => __('Painted'),
     ];
@@ -211,6 +211,14 @@
             @endforeach
         </div>
 
+        {{-- The terrain lies flat under everything: no place to move, only a picture that may need turning over. --}}
+        <template x-if="info?.role === 'terrain'">
+            <x-ui.panel-row :label="__('Flip')">
+                <input type="checkbox" class="toggle toggle-sm" data-stage25d-terrain-flip :checked="info.flip" aria-label="{{ __('Flip') }}"
+                       x-on:change="window.__stage25d?.setTerrainFlip?.($event.target.checked)" />
+            </x-ui.panel-row>
+        </template>
+
         {{-- The picture's ink, drawn by the stage's shader: a black line inside its edge, hatching in its shade. --}}
         <div class="mt-1 space-y-1" x-show="info?.ink">
             <x-ui.panel-row :label="__('Outline')">
@@ -255,7 +263,7 @@
             </template>
         </div>
         {{-- Figma 2607:2626, closed; 2542:1938 inside: one picture per motion, moving that way from the moment it opens. Anything else clicked closes it. --}}
-        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="info" data-motion-section>
+        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="info?.motion" data-motion-section>
             <x-slot:icon><span class="h-2 w-[13px] shrink-0 bg-current text-panel-title" aria-hidden="true" style="mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat; -webkit-mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat"></span></x-slot:icon>
             <div class="space-y-1" data-stage25d-motion-kinds>
                 <x-ui.segmented panel class="w-full" :name="'stage25d-motion-'.$layerId" tab-class="flex-1 px-0" model="motionKind"
@@ -327,39 +335,5 @@
             </div>
         </template>
 
-        {{-- The floor's ground pictures, near to far: each from its distance on (the nearest from the camera). --}}
-        <template x-if="ground && ground.options.length">
-            <div class="mt-3 space-y-1" data-stage25d-ground>
-                <div class="divider my-2" role="presentation"></div>
-                <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Ground') }}</span>
-                <template x-for="(row, i) in ground.rows" :key="i">
-                    <div class="flex items-center gap-1.5" style="min-height: var(--settings-panel-row-h, 2rem)">
-                        <select class="select select-xs min-w-0 flex-1" :aria-label="@js(__('Ground')) + ' ' + (i + 1)" :data-stage25d-ground-asset="i"
-                                x-on:change="groundRow(i, { asset: $event.target.value })">
-                            <template x-for="o in ground.options" :key="o.id">
-                                <option :value="o.id" :selected="o.id === row.asset" x-text="o.label"></option>
-                            </template>
-                        </select>
-                        <label class="input input-xs flex w-24 shrink-0 items-center gap-1 px-1.5" x-show="i > 0">
-                            <span class="text-xs text-panel-hint">{{ __('From') }}</span>
-                            <input type="number" min="0" max="2000" step="1" :aria-label="@js(__('From'))" :data-stage25d-ground-from="i"
-                                   :value="row.from_m" x-on:change="groundRow(i, { from_m: Number($event.target.value) })"
-                                   class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-                            <span class="text-xs text-panel-hint">m</span>
-                        </label>
-                        {{-- turn the picture half round on the floor, for a drawing that reads upside down --}}
-                        <button type="button" class="btn btn-ghost btn-xs btn-square" :class="row.flip && 'btn-active'" :aria-pressed="row.flip ? 'true' : 'false'"
-                                :aria-label="@js(__('Flip'))" :title="@js(__('Flip'))" :data-stage25d-ground-flip="i" x-on:click="groundRow(i, { flip: !row.flip })">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
-                        </button>
-                        <button type="button" class="btn btn-ghost btn-xs btn-square" x-show="ground.rows.length > 1" :aria-label="@js(__('Remove'))"
-                                :data-stage25d-ground-remove="i" x-on:click="removeGround(i)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                </template>
-                <button type="button" class="btn btn-ghost btn-xs" x-show="ground.rows.length < ground.max" data-stage25d-ground-add x-on:click="addGround()">{{ __('Add ground layer') }}</button>
-            </div>
-        </template>
     @endif
 </div>

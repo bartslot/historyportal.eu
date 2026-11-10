@@ -438,16 +438,34 @@ class StageEditingTest extends TestCase
         $editor->call('selectInspectorTarget', 's25_sky')->assertSet('activeStage25dLayer', 'sky');
     }
 
+    public function test_the_terrain_is_a_part_of_the_scene_its_row_opens_its_panel(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['ground'] = '#ddccbb';
+        unset($config['stage25d']['set']['groundSlots']);
+        $scene->update(['config' => $config]);
+        $editor = $this->editor($scene);
+        $editor->call('selectInspectorTarget', 's25_terrain')->assertSet('activeStage25dLayer', null);
+
+        $editor->call('saveStage25dGroundSlots', [['asset' => 'ground-grass-heather-01', 'from_m' => 0]], $scene->id)
+            ->call('selectInspectorTarget', 's25_terrain')->assertSet('activeStage25dLayer', 'terrain');
+        $editor->call('duplicateObjects', ['s25_terrain'])->call('deleteObject', 's25_terrain');
+        $this->assertSame('ground-grass-heather-01', $scene->fresh()->config['stage25d']['set']['groundSlots'][0]['asset'], 'never copied or deleted');
+    }
+
     public function test_look_sliders_save_inside_their_range_and_only_the_known_ones(): void
     {
         $scene = $this->scene();
         $editor = $this->editor($scene);
-        $editor->call('saveStage25dLook', 'smoke', 7, $scene->id)
+        $editor->call('saveStage25dLook', 'cloudDrift', 7, $scene->id)
             ->call('saveStage25dLook', 'housePitch', 4.5, $scene->id)
             ->call('saveStage25dLook', 'bogus', 1, $scene->id)
-            ->call('saveStage25dLook', 'birds', 0.5, $scene->id + 1);
+            ->call('saveStage25dLook', 'birds', 0.5, $scene->id)
+            ->call('saveStage25dLook', 'smoke', 0.5, $scene->id)
+            ->call('saveStage25dLook', 'cloudDrift', 0.5, $scene->id + 1);
 
-        $this->assertEquals(['smoke' => 1, 'housePitch' => 4.5], $scene->fresh()->config['stage25d']['look']);
+        $this->assertEquals(['cloudDrift' => 1, 'housePitch' => 4.5], $scene->fresh()->config['stage25d']['look'], 'birds and smoke are gone (Bart 11-10)');
     }
 
     public function test_the_ground_sliders_save_like_every_look_slider(): void

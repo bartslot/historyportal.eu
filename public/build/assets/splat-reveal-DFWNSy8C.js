@@ -1,4 +1,4 @@
-import{k as r}from"./babylon-DFNtf0nl.js";import{W as l}from"./engine-xJMisWYx.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-BvRIt7zy.js";import"./load-image-DngxJD_v.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-BjQyZcjT.js";import"./draw-options-30UrxnVk.js";import"./easing-HS2C6-zA.js";import"./i18n-DoByrmTl.js";import"./big-countdown-DSuwqXkW.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
+import{k as r}from"./babylon-Dgnp7ql_.js";import{W as l}from"./engine-mUwlrRST.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-BvRIt7zy.js";import"./load-image-DngxJD_v.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-CBxQcwCT.js";import"./draw-options-30UrxnVk.js";import"./easing-HS2C6-zA.js";import"./i18n-DoByrmTl.js";import"./big-countdown-GhlP1Gqj.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
 {
   float t = revealT;
   vec3 p = splat.center.xyz;

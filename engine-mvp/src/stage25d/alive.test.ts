@@ -1,28 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { flockAt, FLOCK_CROSS_S, FLOCK_EVERY_S, PUFFS, smokeAge, smokes } from './life'
 import { aliveOf, FOOT_M, STAGE_SHEET } from './look'
-
-describe('life: smoke and birds follow the lesson clock (a seek shows the same frame)', () => {
-  it('puffs leave one after the other, each 0..1 and looping', () => {
-    const ages = Array.from({ length: PUFFS }, (_, i) => smokeAge(12.3, i))
-    for (const a of ages) { expect(a).toBeGreaterThanOrEqual(0); expect(a).toBeLessThan(1) }
-    expect(new Set(ages.map((a) => a.toFixed(3))).size).toBe(PUFFS)
-    expect(smokeAge(12.3, 0)).toBeCloseTo(smokeAge(12.3 + 9, 0))
-  })
-  it('a flock crosses now and then, not always', () => {
-    expect(flockAt(0)).toBe(0)
-    expect(flockAt(FLOCK_CROSS_S / 2)).toBeCloseTo(0.5)
-    expect(flockAt(FLOCK_CROSS_S + 1)).toBeNull()
-    expect(flockAt(FLOCK_EVERY_S + 1)).toBeCloseTo(1 / FLOCK_CROSS_S)
-  })
-  it('fires, hearths and chimneys smoke; a barrel does not', () => {
-    expect(smokes({ id: 'fire-pit-01', tags: [] })).toBe(true)
-    expect(smokes({ id: 'house-01', tags: ['chimney'] })).toBe(true)
-    expect(smokes({ id: 'barrels-01', tags: ['barrel'] })).toBe(false)
-    expect(smokes({ id: 'firewood-stack-01', tags: ['firewood'] })).toBe(false)
-    expect(smokes({ id: 'fireflies-01', tags: [] })).toBe(false)
-  })
-})
 
 describe('aliveOf: no sticker look', () => {
   it('a figure keeps its feet: no foot blend and no grass over it, but the same light and soft edge', () => {

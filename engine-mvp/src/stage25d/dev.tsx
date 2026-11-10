@@ -55,7 +55,7 @@ const LOOK_ROWS: [string, string][] = [
   ['housePitch', 'Camera tilt'], ['groundDetail', 'Ground detail'], ['groundVary', 'Ground wash'], ['groundMix', 'Ground mix'],
   ['groundScale', 'Ground tile size'], ['nearFar', 'Near ground depth'], ['bandHeight', 'Band height'], ['bandFade', 'Band bottom fade (m)'],
   ['edgeSoft', 'Soft edges'], ['grounding', 'Grounding'], ['grassOverlap', 'Grass in front'], ['sunLight', 'Sunlight'],
-  ['castShadow', 'Cast shadows'], ['cloudDrift', 'Cloud drift'], ['smoke', 'Smoke'], ['birds', 'Birds'],
+  ['castShadow', 'Cast shadows'], ['cloudDrift', 'Cloud drift'],
   ...DEPTHS.flatMap((d): [string, string][] => {
     const k = lineKeys(d), n = DEPTH_NAMES[d]
     return [[k.fade, `Line lighter, ${n}`], [k.thin, `Line thinner, ${n}`], [k.haze, `Haze, ${n}`]]

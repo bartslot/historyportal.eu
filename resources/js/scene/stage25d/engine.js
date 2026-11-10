@@ -36,11 +36,12 @@ export const isBackdropAsset = (a) => a?.layer === 'bg' && !a.tileable_x
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
+const TERRAIN_NAME = { nl: 'Terrein', de: 'Gelände', fr: 'Terrain', it: 'Terreno' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
 /** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
 export const ADD_SCALE = 0.4
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
@@ -327,12 +328,16 @@ export async function createStage25d (host, opts = {}) {
     return !!(layers[i] && a && (!a.tileable_x || a.layer === 'ground') && a.layer !== 'bg' && a.layer !== 'sky' && layers[i].depth !== 'sky')
   }
   /** Backdrop rows: the sky and the ground bands (set.groundBands, 'band-<n>'). */
-  const isBackdrop = (id) => id === 'sky' || bandIndex(id) >= 0
+  const isBackdrop = (id) => id === 'sky' || id === 'terrain' || bandIndex(id) >= 0
+  /** The scene's terrain: the floor picture the stage lays from the camera out (its first ground slot), or null. */
+  const terrainSlot = () => (cfg && libData ? groundSlots(cfg.set ?? { layers: [] }, libData)[0] ?? null : null)
   /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
    *  strip whose paint is there, else the sky. Selected like a row; null when there is nothing to select. */
   const backdropAt = (x, y) => {
     const hit = stage?.pickBackdrops?.(x, y).find((h) => !hidden.has(h.band !== undefined ? `band-${h.band}` : `layer-${h.index}`) && alpha.opaque(h.asset, h.u, h.v))
-    const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : (cfg?.set?.sky ? 'sky' : null)
+    // nothing painted there: the bare floor is the terrain, above it the sky
+    const floor = !hit && terrainSlot() && stage ? groundUnderRay(stage.pointerRay(x, y), 0) : null
+    const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : floor ? 'terrain' : (cfg?.set?.sky ? 'sky' : null)
     if (id) api.select(id)
     return !!id
   }
@@ -667,6 +672,11 @@ export async function createStage25d (host, opts = {}) {
         const sky = skyAsset()
         return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: skyNow.src ?? `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
+      // the terrain (Bart 11-10: like the sky, a part of the Scene): its picture and a flip, nothing to move
+      if (id === 'terrain') {
+        const t = terrainSlot()
+        return t ? { id, asset: t.asset.id, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t.flip, label: layerLabel({}, t.asset, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${t.asset.file}`, motion: null } : null
+      }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
         const a = assets.get(band.asset)
@@ -781,6 +791,12 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Put another picture on a layer: rebuilds the set (the one case that must), saved on the layer. */
     async swapAsset (id, assetId) {
+      if (id === 'terrain') {   // a new terrain picture lies the right way up again
+        if (assets.get(assetId)?.layer !== 'ground' || terrainSlot()?.asset.id === assetId) return
+        await api.setGroundSlots([{ asset: assetId, from_m: 0 }])
+        api.select('terrain')
+        return
+      }
       if (id === 'sky') {
         if (assets.get(assetId)?.layer !== 'sky' || skyAsset()?.id === assetId) return
         await api.show({ ...cfg, set: { ...liveSet(), sky: assetId } })
@@ -868,6 +884,14 @@ export async function createStage25d (host, opts = {}) {
       return { rows, options, max: GROUND_SLOTS_MAX }
     },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
+    /** Mirror the terrain top to bottom (its drawing reads upside down on the floor), or back. */
+    async setTerrainFlip (on) {
+      if (!cfg || !libData) return
+      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl, i) => ({ asset: sl.asset.id, from_m: sl.from, ...((i === 0 ? on : sl.flip) ? { flip: true } : {}) }))
+      if (!rows.length) return
+      await api.setGroundSlots(rows)
+      api.select('terrain')
+    },
     async setGroundSlots (rows) {
       if (!cfg || !Array.isArray(rows)) return
       const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)), ...(r.flip ? { flip: true } : {}) }))
@@ -904,7 +928,7 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }
@@ -973,6 +997,7 @@ export async function createStage25d (host, opts = {}) {
       return [
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
+        ...(terrainSlot() ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'photo', depth: 'ground', keys: [], backdrop: true }] : []),
         ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },
       ]

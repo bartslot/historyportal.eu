@@ -48,11 +48,13 @@
     {
      "id": "trb-woodland-verge-band-01",
      "tags": [
-      "ground",
-      "forest"
+      "forest",
+      "verge",
+      "undergrowth-band"
      ],
-     "height_m": 6.9,
-     "motion": "sway"
+     "height_m": 1.2,
+     "motion": "sway",
+     "tileable_x": true
     }
    ]
   }
