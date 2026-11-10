@@ -32,6 +32,8 @@ export const STAGE_SHEET: Record<string, number> = {
   groundWash: 0.5, groundGrain: 1, grass: 0.5, grassSway: 0.15, horizonBushes: 0.5,
   edgeSoft: 0.8, grounding: 0.8, grassOverlap: 0.6, sunLight: 0.6, castShadow: 0.55,
   cloudDrift: 0.4, smoke: 0.6, birds: 0.4,
+  // a splat world (config.stage25d.world) builds itself around the class over this many seconds; 0 = there at once
+  worldReveal: 7,
 }
 export const INK_FLOOR = 0.65
 /** The one light every picture is lit by: warm on the sun's side, cool in the shade. */
@@ -67,7 +69,7 @@ export const lineContrast = (l: { fade: number; haze: number }) => (1 - 0.75 * l
 
 /** Slider ranges for the panel (same order as STAGE_SHEET). */
 const RANGES: Record<string, [number, number, number]> = {
-  groundScale: [0.5, 5, 0.1], nearFar: [4, 40, 0.5], bandHeight: [0.02, 0.6, 0.01], bandFade: [0, 3, 0.05], housePitch: [-6, 12, 0.5], lineInk: [0.05, 0.6, 0.01], groundGrain: [0.5, 3, 0.05],
+  groundScale: [0.5, 5, 0.1], nearFar: [4, 40, 0.5], bandHeight: [0.02, 0.6, 0.01], bandFade: [0, 3, 0.05], housePitch: [-6, 12, 0.5], lineInk: [0.05, 0.6, 0.01], groundGrain: [0.5, 3, 0.05], worldReveal: [0, 20, 0.5],
 }
 export const LOOK_RANGE: Record<string, [number, number, number]> = Object.fromEntries(Object.keys(STAGE_SHEET).map((k) => [
   k, RANGES[k] ?? (k.startsWith('lineThin') ? [0, 2, 0.05] : [0, 1, 0.01]),

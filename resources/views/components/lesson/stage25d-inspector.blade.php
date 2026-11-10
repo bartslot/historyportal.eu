@@ -7,6 +7,7 @@
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
         'castShadow' => __('Shadows'), 'smoke' => __('Smoke'), 'birds' => __('Birds'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
         'groundWash' => __('Watercolour'), 'groundGrain' => __('Grain size'), 'grass' => __('Grass'), 'grassSway' => __('Grass sway'), 'horizonBushes' => __('Horizon bushes'),
+        'worldReveal' => __('Build-up'),
     ];
     // The poses a figure series is painted in (library.json `pose:` tags).
     $poses = [

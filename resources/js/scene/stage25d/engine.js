@@ -22,6 +22,7 @@ import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
+import { loadWorld } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
@@ -33,7 +34,7 @@ const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
@@ -147,6 +148,8 @@ export async function createStage25d (host, opts = {}) {
   let alpha = null
   let backdrop = null        // the backdrop row that is the selection: 'sky' or 'band-<n>' (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
+  let world = null          // a splat world (config.stage25d.world), building itself up over look.worldReveal seconds
+  let worldKey = null       // the world block it was loaded from: a new one swaps it
   let pointer = null
   let stills = 0            // pictures being taken right now (the grid stays hidden until the last is done)
   let camNow = null         // the scene's camera move as edited (config.stage25d.camera)
@@ -182,6 +185,7 @@ export async function createStage25d (host, opts = {}) {
         if (clock && t === heldAt) framesAhead += step
         heldAt = t
         stage.pose(scene, t, motionClock, undefined, t + framesAhead)
+        world?.at(t, lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal'))
       }
       stage.scene.render()
       pointer?.place()
@@ -287,6 +291,23 @@ export async function createStage25d (host, opts = {}) {
     else opts.onCommit?.(0, saved, api.sceneId)
   }
   const nowT = () => (clock ? clock() : manualT)
+  /** The scene's splat world: loaded when its block changes, dropped when it goes; a failed load leaves the set as it is. */
+  const syncWorld = async (w) => {
+    const key = w?.src ? JSON.stringify(w) : null
+    if (key === worldKey) return
+    worldKey = key
+    world?.dispose()
+    world = null
+    if (!key) return
+    try {
+      const next = await loadWorld(stage.scene, w)
+      if (destroyed || worldKey !== key) next.dispose()
+      else world = next
+    } catch (e) {
+      console.warn('stage25d: the world did not load', w.src, e)
+      if (worldKey === key) worldKey = null   // a newer world may be loading already
+    }
+  }
 
   /** The sky picture on stage: set.sky is an asset id or just tags ("sky morning"), which the stage resolves to the best match. */
   const skyAsset = () => (cfg?.set?.sky && libData ? (assets.get(cfg.set.sky) ?? resolveAsset(libData, { asset: cfg.set.sky }, 'sky')) : null)
@@ -335,6 +356,7 @@ export async function createStage25d (host, opts = {}) {
       stage.setLook(lookNow)
       const next = stageScene(cfgNow)
       await stage.build(next, lib)
+      syncWorld(cfgNow.world)   // not awaited: the set shows now, the world builds in when it has downloaded
       canvas.style.visibility = ''   // the first pictures are ready: until then the host's colour, never the empty stage's paper
       scene = next
       layers = next.set.layers
@@ -796,7 +818,7 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }
@@ -873,6 +895,7 @@ export async function createStage25d (host, opts = {}) {
       destroyed = true
       window.removeEventListener('stage25d-cutouts', onCutouts)
       delete host.dataset.stage25dReady
+      world?.dispose()
       try { stage?.engine.stopRenderLoop(); stage?.scene.dispose(); stage?.engine.dispose() } catch (_) { /* context already lost */ }
       pointer?.destroy()
       canvas.remove()

@@ -258,6 +258,7 @@ trait EditsStage25d
         'sheetGrain' => [0, 1], 'groundDetail' => [0, 1], 'sunLight' => [0, 1], 'castShadow' => [0, 1],
         'smoke' => [0, 1], 'birds' => [0, 1], 'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
         'groundWash' => [0, 1], 'groundGrain' => [0.5, 3], 'grass' => [0, 1], 'grassSway' => [0, 1], 'horizonBushes' => [0, 1],
+        'worldReveal' => [0, 20],
     ];
 
     /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */
