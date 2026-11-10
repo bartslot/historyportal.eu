@@ -38,6 +38,8 @@ const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
+/** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
+export const ADD_SCALE = 0.4
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
@@ -818,8 +820,10 @@ export async function createStage25d (host, opts = {}) {
       // a character without a drop point stands near enough to read (fg), a step beside the ones added before it
       const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : a.layer === 'figure' ? 'fg' : a.layer === 'cloud' ? 'sky' : 'mid'
       const beside = at ? 0 : layers.filter((l) => l.asset === assetId).length
-      let layer = { asset: assetId, depth, x: 0.5 + 0.08 * (beside % 5), scale: 1 }
-      if (!(a.tileable_x || ['bg', 'sky', 'cloud'].includes(a.layer))) {   // a cloud floats, it is never dropped on the ground
+      const covers = a.tileable_x || ['bg', 'sky', 'cloud'].includes(a.layer)
+      // Bart 11-10: a standing piece arrives at Size 40 ("100 is very inflated"); sky, backdrop and strips cover the view
+      let layer = { asset: assetId, depth, x: 0.5 + 0.08 * (beside % 5), scale: covers ? 1 : ADD_SCALE }
+      if (!covers) {   // a cloud floats, it is never dropped on the ground
         const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y), floorOnly({}, a) ? 0 : (z) => stage.groundHeightAt(z)) : null
         const spot = layerOf(settle(hit ?? groundOf(layer.x, DEPTH_Z[depth])))
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }

@@ -273,8 +273,11 @@ export const MOTION_CODE: Record<MotionKind, number> = { none: 0, sway: 1, drift
 
 /** A figure breathes unless the teacher stills it, so a held frame never looks frozen. The library marks every
  *  figure 'none', which only meant "no sway", so for a figure that counts as not set. */
-export const defaultMotion = (asset?: Pick<Asset, 'layer' | 'motion'>): MotionKind =>
-  asset?.layer === 'figure' && (asset.motion ?? 'none') === 'none' ? 'breathe' : asset?.motion ?? 'none'
+export const defaultMotion = (asset?: Pick<Asset, 'layer' | 'motion'>): MotionKind => {
+  // Bart 11-10: no sway unless the teacher picks it; a library 'sway' is not a default any more
+  const own = asset?.motion === 'sway' ? 'none' : asset?.motion ?? 'none'
+  return asset?.layer === 'figure' && own === 'none' ? 'breathe' : own
+}
 
 /** The asset's motion, overridden by the layer's (a bare kind or { kind, amount, speed }). */
 export function motionOf(asset: Asset, layer: SceneLayer): Required<MotionSpec> {

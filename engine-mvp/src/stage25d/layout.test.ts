@@ -109,10 +109,13 @@ describe('layerAt', () => {
 })
 
 describe('motionOf', () => {
-  it('uses the asset motion unless the layer overrides it', () => {
-    expect(motionOf(tree, { depth: 'fg' })).toEqual({ kind: 'sway', amount: 1, speed: 1 })
-    expect(motionOf(tree, { depth: 'fg', motion: 'none' }).kind).toBe('none')
-    expect(motionOf(tree, { depth: 'fg', motion: { amount: 2 } })).toEqual({ kind: 'sway', amount: 2, speed: 1 })
+  it('a library sway is no default: still until the teacher picks sway', () => {
+    expect(motionOf(tree, { depth: 'fg' })).toEqual({ kind: 'none', amount: 1, speed: 1 })
+    expect(motionOf(tree, { depth: 'fg', motion: 'sway' }).kind).toBe('sway')
+    expect(motionOf(tree, { depth: 'fg', motion: { kind: 'sway', amount: 2 } })).toEqual({ kind: 'sway', amount: 2, speed: 1 })
+  })
+  it('other library motions stay the default', () => {
+    expect(motionOf({ ...tree, motion: 'ripple' }, { depth: 'fg' }).kind).toBe('ripple')
   })
 })
 
@@ -475,7 +478,8 @@ describe('figures breathe by default', () => {
 
   it('the teacher can still turn it off, and an asset that names a motion keeps it', () => {
     expect(motionOf(fig, { asset: 'man', motion: 'none' } as never).kind).toBe('none')
-    expect(motionOf({ ...fig, motion: 'sway' } as Asset, { asset: 'man' } as never).kind).toBe('sway')
+    expect(motionOf({ ...fig, motion: 'flicker' } as Asset, { asset: 'man' } as never).kind).toBe('flicker')
+    expect(motionOf({ ...fig, motion: 'sway' } as Asset, { asset: 'man' } as never).kind).toBe('breathe')
   })
 })
 
