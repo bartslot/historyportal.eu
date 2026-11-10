@@ -37,7 +37,7 @@ export const worldPlace = (w = {}) => Object.fromEntries(Object.entries(WORLD_PL
   return [k, Number.isFinite(v) ? v : d]
 }))
 
-/** Load the world into a Babylon scene. Resolves { at(t, seconds), place(world), dispose() }. */
+/** Load the world into a Babylon scene. Resolves { at(t, seconds, paint), place(world), dispose() }. */
 export async function loadWorld (babylonScene, world) {
   const [{ ImportMeshAsync }, { SplatRevealPlugin }] = await Promise.all([
     import('@babylonjs/core/Loading/sceneLoader'),
@@ -59,7 +59,10 @@ export async function loadWorld (babylonScene, world) {
   const reveal = new SplatRevealPlugin(mesh.material, REVEAL_SPAN / worldRadius(mesh._splatPositions))
   return {
     mesh,
-    at (t, seconds) { reveal.time = revealTime(t, seconds) },
+    at (t, seconds, paint = 1) {
+      reveal.time = revealTime(t, seconds)
+      reveal.paint = Math.min(1, Math.max(0, paint))
+    },
     place,
     dispose () { mesh.dispose(false, true) },
   }

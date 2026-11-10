@@ -34,7 +34,7 @@ const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
 
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'smoke', 'birds', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
@@ -187,7 +187,7 @@ export async function createStage25d (host, opts = {}) {
         stage.pose(scene, t, motionClock, undefined, t + framesAhead)
         // the world builds itself while the scene plays; paused in the editor it stands whole, so a teacher sees what they line up
         const building = !pointer || !!window.__timelineKeying?.playing?.()
-        world?.at(t, building ? lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal') : 0)   // a build-up of 0: there at once
+        world?.at(t, building ? lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal') : 0, lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldPaint'))   // a build-up of 0: there at once
       }
       stage.scene.render()
       pointer?.place()
@@ -896,7 +896,7 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }

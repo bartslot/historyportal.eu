@@ -34,6 +34,8 @@ export const STAGE_SHEET: Record<string, number> = {
   cloudDrift: 0.4, smoke: 0.6, birds: 0.4,
   // a splat world (config.stage25d.world) builds itself around the class over this many seconds; 0 = there at once
   worldReveal: 7,
+  // ...and is painted in our style (flat colour, calmer, its far edge left to the paper); 0 = as captured
+  worldPaint: 1,
 }
 export const INK_FLOOR = 0.65
 /** The one light every picture is lit by: warm on the sun's side, cool in the shade. */
