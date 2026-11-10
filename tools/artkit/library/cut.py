@@ -112,6 +112,11 @@ def tile_seam(piece: np.ndarray, px: int = 96) -> np.ndarray:
     return np.round(out).astype(np.uint8)
 
 
+def tile_both(piece: np.ndarray, px: int = 96) -> np.ndarray:
+    """A floor tile that repeats both ways: the seam crossfade sideways, then up and down."""
+    return tile_seam(tile_seam(piece, px).transpose(1, 0, 2), px).transpose(1, 0, 2)
+
+
 def anchor(alpha: np.ndarray) -> list[float]:
     solid = alpha > 0.1
     rows = np.where(solid.any(axis=1))[0]

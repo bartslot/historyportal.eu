@@ -1,0 +1,162 @@
+{
+ "bundle": "nl-golden-age",
+ "era": "nl-golden-age",
+ "sheets": [
+  {
+   "id": "ga-room-wall-sheet-01",
+   "layer": "band",
+   "subject": "Arranged in one wide strip: (1) plain warm limewashed back wall with restrained dark oak skirting and top beam, no openings, no furniture, no floor, no corner perspective; seamless left-to-right, opaque throughout rectangle, 3.5 m high and intended repeat width 6 m; level frontal eye-height view. Supports separate window, closed-door and fireplace overlays; no baked light shafts.",
+   "assets": [
+    {
+     "id": "ga-room-wall-01",
+     "tags": [
+      "interior",
+      "back-wall",
+      "limewash"
+     ],
+     "height_m": 3.5,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "ga-room-floor-sheet-01",
+   "layer": "ground",
+   "subject": "Arranged in one full-bleed square: (1) ONE seamless top-down reddish-brown terracotta floor tile pattern for a modest Dutch urban room c. 1640, restrained grout variation, no perspective or directional lighting, no objects or wall border; repeat on both axes, intended footprint 2 x 2 m with roughly 20 cm pavers; surface datum height 0 m.",
+   "assets": [
+    {
+     "id": "ga-terracotta-floor-01",
+     "tags": [
+      "interior",
+      "terracotta"
+     ],
+     "height_m": 2,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "ga-room-window-sheet-01",
+   "layer": "mid",
+   "subject": "Arranged in one isolated cell: (1) frontal oak-framed cross window with small leaded glass panes and simple interior wooden shutters, 1.6 m overall frame height; fully opaque pale daylight and indistinct exterior wash INSIDE the frame, no alpha aperture, transparent outside silhouette; standalone surface overlay on unbroken wall, no modern plate glass or projected light beam, c. 1640.",
+   "assets": [
+    {
+     "id": "ga-leaded-window-01",
+     "tags": [
+      "interior",
+      "window",
+      "leaded-glass",
+      "wall-overlay",
+      "opaque-inset"
+     ],
+     "height_m": 1.6
+    }
+   ]
+  },
+  {
+   "id": "ga-room-door-sheet-01",
+   "layer": "mid",
+   "subject": "Arranged in one isolated cell: (1) CLOSED restrained oak plank door in timber surround with forged iron strap hinges and latch, 2.15 m overall height; frontal standalone wall overlay, opaque door and surround, transparent outside silhouette, no glazed panel, no open doorway or floor patch; Dutch urban c. 1640.",
+   "assets": [
+    {
+     "id": "ga-closed-oak-door-01",
+     "tags": [
+      "interior",
+      "door",
+      "closed",
+      "oak",
+      "wall-overlay"
+     ],
+     "height_m": 2.15
+    }
+   ]
+  },
+  {
+   "id": "ga-room-fireplace-sheet-01",
+   "layer": "mid",
+   "subject": "Arranged in one isolated cell: (1) modest Dutch masonry hooded fireplace, 2.6 m overall height, plain plaster hood, brick cheeks, shallow hearth, dark iron fireback and unlit logs; frontal shallow relief with opaque dark firebox, transparent outside silhouette; no floor plane, no smoke, no elaborate palace ornament, no later stove; wall overlay, c. 1640.",
+   "assets": [
+    {
+     "id": "ga-hooded-fireplace-01",
+     "tags": [
+      "interior",
+      "fireplace",
+      "hooded-hearth",
+      "unlit",
+      "wall-overlay"
+     ],
+     "height_m": 2.6
+    }
+   ]
+  },
+  {
+   "id": "ga-room-work-furniture-sheet-01",
+   "layer": "prop",
+   "subject": "Arranged in three separate cells: (1) plain oak trestle table, 0.78 m high, approximately 1.6 m wide; (2) low oak storage chest, closed, 0.6 m high; (3) restrained oak cupboard, closed, 1.8 m high; complete independent cut-outs, clear feet, no objects on surfaces, no ground patches, eye-height 1.6 m view with modest visible top surfaces; Dutch c. 1640.",
+   "assets": [
+    {
+     "id": "ga-trestle-table-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "table"
+     ],
+     "height_m": 0.78
+    },
+    {
+     "id": "ga-storage-chest-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "chest"
+     ],
+     "height_m": 0.6
+    },
+    {
+     "id": "ga-oak-cupboard-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "cupboard"
+     ],
+     "height_m": 1.8
+    }
+   ]
+  },
+  {
+   "id": "ga-room-seating-sheet-01",
+   "layer": "prop",
+   "subject": "Arranged in three separate cells: (1) simple oak rush-seat chair, 0.95 m overall height; (2) plain wooden stool, 0.45 m high; (3) backless timber bench, 0.48 m high, approximately 1.5 m wide; independent complete cut-outs, visible feet, no upholstery, no ground patches, eye-height 1.6 m view matching table sheet; Dutch c. 1640.",
+   "assets": [
+    {
+     "id": "ga-rush-seat-chair-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "chair"
+     ],
+     "height_m": 0.95
+    },
+    {
+     "id": "ga-wooden-stool-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "stool"
+     ],
+     "height_m": 0.45
+    },
+    {
+     "id": "ga-timber-bench-01",
+     "tags": [
+      "interior",
+      "furniture",
+      "bench"
+     ],
+     "height_m": 0.48
+    }
+   ]
+  }
+ ],
+ "era_label": "c. 1640"
+}

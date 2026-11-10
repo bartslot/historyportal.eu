@@ -47,6 +47,11 @@ LAYER = {
              'the left edge to the right edge, stacked one above the other with wide white paper between them. {era} '
              '{subject} The top edge of each strip is its own silhouette; its bottom edge is a straight horizontal cut. '
              'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. Landscape 3:2.'),
+    # a floor tile: the scene's one ground, laid flat and repeated both ways
+    'ground': ('ONE seamless floor texture tile seen from straight above, full bleed, filling the whole square canvas: {era} '
+               '{subject} No horizon, no perspective, no objects standing on it, no cast shadows, no border. The left edge '
+               'continues seamlessly into the right edge and the top edge into the bottom edge. Organic surfaces get very '
+               'few lines. Square 1:1.'),
     # loose clouds the stage floats at sky depth (asset kind 'cloud'), placed one by one in front of a sky
     'cloud': ('Separate isolated clouds, each a complete cloud with wide empty space around it, nothing touching: {era} '
               '{subject} Clouds are negative space: very thin contours, few overlapping inner forms, 80 to 90% of each '
@@ -84,6 +89,10 @@ COLOUR = ('The FIRST attached image is the locked ink drawing to colour. The SEC
 SKY_ADDENDUM = (' This is a sky: fill the whole canvas with a very pale transparent blue watercolour sky with gentle '
                 'uneven glazes; clouds stay 80 to 90% white paper with only an extremely pale cool blue-grey wash under '
                 'selected lower edges.')
+
+GROUND_ADDENDUM = (' This is a floor: the surface colour (soil, leaf litter, tiles, planks) covers the WHOLE canvas edge to '
+                   'edge with layered transparent washes, no white paper showing anywhere, the drawn details sitting on '
+                   'top of it, and every edge continuing seamlessly into the opposite edge.')
 
 # (words, hexes) per era: the colour prompt names them, the palette gate measures against them (+ NEUTRALS)
 PALETTE = {
@@ -129,5 +138,7 @@ def colour_prompt(layer: str, era: str, out: str = 'colour.png', light: str | No
     words = ', '.join(f"{w} ({', '.join(hs)})" for w, hs in PALETTE[era])
     around = PAPER_AROUND if layer in ('sky', 'ground') else '. ' + green_key.GREEN_BACKGROUND
     sky = (' This is a sky: fill the whole canvas. ' + light if light else SKY_ADDENDUM) if layer == 'sky' else ''
+    if layer == 'ground':   # a floor is the surface itself: no paper between the leaves, the soil runs under everything
+        around, sky = '.', GROUND_ADDENDUM
     body = COLOUR.format(palette=words, around=around, sky=sky)
     return TOOL.format(out=out) + '\n\n' + body

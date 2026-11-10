@@ -120,3 +120,18 @@ def test_a_tiled_strip_runs_on_from_its_right_end_into_its_left_end():
     assert out.shape[1] == 304
     assert abs(int(out[0, 0, 0]) - int(strip[0, 304, 0])) <= 2, 'the first column continues where the cut-off end was'
     assert abs(int(out[0, 95, 0]) - int(strip[0, 95, 0])) <= 2, 'after the fade it is the painting itself'
+
+
+def test_a_floor_tile_repeats_both_ways():
+    tile = np.zeros((400, 400, 4), np.uint8)
+    tile[..., 3] = 255
+    tile[..., 0] = np.linspace(0, 255, 400).astype(np.uint8)[None, :]
+    tile[..., 1] = np.linspace(0, 255, 400).astype(np.uint8)[:, None]
+    out = cut.tile_both(tile, 96)
+    assert out.shape[:2] == (304, 304)
+    assert abs(int(out[0, 0, 0]) - int(tile[0, 304, 0])) <= 2 and abs(int(out[0, 0, 1]) - int(tile[304, 0, 1])) <= 2
+
+
+def test_a_floor_is_coloured_edge_to_edge_never_on_white_paper():
+    text = prompts.colour_prompt('ground', 'nl-prehistory')
+    assert 'no white paper showing' in text and 'stay pure untouched white' not in text

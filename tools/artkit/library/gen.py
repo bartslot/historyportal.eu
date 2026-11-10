@@ -97,11 +97,12 @@ def cut_stage(job: dict, sheet: dict, work: Path, gates: dict) -> list[dict]:
     entries = []
     for spec, p in zip(sheet['assets'], pieces):
         tiles = spec.get('tileable_x', sheet['layer'] in ('sky', 'bg', 'ground'))
-        im = Image.fromarray(cut.tile_seam(p['rgba']) if tiles and sheet['layer'] == 'band' else p['rgba'], 'RGBA')
+        seam = {'band': cut.tile_seam, 'ground': cut.tile_both}.get(sheet['layer']) if tiles else None
+        im = Image.fromarray(seam(p['rgba']) if seam else p['rgba'], 'RGBA')
         im.save(out / f"{spec['id']}.webp", quality=90, method=6)
         entries.append({'id': spec['id'], 'layer': LIBRARY_LAYER.get(sheet['layer'], sheet['layer']), 'tags': spec['tags'],
                         'file': f"{spec['id']}.webp", 'w': im.width, 'h': im.height, 'anchor': p['anchor'], 'height_m': spec['height_m'],
-                        'tileable_x': tiles, 'motion': spec.get('motion', 'none'),
+                        'tileable_x': tiles, **({'tileable_y': True} if sheet['layer'] == 'ground' else {}), 'motion': spec.get('motion', 'none'),
                         'era': job.get('era_label', job['era']),
                         'qa': {'sheet': sheet['id'], 'variant': v, 'ink_coverage': gates['ink']['ink_coverage'],
                                'palette_de': gates['colour']['palette_de'], 'ink_kept': gates['colour']['ink_kept'],
@@ -124,6 +125,7 @@ def main() -> None:
     ap.add_argument('--only', nargs='*')
     ap.add_argument('--tries', type=int, default=3)
     ap.add_argument('--judge', action='store_true')
+    ap.add_argument('--accept', metavar='REASON', help='a person looked and passes the --only sheets past a failed gate; the reason is kept in gates.json')
     a = ap.parse_args()
     job = json.loads(Path(a.job).read_text())
     if job['era'] not in prompts.PALETTE:
@@ -139,6 +141,12 @@ def main() -> None:
         work.mkdir(parents=True, exist_ok=True)
         gf = work / 'gates.json'
         gates = json.loads(gf.read_text()) if gf.exists() else {}
+        if a.accept:   # never silent: only named sheets, and the reason stays beside the gate it overrides
+            if not a.only:
+                raise SystemExit('--accept needs --only: a person passes sheets they looked at, never a whole job')
+            for g, key in (('ink', 'ink_ok'), ('colour', 'colour_ok')):
+                if g in gates and not gates[g].get(key):
+                    gates[g] = {**gates[g], key: True, 'accepted_by': a.accept}
         if a.stage in ('ink', 'all'):
             gates['ink'] = ink_stage(job, sheet, work, a.tries)
         if a.stage in ('colour', 'all') and gates.get('ink', {}).get('ink_ok'):

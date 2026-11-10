@@ -1,0 +1,144 @@
+{
+ "bundle": "nl-prehistory",
+ "era": "nl-prehistory",
+ "sheets": [
+  {
+   "id": "trb-forest-floor-sheet-01",
+   "layer": "ground",
+   "subject": "Arranged in one full-bleed square: (1) ONE seamless top-down mixed deciduous forest-floor tile, brown leaf litter, fine soil and sparse tiny twigs; neutral diffuse light, no horizon, roots, large stones, paths or directional shadows; repeat on both axes; intended footprint 4 x 4 m, surface datum height 0 m.",
+   "assets": [
+    {
+     "id": "trb-forest-floor-01",
+     "tags": [
+      "forest",
+      "leaf-litter"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "trb-forest-backdrop-sheet-01",
+   "layer": "bg",
+   "subject": "Arranged in one uninterrupted horizontal panorama: (1) distant mixed oak-lime woodland edge, hazel lower storey, occasional birch; non-tiling far landscape strip, canopy silhouette and opaque vegetation down to baseline; no mountains, buildings or giant conifer plantation; intended width 100 m, vegetation height 20 m, front-facing at eye height 1.6 m.",
+   "assets": [
+    {
+     "id": "trb-forest-backdrop-01",
+     "tags": [
+      "forest",
+      "oak-lime",
+      "far-landscape"
+     ],
+     "height_m": 20,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "trb-forest-depth-sheet-01",
+   "layer": "band",
+   "subject": "Arranged in two wide strips stacked one above the other with wide white paper between them: (1) top strip, 14 m high: a woodland screen of oak and lime, several trunks side by side with their leaf masses drawn as outlined cloud-like clumps and light single-direction hatching, small gaps of white paper between some trunks and leaves; (2) bottom strip, 4 m high: a low hazel woodland edge, many thin stems with outlined leaf clumps. Line drawing on white paper: outlines and sparse hatching only, never solid black areas. Each strip's left and right edges have the same height so it can repeat sideways.",
+   "assets": [
+    {
+     "id": "trb-woodland-screen-01",
+     "tags": [
+      "forest",
+      "depth-screen",
+      "oak-lime"
+     ],
+     "height_m": 14,
+     "tileable_x": true
+    },
+    {
+     "id": "trb-hazel-screen-01",
+     "tags": [
+      "forest",
+      "woodland-edge",
+      "hazel"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "trb-forest-trees-sheet-01",
+   "layer": "mid",
+   "subject": "Arranged in three separate generous cells: (1) mature oak, 18 m high; (2) mature lime, 20 m high; (3) birch cluster sharing one coherent silhouette, 12 m high; complete roots-to-crown cut-outs, woodland growth forms, no ground patch, no cast shadow, frontal eye-height view; trunks readable against deeper screens.",
+   "assets": [
+    {
+     "id": "trb-woodland-oak-01",
+     "tags": [
+      "forest",
+      "oak",
+      "complete-tree"
+     ],
+     "height_m": 18
+    },
+    {
+     "id": "trb-woodland-lime-01",
+     "tags": [
+      "forest",
+      "lime",
+      "complete-tree"
+     ],
+     "height_m": 20
+    },
+    {
+     "id": "trb-woodland-birch-cluster-01",
+     "tags": [
+      "forest",
+      "birch",
+      "tree-cluster"
+     ],
+     "height_m": 12
+    }
+   ]
+  },
+  {
+   "id": "trb-forest-undergrowth-sheet-01",
+   "layer": "fg",
+   "subject": "Arranged in four separate cells: (1) low fern clump 0.65 m; (2) young hazel stool 1.8 m; (3) bramble tangle 0.8 m; (4) low woodland herb clump 0.25 m; separate transparent cut-outs with no soil islands or cast shadows, soft green woodland palette, no autumn fruit forced into summer vegetation.",
+   "assets": [
+    {
+     "id": "trb-fern-clump-01",
+     "tags": [
+      "forest",
+      "undergrowth",
+      "fern"
+     ],
+     "height_m": 0.65
+    },
+    {
+     "id": "trb-hazel-stool-01",
+     "tags": [
+      "forest",
+      "undergrowth",
+      "hazel"
+     ],
+     "height_m": 1.8
+    },
+    {
+     "id": "trb-bramble-tangle-01",
+     "tags": [
+      "forest",
+      "undergrowth",
+      "bramble"
+     ],
+     "height_m": 0.8
+    },
+    {
+     "id": "trb-woodland-herbs-01",
+     "tags": [
+      "forest",
+      "undergrowth",
+      "herbs"
+     ],
+     "height_m": 0.25
+    }
+   ]
+  }
+ ],
+ "era_label": "c. 3400-2850 BCE"
+}
