@@ -1,0 +1,434 @@
+{
+ "bundle": "babylonia-old-babylonian",
+ "era": "babylonia-old-babylonian",
+ "sheets": [
+  {
+   "id": "bb-school-wall",
+   "layer": "band",
+   "subject": "ONE flat frontal interior back-wall screen, Old Babylonian Nippur c. 1750 BCE: lime-toned earthen plaster over sun-dried mudbrick, occasional small repairs and exposed brick near base, modest domestic tablet-house setting; 3.2 m high and 12 m wide, opaque from straight floor baseline to top. No ceiling, side wall, perspective corner, openings, furniture, tablets, inscriptions or people. Left and right edge masonry/plaster levels match for lateral repeat; sparse ink, no black fills.",
+   "assets": [
+    {
+     "id": "bb-school-wall-01",
+     "tags": [
+      "school",
+      "interior",
+      "plaster",
+      "mudbrick",
+      "depth-screen"
+     ],
+     "height_m": 3.2,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "bb-school-floor",
+   "layer": "ground",
+   "subject": "ONE full-bleed seamless top-down packed-earth room floor, footprint 4 x 4 m: irregular pale compacted silt, worn smooth areas, scattered tiny straw fibres and clay crumbs, subtle darker scuffed patches, quiet connecting earth and uneven transparent wash. Varied lived surface, never a uniform texture or speckle noise. No objects, footprints, wall bases, large cracks, horizon, perspective or cast shadows. Repeat both axes.",
+   "assets": [
+    {
+     "id": "bb-school-floor-01",
+     "tags": [
+      "interior",
+      "packed-earth",
+      "straw",
+      "floor"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "bb-school-fixtures",
+   "layer": "mid",
+   "view": "front",
+   "subject": "Two separate wall-overlay cells at pure front elevation, no vanishing points: (1) modest closed vertical timber-plank door within plain earthen reveal, overall height 1.9 m, width 0.85 m; (2) shallow rectangular plaster storage niche with its own opaque softly hatched earthen back, 0.65 m high, 0.8 m wide, EMPTY. Overlays cover unbroken wall; no transparent passage, side-facing reveal, glass, monumental arch, hinges in modern form, writing or people. Conservative domestic reconstruction, Nippur c. 1750 BCE.",
+   "assets": [
+    {
+     "id": "bb-school-door-01",
+     "tags": [
+      "school",
+      "interior",
+      "door",
+      "closed",
+      "wall-overlay"
+     ],
+     "height_m": 1.9
+    },
+    {
+     "id": "bb-school-niche-01",
+     "tags": [
+      "school",
+      "interior",
+      "niche",
+      "opaque",
+      "wall-overlay"
+     ],
+     "height_m": 0.65
+    }
+   ]
+  },
+  {
+   "id": "bb-school-furniture",
+   "layer": "prop",
+   "view": "front",
+   "subject": "Three isolated cells, pure front elevation with horizontal bases and no visible top-plane wedge or vanishing points: (1) simple low wooden stool, 0.3 m high; (2) plain low clay/plastered tablet support block, 0.25 m high, 0.45 m wide; (3) flexible rolled reed mat lying horizontally on floor, 0.18 m overall height and 0.8 m long. All empty, complete edges and feet, no desk, chair back, shelves, cushions or people. Modest illustrative furnishings for an Old Babylonian domestic teaching space, not an exact excavated furniture reconstruction.",
+   "assets": [
+    {
+     "id": "bb-school-stool-01",
+     "tags": [
+      "school",
+      "interior",
+      "furniture",
+      "stool"
+     ],
+     "height_m": 0.3
+    },
+    {
+     "id": "bb-tablet-support-01",
+     "tags": [
+      "school",
+      "interior",
+      "furniture",
+      "clay"
+     ],
+     "height_m": 0.25
+    },
+    {
+     "id": "bb-reed-mat-roll-01",
+     "tags": [
+      "school",
+      "interior",
+      "mat",
+      "reed"
+     ],
+     "height_m": 0.18
+    }
+   ]
+  },
+  {
+   "id": "bb-school-writing",
+   "layer": "prop",
+   "view": "front",
+   "subject": "Five isolated specimens in pure front elevation, no display stands or painted floor: (1) fresh blank clay practice tablet, complete face and thin irregular edge, 0.10 m; (2) small lenticular school exercise tablet, 0.09 m, few shallow short wedge impressions, not legible invented text; (3) rectangular practice tablet, 0.14 m, sparse aligned wedge impressions as surface texture only; (4) cut reed stylus, 0.18 m long, held vertically by composition alone, visibly wedge-shaped tip; (5) small damp clay lump, 0.08 m high. Old Babylonian Nippur c. 1750 BCE. No ink, letters, numbers, labels, translations, cylinder seals or later library shelving; historical sign-copy overlays can be added separately from verified references.",
+   "assets": [
+    {
+     "id": "bb-tablet-blank-01",
+     "tags": [
+      "school",
+      "writing",
+      "clay",
+      "tablet"
+     ],
+     "height_m": 0.1
+    },
+    {
+     "id": "bb-tablet-lenticular-01",
+     "tags": [
+      "school",
+      "writing",
+      "clay",
+      "exercise"
+     ],
+     "height_m": 0.09
+    },
+    {
+     "id": "bb-tablet-practice-01",
+     "tags": [
+      "school",
+      "writing",
+      "clay",
+      "exercise"
+     ],
+     "height_m": 0.14
+    },
+    {
+     "id": "bb-reed-stylus-01",
+     "tags": [
+      "school",
+      "writing",
+      "reed",
+      "tool"
+     ],
+     "height_m": 0.18
+    },
+    {
+     "id": "bb-damp-clay-01",
+     "tags": [
+      "school",
+      "writing",
+      "clay",
+      "material"
+     ],
+     "height_m": 0.08
+    }
+   ]
+  },
+  {
+   "id": "bb-alluvial-bg",
+   "layer": "bg",
+   "subject": "ONE uninterrupted non-tiling far landscape panorama, 160 m wide and 24 m represented land extent, seen across flat southern Mesopotamian alluvium near Nippur c. 1750 BCE: quiet irrigated plain, distant low settlement silhouettes, thin date-palm groups and a muted watercourse, no named monument. Land only in lower 45 percent; no sky painting above silhouette. Fine sparse ink and cooler washes, opaque land down to baseline. No mountains, pyramid, blue glazed gate, cone mosaics, minaret, giant ziggurat, readable inscriptions, boats with crews, animals or people. Frame within finite panorama.",
+   "assets": [
+    {
+     "id": "bb-alluvial-backdrop-01",
+     "tags": [
+      "babylonia",
+      "alluvium",
+      "far-landscape",
+      "irrigation"
+     ],
+     "height_m": 24,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "bb-alluvial-ground",
+   "layer": "ground",
+   "subject": "ONE full-bleed top-down seamless silt-and-working-yard ground, 4 x 4 m footprint: irregular dry compacted earth interrupted by small darker damp-silt patches, sparse olive grass shoots, straw fragments, tiny clay granules and smooth worn areas. Different patch sizes and wash density, living cultivated margin rather than uniform desert texture. No large pebbles, baked footpath, rows, crop stalks standing upright, horizon, perspective or cast shadows. Repeat both axes.",
+   "assets": [
+    {
+     "id": "bb-alluvial-ground-01",
+     "tags": [
+      "alluvium",
+      "silt",
+      "yard",
+      "grass",
+      "straw"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "bb-alluvial-fields",
+   "layer": "field",
+   "subject": "TWO separately cut painted ground strips stacked with generous gutters, seen ACROSS from standing eye height 1.6 m. (1) Deep far field surface, 100 m wide and 18 m represented ground-picture extent: damp/dry silt patches, short cut barley stubble, low olive grasses and scattered straw, receding detail from large near marks to fine far marks; soft ragged upper edge, no horizon line. (2) Shallow near trampled verge, 40 m wide and 6 m represented extent: broken earth, green low herbs, straw litter, tiny pebbles and darker moist pockets; larger near detail, quiet gaps for feet. Vegetation below knee height in both, no tall crops, trees, buildings, standing objects, people or sky; straight lower cuts. Non-tiling surfaces, not frontal walls or top-down tiles.",
+   "assets": [
+    {
+     "id": "bb-cultivated-field-strip-01",
+     "tags": [
+      "ground",
+      "field",
+      "babylonia",
+      "stubble",
+      "silt",
+      "far"
+     ],
+     "height_m": 18,
+     "tileable_x": false
+    },
+    {
+     "id": "bb-trampled-verge-strip-01",
+     "tags": [
+      "ground",
+      "field",
+      "babylonia",
+      "verge",
+      "near"
+     ],
+     "height_m": 6,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "bb-bank-screens",
+   "layer": "band",
+   "subject": "TWO wide flat frontal standing screens stacked, no sky, horizon or receding ground plane: (1) low earthen canal bank with restrained horizontal ribbon of muted water at foot, 2 m full painted height, 50 m wide, opaque earth face and gently broken upper rim; (2) low sun-dried mudbrick boundary wall, 1.1 m high and 24 m wide, irregular repairs but matching edge courses. Straight lower cuts, lateral edge heights match for repeat. No tall plants or anything standing on strips, no mechanical sluice, shaduf, masonry aqueduct, objects or figures. Bank is separate screen above the scene floor, never a second ground tile.",
+   "assets": [
+    {
+     "id": "bb-canal-bank-screen-01",
+     "tags": [
+      "canal",
+      "bank",
+      "water",
+      "depth-screen"
+     ],
+     "height_m": 2,
+     "tileable_x": true
+    },
+    {
+     "id": "bb-yard-wall-screen-01",
+     "tags": [
+      "mudbrick",
+      "boundary",
+      "depth-screen"
+     ],
+     "height_m": 1.1,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "bb-store-front",
+   "layer": "mid",
+   "view": "front",
+   "subject": "ONE modest mudbrick farm store front, 3.3 m high, 5 m wide, complete pure frontal elevation with level base, flat roof edge and one closed plain timber doorway; sparse pale earthen plaster repairs. No visible side wall, roof top plane, vanishing points, awning contents, baked ground island, shadow on surrounding paper, signs, cone mosaics, monumental columns, people or animals. Southern Babylonia c. 1750 BCE; conservative generic work building, not a named excavated structure.",
+   "assets": [
+    {
+     "id": "bb-farm-store-front-01",
+     "tags": [
+      "farm",
+      "store",
+      "architecture",
+      "mudbrick",
+      "closed"
+     ],
+     "height_m": 3.3
+    }
+   ]
+  },
+  {
+   "id": "bb-date-palm",
+   "layer": "mid",
+   "view": "three-quarter",
+   "subject": "ONE isolated complete date palm, 11 m high and crown about 6 m wide, roots/base to full crown, sparse outlined olive fronds and weathered trunk, no attached ground island, cast shadow, people or animals. Free-standing outdoor plant in southern Mesopotamia c. 1750 BCE; shallow three-quarter form only, level camera. Fruit not a required seasonal claim.",
+   "assets": [
+    {
+     "id": "bb-date-palm-01",
+     "tags": [
+      "farm",
+      "date-palm",
+      "complete-tree"
+     ],
+     "height_m": 11
+    }
+   ]
+  },
+  {
+   "id": "bb-crop-plants",
+   "layer": "fg",
+   "subject": "Three separate complete roots-to-tip plant cut-outs for a late-spring alluvial field edge: (1) small clump of near-ripe barley, olive stems and straw ears, 0.9 m; (2) common river reed clump, restrained olive, 1.8 m, not Egyptian papyrus fan heads; (3) low grass and herb tuft, 0.35 m. Separate cells, upper-left diffuse light, no soil islands, cast shadows, perfect crop rows, sky, people or animals. Keep coloured foliage distinct from key-green background.",
+   "assets": [
+    {
+     "id": "bb-barley-clump-01",
+     "tags": [
+      "farm",
+      "barley",
+      "crop"
+     ],
+     "height_m": 0.9
+    },
+    {
+     "id": "bb-river-reed-clump-01",
+     "tags": [
+      "river",
+      "reed",
+      "vegetation"
+     ],
+     "height_m": 1.8
+    },
+    {
+     "id": "bb-field-herbs-01",
+     "tags": [
+      "farm",
+      "grass",
+      "herbs"
+     ],
+     "height_m": 0.35
+    }
+   ]
+  },
+  {
+   "id": "bb-farm-props",
+   "layer": "prop",
+   "view": "three-quarter",
+   "subject": "Six separate complete free-standing outdoor specimens, southern Babylonia c. 1750 BCE: (1) empty woven reed basket 0.4 m high; (2) tied cereal sheaf 0.8 m high; (3) plain squat ceramic storage jar 0.55 m; (4) low heap of loose barley grain 0.12 m high, about 0.4 m wide; (5) simple wooden digging implement 1.1 m long, displayed upright with full silhouette, no iron; (6) curved harvesting sickle with a plain wooden handle and small flint cutting inserts, 0.35 m overall displayed height, cautious utilitarian reconstruction. Shallow three-quarter view for separate outdoor objects; no furniture, labels, bevel-rim bowl, modern shovel, wheelbarrow, grain sack lettering, people or animals. No attached ground or cast shadows.",
+   "assets": [
+    {
+     "id": "bb-reed-basket-01",
+     "tags": [
+      "farm",
+      "basket",
+      "reed"
+     ],
+     "height_m": 0.4
+    },
+    {
+     "id": "bb-barley-sheaf-01",
+     "tags": [
+      "farm",
+      "barley",
+      "harvest"
+     ],
+     "height_m": 0.8
+    },
+    {
+     "id": "bb-storage-jar-01",
+     "tags": [
+      "farm",
+      "pottery",
+      "storage"
+     ],
+     "height_m": 0.55
+    },
+    {
+     "id": "bb-grain-heap-01",
+     "tags": [
+      "farm",
+      "barley",
+      "grain"
+     ],
+     "height_m": 0.12
+    },
+    {
+     "id": "bb-digging-tool-01",
+     "tags": [
+      "farm",
+      "tool",
+      "wood"
+     ],
+     "height_m": 1.1
+    },
+    {
+     "id": "bb-harvest-sickle-01",
+     "tags": [
+      "farm",
+      "tool",
+      "harvest",
+      "flint"
+     ],
+     "height_m": 0.35
+    }
+   ]
+  },
+  {
+   "id": "bb-hunt-props",
+   "layer": "prop",
+   "view": "three-quarter",
+   "subject": "Three isolated plain utilitarian hunting/resource-edge equipment cut-outs for southern Babylonia c. 1750 BCE: (1) unstrung simple wooden self bow, 1.3 m overall, displayed near vertical; (2) tied group of three plain reed-shaft arrows with small chipped-stone points, 0.65 m overall; (3) folded plant-fibre hunting net, 0.3 m high, 0.7 m wide, no animal caught in it. Free-standing outdoor specimens in shallow three-quarter view, not a royal lion-hunt relief, no composite-bow certainty, metal modern fittings, figures, blood, animals, inscriptions, floor patch or cast shadows. Invariant style ink and transparent watercolour.",
+   "assets": [
+    {
+     "id": "bb-simple-bow-01",
+     "tags": [
+      "hunting",
+      "equipment",
+      "bow"
+     ],
+     "height_m": 1.3
+    },
+    {
+     "id": "bb-arrows-01",
+     "tags": [
+      "hunting",
+      "equipment",
+      "arrows"
+     ],
+     "height_m": 0.65
+    },
+    {
+     "id": "bb-folded-net-01",
+     "tags": [
+      "hunting",
+      "equipment",
+      "net"
+     ],
+     "height_m": 0.3
+    }
+   ]
+  }
+ ]
+}

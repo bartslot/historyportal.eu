@@ -1,0 +1,269 @@
+{
+ "bundle": "punic-alps-218",
+ "era": "punic-alps-218",
+ "sheets": [
+  {
+   "id": "pa-peaks-bg",
+   "layer": "bg",
+   "subject": "ONE non-tiling distant western Alpine panorama, 4000 m wide, 1200 m represented peak-to-baseline relief: clearly readable SNOWY MOUNTAIN TOPS IN THE DISTANCE, alternating pointed crags and saddles with cool thin rock lines, pale snow glazes and restrained blue-grey shadow. Peaks rise above lower quiet ridges while land silhouette remains in lower 45 percent; empty paper above, no sky drawing. Land opaque down to lower edge, snow painted pale rather than holes. Autumn 218 BCE illustrative composite, exact pass unspecified. No foreground path, giant near trees, buildings, glaciers engulfing all terrain, modern roads, towers, armies, people or animals. Frame within panorama.",
+   "assets": [
+    {
+     "id": "pa-snowy-peaks-backdrop-01",
+     "tags": [
+      "alps",
+      "snowy-peaks",
+      "far-landscape",
+      "autumn"
+     ],
+     "height_m": 80,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "pa-pass-ground",
+   "layer": "ground",
+   "subject": "ONE seamless full-bleed top-down pass/scree floor, 4 x 4 m footprint: uneven angular grey grit and tiny slate chips, irregular compacted brown travel-worn patches, small dirty snow remnants with pale blue glaze, a few low dry grass shoots in sheltered soil pockets. Different scale patches, calm connecting areas, no uniform pebble pattern, stipple noise, large rocks, identifiable footprints, continuous baked path, drop shadows, perspective or horizon. Snow opaque as painted surface. Repeat both axes.",
+   "assets": [
+    {
+     "id": "pa-pass-scree-ground-01",
+     "tags": [
+      "alps",
+      "pass",
+      "scree",
+      "snow",
+      "gravel"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "pa-pass-fields",
+   "layer": "field",
+   "subject": "TWO separate non-tiling ground strips seen across at standing eye height, stacked with generous gutters. (1) Deep far pass surface, 100 m wide, 18 m represented ground-picture extent: broken slate scree and patchy old snow, larger angular near chips becoming fine marks towards ragged far rim; a NARROW roughly 1.5 m wide unpaved footpath traverses laterally left to right through this surface, no central vanishing point, no modern road, level contact corridor for separately placed figures. Path is part of this ground painting, never a second floor asset. (2) Shallow near rock-and-snow verge, 40 m wide, 6 m represented extent: small embedded stones, dirt-edged snow pockets and sparse ankle-high dry grass in sheltered gaps. Near detail larger than far, straight lower cuts. No horizon line, sky, sheer precipice, rocks/plants taller than knee height, trees, people or animals. Snow gets pale cool wash, never cutout holes.",
+   "assets": [
+    {
+     "id": "pa-deep-pass-path-strip-01",
+     "tags": [
+      "ground",
+      "field",
+      "alps",
+      "pass",
+      "snow",
+      "scree",
+      "narrow-path",
+      "far"
+     ],
+     "height_m": 18,
+     "tileable_x": false
+    },
+    {
+     "id": "pa-rock-snow-verge-strip-01",
+     "tags": [
+      "ground",
+      "field",
+      "alps",
+      "rock",
+      "snow",
+      "verge",
+      "near"
+     ],
+     "height_m": 6,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "pa-mountain-screens",
+   "layer": "band",
+   "subject": "TWO wide FLAT FRONTAL mountain standing screens stacked, straight lower cuts and quiet matching-height ends for lateral repeat. (1) Mid-distance rocky ridge face, 35 m high and 180 m wide, broken top silhouette, sparse fissures, muted grey with scattered pale snow in ledges; keep crest low enough in composition to leave distant peaks visible. (2) Lower scree-bank face, 5 m high and 60 m wide, angular but subdued rocky upper rim. Opaque terrain surfaces with no sky, drawn horizon, receding floor, path, trees or objects standing on strips. Avoid repeated distinctive summit landmarks. No people, animals, fortifications, ski lifts, tunnel, modern retaining wall or painted cast shadows.",
+   "assets": [
+    {
+     "id": "pa-rock-ridge-screen-01",
+     "tags": [
+      "alps",
+      "mountain",
+      "ridge",
+      "depth-screen"
+     ],
+     "height_m": 35,
+     "tileable_x": true
+    },
+    {
+     "id": "pa-scree-bank-screen-01",
+     "tags": [
+      "alps",
+      "scree",
+      "bank",
+      "depth-screen"
+     ],
+     "height_m": 5,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "pa-rocks",
+   "layer": "mid",
+   "view": "three-quarter",
+   "subject": "Three isolated complete free-standing outdoor rock set pieces in shallow three-quarter view, western Alpine pass: (1) irregular fractured grey rock outcrop, 3 m high, 5 m wide, small patch of pale snow tucked into crack; (2) angular boulder cluster, 1.4 m high and 3 m wide; (3) low slab pile, 0.6 m high and 2 m wide, for route-edge or obstruction dressing. Upper-left diffuse light, cool sparse hatching, no black cavern, ground island, full cliff backdrop, painted path, giant cast shadow, inscriptions, people or animals. Maintain clear base contact and separate generous cells.",
+   "assets": [
+    {
+     "id": "pa-fractured-outcrop-01",
+     "tags": [
+      "alps",
+      "rock",
+      "outcrop",
+      "snow"
+     ],
+     "height_m": 3
+    },
+    {
+     "id": "pa-boulder-cluster-01",
+     "tags": [
+      "alps",
+      "rock",
+      "boulder"
+     ],
+     "height_m": 1.4
+    },
+    {
+     "id": "pa-low-slab-pile-01",
+     "tags": [
+      "alps",
+      "rock",
+      "scree",
+      "obstruction"
+     ],
+     "height_m": 0.6
+    }
+   ]
+  },
+  {
+   "id": "pa-treeline-trees",
+   "layer": "mid",
+   "subject": "Arranged in two separate generous cells: (1) a single autumn European larch with golden-yellow needles, 10 m high; (2) a wind-bent mountain pine, 6 m high; complete roots-to-crown cut-outs, alpine treeline growth forms, no ground patch, no cast shadow.",
+   "assets": [
+    {
+     "id": "pa-larch-01",
+     "tags": [
+      "alps",
+      "larch",
+      "autumn",
+      "treeline",
+      "complete-tree"
+     ],
+     "height_m": 10
+    },
+    {
+     "id": "pa-mountain-pine-01",
+     "tags": [
+      "alps",
+      "pine",
+      "treeline",
+      "complete-tree"
+     ],
+     "height_m": 6
+    }
+   ]
+  },
+  {
+   "id": "pa-treeline-plants",
+   "layer": "fg",
+   "subject": "Arranged in two separate cells: (1) a low clump of dry autumn alpine grass, 0.3 m high, straw and faded olive; (2) a small low alpine shrub, 0.45 m high, restrained dull olive; complete roots-to-top cut-outs, no ground patch, no cast shadow.",
+   "assets": [
+    {
+     "id": "pa-alpine-grass-01",
+     "tags": [
+      "alps",
+      "grass",
+      "low-vegetation"
+     ],
+     "height_m": 0.3
+    },
+    {
+     "id": "pa-alpine-shrub-01",
+     "tags": [
+      "alps",
+      "shrub",
+      "low-vegetation"
+     ],
+     "height_m": 0.45
+    }
+   ]
+  },
+  {
+   "id": "pa-baggage",
+   "layer": "prop",
+   "view": "three-quarter",
+   "subject": "Four isolated free-standing outdoor baggage specimens for a Carthaginian Alpine crossing, autumn 218 BCE: (1) tied coarse woven pack bundle 0.55 m high; (2) natural-fibre rope coil 0.15 m high, 0.45 m wide; (3) plain leather waterskin, closed and resting on its side, 0.3 m high; (4) plain tied cloth provisioning bag 0.45 m high. Restrained earth, wood and fibre colours, shallow three-quarter view for object legibility. No Roman Imperial military equipment, eagles, standards, labels, modern buckles, climbing hardware, tent poles, wheels, animals, people, ground islands or cast shadows.",
+   "assets": [
+    {
+     "id": "pa-pack-bundle-01",
+     "tags": [
+      "alps",
+      "baggage",
+      "pack",
+      "fibre"
+     ],
+     "height_m": 0.55
+    },
+    {
+     "id": "pa-rope-coil-01",
+     "tags": [
+      "alps",
+      "baggage",
+      "rope"
+     ],
+     "height_m": 0.15
+    },
+    {
+     "id": "pa-waterskin-01",
+     "tags": [
+      "alps",
+      "baggage",
+      "leather",
+      "water"
+     ],
+     "height_m": 0.3
+    },
+    {
+     "id": "pa-provision-bag-01",
+     "tags": [
+      "alps",
+      "baggage",
+      "provisions",
+      "cloth"
+     ],
+     "height_m": 0.45
+    }
+   ]
+  },
+  {
+   "id": "pa-elephant-optional",
+   "layer": "prop",
+   "view": "three-quarter",
+   "hexes": [
+    "#b19f86",
+    "#d2cfc9",
+    "#8e8474"
+   ],
+   "subject": "OPTIONAL animal prop, ONE unmounted elephant for discussing Hannibal crossing the Alps in 218 BCE; complete feet-to-back silhouette, 2.6 m overall height, restrained warm-grey skin and sparse ink, shallow three-quarter view, calm standing posture. Conservative illustrative animal, exact ancient species/subspecies and individual dimensions not claimed. No tower, armour, saddle, cloth, ornaments, baggage, rider, handler, any human, battle, snow island, ground patch or cast shadow. Independently omittable from every scene and from production batch.",
+   "assets": [
+    {
+     "id": "pa-elephant-optional-01",
+     "tags": [
+      "optional",
+      "animal",
+      "elephant",
+      "alps",
+      "punic-war"
+     ],
+     "height_m": 2.6
+    }
+   ]
+  }
+ ]
+}

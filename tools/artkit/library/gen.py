@@ -29,7 +29,7 @@ LIBRARY = prompts.MEDIA / 'library'
 TIMEOUT_S = 600
 JUDGE_GATE = 7.0
 # a band is a standing picture to the stage (layer mid, its tags make it a ground band)
-LIBRARY_LAYER = {'band': 'mid'}
+LIBRARY_LAYER = {'band': 'mid', 'field': 'mid'}
 
 
 def rgb(path: Path) -> np.ndarray:
@@ -39,7 +39,7 @@ def rgb(path: Path) -> np.ndarray:
 def ink_stage(job: dict, sheet: dict, work: Path, tries: int) -> dict:
     for t in range(tries):
         out = work / 'ink.png'
-        make_image(prompts.ink_prompt(sheet['layer'], job['era'], sheet['subject']), str(out), [str(prompts.INK_ANCHOR)], False, TIMEOUT_S)
+        make_image(prompts.ink_prompt(sheet['layer'], job['era'], sheet['subject'], view=sheet.get('view', 'three-quarter')), str(out), [str(prompts.INK_ANCHOR)], False, TIMEOUT_S)
         img = rgb(out)
         inside = None if sheet['layer'] in ('sky', 'bg', 'ground') else cut.alpha_matte(img, cut.border_paper(img), islands=False) > 0.1
         cov = qa.ink_coverage(img, inside)

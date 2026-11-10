@@ -13,7 +13,7 @@
 import numpy as np
 
 INK_L = 40.0
-INK_BAND = {'sky': None, 'bg': (0.015, 0.08), 'ground': (0.03, 0.14), 'band': (0.04, 0.35), 'cloud': (0.02, 0.25)}   # band: open water is mostly wash
+INK_BAND = {'sky': None, 'bg': (0.015, 0.08), 'ground': (0.03, 0.14), 'band': (0.04, 0.35), 'field': (0.04, 0.35),'cloud': (0.02, 0.25)}   # band: open water is mostly wash
 INK_BAND_DEFAULT = (0.18, 0.42)   # inside the silhouettes
 PALETTE_GATE = 16.0
 INK_KEPT_GATE = 0.50

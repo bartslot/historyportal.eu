@@ -1,0 +1,38 @@
+{
+ "bundle": "nl-golden-age",
+ "era": "nl-golden-age",
+ "note": "Bart 11-10: the room looked like every asset was tilted (three-quarter views, each with its own vanishing point). Redrawn front-on with the same asset ids so v1 is replaced.",
+ "sheets": [
+  {
+   "id": "ga-room-window-sheet-02",
+   "layer": "mid",
+   "view": "front",
+   "subject": "Arranged in one isolated cell: (1) oak-framed cross window with small leaded glass panes, its two plain wooden interior shutters folded open flat to the left and right, 1.6 m overall frame height; pale daylight inside the panes; standalone wall overlay.",
+   "assets": [
+    {"id": "ga-leaded-window-01", "tags": ["interior", "window", "leaded-glass", "wall-overlay"], "height_m": 1.6}
+   ]
+  },
+  {
+   "id": "ga-room-work-furniture-sheet-02",
+   "layer": "prop",
+   "view": "front",
+   "subject": "Arranged in three separate cells: (1) plain oak trestle table, 0.78 m high, about 1.6 m wide; (2) low closed oak storage chest, 0.6 m high; (3) restrained closed oak cupboard, 1.8 m high; complete cut-outs with clear feet, nothing on their surfaces, Dutch c. 1640.",
+   "assets": [
+    {"id": "ga-trestle-table-01", "tags": ["interior", "furniture", "table"], "height_m": 0.78},
+    {"id": "ga-storage-chest-01", "tags": ["interior", "furniture", "chest"], "height_m": 0.6},
+    {"id": "ga-oak-cupboard-01", "tags": ["interior", "furniture", "cupboard"], "height_m": 1.8}
+   ]
+  },
+  {
+   "id": "ga-room-seating-sheet-02",
+   "layer": "prop",
+   "view": "front",
+   "subject": "Arranged in three separate cells: (1) simple oak rush-seat chair, 0.95 m overall height; (2) plain wooden stool, 0.45 m high; (3) backless timber bench, 0.48 m high, about 1.5 m wide; complete cut-outs with visible feet, no upholstery, Dutch c. 1640.",
+   "assets": [
+    {"id": "ga-rush-seat-chair-01", "tags": ["interior", "furniture", "chair"], "height_m": 0.95},
+    {"id": "ga-wooden-stool-01", "tags": ["interior", "furniture", "stool"], "height_m": 0.45},
+    {"id": "ga-timber-bench-01", "tags": ["interior", "furniture", "bench"], "height_m": 0.48}
+   ]
+  }
+ ]
+}

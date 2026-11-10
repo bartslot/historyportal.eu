@@ -24,6 +24,10 @@ ERA = {
     'nl-golden-age': 'Dutch Republic, Golden Age, c. 1640, Amsterdam and the VOC.',
     'nl-prehistory': 'Northwestern Europe, Funnelbeaker culture, c. 3400 BCE.',
     'near-east-neolithic': 'Ancient Near East, Neolithic to early Uruk period.',
+    'babylonia-old-babylonian': 'Southern Mesopotamia, Old Babylonian period, Nippur and its agricultural hinterland, c. 1750 BCE; Sumerian scribal learning.',
+    'egypt-old-kingdom': 'Egypt, Old Kingdom, Fourth Dynasty, Giza and adjacent Nile floodplain, c. 2550 BCE.',
+    'rome-imperial-100': 'Roman Empire, city of Rome and immediate countryside, c. 100 CE, early reign of Trajan.',
+    'punic-alps-218': 'Western Alps, autumn 218 BCE, Hannibal crossing during the Second Punic War; exact pass unspecified.',
 }
 
 ISOLATED = ('Plain untouched white paper background everywhere around and between the objects. Each object is complete '
@@ -57,12 +61,32 @@ LAYER = {
               '{subject} Clouds are negative space: very thin contours, few overlapping inner forms, 80 to 90% of each '
               'cloud left white, only a few sparse strokes under selected lobes. No sky drawing around them, no land, '
               'no birds. Landscape 3:2.'),
-    'mid': ('Middle-distance set pieces, each a separate isolated object: {era} {subject} Seen from slightly above eye '
-            'level, three-quarter view, same scale for all. ' + ISOLATED),
+    # a ground strip the stage stands at a distance (layout.ts isBandPicture): the floor itself seen across, receding.
+    # Not 'band' (a flat frontal screen): this is the ground surface in eye-level perspective, like meadow-band-01.
+    'field': ('Wide strips of ground seen from standing eye height looking across it, each a separate strip running the '
+              'full width of the canvas from the left edge to the right edge, stacked one above the other with wide white '
+              'paper between them. {era} {subject} Inside each strip the ground surface recedes: large near detail at the '
+              'bottom, smaller and sparser detail towards the top. The top edge of each strip is its own ragged silhouette '
+              'of grass and plants; its bottom edge is a straight horizontal cut. No horizon line, no sky drawing, no '
+              'trees, nothing standing taller than knee height. Landscape 3:2.'),
+    'mid': ('Middle-distance set pieces, each a separate isolated object: {era} {subject} {view} ' + ISOLATED),
     'fg': ('Foreground nature elements, each a separate isolated object: {era} {subject} Same light from the upper left '
            'on all. ' + ISOLATED),
     'prop': ('Small historical objects as a tidy specimen sheet, each a separate isolated object: {era} {subject} '
-             'Three-quarter view from slightly above, same light from the upper left. ' + ISOLATED),
+             '{view} ' + ISOLATED),
+}
+
+# sheet 'view': how mid / prop objects are seen. 'front' for anything that stands against a wall or on a flat floor
+# the stage camera looks at level (Bart 11-10: a 1640 room in three-quarter views "looks like every asset is tilted").
+FRONT = ('Seen dead straight from the front at standing eye height, like a flat theatre set piece: every horizontal '
+         'edge drawn perfectly level and parallel to the bottom of the canvas, every vertical perfectly upright, no '
+         'vanishing points, no converging lines, no side faces, no turn to either side. A table top, seat or chest '
+         'lid shows only as a thin level band; open shutters or doors lie flat to the front.')
+VIEW = {   # (layer, view) -> words; the three-quarter ones are the approved prompts, word for word
+    ('mid', 'three-quarter'): 'Seen from slightly above eye level, three-quarter view, same scale for all.',
+    ('prop', 'three-quarter'): 'Three-quarter view from slightly above, same light from the upper left.',
+    ('mid', 'front'): FRONT + ' Same scale for all.',
+    ('prop', 'front'): FRONT + ' Same light from the upper left.',
 }
 
 INK = ('Clean black-and-white ink illustration in the style of the attached anchor (match its line quality and '
@@ -96,6 +120,44 @@ GROUND_ADDENDUM = (' This is a floor: the surface colour (soil, leaf litter, til
 
 # (words, hexes) per era: the colour prompt names them, the palette gate measures against them (+ NEUTRALS)
 PALETTE = {
+    'babylonia-old-babylonian': [
+        ('sun-dried mudbrick and silty earth', ['#d0bba0', '#a08a6c']),
+        ('pale plaster and dry clay tablets', ['#f5e6ce', '#f4d5a8']),
+        ('fired clay vessels and damp clay', ['#b0754f', '#b19f86']),
+        ('reed matting, barley straw and weathered timber', ['#e3cf9a', '#7d6752']),
+        ('restrained olive reeds and barley leaves', ['#8d9a5b', '#6f7f45']),
+        ('muted canal water', ['#98c3d3', '#72a2b5']),
+        ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
+    ],
+    'egypt-old-kingdom': [
+        ('pale limestone and plaster', ['#f5e6ce', '#d2cfc9']),
+        ('warm desert sand and sandstone', ['#d0bba0', '#f4d5a8']),
+        ('Nile silt and mudbrick', ['#a08a6c', '#b19f86']),
+        ('clay vessels and restrained red ochre', ['#b0754f', '#c07b57']),
+        ('reeds and crops in restrained olive', ['#8d9a5b', '#6f7f45']),
+        ('flax, straw and timber', ['#e3cf9a', '#7d6752']),
+        ('muted river water', ['#98c3d3', '#72a2b5']),
+        ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
+    ],
+    'rome-imperial-100': [
+        ('warm brick and terracotta roof tiles', ['#c07b57', '#d79a7a']),
+        ('pale travertine and plaster', ['#f5e6ce', '#f4d5a8']),
+        ('worn paving and stone shadows', ['#d2cfc9', '#8e8474']),
+        ('weathered timber and earth', ['#7d6752', '#b19f86']),
+        ('restrained wall-paint red', ['#b0754f', '#c07b57']),
+        ('olive foliage and dry verge grass', ['#8d9a5b', '#e3cf9a']),
+        ('muted water and blue shadows', ['#98c3d3', '#4a728c']),
+        ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
+    ],
+    'punic-alps-218': [
+        ('cool rock faces and scree', ['#aab1b3', '#8e8474']),
+        ('snow in pale cool glaze, never blank cutout holes', ['#f6f5ee', '#d2e6f2']),
+        ('distant blue-grey mountain shadows', ['#98c3d3', '#4a728c']),
+        ('gravel, soil and weathered timber', ['#b19f86', '#7d6752']),
+        ('restrained pine and autumn larch', ['#6f7f45', '#c9a86a']),
+        ('dry alpine grass and baggage fibre', ['#e3cf9a', '#a08a6c']),
+        ('pale overcast sky', ['#d2e6f2', '#d2cfc9']),
+    ],
     'nl-golden-age': [
         ('warm brick red and rose for brick walls', ['#c07b57', '#d79a7a']),
         ('pale sandstone and cream for stone', ['#f4d5a8', '#f5e6ce']),
@@ -124,8 +186,8 @@ def palette_hexes(era: str) -> list[str]:
     return [h for _, hs in PALETTE[era] for h in hs] + NEUTRALS
 
 
-def ink_prompt(layer: str, era: str, subject: str, out: str = 'ink.png') -> str:
-    return '\n\n'.join([TOOL.format(out=out), LAYER[layer].format(era=ERA[era], subject=subject.strip()), INK])
+def ink_prompt(layer: str, era: str, subject: str, out: str = 'ink.png', view: str = 'three-quarter') -> str:
+    return '\n\n'.join([TOOL.format(out=out), LAYER[layer].format(era=ERA[era], subject=subject.strip(), view=VIEW.get((layer, view), '')), INK])
 
 
 # Skies and grounds fill the canvas; everything else is cut, so it is painted on the green key.

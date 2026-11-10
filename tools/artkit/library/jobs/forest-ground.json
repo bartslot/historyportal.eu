@@ -1,0 +1,60 @@
+{
+ "bundle": "nl-prehistory",
+ "era": "nl-prehistory",
+ "note": "Bart 11-10: forest floor too flat and fake, needs more green grass; the ground layers make a scene work. Floor redrawn green (same asset id, replaces v1) + two ground strips like meadow-band-01 / ground-heath-01.",
+ "sheets": [
+  {
+   "id": "trb-forest-floor-sheet-02",
+   "layer": "ground",
+   "hexes": [
+    "#7f9a4a",
+    "#9fb267",
+    "#5f7a3a"
+   ],
+   "subject": "Sunlit woodland clearing floor: mostly fresh green short grass and soft moss cushions, broken by irregular patches of brown leaf litter and bare earth, a few small clover and herb leaves, uneven so it never reads as a pattern; seamless on both axes.",
+   "assets": [
+    {
+     "id": "trb-forest-floor-01",
+     "tags": [
+      "forest",
+      "moss",
+      "leaf-litter"
+     ],
+     "height_m": 4,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "trb-forest-field-sheet-01",
+   "layer": "field",
+   "hexes": [
+    "#7f9a4a",
+    "#9fb267",
+    "#5f7a3a"
+   ],
+   "subject": "(1) a deep strip of woodland clearing ground running far into the distance: lush green grass and moss with patches of brown leaf litter, small ferns, tufts of wood grass, low herbs with tiny white and yellow flowers, a mossy root and a few small mossy stones, the grass tops forming a soft ragged far edge; (2) a shallow near strip of woodland verge: tall green grass tufts, moss, a few low ferns and fallen leaves, seen close.",
+   "assets": [
+    {
+     "id": "trb-woodland-grass-band-01",
+     "tags": [
+      "ground",
+      "forest",
+      "field"
+     ],
+     "height_m": 20,
+     "motion": "sway"
+    },
+    {
+     "id": "trb-woodland-verge-band-01",
+     "tags": [
+      "ground",
+      "forest"
+     ],
+     "height_m": 6.9,
+     "motion": "sway"
+    }
+   ]
+  }
+ ]
+}
