@@ -43,7 +43,7 @@ def ink_stage(job: dict, sheet: dict, work: Path, tries: int) -> dict:
         img = rgb(out)
         inside = None if sheet['layer'] in ('sky', 'bg', 'ground') else cut.alpha_matte(img, cut.border_paper(img), islands=False) > 0.1
         cov = qa.ink_coverage(img, inside)
-        gate = {'ink_coverage': round(cov, 4), 'ink_ok': qa.ink_ok(sheet['layer'], cov), 'try': t + 1}
+        gate = {'ink_coverage': round(cov, 4), 'ink_ok': qa.ink_ok(sheet['layer'], cov, sheet.get('view', 'three-quarter')), 'try': t + 1}
         print(f"  {sheet['id']}/ink try {t + 1}: coverage {cov:.3f} {'ok' if gate['ink_ok'] else 'OUT OF BAND'}")
         if gate['ink_ok']:
             return gate

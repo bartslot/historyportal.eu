@@ -66,6 +66,7 @@ def test_cut_separates_objects_keeps_enclosed_holes_out_and_anchors_on_the_floor
 def test_ink_bands_reject_too_little_and_engraving_dense():
     assert not qa.ink_ok('prop', 0.10) and qa.ink_ok('prop', 0.30) and not qa.ink_ok('prop', 0.60)
     assert qa.ink_ok('sky', 0.0)
+    assert qa.ink_ok('prop', 0.14, 'front') and not qa.ink_ok('prop', 0.14) and not qa.ink_ok('prop', 0.08, 'front')
 
 
 def test_every_era_palette_names_its_colours_in_the_prompt():

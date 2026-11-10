@@ -85,6 +85,13 @@ def ink_band(layer: str) -> tuple[float, float] | None:
     return INK_BAND.get(layer, INK_BAND_DEFAULT)
 
 
-def ink_ok(layer: str, coverage: float) -> bool:
+# a front view has fewer surfaces to hatch: the 11-10 front-on room inks measured 0.13-0.18 and were right
+FRONT_INK_MIN = 0.11
+
+
+def ink_ok(layer: str, coverage: float, view: str = 'three-quarter') -> bool:
     band = ink_band(layer)
-    return band is None or band[0] <= coverage <= band[1]
+    if band is None:
+        return True
+    low = min(band[0], FRONT_INK_MIN) if view == 'front' else band[0]
+    return low <= coverage <= band[1]
