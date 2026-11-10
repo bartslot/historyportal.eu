@@ -79,7 +79,10 @@ export function filterMarkup({ white_key = 0, grayscale = false, tint = null, ti
     // Then stretch that alpha so only the top `tol` of the luminance range is soft: everything
     // darker saturates to fully opaque instead of going translucent along with the paper.
     steps.push(
-      `<feComponentTransfer><feFuncA type="linear" slope="${(1 / tol).toFixed(3)}" intercept="0"/></feComponentTransfer>`
+      `<feComponentTransfer><feFuncA type="linear" slope="${(1 / tol).toFixed(3)}" intercept="0"/></feComponentTransfer>`,
+      // Times the picture's own alpha: a cut-out's clear pixels are black at alpha 0, and
+      // 1 - luminance alone made them solid black.
+      '<feComposite in2="SourceGraphic" operator="in"/>'
     )
   }
 

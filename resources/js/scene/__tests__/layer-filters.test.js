@@ -7,6 +7,11 @@ describe('layer colour treatment', () => {
     expect(filterMarkup({})).toBeNull()
   })
 
+  // A cut-out's clear pixels are black at alpha 0: 1 - luminance alone made them solid black.
+  it('keeps what was already transparent transparent', () => {
+    expect(filterMarkup({ white_key: 0.27 })).toMatch(/<feComposite in2="SourceGraphic" operator="in"\/>$/)
+  })
+
   // The whole point of the white key: paper becomes transparent, ink does not. The alpha row
   // subtracts luminance from 1, so white (1,1,1) lands on 0 and black on 1.
   it('turns luminance into alpha so white keys out and dark ink survives', () => {
