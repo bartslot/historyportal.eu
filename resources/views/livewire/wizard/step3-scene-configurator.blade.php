@@ -1400,7 +1400,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, camPreview: null, camFrames: null, camEnd: 'from', previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1416,6 +1416,7 @@
                 if (id === 'camera') {
                     this.cam = stage.cameraInfo?.() ?? null;
                     this.camFrames = stage.cameraFrames?.(this.camPreview) ?? null;
+                    this.camEnds = stage.cameraEnd ? { from: stage.cameraEnd('from'), to: stage.cameraEnd('to') } : null;
                     this.queuePreview(stage);
                     return;
                 }
@@ -1513,7 +1514,15 @@
             },
             /** Back to the still camera: no move. */
             stillCamera() { window.__stage25d?.resetCamera?.(); this.sync(); },
-            cameraValue(prop, value) { window.__stage25d?.setCameraValue?.(prop, value); this.sync(); },
+            /** One end of the move typed in its section. */
+            setEnd(end, patch) { if (Object.values(patch).every(Number.isFinite)) window.__stage25d?.setCameraEnd?.(end, patch); this.sync(); },
+            /** Play the scene from its start, so the canvas shows the camera move; again to pause. */
+            playCamera() {
+                const keying = window.__timelineKeying;
+                if (keying?.playing?.()) return keying.pause?.();
+                keying?.seekTo?.('from');
+                keying?.play?.();
+            },
             cameraMotion(patch) { window.__stage25d?.setCameraMotion?.(patch); this.sync(); },
             /** The floor's ground pictures near to far: change one, add one (40 m past the last), take one off. */
             async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); this.sync(); },

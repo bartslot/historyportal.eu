@@ -209,6 +209,8 @@ export const animationTimeline = (config = {}) => ({
       resetObject: (target) => this.resetObject(target),
       time: () => this.time,
       playing: () => this.playing,
+      play: () => this.play(),
+      pause: () => this.pause(),
       seekTo: (end) => { this.pause(); this.seek(end === 'to' ? this.duration : 0); this.revealPlayhead() },
       // A live edit still waiting for its pause: a re-fired scene:load must not overwrite it (stage25d adopt).
       pending: () => !!this._saves?.isPending(),
@@ -981,6 +983,7 @@ export const animationTimeline = (config = {}) => ({
     this.stopEasingPreview()   // an edit or the clock takes the stage back from a preview
     if (this.playing || !(this.duration > 0)) return
     this.playing = true
+    window.dispatchEvent(new CustomEvent('timeline-playing', { detail: true }))
     this._startedFrom = this.time >= this.duration ? 0 : this.time
     this._startedAt = performance.now()
     const step = () => {
@@ -1006,6 +1009,7 @@ export const animationTimeline = (config = {}) => ({
   },
 
   pause () {
+    if (this.playing) window.dispatchEvent(new CustomEvent('timeline-playing', { detail: false }))
     this.playing = false
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = null

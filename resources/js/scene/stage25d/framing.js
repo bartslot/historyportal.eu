@@ -134,3 +134,19 @@ export const frameIn = (view, pose, aspect) => {
   const hh = (view.zRef - p.z) * Math.tan(fovRad(p.fov) / 2)
   return { x: 0.5 + (p.x - view.x) / (2 * H * aspect), y: 0.5 - (p.y - view.y) / (2 * H), w: hh / H, h: hh / H, roll: p.roll ?? 0 }
 }
+
+/** A frame's Size in the camera panel: how wide it is on a far plane, 100 = the house camera's. A scroll (closer) and
+ *  a pinch (lens) both change it; typing it changes the lens and keeps the camera where it stands. */
+const SIZE_PLANE_Z = CAM_RANGE.z[1] + GRAB_M
+const sizeRef = SIZE_PLANE_Z * Math.tan(fovRad(HOUSE.fov) / 2)
+
+export const frameSize = (pose) => {
+  const p = clampPose(pose)
+  return round3(((SIZE_PLANE_Z - p.z) * Math.tan(fovRad(p.fov) / 2) * 100) / sizeRef)
+}
+
+export const withFrameSize = (pose, size) => {
+  const p = clampPose(pose)
+  const half = Math.atan(((Number(size) || 100) / 100) * sizeRef / (SIZE_PLANE_Z - p.z))
+  return clampPose({ ...p, fov: (2 * half * 180) / Math.PI })
+}

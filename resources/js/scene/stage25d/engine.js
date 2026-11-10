@@ -26,7 +26,7 @@ import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
-import { cameraKeys, cameraOverview, cameraPoseAt, frameIn, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
+import { cameraKeys, cameraOverview, cameraPoseAt, clampPose, frameIn, frameSize, withFrameSize, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
@@ -566,6 +566,24 @@ export async function createStage25d (host, opts = {}) {
     cameraEnds () {
       const keys = camKeysNow()
       return keys.length ? { from: keys[0].pose, to: keys.at(-1).pose } : { from: camPoseNow(), to: camPoseNow() }
+    },
+    /** One end of the move as its panel section shows it: where, how big its frame is, how far it leans. */
+    cameraEnd (end) {
+      const p = api.cameraEnds()[end === 'to' ? 'to' : 'from']
+      return { x: p.x, y: p.y, size: frameSize(p), roll: p.roll ?? 0 }
+    },
+    /** Change one end of the move from its section ({ x, y, size, roll }). A still camera gets its first key; an End
+     *  on a still camera makes a move to it over the scene. Live, and saved. */
+    setCameraEnd (end, patch) {
+      if (!scene) return
+      const keys = camKeysNow()
+      const { from, to } = api.cameraEnds()
+      const { size, ...rest } = patch
+      const base = clampPose({ ...(end === 'to' ? to : from), ...rest })
+      const pose = size === undefined ? base : withFrameSize(base, size)
+      if (end !== 'to') return storeCameraKeys(withCameraKey(keys, keys[0]?.t ?? 0, pose))
+      const last = keys.length > 1 ? keys.at(-1).t : camLength()
+      storeCameraKeys(withCameraKey(keys.length ? keys : [{ t: 0, pose: from }], last, pose))
     },
     /** The camera panel's preview: the set from a wider camera that sees the start and end frames, as a small JPEG
      *  `{ src, view, aspect }`. Drawn off screen from a second camera, so the canvas never shows it. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CAM_RANGE, cameraKeys, cameraOverview, frameIn, cameraPoseAt, clampPose, movedCameraKey, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
+import { CAM_RANGE, cameraKeys, cameraOverview, frameIn, frameSize, withFrameSize, cameraPoseAt, clampPose, movedCameraKey, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
 
 const HOUSE = { x: 0, y: 1.6, z: 0, fov: 50 }
 
@@ -108,5 +108,20 @@ describe('the camera preview: start and end frames on a wider view', () => {
     const view = cameraOverview([{ x: -8, y: 1, z: 0, fov: 70 }, { x: 8, y: 1, z: 0, fov: 70 }], A)
     expect(view.z).toBeLessThan(0)
     expect(view.fov).toBeLessThanOrEqual(75.001)
+  })
+})
+
+describe('a frame\'s size in the camera panel', () => {
+  it('is 100 for the house camera, smaller closer in or on a longer lens', () => {
+    expect(frameSize(HOUSE)).toBeCloseTo(100, 1)
+    expect(frameSize({ ...HOUSE, z: 5 })).toBeLessThan(100)
+    expect(frameSize({ ...HOUSE, fov: 30 })).toBeLessThan(100)
+  })
+
+  it('typed, changes the lens and keeps the camera where it stands, inside the lens range', () => {
+    const p = withFrameSize({ ...HOUSE, z: 3 }, 60)
+    expect(p.z).toBe(3)
+    expect(frameSize(p)).toBeCloseTo(60, 0)
+    expect(withFrameSize(HOUSE, 5).fov).toBe(CAM_RANGE.fov[0])
   })
 })

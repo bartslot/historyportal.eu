@@ -22,7 +22,7 @@
      written back through it, so this panel, the canvas drag and the timeline rows share one set of rules; the
      diamonds are the timeline's own. No help text: the controls are the explanation. --}}
 <div wire:key="s25-inspector-root-{{ $layerId ?? 'scene' }}" data-stage25d-inspector="{{ $layerId ?? 'scene' }}" x-data="stage25dInspector(@js($layerId), @js($names), @js($poses))"
-     x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()"
+     x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()" x-on:timeline-playing.window="camPlaying = !!$event.detail"
      x-on:focusin="showHud($event)" x-on:input="showHud($event)">
 
     @if ($layerId === 'camera')
@@ -39,6 +39,15 @@
         <div class="relative -mx-4 mt-3 overflow-hidden bg-base-200" :style="`aspect-ratio: ${camPreview?.aspect ?? 16 / 9}`"
              aria-label="{{ __('Camera') }}" data-stage25d-camera>
             <img x-show="camPreview" :src="camPreview?.src" alt="" class="absolute inset-0 size-full object-cover" data-camera-preview />
+            {{-- Plays the scene from its start, so the canvas shows the move (the timeline's own play icon). --}}
+            <button type="button" class="absolute bottom-1 left-1 z-[200] grid h-8 w-8 place-items-center rounded bg-base-100/70 text-panel-value hover:text-base-content"
+                    data-camera-play x-on:click="playCamera()" :aria-label="camPlaying ? @js(__('Pause')) : @js(__('Play'))"
+                    :data-tooltip="camPlaying ? @js(__('Pause')) : @js(__('Play'))">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
+                    <path x-show="!camPlaying" stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z"/>
+                    <path x-show="camPlaying" x-cloak stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
+                </svg>
+            </button>
             @foreach ([['from', __('Start')], ['to', __('End')]] as [$end, $label])
                 <button type="button" class="absolute rounded-xs border-base-content" data-camera-end="{{ $end }}" aria-label="{{ $label }}"
                         x-show="camFrames && ('{{ $end }}' === 'from' || cam?.moves)" x-on:click="frame('{{ $end }}')"
@@ -47,19 +56,43 @@
                 </button>
             @endforeach
         </div>
-        <p class="mt-2 text-xs text-panel-hint">{{ __('Drag the picture to move the camera. Scroll to go closer, pinch to zoom.') }}</p>
-
-        <div class="mt-3 space-y-1" x-show="cam">
-            <x-ui.panel-row :label="__('Rotate')">
-                <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
-                    <input type="number" min="-45" max="45" step="1" aria-label="{{ __('Rotate') }}" data-camera-roll
-                           :value="Math.round((cam?.pose?.roll ?? 0) * 10) / 10"
-                           x-on:change="cameraValue('roll', Number($event.target.value))" />
-                    <span class="text-panel-hint">°</span>
-                </label>
-            </x-ui.panel-row>
-        </div>
-        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="cam" data-motion-section>
+        {{-- Start and End, each a section of its own (Figma 2775:2902): opening one shows that end on the canvas. Size is
+             how wide its frame is (100 = the house camera); a scroll or a pinch on the canvas changes it too. --}}
+        @foreach ([['from', __('Start')], ['to', __('End')]] as [$end, $label])
+            <x-ui.settings-section :title="$label" :open="$end === 'from'" class="-mx-4 w-auto!" data-camera-section="{{ $end }}"
+                                   x-on:click="camEnd !== '{{ $end }}' && frame('{{ $end }}')">
+                <div class="space-y-1">
+                    <x-ui.panel-row :label="__('Position')">
+                        <div class="flex w-full gap-2">
+                            @foreach (['x' => 'X', 'y' => 'Y'] as $axis => $letter)
+                                <label class="input input-xs flex min-w-0 flex-1 items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
+                                    <span class="text-panel-label">{{ $letter }}</span>
+                                    <input type="number" step="0.1" aria-label="{{ $label }} {{ $letter }}" data-camera-field="{{ $end }}-{{ $axis }}"
+                                           :value="Math.round((camEnds?.{{ $end }}?.{{ $axis }} ?? 0) * 10) / 10"
+                                           x-on:change="setEnd('{{ $end }}', { {{ $axis }}: Number($event.target.value) })" />
+                                </label>
+                            @endforeach
+                        </div>
+                    </x-ui.panel-row>
+                    <x-ui.panel-row :label="__('Size')">
+                        <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
+                            <input type="number" min="10" max="400" step="1" aria-label="{{ $label }} {{ __('Size') }}" data-camera-field="{{ $end }}-size"
+                                   :value="Math.round(camEnds?.{{ $end }}?.size ?? 100)"
+                                   x-on:change="setEnd('{{ $end }}', { size: Number($event.target.value) })" />
+                            <span class="text-panel-hint">%</span>
+                        </label>
+                    </x-ui.panel-row>
+                    <x-ui.panel-row :label="__('Rotate')">
+                        <span class="range-panel-knob min-w-0 flex-1">
+                            <input type="range" min="-45" max="45" step="1" class="range range-panel" aria-label="{{ $label }} {{ __('Rotate') }}" data-camera-field="{{ $end }}-roll"
+                                   :value="camEnds?.{{ $end }}?.roll ?? 0" x-on:input="setEnd('{{ $end }}', { roll: Number($event.target.value) })" />
+                        </span>
+                        <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="Math.round(camEnds?.{{ $end }}?.roll ?? 0) + '°'"></span>
+                    </x-ui.panel-row>
+                </div>
+            </x-ui.settings-section>
+        @endforeach
+        <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 w-auto!" x-show="cam" data-motion-section>
             <x-slot:icon><span class="h-2 w-[13px] shrink-0 bg-current text-panel-title" aria-hidden="true" style="mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat; -webkit-mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat"></span></x-slot:icon>
             <div class="space-y-1">
                 <x-ui.segmented panel class="w-full" name="stage25d-camera-motion" tab-class="flex-1 px-0" model="cameraMotionKind"
