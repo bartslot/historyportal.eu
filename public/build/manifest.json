@@ -149,8 +149,8 @@
       "_load-image-DngxJD_v.js"
     ]
   },
-  "_quick-mask-BymZEYSg.js": {
-    "file": "assets/quick-mask-BymZEYSg.js",
+  "_quick-mask-q2azgDD0.js": {
+    "file": "assets/quick-mask-q2azgDD0.js",
     "name": "quick-mask",
     "isDynamicEntry": true,
     "imports": [
@@ -192,7 +192,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app--wrcbNGm.js",
+    "file": "assets/app-BiuV6okL.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -212,7 +212,7 @@
       "resources/js/scene/tempo.js",
       "resources/js/editor/cutout-dialog.js",
       "resources/js/test-session/recorder.js",
-      "_quick-mask-BymZEYSg.js",
+      "_quick-mask-q2azgDD0.js",
       "resources/js/scene/index.js",
       "node_modules/three/build/three.module.js"
     ],
@@ -241,12 +241,12 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-BEKxdDBS.js",
+    "file": "assets/cutout-dialog-Cwy0YyoT.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
     "imports": [
-      "_quick-mask-BymZEYSg.js",
+      "_quick-mask-q2azgDD0.js",
       "resources/js/app.js",
       "_puppet-sheet-BvRIt7zy.js",
       "_load-image-DngxJD_v.js",
@@ -450,7 +450,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-CT3n8Sld.js",
+    "file": "assets/index-BqmFTtQz.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -589,7 +589,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-Sh4N4qfs.js",
+    "file": "assets/recorder-B1AY9yE9.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

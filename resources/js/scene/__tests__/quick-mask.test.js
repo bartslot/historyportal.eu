@@ -158,6 +158,28 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
         expect(whiteHoles(d, 20, 10, 0).some(Boolean)).toBe(false);
     });
 
+    // Bart 2026-11-10: green screen left between the curls of a figure made on #00FF00 (white holes only took white)
+    it('takes out green-screen pockets of any size, and leaves painted grass alone', () => {
+        // 20x10 hair; a 3x2 pocket of key green (as compressed: not exactly #00FF00); a strip of painted grass
+        const d = px(20, 10, (x, y) => (x >= 4 && x < 7 && y >= 4 && y < 6 ? [18, 236, 30, 255] : y === 9 ? [60, 190, 50, 255] : [150, 100, 60, 255]));
+        const holes = cleanUp(d, 20, 10, { white: 50 });
+        const a = alpha(holes);
+        expect(a[4 * 20 + 5]).toBe(0);
+        expect(a[5 * 20 + 6]).toBe(0);
+        expect(a[9 * 20 + 10], 'grass stays').toBe(255);
+        expect(a[0], 'hair stays').toBe(255);
+    });
+
+    it('un-blends green from a pocket edge on a picture made on green, not from grass on one that was not', () => {
+        // 8x1: clear, key green, hair half on green, hair, hair...
+        const d = px(8, 1, (x) => (x === 0 ? [0, 0, 0, 0] : x === 1 ? [0, 255, 0, 255] : x === 2 ? [75, 178, 30, 255] : [150, 100, 60, 255]));
+        const out = cleanUp(d, 8, 1, { white: 50, fringe: 3 });
+        expect(out[2 * 4 + 3], 'half green: half there').toBeLessThan(180);
+        expect(out[2 * 4 + 1], 'its green taken out').toBeLessThan(140);
+        const grass = px(8, 1, (x) => (x === 0 ? [0, 0, 0, 0] : [60, 190, 50, 255]));
+        expect(alpha(cleanUp(grass, 8, 1, { white: 50, fringe: 3 })), 'grass at the edge of a picture never made on green').toEqual([0, 255, 255, 255, 255, 255, 255, 255]);
+    });
+
     it('leaves a single white speck in the texture alone', () => {
         const d = px(40, 40, (x, y) => (x === 20 && y === 20 ? [255, 255, 255, 255] : [120, 110, 90, 255]));
         expect(whiteHoles(d, 40, 40, 50).some(Boolean)).toBe(false);

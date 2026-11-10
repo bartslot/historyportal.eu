@@ -358,21 +358,38 @@ export const CLEAN_DEFAULTS = { white: 50, fringe: 3, fade: 0 };
  * 225 at 100) and how big a patch must be to go. Returns the mask of what goes (Uint8Array).
  */
 export function whiteHoles(data, w, h, strength = CLEAN_DEFAULTS.white) {
-    const out = new Uint8Array(w * h);
-    if (strength <= 0) return out;
+    if (strength <= 0) return new Uint8Array(w * h);
     const s = Math.min(100, strength) / 100;
     const minLum = 252 - 27 * s, maxChroma = 8 + 14 * s;
     const minArea = Math.max(4, Math.round(w * h * 0.0004 * (1 - 0.8 * s)));
-    const white = (p) => { const i = p * 4; return data[i + 3] > 0 && lum(data, i) >= minLum && chroma(data, i) <= maxChroma; };
+    return patches(w, h, (p) => { const i = p * 4; return data[i + 3] > 0 && lum(data, i) >= minLum && chroma(data, i) <= maxChroma; }, minArea);
+}
+
+/** The green screen every cut-out is painted on (CLAUDE.md: solid #00FF00, keyed out). */
+const KEY_GREEN = [0, 255, 0];
+
+/**
+ * Green holes: what is left of the #00FF00 screen, between curls or under an arm, goes whatever its size: no painting
+ * has that colour. Close to the key itself, not merely green, so painted grass stays. Same strength as white holes.
+ */
+export function greenHoles(data, w, h, strength = CLEAN_DEFAULTS.white) {
+    if (strength <= 0) return new Uint8Array(w * h);
+    const tol = 24 + 32 * (Math.min(100, strength) / 100);
+    return patches(w, h, (p) => data[p * 4 + 3] > 0 && dist(data, p * 4, KEY_GREEN) <= tol, 1);
+}
+
+/** Every 4-connected patch of pixels that pass `test` and is at least `minArea` big, as a mask (Uint8Array). */
+function patches(w, h, test, minArea) {
+    const out = new Uint8Array(w * h);
     const seen = new Uint8Array(w * h);
     for (let start = 0; start < w * h; start++) {
-        if (seen[start] || !white(start)) continue;
+        if (seen[start] || !test(start)) continue;
         const region = [start];
         seen[start] = 1;
         for (let r = 0; r < region.length; r++) {
             const p = region[r], x = p % w;
             for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
-                if (q < 0 || q >= w * h || seen[q] || !white(q)) continue;
+                if (q < 0 || q >= w * h || seen[q] || !test(q)) continue;
                 seen[q] = 1;
                 region.push(q);
             }
@@ -405,21 +422,28 @@ function distanceToClear(data, w, h, max) {
 /** How coloured a light pixel may be and still be white paper: paper is near neutral, a shirt or skin is not. */
 const PAPER_MAX_CHROMA = 24;
 
+/** A pixel tinted by the green screen: green well above its red and blue. */
+const GREEN_SPILL = 24;
+
 /**
  * White edges: within `px` of anything clear, a light pixel is part picture, part white paper, so (as cut() does at a
  * matte's edge) its alpha becomes how far it is from white and its colour is un-blended from white. Kills the halo.
+ * `onGreen`: the picture was made on the green screen, so a green-tinted edge pixel is un-blended from #00FF00 the
+ * same way (only then: at the edge of any other picture that tint is its own grass).
  */
-export function defringe(data, w, h, px = CLEAN_DEFAULTS.fringe) {
+export function defringe(data, w, h, px = CLEAN_DEFAULTS.fringe, onGreen = false) {
     const out = new Uint8ClampedArray(data);
     if (px <= 0) return out;
     const near = distanceToClear(data, w, h, Math.min(12, Math.round(px)));
     for (let p = 0; p < w * h; p++) {
         if (near[p] === 0 || near[p] > px) continue;
         const i = p * 4;
-        if (chroma(data, i) > PAPER_MAX_CHROMA) continue;   // a cream shirt or pale skin at the edge is the picture
-        const a = Math.min(1, dist(data, i, [255, 255, 255]) / 120);
+        const green = onGreen && data[i + 1] - Math.max(data[i], data[i + 2]) > GREEN_SPILL;
+        if (!green && chroma(data, i) > PAPER_MAX_CHROMA) continue;   // a cream shirt or pale skin at the edge is the picture
+        const key = green ? KEY_GREEN : [255, 255, 255];
+        const a = Math.min(1, dist(data, i, key) / 120);
         if (a >= 1) continue;
-        for (let c = 0; c < 3; c++) out[i + c] = a > 0.02 ? (data[i + c] - (1 - a) * 255) / a : data[i + c];
+        for (let c = 0; c < 3; c++) out[i + c] = a > 0.02 ? (data[i + c] - (1 - a) * key[c]) / a : data[i + c];
         out[i + 3] = data[i + 3] * a;
     }
     return out;
@@ -453,12 +477,14 @@ export function fadeBottom(data, w, h, px = CLEAN_DEFAULTS.fade) {
     return out;
 }
 
-/** All three, in order: holes, then the edges they leave, then the bottom. */
+/** All three, in order: holes (white paper and green screen), then the edges they leave, then the bottom. */
 export function cleanUp(data, w, h, { white = 0, fringe = 0, fade = 0 } = {}) {
     let out = new Uint8ClampedArray(data);
     const holes = whiteHoles(out, w, h, white);
-    if (holes.some(Boolean)) for (let p = 0; p < w * h; p++) if (holes[p]) out[p * 4 + 3] = 0;
-    out = defringe(out, w, h, fringe);
+    const green = greenHoles(out, w, h, white);
+    const onGreen = green.some(Boolean);   // what is left of the screen says the picture was made on it
+    for (let p = 0; p < w * h; p++) if (holes[p] || green[p]) out[p * 4 + 3] = 0;
+    out = defringe(out, w, h, fringe, onGreen);
     return fadeBottom(out, w, h, fade);
 }
 
