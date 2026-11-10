@@ -198,6 +198,10 @@ describe('the ground\'s slots, near to far (groundSlots)', () => {
     const s = groundSlots({ groundSlots: [{ asset: 'ground-grass-01', from_m: 0, flip: true }, { asset: 'ground-sand-01', from_m: 20 }], layers: [] }, lib(tiles))
     expect(s.map((x) => !!x.flip)).toEqual([true, false])
   })
+  it('keeps a slot repeat between 0.25 and 8, none when 1', () => {
+    const s = groundSlots({ groundSlots: [{ asset: 'ground-grass-01', from_m: 0, repeat: 1 }, { asset: 'ground-sand-01', from_m: 20, repeat: 40 }, { asset: 'ground-ice-01', from_m: 30, repeat: 0.5 }], layers: [] }, lib(tiles))
+    expect(s.map((x) => x.repeat)).toEqual([undefined, 8, 0.5])
+  })
   it('a paper floor has no slots', () => {
     expect(groundSlots({ ground: '#ddccbb', layers: [] }, lib(tiles))).toEqual([])
   })

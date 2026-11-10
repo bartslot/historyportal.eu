@@ -201,7 +201,7 @@ export class Stage {
       const tex = await loadPremultiplied(lib.base + sl.asset.file, this.scene).catch(() => { misses.push({ need: sl.asset.id, reason: `file did not load: ${sl.asset.file}` }); return null })
       const bands = (bandColours.get(lib.base + sl.asset.file) ?? []).filter((x): x is [number, number, number] => !!x)
       // a flipped slot carries a negative tile size: the floor shader mirrors it top to bottom (ground-gl slotTile)
-      return tex ? { tex, tile: (sl.asset.height_m || GROUND_TILE_M) * (sl.flip ? -1 : 1), from: sl.from, asset: sl.asset, colour: bands.length ? mean3(bands) : hexRgb(lib.paper ?? PAPER_HEX) } : null
+      return tex ? { tex, tile: (sl.asset.height_m || GROUND_TILE_M) / (sl.repeat ?? 1) * (sl.flip ? -1 : 1), from: sl.from, asset: sl.asset, colour: bands.length ? mean3(bands) : hexRgb(lib.paper ?? PAPER_HEX) } : null
     }))).filter((sl): sl is NonNullable<typeof sl> => !!sl)
     // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
     let nearTex: RawTexture | null = null

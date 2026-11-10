@@ -122,7 +122,7 @@
         </div>
 
         {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
-        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200">
+        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain'">
             <button type="button" class="absolute inset-0 flex items-center justify-center"
                     data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
                     x-on:click="pickPicture()" x-on:dblclick="editPicture()">
@@ -152,7 +152,7 @@
             @endif
         </div>
         {{-- The way in that shows: a double-click on the picture does the same. It opens on what the picture has: its bones, its frames. --}}
-        <button type="button" class="btn btn-sm mt-2 w-full" data-stage25d-edit x-show="info?.file" x-on:click="editPicture()">
+        <button type="button" class="btn btn-sm mt-2 w-full" data-stage25d-edit x-show="info?.file && info?.role !== 'terrain'" x-on:click="editPicture()">
             <x-icons.pencil class="h-4 w-4" />
             <span x-text="info?.anim ? @js(__('Edit frames')) : @js(__('Edit picture'))"></span>
         </button>
@@ -211,12 +211,49 @@
             @endforeach
         </div>
 
-        {{-- The terrain lies flat under everything: no place to move, only a picture that may need turning over. --}}
-        <template x-if="info?.role === 'terrain'">
-            <x-ui.panel-row :label="__('Flip')">
-                <input type="checkbox" class="toggle toggle-sm" data-stage25d-terrain-flip :checked="info.flip" aria-label="{{ __('Flip') }}"
-                       x-on:change="window.__stage25d?.setTerrainFlip?.($event.target.checked)" />
-            </x-ui.panel-row>
+        {{-- The terrain's slots, near to far (Bart 11-11: the old ground layers, now inside the terrain): each a picture
+             from its distance on, the nearest from the camera; each brings its own billboards (strew). --}}
+        <template x-if="info?.role === 'terrain' && ground && ground.options.length">
+            <div class="mt-3 space-y-2" data-stage25d-ground
+                 x-on:dragover="if (terrainDrag($event)) $event.preventDefault()" x-on:drop.prevent="dropTerrain($event, null)">
+                <template x-for="(row, i) in ground.rows" :key="i + ':' + row.asset">
+                    <div class="overflow-hidden rounded-md border bg-base-200" draggable="true" data-stage25d-ground-slot
+                         :class="terrainAt === i ? 'border-base-content' : 'border-panel-hairline'"
+                         x-on:dragstart="$event.dataTransfer.setData('application/x-lp-terrain-slot', String(i)); $event.dataTransfer.effectAllowed = 'move'"
+                         x-on:dragover="if (terrainDrag($event)) $event.preventDefault()" x-on:drop.prevent.stop="dropTerrain($event, i)">
+                        <button type="button" class="relative block aspect-[3/1] w-full cursor-grab overflow-hidden active:cursor-grabbing" :aria-label="optionOf(row.asset)?.label"
+                                :data-stage25d-ground-asset="i" x-on:click="pickTerrain(i)">
+                            <img :src="optionOf(row.asset)?.thumb" alt="" class="size-full object-cover" :class="row.flip && '-scale-y-100'" loading="lazy" />
+                            <span class="absolute bottom-1 left-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content" x-text="optionOf(row.asset)?.label"></span>
+                        </button>
+                        <div class="flex items-center gap-1.5 p-1">
+                            <label class="input input-xs flex min-w-0 flex-1 items-center gap-1 px-1.5" x-show="i > 0">
+                                <span class="text-xs text-panel-hint">{{ __('From') }}</span>
+                                <input type="number" min="0" max="2000" step="1" :aria-label="@js(__('From'))" :data-stage25d-ground-from="i"
+                                       :value="row.from_m" x-on:change="groundRow(i, { from_m: Number($event.target.value) })"
+                                       class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                                <span class="text-xs text-panel-hint">m</span>
+                            </label>
+                            <span class="min-w-0 flex-1" x-show="i === 0"></span>
+                            <label class="input input-xs flex w-16 shrink-0 items-center gap-0.5 px-1.5" :title="@js(__('Repeat'))">
+                                <span class="text-xs text-panel-hint">×</span>
+                                <input type="number" min="0.25" max="8" step="0.25" :aria-label="@js(__('Repeat'))" :data-stage25d-ground-repeat="i"
+                                       :value="row.repeat ?? 1" x-on:change="groundRow(i, { repeat: Number($event.target.value) })"
+                                       class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                            </label>
+                            <button type="button" class="btn btn-ghost btn-xs btn-square" :class="row.flip && 'btn-active'" :aria-pressed="row.flip ? 'true' : 'false'"
+                                    :aria-label="@js(__('Flip'))" :title="@js(__('Flip'))" :data-stage25d-ground-flip="i" x-on:click="groundRow(i, { flip: !row.flip })">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs btn-square" x-show="ground.rows.length > 1" :aria-label="@js(__('Remove'))"
+                                    :data-stage25d-ground-remove="i" x-on:click="removeGround(i)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-ghost btn-xs" x-show="ground.rows.length < ground.max" data-stage25d-ground-add x-on:click="addGround()">{{ __('Add terrain layer') }}</button>
+            </div>
         </template>
 
         {{-- The picture's ink, drawn by the stage's shader: a black line inside its edge, hatching in its shade. --}}

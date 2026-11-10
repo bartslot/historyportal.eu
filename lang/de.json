@@ -2699,5 +2699,7 @@
     "Option/Alt-click where to copy from first.": "Erst mit Option/Alt-Klick wählen, wovon kopiert wird.",
     "Valley": "Tal",
     "Farmland": "Ackerland",
-    "Terrain": "Gelände"
+    "Terrain": "Gelände",
+    "Add terrain layer": "Geländeebene hinzufügen",
+    "Repeat": "Wiederholen"
 }

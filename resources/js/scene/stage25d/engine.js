@@ -16,7 +16,7 @@ import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
 import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
-import { groundSlots, GROUND_SLOTS_MAX } from '@stage25d/stage25d/ground'
+import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
@@ -329,6 +329,7 @@ export async function createStage25d (host, opts = {}) {
   }
   /** Backdrop rows: the sky and the ground bands (set.groundBands, 'band-<n>'). */
   const isBackdrop = (id) => id === 'sky' || id === 'terrain' || bandIndex(id) >= 0
+  let terrainAt = 0          // the terrain slot the Assets tab replaces (its panel's picked tile)
   /** The scene's terrain: the floor picture the stage lays from the camera out (its first ground slot), or null. */
   const terrainSlot = () => (cfg && libData ? groundSlots(cfg.set ?? { layers: [] }, libData)[0] ?? null : null)
   /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
@@ -791,9 +792,13 @@ export async function createStage25d (host, opts = {}) {
     },
     /** Put another picture on a layer: rebuilds the set (the one case that must), saved on the layer. */
     async swapAsset (id, assetId) {
-      if (id === 'terrain') {   // a new terrain picture lies the right way up again
-        if (assets.get(assetId)?.layer !== 'ground' || terrainSlot()?.asset.id === assetId) return
-        await api.setGroundSlots([{ asset: assetId, from_m: 0 }])
+      if (id === 'terrain') {   // the picked slot takes the picture, the right way up again; the others stay
+        if (assets.get(assetId)?.layer !== 'ground' || !cfg || !libData) return
+        const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from, ...(sl.flip ? { flip: true } : {}), ...(sl.repeat ? { repeat: sl.repeat } : {}) }))
+        const at = Math.min(terrainAt, Math.max(0, rows.length - 1))
+        if (rows[at]?.asset === assetId) return
+        rows[at] = { asset: assetId, from_m: rows[at]?.from_m ?? 0 }
+        await api.setGroundSlots(rows)
         api.select('terrain')
         return
       }
@@ -879,22 +884,16 @@ export async function createStage25d (host, opts = {}) {
     groundSlots () {
       if (!libData || !cfg) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from, flip: !!sl.flip }))
+      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from, flip: !!sl.flip, repeat: sl.repeat ?? 1 }))
       const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
       return { rows, options, max: GROUND_SLOTS_MAX }
     },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
-    /** Mirror the terrain top to bottom (its drawing reads upside down on the floor), or back. */
-    async setTerrainFlip (on) {
-      if (!cfg || !libData) return
-      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl, i) => ({ asset: sl.asset.id, from_m: sl.from, ...((i === 0 ? on : sl.flip) ? { flip: true } : {}) }))
-      if (!rows.length) return
-      await api.setGroundSlots(rows)
-      api.select('terrain')
-    },
+    /** Which terrain slot a picture from the Assets tab replaces. */
+    pickTerrainSlot (i) { terrainAt = Math.max(0, Number(i) || 0) },
     async setGroundSlots (rows) {
       if (!cfg || !Array.isArray(rows)) return
-      const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)), ...(r.flip ? { flip: true } : {}) }))
+      const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)), ...(r.flip ? { flip: true } : {}), ...(repeatOf(r.repeat) !== 1 ? { repeat: repeatOf(r.repeat) } : {}) }))
       const keep = hidden
       const { ground, ...set } = liveSet()   // a bare floor's colour would wash over the picture
       await api.show({ ...cfg, look: lookNow, set: { ...set, ...(String(ground ?? '').startsWith('#') ? {} : { ground }), groundSlots: slots } })   // the sliders' live values too
@@ -997,7 +996,7 @@ export async function createStage25d (host, opts = {}) {
       return [
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
-        ...(terrainSlot() ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'photo', depth: 'ground', keys: [], backdrop: true }] : []),
+        ...(terrainSlot() ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
         ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },
       ]

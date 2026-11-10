@@ -1344,6 +1344,8 @@
         leaf:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M5.25 18.75C5.25 10.5 10.5 4.5 19.5 4.5c0 9-6 14.25-14.25 14.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.75 20.25 13.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         camera: '<svg viewBox="0 0 100 100" fill="currentColor" class="h-4 w-4"><path d="m10 83.375h52.25c5.5195-0.007812 9.9922-4.4805 10-10v-4.8438l0.070312 0.03125 17.168 8.4609c2.5391 1.25 5.1797 1.2266 7.2539-0.066407 2.0703-1.2852 3.2578-3.6445 3.2578-6.4727v-40.969c0-2.8281-1.1875-5.1875-3.2656-6.4766-2.0742-1.2891-4.7188-1.3125-7.2539-0.066406l-17.234 8.4922v-4.8438l0.003906 0.003906c-0.007812-5.5195-4.4805-9.9922-10-10h-52.25c-5.5195 0.007812-9.9922 4.4805-10 10v46.75c0.0078125 5.5195 4.4805 9.9922 10 10zm-2.7539-56.75c0.019531-1.5117 1.2422-2.7344 2.7539-2.7539h52.25c1.5195 0.003906 2.75 1.2344 2.75 2.7539v16.492l5.2227-2.5703 4.4727-2.2031 17.984-8.8672 0.070312-0.03125v0.074219 40.965 0.074219l-0.066406-0.03125-17.172-8.4609-2.5938-1.2773-2.6992-1.3281-5.2227-2.5703v16.492l0.003906-0.007812c0 1.5195-1.2305 2.75-2.75 2.7539h-52.25c-1.5117-0.019531-2.7344-1.2422-2.7539-2.7539z"/></svg>',
+        // a floor in perspective (the terrain): Heroicons outline weight, 24 px, stroke 1.5
+        terrain: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M7.5 6.75h9l5.25 12.75H2.25L7.5 6.75ZM6.12 10.1h11.76M4.56 13.9h14.88M12 6.75V19.5M9.75 6.75 7.5 19.5M14.25 6.75l2.25 12.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         group:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
@@ -1401,7 +1403,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1422,6 +1424,7 @@
                     return;
                 }
                 this.info = stage.layerInfo?.(id) ?? null;
+                this.ground = id === 'terrain' ? (stage.groundSlots?.() ?? null) : null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
                     const v = window.__timelineKeying?.value?.('s25:' + id, p);
@@ -1527,6 +1530,34 @@
                 keying?.play?.();
             },
             cameraMotion(patch) { window.__stage25d?.setCameraMotion?.(patch); this.sync(); },
+            /** The terrain's slots near to far: change one, add one (40 m past the last), take one off. */
+            async setGround(rows) { await window.__stage25d?.setGroundSlots?.(rows); window.__stage25d?.select?.('terrain'); this.sync(); },
+            groundRow(i, patch) { this.setGround(this.ground.rows.map((r, n) => (n === i ? { ...r, ...patch } : r))); },
+            addGround() { const last = this.ground.rows.at(-1); this.setGround([...this.ground.rows, { asset: last?.asset ?? this.ground.options[0]?.id, from_m: (last?.from_m ?? 0) + 40 }]); },
+            removeGround(i) { this.terrainAt = 0; window.__stage25d?.pickTerrainSlot?.(0); this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
+            optionOf(id) { return this.ground?.options.find((o) => o.id === id) ?? null; },
+            /** A tile is the one the Assets tab replaces: picked, the tab opens on terrain pictures. */
+            pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); window.Alpine.store('view').showTab('icons'); },
+            terrainDrag(e) { const t = Array.from(e.dataTransfer?.types ?? []); return t.includes('application/x-lp-stage25d') || t.includes('application/x-lp-terrain-slot'); },
+            /** A tile dragged onto another: the pictures swap places, the distances stay. A terrain picture from the Assets
+             *  tab: onto a tile it replaces that picture, onto the list it is one more slot. */
+            dropTerrain(e, at) {
+                const rows = this.ground?.rows ?? [];
+                const moved = e.dataTransfer.getData('application/x-lp-terrain-slot');
+                if (moved !== '') {
+                    const from = Number(moved), to = at ?? rows.length - 1;
+                    if (from === to) return;
+                    const looks = rows.map(({ from_m, ...rest }) => rest);
+                    const [one] = looks.splice(from, 1);
+                    looks.splice(to, 0, one);
+                    this.terrainAt = to;
+                    return void this.setGround(looks.map((l, k) => ({ ...l, from_m: rows[k].from_m })));
+                }
+                const id = e.dataTransfer.getData('application/x-lp-stage25d');
+                if (!this.optionOf(id)) return;
+                if (at === null) return void this.setGround([...rows, { asset: id, from_m: (rows.at(-1)?.from_m ?? 0) + 40 }]);
+                this.groundRow(at, { asset: id, flip: false });
+            },
         };
     };
 

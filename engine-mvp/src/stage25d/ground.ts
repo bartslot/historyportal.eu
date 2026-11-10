@@ -134,14 +134,18 @@ export const hexRgb = (hex: string): [number, number, number] => {
 /** A floor holds at most this many ground pictures, near to far (set.groundSlots). */
 export const GROUND_SLOTS_MAX = 6
 /** flip: the picture mirrored top to bottom (a teacher's choice when its drawing reads upside down on the floor). */
-export interface GroundSlot { asset: Asset; from: number; flip?: boolean }
+/** repeat: how many times the picture repeats per its own size (2 = half the tile, twice as often). */
+export interface GroundSlot { asset: Asset; from: number; flip?: boolean; repeat?: number }
 
 /** The floor's ground pictures near to far: the teacher's set.groundSlots (unknown pictures skipped, sorted, at most
  *  six, the nearest from 0 m), else the scene's one ground from 0 m (an old scene looks as before); a paper floor: none. */
+/** A slot's repeat, kept between 0.25 and 8 (1 when missing or not a number). */
+export const repeatOf = (r: unknown): number => (Number.isFinite(Number(r)) && r !== null && r !== undefined ? Math.min(8, Math.max(0.25, Number(r))) : 1)
+
 export function groundSlots(set: Scene['set'], lib: Library & { paper?: string }): GroundSlot[] {
   const grounds = lib.assets.filter((a) => a.layer === 'ground')
   const own = (set.groundSlots ?? [])
-    .map((s) => ({ asset: grounds.find((a) => a.id === s.asset), from: Math.max(0, Number(s.from_m) || 0), ...(s.flip ? { flip: true } : {}) }))
+    .map((s) => ({ asset: grounds.find((a) => a.id === s.asset), from: Math.max(0, Number(s.from_m) || 0), ...(s.flip ? { flip: true } : {}), ...(repeatOf(s.repeat) !== 1 ? { repeat: repeatOf(s.repeat) } : {}) }))
     .filter((s): s is GroundSlot => !!s.asset)
     .sort((p, q) => p.from - q.from)
     .slice(0, GROUND_SLOTS_MAX)

@@ -328,7 +328,8 @@ trait EditsStage25d
                 return;   // one bad row: nothing saved, the stage keeps showing what it had
             }
             $clean[] = ['asset' => $asset, 'from_m' => $i === 0 ? 0.0 : max(0.0, min(2000.0, (float) $from))]
-                + (($slot['flip'] ?? false) === true ? ['flip' => true] : []);
+                + (($slot['flip'] ?? false) === true ? ['flip' => true] : [])
+                + (is_numeric($slot['repeat'] ?? null) && (float) $slot['repeat'] !== 1.0 ? ['repeat' => max(0.25, min(8.0, (float) $slot['repeat']))] : []);
         }
         $config = $scene->config;
         if ($clean === []) {
