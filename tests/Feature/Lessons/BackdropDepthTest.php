@@ -204,7 +204,7 @@ class BackdropDepthTest extends TestCase
 
     public function test_the_panel_offers_the_toggle_and_fit_only_on_a_backdrop_with_a_depth_map(): void
     {
-        $render = fn (array $config, array $layer) => $this->blade('<x-lesson.settings-map-panel :layer="$layer" :scene="$scene" />', [
+        $render = fn (array $config, array $layer) => $this->blade('<x-lesson.layer-motion-panel :layer="$layer" :scene="$scene" />', [
             'layer' => ['asset_id' => 7] + $layer, 'scene' => new Scene(['kind' => 'narration', 'config' => $config]),
         ]);
 

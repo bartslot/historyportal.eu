@@ -463,11 +463,14 @@ trait EditsSceneArtwork
         }
     }
 
-    /** The timeline's entrance bar for this layer, moved or stretched: its delay (s) and length (ms). */
-    public function setLayerEntrance(int $assetId, float $delay, int $duration): void
+    /** The timeline's layer bar dragged to start at $delay: a figure with no entrance fades in there. */
+    public function setLayerAppearAt(int $assetId, float $delay): void
     {
+        $layer = collect($this->sceneArtworkLayers())->firstWhere('asset_id', $assetId);
+        if (in_array($layer['anim'] ?? 'none', ['', 'none'], true)) {
+            $this->updateArtworkLayer($assetId, 'anim', 'fade');
+        }
         $this->updateArtworkLayer($assetId, 'anim_delay', round($delay, 1));
-        $this->updateArtworkLayer($assetId, 'anim_duration', $duration);
     }
 
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void

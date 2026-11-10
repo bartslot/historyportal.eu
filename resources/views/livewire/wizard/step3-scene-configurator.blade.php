@@ -1075,6 +1075,9 @@
                 </div>
                 <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
+                    <div class="mt-3">
+                        <x-lesson.layer-motion-panel :layer="$al" :scene="$this->selectedSceneModel" />
+                    </div>
                 </div>
             </div>
             @elseif ($activeDioramaId)

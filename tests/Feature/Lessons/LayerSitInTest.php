@@ -158,9 +158,12 @@ class LayerSitInTest extends TestCase
     public function test_the_layer_panel_offers_the_button_and_the_advanced_values(): void
     {
         $scene = new Scene(['kind' => 'narration', 'config' => []]);
-        $html = $this->blade('<x-lesson.settings-map-panel :layer="$layer" :scene="$scene" />', [
-            'layer' => ['asset_id' => 7, 'reflection' => 0.35], 'scene' => $scene,
-        ]);
+        $vars = ['layer' => ['asset_id' => 7, 'reflection' => 0.35], 'scene' => $scene];
+        $html = $this->blade('<x-lesson.layer-motion-panel :layer="$layer" :scene="$scene" />', $vars);
+
+        // Under the Motion tab, not Format (Bart, 2026-11-10).
+        $this->blade('<x-lesson.settings-map-panel :layer="$layer" :scene="$scene" />', $vars)
+            ->assertDontSee('data-sit-in', false);
 
         $html->assertSee('data-sit-in', false)
             ->assertSee('data-sit-advanced', false)

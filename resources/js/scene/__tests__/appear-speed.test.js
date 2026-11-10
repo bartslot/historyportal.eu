@@ -35,18 +35,35 @@ describe('a figure\'s entrance in the timeline', () => {
   })
 })
 
-describe('the timeline bar for a figure\'s entrance', () => {
-  it('reads the entrance, and a drag commits delay and length in one call', async () => {
+describe('the timeline bar for a figure (After Effects layer bar, Bart 2026-11-10)', () => {
+  it('runs from when it appears to the end of the scene, and a drag sets when it appears', async () => {
     const { animationTimeline } = await import('../../anim/timeline-panel.js')
-    window.__lessonArtworkLayer = { _layers: [{ asset_id: 7, anim: 'fade', anim_delay: 0.5, anim_duration: 600 }] }
+    window.__lessonArtworkLayer = { _layers: [
+      { asset_id: 7, anim: 'fade', anim_delay: 0.5, anim_duration: 600 },
+      { asset_id: 9 },
+    ] }
     const p = animationTimeline({ sceneId: 'appear', tracks: [], targets: [], duration: 8 })
-    p.$wire = { setLayerEntrance: vi.fn(), setTimeline () {} }
+    p.$wire = { setLayerAppearAt: vi.fn(), setTimeline () {} }
     p.refreshObjects()
 
-    expect(p.barOf('art:7')).toEqual({ from: 0.5, to: 1.1 })
-    p.commitBar('art:7', { target: 'art:7', from: 2, to: 2.9 })
-    expect(p.$wire.setLayerEntrance).toHaveBeenCalledWith(7, 2, 900)
+    expect(p.barOf('art:7')).toEqual({ from: 0.5, to: 8 })
+    expect(p.barOf('art:9'), 'no entrance: there from the start').toEqual({ from: 0, to: 8 })
+    p.commitBar('art:9', { target: 'art:9', from: 2.04, to: 8 })
+    expect(p.$wire.setLayerAppearAt).toHaveBeenCalledWith(9, 2)
     // The bar stays where it was let go while the save comes back.
-    expect(p.barOf('art:7')).toEqual({ from: 2, to: 2.9 })
+    expect(p.barOf('art:9')).toEqual({ from: 2, to: 8 })
+
+    // The stage follows the bar: not there before it starts, there after.
+    const el = document.createElement('div')
+    el.setAttribute('data-layer-id', 'art_9')
+    document.body.append(el)
+    p.seek(1)
+    expect(el.style.visibility).toBe('hidden')
+    p.seek(3)
+    expect(el.style.visibility).toBe('')
+    p.hiddenObjects['art:9'] = true   // its eye off
+    p.seek(4)
+    expect(el.style.visibility, 'the eye still wins').toBe('hidden')
+    el.remove()
   })
 })

@@ -126,12 +126,18 @@ class AppearSpeedDelayTest extends TestCase
         $this->assertSame(300, (int) $layer['anim_duration']);
     }
 
-    public function test_the_timeline_moves_a_figures_entrance_in_one_save(): void
+    public function test_dragging_the_layer_bar_sets_when_the_figure_appears(): void
     {
-        // The entrance bar dragged to 2 s and stretched to 0.9 s long.
-        $this->wizard()->call('setLayerEntrance', $this->asset->id, 2.04, 900);
+        // The layer bar's start dragged to 2 s: a figure with no entrance gets a fade there.
+        $this->wizard()->call('setLayerAppearAt', $this->asset->id, 2.04);
         $layer = collect($this->scene->fresh()->shots[0]['layers'])->firstWhere('asset_id', $this->asset->id);
-        $this->assertEquals([2.0, 900], [round((float) $layer['anim_delay'], 1), (int) $layer['anim_duration']]);
+        $this->assertEquals([2.0, 'fade'], [round((float) $layer['anim_delay'], 1), $layer['anim']]);
+
+        // One it already has is kept.
+        $this->wizard()->call('updateArtworkLayer', $this->asset->id, 'anim', 'zoom');
+        $this->wizard()->call('setLayerAppearAt', $this->asset->id, 3);
+        $layer = collect($this->scene->fresh()->shots[0]['layers'])->firstWhere('asset_id', $this->asset->id);
+        $this->assertEquals([3.0, 'zoom'], [round((float) $layer['anim_delay'], 1), $layer['anim']]);
     }
 
     /**

@@ -503,16 +503,17 @@
                             </template>
                             {{-- A balloon is on screen for a span of the scene: its clip, under its
                                  keyframe bar. The body moves it in time, the ends stretch it. --}}
-                            {{-- The bar: a balloon's time on screen, or a figure's entrance (Appear:
-                                 from its delay, as long as its speed). Drag it to move it, an end to
-                                 stretch it. --}}
-                            <template x-if="object.kind === 'bal' || (object.kind === 'art' && object.entrance)">
+                            {{-- The bar: a balloon's time on screen, or a figure's layer bar (After
+                                 Effects): from when it appears to the scene's end. Drag a balloon's
+                                 to move it, an end to stretch it; drag a figure's to set when it
+                                 appears, which gives it an entrance (Bart, 2026-11-10). --}}
+                            <template x-if="object.kind === 'bal' || object.kind === 'art'">
                                 <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
                                      :data-timeline-span="object.target"
                                      x-on:pointerdown="startBar($event, object.target)"
                                      :style="barStyle(barOf(object.target)) + '; bottom: 3px; height: 6px'">
                                     <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
-                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                    <span x-show="object.kind === 'bal'" class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
                                 </div>
                             </template>
                         </div>

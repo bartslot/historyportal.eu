@@ -366,6 +366,7 @@ export const animationTimeline = (config = {}) => ({
       ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = false   // closed until a teacher opens one (Bart 2026-11-04)
+    this.applyAppearances()   // an entrance changed elsewhere (Motion tab) shows at once
   },
 
   /** How far the tracks box has scrolled: a pinned row is held at its top by this much. */
@@ -780,6 +781,16 @@ export const animationTimeline = (config = {}) => ({
     window.dispatchEvent(new CustomEvent('timeline-changed'))
   },
 
+  /** A figure is not on screen before its layer bar starts (After Effects, Bart 2026-11-10), nor
+   *  while its eye is off. */
+  applyAppearances () {
+    for (const o of this.objects) {
+      if (o.kind !== 'art') continue
+      const hidden = this.isHidden(o.target) || this.time < (o.entrance?.from ?? 0)
+      document.querySelectorAll(`[data-layer-id="art_${o.target.slice(4)}"]`).forEach((el) => { el.style.visibility = hidden ? 'hidden' : '' })
+    }
+  },
+
   /** Push the sampled frame at the playhead onto whatever renders it. Scrub and play are the
    *  same code path, so what a teacher sees while dragging is what the class will see. */
   applyFrame () {
@@ -794,6 +805,7 @@ export const animationTimeline = (config = {}) => ({
     const frame = sampleFrame(live, this.time)
     const map = window.__lessonMap
     window.__balloons?.time?.(this.time)
+    this.applyAppearances()
 
     for (const [target, values] of Object.entries(frame)) {
       if (kindOfTarget(target) === 'camera') { if (map) applyCamera(map, values); continue }
@@ -889,16 +901,16 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
-  // ── Bars. A balloon is on screen from its start to its end (no end: the scene's end); a figure's
-  //    entrance plays from its delay for as long as Appear's speed makes it. Its row's bar moves
-  //    it in time and its ends stretch it, like a diorama clip.
+  // ── Bars. A balloon is on screen from its start to its end (no end: the scene's end). A figure's
+  //    bar is its After Effects layer bar (Bart, 2026-11-10): on screen from when it appears to the
+  //    end of the scene. Dragging it sets when it appears; a balloon's ends stretch it.
 
   /** The live draft while a bar is dragged, else the object's own. */
   barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
-    if (o.kind === 'art') return o.entrance ?? null
+    if (o.kind === 'art') return { from: o.entrance?.from ?? 0, to: this.duration }
     return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
   },
 
@@ -920,6 +932,12 @@ export const animationTimeline = (config = {}) => ({
       if (!moved && Math.abs(e.clientX - event.clientX) < DRAG_THRESHOLD_PX) return
       moved = true
       const dt = this.rawTimeFromEvent(e) - t0
+      if (target.startsWith('art:')) {
+        // Only its start moves: the end is the scene's end.
+        // 10 s is the server's cap on anim_delay (EditsSceneArtwork).
+        this.spanDraft = { target, from: Math.min(10, this.duration - 0.1, Math.max(0, span0.from + dt)), to: this.duration }
+        return
+      }
       const keys = mode === 'move' ? shiftClip(keys0, dt)
         : stretchClip(keys0, mode, (mode === 'end' ? keys0[1].t : keys0[0].t) + dt)
       this.spanDraft = { target, from: keys[0].t, to: Math.min(this.duration, keys[1].t) }
@@ -934,14 +952,14 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('pointerup', onUp, { once: true })
   },
 
-  /** Save a dragged bar: a figure's entrance delay and length, or a balloon's start and end. */
+  /** Save a dragged bar: when a figure appears, or a balloon's start and end. */
   commitBar (target, draft) {
     const o = this.objects.find((x) => x.target === target)
     if (o?.kind === 'art') {
-      const ms = Math.max(100, Math.round((draft.to - draft.from) * 1000))
-      this.$wire?.setLayerEntrance?.(Number(target.slice(4)), Math.round(draft.from * 10) / 10, ms)
+      const from = Math.round(draft.from * 10) / 10
+      this.$wire?.setLayerAppearAt?.(Number(target.slice(4)), from)
       // The row shows the new bar now; the layer's own values arrive with the save.
-      o.entrance = { from: draft.from, to: draft.to }
+      o.entrance = { ...o.entrance, from }
       this.spanDraft = null
       return
     }
