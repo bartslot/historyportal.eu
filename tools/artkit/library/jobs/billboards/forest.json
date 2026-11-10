@@ -1,0 +1,6 @@
+[
+ {"from": "trb-woodland-verge-band-01", "tags": ["forest", "moss", "undergrowth"], "height_m": 1.2, "split": 5},
+ {"from": "trb-fern-clump-01", "tags": ["forest", "undergrowth", "fern"], "height_m": 0.65},
+ {"from": "trb-woodland-herbs-01", "tags": ["forest", "moss", "undergrowth"], "height_m": 0.25},
+ {"from": "trb-bramble-tangle-01", "tags": ["forest", "undergrowth", "bramble"], "height_m": 0.8}
+]

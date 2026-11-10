@@ -1,0 +1,5 @@
+[
+ {"from": "wave-crest-long-01", "tags": ["water", "sea", "bay", "waves"], "height_m": 0.9},
+ {"from": "wave-crest-curl-01", "tags": ["water", "sea", "bay", "waves"], "height_m": 0.8},
+ {"from": "foam-wake-01", "tags": ["water", "sea", "bay", "foam"], "height_m": 0.5}
+]
