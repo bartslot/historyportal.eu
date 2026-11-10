@@ -492,6 +492,9 @@ class StageEditingTest extends TestCase
             ->call('pickStage25dWorld', '', $scene->id + 1);
         $this->assertEquals(['src' => '/worlds/valley.spz', 'y' => 2, 'z' => 8.0, 'scale' => 4.0], $scene->fresh()->config['stage25d']['world'], 'not in the library, or another scene: nothing changes');
 
+        $editor->call('pickStage25dWorld', 'farmland', $scene->id);
+        $this->assertEquals(['src' => '/worlds/farmland.spz', 'painted' => true], $scene->fresh()->config['stage25d']['world'], 'a world lifted from our own painting says so: the paint grade leaves it alone');
+
         $editor->call('pickStage25dWorld', '', $scene->id);
         $this->assertArrayNotHasKey('world', $scene->fresh()->config['stage25d']);
     }

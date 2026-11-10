@@ -292,7 +292,7 @@
         {{-- A splat world from the library (config/worlds.php) lies under the scene in the painted sky's place: pick one,
              then line it up behind the set. --}}
         @php
-            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'src' => '/'.$w['file'], 'thumb' => asset($w['thumb']), 'place' => $w['place'] ?? []])->values();
+            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'src' => '/'.$w['file'], 'thumb' => asset($w['thumb']), 'place' => ($w['place'] ?? []) + (empty($w['painted']) ? [] : ['painted' => true])])->values();   // the world block it starts as
         @endphp
         @if ($worlds->isNotEmpty())
             <div class="mt-3" data-stage25d-world-picker>

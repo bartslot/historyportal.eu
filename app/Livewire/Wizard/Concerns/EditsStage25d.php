@@ -297,7 +297,8 @@ trait EditsStage25d
             unset($config['stage25d']['world']);
         } else {
             $place = array_intersect_key((array) config("worlds.{$world}.place", []), self::WORLD_RANGES);
-            $config['stage25d']['world'] = ['src' => '/'.$file] + array_map('floatval', $place);
+            $config['stage25d']['world'] = ['src' => '/'.$file] + array_map('floatval', $place)
+                + (config("worlds.{$world}.painted") ? ['painted' => true] : []);
         }
         $scene->update(['config' => $config]);
         $this->selectedScene['config']['stage25d'] = $config['stage25d'];
