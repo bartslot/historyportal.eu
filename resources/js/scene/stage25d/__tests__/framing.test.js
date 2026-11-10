@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CAM_RANGE, cameraKeys, cameraPoseAt, clampPose, movedCameraKey, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
+import { CAM_RANGE, cameraKeys, cameraOverview, frameIn, cameraPoseAt, clampPose, movedCameraKey, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey } from '../framing.js'
 
 const HOUSE = { x: 0, y: 1.6, z: 0, fov: 50 }
 
@@ -76,5 +76,37 @@ describe('camera framing', () => {
     const [cam, ...more] = shotsOfKeys(keys)
     expect(cameraPoseAt(cam, more, 4, 8).z).toBeCloseTo(2)
     expect(cameraPoseAt(null, [], 1, 8)).toEqual(HOUSE)
+  })
+})
+
+describe('the camera preview: start and end frames on a wider view', () => {
+  const A = 16 / 9
+  const inside = (r) => r.x - r.w / 2 >= 0 && r.x + r.w / 2 <= 1 && r.y - r.h / 2 >= 0 && r.y + r.h / 2 <= 1
+
+  it('holds both frames with room around them', () => {
+    const start = { x: -2, y: 1.6, z: 0, fov: 50 }
+    const end = { x: 3, y: 2, z: 4, fov: 40 }
+    const view = cameraOverview([start, end], A)
+    const a = frameIn(view, start, A)
+    const b = frameIn(view, end, A)
+    expect(inside(a) && inside(b)).toBe(true)
+    expect(b.x, 'the end is to the right').toBeGreaterThan(a.x)
+    expect(b.y, 'and higher up').toBeLessThan(a.y)
+    expect(b.w, 'and further in, so smaller').toBeLessThan(a.w)
+  })
+
+  it('a still camera is one frame in the middle, the set around it', () => {
+    const p = { x: 0, y: 1.6, z: 0, fov: 50 }
+    const r = frameIn(cameraOverview([p], A), p, A)
+    expect(r.x).toBeCloseTo(0.5)
+    expect(r.y).toBeCloseTo(0.5)
+    expect(r.w).toBeGreaterThan(0.6)
+    expect(r.w).toBeLessThan(0.8)
+  })
+
+  it('steps back when the widest lens cannot hold two frames far apart', () => {
+    const view = cameraOverview([{ x: -8, y: 1, z: 0, fov: 70 }, { x: 8, y: 1, z: 0, fov: 70 }], A)
+    expect(view.z).toBeLessThan(0)
+    expect(view.fov).toBeLessThanOrEqual(75.001)
   })
 })

@@ -34,10 +34,17 @@
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ __('Camera') }}</span>
         </div>
 
-        {{-- Start and End move the playhead there; the frame at the playhead is what a drag changes. --}}
-        <div class="mt-3 grid grid-cols-2 gap-2" aria-label="{{ __('Camera') }}" data-stage25d-camera>
+        {{-- The set from a wider camera with the start and end frames on it (Figma 2775:2902). A frame moves the playhead
+             there; the frame at the playhead is what a drag changes. The smaller frame lies on top, so both stay clickable. --}}
+        <div class="relative -mx-4 mt-3 overflow-hidden bg-base-200" :style="`aspect-ratio: ${camPreview?.aspect ?? 16 / 9}`"
+             aria-label="{{ __('Camera') }}" data-stage25d-camera>
+            <img x-show="camPreview" :src="camPreview?.src" alt="" class="absolute inset-0 size-full object-cover" data-camera-preview />
             @foreach ([['from', __('Start')], ['to', __('End')]] as [$end, $label])
-                <button type="button" class="btn btn-sm" data-camera-end="{{ $end }}" x-on:click="frame('{{ $end }}')">{{ $label }}</button>
+                <button type="button" class="absolute rounded-xs border-base-content" data-camera-end="{{ $end }}" aria-label="{{ $label }}"
+                        x-show="camFrames && ('{{ $end }}' === 'from' || cam?.moves)" x-on:click="frame('{{ $end }}')"
+                        :class="camEnd === '{{ $end }}' ? 'border-2' : 'border opacity-70'" :style="frameStyle('{{ $end }}')">
+                    <span class="absolute left-1 top-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold uppercase leading-4 text-base-content">{{ $label }}</span>
+                </button>
             @endforeach
         </div>
         <p class="mt-2 text-xs text-panel-hint">{{ __('Drag the picture to move the camera. Scroll to go closer, pinch to zoom.') }}</p>

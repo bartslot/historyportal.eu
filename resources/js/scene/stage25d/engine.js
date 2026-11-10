@@ -26,7 +26,7 @@ import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
-import { cameraKeys, cameraPoseAt, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
+import { cameraKeys, cameraOverview, cameraPoseAt, frameIn, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
@@ -562,6 +562,43 @@ export async function createStage25d (host, opts = {}) {
     },
     /** What the Camera panel and row show: its keys, and the pose at the playhead (the still house camera with no move). */
     cameraInfo: () => ({ moves: !!camNow, keys: camKeysNow(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
+    /** The camera move's start and end poses (one pose for a still camera). */
+    cameraEnds () {
+      const keys = camKeysNow()
+      return keys.length ? { from: keys[0].pose, to: keys.at(-1).pose } : { from: camPoseNow(), to: camPoseNow() }
+    },
+    /** The camera panel's preview: the set from a wider camera that sees the start and end frames, as a small JPEG
+     *  `{ src, view, aspect }`. Drawn off screen from a second camera, so the canvas never shows it. */
+    async cameraPreview (width = 480) {
+      if (!stage || !scene || !canvas.width) return null
+      const aspect = canvas.width / canvas.height
+      const { from, to } = api.cameraEnds()
+      const view = cameraOverview([from, to], aspect)
+      const { CreateScreenshotUsingRenderTargetAsync } = await import('@babylonjs/core/Misc/screenshotTools')
+      await stage.scene.whenReadyAsync()
+      const cam = stage.camera.clone('s25-camera-preview')
+      cam.position.set(view.x, view.y, view.z)
+      cam.fov = (view.fov * Math.PI) / 180
+      cam.rotation.z = 0
+      stills++
+      stage.gridHidden = true   // the editor's grid is not part of the scene
+      try {
+        const src = await CreateScreenshotUsingRenderTargetAsync(stage.engine, cam, { width, height: Math.round(width / aspect) }, 'image/jpeg', 1, false, undefined, true, false, false, 0.72)
+        return { src, view, aspect }
+      } catch {
+        return null   // no preview beats a broken one: the frames still show on the plain panel
+      } finally {
+        cam.dispose()
+        stage.gridHidden = --stills > 0
+      }
+    },
+    /** Where the start and end frames sit in a preview (frameIn: fractions of it); no preview: in the one it would draw. */
+    cameraFrames (preview = null) {
+      const { from, to } = api.cameraEnds()
+      const aspect = preview?.aspect ?? (canvas.width && canvas.height ? canvas.width / canvas.height : 16 / 9)
+      const view = preview?.view ?? cameraOverview([from, to], aspect)
+      return { from: frameIn(view, from, aspect), to: frameIn(view, to, aspect) }
+    },
     /** The camera's own motion: live, and saved. */
     setCameraMotion (patch) {
       camMotion = { kind: 'none', amount: 1, speed: 1, ...camMotion, ...patch }

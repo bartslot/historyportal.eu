@@ -1397,9 +1397,10 @@
             setTimeout(poll, SPARK_POLL_MS);
         };
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
+        const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, camPreview: null, camFrames: null, camEnd: 'from', previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1412,7 +1413,12 @@
                 const stage = window.__stage25d;
                 if (!stage) return;
                 if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; this.world = stage.worldInfo?.() ?? null; return; }
-                if (id === 'camera') { this.cam = stage.cameraInfo?.() ?? null; return; }
+                if (id === 'camera') {
+                    this.cam = stage.cameraInfo?.() ?? null;
+                    this.camFrames = stage.cameraFrames?.(this.camPreview) ?? null;
+                    this.queuePreview(stage);
+                    return;
+                }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
@@ -1485,7 +1491,26 @@
             /** Move the splat world: live, and saved. */
             setWorld(key, value) { if (!this.world || !Number.isFinite(value)) return; this.world[key] = value; window.__stage25d?.setWorld?.({ [key]: value }); },
             /** Frame the start or the end of the camera move on the canvas. */
-            frame(end) { window.__timelineKeying?.seekTo?.(end); this.sync(); },
+            frame(end) { this.camEnd = end; window.__timelineKeying?.seekTo?.(end); this.sync(); },
+            /** Draw the camera preview again once the start or end has settled (at once the first time). */
+            queuePreview(stage) {
+                const sig = JSON.stringify(stage.cameraEnds?.() ?? null);
+                if (sig === this.previewSig) return;
+                this.previewSig = sig;
+                clearTimeout(this.previewTimer);
+                this.previewTimer = setTimeout(async () => {
+                    const shot = await stage.cameraPreview?.();
+                    if (!shot || this.previewSig !== sig) return;
+                    this.camPreview = shot;
+                    this.camFrames = stage.cameraFrames(shot);
+                }, this.camPreview ? CAMERA_PREVIEW_IDLE_MS : 0);
+            },
+            /** A frame on the preview: placed, sized and leaned as the camera is; the smaller one on top. */
+            frameStyle(end) {
+                const r = this.camFrames?.[end];
+                if (!r) return '';
+                return `left: ${(r.x - r.w / 2) * 100}%; top: ${(r.y - r.h / 2) * 100}%; width: ${r.w * 100}%; height: ${r.h * 100}%; transform: rotate(${-r.roll}deg); z-index: ${Math.round((1 - r.w) * 100) + 1}`;
+            },
             /** Back to the still camera: no move. */
             stillCamera() { window.__stage25d?.resetCamera?.(); this.sync(); },
             cameraValue(prop, value) { window.__stage25d?.setCameraValue?.(prop, value); this.sync(); },

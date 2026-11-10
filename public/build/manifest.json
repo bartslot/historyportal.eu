@@ -55,16 +55,16 @@
     "file": "assets/ambient-CEzLlAaX.js",
     "name": "ambient"
   },
-  "_babylon-OtcCI6ux.js": {
-    "file": "assets/babylon-OtcCI6ux.js",
+  "_babylon-DFNtf0nl.js": {
+    "file": "assets/babylon-DFNtf0nl.js",
     "name": "babylon",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-DAJmp8OV.js": {
-    "file": "assets/big-countdown-DAJmp8OV.js",
+  "_big-countdown-DUrrgwsu.js": {
+    "file": "assets/big-countdown-DUrrgwsu.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -183,7 +183,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-B5VkYTuh.css",
+    "file": "assets/app-CS8lR5du.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -192,7 +192,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BiuV6okL.js",
+    "file": "assets/app-BKJu5KI6.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -241,7 +241,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-Cwy0YyoT.js",
+    "file": "assets/cutout-dialog-CEXZRiu0.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -290,7 +290,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-FLpShDbQ.js",
+    "file": "assets/lesson-player-Dhp2_eV-.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -300,7 +300,7 @@
       "_pausable-clock-B6VRcHlA.js",
       "_draw-options-30UrxnVk.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_config-DwQUN7uY.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
@@ -351,14 +351,14 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-Cp2GDGDa.js",
+    "file": "assets/ArtworkOverlay-DlvWY7fm.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_draw-options-30UrxnVk.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_alpha-mask-C1RIm4VB.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
@@ -366,12 +366,12 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-BGG5XLMa.js",
+    "file": "assets/ParallaxScene-Esse9-X0.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-4nUJoQpk.js",
@@ -381,12 +381,12 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-BCeX6PnK.js",
+    "file": "assets/QuizOverlay-DpnwQhLf.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CEzLlAaX.js",
@@ -394,7 +394,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-CM-nqeKh.js",
+    "file": "assets/SplitStage-B7GeXbAn.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -403,7 +403,7 @@
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-C7RLJvYi.js",
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-4nUJoQpk.js",
@@ -450,12 +450,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BqmFTtQz.js",
+    "file": "assets/index-DA6meSMT.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -538,38 +538,39 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/engine.js": {
-    "file": "assets/engine-BkfZvffb.js",
+    "file": "assets/engine-75eSXhgh.js",
     "name": "engine",
     "src": "resources/js/scene/stage25d/engine.js",
     "isDynamicEntry": true,
     "imports": [
-      "_babylon-OtcCI6ux.js",
+      "_vite-helpers-DqutJMZx.js",
+      "_babylon-DFNtf0nl.js",
       "_puppet-sheet-BvRIt7zy.js",
       "_config-DwQUN7uY.js",
-      "_vite-helpers-DqutJMZx.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_projection-CL24asTn.js",
       "_load-image-DngxJD_v.js",
       "_draw-options-30UrxnVk.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-DAJmp8OV.js",
+      "_big-countdown-DUrrgwsu.js",
       "_ambient-CEzLlAaX.js",
       "_alpha-mask-C1RIm4VB.js"
     ],
     "dynamicImports": [
-      "_babylon-OtcCI6ux.js",
+      "_babylon-DFNtf0nl.js",
       "resources/js/scene/stage25d/splat-reveal.js",
-      "_babylon-OtcCI6ux.js"
+      "_babylon-DFNtf0nl.js",
+      "_babylon-DFNtf0nl.js"
     ]
   },
   "resources/js/scene/stage25d/splat-reveal.js": {
-    "file": "assets/splat-reveal-RyhzDwI3.js",
+    "file": "assets/splat-reveal-RxtWmojG.js",
     "name": "splat-reveal",
     "src": "resources/js/scene/stage25d/splat-reveal.js",
     "isDynamicEntry": true,
     "imports": [
-      "_babylon-OtcCI6ux.js",
+      "_babylon-DFNtf0nl.js",
       "_vite-helpers-DqutJMZx.js"
     ]
   },
@@ -589,7 +590,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-B1AY9yE9.js",
+    "file": "assets/recorder-pIk8nC2Z.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

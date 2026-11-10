@@ -1,4 +1,4 @@
-import{k as a}from"./babylon-OtcCI6ux.js";import"./vite-helpers-DqutJMZx.js";const r=`
+import{k as a}from"./babylon-DFNtf0nl.js";import"./vite-helpers-DqutJMZx.js";const r=`
 {
   float t = revealT;
   vec3 p = splat.center.xyz;

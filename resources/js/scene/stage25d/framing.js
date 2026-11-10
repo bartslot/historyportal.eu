@@ -97,3 +97,40 @@ export const cameraPoseAt = (cam, more, t, dur) => {
   const p = cameraAt(shot, Math.max(0, into), dur)
   return clampPose({ x: p.x, y: p.y, z: p.z, fov: (p.fov * 180) / Math.PI, roll: p.roll })
 }
+
+/** The camera panel's preview: a wider view of the set with the start and end frames drawn on it (Bart, 2026-11-10,
+ *  Figma 2775:2902). Both frames are measured on one plane GRAB_M past the camera furthest in, so a frame further in
+ *  draws smaller. ponytail: the house pitch is left out (every pose shares it, it shifts both frames alike). */
+const OVERVIEW_MARGIN = 1.4
+const OVERVIEW_FOV_MAX = 75
+
+/** Half the height and width a pose sees on the plane at zRef, grown to hold its roll. */
+const halfFrame = (p, zRef, aspect) => {
+  const hh = (zRef - p.z) * Math.tan(fovRad(p.fov) / 2)
+  const r = Math.abs(((p.roll ?? 0) * Math.PI) / 180)
+  return { w: hh * aspect * Math.cos(r) + hh * Math.sin(r), h: hh * aspect * Math.sin(r) + hh * Math.cos(r) }
+}
+
+/** Where the preview camera stands to see every pose with room around it: `{ x, y, z, fov (degrees), zRef }`. */
+export const cameraOverview = (poses, aspect) => {
+  const shots = poses.map(clampPose)
+  const zRef = Math.max(...shots.map((p) => p.z)) + GRAB_M
+  const boxes = shots.map((p) => ({ p, half: halfFrame(p, zRef, aspect) }))
+  const x0 = Math.min(...boxes.map(({ p, half }) => p.x - half.w))
+  const x1 = Math.max(...boxes.map(({ p, half }) => p.x + half.w))
+  const y0 = Math.min(...boxes.map(({ p, half }) => p.y - half.h))
+  const y1 = Math.max(...boxes.map(({ p, half }) => p.y + half.h))
+  const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / (2 * aspect)) * OVERVIEW_MARGIN
+  // stand with the nearest camera; step back only when even the widest lens cannot hold it all
+  const z = Math.min(Math.min(...shots.map((p) => p.z)), zRef - halfH / Math.tan(fovRad(OVERVIEW_FOV_MAX) / 2))
+  const fov = (2 * Math.atan(halfH / (zRef - z)) * 180) / Math.PI
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z, fov, zRef }
+}
+
+/** A pose's frame in the preview, as fractions of it: centre x/y (y down), width, height, and its roll in degrees. */
+export const frameIn = (view, pose, aspect) => {
+  const p = clampPose(pose)
+  const H = (view.zRef - view.z) * Math.tan(fovRad(view.fov) / 2)
+  const hh = (view.zRef - p.z) * Math.tan(fovRad(p.fov) / 2)
+  return { x: 0.5 + (p.x - view.x) / (2 * H * aspect), y: 0.5 - (p.y - view.y) / (2 * H), w: hh / H, h: hh / H, roll: p.roll ?? 0 }
+}
