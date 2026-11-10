@@ -42,7 +42,7 @@ trait DuplicatesSceneObjects
         }
 
         $ids = collect($objectIds)
-            ->filter(fn ($id) => is_string($id) && $id !== '' && ! str_starts_with($id, '__'))
+            ->filter(fn ($id) => is_string($id) && $id !== '' && ! str_starts_with($id, '__') && ! str_starts_with($id, 's25_'))   // the ground, sky, camera: never copied
             ->unique()->take(self::DUPLICATE_MAX_OBJECTS)->values();
         if ($ids->isEmpty()) {
             return;

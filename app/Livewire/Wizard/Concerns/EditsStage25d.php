@@ -571,8 +571,8 @@ trait EditsStage25d
     {
         $scene = $this->stage25dScene();
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
-        if (! $scene || ! is_array($layers) || ! isset($layers[$index]) || count($layers) <= 1) {
-            return;   // the last layer stays: a stage with nothing on it has no picture to edit
+        if (! $scene || ! is_array($layers) || ! isset($layers[$index]) || count($layers) <= 1 || $this->isStage25dBackdrop($scene, $layers[$index])) {
+            return;   // the last layer stays: a stage with nothing on it has no picture to edit; the backdrop is swapped, not deleted
         }
         $handle = $layers[$index]['figure'] ?? null;
         unset($layers[$index]);
@@ -602,8 +602,8 @@ trait EditsStage25d
         }
         $first = null;
         foreach (array_slice(array_unique($indexes), 0, 20) as $i) {
-            if (! isset($layers[$i])) {
-                continue;
+            if (! isset($layers[$i]) || $this->isStage25dBackdrop($scene, $layers[$i])) {
+                continue;   // one backdrop per scene
             }
             $copy = $layers[$i];
             $copy['x'] = min(3.0, (float) ($copy['x'] ?? 0.5) + 0.05);
@@ -656,6 +656,14 @@ trait EditsStage25d
     private function storeStage25dLayers(Scene $scene, array $layers): void
     {
         $this->storeStage25dSetPart($scene, ['layers'], array_values($layers));
+    }
+
+    /** @param  array<string,mixed>  $layer  whether this layer is the scene's backdrop (LibraryBundle::isBackdrop) */
+    private function isStage25dBackdrop(Scene $scene, array $layer): bool
+    {
+        $asset = LibraryBundle::asset((string) ($scene->config['stage25d']['bundle'] ?? ''), (string) ($layer['asset'] ?? ''));
+
+        return $asset !== null && LibraryBundle::isBackdrop($asset);
     }
 
     /** A picture's library kind: the period's library, or the teacher's own cut-out (Cutouts: 'cut-<id>'). */

@@ -28,6 +28,10 @@ import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from '.
 import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
 import { cameraKeys, cameraOverview, cameraPoseAt, clampPose, frameIn, frameSize, withFrameSize, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
+/** The scene's backdrop: a far strip that does not tile. One per scene, grouped with the ground and sky under "Scene",
+ *  never copied or deleted (LibraryBundle::isBackdrop, the same rule). */
+export const isBackdropAsset = (a) => a?.layer === 'bg' && !a.tileable_x
+
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
@@ -671,7 +675,7 @@ export async function createStage25d (host, opts = {}) {
       const asset = assets.get(l.asset) ?? null
       const ground = onGround(layerIndex(id))
       const showScale = !ground || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined)
-      const strip = asset?.layer === 'bg' && !asset.tileable_x
+      const strip = isBackdropAsset(asset)
       return {
         id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null, role: asset?.layer ?? null,
         ground, showScale,
@@ -963,7 +967,7 @@ export async function createStage25d (host, opts = {}) {
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [
-        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [] })),
+        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
         ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },

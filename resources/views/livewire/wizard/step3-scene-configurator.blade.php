@@ -1344,6 +1344,7 @@
         leaf:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M5.25 18.75C5.25 10.5 10.5 4.5 19.5 4.5c0 9-6 14.25-14.25 14.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.75 20.25 13.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         camera: '<svg viewBox="0 0 100 100" fill="currentColor" class="h-4 w-4"><path d="m10 83.375h52.25c5.5195-0.007812 9.9922-4.4805 10-10v-4.8438l0.070312 0.03125 17.168 8.4609c2.5391 1.25 5.1797 1.2266 7.2539-0.066407 2.0703-1.2852 3.2578-3.6445 3.2578-6.4727v-40.969c0-2.8281-1.1875-5.1875-3.2656-6.4766-2.0742-1.2891-4.7188-1.3125-7.2539-0.066406l-17.234 8.4922v-4.8438l0.003906 0.003906c-0.007812-5.5195-4.4805-9.9922-10-10h-52.25c-5.5195 0.007812-9.9922 4.4805-10 10v46.75c0.0078125 5.5195 4.4805 9.9922 10 10zm-2.7539-56.75c0.019531-1.5117 1.2422-2.7344 2.7539-2.7539h52.25c1.5195 0.003906 2.75 1.2344 2.75 2.7539v16.492l5.2227-2.5703 4.4727-2.2031 17.984-8.8672 0.070312-0.03125v0.074219 40.965 0.074219l-0.066406-0.03125-17.172-8.4609-2.5938-1.2773-2.6992-1.3281-5.2227-2.5703v16.492l0.003906-0.007812c0 1.5195-1.2305 2.75-2.75 2.7539h-52.25c-1.5117-0.019531-2.7344-1.2422-2.7539-2.7539z"/></svg>',
+        group:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1639,13 +1640,15 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
                 // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
-                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop)
+                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery)
                     .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
                     .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true }));
                 // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
-                const s25Sky = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop)
-                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.label, bg: false, s25: true, s25sky: true }));
+                // Grouped under "Scene" (Bart, 2026-11-10): one ground and one sky, never copied or deleted, only swapped.
+                const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop || i.scenery)
+                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
+                const s25Sky = s25Backdrop.length ? [{ id: '__s25scene__', icon: 'group', label: @js(__('Scene')), bg: true, group: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
                 const artItems = [...arts].reverse().map((a) =>
@@ -1761,6 +1764,7 @@
             // Click a row → select that object: highlight the row, ring the object on the canvas
             // (the layer broadcasts back so canvas↔list stay in sync), and scroll it into view.
             select(obj) {
+                if (obj.group) return;   // the "Scene" group header names its rows, it is not an object
                 this.selectedId = obj.id;
                 if (obj.voyage) {
                     // Route waypoint layers → open the Format inspector and focus the Waypoint tab
@@ -2444,6 +2448,7 @@
                      :class="[
                         obj.bg || obj.bal || obj.dio || obj.s25sky ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
+                        obj.inGroup ? 'pl-6' : '', obj.group ? 'cursor-default! hover:bg-transparent' : '',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
                     <span class="shrink-0 text-panel-hint" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
@@ -2456,7 +2461,7 @@
                          from starting a Sortable drag; @click.stop keeps the row's select from firing.
                          data-obj-adjust hides both in the compact (icons-only) rail. --}}
                     {{-- Duplicate THIS object (Cmd-D does the same). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal && !obj.cam"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.bal && !obj.s25sky"
                             @click.stop="duplicateObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-primary group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Duplicate object') }}" :data-tooltip="@js(__('Duplicate') . ' (⌘D)')">
@@ -2465,7 +2470,7 @@
                         </svg>
                     </button>
                     {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.cam"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.s25sky"
                             @click.stop="deleteObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">

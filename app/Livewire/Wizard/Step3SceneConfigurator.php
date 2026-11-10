@@ -1230,6 +1230,9 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
+        if (str_starts_with($objectId, 's25_')) {
+            return;   // the ground, the sky and the camera: one each, swapped but never deleted
+        }
         if (str_starts_with($objectId, 'bal_')) {
             $this->deleteBalloon($objectId);
 

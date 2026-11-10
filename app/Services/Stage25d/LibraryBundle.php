@@ -77,6 +77,18 @@ final class LibraryBundle
     }
 
     /**
+     * The scene's backdrop: a far strip that does not tile (farmland, a storm sea, a coast). One per scene, grouped with
+     * the ground and the sky under "Scene" (Bart, 2026-11-10): swapped, never copied or deleted. Same rule as the
+     * stage's `strip` (resources/js/scene/stage25d/engine.js).
+     *
+     * @param  array<string,mixed>  $asset
+     */
+    public static function isBackdrop(array $asset): bool
+    {
+        return ($asset['layer'] ?? null) === 'bg' && empty($asset['tileable_x']);
+    }
+
+    /**
      * The series a picture belongs to: the character a figure shows (its `char:` tag, else fig-<character>-<pose>-01),
      * the same rule as stage25d/series.js seriesOf. null for a picture that stands alone.
      *
