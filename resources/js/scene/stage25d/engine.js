@@ -863,14 +863,14 @@ export async function createStage25d (host, opts = {}) {
     groundSlots () {
       if (!libData || !cfg) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
-      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from }))
+      const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from, flip: !!sl.flip }))
       const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
       return { rows, options, max: GROUND_SLOTS_MAX }
     },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
     async setGroundSlots (rows) {
       if (!cfg || !Array.isArray(rows)) return
-      const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)) }))
+      const slots = rows.slice(0, GROUND_SLOTS_MAX).map((r, i) => ({ asset: String(r.asset), from_m: i === 0 ? 0 : Math.max(0, Math.min(2000, Number(r.from_m) || 0)), ...(r.flip ? { flip: true } : {}) }))
       const keep = hidden
       const { ground, ...set } = liveSet()   // a bare floor's colour would wash over the picture
       await api.show({ ...cfg, look: lookNow, set: { ...set, ...(String(ground ?? '').startsWith('#') ? {} : { ground }), groundSlots: slots } })   // the sliders' live values too

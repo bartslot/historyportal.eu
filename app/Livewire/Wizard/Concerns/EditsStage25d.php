@@ -327,7 +327,8 @@ trait EditsStage25d
             if (! is_string($asset) || preg_match('/^[a-z0-9][a-z0-9-]{0,80}$/', $asset) !== 1 || ! is_numeric($from)) {
                 return;   // one bad row: nothing saved, the stage keeps showing what it had
             }
-            $clean[] = ['asset' => $asset, 'from_m' => $i === 0 ? 0.0 : max(0.0, min(2000.0, (float) $from))];
+            $clean[] = ['asset' => $asset, 'from_m' => $i === 0 ? 0.0 : max(0.0, min(2000.0, (float) $from))]
+                + (($slot['flip'] ?? false) === true ? ['flip' => true] : []);
         }
         $config = $scene->config;
         if ($clean === []) {

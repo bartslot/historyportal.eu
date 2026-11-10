@@ -40,7 +40,10 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   // one slot's art tiled in world metres; anti-tiling: a second, turned and scaled read of the same tile, swapped in
   // over big soft world patches, so the rows of one repeating tile break up (mixTile 0 = the plain tile)
   vec3 slotTile(sampler2D t, float tl) {
-    vec2 uv = vW.xz / (tl * tileScale);
+    // the picture's top row lies FAR from the camera (textures load top row first, invertY false): a tuft drawn
+    // standing reads standing, not upside down (Bart 11-10: "the floor is flipped"). A negative tl (a slot the teacher
+    // flipped) mirrors it top to bottom.
+    vec2 uv = vec2(vW.x / abs(tl), -vW.z / tl) / tileScale;
     vec2 uv2 = mat2(0.866, -0.5, 0.5, 0.866) * uv * 1.37 + vec2(0.31, 0.57);
     float m = smoothstep(0.3, 0.7, fbm(vW.xz * 0.06 + 11.0));
     return mix(tileAt(t, uv), tileAt(t, uv2), m * mixTile);

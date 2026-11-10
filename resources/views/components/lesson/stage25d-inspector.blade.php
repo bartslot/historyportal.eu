@@ -347,6 +347,11 @@
                                    class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
                             <span class="text-xs text-panel-hint">m</span>
                         </label>
+                        {{-- turn the picture half round on the floor, for a drawing that reads upside down --}}
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" :class="row.flip && 'btn-active'" :aria-pressed="row.flip ? 'true' : 'false'"
+                                :aria-label="@js(__('Flip'))" :title="@js(__('Flip'))" :data-stage25d-ground-flip="i" x-on:click="groundRow(i, { flip: !row.flip })">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
+                        </button>
                         <button type="button" class="btn btn-ghost btn-xs btn-square" x-show="ground.rows.length > 1" :aria-label="@js(__('Remove'))"
                                 :data-stage25d-ground-remove="i" x-on:click="removeGround(i)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>

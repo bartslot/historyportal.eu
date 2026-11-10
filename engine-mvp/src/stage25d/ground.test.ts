@@ -194,6 +194,10 @@ describe('the ground\'s slots, near to far (groundSlots)', () => {
     expect(out).toHaveLength(GROUND_SLOTS_MAX)
     expect(out.slice(0, 2).map((s) => [s.asset.id, s.from])).toEqual([['ground-sand-01', 0], ['ground-ice-01', 40]])
   })
+  it('keeps a flipped slot flipped, and an old slot unflipped', () => {
+    const s = groundSlots({ groundSlots: [{ asset: 'ground-grass-01', from_m: 0, flip: true }, { asset: 'ground-sand-01', from_m: 20 }], layers: [] }, lib(tiles))
+    expect(s.map((x) => !!x.flip)).toEqual([true, false])
+  })
   it('a paper floor has no slots', () => {
     expect(groundSlots({ ground: '#ddccbb', layers: [] }, lib(tiles))).toEqual([])
   })

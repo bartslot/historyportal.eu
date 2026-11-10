@@ -543,6 +543,11 @@ class StageEditingTest extends TestCase
 
         $editor->call('saveStage25dGroundSlots', [], $scene->id);
         $this->assertArrayNotHasKey('groundSlots', $scene->fresh()->config['stage25d']['set']);
+
+        $editor->call('saveStage25dGroundSlots', [['asset' => 'ground-grass-heather-01', 'from_m' => 0, 'flip' => true], ['asset' => 'ground-path-sand-01', 'from_m' => 30, 'flip' => 'yes']], $scene->id);
+        $slots = $scene->fresh()->config['stage25d']['set']['groundSlots'];
+        $this->assertTrue($slots[0]['flip'], 'a teacher can flip a ground picture');
+        $this->assertArrayNotHasKey('flip', $slots[1], 'only a real true flips');
     }
 
     public function test_selecting_a_layer_opens_its_panel_and_the_rail_names_a_scene_without_a_place(): void
