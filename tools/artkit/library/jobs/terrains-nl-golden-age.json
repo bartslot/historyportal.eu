@@ -1,0 +1,84 @@
+{
+ "bundle": "nl-golden-age",
+ "era": "nl-golden-age",
+ "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
+ "sheets": [
+  {
+   "id": "terrain-dunes",
+   "layer": "terrain",
+   "subject": "Coastal dunes of pale sand with clumps of marram grass, soft wind ripples, gentle rises, no paths",
+   "assets": [
+    {
+     "id": "terrain-dunes-01",
+     "tags": [
+      "sand",
+      "dune",
+      "coast",
+      "grass"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-beach",
+   "layer": "terrain",
+   "subject": "A flat North Sea beach at low tide: wet shining sand with shallow pools and ripples, a few shells, the surf as thin white lines far off near the top",
+   "assets": [
+    {
+     "id": "terrain-beach-01",
+     "tags": [
+      "sand",
+      "beach",
+      "coast",
+      "water"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-polder",
+   "layer": "terrain",
+   "subject": "A flat Dutch polder meadow of green grass cut by straight narrow water ditches running away from the viewer, no cows, no windmills",
+   "assets": [
+    {
+     "id": "terrain-polder-01",
+     "tags": [
+      "grass",
+      "meadow",
+      "polder",
+      "water"
+     ],
+     "height_m": 4
+    }
+   ],
+   "hexes": [
+    "#7f9a4a",
+    "#9fb267",
+    "#5f7a3a"
+   ]
+  },
+  {
+   "id": "terrain-canal-water",
+   "layer": "terrain",
+   "subject": "The calm water of a wide Amsterdam canal, small ripples and soft reflections of a pale sky, no boats, no quay",
+   "assets": [
+    {
+     "id": "terrain-canal-01",
+     "tags": [
+      "water",
+      "canal",
+      "calm"
+     ],
+     "height_m": 4
+    }
+   ],
+   "hexes": [
+    "#9ccccc",
+    "#84b4b4",
+    "#b4cccc"
+   ]
+  }
+ ]
+}

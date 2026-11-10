@@ -127,6 +127,14 @@ GROUND_ADDENDUM = (' This is a floor: the surface colour (soil, leaf litter, til
 
 # (words, hexes) per era: the colour prompt names them, the palette gate measures against them (+ NEUTRALS)
 PALETTE = {
+    'near-east-neolithic': [
+        ('sun-dried mudbrick, silt and dry earth', ['#d0bba0', '#a08a6c']),
+        ('pale sand and gravel', ['#f4d5a8', '#e3cf9a']),
+        ('dark wet river mud', ['#7d6752', '#8e8474']),
+        ('restrained olive reeds, barley and palms', ['#8d9a5b', '#6f7f45']),
+        ('muted river water', ['#98c3d3', '#72a2b5']),
+        ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
+    ],
     'babylonia-old-babylonian': [
         ('sun-dried mudbrick and silty earth', ['#d0bba0', '#a08a6c']),
         ('pale plaster and dry clay tablets', ['#f5e6ce', '#f4d5a8']),

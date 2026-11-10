@@ -1,0 +1,81 @@
+{
+ "bundle": "nl-prehistory",
+ "era": "nl-prehistory",
+ "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
+ "sheets": [
+  {
+   "id": "terrain-meadow",
+   "layer": "terrain",
+   "subject": "A wide open meadow of fresh green grass with clover, buttercups and a few taller seed heads, uneven and alive, no paths",
+   "assets": [
+    {
+     "id": "terrain-meadow-01",
+     "tags": [
+      "grass",
+      "meadow",
+      "field"
+     ],
+     "height_m": 4
+    }
+   ],
+   "hexes": [
+    "#7f9a4a",
+    "#9fb267",
+    "#5f7a3a"
+   ]
+  },
+  {
+   "id": "terrain-heath",
+   "layer": "terrain",
+   "subject": "An open heath of purple heather and low grass with patches of pale sand and a few small grey stones, no paths",
+   "assets": [
+    {
+     "id": "terrain-heath-01",
+     "tags": [
+      "heath",
+      "heather",
+      "grass"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-woodland-floor",
+   "layer": "terrain",
+   "subject": "A sunlit woodland clearing floor: green grass and moss cushions broken by patches of brown leaf litter, small ferns and low herbs, no tree trunks",
+   "assets": [
+    {
+     "id": "terrain-woodland-floor-01",
+     "tags": [
+      "forest",
+      "moss",
+      "leaf-litter"
+     ],
+     "height_m": 4
+    }
+   ],
+   "hexes": [
+    "#7f9a4a",
+    "#9fb267",
+    "#5f7a3a"
+   ]
+  },
+  {
+   "id": "terrain-grain-field",
+   "layer": "terrain",
+   "subject": "A small hand-sown field of ripening emmer wheat, slightly irregular rows, a grassy edge along the bottom, no fences",
+   "assets": [
+    {
+     "id": "terrain-grain-field-01",
+     "tags": [
+      "field",
+      "wheat",
+      "crop"
+     ],
+     "height_m": 4
+    }
+   ]
+  }
+ ]
+}

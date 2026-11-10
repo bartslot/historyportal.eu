@@ -1,0 +1,57 @@
+{
+ "bundle": "near-east-neolithic",
+ "era": "near-east-neolithic",
+ "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
+ "sheets": [
+  {
+   "id": "terrain-barley-field",
+   "layer": "terrain",
+   "subject": "An irrigated field of green barley in narrow strips with small earth channels between them",
+   "assets": [
+    {
+     "id": "terrain-barley-field-01",
+     "tags": [
+      "field",
+      "barley",
+      "irrigated",
+      "grass"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-desert-gravel",
+   "layer": "terrain",
+   "subject": "Dry desert of pale gravel and sand with sparse low dry shrubs and a few stones",
+   "assets": [
+    {
+     "id": "terrain-desert-gravel-01",
+     "tags": [
+      "desert",
+      "sand",
+      "dry"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-river-mud",
+   "layer": "terrain",
+   "subject": "A wide river bank of dark wet mud and silt with reeds at the edges, puddles and footprints of birds",
+   "assets": [
+    {
+     "id": "terrain-river-mud-01",
+     "tags": [
+      "mud",
+      "river",
+      "wet",
+      "reeds"
+     ],
+     "height_m": 4
+    }
+   ]
+  }
+ ]
+}
