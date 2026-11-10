@@ -1016,6 +1016,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     let _stage25dHost = null
     let _stage25dReq = 0
     const stage25dLookSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:look', save), DIO_MOVE_PAUSE_MS)
+    const stage25dWorldSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:world', save), DIO_MOVE_PAUSE_MS)
     const _stage25dStillAsked = new Set()
     const _stage25dStillBusy = new Set()
     // The open scene's thumbnail follows its edits, a few seconds after the last one; only while the stage shows the
@@ -1111,7 +1112,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--color-panel);'   // only the stage's own canvas takes the pointer; the 2D canvas under it never shows through
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
+            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onWorld: (key, value, sceneId) => { if (sceneId != null) stage25dWorldSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {
@@ -1119,7 +1120,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (req !== _stage25dReq || !isCurrent()) return
             let synced = false
             if (stage.sceneId !== payload.sceneId) { window.__stage25d = null; stage.clearSelection() }   // the old scene's layers must not take a save meant for this one
-            const savesPending = stage25dLayerSaves.isPending() || stage25dLookSaves.isPending() || window.__timelineKeying?.pending?.()
+            const savesPending = stage25dLayerSaves.isPending() || stage25dLookSaves.isPending() || stage25dWorldSaves.isPending() || window.__timelineKeying?.pending?.()
             if (!stage.matches(cfg)) { if (!savesPending) { await stage.show(cfg); synced = true } }   // a rebuild now would drop an edit still waiting to be saved
             // A re-fired scene:load must not revert an edit still waiting to be saved.
             // Nor one under the picture editor: its Frames and Bones tabs show their work on the stage before it is saved.

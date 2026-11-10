@@ -458,6 +458,25 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['grass' => 0.2, 'grassSway' => 1, 'groundGrain' => 0.5], $scene->fresh()->config['stage25d']['look']);
     }
 
+    public function test_a_world_moves_inside_its_range_and_its_file_is_never_the_teachers_to_set(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->call('saveStage25dWorld', 'y', -1.5, $scene->id);
+        $this->assertArrayNotHasKey('world', $scene->fresh()->config['stage25d'], 'no world: nothing to move');
+
+        $config = $scene->config;
+        $config['stage25d']['world'] = ['src' => '/storage/worlds/valley.spz'];
+        $scene->update(['config' => $config]);
+        $this->editor($scene)->call('saveStage25dWorld', 'y', -1.5, $scene->id)
+            ->call('saveStage25dWorld', 'scale', 900, $scene->id)
+            ->call('saveStage25dWorld', 'src', 'https://evil.example/x.spz', $scene->id)
+            ->call('saveStage25dWorld', 'rot', 'NaN', $scene->id)
+            ->call('saveStage25dWorld', 'x', 3, $scene->id + 1);
+
+        $this->assertEquals(['src' => '/storage/worlds/valley.spz', 'y' => -1.5, 'scale' => 50], $scene->fresh()->config['stage25d']['world']);
+    }
+
     public function test_the_floor_ground_pictures_save_near_to_far_at_most_six_and_an_empty_list_puts_the_one_ground_back(): void
     {
         $scene = $this->scene();

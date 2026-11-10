@@ -261,6 +261,27 @@ trait EditsStage25d
         'worldReveal' => [0, 20],
     ];
 
+    /** Where a splat world may sit (config.stage25d.world): metres, a size factor, degrees. */
+    private const WORLD_RANGES = ['x' => [-200, 200], 'y' => [-50, 50], 'z' => [-200, 200], 'scale' => [0.05, 50], 'rot' => [-180, 180]];
+
+    /** One placement value of the scene's splat world. Never its file: that is not the teacher's to point anywhere. */
+    #[On('stage25d:world')]
+    public function saveStage25dWorld(string $key, mixed $value, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId || ! isset(self::WORLD_RANGES[$key]) || ! is_numeric($value) || ! is_finite((float) $value)) {
+            return;
+        }
+        $config = $scene->config;
+        if (empty($config['stage25d']['world']['src'])) {
+            return;
+        }
+        [$min, $max] = self::WORLD_RANGES[$key];
+        $config['stage25d']['world'][$key] = max($min, min($max, (float) $value));
+        $scene->update(['config' => $config]);
+        $this->selectedScene['config']['stage25d']['world'][$key] = $config['stage25d']['world'][$key];
+    }
+
     /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */
     private const GROUND_SLOTS_MAX = 6;
 

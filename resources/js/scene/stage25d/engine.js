@@ -22,7 +22,7 @@ import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
-import { loadWorld } from './world.js'
+import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
 import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
@@ -90,7 +90,7 @@ function libraryOf (bundle) {
 /** The director's scene fields the stage reads, from config.stage25d. */
 export const stageScene = (cfg) => ({
   id: cfg.id ?? 'scene',
-  set: { ...(cfg.set ?? {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
+  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null, groundBands: [], near: null } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
   camera: cfg.camera ?? null,
   camera_more: cfg.camera_more ?? [],
   camera_motion: cfg.camera_motion ?? null,
@@ -293,8 +293,8 @@ export async function createStage25d (host, opts = {}) {
   const nowT = () => (clock ? clock() : manualT)
   /** The scene's splat world: loaded when its block changes, dropped when it goes; a failed load leaves the set as it is. */
   const syncWorld = async (w) => {
-    const key = w?.src ? JSON.stringify(w) : null
-    if (key === worldKey) return
+    const key = w?.src ?? null
+    if (key === worldKey) { world?.place(w); return }
     worldKey = key
     world?.dispose()
     world = null
@@ -353,6 +353,7 @@ export async function createStage25d (host, opts = {}) {
         startLoop()
       }
       lookNow = { ...(cfgNow.look ?? {}) }
+      stage.bare = !!cfgNow.world?.src   // a world is the floor and the sky: the stage's own hide
       stage.setLook(lookNow)
       const next = stageScene(cfgNow)
       await stage.build(next, lib)
@@ -796,7 +797,7 @@ export async function createStage25d (host, opts = {}) {
     /** The floor's ground pictures near to far (rows: the scene's own, else its one ground) and the bundle's grounds to
      *  pick from (options), at most `max` rows. */
     groundSlots () {
-      if (!libData || !cfg) return null
+      if (!libData || !cfg || cfg.world?.src) return null   // a world is the floor
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from }))
       const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
@@ -814,11 +815,22 @@ export async function createStage25d (host, opts = {}) {
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
+    /** The world's placement, for the World section: null when the scene has none. */
+    worldInfo () {
+      return cfg?.world?.src ? { ...WORLD_PLACE_DEFAULTS, ...cfg.world } : null
+    },
+    /** Move the world: live on the stage, saved on the scene (onWorld). */
+    setWorld (patch) {
+      if (!cfg?.world?.src) return
+      cfg = { ...cfg, world: { ...cfg.world, ...patch } }
+      world?.place(cfg.world)
+      for (const [key, value] of Object.entries(patch)) opts.onWorld?.(key, value, api.sceneId)
+    },
     /** The scene look sliders: [{ key, value, min, max, step }]. */
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, birds: !!cfg?.set?.sky, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, ...(cfg?.world?.src ? { groundDetail: false, groundWash: false, groundGrain: false, grass: false, grassSway: false, horizonBushes: false } : {}) }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }

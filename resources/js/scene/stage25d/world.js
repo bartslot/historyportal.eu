@@ -27,7 +27,16 @@ export function worldRadius (positions, stride = 4, samples = 4000) {
   return d[Math.floor(d.length * 0.8)] || 1
 }
 
-/** Load the world into a Babylon scene. Resolves { at(t, seconds), dispose() }. */
+/** Where a world sits when its scene says nothing: metres, a size factor, degrees. */
+export const WORLD_PLACE_DEFAULTS = { x: 0, y: 0, z: 0, scale: 1, rot: 0 }
+
+/** The world's placement from its config block, every value a finite number. */
+export const worldPlace = (w = {}) => Object.fromEntries(Object.entries(WORLD_PLACE_DEFAULTS).map(([k, d]) => {
+  const v = Number(w[k])
+  return [k, Number.isFinite(v) ? v : d]
+}))
+
+/** Load the world into a Babylon scene. Resolves { at(t, seconds), place(world), dispose() }. */
 export async function loadWorld (babylonScene, world) {
   const [{ ImportMeshAsync }, { SplatRevealPlugin }] = await Promise.all([
     import('@babylonjs/core/Loading/sceneLoader'),
@@ -36,14 +45,20 @@ export async function loadWorld (babylonScene, world) {
   ])
   const { meshes } = await ImportMeshAsync(world.src, babylonScene, { pluginExtension: '.spz' })   // a signed URL has no .spz at its end
   const mesh = meshes.find((m) => m.getClassName?.().startsWith('GaussianSplatting')) ?? meshes[0]
-  const scale = Number(world.scale) || 1
-  mesh.position.set(Number(world.x) || 0, Number(world.y) || 0, Number(world.z) || 0)
-  mesh.scaling.scaleInPlace(scale)   // keeps the loader's own axis flip
-  mesh.rotation.y = ((Number(world.rot) || 0) * Math.PI) / 180
+  const axes = mesh.scaling.clone()   // the loader's own axis flip, kept under every size
+  const place = (w) => {
+    const p = worldPlace(w)
+    mesh.position.set(p.x, p.y, p.z)
+    mesh.scaling.copyFrom(axes).scaleInPlace(p.scale || 1)
+    if (mesh.rotationQuaternion) mesh.rotationQuaternion = null   // so rotation.y is what turns it
+    mesh.rotation.y = (p.rot * Math.PI) / 180
+  }
+  place(world)
   const reveal = new SplatRevealPlugin(mesh.material, REVEAL_SPAN / worldRadius(mesh._splatPositions))
   return {
     mesh,
     at (t, seconds) { reveal.time = revealTime(t, seconds) },
+    place,
     dispose () { mesh.dispose(false, true) },
   }
 }

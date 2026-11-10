@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { revealTime, worldRadius } from '../world.js'
+import { revealTime, worldRadius, worldPlace } from '../world.js'
 
 describe('a world building itself around the class', () => {
   it('runs the reveal to the build-up the teacher set, and shows it whole at 0', () => {
@@ -19,5 +19,11 @@ describe('a world building itself around the class', () => {
     expect(r).toBeGreaterThan(5)
     expect(r).toBeLessThanOrEqual(10)
     expect(worldRadius(null)).toBe(1)
+  })
+
+  it('places a world from its block, a missing or broken value at its default', () => {
+    expect(worldPlace({ src: 'x', y: -1.5, scale: '2' })).toEqual({ x: 0, y: -1.5, z: 0, scale: 2, rot: 0 })
+    expect(worldPlace({ rot: 'NaN', x: Infinity })).toEqual({ x: 0, y: 0, z: 0, scale: 1, rot: 0 })
+    expect(worldPlace()).toEqual({ x: 0, y: 0, z: 0, scale: 1, rot: 0 })
   })
 })

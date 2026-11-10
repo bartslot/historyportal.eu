@@ -54,6 +54,9 @@ export class Stage {
   private pictureToken = 0
   /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
   private strewn: Strewn[] = []
+  /** A splat world stands in for the floor (config.stage25d.world): the floor and what grows on it hide. The ground
+   *  plane itself stays, so figures still stand, cast and drag on it. */
+  bare = false
   private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
   private strewKey = ''
   private smoke: ReturnType<typeof makeSmoke>[] = []
@@ -562,7 +565,8 @@ export class Stage {
       b.handle.setMotion(motionOf(b.asset, { ...b.band, depth: 'bg' }))
       b.handle.material.setFloat('time', clock)
     })
-    this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
+    this.ground.mesh.isVisible = !this.bare
+    this.strew(this.bare ? 0 : lookNum(this.look, 'grass'), this.bare ? 0 : lookNum(this.look, 'horizonBushes'))
     this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
     this.smoke.forEach((m) => m.update(clock, lookNum(this.look, 'smoke')))
     this.birds.update(clock, this.hasSky ? lookNum(this.look, 'birds') : 0)   // no birds in a sky that is not there

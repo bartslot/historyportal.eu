@@ -1399,7 +1399,7 @@
         const SHOWN = { x: 100, z: 1, y: 1, scale: 100, rotation: 1, opacity: 100 };
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, cam: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, world: null, cam: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1411,7 +1411,7 @@
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; return; }
+                if (!id) { this.look = stage.lookControls?.() ?? []; this.ground = stage.groundSlots?.() ?? null; this.world = stage.worldInfo?.() ?? null; return; }
                 if (id === 'camera') { this.cam = stage.cameraInfo?.() ?? null; return; }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
@@ -1482,6 +1482,8 @@
             /** Another character in the same stance. */
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
+            /** Move the splat world: live, and saved. */
+            setWorld(key, value) { if (!this.world || !Number.isFinite(value)) return; this.world[key] = value; window.__stage25d?.setWorld?.({ [key]: value }); },
             /** Frame the start or the end of the camera move on the canvas. */
             frame(end) { window.__timelineKeying?.seekTo?.(end); this.sync(); },
             /** Back to the still camera: no move. */
