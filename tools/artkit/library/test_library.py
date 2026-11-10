@@ -98,3 +98,25 @@ def test_cut_parts_of_the_sheet_prompt_ask_for_green_except_where_nothing_is_cut
     assert '#00FF00' in prompts.colour_prompt('prop', 'nl-golden-age') and '#00FF00' in prompts.colour_prompt('bg', 'nl-golden-age')
     assert '#00FF00' not in prompts.colour_prompt('sky', 'nl-golden-age') and '#00FF00' not in prompts.colour_prompt('ground', 'nl-golden-age')
     assert '#00FF00' not in prompts.ink_prompt('prop', 'nl-golden-age', 'a crate')
+
+
+def test_a_cut_piece_sits_on_its_floor_line_and_a_band_loses_its_drawn_cut_line():
+    sheet = np.zeros((120, 300, 3), np.uint8)
+    sheet[...] = (0, 255, 0)
+    sheet[30:80, 20:280] = (150, 190, 210)   # a strip of water
+    sheet[78:80, 20:280] = (20, 20, 20)      # the cut drawn as an ink line along its bottom
+    (piece,) = cut.cut_sheet(sheet, 'band')
+    rgba = piece['rgba']
+    assert rgba[-1, :, 3].max() > 128, 'no transparent margin under the floor line'
+    assert rgba[-1, rgba[-1, :, 3] > 128, :3].mean() > 90, 'the drawn cut line is gone'
+    assert abs(rgba.shape[0] - 48) <= 3
+
+
+def test_a_tiled_strip_runs_on_from_its_right_end_into_its_left_end():
+    strip = np.zeros((4, 400, 4), np.uint8)
+    strip[..., 3] = 255
+    strip[:, :, 0] = np.linspace(0, 255, 400).astype(np.uint8)   # dark at the left, light at the right: a hard seam
+    out = cut.tile_seam(strip, 96)
+    assert out.shape[1] == 304
+    assert abs(int(out[0, 0, 0]) - int(strip[0, 304, 0])) <= 2, 'the first column continues where the cut-off end was'
+    assert abs(int(out[0, 95, 0]) - int(strip[0, 95, 0])) <= 2, 'after the fade it is the painting itself'

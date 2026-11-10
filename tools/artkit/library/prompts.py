@@ -42,6 +42,11 @@ LAYER = {
            'clouds). The land runs edge to edge and fills the canvas down to the bottom edge. Far distance: fewer, '
            'thinner lines, sparse hatching. The terrain height at the left edge equals the height at the right edge so '
            'the strip can tile. Landscape 3:2.'),
+    # a ground band (the stage stands it at a distance, LibraryBundle::isGroundBand): water or land strips to put things IN
+    'band': ('Wide horizontal strips seen from eye level, each a separate strip running the full width of the canvas from '
+             'the left edge to the right edge, stacked one above the other with wide white paper between them. {era} '
+             '{subject} The top edge of each strip is its own silhouette; its bottom edge is a straight horizontal cut. '
+             'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. Landscape 3:2.'),
     'mid': ('Middle-distance set pieces, each a separate isolated object: {era} {subject} Seen from slightly above eye '
             'level, three-quarter view, same scale for all. ' + ISOLATED),
     'fg': ('Foreground nature elements, each a separate isolated object: {era} {subject} Same light from the upper left '

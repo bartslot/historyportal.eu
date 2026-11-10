@@ -28,6 +28,8 @@ from chatgpt_mcp import ask_chatgpt, make_image  # noqa: E402  the same codex ch
 LIBRARY = prompts.MEDIA / 'library'
 TIMEOUT_S = 600
 JUDGE_GATE = 7.0
+# a band is a standing picture to the stage (layer mid, its tags make it a ground band)
+LIBRARY_LAYER = {'band': 'mid'}
 
 
 def rgb(path: Path) -> np.ndarray:
@@ -94,11 +96,12 @@ def cut_stage(job: dict, sheet: dict, work: Path, gates: dict) -> list[dict]:
     out = LIBRARY / job['bundle']
     entries = []
     for spec, p in zip(sheet['assets'], pieces):
-        im = Image.fromarray(p['rgba'], 'RGBA')
+        tiles = spec.get('tileable_x', sheet['layer'] in ('sky', 'bg', 'ground'))
+        im = Image.fromarray(cut.tile_seam(p['rgba']) if tiles and sheet['layer'] == 'band' else p['rgba'], 'RGBA')
         im.save(out / f"{spec['id']}.webp", quality=90, method=6)
-        entries.append({'id': spec['id'], 'layer': sheet['layer'], 'tags': spec['tags'], 'file': f"{spec['id']}.webp",
-                        'w': im.width, 'h': im.height, 'anchor': p['anchor'], 'height_m': spec['height_m'],
-                        'tileable_x': sheet['layer'] in ('sky', 'bg', 'ground'), 'motion': spec.get('motion', 'none'),
+        entries.append({'id': spec['id'], 'layer': LIBRARY_LAYER.get(sheet['layer'], sheet['layer']), 'tags': spec['tags'],
+                        'file': f"{spec['id']}.webp", 'w': im.width, 'h': im.height, 'anchor': p['anchor'], 'height_m': spec['height_m'],
+                        'tileable_x': tiles, 'motion': spec.get('motion', 'none'),
                         'era': job.get('era_label', job['era']),
                         'qa': {'sheet': sheet['id'], 'variant': v, 'ink_coverage': gates['ink']['ink_coverage'],
                                'palette_de': gates['colour']['palette_de'], 'ink_kept': gates['colour']['ink_kept'],

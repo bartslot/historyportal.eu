@@ -1,0 +1,121 @@
+{
+ "bundle": "tasman-1642",
+ "era": "nl-golden-age",
+ "era_label": "1642",
+ "sheets": [
+  {
+   "id": "bg-sea-open",
+   "layer": "bg",
+   "subject": "Here the land is the open sea itself: calm open ocean swell reaching to a straight flat horizon line, long low rows of waves that get smaller and closer together toward the horizon, a few small whitecaps. No land, no coast, no ships, no birds.",
+   "assets": [
+    {
+     "id": "bg-sea-calm-01",
+     "tags": [
+      "sea",
+      "ocean",
+      "calm",
+      "swell",
+      "horizon"
+     ],
+     "height_m": 40,
+     "tileable_x": false,
+     "motion": "ripple"
+    }
+   ]
+  },
+  {
+   "id": "band-sea",
+   "layer": "band",
+   "subject": "Three strips of open sea water, far to near, so a ship can sit between them: (1) top strip, thin: distant swell, low gentle rows of small waves; (2) middle strip: rolling swell with rounded crests and a little foam; (3) bottom strip, the tallest: big near waves with curling crests, foam and spray along the top edge. Water only: no ships, no land, no sky.",
+   "assets": [
+    {
+     "id": "wave-band-far-01",
+     "tags": [
+      "water",
+      "sea",
+      "swell",
+      "far"
+     ],
+     "height_m": 6,
+     "motion": "ripple",
+     "tileable_x": true
+    },
+    {
+     "id": "wave-band-mid-01",
+     "tags": [
+      "water",
+      "sea",
+      "waves",
+      "swell"
+     ],
+     "height_m": 4,
+     "motion": "ripple",
+     "tileable_x": true
+    },
+    {
+     "id": "wave-band-near-01",
+     "tags": [
+      "water",
+      "sea",
+      "waves",
+      "foam",
+      "near"
+     ],
+     "height_m": 3,
+     "motion": "ripple",
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "fg-sea-foam",
+   "layer": "fg",
+   "subject": "Four separate pieces of sea water to put in front of a ship's hull: (1) a long low breaking wave crest with white foam, (2) a short curling wave crest with spray, (3) a bow splash: white water thrown up in a fan, (4) a wide flat band of churned foam and small waves.",
+   "assets": [
+    {
+     "id": "wave-crest-long-01",
+     "tags": [
+      "water",
+      "wave",
+      "foam",
+      "crest"
+     ],
+     "height_m": 1.5,
+     "motion": "ripple"
+    },
+    {
+     "id": "wave-crest-curl-01",
+     "tags": [
+      "water",
+      "wave",
+      "spray",
+      "crest"
+     ],
+     "height_m": 1.2,
+     "motion": "ripple"
+    },
+    {
+     "id": "bow-splash-01",
+     "tags": [
+      "water",
+      "splash",
+      "spray",
+      "bow"
+     ],
+     "height_m": 2.5,
+     "motion": "ripple"
+    },
+    {
+     "id": "foam-wake-01",
+     "tags": [
+      "water",
+      "foam",
+      "wake"
+     ],
+     "height_m": 0.8,
+     "motion": "ripple"
+    }
+   ]
+  }
+ ]
+}
