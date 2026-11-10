@@ -29,7 +29,7 @@ LIBRARY = prompts.MEDIA / 'library'
 TIMEOUT_S = 600
 JUDGE_GATE = 7.0
 # a band is a standing picture to the stage (layer mid, its tags make it a ground band)
-LIBRARY_LAYER = {'band': 'mid', 'field': 'mid'}
+LIBRARY_LAYER = {'band': 'mid', 'field': 'mid', 'terrain': 'ground'}
 
 
 def rgb(path: Path) -> np.ndarray:
@@ -41,7 +41,7 @@ def ink_stage(job: dict, sheet: dict, work: Path, tries: int) -> dict:
         out = work / 'ink.png'
         make_image(prompts.ink_prompt(sheet['layer'], job['era'], sheet['subject'], view=sheet.get('view', 'three-quarter')), str(out), [str(prompts.INK_ANCHOR)], False, TIMEOUT_S)
         img = rgb(out)
-        inside = None if sheet['layer'] in ('sky', 'bg', 'ground') else cut.alpha_matte(img, cut.border_paper(img), islands=False) > 0.1
+        inside = None if sheet['layer'] in ('sky', 'bg', 'ground', 'terrain') else cut.alpha_matte(img, cut.border_paper(img), islands=False) > 0.1
         cov = qa.ink_coverage(img, inside)
         gate = {'ink_coverage': round(cov, 4), 'ink_ok': qa.ink_ok(sheet['layer'], cov, sheet.get('view', 'three-quarter')), 'try': t + 1}
         print(f"  {sheet['id']}/ink try {t + 1}: coverage {cov:.3f} {'ok' if gate['ink_ok'] else 'OUT OF BAND'}")
@@ -96,17 +96,17 @@ def cut_stage(job: dict, sheet: dict, work: Path, gates: dict) -> list[dict]:
     out = LIBRARY / job['bundle']
     entries = []
     for spec, p in zip(sheet['assets'], pieces):
-        tiles = spec.get('tileable_x', sheet['layer'] in ('sky', 'bg', 'ground'))
-        seam = {'band': cut.tile_seam, 'ground': cut.tile_both}.get(sheet['layer']) if tiles else None
+        tiles = spec.get('tileable_x', sheet['layer'] in ('sky', 'bg', 'ground', 'terrain'))
+        seam = {'band': cut.tile_seam, 'terrain': cut.tile_seam, 'ground': cut.tile_both}.get(sheet['layer']) if tiles else None
         im = Image.fromarray(seam(p['rgba']) if seam else p['rgba'], 'RGBA')
         im.save(out / f"{spec['id']}.webp", quality=90, method=6)
         entries.append({'id': spec['id'], 'layer': LIBRARY_LAYER.get(sheet['layer'], sheet['layer']), 'tags': spec['tags'],
                         'file': f"{spec['id']}.webp", 'w': im.width, 'h': im.height, 'anchor': p['anchor'], 'height_m': spec['height_m'],
-                        'tileable_x': tiles, **({'tileable_y': True} if sheet['layer'] == 'ground' else {}), 'motion': spec.get('motion', 'none'),
+                        'tileable_x': tiles, **({'tileable_y': True} if sheet['layer'] == 'ground' else {}), **({'perspective': True} if sheet['layer'] == 'terrain' else {}), 'motion': spec.get('motion', 'none'),
                         'era': job.get('era_label', job['era']),
                         'qa': {'sheet': sheet['id'], 'variant': v, 'ink_coverage': gates['ink']['ink_coverage'],
                                'palette_de': gates['colour']['palette_de'], 'ink_kept': gates['colour']['ink_kept'],
-                               'score': gates.get('judge'), 'alpha_ok': sheet['layer'] not in ('sky', 'ground')}})
+                               'score': gates.get('judge'), 'alpha_ok': sheet['layer'] not in ('sky', 'ground', 'terrain')}})
     return entries
 
 

@@ -51,6 +51,13 @@ LAYER = {
              'the left edge to the right edge, stacked one above the other with wide white paper between them. {era} '
              '{subject} The top edge of each strip is its own silhouette; its bottom edge is a straight horizontal cut. '
              'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. Landscape 3:2.'),
+    # a terrain painted from eye height (Bart 11-11: the sea): the stage lays it through the house camera, so it must be
+    # exactly that view, the horizon its top edge, repeating only sideways
+    'terrain': ('ONE wide full-bleed panorama. {era} {subject}, seen from standing eye height looking straight ahead: '
+                'the surface fills the whole canvas from the bottom edge (close, large detail) up to the horizon, which is '
+                'the very top edge of the canvas (tiny, dense detail). No sky, no land on the horizon, no objects, no '
+                'ships, no birds, no border. Perspective only from this one eye height: rows of detail shrink and crowd '
+                'together towards the top. The left edge continues seamlessly into the right edge. Landscape 2:1.'),
     # a floor tile: the scene's one ground, laid flat and repeated both ways
     'ground': ('ONE seamless floor texture tile seen from straight above, full bleed, filling the whole square canvas: {era} '
                '{subject} No horizon, no perspective, no objects standing on it, no cast shadows, no border. The left edge '
@@ -198,9 +205,9 @@ PAPER_AROUND = (', but the paper AROUND and BETWEEN objects, and the gaps betwee
 def colour_prompt(layer: str, era: str, out: str = 'colour.png', light: str | None = None) -> str:
     """light: a sky's own light in place of the default pale blue day (dusk, night, rain), with the colours it adds."""
     words = ', '.join(f"{w} ({', '.join(hs)})" for w, hs in PALETTE[era])
-    around = PAPER_AROUND if layer in ('sky', 'ground') else '. ' + green_key.GREEN_BACKGROUND
+    around = PAPER_AROUND if layer in ('sky', 'ground', 'terrain') else '. ' + green_key.GREEN_BACKGROUND
     sky = (' This is a sky: fill the whole canvas. ' + light if light else SKY_ADDENDUM) if layer == 'sky' else ''
-    if layer == 'ground':   # a floor is the surface itself: no paper between the leaves, the soil runs under everything
+    if layer in ('ground', 'terrain'):   # a floor is the surface itself: no paper between the leaves, the soil runs under everything
         around, sky = '.', GROUND_ADDENDUM
     body = COLOUR.format(palette=words, around=around, sky=sky)
     return TOOL.format(out=out) + '\n\n' + body

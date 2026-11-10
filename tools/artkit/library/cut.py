@@ -128,7 +128,7 @@ def anchor(alpha: np.ndarray) -> list[float]:
 def cut_sheet(rgb: np.ndarray, layer: str) -> list[dict]:
     """[{'rgba': uint8 HxWx4, 'anchor': [x, 1.0]}] one per object (one for sky / bg / ground)."""
     paper = border_paper(rgb)
-    if layer in ('sky', 'ground'):
+    if layer in ('sky', 'ground', 'terrain'):
         return [{'rgba': np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)]), 'anchor': [0.5, 1.0], 'paper': paper}]
     if green_key.is_green_sheet(rgb):
         clean, alpha = green_key.key(rgb)

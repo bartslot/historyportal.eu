@@ -23,14 +23,16 @@ Effect.ShadersStore.stageGroundVertexShader = `
 
 /** Slots 1..5 of the floor (slot 0 is `tex`): each one's own sampler, blended in over a noise-broken border. */
 const SLOT_GLSL = [1, 2, 3, 4, 5].map((i) => `
-    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); }`).join('')
+    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}], slotPersp[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); }`).join('')
 
 Effect.ShadersStore.stageGroundFragmentShader = `
   precision highp float;
   varying vec3 vW;
   uniform sampler2D tex, tex1, tex2, tex3, tex4, tex5, nearTex;
   uniform float useTex, grain, fadeNear, fadeFar, detail, vary, mixTile, tileScale, wash, grainSize, slotCount;
-  uniform float slotFrom[6], slotTiles[6];
+  uniform float slotFrom[6], slotTiles[6], slotPersp[6];
+  uniform mat4 houseVP;         // the house camera: a perspective terrain is laid from where it was painted
+  uniform float houseTop;       // where the horizon is in that view (ndc y)
   uniform vec3 slotColour[6];   // each slot's own median colour: its far floor fades into it, not into one tint
   uniform vec3 base, horizonTint, camPos;
   uniform float useNear, nearTop, nearSpan;
@@ -39,7 +41,16 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   vec3 tileAt(sampler2D t, vec2 uv) { return mix(texture2D(t, uv, 4.0).rgb, texture2D(t, uv).rgb, detail); }
   // one slot's art tiled in world metres; anti-tiling: a second, turned and scaled read of the same tile, swapped in
   // over big soft world patches, so the rows of one repeating tile break up (mixTile 0 = the plain tile)
-  vec3 slotTile(sampler2D t, float tl) {
+  vec3 slotTile(sampler2D t, float tl, float persp) {
+    // a terrain painted from eye height down to the horizon (Bart 11-11: the sea): read through the house camera, so
+    // from there it is exactly the painting, and it still lies on the floor (true parallax sideways); its top row is
+    // the horizon, it repeats only sideways (tl = how often across one frame)
+    if (persp > 0.5) {
+      vec4 cl = houseVP * vec4(vW.x, 0.0, vW.z, 1.0);
+      vec2 n = cl.xy / max(cl.w, 1e-4);
+      float v = clamp((n.y + 1.0) / max(houseTop + 1.0, 1e-3), 0.0, 1.0);
+      return tileAt(t, vec2((n.x * 0.5 + 0.5) * abs(tl), 1.0 - v));
+    }
     // the picture's top row lies FAR from the camera (textures load top row first, invertY false): a tuft drawn
     // standing reads standing, not upside down (Bart 11-10: "the floor is flipped"). A negative tl (a slot the teacher
     // flipped) mirrors it top to bottom.
@@ -60,7 +71,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
     if (useTex > 0.5) {
       // near to far, each ground picture from its distance on (set.groundSlots), the borders broken by a world noise
       float dn = d * (1.0 + 0.35 * (fbm(vW.xz * 0.05 + 3.0) - 0.5));
-      c = slotTile(tex, slotTiles[0]); own = slotColour[0];${SLOT_GLSL}
+      c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0];${SLOT_GLSL}
     }
     // low-frequency value and hue drift over the field (vary), the way a hand wash is never even
     c *= 1.0 + vary * 0.32 * (fbm(vW.xz * 0.022) - 0.5);
@@ -141,7 +152,9 @@ Effect.ShadersStore.stageStainFragmentShader = `
   }`
 
 /** One ground picture of the floor: its texture, the metres one tile covers, from how far out it lies. */
-export interface FloorSlot { tex: RawTexture; tile: number; from: number; colour: [number, number, number] }
+/** persp: painted from eye height to the horizon (library `perspective`), laid through the house camera; its `tile` is
+ *  then how often it repeats across one frame. */
+export interface FloorSlot { tex: RawTexture; tile: number; from: number; colour: [number, number, number]; persp?: boolean }
 export interface GroundLook { slots: FloorSlot[]; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; grain: number }
 /** The near band (set.near): its texture and the house camera's view-projection it is projected from. */
 export interface NearBand { tex: RawTexture; vp: Matrix; top: number; span: number; tileable: boolean }
@@ -151,11 +164,11 @@ export const nearWrapU = (tileable: boolean) => (tileable ? Texture.WRAP_ADDRESS
 /** Live floor values (lesson.look): read every frame. */
 export interface FloorLive { detail: number; vary: number; mixTile: number; tileScale: number; wash: number; grainSize: number }
 
-export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void; live(f: FloorLive): void; near(b: NearBand | null): void } {
+export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void; live(f: FloorLive): void; near(b: NearBand | null): void; house(p: { vp: Matrix; top: number }): void } {
   const mesh = MeshBuilder.CreateGround('ground', { width: 2400, height: 2400 }, scene)
   const mat = new ShaderMaterial('ground', scene, 'stageGround', {
     attributes: ['position'],
-    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotColour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos'],
+    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotPersp', 'houseVP', 'houseTop', 'slotColour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos'],
     samplers: ['tex', 'tex1', 'tex2', 'tex3', 'tex4', 'tex5', 'nearTex'],
     needAlphaBlending: true,   // sorted with the layers (it outputs alpha 1): see GROUND_SLOT
   })
@@ -174,16 +187,17 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
     mesh,
     set(l) {
       const slots = l.slots.slice(0, SLOT_SAMPLERS.length)
-      slots.forEach((sl) => { sl.tex.wrapU = Texture.WRAP_ADDRESSMODE; sl.tex.wrapV = Texture.WRAP_ADDRESSMODE })
+      slots.forEach((sl) => { sl.tex.wrapU = Texture.WRAP_ADDRESSMODE; sl.tex.wrapV = sl.persp ? Texture.CLAMP_ADDRESSMODE : Texture.WRAP_ADDRESSMODE })
       SLOT_SAMPLERS.forEach((name, i) => mat.setTexture(name, slots[i]?.tex ?? blank))
       const pad = (f: (sl: FloorSlot) => number, none: number) => SLOT_SAMPLERS.map((_, i) => (slots[i] ? f(slots[i]) : none))
       mat.setFloat('useTex', slots.length ? 1 : 0).setFloat('slotCount', slots.length)
-        .setFloats('slotFrom', pad((sl) => sl.from, 1e6)).setFloats('slotTiles', pad((sl) => sl.tile || GROUND_TILE_M, GROUND_TILE_M))
+        .setFloats('slotFrom', pad((sl) => sl.from, 1e6)).setFloats('slotTiles', pad((sl) => sl.tile || GROUND_TILE_M, GROUND_TILE_M)).setFloats('slotPersp', pad((sl) => (sl.persp ? 1 : 0), 0))
         .setArray3('slotColour', SLOT_SAMPLERS.flatMap((_, i) => slots[i]?.colour ?? l.base))
         .setFloat('grain', l.grain).setFloat('fadeNear', l.fadeNear).setFloat('fadeFar', l.fadeFar)
         .setVector3('base', Vector3.FromArray(l.base)).setVector3('horizonTint', Vector3.FromArray(l.tint))
     },
     follow(cam) { mat.setVector3('camPos', cam) },
+    house(p) { mat.setMatrix('houseVP', p.vp).setFloat('houseTop', p.top) },
     live(f) {
       mat.setFloat('detail', f.detail).setFloat('vary', f.vary).setFloat('mixTile', f.mixTile).setFloat('tileScale', f.tileScale)
         .setFloat('wash', f.wash).setFloat('grainSize', f.grainSize)

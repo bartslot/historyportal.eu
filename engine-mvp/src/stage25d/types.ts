@@ -17,6 +17,8 @@ export interface Asset {
   anchor: [number, number]
   height_m: number
   tileable_x?: boolean
+  /** a terrain painted from eye height down to the horizon, laid through the house camera (ground-gl slotTile) */
+  perspective?: boolean
   motion?: MotionKind
   placeholder?: boolean
   qa?: { score?: number }

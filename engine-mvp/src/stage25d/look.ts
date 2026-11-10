@@ -105,11 +105,12 @@ export const pxUV = (wM: number, hM: number, uRepeat: number, ppm: number, rende
 
 /** The near band's projection: the house camera (eye 1.6 m, fov 50, pitched `pitchDeg` down) as a view-projection,
  *  and where on screen (ndc y) the floor `nearFar` metres out is: the band's far edge. */
-export function houseProjection(pitchDeg: number, aspect: number, nearFar: number): { vp: Matrix; top: number } {
-  const eye = new Vector3(HOUSE.x, HOUSE.y, HOUSE.z)
+export function houseProjection(pitchDeg: number, aspect: number, nearFar: number, pose?: { x: number; y: number; z: number; fov: number }): { vp: Matrix; top: number } {
+  // pose: another eye than the house camera (a perspective terrain is laid from the scene's opening camera); fov in radians
+  const eye = pose ? new Vector3(pose.x, pose.y, pose.z) : new Vector3(HOUSE.x, HOUSE.y, HOUSE.z)
   const turn = Matrix.RotationX((pitchDeg * Math.PI) / 180)
   const view = Matrix.LookAtLH(eye, eye.add(Vector3.TransformNormal(new Vector3(0, 0, 1), turn)), Vector3.TransformNormal(Vector3.Up(), turn))
-  const vp = view.multiply(Matrix.PerspectiveFovLH(fovRad(HOUSE.fov), aspect, 0.1, 2000))
-  return { vp, top: Vector3.TransformCoordinates(new Vector3(0, 0, nearFar), vp).y }
+  const vp = view.multiply(Matrix.PerspectiveFovLH(pose ? pose.fov : fovRad(HOUSE.fov), aspect, 0.1, 2000))
+  return { vp, top: Vector3.TransformCoordinates(new Vector3(eye.x, 0, eye.z + nearFar), vp).y }
 }
 

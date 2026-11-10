@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import { cameraWobble } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
@@ -519,4 +519,13 @@ describe('bonesAt', () => {
     const layer = { depth: 'fg' as const, 'bone:chest': 5, keys: [{ t: 0, 'bone:head': 1 }] }
     expect(bonesAt(layer, 4)).toEqual({ chest: 5, head: 1 })
   })
+})
+
+describe('skyCover: the sky reaches every frame the scene camera shows', () => {
+  it('a still house camera keeps the sky as before', () => expect(skyCover({})).toBe(COVER_MARGIN))
+  it('zoomed out wider and panned: wider', () => {
+    const k = skyCover({ camera: { from: { x: -2.4, y: 1.5, z: 0, fov: 75 }, to: { x: 0.3, fov: 50 } } as never })
+    expect(k).toBeGreaterThan(COVER_MARGIN * 1.6)
+  })
+  it('zoomed in only: unchanged', () => expect(skyCover({ camera: { from: { fov: 50 }, to: { fov: 30 } } as never })).toBe(COVER_MARGIN))
 })

@@ -126,7 +126,7 @@ export interface Placement { x: number; y: number; z: number; w: number; h: numb
 /** Where a layer's anchor stands and the plane's size. x 0..1 = left..right edge of the house view at that depth. */
 /** horizon: metres the far landscape (bg) stands higher (set.horizon, teacher-editable). Draw order leaves the even
  *  slot below each layer for its contact stain (stainIndex), so a stain is drawn after farther layers, before its own. */
-export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation' | 'z'>, order: number, horizon = 0, land = horizon): Placement {
+export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' | 'y' | 'scale' | 'rotation' | 'z'>, order: number, horizon = 0, land = horizon, skyCoverK = COVER_MARGIN): Placement {
   const depth = layer.depth
   const z = distanceOf(layer) - order * SAME_DEPTH_STEP_M
   const span = viewWidthAt(z)
@@ -137,7 +137,7 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
     // the backdrop, ALWAYS (tiled or one painting): covers the view box at its distance, horizon a little below the
     // frame's bottom edge. A tiled sky repeats across the box; one painting is cover-fit, never stretched (the box's
     // bottom edge stays put, the spare height goes up into the sky, the spare width splits left and right).
-    const boxW = span * COVER_MARGIN
+    const boxW = span * skyCoverK
     const boxH = boxW / ASPECT
     const y = -boxH * 0.12 + (layer.y ?? 0)   // the teacher's Height lifts (or lowers) the whole sky
     if (asset.tileable_x) return { x: 0, y, z, w: boxW, h: boxH, uRepeat: boxW / (boxH * (asset.w / asset.h)), alphaIndex, rotation: 0 }
@@ -146,10 +146,10 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   }
   // an untiled bg STRIP (asset layer bg, not a prop placed at depth bg) is one painting that must cover its depth's
   // view (COVER_MARGIN wide); never narrower
-  const coverH = asset.layer === 'bg' && !asset.tileable_x ? (span * COVER_MARGIN * asset.h) / asset.w : 0
+  const coverH = asset.layer === 'bg' && !asset.tileable_x ? (span * skyCoverK * asset.h) / asset.w : 0
   const h = Math.max(asset.height_m * (layer.scale ?? 1), coverH)
   const natW = h * (asset.w / asset.h)
-  const w = asset.tileable_x ? Math.max(natW, span * COVER_MARGIN) : natW
+  const w = asset.tileable_x ? Math.max(natW, span * skyCoverK) : natW
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
   // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance; the far landscape
   // strip stands `horizon` higher, and a picture on the ground stands on the ground there (groundHeight): rising onto
@@ -195,6 +195,16 @@ export function shotAt(scene: Scene, t: number): { cam: CameraMove | null; t: nu
   const shots = [scene.camera, ...(scene.camera_more ?? [])].filter(Boolean) as CameraMove[]
   const cam = [...shots].reverse().find((c) => (c.at_s ?? 0) <= t) ?? shots[0] ?? null
   return { cam, t: cam ? t - (cam.at_s ?? 0) : t }
+}
+
+/** How wide the sky must be (times the house view at its distance) for every frame the scene's own camera reaches:
+ *  zoomed out wider than the house (fov) or panned sideways (x). Never narrower than COVER_MARGIN, so a scene with a
+ *  still house camera keeps its sky exactly as before (Bart 11-11: a camera at fov 75 showed the sky's edges). */
+export function skyCover(s: Pick<Scene, 'camera' | 'camera_more'>, z: number = DEPTH_Z.sky): number {
+  const poses = [s.camera, ...(s.camera_more ?? [])].filter(Boolean).flatMap((c) => [{ ...HOUSE, ...c!.from }, { ...HOUSE, ...c!.from, ...c!.to }])
+  const house = Math.tan(fovRad(HOUSE.fov) / 2)
+  const span = viewWidthAt(z)
+  return poses.reduce((k, p) => Math.max(k, COVER_MARGIN * (Math.tan(fovRad(p.fov) / 2) / house) + (2 * Math.abs(p.x)) / span), COVER_MARGIN)
 }
 
 /** Camera pose t seconds into a scene; a scene without a move holds the house pose. */

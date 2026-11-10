@@ -13,7 +13,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
@@ -168,7 +168,7 @@ export class Stage {
         : layer.rig?.length && layer.rigMap ? await bindMappedPicture(urlOf(lib, asset, layer), layer.rigMap, layer.rig)
           : layer.rig?.length ? bindPicture(await alphaOf(urlOf(lib, asset, layer)), layer.rig) : null
       if (token !== this.buildToken) return
-      const p = placeLayer(asset, layer, order)   // y is set in pose(): the auto horizon needs the strip loaded first
+      const p = placeLayer(asset, layer, order, 0, 0, skyCover(s, distanceOf(layer)))   // y is set in pose(): the auto horizon needs the strip loaded first
       // a figure of parts reads its ink off the drawing put back together, so a cut between parts draws no line
       const rest = puppet ? await restDrawing(layer.src ? { ...puppet, atlas: layer.src } : puppet, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
@@ -201,7 +201,8 @@ export class Stage {
       const tex = await loadPremultiplied(lib.base + sl.asset.file, this.scene).catch(() => { misses.push({ need: sl.asset.id, reason: `file did not load: ${sl.asset.file}` }); return null })
       const bands = (bandColours.get(lib.base + sl.asset.file) ?? []).filter((x): x is [number, number, number] => !!x)
       // a flipped slot carries a negative tile size: the floor shader mirrors it top to bottom (ground-gl slotTile)
-      return tex ? { tex, tile: (sl.asset.height_m || GROUND_TILE_M) / (sl.repeat ?? 1) * (sl.flip ? -1 : 1), from: sl.from, asset: sl.asset, colour: bands.length ? mean3(bands) : hexRgb(lib.paper ?? PAPER_HEX) } : null
+      const persp = !!sl.asset.perspective
+      return tex ? { tex, persp, tile: persp ? (sl.repeat ?? 1) : (sl.asset.height_m || GROUND_TILE_M) / (sl.repeat ?? 1) * (sl.flip ? -1 : 1), from: sl.from, asset: sl.asset, colour: bands.length ? mean3(bands) : hexRgb(lib.paper ?? PAPER_HEX) } : null
     }))).filter((sl): sl is NonNullable<typeof sl> => !!sl)
     // the near band (set.near): a wide strip painted from eye height, laid on the floor out to look.nearFar
     let nearTex: RawTexture | null = null
@@ -216,7 +217,7 @@ export class Stage {
     // under a strip the floor fades into the strip's own ground colour; with no strip, into the sky's colour where it
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
-    const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order)
+    const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order, 0, 0, skyCover(s))
     const skyHaze = sky && skyP ? bandAt(bandColours.get(urlOf(lib, sky.asset, sky.layer)) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
     // with ground bands the floor fades into paper, never into the sky: the bands carry the horizon
     const tint = far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : s.set.groundBands?.length ? null : skyHaze
@@ -529,6 +530,9 @@ export class Stage {
     this.ground.follow(this.camera.position)
     const L = (k: string) => lookNum(this.look, k)
     this.ground.live({ detail: L('groundDetail'), vary: L('groundVary'), mixTile: L('groundMix'), tileScale: L('groundScale'), wash: L('groundWash'), grainSize: L('groundGrain') })
+    // a perspective terrain lies from the scene's opening camera: from there it fills the frame exactly as painted
+    const opening = shotAt(s, 0)
+    this.ground.house(houseProjection(pitch, this.engine.getAspectRatio(this.camera), HORIZON_FAR_M, cameraAt(opening.cam, 0, sceneDuration(s))))
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
@@ -557,7 +561,7 @@ export class Stage {
     this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
     for (const b of this.built) {
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land)
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
       b.handle.mesh.position.x = p.x
       // a far strip moved to another distance looks the same from the house camera (it grows with the distance, about
       // the eye): what changes is what stands in front of it. Its own Y and Size still move and size it.
@@ -621,6 +625,8 @@ const NEAR_SPAN = 1.3
 /** The editor's ground grid: a faint hairline that fades out toward the far end of the ground, so it has no hard edge. */
 const GRID_ALPHA = 0.35
 const GRID_SLOT_AHEAD = 0.001
+/** A perspective terrain's top row: the floor this far out, as good as the horizon. */
+const HORIZON_FAR_M = 1900
 const GRID_FADE_START_M = 40
 const GRID_FADE_END_M = 120
 
