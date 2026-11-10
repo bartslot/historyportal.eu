@@ -116,6 +116,10 @@ rsync -az --delete $DRY --stats \
   `# ^ gitignored flag PNGs + manifest, made on the server by timemap:sync-cliopatria-polities.` \
   --exclude='public/stories/' \
   `# ^ storyboards uploaded straight to the server (Dante, 2026-10-04), not in git.` \
+  --filter='P public/build/assets/**' \
+  `# ^ keep the previous builds' chunks: a page opened before this deploy still lazy-loads them by` \
+  `# their old hash (404 on SplitStage-<old>.js, 2026-11-10). New chunks still upload.` \
+  `# ponytail: never pruned; when disk matters, delete assets older than 30 days on the server.` \
   --exclude='public/.well-known/' \
   `# ^ SiteGround's mail autoconfig lives here; --delete would take it.` \
   --exclude='bootstrap/cache/' \
