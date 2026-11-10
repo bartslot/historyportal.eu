@@ -136,3 +136,13 @@ def test_a_floor_tile_repeats_both_ways():
 def test_a_floor_is_coloured_edge_to_edge_never_on_white_paper():
     text = prompts.colour_prompt('ground', 'nl-prehistory')
     assert 'no white paper showing' in text and 'stay pure untouched white' not in text
+
+
+def test_a_low_piece_beside_a_tall_one_is_the_same_row():
+    alpha = np.zeros((400, 600))
+    alpha[20:300, 400:500] = 1      # tall cupboard, right
+    alpha[200:300, 50:200] = 1      # low table, left
+    alpha[220:300, 250:350] = 1     # chest, middle
+    alpha[340:390, 50:150] = 1      # a second row
+    starts = [b[1].start for b, _ in cut.objects(alpha)]
+    assert starts == [50, 250, 400, 50], starts

@@ -62,9 +62,9 @@ def objects(alpha: np.ndarray) -> list[tuple[tuple[slice, slice], np.ndarray]]:
     boxes = [(b, m) for b, m in found if m.sum() >= MIN_SHARE * solid.size]
     rows = sorted(boxes, key=lambda bm: bm[0][0].start)
     ordered, line = [], []
-    for bm in rows:  # same row when the tops are within half the row's first box height
-        b, first = bm[0], line[0][0] if line else None
-        if first and b[0].start > first[0].start + (first[0].stop - first[0].start) / 2:
+    for bm in rows:  # same row while it overlaps the row vertically: a low table beside a tall cupboard (11-11)
+        b = bm[0]
+        if line and b[0].start >= max(x[0][0].stop for x in line):
             ordered += sorted(line, key=lambda x: x[0][1].start)
             line = []
         line.append(bm)
