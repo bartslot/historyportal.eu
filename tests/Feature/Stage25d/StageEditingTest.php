@@ -477,6 +477,25 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['src' => '/storage/worlds/valley.spz', 'y' => -1.5, 'scale' => 50], $scene->fresh()->config['stage25d']['world']);
     }
 
+    public function test_a_teacher_picks_a_world_from_the_library_and_only_from_the_library(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->assertSeeHtml('data-world-pick="valley"');
+
+        $editor->call('pickStage25dWorld', 'valley', $scene->id);
+        $this->assertEquals(['src' => '/worlds/valley.spz', 'y' => -1.0, 'z' => 8.0, 'scale' => 4.0], $scene->fresh()->config['stage25d']['world'], 'it starts where the library lines it up');
+
+        $editor->call('saveStage25dWorld', 'y', 2, $scene->id)
+            ->call('pickStage25dWorld', '../../etc/passwd', $scene->id)
+            ->call('pickStage25dWorld', 'https://evil.example/x.spz', $scene->id)
+            ->call('pickStage25dWorld', '', $scene->id + 1);
+        $this->assertEquals(['src' => '/worlds/valley.spz', 'y' => 2, 'z' => 8.0, 'scale' => 4.0], $scene->fresh()->config['stage25d']['world'], 'not in the library, or another scene: nothing changes');
+
+        $editor->call('pickStage25dWorld', '', $scene->id);
+        $this->assertArrayNotHasKey('world', $scene->fresh()->config['stage25d']);
+    }
+
     public function test_the_floor_ground_pictures_save_near_to_far_at_most_six_and_an_empty_list_puts_the_one_ground_back(): void
     {
         $scene = $this->scene();

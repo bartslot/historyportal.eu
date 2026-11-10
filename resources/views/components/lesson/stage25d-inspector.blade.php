@@ -289,11 +289,31 @@
             </template>
         </div>
 
-        {{-- A splat world (config.stage25d.world) is the floor and the sky: line its ground up with where the figures stand. --}}
-        <template x-if="world">
-            <div class="mt-3 space-y-1" data-stage25d-world>
+        {{-- A splat world from the library (config/worlds.php) lies under the scene in the painted sky's place: pick one,
+             then line it up behind the set. --}}
+        @php
+            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'src' => '/'.$w['file'], 'thumb' => asset($w['thumb']), 'place' => $w['place'] ?? []])->values();
+        @endphp
+        @if ($worlds->isNotEmpty())
+            <div class="mt-3" data-stage25d-world-picker>
                 <div class="divider my-2" role="presentation"></div>
                 <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('World') }}</span>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <button type="button" class="flex aspect-video items-center justify-center rounded-md border bg-base-200 text-xs font-medium text-panel-value"
+                            :class="world ? 'border-panel-hairline' : 'border-base-content'" data-world-pick="" x-on:click="pickWorld('', null, null)">{{ __('None') }}</button>
+                    @foreach ($worlds as $w)
+                        <button type="button" class="relative aspect-video overflow-hidden rounded-md border"
+                                :class="world?.src === @js($w['src']) ? 'border-base-content' : 'border-panel-hairline'"
+                                data-world-pick="{{ $w['key'] }}" aria-label="{{ $w['label'] }}" x-on:click="pickWorld(@js($w['key']), @js($w['src']), @js($w['place']))">
+                            <img src="{{ $w['thumb'] }}" alt="" class="size-full object-cover" loading="lazy" />
+                            <span class="absolute bottom-1 left-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content">{{ $w['label'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+        <template x-if="world">
+            <div class="mt-3 space-y-1" data-stage25d-world>
                 @foreach ([['y', __('Height'), -50, 50, 0.1], ['scale', __('Size'), 0.05, 50, 0.05], ['rot', __('Turn'), -180, 180, 1], ['x', __('Sideways'), -200, 200, 0.5], ['z', __('Distance'), -200, 200, 0.5]] as [$wk, $wl, $wmin, $wmax, $wstep])
                     <x-ui.panel-row :label="$wl">
                         <span class="range-panel-knob min-w-0 flex-1">

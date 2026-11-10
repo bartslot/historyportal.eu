@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
-use App\Services\Lessons\FigureMouth;
 use App\Services\Editor\Cutouts;
+use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
@@ -280,6 +280,27 @@ trait EditsStage25d
         $config['stage25d']['world'][$key] = max($min, min($max, (float) $value));
         $scene->update(['config' => $config]);
         $this->selectedScene['config']['stage25d']['world'][$key] = $config['stage25d']['world'][$key];
+    }
+
+    /** Put a world from the library (config/worlds.php) under the scene, or take it away (''). A new world starts at
+     *  its own place: the last one's placement was for a different world. */
+    #[On('stage25d:world-pick')]
+    public function pickStage25dWorld(string $world, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        $file = config("worlds.{$world}.file");
+        if (! $scene || $scene->id !== $sceneId || ($world !== '' && ! is_string($file))) {
+            return;
+        }
+        $config = $scene->config;
+        if ($world === '') {
+            unset($config['stage25d']['world']);
+        } else {
+            $place = array_intersect_key((array) config("worlds.{$world}.place", []), self::WORLD_RANGES);
+            $config['stage25d']['world'] = ['src' => '/'.$file] + array_map('floatval', $place);
+        }
+        $scene->update(['config' => $config]);
+        $this->selectedScene['config']['stage25d'] = $config['stage25d'];
     }
 
     /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */

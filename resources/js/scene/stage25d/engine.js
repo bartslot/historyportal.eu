@@ -185,7 +185,9 @@ export async function createStage25d (host, opts = {}) {
         if (clock && t === heldAt) framesAhead += step
         heldAt = t
         stage.pose(scene, t, motionClock, undefined, t + framesAhead)
-        world?.at(t, lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal'))
+        // the world builds itself while the scene plays; paused in the editor it stands whole, so a teacher sees what they line up
+        const building = !pointer || !!window.__timelineKeying?.playing?.()
+        world?.at(t, building ? lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal') : 0)   // a build-up of 0: there at once
       }
       stage.scene.render()
       pointer?.place()
@@ -872,6 +874,16 @@ export async function createStage25d (host, opts = {}) {
     /** The world's placement, for the World section: null when the scene has none. */
     worldInfo () {
       return cfg?.world?.src ? { ...WORLD_PLACE_DEFAULTS, ...cfg.world } : null
+    },
+    /** Put a library world under the scene (src) or take it away (null): live, and saved by its key (onWorldPick). */
+    async pickWorld (key, src, place = null) {
+      if (!cfg) return
+      const keep = hidden
+      await api.show({ ...cfg, look: lookNow, set: liveSet(), world: src ? { ...(place ?? {}), src } : null })
+      hidden = keep
+      redraw()
+      if (api.sceneId != null) opts.onWorldPick?.(key ?? '', api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** Move the world: live on the stage, saved on the scene (onWorld). */
     setWorld (patch) {
