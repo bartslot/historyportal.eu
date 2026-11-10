@@ -90,6 +90,6 @@ const NATURE = new Set(['tree', 'shrub', 'heather', 'grass', 'reeds', 'bramble',
 export function assetIcon (asset) {
   if (asset?.kind === 'animation') return 'vfx'
   if (asset?.layer === 'figure') return 'person'
-  if (asset?.layer === 'sky') return 'cloud'
+  if (asset?.layer === 'sky' || asset?.layer === 'cloud') return 'cloud'
   return (asset?.tags ?? []).some((t) => NATURE.has(t)) ? 'leaf' : 'photo'
 }

@@ -47,6 +47,11 @@ LAYER = {
              'the left edge to the right edge, stacked one above the other with wide white paper between them. {era} '
              '{subject} The top edge of each strip is its own silhouette; its bottom edge is a straight horizontal cut. '
              'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. Landscape 3:2.'),
+    # loose clouds the stage floats at sky depth (asset kind 'cloud'), placed one by one in front of a sky
+    'cloud': ('Separate isolated clouds, each a complete cloud with wide empty space around it, nothing touching: {era} '
+              '{subject} Clouds are negative space: very thin contours, few overlapping inner forms, 80 to 90% of each '
+              'cloud left white, only a few sparse strokes under selected lobes. No sky drawing around them, no land, '
+              'no birds. Landscape 3:2.'),
     'mid': ('Middle-distance set pieces, each a separate isolated object: {era} {subject} Seen from slightly above eye '
             'level, three-quarter view, same scale for all. ' + ISOLATED),
     'fg': ('Foreground nature elements, each a separate isolated object: {era} {subject} Same light from the upper left '
@@ -119,8 +124,10 @@ PAPER_AROUND = (', but the paper AROUND and BETWEEN objects, and the gaps betwee
                 'paper with no wash, no tint, no shadow and no texture.')
 
 
-def colour_prompt(layer: str, era: str, out: str = 'colour.png') -> str:
+def colour_prompt(layer: str, era: str, out: str = 'colour.png', light: str | None = None) -> str:
+    """light: a sky's own light in place of the default pale blue day (dusk, night, rain), with the colours it adds."""
     words = ', '.join(f"{w} ({', '.join(hs)})" for w, hs in PALETTE[era])
     around = PAPER_AROUND if layer in ('sky', 'ground') else '. ' + green_key.GREEN_BACKGROUND
-    body = COLOUR.format(palette=words, around=around, sky=SKY_ADDENDUM if layer == 'sky' else '')
+    sky = (' This is a sky: fill the whole canvas. ' + light if light else SKY_ADDENDUM) if layer == 'sky' else ''
+    body = COLOUR.format(palette=words, around=around, sky=sky)
     return TOOL.format(out=out) + '\n\n' + body

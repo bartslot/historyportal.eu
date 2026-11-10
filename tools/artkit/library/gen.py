@@ -52,11 +52,11 @@ def ink_stage(job: dict, sheet: dict, work: Path, tries: int) -> dict:
 
 def colour_stage(job: dict, sheet: dict, work: Path, tries: int) -> dict:
     ink = rgb(work / 'ink.png')
-    hexes = prompts.palette_hexes(job['era'])
+    hexes = prompts.palette_hexes(job['era']) + sheet.get('hexes', [])   # a sky's own light adds its colours
     for t in range(tries):
         v = next(c for c in string.ascii_lowercase if not (work / f'colour_{c}.png').exists())
         out = work / f'colour_{v}.png'
-        make_image(prompts.colour_prompt(sheet['layer'], job['era'], out.name), str(out),
+        make_image(prompts.colour_prompt(sheet['layer'], job['era'], out.name, sheet.get('light')), str(out),
                    [str(work / 'ink.png'), str(prompts.COLOUR_ANCHOR)], False, TIMEOUT_S)
         img = rgb(out)
         kept = qa.ink_kept(ink, img)

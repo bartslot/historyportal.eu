@@ -816,10 +816,10 @@ export async function createStage25d (host, opts = {}) {
       const a = assets.get(assetId)
       if (!a) return
       // a character without a drop point stands near enough to read (fg), a step beside the ones added before it
-      const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : a.layer === 'figure' ? 'fg' : 'mid'
+      const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : a.layer === 'figure' ? 'fg' : a.layer === 'cloud' ? 'sky' : 'mid'
       const beside = at ? 0 : layers.filter((l) => l.asset === assetId).length
       let layer = { asset: assetId, depth, x: 0.5 + 0.08 * (beside % 5), scale: 1 }
-      if (!(a.tileable_x || a.layer === 'bg' || a.layer === 'sky')) {
+      if (!(a.tileable_x || ['bg', 'sky', 'cloud'].includes(a.layer))) {   // a cloud floats, it is never dropped on the ground
         const hit = at && stage ? groundUnderRay(stage.pointerRay(at.x, at.y), floorOnly({}, a) ? 0 : (z) => stage.groundHeightAt(z)) : null
         const spot = layerOf(settle(hit ?? groundOf(layer.x, DEPTH_Z[depth])))
         layer = { ...layer, ...spot, depth: bandOf(spot.z) }

@@ -1,0 +1,229 @@
+{
+ "bundle": "tasman-1642",
+ "era": "nl-golden-age",
+ "era_label": "any",
+ "sheets": [
+  {
+   "id": "sky-morning",
+   "layer": "sky",
+   "subject": "Early morning: soft low clouds along the lower part, clear open sky above.",
+   "assets": [
+    {
+     "id": "sky-morning-01",
+     "tags": [
+      "sky",
+      "morning",
+      "dawn",
+      "clear"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Soft early-morning light: pale peach and rose near the bottom edge fading up into a very pale clear blue; the clouds stay mostly white paper with a faint rose glaze on their lower edges.",
+   "hexes": [
+    "#f3d3c4",
+    "#e8b9a8"
+   ]
+  },
+  {
+   "id": "sky-clear",
+   "layer": "sky",
+   "subject": "A clear fine day: an almost empty open sky with only a few thin high wisps of cirrus.",
+   "assets": [
+    {
+     "id": "sky-clear-01",
+     "tags": [
+      "sky",
+      "clear",
+      "day",
+      "fine"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ]
+  },
+  {
+   "id": "sky-overcast",
+   "layer": "sky",
+   "subject": "A grey overcast day: the whole sky one low layered cloud deck in long soft bands, no gaps.",
+   "assets": [
+    {
+     "id": "sky-overcast-01",
+     "tags": [
+      "sky",
+      "overcast",
+      "grey",
+      "day",
+      "clouds"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Overcast: the whole canvas a pale cool grey watercolour, slightly darker bands in the cloud deck, no blue.",
+   "hexes": [
+    "#c9cdd0",
+    "#a7adb2"
+   ]
+  },
+  {
+   "id": "sky-rain",
+   "layer": "sky",
+   "subject": "A rain sky: heavy low clouds with slanting rain curtains falling from their undersides, a brighter gap low on one side.",
+   "assets": [
+    {
+     "id": "sky-rain-01",
+     "tags": [
+      "sky",
+      "rain",
+      "clouds",
+      "weather"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Rain: cool blue-grey washes, darker under the clouds, the rain curtains thin slanting pale grey strokes, one pale bright gap.",
+   "hexes": [
+    "#8f9aa3",
+    "#b8c1c7",
+    "#6f7c87"
+   ]
+  },
+  {
+   "id": "sky-night",
+   "layer": "sky",
+   "subject": "A clear night: a crescent moon high on one side, scattered small stars, a few thin clouds lit by the moon.",
+   "assets": [
+    {
+     "id": "sky-night-01",
+     "tags": [
+      "sky",
+      "night",
+      "moon",
+      "stars"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Night: a deep transparent blue-indigo watercolour wash over the whole canvas, a little lighter near the bottom edge; the moon and the stars stay white paper, the clouds a pale cool blue-grey.",
+   "hexes": [
+    "#2e3f5c",
+    "#41557a",
+    "#5d7196"
+   ]
+  },
+  {
+   "id": "sky-sunset",
+   "layer": "sky",
+   "subject": "Sunset: long streaks of cloud low over where the horizon would be, the sun just gone, open sky above.",
+   "assets": [
+    {
+     "id": "sky-sunset-01",
+     "tags": [
+      "sky",
+      "sunset",
+      "evening",
+      "dusk"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Sunset: warm golden orange and apricot near the bottom edge, rose in the middle, fading up into a pale blue-violet; the clouds catch warm orange on their lower edges.",
+   "hexes": [
+    "#f0b47a",
+    "#e89070",
+    "#d8a0a8",
+    "#b7b0cf"
+   ]
+  },
+  {
+   "id": "sky-mist",
+   "layer": "sky",
+   "subject": "A misty morning: a low veil of mist, the sky almost white with soft pale cloud shapes barely drawn.",
+   "assets": [
+    {
+     "id": "sky-mist-01",
+     "tags": [
+      "sky",
+      "mist",
+      "fog",
+      "morning"
+     ],
+     "height_m": 0,
+     "tileable_x": false
+    }
+   ],
+   "light": "Mist: almost all paper white with very pale cool grey-blue veils, nearly no colour.",
+   "hexes": [
+    "#e6e9ea",
+    "#d5dbde"
+   ]
+  },
+  {
+   "id": "clouds-1",
+   "layer": "cloud",
+   "subject": "Six clouds in two rows of three: (1) a large cumulus, (2) a small cumulus, (3) a long low bank of cloud, wide and flat, (4) a thin wisp of high cirrus, (5) a towering storm cloud with a flat anvil top, (6) a rain cloud with slanting rain streaks falling from its underside.",
+   "assets": [
+    {
+     "id": "cloud-cumulus-large-01",
+     "tags": [
+      "cloud",
+      "cumulus",
+      "fair"
+     ],
+     "height_m": 80
+    },
+    {
+     "id": "cloud-cumulus-small-01",
+     "tags": [
+      "cloud",
+      "cumulus",
+      "fair"
+     ],
+     "height_m": 35
+    },
+    {
+     "id": "cloud-bank-01",
+     "tags": [
+      "cloud",
+      "bank",
+      "low"
+     ],
+     "height_m": 45
+    },
+    {
+     "id": "cloud-cirrus-01",
+     "tags": [
+      "cloud",
+      "cirrus",
+      "high"
+     ],
+     "height_m": 25
+    },
+    {
+     "id": "cloud-storm-01",
+     "tags": [
+      "cloud",
+      "storm",
+      "anvil"
+     ],
+     "height_m": 160
+    },
+    {
+     "id": "cloud-rain-01",
+     "tags": [
+      "cloud",
+      "rain",
+      "weather"
+     ],
+     "height_m": 90
+    }
+   ]
+  }
+ ]
+}
