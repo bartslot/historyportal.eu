@@ -7,7 +7,9 @@
 Checks: schema, timeline from timing.json (narration <= 12 s a shot; est_s
 is only the writer's note, still 6-12), every minute figure on the teacher card is rendered from teacher_template, interaction spacing (first <= 180 s, then
 every <= 180 s, also after the last), every scene has fact_refs that resolve to a source and a real
-source when it says a number or year, no verbatim overlap (6-word n-grams) between any prose string and
+source when it says a number or year, branch groups (game block, question + option_a run + option_b run, 1-3 shots
+each, effects on known meters, a normal scene where they rejoin; spacing on the LONGEST play, the 10-minute minimum
+on the SHORTEST), no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
 balloons <= 8 words), set layers resolve against the art library or are listed in needed_assets.
 --resolve writes matching library asset ids into the layers and rebuilds needed_assets in place.
@@ -34,6 +36,8 @@ SHOT_MIN_S, SHOT_MAX_S = TIMING["shot_min_s"], TIMING["shot_max_s"]
 FIRST_INTERACTION_MAX_S = 180
 INTERACTION_GAP_MAX_S = 180
 INTERACTION_GAP_MIN_S = 60
+MIN_TOTAL_S = 600  # a lesson plays at least 10 minutes, on its shortest branch path
+OPTION_SHOTS_MAX = 3
 NGRAM = 6
 RECALL_SHARE_MAX = 0.5
 POWER_METERS_MIN, POWER_METERS_MAX = 1, 4
@@ -53,7 +57,7 @@ HARD_FACT = re.compile(
 # Keys whose values are ids, enums, tags or paths, not prose.
 NOT_PROSE = {"id", "url", "need", "asset", "sky", "char", "pose", "depth", "facing", "expression", "beat", "type",
              "kind", "input", "format", "lang", "bundle", "canon_venster", "related_venster", "layer", "tags",
-             "fact_refs", "ledger", "level", "camera", "sound", "needed_assets", "lessonup_ids"}
+             "fact_refs", "ledger", "level", "camera", "sound", "needed_assets", "lessonup_ids", "key", "icon", "role"}
 
 # Every dash character, a spaced hyphen used as a dash, and the emoji blocks. "VOC-schip" is fine.
 BAD_CHARS = re.compile("[\u2010-\u2015\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]|\\s-\\s")
@@ -81,8 +85,27 @@ def interaction_s(it: dict) -> float:
 
 
 def total_s(lesson: dict) -> float:
-    """Lesson length per timing.json: every shot, its class action, its interaction."""
+    """Every scene once (both branches): timing.json's model, the director's parity number (--totals)."""
     return sum(scene_s(sc) for sc in lesson["scenes"])
+
+
+def option_of(sc: dict) -> tuple[int, str] | None:
+    b = sc.get("branch")
+    return (b["group"], b["role"]) if b and b["role"] != "question" else None
+
+
+def play(scenes: list[dict], longest: bool) -> list[dict]:
+    """The scenes one class sees: per branch group only the longer (or shorter) option run; a tie plays option_a."""
+    runs: dict[tuple[int, str], list[dict]] = {}
+    for sc in scenes:
+        if key := option_of(sc):
+            runs.setdefault(key, []).append(sc)
+    run_s = {k: sum(map(scene_s, r)) for k, r in runs.items()}
+    dropped = set()
+    for g in {k[0] for k in runs}:
+        a, b = run_s.get((g, "option_a"), 0), run_s.get((g, "option_b"), 0)
+        dropped.add((g, "option_b" if (a >= b) == longest else "option_a"))
+    return [sc for sc in scenes if option_of(sc) not in dropped]
 
 
 TYPED_MINUTES = re.compile(r"\d+\s*minuten")
@@ -90,20 +113,91 @@ MIN_RANGE = re.compile(r"\{min:(sc\d+)-(sc\d+)\}")
 
 
 def scene_s(sc: dict) -> float:
-    return shot_s(sc) + sc.get("class_action_s", 0) + (interaction_s(sc["interaction"]) if sc["interaction"] else 0)
+    return shot_s(sc) + sc.get("class_action_s", 0) + interaction_play_s(sc)
+
+
+def scene_interaction(sc: dict) -> dict | None:
+    """What plays after the shot: its interaction, or a branch question's choice (timing.json 'choice')."""
+    if sc["interaction"]:
+        return sc["interaction"]
+    return {"type": "choice"} if (sc.get("branch") or {}).get("role") == "question" else None
+
+
+def interaction_play_s(sc: dict) -> float:
+    it = scene_interaction(sc)
+    return interaction_s(it) if it else 0
 
 
 def render_teacher(lesson: dict) -> str:
-    """The teacher card from teacher_template: {total_min}, {story_min} and {min:scA-scB} come from timing.json."""
+    """The teacher card from teacher_template: {total_min}, {story_min} and {min:scA-scB} come from timing.json,
+    on the longest play (one option per branch group)."""
     ids = [sc["id"] for sc in lesson["scenes"]]
+    played = play(lesson["scenes"], longest=True)
 
     def span(m: re.Match) -> str:
         a, b = ids.index(m.group(1)), ids.index(m.group(2))  # ValueError = a range naming a missing scene
-        return str(half_up(sum(scene_s(sc) for sc in lesson["scenes"][a:b + 1]) / 60))
+        return str(half_up(sum(scene_s(sc) for sc in played if a <= ids.index(sc["id"]) <= b) / 60))
 
     text = MIN_RANGE.sub(span, lesson["teacher_template"])
-    return (text.replace("{total_min}", str(half_up(total_s(lesson) / 60)))
-                .replace("{story_min}", str(half_up(sum(shot_s(sc) for sc in lesson["scenes"]) / 60))))
+    return (text.replace("{total_min}", str(half_up(sum(map(scene_s, played)) / 60)))
+                .replace("{story_min}", str(half_up(sum(shot_s(sc) for sc in played) / 60))))
+
+
+def check_branches(lesson: dict) -> list[str]:
+    """Every group: one question, then 1-3 option_a shots, then 1-3 option_b shots, then a normal scene. The FIRST
+    shot of each run carries effects with deltas on the game's meters; no branch scene carries an interaction."""
+    scenes = lesson["scenes"]
+    branched = [sc for sc in scenes if sc.get("branch")]
+    game = lesson.get("game")
+    if not branched:
+        return ["game block but no branch scenes"] if game else []
+    if not game:
+        return ["branch scenes but no game block (meters)"]
+    errors: list[str] = []
+    meters = [m["key"] for m in game["meters"]]
+    if len(set(meters)) != len(meters):
+        errors.append("game meter keys are not unique")
+    seen: set[int] = set()
+    i = 0
+    while i < len(scenes):
+        b = scenes[i].get("branch")
+        if not b:
+            i += 1
+            continue
+        g, start = b["group"], scenes[i]["id"]
+        j = i
+        while j < len(scenes) and (scenes[j].get("branch") or {}).get("group") == g:
+            j += 1
+        roles = [sc["branch"]["role"] for sc in scenes[i:j]]
+        na, nb = roles.count("option_a"), roles.count("option_b")
+        if g in seen:
+            errors.append(f"{start}: branch group {g} appears twice: a group is one run of scenes")
+        seen.add(g)
+        if roles != ["question"] + ["option_a"] * na + ["option_b"] * nb:
+            errors.append(f"{start}: branch group {g} must be one question, then option_a shots, then option_b shots: {roles}")
+        for role, n in (("option_a", na), ("option_b", nb)):
+            if not 1 <= n <= OPTION_SHOTS_MAX:
+                errors.append(f"{start}: branch group {g} {role} has {n} shots, need 1-{OPTION_SHOTS_MAX}")
+        for k, sc in enumerate(scenes[i:j], i):
+            if sc["interaction"]:
+                errors.append(f"{sc['id']}: a branch scene carries no interaction (the choice is the interaction)")
+            if option_of(sc) is None:
+                continue
+            first = option_of(scenes[k - 1]) != option_of(sc)
+            effects = sc["branch"].get("effects")
+            if first and not effects:
+                errors.append(f"{sc['id']}: first shot of group {g} {sc['branch']['role']} needs effects with deltas")
+            if not first and effects:
+                errors.append(f"{sc['id']}: effects belong on the first shot of the option run only")
+            for key in (effects or {}).get("deltas", {}):
+                if key not in meters:
+                    errors.append(f"{sc['id']}: delta on unknown meter {key!r} (game meters: {meters})")
+        if j == len(scenes):
+            errors.append(f"branch group {g} never rejoins: the lesson ends inside option_b")
+        elif scenes[j].get("branch"):
+            errors.append(f"{scenes[j]['id']}: the scene after group {g} must be a normal scene where both branches rejoin")
+        i = j
+    return errors
 
 
 def all_texts(node: object, where: str = "") -> list[tuple[str, str]]:
@@ -215,7 +309,8 @@ def resolve(lesson: dict, library_root: Path) -> dict:
     return lesson
 
 
-def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = DEFAULT_LIBRARY) -> tuple[list[str], list[str], dict]:
+def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = DEFAULT_LIBRARY,
+          min_total_s: float = MIN_TOTAL_S) -> tuple[list[str], list[str], dict]:
     errors: list[str] = []
     warnings: list[str] = []
     stats: dict = {}
@@ -229,21 +324,28 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     if len(set(ids)) != len(ids):
         errors.append("scene ids are not unique")
 
-    # Timeline per timing.json: each shot, then its class action, then its interaction.
-    t = 0.0
-    spans: list[tuple[float, float, str, str]] = []  # (start, end, scene id, type)
+    errors += check_branches(lesson)
     for sc in scenes:
         if not SHOT_MIN_S <= sc["est_s"] <= SHOT_MAX_S:
             errors.append(f"{sc['id']}: est_s {sc['est_s']} outside {SHOT_MIN_S}-{SHOT_MAX_S}")
         shot = shot_s(sc)
         if shot > SHOT_MAX_S:
             errors.append(f"{sc['id']}: narration takes {shot:.1f} s, max {SHOT_MAX_S}: split the shot")
-        t += shot + sc.get("class_action_s", 0)
-        if sc["interaction"]:
-            play = interaction_s(sc["interaction"])
-            spans.append((t, t + play, sc["id"], sc["interaction"]["type"]))
-            t += play
-    stats["total_s"] = half_up(t)
+
+    # Timeline per timing.json on the longest play: each shot, then its class action, then its interaction.
+    t = 0.0
+    spans: list[tuple[float, float, str, str]] = []  # (start, end, scene id, type)
+    for sc in play(scenes, longest=True):
+        t += shot_s(sc) + sc.get("class_action_s", 0)
+        if it := scene_interaction(sc):
+            spans.append((t, t + interaction_s(it), sc["id"], it["type"]))
+            t += interaction_s(it)
+    shortest = sum(map(scene_s, play(scenes, longest=False)))
+    stats["total_s"] = half_up(total_s(lesson))
+    if any(sc.get("branch") for sc in scenes):
+        stats["longest_s"], stats["shortest_s"] = half_up(t), half_up(shortest)
+    if shortest < min_total_s:
+        errors.append(f"the shortest play takes {half_up(shortest)} s, a lesson needs at least {round(min_total_s)} s")
     stats["story_s"] = half_up(sum(shot_s(sc) for sc in scenes))
     stats["class_actions_s"] = sum(sc.get("class_action_s", 0) for sc in scenes)
     if lesson.get("teacher_template"):

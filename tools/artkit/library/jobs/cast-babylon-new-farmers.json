@@ -1,0 +1,90 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "babylonia-old-babylonian",
+  "era_label": "c. 1750 BCE",
+  "note": "Bart 11-11: the cast of Babylon and the new farmers (vault topics/babylon-new-farmers/story-map.md). All invented, plausible for the Old Babylonian period.",
+  "characters": [
+    {
+      "char": "ana",
+      "height_m": 1.42,
+      "tags": [
+        "girl",
+        "child",
+        "herder",
+        "nomad"
+      ],
+      "look": "Ana, an 11-year-old girl of a semi-nomadic herding family of the steppe, bright and curious face, a long dark braid, a knee-length plain wool tunic with a fringed wool shawl over one shoulder, a cord belt, bare feet",
+      "colours": "tunic undyed oatmeal wool, shawl warm madder red-brown with a darker fringe, cord belt dark brown, hair black-brown"
+    },
+    {
+      "char": "hazi",
+      "height_m": 1.55,
+      "tags": [
+        "boy",
+        "child",
+        "herder",
+        "nomad"
+      ],
+      "look": "Hazi, a 13-year-old boy of the same herding family, proud and impatient face, short dark curly hair, a short wool kilt to the knee and a wool cloak tied on one shoulder, a sling tucked in his belt, leather sandals",
+      "colours": "kilt light brown wool, cloak dark ochre-brown, sling and sandals dark leather brown, hair black"
+    },
+    {
+      "char": "nunu",
+      "height_m": 1.5,
+      "tags": [
+        "woman",
+        "elder",
+        "grandmother",
+        "nomad"
+      ],
+      "look": "Nunu, the grandmother of the family, a stern weathered old woman with deep lines, slightly bent, a long dark wool dress and a heavy shawl over her head and shoulders, a tall wooden staff",
+      "colours": "dress dark indigo-grey wool, shawl deep brown with a thin red border, staff weathered wood brown, grey hair under the shawl"
+    },
+    {
+      "char": "abu",
+      "height_m": 1.68,
+      "tags": [
+        "man",
+        "father",
+        "hunter",
+        "nomad"
+      ],
+      "look": "the father, a lean tired hunter in his thirties, short black beard, hair tied back, a knee-length wool tunic, a cloak, a short wooden spear with a stone point, sandals",
+      "colours": "tunic sand-brown wool, cloak dark olive-brown, spear shaft weathered wood, sandals leather brown, hair and beard black"
+    },
+    {
+      "char": "ilshu",
+      "height_m": 1.7,
+      "tags": [
+        "man",
+        "babylonian",
+        "traveller",
+        "official"
+      ],
+      "look": "Ilshu, a Babylonian canal inspector in his forties, friendly but tired face, a neatly trimmed dark beard, a round brimless cap, a long fringed tunic of a city man reaching the shins, a cloak, a leather satchel with clay tablets, sandals",
+      "colours": "tunic pale cream linen with a fringe edged in faded blue, cloak muted blue-grey wool, cap off-white, satchel and sandals warm leather brown, beard black"
+    },
+    {
+      "char": "belessunu",
+      "height_m": 1.6,
+      "tags": [
+        "woman",
+        "farmer",
+        "babylonian"
+      ],
+      "look": "Belessunu, a capable Babylonian woman farmer in her thirties who runs her family field, a long linen dress belted at the waist, a headcloth knotted at the back, sleeves rolled, a curved sickle hanging from her belt, sandals",
+      "colours": "dress pale undyed linen, belt and headcloth soft ochre, sickle blade dull copper, sandals leather brown, hair dark brown"
+    },
+    {
+      "char": "scribe",
+      "height_m": 1.66,
+      "tags": [
+        "man",
+        "scribe",
+        "babylonian"
+      ],
+      "look": "a Babylonian scribe in his fifties, shaven head and clean-shaven face, a plain long linen tunic, holding a small clay tablet and a reed stylus, sandals",
+      "colours": "tunic plain off-white linen, tablet pale clay, stylus reed straw-colour, sandals light leather brown"
+    }
+  ]
+}

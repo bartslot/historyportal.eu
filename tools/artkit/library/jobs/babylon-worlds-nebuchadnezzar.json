@@ -1,0 +1,325 @@
+{
+  "bundle": "babylon-neo-babylonian",
+  "era": "babylon-neo-babylonian",
+  "note": "Bart 11-11: Babylon worlds, Nebuchadnezzar II. Sources: Koldewey excavations; Ishtar Gate and Processional Way (Pergamon Museum, Berlin); Etemenanki.",
+  "sheets": [
+    {
+      "id": "nb-ishtar-gate-bg",
+      "layer": "bg",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): the Ishtar Gate seen from the front down the Processional Way: a tall double gate with crenellated towers either side of a high arched passage, entirely faced with deep blue glazed bricks, rows of yellow and white relief bulls (aurochs) and dragons (mushhushshu) in horizontal registers; the city wall running off to both sides.",
+      "assets": [
+        {
+          "id": "nb-ishtar-gate-backdrop-01",
+          "tags": [
+            "ishtar-gate",
+            "gate",
+            "glazed-brick",
+            "babylon"
+          ],
+          "height_m": 28,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "nb-processional-screens",
+      "layer": "band",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): (1) the wall of the Processional Way, 12 m high: deep blue glazed brick with a row of striding yellow-maned lions in relief between bands of white and yellow rosettes, crenellations on top; (2) a plain baked-brick kerb, 0.6 m high.",
+      "assets": [
+        {
+          "id": "nb-lion-wall-screen-01",
+          "tags": [
+            "processional-way",
+            "lions",
+            "glazed-brick"
+          ],
+          "height_m": 12,
+          "tileable_x": true
+        },
+        {
+          "id": "nb-kerb-screen-01",
+          "tags": [
+            "kerb",
+            "brick"
+          ],
+          "height_m": 0.6,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-processional-way-01",
+      "layer": "terrain",
+      "subject": "The Processional Way of Babylon: large pale limestone paving slabs set in rows along the road, a central strip of slabs edged with reddish breccia, worn smooth",
+      "assets": [
+        {
+          "id": "terrain-processional-way-01",
+          "tags": [
+            "processional-way",
+            "paving",
+            "limestone"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-processional-way-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-processional-way-01",
+      "layer": "horizon",
+      "subject": "The Processional Way of Babylon: large pale limestone paving slabs set in rows along the road, a central strip of slabs edged with reddish breccia, worn smooth",
+      "assets": [
+        {
+          "id": "horizon-processional-way-01",
+          "tags": [
+            "processional-way",
+            "paving",
+            "limestone",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "nb-etemenanki-bg",
+      "layer": "bg",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): the great ziggurat Etemenanki seen across the sacred precinct: a huge square stepped tower of several receding stages of baked brick, a wide triple staircase climbing the front to the second stage, a small blue-glazed temple on the summit; in front of it the long buttressed enclosure wall of the precinct with towered gates.",
+      "assets": [
+        {
+          "id": "nb-etemenanki-backdrop-01",
+          "tags": [
+            "ziggurat",
+            "etemenanki",
+            "temple",
+            "babylon"
+          ],
+          "height_m": 40,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "nb-precinct-screens",
+      "layer": "band",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): (1) the enclosure wall of the sacred precinct, 9 m high, baked brick with tall shallow buttresses and a toothed crenellated top; (2) a low platform of baked brick, 1 m high, with a few steps.",
+      "assets": [
+        {
+          "id": "nb-precinct-wall-screen-01",
+          "tags": [
+            "precinct",
+            "wall",
+            "baked-brick"
+          ],
+          "height_m": 9,
+          "tileable_x": true
+        },
+        {
+          "id": "nb-platform-screen-01",
+          "tags": [
+            "platform",
+            "steps"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-precinct-paving-01",
+      "layer": "terrain",
+      "subject": "The wide court of the temple precinct of Babylon: baked bricks laid in bitumen in large even rows, dusty and worn",
+      "assets": [
+        {
+          "id": "terrain-precinct-paving-01",
+          "tags": [
+            "precinct",
+            "paving",
+            "brick"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-precinct-paving-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-precinct-paving-01",
+      "layer": "horizon",
+      "subject": "The wide court of the temple precinct of Babylon: baked bricks laid in bitumen in large even rows, dusty and worn",
+      "assets": [
+        {
+          "id": "horizon-precinct-paving-01",
+          "tags": [
+            "precinct",
+            "paving",
+            "brick",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "nb-river-walls-bg",
+      "layer": "bg",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): the Euphrates flowing through Babylon: the far bank lined by a massive quay wall of baked brick set in bitumen, the city wall above it with regular square towers and crenellations, roofs and the stepped ziggurat far behind; the wide river water fills the lower part.",
+      "assets": [
+        {
+          "id": "nb-river-walls-backdrop-01",
+          "tags": [
+            "river",
+            "euphrates",
+            "city-wall",
+            "babylon"
+          ],
+          "height_m": 30,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "nb-quay-screens",
+      "layer": "band",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): (1) a river quay wall of baked brick set in bitumen, 4 m high, a stair of brick going down into the water; (2) the river edge with a few reeds and a mooring post, 1 m high.",
+      "assets": [
+        {
+          "id": "nb-quay-wall-screen-01",
+          "tags": [
+            "river",
+            "quay",
+            "baked-brick"
+          ],
+          "height_m": 4,
+          "tileable_x": true
+        },
+        {
+          "id": "nb-river-edge-screen-01",
+          "tags": [
+            "river",
+            "bank",
+            "reeds"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-euphrates-water-01",
+      "layer": "terrain",
+      "subject": "The wide brown-green Euphrates, calm water with long rows of small ripples and a slow current",
+      "assets": [
+        {
+          "id": "terrain-euphrates-water-01",
+          "tags": [
+            "river",
+            "water",
+            "euphrates"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-euphrates-water-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-euphrates-water-01",
+      "layer": "horizon",
+      "subject": "The wide brown-green Euphrates, calm water with long rows of small ripples and a slow current",
+      "assets": [
+        {
+          "id": "horizon-euphrates-water-01",
+          "tags": [
+            "river",
+            "water",
+            "euphrates",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "nb-city-bg",
+      "layer": "bg",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): the skyline of Babylon from a street: dense flat-roofed houses of mudbrick and baked brick, some with toothed parapets, palm crowns between them, and far off the great stepped ziggurat and the blue towers of the Ishtar Gate.",
+      "assets": [
+        {
+          "id": "nb-city-skyline-backdrop-01",
+          "tags": [
+            "city",
+            "skyline",
+            "houses",
+            "ziggurat",
+            "babylon"
+          ],
+          "height_m": 26,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "nb-street-screens",
+      "layer": "band",
+      "subject": "Babylon c. 575 BCE (after Koldewey's excavations): (1) a street frontage of Babylonian houses, 7 m high: thick walls of mudbrick with vertical saw-tooth recesses, no street windows, deep plain doorways, flat roofs; (2) a low baked-brick bench along a wall, 0.5 m high.",
+      "assets": [
+        {
+          "id": "nb-street-houses-screen-01",
+          "tags": [
+            "city",
+            "houses",
+            "street"
+          ],
+          "height_m": 7,
+          "tileable_x": true
+        },
+        {
+          "id": "nb-street-bench-screen-01",
+          "tags": [
+            "street",
+            "bench"
+          ],
+          "height_m": 0.5,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-babylon-street-01",
+      "layer": "terrain",
+      "subject": "A wide street of Babylon: packed earth with a band of baked-brick paving along the middle, dusty, a few sherds and straw",
+      "assets": [
+        {
+          "id": "terrain-babylon-street-01",
+          "tags": [
+            "city",
+            "street",
+            "paving"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-babylon-street-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-babylon-street-01",
+      "layer": "horizon",
+      "subject": "A wide street of Babylon: packed earth with a band of baked-brick paving along the middle, dusty, a few sherds and straw",
+      "assets": [
+        {
+          "id": "horizon-babylon-street-01",
+          "tags": [
+            "city",
+            "street",
+            "paving",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    }
+  ]
+}

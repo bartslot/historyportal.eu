@@ -1,0 +1,414 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "babylonia-old-babylonian",
+  "note": "Bart 11-11: Babylon worlds, Hammurabi period. Sources: Woolley, Ur (Penn Museum); Ur ziggurat (Ur III, standing in 1750 BCE).",
+  "sheets": [
+    {
+      "id": "bb-town-bg",
+      "layer": "bg",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): a mudbrick town seen from just outside: a dense mass of flat-roofed, windowless houses of one and two storeys climbing a low mound, roof parapets at many heights, and far behind them the stepped temple tower (ziggurat) of three receding stages with a temple on its top, plain mudbrick with buttressed walls. No palms in front, no city gate.",
+      "assets": [
+        {
+          "id": "bb-town-skyline-01",
+          "tags": [
+            "city",
+            "town",
+            "houses",
+            "ziggurat",
+            "skyline"
+          ],
+          "height_m": 24,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "bb-lane-screens",
+      "layer": "band",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) a street frontage of mudbrick houses, 5 m high: plain plastered mudbrick walls of slightly different heights and setbacks, NO windows to the street, a few small plain timber doorways, flat roofs with low parapets, a drainpipe spout of fired clay; (2) a low mudbrick yard wall, 1.6 m high, with a little plaster flaking.",
+      "assets": [
+        {
+          "id": "bb-lane-houses-screen-01",
+          "tags": [
+            "city",
+            "houses",
+            "street",
+            "mudbrick"
+          ],
+          "height_m": 5,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-low-yard-wall-screen-01",
+          "tags": [
+            "wall",
+            "mudbrick"
+          ],
+          "height_m": 1.6,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-town-lane-01",
+      "layer": "terrain",
+      "subject": "A narrow beaten-earth street of a mudbrick town: dry trodden silt, a few broken sherds and straw, a shallow drain channel along one side",
+      "assets": [
+        {
+          "id": "terrain-town-lane-01",
+          "tags": [
+            "city",
+            "street",
+            "earth"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-town-lane-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-town-lane-01",
+      "layer": "horizon",
+      "subject": "A narrow beaten-earth street of a mudbrick town: dry trodden silt, a few broken sherds and straw, a shallow drain channel along one side",
+      "assets": [
+        {
+          "id": "horizon-town-lane-01",
+          "tags": [
+            "city",
+            "street",
+            "earth",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-court-screens",
+      "layer": "band",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) the inner walls of a courtyard house seen from the open courtyard, 6 m high: plastered mudbrick, several plain doorways into rooms at ground level, a wooden gallery along the upper floor with a simple railing, flat roof edge; (2) a low bench of mudbrick along a wall, 0.5 m high, with two water-jar stands of fired brick.",
+      "assets": [
+        {
+          "id": "bb-court-walls-screen-01",
+          "tags": [
+            "courtyard",
+            "house",
+            "interior-court"
+          ],
+          "height_m": 6,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-court-bench-screen-01",
+          "tags": [
+            "courtyard",
+            "bench"
+          ],
+          "height_m": 0.5,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-court-paving-01",
+      "layer": "terrain",
+      "subject": "The courtyard of a mudbrick house paved with square fired bricks in a plain grid, worn smooth, a little sand in the joints, a small square drain in the paving",
+      "assets": [
+        {
+          "id": "terrain-court-paving-01",
+          "tags": [
+            "courtyard",
+            "paving",
+            "brick"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-court-paving-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-court-paving-01",
+      "layer": "horizon",
+      "subject": "The courtyard of a mudbrick house paved with square fired bricks in a plain grid, worn smooth, a little sand in the joints, a small square drain in the paving",
+      "assets": [
+        {
+          "id": "horizon-court-paving-01",
+          "tags": [
+            "courtyard",
+            "paving",
+            "brick",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-ziggurat-bg",
+      "layer": "bg",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): the great stepped temple tower of Ur, as it stood (built c. 2100 BCE, still in use in 1750 BCE): a massive solid brick terrace tower of three receding stages with sloping buttressed walls, a fired-brick skin with bitumen lines, three long staircases meeting at a gate halfway up, a small temple on top; at its foot the low enclosure wall of the precinct.",
+      "assets": [
+        {
+          "id": "bb-ziggurat-backdrop-01",
+          "tags": [
+            "temple",
+            "ziggurat",
+            "precinct",
+            "ur"
+          ],
+          "height_m": 30,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "bb-precinct-screens",
+      "layer": "band",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) a temple enclosure wall, 7 m high, mudbrick with regular vertical buttresses and recesses (niched facade), plastered, a straight top; (2) a low platform edge of fired brick, 1 m high, with a few steps.",
+      "assets": [
+        {
+          "id": "bb-temenos-wall-screen-01",
+          "tags": [
+            "temple",
+            "precinct",
+            "wall"
+          ],
+          "height_m": 7,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-platform-edge-screen-01",
+          "tags": [
+            "temple",
+            "platform",
+            "steps"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-precinct-court-01",
+      "layer": "terrain",
+      "subject": "The open court of a temple precinct: wide paving of large fired bricks laid in bitumen, very worn and dusty, a few cracks",
+      "assets": [
+        {
+          "id": "terrain-precinct-court-01",
+          "tags": [
+            "temple",
+            "precinct",
+            "paving"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-precinct-court-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-precinct-court-01",
+      "layer": "horizon",
+      "subject": "The open court of a temple precinct: wide paving of large fired bricks laid in bitumen, very worn and dusty, a few cracks",
+      "assets": [
+        {
+          "id": "horizon-precinct-court-01",
+          "tags": [
+            "temple",
+            "precinct",
+            "paving",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-river-bg",
+      "layer": "bg",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): a wide slow river with the far bank seen across the water: a long low mudbrick town wall with towers, flat roofs behind it, groves of date palms along the bank, a few reed boats moored at the far bank. The water fills the lower part.",
+      "assets": [
+        {
+          "id": "bb-river-town-backdrop-01",
+          "tags": [
+            "river",
+            "euphrates",
+            "town",
+            "wall",
+            "palms"
+          ],
+          "height_m": 22,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "bb-quay-screens",
+      "layer": "band",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) a river quay wall of fired brick set in bitumen, 2.5 m high, with a few wooden mooring posts on top; (2) a low muddy river edge with reeds, 1 m high.",
+      "assets": [
+        {
+          "id": "bb-quay-wall-screen-01",
+          "tags": [
+            "river",
+            "quay",
+            "brick"
+          ],
+          "height_m": 2.5,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-reedy-edge-screen-01",
+          "tags": [
+            "river",
+            "reeds",
+            "bank"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-boats",
+      "layer": "mid",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) a long reed-bundle boat with a high upcurved prow and stern, coated with bitumen, 9 m long, empty, floating; (2) a small round woven boat (coracle) coated with bitumen, 2 m across, empty.",
+      "assets": [
+        {
+          "id": "bb-reed-boat-01",
+          "tags": [
+            "boat",
+            "reed",
+            "river"
+          ],
+          "height_m": 2.2
+        },
+        {
+          "id": "bb-coracle-01",
+          "tags": [
+            "boat",
+            "coracle",
+            "river"
+          ],
+          "height_m": 0.8
+        }
+      ]
+    },
+    {
+      "id": "terrain-river-water-01",
+      "layer": "terrain",
+      "subject": "The calm brown-green water of a wide slow river, small ripples in long rows, a few floating reed stems",
+      "assets": [
+        {
+          "id": "terrain-river-water-01",
+          "tags": [
+            "river",
+            "water",
+            "euphrates"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-river-water-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-river-water-01",
+      "layer": "horizon",
+      "subject": "The calm brown-green water of a wide slow river, small ripples in long rows, a few floating reed stems",
+      "assets": [
+        {
+          "id": "horizon-river-water-01",
+          "tags": [
+            "river",
+            "water",
+            "euphrates",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-marsh-bg",
+      "layer": "bg",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): the southern marshes: wide shallow water with tall reed beds, a few arched reed houses (bundles of reeds bent into arches, covered with reed mats) on small islands, open channels between the reeds.",
+      "assets": [
+        {
+          "id": "bb-marsh-backdrop-01",
+          "tags": [
+            "marsh",
+            "reeds",
+            "reed-house",
+            "water"
+          ],
+          "height_m": 12,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "bb-reed-screens",
+      "layer": "band",
+      "subject": "Old Babylonian southern Mesopotamia c. 1750 BCE, a town like Ur or Nippur (after Woolley's excavations at Ur): (1) a dense bed of tall reeds, 4 m high, feathery seed heads at the top; (2) low young reeds and rushes at the water edge, 1.2 m high.",
+      "assets": [
+        {
+          "id": "bb-reed-bed-screen-01",
+          "tags": [
+            "marsh",
+            "reeds"
+          ],
+          "height_m": 4,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-low-reeds-screen-01",
+          "tags": [
+            "marsh",
+            "reeds",
+            "rushes"
+          ],
+          "height_m": 1.2,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "terrain-marsh-water-01",
+      "layer": "terrain",
+      "subject": "Shallow still marsh water among reeds: open channels of calm water with small mud islands and clumps of reed stubble",
+      "assets": [
+        {
+          "id": "terrain-marsh-water-01",
+          "tags": [
+            "marsh",
+            "water",
+            "reeds"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-marsh-water-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-marsh-water-01",
+      "layer": "horizon",
+      "subject": "Shallow still marsh water among reeds: open channels of calm water with small mud islands and clumps of reed stubble",
+      "assets": [
+        {
+          "id": "horizon-marsh-water-01",
+          "tags": [
+            "marsh",
+            "water",
+            "reeds",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    }
+  ]
+}

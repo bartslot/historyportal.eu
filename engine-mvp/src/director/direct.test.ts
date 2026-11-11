@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { direct } from './direct'
 import { audit, progressAt, HOOK_S } from './audit'
-import { readTime } from './timing'
+import { interactionSeconds, readTime, TIMING } from './timing'
 import { DEPTH_Z } from './camera'
 import { LESSON, LIBRARY } from './fixture'
 import type { Camera, Lesson } from './types'
@@ -136,5 +136,29 @@ describe('shotAt()', () => {
     const late = shotAt(s, s.dur_s! - 1)
     expect(late.cam).toBe(s.camera_more![0])
     expect(late.t).toBeCloseTo(s.dur_s! - 1 - s.camera_more![0].at_s!, 5)
+  })
+})
+
+describe('a branching story', () => {
+  const branched: Lesson = {
+    ...LESSON,
+    game: { meters: [{ key: 'moed', label: 'Moed', icon: 'ti-flame', start: 60 }], fail_threshold: 0 },
+    scenes: LESSON.scenes.map((s, i) => (
+      i === 1 ? { ...s, branch: { group: 1, role: 'question' as const, labels: { a: 'Blijf', b: 'Trek verder' } } }
+        : i === 2 ? { ...s, branch: { group: 1, role: 'option_a' as const, effects: { deltas: { moed: 10 }, consequence_line: 'Ze blijven.' } } }
+          : i === 3 ? { ...s, branch: { group: 1, role: 'option_b' as const, effects: { deltas: { moed: -10 } } } }
+            : s)),
+  }
+
+  it('passes branch and game through untouched', () => {
+    const out = direct(branched, LIBRARY)
+    expect(out.game).toEqual(branched.game)
+    out.scenes.forEach((s, i) => expect(s.branch).toEqual(branched.scenes[i].branch))
+  })
+
+  it('times a branch question as a choice, as validate.py does', () => {
+    const q = branched.scenes[1]
+    expect(interactionSeconds(q)).toBe(TIMING.interaction_s.choice)
+    expect(interactionSeconds(branched.scenes[2])).toBe(0)
   })
 })

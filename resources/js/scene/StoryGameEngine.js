@@ -10,8 +10,10 @@
  *   question audio ends  → choice overlay (two buttons)         [handleSceneEnd]
  *   no question scene    → overlay when the first option would
  *                          start playing ('hold' from beforePlay)
- *   pick                 → onAdvanceTo(chosen option index)
- *   chosen option ends   → apply branch_effects.deltas (clamp 0-100, animated
+ *   pick                 → onAdvanceTo(chosen option's first index)
+ *   chosen option plays  → an option is a RUN of consecutive scenes with the same role
+ *                          (1-3 shots); its scenes advance normally
+ *   chosen run ends      → apply branch_effects.deltas (the run's first scene that has them) (clamp 0-100, animated
  *                          bars + floating ±N chips) → consequence_line caption
  *                          → game over (meter ≤ failThreshold) or reconverge   [handleSceneEnd]
  *   sibling option       → skipped via beforePlay (returns first index after group)
@@ -83,9 +85,11 @@ export class StoryGameEngine {
 
   /**
    * Group the scene queue's branch scenes: id -> { id, question: index|null,
-   * options: [{index, role, label, effects}], afterIndex }.
+   * options: [{index, last, role, label, effects}], afterIndex }.
+   * An option is the run of scenes with its role: index = its first scene, last = its last;
+   * label and effects come from the run's first scene that has them.
    * afterIndex = first queue index after the group's last member (reconvergence).
-   * Groups with fewer than 2 options are dropped — nothing to choose.
+   * Groups without both options are dropped — nothing to choose.
    */
   static resolveGroups (scenes) {
     const groups = new Map()
@@ -96,12 +100,11 @@ export class StoryGameEngine {
       if (s.branch_role === 'question') {
         entry.question = i
       } else if (OPTION_ROLES.includes(s.branch_role)) {
-        entry.options.push({
-          index: i,
-          role: s.branch_role,
-          label: s.branch_choice_label || fallbackLabel(s.branch_role),
-          effects: s.config?.branch_effects || null,
-        })
+        let option = entry.options.find(o => o.role === s.branch_role)
+        if (!option) entry.options.push(option = { index: i, last: i, role: s.branch_role, label: null, effects: null })
+        option.last = i
+        option.label ||= s.branch_choice_label || null
+        option.effects ||= s.config?.branch_effects || null
       } else {
         return // unknown role — not part of the game
       }
@@ -113,6 +116,7 @@ export class StoryGameEngine {
     for (const entry of groups.values()) {
       if (entry.options.length < 2) continue // incomplete group → plays as plain scenes
       entry.options.sort((a, b) => (a.role < b.role ? -1 : 1)) // option_a first
+      for (const o of entry.options) o.label ||= fallbackLabel(o.role)
       entry.afterIndex = entry._last + 1
       delete entry._last
       resolved.set(entry.id, entry)
@@ -151,7 +155,7 @@ export class StoryGameEngine {
     if (!group || !OPTION_ROLES.includes(scene.branch_role)) return null
     const chosen = choices[group.id]
     if (!chosen) return 'hold'                              // no question scene (or restart) → choose now
-    if (chosen.optionIndex === index) return null           // the chosen option plays
+    if (chosen.role === scene.branch_role) return null      // a scene of the chosen run plays
     return group.afterIndex                                 // sibling → skip past the group
   }
 
@@ -184,10 +188,12 @@ export class StoryGameEngine {
     }
 
     if (OPTION_ROLES.includes(scene.branch_role)) {
-      // Only the CHOSEN option's end drives consequences. A sibling ending here
-      // means the beforePlay skip was bypassed somehow — let the player advance.
-      if (this._choices[group.id]?.optionIndex !== index) return false
-      this._resolveOptionEnd(group, index, scene)
+      // Only the end of the CHOSEN run drives consequences. A sibling ending here
+      // means the beforePlay skip was bypassed somehow — let the player advance;
+      // an earlier scene of the chosen run advances normally to the run's next scene.
+      const option = group.options.find(o => o.role === scene.branch_role)
+      if (this._choices[group.id]?.role !== scene.branch_role || option.last !== index) return false
+      this._resolveOptionEnd(group, option)
       return true
     }
 
@@ -307,9 +313,9 @@ export class StoryGameEngine {
 
   // ── Consequence flow (after the chosen option's audio) ───────────────────
 
-  _resolveOptionEnd (group, index, scene) {
+  _resolveOptionEnd (group, option) {
     // branch_effects may be absent (teacher never filled them) → no deltas, no caption.
-    const effects = scene.config?.branch_effects || {}
+    const effects = option.effects || {}
     const deltas = effects.deltas || {}
 
     this._meters = StoryGameEngine.applyDeltas(this._meters, deltas)

@@ -148,6 +148,79 @@ class LessonImporterTest extends TestCase
         app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
     }
 
+    /** sc01, then group 1: question sc10, option_a sc11+sc12, option_b sc13, then sc02 (rejoin, quiz) and sc03. */
+    private function branchedLesson(): array
+    {
+        $lesson = $this->lesson();
+        $lesson['game'] = ['meters' => [
+            ['key' => 'moed', 'label' => 'Moed', 'icon' => 'ti-flame', 'start' => 60],
+            ['key' => 'voedsel', 'label' => 'Voedsel', 'start' => 140],
+        ], 'fail_threshold' => 0];
+        $shot = fn (string $id, array $branch, ?array $interaction = null) => array_merge($lesson['scenes'][0], ['id' => $id, 'audio' => null, 'branch' => $branch, 'interaction' => $interaction]);
+        array_splice($lesson['scenes'], 1, 0, [
+            $shot('sc10', ['group' => 1, 'role' => 'question', 'labels' => ['a' => 'Trek de steen', 'b' => 'Wacht op hulp']]),
+            $shot('sc11', ['group' => 1, 'role' => 'option_a', 'effects' => ['deltas' => ['moed' => 10, 'voedsel' => -5], 'consequence_line' => 'Iedereen is moe.', 'historical_note' => 'Zo ging het echt.']]),
+            $shot('sc12', ['group' => 1, 'role' => 'option_a'], $lesson['scenes'][1]['interaction']),
+            $shot('sc13', ['group' => 1, 'role' => 'option_b', 'effects' => ['deltas' => ['moed' => -40, 'goud' => 9]]]),
+        ]);
+
+        return $lesson;
+    }
+
+    public function test_a_branching_lesson_becomes_a_story_game_with_option_runs(): void
+    {
+        $r = app(LessonImporter::class)->import($this->branchedLesson(), User::factory()->create(), $this->audio);
+
+        $this->assertSame(1, $r['branches']);
+        $this->assertContains('sc12: interaction on a branch scene (the choice is the interaction)', $r['skipped']);
+        $lesson = Lesson::findOrFail($r['lesson_id']);
+        $this->assertSame('story_game', $lesson->game_type);
+        $this->assertSame('branching', $lesson->narrative_framework->value);
+        $this->assertSame([
+            ['key' => 'moed', 'label' => 'Moed', 'icon' => 'ti-flame', 'start' => 60],
+            ['key' => 'voedsel', 'label' => 'Voedsel', 'icon' => '', 'start' => 100],
+        ], $lesson->game_config['meters']);
+        $this->assertSame(0, $lesson->game_config['fail_threshold']);
+
+        $scenes = $lesson->scenes()->orderBy('order')->get();
+        // sc01, question, option_a x2, option_b, sc02 + its quiz, sc03: no quiz scene inside the branch
+        $this->assertSame(['stage25d', 'stage25d', 'stage25d', 'stage25d', 'stage25d', 'stage25d', 'game', 'stage25d'], $scenes->pluck('kind')->all());
+        $this->assertSame([null, 1, 1, 1, 1, null, null, null], $scenes->pluck('branch_group')->all());
+        $this->assertSame([null, 'question', 'option_a', 'option_a', 'option_b', null, null, null], $scenes->pluck('branch_role')->all());
+        $this->assertSame([null, null, 'Trek de steen', null, 'Wacht op hulp', null, null, null], $scenes->pluck('branch_choice_label')->all());
+
+        [$a1, $a2, $b1] = [$scenes[2], $scenes[3], $scenes[4]];
+        $this->assertSame(['deltas' => ['moed' => 10, 'voedsel' => -5], 'consequence_line' => 'Iedereen is moe.', 'historical_note' => 'Zo ging het echt.'], $a1->config['branch_effects']);
+        $this->assertArrayNotHasKey('branch_effects', $a2->config, 'the run\'s first shot carries the effects');
+        $this->assertSame(['moed' => -25, 'voedsel' => 0], $b1->config['branch_effects']['deltas'], 'clamped, unknown meter dropped');
+        $this->assertSame('sc11', $a1->config['stage25d']['id'], 'a branch scene is still a stage scene');
+        $this->assertSame([], $lesson->incompleteStoryGameGroups(), 'one shot with deltas completes the run');
+    }
+
+    public function test_publish_gate_flags_an_option_run_without_deltas(): void
+    {
+        $r = app(LessonImporter::class)->import($this->branchedLesson(), User::factory()->create(), $this->audio);
+        $lesson = Lesson::findOrFail($r['lesson_id']);
+        $b1 = $lesson->scenes()->where('branch_role', 'option_b')->firstOrFail();
+        $b1->update(['config' => array_diff_key($b1->config, ['branch_effects' => 1])]);
+
+        $this->assertSame([1], $lesson->incompleteStoryGameGroups());
+    }
+
+    public function test_without_a_game_block_branches_are_ignored_and_a_choice_card_is_reported(): void
+    {
+        $lesson = $this->branchedLesson();
+        unset($lesson['game']);
+        $lesson['scenes'][6]['interaction'] = ['type' => 'choice', 'prompt' => 'Wat doe jij?', 'options' => [['text' => 'a', 'outcome' => 'x'], ['text' => 'b', 'outcome' => 'y']]];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $row = Lesson::findOrFail($r['lesson_id']);
+        $this->assertSame('quiz', $row->game_type);
+        $this->assertSame(0, $row->scenes()->whereNotNull('branch_group')->count());
+        $this->assertContains('sc03: choice interaction without a branch (the player has no dilemma card; a branch plays it)', $r['skipped']);
+    }
+
     public function test_a_plain_scene_is_not_a_stage_scene(): void
     {
         $this->assertFalse((new Scene(['kind' => 'narration', 'config' => []]))->isStage25d());

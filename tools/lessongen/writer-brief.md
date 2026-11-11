@@ -46,6 +46,14 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
   the outcome; never in conflict, loss or the other side's perspective.
 - `choice`: a dilemma a character faces; each option has an `outcome` that stays true to history
   (`history`: what really happened).
+- Branching story (optional, the class chooses and the story splits): a lesson-level `game` block
+  (`meters`: 1-4 of `{key, label, icon?, start 0-100}`, `fail_threshold`) and a `branch` on each scene of a group:
+  one `question` scene (`labels: {a, b}` = the two buttons, short and concrete), then 1-3 `option_a` shots, then
+  1-3 `option_b` shots, then a NORMAL scene where both branches rejoin. The FIRST shot of each option carries
+  `effects: {deltas: {meterKey: -25..25}, consequence_line, historical_note}` (the game master's line after the
+  run; what really happened, shown on a game over). Both options stay true to history: say in `historical_note`
+  what really happened. Branch scenes carry no `interaction` (the choice is the interaction, 30 s). The validator
+  times the LONGER option for spacing and the SHORTER one for the 10-minute minimum.
 - Label `bloom` honestly: the checker re-labels every question, and a recall question labelled 3 counts as recall.
 - Play time is fixed in `timing.json` (quiz 40, power-meter 60, choice 30 s); an interaction's `est_s` is ignored.
 - A class action inside a shot (hands up, say it together, one child answers) gets `class_action_s` = the time it needs.

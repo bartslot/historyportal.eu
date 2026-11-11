@@ -21,6 +21,7 @@ def lesson() -> dict:
 
 def errors_of(lesson: dict, **kw) -> list[str]:
     kw.setdefault("library_root", NO_LIBRARY)
+    kw.setdefault("min_total_s", 0)  # the fixture is a 3-minute toy; test_ten_minute_minimum_* check the minimum
     return v.check(lesson, **kw)[0]
 
 
@@ -131,7 +132,7 @@ def test_resolve_fills_assets_and_rebuilds_needed(lesson, tmp_path):
     assert {"tags": "heath", "layer": "bg", "why": "sc01, sc02"} not in out["needed_assets"]
     assert any(n["tags"] == "hunebed" for n in out["needed_assets"])
     assert lesson["scenes"][0]["set"]["layers"][0]["asset"] is None  # input untouched
-    assert v.check(out, library_root=root)[0] == []
+    assert v.check(out, library_root=root, min_total_s=0)[0] == []
 
 
 def test_asset_not_in_library_is_an_error(lesson, tmp_path):
@@ -251,7 +252,7 @@ def test_scene_bundle_overrides_lesson_bundle(lesson, tmp_path):
     sc["bundle"] = "near-east-neolithic"
     out = v.resolve(lesson, root)
     assert out["scenes"][0]["set"]["layers"][0]["asset"] == "hill-dry-me"
-    errs, warns, _ = v.check(out, library_root=root)
+    errs, warns, _ = v.check(out, library_root=root, min_total_s=0)
     assert errs == [] and not any("outside bundle" in w for w in warns)
 
 
@@ -259,7 +260,7 @@ def test_needed_assets_carry_the_scene_bundle(lesson):
     lesson["scenes"][2]["bundle"] = "near-east-neolithic"
     out = v.resolve(lesson, NO_LIBRARY)
     assert {"tags": "hunebed", "layer": "mid", "why": "sc03", "bundle": "near-east-neolithic"} in out["needed_assets"]
-    assert v.check(out, library_root=NO_LIBRARY)[0] == []
+    assert v.check(out, library_root=NO_LIBRARY, min_total_s=0)[0] == []
     assert v.check(lesson, library_root=NO_LIBRARY)[0] != []  # the old, bundle-less wish list no longer covers sc03
 
 
@@ -337,3 +338,140 @@ def test_total_rounds_half_up_once(lesson):
     total = v.total_s(lesson)
     assert v.half_up(total) == math.floor(total + 0.5)
     assert v.check(lesson, library_root=NO_LIBRARY)[2]["total_s"] == v.half_up(total)
+
+
+# Branching story: a question, two option runs, a normal scene where they rejoin.
+
+def _shot(lesson: dict, sid: str, narration: str = "Het meisje kiest en de steen schuift verder.") -> dict:
+    sc = copy.deepcopy(lesson["scenes"][2])
+    sc.update(id=sid, beat="turn", narration=narration, interaction=None, fact_refs=["s1", "s9"])
+    return sc
+
+
+def _branched(lesson: dict) -> dict:
+    """sc01 quiz, sc02 meter, sc04 question, sc05+sc06 option_a, sc07 option_b, sc03 (rejoin, quiz)."""
+    lesson["game"] = {"meters": [{"key": "moed", "label": "Moed", "icon": "ti-flame", "start": 60},
+                                 {"key": "voedsel", "label": "Voedsel", "start": 50}], "fail_threshold": 0}
+    q, a1, a2, b1 = (_shot(lesson, i) for i in ("sc04", "sc05", "sc06", "sc07"))
+    q["branch"] = {"group": 1, "role": "question", "labels": {"a": "Trek de steen", "b": "Wacht op hulp"}}
+    a1["branch"] = {"group": 1, "role": "option_a", "effects": {"deltas": {"moed": 10, "voedsel": -5},
+                    "consequence_line": "De steen schuift, maar iedereen is moe.", "historical_note": "Zo ging het echt."}}
+    a2["branch"] = {"group": 1, "role": "option_a"}
+    b1["branch"] = {"group": 1, "role": "option_b", "effects": {"deltas": {"moed": -10}}}
+    lesson["scenes"][2:2] = [q, a1, a2, b1]
+    return lesson
+
+
+def test_branched_lesson_is_valid(lesson):
+    assert errors_of(_branched(lesson)) == []
+
+
+def test_branch_scenes_need_a_game_block_and_vice_versa(lesson):
+    out = _branched(lesson)
+    del out["game"]
+    assert "branch scenes but no game block (meters)" in errors_of(out)
+    lesson2 = json.loads((HERE / "fixtures" / "minimal.json").read_text())
+    lesson2["game"] = {"meters": [{"key": "moed", "label": "Moed", "start": 50}]}
+    assert "game block but no branch scenes" in errors_of(lesson2)
+
+
+def test_question_needs_both_labels(lesson):
+    out = _branched(lesson)
+    del out["scenes"][2]["branch"]["labels"]["b"]
+    assert any(e.startswith("schema:") for e in errors_of(out))
+
+
+def test_group_order_is_question_then_a_then_b(lesson):
+    out = _branched(lesson)
+    out["scenes"][3:6] = [out["scenes"][5], out["scenes"][3], out["scenes"][4]]  # option_b before option_a
+    assert any("must be one question, then option_a shots, then option_b shots" in e for e in errors_of(out))
+
+
+def test_option_run_is_one_to_three_shots(lesson):
+    out = _branched(lesson)
+    extra = [dict(copy.deepcopy(out["scenes"][4]), id=f"sc1{i}") for i in range(2)]  # option_a: 4 shots
+    out["scenes"][5:5] = extra
+    assert any("option_a has 4 shots, need 1-3" in e for e in errors_of(out))
+
+
+def test_first_shot_of_each_option_needs_effects_on_known_meters(lesson):
+    out = _branched(lesson)
+    del out["scenes"][5]["branch"]["effects"]  # sc07, the only option_b shot
+    assert any("sc07: first shot of group 1 option_b needs effects" in e for e in errors_of(out))
+    out = _branched(json.loads((HERE / "fixtures" / "minimal.json").read_text()))
+    out["scenes"][3]["branch"]["effects"]["deltas"]["goud"] = 5
+    assert any("sc05: delta on unknown meter 'goud'" in e for e in errors_of(out))
+    out["scenes"][4]["branch"]["effects"] = {"deltas": {"moed": 1}}
+    assert any("sc06: effects belong on the first shot" in e for e in errors_of(out))
+
+
+def test_delta_outside_25_is_a_schema_error(lesson):
+    out = _branched(lesson)
+    out["scenes"][3]["branch"]["effects"]["deltas"]["moed"] = 40
+    assert any(e.startswith("schema:") for e in errors_of(out))
+
+
+def test_branches_must_rejoin_on_a_normal_scene(lesson):
+    out = _branched(lesson)
+    out["scenes"] = out["scenes"][:6]  # the lesson ends inside option_b
+    assert any("never rejoins" in e for e in errors_of(out))
+    out = _branched(json.loads((HERE / "fixtures" / "minimal.json").read_text()))
+    q2 = dict(copy.deepcopy(out["scenes"][2]), id="sc08")
+    q2["branch"] = dict(q2["branch"], group=2)
+    out["scenes"].insert(6, q2)  # group 2 starts right where group 1 should rejoin
+    assert any("sc08: the scene after group 1 must be a normal scene" in e for e in errors_of(out))
+
+
+def test_branch_scene_carries_no_interaction(lesson):
+    out = _branched(lesson)
+    out["scenes"][4]["interaction"] = copy.deepcopy(out["scenes"][0]["interaction"])
+    assert any("sc06: a branch scene carries no interaction" in e for e in errors_of(out))
+
+
+def test_a_group_number_is_one_run(lesson):
+    out = _branched(lesson)
+    later = [dict(copy.deepcopy(sc), id=f"sc2{k}") for k, sc in enumerate(out["scenes"][2:6])]
+    out["scenes"] += later + [_shot(out, "sc29")]
+    assert any("branch group 1 appears twice" in e for e in errors_of(out))
+
+
+def test_timeline_counts_the_longer_option_and_the_question_as_a_choice(lesson):
+    out = _branched(lesson)
+    stats = v.check(out, library_root=NO_LIBRARY, min_total_s=0)[2]
+    # sc01 6 + quiz 40, sc02 6 + meter 60, sc04 6 + choice 30, option_a sc05+sc06 12 (option_b's 6 left out), sc03 6 + quiz 40
+    assert stats["interactions"] == ["6s sc01 quiz", "52s sc02 power-meter", "118s sc04 choice", "166s sc03 quiz"]
+    assert (stats["longest_s"], stats["shortest_s"]) == (206, 200)
+    assert stats["total_s"] == 212 == round(v.total_s(out))  # --totals: every scene once (director parity)
+
+
+def test_spacing_is_checked_on_the_longer_branch(lesson):
+    out = _branched(lesson)
+    # option_a grows to 3 long shots; option_b stays one shot: the gap after the choice is measured on option_a
+    out["scenes"][3]["class_action_s"] = 120
+    out["scenes"][4]["class_action_s"] = 60
+    errs = errors_of(out)
+    assert any("without interaction before sc03" in e for e in errs)
+    out["scenes"][3]["branch"]["role"] = "option_b"  # move the long run to option_b: still the longer one
+    out["scenes"][4]["branch"]["role"] = "option_b"
+    out["scenes"][5]["branch"]["role"] = "option_a"
+    out["scenes"][3:6] = [out["scenes"][5], out["scenes"][3], out["scenes"][4]]
+    assert any("without interaction before sc03" in e for e in errors_of(out))
+
+
+def test_ten_minute_minimum_on_the_shortest_play(lesson):
+    out = _branched(lesson)
+    errs, _, stats = v.check(out, library_root=NO_LIBRARY, min_total_s=203)
+    assert stats["longest_s"] >= 203 and any("the shortest play takes 200 s" in e for e in errs)
+    assert not any("shortest play" in e for e in v.check(out, library_root=NO_LIBRARY, min_total_s=200)[0])
+
+
+def test_ten_minute_minimum_is_the_default(lesson):
+    assert any("needs at least 600 s" in e for e in v.check(lesson, library_root=NO_LIBRARY)[0])
+
+
+def test_teacher_card_counts_one_branch(lesson):
+    out = _branched(lesson)
+    out["teacher_template"] = "Duur: {total_min} minuten, keuze: {min:sc04-sc07} minuten."
+    out = v.resolve(out, NO_LIBRARY)
+    # longest play 206 s -> 3; sc04 6 + choice 30 + option_a 12 = 48 s -> 1 (option_b's 6 s not added)
+    assert out["teacher"] == "Duur: 3 minuten, keuze: 1 minuten."

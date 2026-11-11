@@ -592,9 +592,11 @@ class Lesson extends Model
     }
 
     /**
-     * Story-game publish gate: every branch OPTION scene must carry meter deltas
+     * Story-game publish gate: every branch OPTION must carry meter deltas
      * (config.branch_effects.deltas) before the lesson can go live, or the player would show a
-     * choice with no consequences. A lesson that is not a story game has none.
+     * choice with no consequences. An option may be a run of scenes with the same role (an
+     * imported 3D lesson plays 1-3 shots per option); one scene of the run carrying deltas is
+     * enough, the player applies them once when the run ends. A lesson that is not a story game has none.
      *
      * @return list<int> incomplete branch group numbers, ascending
      */
@@ -607,8 +609,9 @@ class Lesson extends Model
         return $this->scenes()
             ->whereIn('branch_role', ['option_a', 'option_b'])
             ->get()
-            ->filter(fn (Scene $s) => empty((($s->config ?? [])['branch_effects']['deltas'] ?? null)))
-            ->map(fn (Scene $s) => (int) ($s->branch_group ?? 0))
+            ->groupBy(fn (Scene $s) => ($s->branch_group ?? 0).'|'.$s->branch_role)
+            ->reject(fn ($run) => $run->contains(fn (Scene $s) => ! empty((($s->config ?? [])['branch_effects']['deltas'] ?? null))))
+            ->map(fn ($run) => (int) ($run->first()->branch_group ?? 0))
             ->unique()
             ->sort()
             ->values()

@@ -47,6 +47,14 @@ export type Figure = { char: string; pose?: string; x?: number; depth?: Depth; f
   h_m?: number }
 export type Balloon = { char: string; text: string; at_s?: number; dur_s?: number }
 export type Interaction = { type: 'quiz' | 'power-meter' | 'choice'; [k: string]: unknown } | null
+/** A branching story (writer contract, validate.py check_branches): a question scene, 1-3 option_a shots, 1-3
+ *  option_b shots, then a normal scene where both rejoin. The director passes it through untouched; the
+ *  importer makes it the player's branch_group / branch_role / branch_choice_label / config.branch_effects. */
+export type BranchEffects = { deltas: Record<string, number>; consequence_line?: string; historical_note?: string }
+export type Branch =
+  | { group: number; role: 'question'; labels: { a: string; b: string } }
+  | { group: number; role: 'option_a' | 'option_b'; effects?: BranchEffects }
+export type Game = { meters: { key: string; label: string; icon?: string; start: number }[]; fail_threshold?: number }
 
 export type Scene = {
   id: string; beat: Beat; narration: string; est_s?: number
@@ -61,6 +69,7 @@ export type Scene = {
   narration_at_s?: number
   dur_s?: number
   interaction?: Interaction
+  branch?: Branch
   /** a scene in another era's library and sound (overrides lesson.bundle) */
   bundle?: string
   /** true: the set dresser proposes props for this scene (off by default, PM check 15) */
@@ -71,7 +80,7 @@ export type Scene = {
   [k: string]: unknown
 }
 
-export type Lesson = { id: string; lang: string; bundle: string; scenes: Scene[]; needed_assets?: { tags: string; layer: string; why: string }[]; [k: string]: unknown }
+export type Lesson = { id: string; lang: string; bundle: string; scenes: Scene[]; needed_assets?: { tags: string; layer: string; why: string }[]; game?: Game; [k: string]: unknown }
 
 export type LibraryAsset = {
   id: string; layer: string; tags: string[]; motion?: 'none' | 'sway' | 'drift' | 'ripple' | 'flicker'; height_m?: number

@@ -305,3 +305,70 @@ describe('StoryGameEngine DOM + flow', () => {
     })
   })
 })
+
+// An option may be a RUN of 1-3 consecutive shots (lessons:import-25d): the first carries label + effects.
+describe('StoryGameEngine option runs', () => {
+  const runScenes = () => [
+    { kind: 'scene' },                                                                       // 0
+    questionScene(1),                                                                        // 1
+    optionScene(1, 'option_a', 'Trek de steen', { deltas: { morale: 10 }, consequence_line: 'Moe maar blij.' }), // 2
+    { kind: 'scene', branch_group: 1, branch_role: 'option_a' },                             // 3
+    { kind: 'scene', branch_group: 1, branch_role: 'option_a' },                             // 4
+    optionScene(1, 'option_b', 'Wacht', { deltas: { troops: -20 } }),                        // 5
+    { kind: 'scene', branch_group: 1, branch_role: 'option_b' },                             // 6
+    { kind: 'scene' },                                                                       // 7 rejoin
+  ]
+
+  it('resolves one option per role with its first and last index', () => {
+    const g = StoryGameEngine.resolveGroups(runScenes()).get(1)
+    expect(g.options.map(o => [o.role, o.index, o.last, o.label])).toEqual([
+      ['option_a', 2, 4, 'Trek de steen'],
+      ['option_b', 5, 6, 'Wacht'],
+    ])
+    expect(g.options[0].effects.deltas).toEqual({ morale: 10 })
+    expect(g.afterIndex).toBe(7)
+  })
+
+  it('takes label and effects from a later shot when the first has none', () => {
+    const scenes = runScenes()
+    scenes[5] = { kind: 'scene', branch_group: 1, branch_role: 'option_b' }
+    scenes[6] = optionScene(1, 'option_b', 'Later', { deltas: { troops: 5 } })
+    const b = StoryGameEngine.resolveGroups(scenes).get(1).options[1]
+    expect([b.label, b.effects.deltas]).toEqual(['Later', { troops: 5 }])
+  })
+
+  it('plays every shot of the chosen run, skips the sibling run, applies effects once at the run end', () => {
+    vi.useFakeTimers()
+    const scenes = runScenes()
+    const { engine, onAdvanceTo } = makeEngine({ scenes })
+    engine.handleSceneEnd(1, scenes[1])
+    expect(engine.host.querySelectorAll('[data-sg-option]').length).toBe(2) // two buttons, not five
+    engine.host.querySelector('[data-sg-option="option_a"]').click()
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(2)
+
+    for (const i of [2, 3, 4]) expect(engine.beforePlay(i, scenes[i])).toBeNull()
+    expect(engine.beforePlay(5, scenes[5])).toBe(7)
+    expect(engine.handleSceneEnd(2, scenes[2])).toBe(false) // mid-run: the player advances to 3
+    expect(engine.handleSceneEnd(3, scenes[3])).toBe(false)
+    expect(engine.state.meters.morale).toBe(70)
+
+    expect(engine.handleSceneEnd(4, scenes[4])).toBe(true)
+    expect(engine.state.meters).toEqual({ morale: 80, troops: 100 })
+    vi.runAllTimers()
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(7)
+    vi.useRealTimers()
+  })
+
+  it('option_b run: plays 5 and 6, applies its effects after 6', () => {
+    const scenes = runScenes()
+    const { engine, onAdvanceTo } = makeEngine({ scenes })
+    engine.handleSceneEnd(1, scenes[1])
+    engine.host.querySelector('[data-sg-option="option_b"]').click()
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(5)
+    expect(engine.beforePlay(3, scenes[3])).toBe(7)
+    expect(engine.handleSceneEnd(5, scenes[5])).toBe(false)
+    expect(engine.handleSceneEnd(6, scenes[6])).toBe(true)
+    expect(engine.state.meters).toEqual({ morale: 70, troops: 80 })
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(7) // no consequence line: straight on
+  })
+})
