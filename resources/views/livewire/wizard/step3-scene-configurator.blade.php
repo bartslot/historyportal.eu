@@ -1403,7 +1403,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1426,6 +1426,7 @@
                 }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.ground = id === 'terrain' ? (stage.groundSlots?.() ?? null) : null;
+                this.skies = id === 'sky' ? (stage.skyOptions?.() ?? []) : null;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
                     const v = window.__timelineKeying?.value?.('s25:' + id, p);
@@ -1469,6 +1470,7 @@
             /** A click on the picture changes it, unless it was the start of a double-click, which edits it. */
             pickPicture() {
                 clearTimeout(this._picking);
+                if (id === 'sky') return;   // the Sky panel has its own grid of skies
                 this._picking = setTimeout(() => {
                     this.$store.view.showTab('icons');
                     this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: this.info?.role } })));
@@ -1539,7 +1541,9 @@
             removeGround(i) { this.terrainAt = 0; window.__stage25d?.pickTerrainSlot?.(0); this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
             optionOf(id) { return this.ground?.options.find((o) => o.id === id) ?? null; },
             /** A tile is the one the Assets tab replaces: picked, the tab opens on terrain pictures. */
-            pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); window.Alpine.store('view').showTab('icons'); },
+            pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); },
+            /** The Sky and Terrain panels carry their own grid of pictures (Bart 11-11), not a trip to the Assets tab. */
+            async pickSky(assetId) { await window.__stage25d?.swapAsset?.('sky', assetId); window.__stage25d?.select?.('sky'); this.sync(); },
             terrainDrag(e) { const t = Array.from(e.dataTransfer?.types ?? []); return t.includes('application/x-lp-stage25d') || t.includes('application/x-lp-terrain-slot'); },
             /** A tile dragged onto another: the pictures swap places, the distances stay. A terrain picture from the Assets
              *  tab: onto a tile it replaces that picture, onto the list it is one more slot. */
@@ -1568,6 +1572,9 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null, fill: null,
+            // skies and terrains are picked in the Sky and Terrain panels' own grids (Bart 11-11: "hide terrain and sky
+            // assets from the asset list"); only filling a scene's empty sky or terrain opens this tab on them
+            ownPanel: ['sky', 'ground'],
             labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cloud' => __('Clouds'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
             // id: the editor id just selected (scene-object-selected). The stage may still hold the backdrop it had (its
@@ -1577,11 +1584,6 @@
                 this.selected = id
                     ? (/^s25_(sky|terrain|band-\d+)$/.exec(id)?.[1] ?? (id === 's25_world' ? null : id))
                     : (window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null);
-                // a picked layer opens its own shelf (Bart 11-11: the ship shows Backdrop, a tree Middle ground)
-                const own = /^s25_(layer-\d+)$/.exec(id ?? '')?.[1];
-                const asset = own && window.__stage25d?.layerInfo?.(own)?.asset;
-                const shelf = asset && this.lib?.assets?.find((a) => a.id === asset)?.shelf;
-                if (shelf && !this.fill) this.kind = shelf;
                 if (!(window.__stage25d?.empty ?? []).includes(this.fill)) this.fill = null;   // that part has its picture now, or this is another scene
             },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
@@ -1590,10 +1592,7 @@
             // those are the one shelf. Everything else picks from every shelf.
             get kinds() {
                 if (this.fill) return [this.fill];
-                if (/^band-\d+$/.test(String(this.selected))) return ['band'];
-                if (this.selected === 'sky') return ['sky'];
-                if (this.selected === 'terrain') return ['ground'];
-                return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.shelf))];
+                return ['all', ...new Set((this.lib?.assets ?? []).map((a) => a.shelf).filter((k) => !this.ownPanel.includes(k)))];
             },
             /** The shelf on show: the chosen one when the selection takes it, else the selection's own. */
             get active() { return this.kinds.includes(this.kind) ? this.kind : this.kinds[0]; },
@@ -1601,7 +1600,8 @@
             get shown() {
                 const q = this.query.trim().toLowerCase();
                 const kind = this.active;
-                const rows = (this.lib?.assets ?? []).filter((a) => (kind === 'all' || (kind === 'band' ? a.band : a.shelf === kind))
+                const rows = (this.lib?.assets ?? []).filter((a) => (this.fill || !this.ownPanel.includes(a.shelf))
+                    && (kind === 'all' || (kind === 'band' ? a.band : a.shelf === kind))
                     && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
                 return window.__stage25d?.tiles?.(rows) ?? rows.map((a) => ({ id: a.id, asset: a, series: null, count: 1 }));
             },
@@ -1612,7 +1612,11 @@
                 if (this.fill === 'sky') return void stage.swapAsset('sky', tile.asset.id);
                 if (this.fill === 'ground') return void stage.setGroundSlots([{ asset: tile.asset.id, from_m: 0 }]);
                 const at = stage.selection;
-                if (stage.backdrop) stage.swapAsset(stage.backdrop, tile.asset.id);
+                // the Assets list is never narrowed by a selection (Bart 11-11): with the sky or the terrain selected a
+                // picture goes in the usual way (a sky replaces the sky, a terrain the terrain, the rest is a new layer)
+                const band = /^band-\d+$/.test(String(stage.backdrop ?? ''));
+                if (band && tile.asset.shelf === 'band') stage.swapAsset(stage.backdrop, tile.asset.id);
+                else if (stage.backdrop) stage.addLayer(tile.asset.id);
                 else if (at !== null && tile.series && stage.seriesOfLayer?.('layer-' + at)) stage.switchCharacter('layer-' + at, tile.series);
                 else if (at !== null) stage.swapAsset('layer-' + at, tile.asset.id); else stage.addLayer(tile.asset.id);
             },

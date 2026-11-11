@@ -41,6 +41,14 @@ const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'os
 
 /** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
 export const ADD_SCALE = 0.4
+/** One picture per subject: the newest version (terrain-dunes-02 over -01), plus any the scene uses now. */
+const newestOf = (assets, inUse = []) => {
+  const base = (id) => id.replace(/-\d+$/, '')
+  const latest = new Map()
+  for (const a of assets) if (!latest.has(base(a.id)) || a.id > latest.get(base(a.id)).id) latest.set(base(a.id), a)
+  return assets.filter((a) => latest.get(base(a.id)) === a || inUse.includes(a.id))
+}
+
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
@@ -900,8 +908,14 @@ export async function createStage25d (host, opts = {}) {
       if (!libData || !cfg) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       const rows = groundSlots(cfg.set ?? { layers: [] }, libData).map((sl) => ({ asset: sl.asset.id, from_m: sl.from, flip: !!sl.flip, repeat: sl.repeat ?? 1 }))
-      const options = libData.assets.filter((a) => a.layer === 'ground').map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
+      const options = newestOf(libData.assets.filter((a) => a.layer === 'ground'), rows.map((r) => r.asset)).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
       return { rows, options, max: GROUND_SLOTS_MAX }
+    },
+    /** The bundle's skies to pick from in the Sky panel (Bart 11-11: a grid there, not the Assets tab). */
+    skyOptions () {
+      if (!libData) return []
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      return newestOf(libData.assets.filter((a) => a.layer === 'sky'), [cfg?.set?.sky]).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
     },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
     /** Which terrain slot a picture from the Assets tab replaces. */
