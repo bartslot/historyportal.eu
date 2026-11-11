@@ -52,7 +52,7 @@ class LessonPlayerContentLangTest extends TestCase
 
     public function test_a_lesson_in_an_unshipped_language_keeps_the_visitors_interface_language(): void
     {
-        $html = $this->playerHtml('es');
+        $html = $this->playerHtml('sv');
 
         $this->assertMatchesRegularExpression('/<html lang="en"/', $html);
         $this->assertStringNotContainsString('Entra in classifica', $html);

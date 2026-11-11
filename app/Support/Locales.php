@@ -29,6 +29,7 @@ final class Locales
         'de' => ['name' => 'Deutsch', 'flag' => 'de', 'region' => 'de-DE'],
         'fr' => ['name' => 'Français', 'flag' => 'fr', 'region' => 'fr-FR'],
         'it' => ['name' => 'Italiano', 'flag' => 'it', 'region' => 'it-IT'],
+        'es' => ['name' => 'Español', 'flag' => 'es', 'region' => 'es-ES'],
     ];
 
     /** @return list<string> */
@@ -51,7 +52,7 @@ final class Locales
         return $request->getPreferredLanguage(self::codes()) ?? (string) config('app.locale', 'en');
     }
 
-    /** The home page in this language: /nl, /de, /fr, /it; English (and anything else) at /. */
+    /** The home page in this language: /nl, /de, /fr, /it, /es; English (and anything else) at /. */
     public static function homeUrl(?string $locale): string
     {
         return $locale !== null && $locale !== 'en' && self::isSupported($locale)
@@ -64,7 +65,7 @@ final class Locales
         return $locale !== null && array_key_exists($locale, self::SUPPORTED);
     }
 
-    /** For #[Validate] / rule arrays: "in:en,nl,de,fr,it". */
+    /** For #[Validate] / rule arrays: "in:en,nl,de,fr,it,es". */
     public static function validationRule(): string
     {
         return 'in:'.implode(',', self::codes());

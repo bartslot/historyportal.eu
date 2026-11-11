@@ -31,6 +31,7 @@ class NarrationVoiceTest extends TestCase
         $this->assertSame('fr-FR-Remy:DragonHDLatestNeural', NarrationVoice::azure('fr'));
         $this->assertSame('de-DE-Florian:DragonHDLatestNeural', NarrationVoice::azure('de'));
         $this->assertSame('it-IT-Alessio:DragonHDLatestNeural', NarrationVoice::azure('it'));
+        $this->assertSame('es-ES-Tristan:DragonHDLatestNeural', NarrationVoice::azure('es'));
     }
 
     public function test_only_a_language_we_do_not_ship_reaches_the_multilingual_fallback(): void

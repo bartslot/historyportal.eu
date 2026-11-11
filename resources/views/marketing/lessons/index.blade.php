@@ -88,7 +88,7 @@
         <section class="mt-20 rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
             <h2 class="font-history text-2xl font-light text-white">{{ __('Teaching in a European classroom?') }}</h2>
             <p class="mt-3 max-w-2xl text-slate-300">
-                {{ __('The portal speaks English, Dutch, German, French and Italian, and a lesson takes minutes to build from your own topic. We are preparing for wider classroom use and are glad to hear what your curriculum needs.') }}
+                {{ __('The portal speaks English, Dutch, German, French, Italian and Spanish, and a lesson takes minutes to build from your own topic. We are preparing for wider classroom use and are glad to hear what your curriculum needs.') }}
             </p>
             <a href="mailto:info@historyportal.eu?subject={{ rawurlencode(__('Classroom use')) }}"
                class="btn btn-primary mt-5">

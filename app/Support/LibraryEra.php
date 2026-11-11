@@ -189,7 +189,7 @@ final class LibraryEra
             return null;
         }
         foreach ((array) config('lesson-taxonomy.periods') as $key => $period) {
-            $names = array_map(fn (string $locale) => mb_strtolower(trans($period['label'], [], $locale)), ['en', 'nl', 'de', 'fr', 'it']);
+            $names = array_map(fn (string $locale) => mb_strtolower(trans($period['label'], [], $locale)), Locales::codes());
             if ($name === $key || in_array($name, $names, true)) {
                 return $key;
             }

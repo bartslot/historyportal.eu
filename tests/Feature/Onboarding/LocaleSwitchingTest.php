@@ -16,9 +16,9 @@ class LocaleSwitchingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_app_ships_the_five_pilot_languages(): void
+    public function test_the_app_ships_its_six_languages(): void
     {
-        $this->assertSame(['en', 'nl', 'de', 'fr', 'it'], Locales::codes());
+        $this->assertSame(['en', 'nl', 'de', 'fr', 'it', 'es'], Locales::codes());
     }
 
     /** Every language except the English source needs a translation file to load. */
@@ -54,7 +54,7 @@ class LocaleSwitchingTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(Settings::class)
-            ->set('locale', 'es')
+            ->set('locale', 'sv')
             ->call('save')
             ->assertHasErrors('locale');
 

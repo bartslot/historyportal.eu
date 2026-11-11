@@ -46,7 +46,7 @@ final class Faq
             ),
             self::item(
                 __('Which languages does it speak?'),
-                __('English, Dutch, German, French and Italian.'),
+                __('English, Dutch, German, French, Italian and Spanish.'),
             ),
             self::item(
                 __('Who makes History Portal?'),

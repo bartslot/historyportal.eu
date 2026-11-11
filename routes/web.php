@@ -86,7 +86,7 @@ Route::get('/en/{path?}', fn (\Illuminate\Http\Request $request, ?string $path =
 
 // The other languages, prefixed and locale-aware.
 Route::prefix('{locale}')
-    ->whereIn('locale', ['nl', 'de', 'fr', 'it'])
+    ->whereIn('locale', array_values(array_diff(\App\Support\Locales::codes(), ['en'])))
     ->middleware(\App\Http\Middleware\SetLocaleFromUrl::class)
     ->group(function () {
         Route::get('/', \App\Http\Controllers\Public\HomeController::class)->name('public.home.localized');

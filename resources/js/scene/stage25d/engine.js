@@ -34,10 +34,10 @@ export const isBackdropAsset = (a) => a?.layer === 'bg' && !a.tileable_x
 
 /** The look sliders the scene panel offers (look.ts LOOK_RANGE has the range of each). */
 /** The sky row's name in the object list and the timeline. */
-const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo' }
-const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera' }
-const TERRAIN_NAME = { nl: 'Terrein', de: 'Gelände', fr: 'Terrain', it: 'Terreno' }
-const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa' }
+const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo', es: 'Cielo' }
+const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera', es: 'Cámara' }
+const TERRAIN_NAME = { nl: 'Terrein', de: 'Gelände', fr: 'Terrain', it: 'Terreno', es: 'Terreno' }
+const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa', es: 'huesos' }
 
 /** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
 export const ADD_SCALE = 0.4

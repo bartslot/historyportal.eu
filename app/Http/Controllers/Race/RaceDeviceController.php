@@ -9,6 +9,7 @@ use App\Http\Requests\Race\JoinRaceRequest;
 use App\Http\Requests\Race\PushRaceRequest;
 use App\Models\RaceRun;
 use App\Services\Lessons\HarbourRace;
+use App\Support\Locales;
 use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,9 +26,6 @@ class RaceDeviceController extends Controller
     /** Unknown codes one address may try per minute (a typo or two, not a scan). */
     private const MISSES_PER_MINUTE = 20;
 
-    /** The interface languages (lang/*.json + English). */
-    private const UI_LANGUAGES = ['en', 'nl', 'de', 'fr', 'it'];
-
     public function __construct(private readonly HarbourRace $race) {}
 
     public function show(string $code): View
@@ -35,7 +33,7 @@ class RaceDeviceController extends Controller
         $run = $this->live($code, ['teams', 'scene', 'lesson']);
         $moment = ($run->scene->config ?? [])['moment'] ?? [];
         // A pupil's phone speaks the lesson's language, not whatever the visitor's browser last had.
-        if (in_array($run->lesson->language, self::UI_LANGUAGES, true)) {
+        if (Locales::isSupported($run->lesson->language)) {
             app()->setLocale($run->lesson->language);
         }
 

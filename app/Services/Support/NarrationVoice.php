@@ -32,6 +32,8 @@ final class NarrationVoice
         'de' => 'de-DE-Florian:DragonHDLatestNeural',
         'fr' => 'fr-FR-Remy:DragonHDLatestNeural',
         'it' => 'it-IT-Alessio:DragonHDLatestNeural',
+        // Castilian, never Latin American: the classes are in Spain.
+        'es' => 'es-ES-Tristan:DragonHDLatestNeural',
     ];
 
     /**

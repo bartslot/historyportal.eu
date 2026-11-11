@@ -26,7 +26,7 @@ class TtsService
     private ?string $speechLocale = null;
 
     /** This Mac's own voices, one per language, none American: the offline rung (Bart, 11-07: work on the road). */
-    public const MAC_VOICES = ['nl' => 'Xander', 'en' => 'Daniel', 'de' => 'Anna', 'fr' => 'Thomas', 'it' => 'Alice'];
+    public const MAC_VOICES = ['nl' => 'Xander', 'en' => 'Daniel', 'de' => 'Anna', 'fr' => 'Thomas', 'it' => 'Alice', 'es' => 'Mónica'];
 
     /** The Mac voice for a language, from the locale when known, else from an Azure voice id (nl-NL-…). */
     public static function macVoice(?string $locale, string $voiceId = ''): string

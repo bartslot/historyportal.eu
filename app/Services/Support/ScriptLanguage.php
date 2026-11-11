@@ -13,7 +13,7 @@ namespace App\Services\Support;
  * honest signal, so we read it.
  *
  * Deliberately a stopword count, not a library: function words are the highest-signal, lowest-cost
- * discriminator between the five languages we ship, and this runs once per scene.
+ * discriminator between the languages we ship, and this runs once per scene.
  */
 final class ScriptLanguage
 {
@@ -24,6 +24,7 @@ final class ScriptLanguage
         'de' => ['der', 'die', 'das', 'und', 'von', 'ist', 'nicht', 'auf', 'mit', 'sie', 'er', 'wurde', 'für', 'aber', 'wurden', 'auch', 'einen', 'dem', 'des', 'im'],
         'fr' => ['le', 'la', 'les', 'et', 'de', 'des', 'du', 'que', 'qui', 'dans', 'pour', 'avec', 'était', 'elle', 'ils', 'mais', 'sur', 'une', 'ses', 'aux'],
         'it' => ['il', 'lo', 'la', 'gli', 'e', 'di', 'che', 'per', 'con', 'era', 'non', 'sono', 'nel', 'alla', 'ma', 'suo', 'una', 'dei', 'delle', 'più'],
+        'es' => ['el', 'los', 'las', 'y', 'del', 'al', 'por', 'para', 'su', 'sus', 'pero', 'como', 'fue', 'fueron', 'también', 'cuando', 'hasta', 'eran', 'muy', 'esta'],
     ];
 
     /** Below this many recognised words the sample is too short to call. */

@@ -43,6 +43,10 @@ class TeachingLocaleTest extends TestCase
         $dutch = 'De olifanten kwamen eerst en de bergen gaven niet om hen, want het was een '
             .'lange tocht naar het zuiden die niet op tijd voorbij was.';
         $this->assertSame('nl', ScriptLanguage::detect($dutch, 'en'));
+
+        $spanish = 'Los elefantes llegaron primero y las montañas no eran amables con ellos, pero el '
+            .'camino hacia el sur fue muy largo y también duro para los soldados del general.';
+        $this->assertSame('es', ScriptLanguage::detect($spanish, 'en'));
     }
 
     public function test_a_script_too_short_to_judge_keeps_the_fallback(): void

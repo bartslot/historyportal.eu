@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Billing;
 
 use App\Models\User;
+use App\Support\Locales;
 use App\Support\NarrationCreditPack;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -25,9 +26,6 @@ use Stripe\StripeClient;
  */
 final class StripeCheckout
 {
-    /** Stripe's own language codes happen to match ours for every language we ship. */
-    private const SUPPORTED_LOCALES = ['en', 'nl', 'de', 'fr', 'it'];
-
     /**
      * The Stripe client, built from the secret rather than injected.
      *
@@ -173,7 +171,8 @@ final class StripeCheckout
     {
         $locale = $teacher->locale ?: app()->getLocale();
 
-        return in_array($locale, self::SUPPORTED_LOCALES, true) ? $locale : 'en';
+        // Stripe's own language codes happen to match ours for every language we ship.
+        return Locales::isSupported($locale) ? $locale : 'en';
     }
 
     private function client(): StripeClient

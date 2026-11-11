@@ -100,7 +100,7 @@ class SeoPagesTest extends TestCase
 
     public function test_a_lesson_in_an_unshipped_language_is_canonical_in_english(): void
     {
-        $lesson = $this->publishedLesson(['language' => 'es']);
+        $lesson = $this->publishedLesson(['language' => 'sv']);
         $slug = Seo::lessonSlug($lesson);
 
         $this->get(Seo::url('lesson', ['slug' => $slug], 'de'))
@@ -213,6 +213,6 @@ class SeoPagesTest extends TestCase
     {
         // 'teacher' and 'login' are not languages; they must reach their own routes.
         $this->get('/login')->assertOk();
-        $this->get('/es/history-lessons')->assertNotFound();
+        $this->get('/sv/history-lessons')->assertNotFound();
     }
 }

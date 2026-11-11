@@ -83,6 +83,24 @@ class NarratorSeeder extends Seeder
             'portrait_path' => null,
             'intro_video_path' => null,
         ],
+        [
+            // Spanish narrator (Bart, 2026-11-11): ElevenLabs shared voice "Carmelo - Mature, Mysterious and
+            // Clear", peninsular Spanish, never Latin American. A shared voice: TTS by id works with our key.
+            'slug' => 'carmelo',
+            'name' => 'Carmelo',
+            'short_name' => 'Carmelo',
+            'avatar_title' => 'narrador',
+            'description' => 'Narrador en español para las lecciones de History Portal.',
+            'subject' => 'history',
+            'voice_provider' => 'elevenlabs',
+            'voice_id' => '5egO01tkUjEzu7xSSE8M',
+            'voice_speed' => 1.0,
+            'voice_pitch' => 1.0,
+            'presentation_mode' => 'framed',
+            'is_active' => true,
+            'portrait_path' => null,
+            'intro_video_path' => null,
+        ],
     ];
 
     public function run(): void

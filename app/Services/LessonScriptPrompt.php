@@ -198,6 +198,7 @@ USR;
             'de' => 'German',
             'fr' => 'French',
             'it' => 'Italian',
+            'es' => 'Spanish (Castilian, as spoken in Spain)',
             default => 'English',
         };
     }
