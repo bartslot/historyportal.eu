@@ -24,6 +24,7 @@ import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
 import { isStage25d } from './scene/stage25d/config.js'
+import { createStageSound, hasStageSound } from './scene/stage25d/sound.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
@@ -172,6 +173,8 @@ let _parallaxMod    = null   // cached ./scene/ParallaxScene.js module (lazy-loa
 let _diorama        = null   // live DioramaStage (a scene with config.diorama)
 let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
 let _stage25d       = null   // live Babylon 2.5D stage (a scene of kind stage25d), mounted lazily
+const _stageSound   = createStageSound()   // the stage scenes' beds + sfx; its AudioContext waits for startLesson's click
+if (typeof window !== 'undefined') window.__stageSound = _stageSound   // tests and the dev panel read engine.state() / engine.log
 
 // ── Alpine component ──────────────────────────────────────────────────────────
 // Alpine is imported directly (no Livewire on this page) — register before start()
@@ -563,6 +566,8 @@ Alpine.data('lessonGame', (lesson) => ({
         const AudioCtx = window.AudioContext || window.webkitAudioContext
         if (AudioCtx) { const ctx = new AudioCtx(); ctx.resume(); ctx.close() }
       } catch (_) {}
+      // The 3D scenes' sound plan gets its one AudioContext here, inside the click (autoplay rules).
+      if (lesson.scenes?.some(hasStageSound)) _stageSound.unlock(this.audioMuted ? 0 : this.volumeLevel)
 
       // Narrator welcome video plays once, full-screen, before the first block. It runs
       // synchronously off this click gesture (so it keeps its sound), while lesson assets
@@ -1628,9 +1633,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // a number = skip a non-chosen branch option to the reconvergence index.
       if (this._storyGame) {
         const redirect = this._storyGame.beforePlay(index, scene)
-        if (redirect === 'hold') return
+        if (redirect === 'hold') { _stageSound.hold(_sceneQueue); return }
         if (redirect != null && redirect !== index) { this._sceneIndex = redirect; return this._playScene(redirect) }
       }
+
+      // The 3D scenes' sound: a stage scene starts its own with its narration (below), a quiz keeps the last
+      // stage scene's beds low under its card, anything else (a map, a flat scene) fades it out.
+      if (scene.kind === 'game') _stageSound.hold(_sceneQueue)
+      else if (!isStage25d(scene)) _stageSound.leave()
 
       // Reset per-scene shot playback state (storyboard scenes rebuild it below).
       this._shotPlan = null
@@ -1732,11 +1742,18 @@ Alpine.data('lessonGame', (lesson) => ({
         // Pausable: a paused class stays on this scene, and resume continues the hold (pair test 10-24).
         this._noAudioHold?.cancel()
         this._noAudioHold = createPausableTimeout(() => this._afterSceneAudio(index, scene), holdMs, { paused: this.playbackPaused })
+        if (isStage25d(scene)) _stageSound.play(_sceneQueue, index)
         return
       }
 
       // Narrator is a flat 2D portrait badge — play the scene audio directly; its end moves on.
-      this._startNarration(scene, { onEnded: () => this._afterSceneAudio(index, scene) })
+      const voice = this._startNarration(scene, { onEnded: () => this._afterSceneAudio(index, scene) })
+      // The stage's sound runs on this narration's clock, from the moment the voice is really playing.
+      if (isStage25d(scene)) {
+        voice.addEventListener('playing', () => {
+          if (this._audio === voice) _stageSound.play(_sceneQueue, index, () => voice.currentTime, voice.duration)
+        }, { once: true })
+      }
     },
 
     /**
@@ -2201,7 +2218,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _afterSceneAudio (index, scene) {
       // Story game: branch scenes hand control to the engine (choice overlay after a
       // question, delta/consequence/game-over flow after a chosen option).
-      if (this._storyGame?.handleSceneEnd(index, scene)) return
+      if (this._storyGame?.handleSceneEnd(index, scene)) { _stageSound.hold(_sceneQueue); return }
       // A power-meter moment the narration reached the end of (or one timed past the narration).
       if (this._momentDue(index, scene)) {
         this._beginMoment(index, scene, () => this._afterSceneAudio(index, scene))
@@ -2829,6 +2846,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}
       _music = null
+      _stageSound.leave()
       try { this._teardownStageScene(true) } catch (_) { /* tear down the persistent voyage map */ }
       this.phase = 'ENDED'
       this.audioPlaying = false
@@ -3062,8 +3080,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Pausing the lesson pauses everything the lesson is making, music included — a bed still
       // playing over a frozen picture is how you get a teacher hunting for a second stop button.
-      if (this.playbackPaused) _music?.pause()
-      else _music?.resume()
+      if (this.playbackPaused) { _music?.pause(); _stageSound.pause() }
+      else { _music?.resume(); _stageSound.resume() }
     },
 
     _attachAudioListeners () {
@@ -3122,6 +3140,7 @@ Alpine.data('lessonGame', (lesson) => ({
       _music?.setVolume(this.volumeLevel)
       Sfx.setMuted(this.audioMuted)
       Sfx.setVolume(level)
+      _stageSound.setLevel(level)
     },
 
     // ── Subtitles ──────────────────────────────────────────────────────
@@ -3521,6 +3540,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
       try { _music?.destroy() } catch (_) {}
       _music = null
+      _stageSound.destroy()
       this.audioPlaying = false
     },
 

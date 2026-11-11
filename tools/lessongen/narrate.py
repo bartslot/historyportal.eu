@@ -141,7 +141,7 @@ def text_hash(voice: str, text: str) -> str:
 
 
 def voice_for(lesson: dict) -> str:
-    named = lesson.get("narrator") or {}
+    named = lesson.get("narration") or lesson.get("narrator") or {}   # the schema names it narration (provider, voice)
     if named.get("provider") == "elevenlabs" and named.get("voice"):
         return f"elevenlabs:{named['voice']}"
     voice = azure_voices().get(lesson["lang"])

@@ -116,6 +116,8 @@ rsync -az --delete $DRY --stats \
   `# ^ gitignored flag PNGs + manifest, made on the server by timemap:sync-cliopatria-polities.` \
   --exclude='public/stories/' \
   `# ^ storyboards uploaded straight to the server (Dante, 2026-10-04), not in git.` \
+  --exclude='public/sound/bank/' \
+  `# ^ the sound bank's beds + sfx (media, git-ignored): rsynced on their own, docs/sound-bank.md.` \
   --filter='P public/build/assets/**' \
   `# ^ keep the previous builds' chunks: a page opened before this deploy still lazy-loads them by` \
   `# their old hash (404 on SplitStage-<old>.js, 2026-11-10). New chunks still upload.` \
