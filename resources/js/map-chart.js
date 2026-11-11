@@ -58,6 +58,9 @@ export const CHART = Object.freeze({
   shoreBleed: 0.7,            // pigment pooled along the shore, water side
   landWash: 0.85,              // painted land washes over the base land
   paperOpacity: 0.35,          // the paper's grain over everything (0.06 was invisible)
+  riverColor: '#5f9fb3',       // Bart 11-11 "make the rivers more pronounced": a deeper watercolour blue (was #8cc3cc)
+  riverOpacity: 0.85,          // was 0.55
+  riverWidth: 1.6,             // px of a major river at z4 (was 1.4, minor ones 0.4); grows with zoom
 })
 
 // A glyph's half-width is ~45 css px at size 1. At z4 near 40°S that is 337 km; its tapered foothills
@@ -209,6 +212,17 @@ export function addChartPaper (el, cfg = CHART) {
   return paper
 }
 
+/** The rivers' paint (the lesson map's `rivers` layer): a watercolour line, wider for a major river (low scalerank) and
+ *  growing as the map zooms in, so a river reads at a region view and does not turn into a cable up close. */
+export function riverPaint (cfg = CHART) {
+  const byRank = (k) => ['*', cfg.riverWidth * k, ['interpolate', ['linear'], ['to-number', ['coalesce', ['get', 'scalerank'], 6]], 1, 1, 6, 0.4]]
+  return {
+    'line-color': cfg.riverColor,
+    'line-opacity': cfg.riverOpacity,
+    'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 2, byRank(0.5), 4, byRank(1), 7, byRank(2.2)],
+  }
+}
+
 /** Re-paint every chart property from the live config. The tuner's only way to touch the map. */
 export function applyChartPaint (map, cfg, paper = null) {
   const { under, over } = chartLayers(cfg)
@@ -217,6 +231,7 @@ export function applyChartPaint (map, cfg, paper = null) {
     for (const [k, v] of Object.entries(layer.paint || {})) { try { map.setPaintProperty(layer.id, k, v) } catch (_) { /* not ready */ } }
     for (const [k, v] of Object.entries(layer.layout || {})) { try { map.setLayoutProperty(layer.id, k, v) } catch (_) { /* not ready */ } }
   }
+  if (map.getLayer('rivers')) for (const [k, v] of Object.entries(riverPaint(cfg))) { try { map.setPaintProperty('rivers', k, v) } catch (_) { /* not ready */ } }
   if (paper) paper.style.opacity = String(cfg.paperOpacity)
 }
 
@@ -243,5 +258,8 @@ export function chartTunerControls (map, cfg, paper = null) {
     range('waveScale', 'Wave size', 0.5, 3, 0.05),
     range('waveOpacity', 'Wave opacity', 0, 1, 0.05),
     range('paperOpacity', 'Paper grain', 0, 0.5, 0.01),
+    color('riverColor', 'River colour'),
+    range('riverWidth', 'River width', 0.3, 4, 0.1),
+    range('riverOpacity', 'River opacity', 0, 1, 0.05),
   ]
 }

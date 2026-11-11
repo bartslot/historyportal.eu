@@ -14,7 +14,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls } from './map-chart.js'
+import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls, riverPaint } from './map-chart.js'
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
@@ -48,7 +48,6 @@ const GROUND = {
   fog: '#f6f1e4',
   water: CHART.seaColor,
   line: '#a08868',   // borders: a light pencil line under the coast ink, not a second ink
-  river: '#8cc3cc',   // a pale watercolour line, not an ink one
   text: '#1d1712',
   halo: '#f6f1e4',
 }
@@ -180,12 +179,8 @@ export function renderLessonMap (el, opts = {}) {
         ...chart.under,
         {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
-          paint: {
-            'line-color': GROUND.river,
-            'line-opacity': 0.55,
-            // Thicker for major rivers (low scalerank).
-            'line-width': ['interpolate', ['linear'], ['to-number', ['coalesce', ['get', 'scalerank'], 6]], 1, 1.4, 6, 0.4],
-          },
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: riverPaint(),   // map-chart.js: one rule for the map and the tuner
         },
         {
           // No fill overlay: the selected polity is shown as an amber RING; other territories
