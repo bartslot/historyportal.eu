@@ -4,12 +4,12 @@
  "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
  "sheets": [
   {
-   "id": "terrain-dunes",
+   "id": "terrain-dunes-02",
    "layer": "terrain",
    "subject": "Coastal dunes of pale sand with clumps of marram grass, soft wind ripples, gentle rises, no paths",
    "assets": [
     {
-     "id": "terrain-dunes-01",
+     "id": "terrain-dunes-02",
      "tags": [
       "sand",
       "dune",
@@ -21,12 +21,12 @@
    ]
   },
   {
-   "id": "terrain-beach",
+   "id": "terrain-beach-02",
    "layer": "terrain",
    "subject": "A flat North Sea beach at low tide: wet shining sand with shallow pools and ripples, a few shells, the surf as thin white lines far off near the top",
    "assets": [
     {
-     "id": "terrain-beach-01",
+     "id": "terrain-beach-02",
      "tags": [
       "sand",
       "beach",
@@ -38,12 +38,12 @@
    ]
   },
   {
-   "id": "terrain-polder-02",
+   "id": "terrain-polder-03",
    "layer": "terrain",
    "subject": "A flat Dutch polder meadow of green grass crossed by straight narrow water ditches that run from left to right, parallel to the horizon, one behind the other, getting thinner towards the top; no cows, no windmills",
    "assets": [
     {
-     "id": "terrain-polder-01",
+     "id": "terrain-polder-02",
      "tags": [
       "grass",
       "meadow",
@@ -60,12 +60,12 @@
    ]
   },
   {
-   "id": "terrain-canal-water",
+   "id": "terrain-canal-water-02",
    "layer": "terrain",
    "subject": "The calm water of a wide Amsterdam canal, small ripples and soft reflections of a pale sky, no boats, no quay",
    "assets": [
     {
-     "id": "terrain-canal-01",
+     "id": "terrain-canal-02",
      "tags": [
       "water",
       "canal",

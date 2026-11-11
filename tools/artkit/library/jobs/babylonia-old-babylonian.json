@@ -327,7 +327,7 @@
   {
    "id": "bb-crop-plants",
    "layer": "fg",
-   "subject": "Three separate complete roots-to-tip plant cut-outs for a late-spring alluvial field edge: (1) small clump of near-ripe barley, olive stems and straw ears, 0.9 m; (2) common river reed clump, restrained olive, 1.8 m, not Egyptian papyrus fan heads; (3) low grass and herb tuft, 0.35 m. Separate cells, upper-left diffuse light, no soil islands, cast shadows, perfect crop rows, sky, people or animals. Keep coloured foliage distinct from key-green background.",
+   "subject": "Three separate complete base-to-tip plant cut-outs, each cut off cleanly where it leaves the soil, no roots shown, for a late-spring alluvial field edge: (1) small clump of near-ripe barley, olive stems and straw ears, 0.9 m; (2) common river reed clump, restrained olive, 1.8 m, not Egyptian papyrus fan heads; (3) low grass and herb tuft, 0.35 m. Separate cells, upper-left diffuse light, no soil islands, cast shadows, perfect crop rows, sky, people or animals. Keep coloured foliage distinct from key-green background.",
    "assets": [
     {
      "id": "bb-barley-clump-01",
@@ -453,6 +453,40 @@
       "net"
      ],
      "height_m": 0.3
+    }
+   ]
+  },
+  {
+   "id": "terrain-alluvial-plain-01",
+   "layer": "terrain",
+   "subject": "A flat dry alluvial plain of pale cracked silt with scattered low grass tufts and a few shallow cart ruts running from left to right",
+   "assets": [
+    {
+     "id": "terrain-alluvial-plain-01",
+     "tags": [
+      "alluvial",
+      "silt",
+      "plain",
+      "dry"
+     ],
+     "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "terrain-courtyard-floor-01",
+   "layer": "terrain",
+   "subject": "The beaten earth floor of a mud-brick courtyard: packed pale clay with faint sweep marks, a little scattered straw and dust",
+   "assets": [
+    {
+     "id": "terrain-courtyard-floor-01",
+     "tags": [
+      "floor",
+      "clay",
+      "courtyard",
+      "room"
+     ],
+     "height_m": 4
     }
    ]
   }

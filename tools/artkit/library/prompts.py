@@ -45,19 +45,23 @@ LAYER = {
            'the lower 45% of the canvas; everything above the land silhouette is empty white paper (no sky drawing, no '
            'clouds). The land runs edge to edge and fills the canvas down to the bottom edge. Far distance: fewer, '
            'thinner lines, sparse hatching. The terrain height at the left edge equals the height at the right edge so '
-           'the strip can tile. Landscape 3:2.'),
+           'the strip can tile. No people, no animals. Landscape 3:2.'),
     # a ground band (the stage stands it at a distance, LibraryBundle::isGroundBand): water or land strips to put things IN
     'band': ('Wide horizontal strips seen from eye level, each a separate strip running the full width of the canvas from '
              'the left edge to the right edge, stacked one above the other with wide white paper between them. {era} '
              '{subject} The top edge of each strip is its own silhouette; its bottom edge is a straight horizontal cut. '
-             'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. Landscape 3:2.'),
+             'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. No people, no animals. Landscape 3:2.'),
     # a terrain painted from eye height (Bart 11-11: the sea): the stage lays it through the house camera, so it must be
     # exactly that view, the horizon its top edge, repeating only sideways
-    'terrain': ('ONE wide full-bleed panorama. {era} {subject}, seen from standing eye height looking straight ahead: '
-                'the surface fills the whole canvas from the bottom edge (close, large detail) up to the horizon, which is '
-                'the very top edge of the canvas (tiny, dense detail). No sky, no land on the horizon, no objects, no '
-                'ships, no birds, no border. Perspective only from this one eye height: rows of detail shrink and crowd '
-                'together towards the top. The left edge continues seamlessly into the right edge. Landscape 2:1.'),
+    # zoomed out (Bart 11-11: "too bloated, they need to zoom out"): a wide landscape view, every detail small
+    'terrain': ('ONE wide full-bleed panorama, zoomed far out like a wide-angle landscape view. {era} {subject}, seen from '
+                'standing eye height (1.6 m) looking straight ahead: the bottom edge of the canvas is the ground about 4 m '
+                'in front of the viewer, the very top edge is the horizon far away. Everything is small: even at the '
+                'bottom edge no single stone, plant, wave or clod is taller than a twentieth of the canvas height, and '
+                'there are at least twelve receding rows of detail between the bottom edge and the horizon, shrinking '
+                'and crowding together towards the top. No close-up, nothing large in the foreground. No sky, no land on '
+                'the horizon, no objects, no ships, no people, no animals, no birds, no tracks or footprints, no border. The left edge continues seamlessly into the '
+                'right edge. Landscape 2:1.'),
     # a floor tile: the scene's one ground, laid flat and repeated both ways
     'ground': ('ONE seamless floor texture tile seen from straight above, full bleed, filling the whole square canvas: {era} '
                '{subject} No horizon, no perspective, no objects standing on it, no cast shadows, no border. The left edge '
@@ -75,7 +79,7 @@ LAYER = {
               'paper between them. {era} {subject} Inside each strip the ground surface recedes: large near detail at the '
               'bottom, smaller and sparser detail towards the top. The top edge of each strip is its own ragged silhouette '
               'of grass and plants; its bottom edge is a straight horizontal cut. No horizon line, no sky drawing, no '
-              'trees, nothing standing taller than knee height. Landscape 3:2.'),
+              'trees, nothing standing taller than knee height. No people, no animals. Landscape 3:2.'),
     'mid': ('Middle-distance set pieces, each a separate isolated object: {era} {subject} {view} ' + ISOLATED),
     'fg': ('Foreground nature elements, each a separate isolated object: {era} {subject} Same light from the upper left '
            'on all. ' + ISOLATED),

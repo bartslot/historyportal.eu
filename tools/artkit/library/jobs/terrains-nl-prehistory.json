@@ -4,12 +4,12 @@
  "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
  "sheets": [
   {
-   "id": "terrain-meadow",
+   "id": "terrain-meadow-02",
    "layer": "terrain",
    "subject": "A wide open meadow of fresh green grass with clover, buttercups and a few taller seed heads, uneven and alive, no paths",
    "assets": [
     {
-     "id": "terrain-meadow-01",
+     "id": "terrain-meadow-02",
      "tags": [
       "grass",
       "meadow",
@@ -25,12 +25,12 @@
    ]
   },
   {
-   "id": "terrain-heath",
+   "id": "terrain-heath-02",
    "layer": "terrain",
    "subject": "An open heath of purple heather and low grass with patches of pale sand and a few small grey stones, no paths",
    "assets": [
     {
-     "id": "terrain-heath-01",
+     "id": "terrain-heath-02",
      "tags": [
       "heath",
       "heather",
@@ -41,12 +41,12 @@
    ]
   },
   {
-   "id": "terrain-woodland-floor",
+   "id": "terrain-woodland-floor-02",
    "layer": "terrain",
    "subject": "A sunlit woodland clearing floor: green grass and moss cushions broken by patches of brown leaf litter, small ferns and low herbs, no tree trunks",
    "assets": [
     {
-     "id": "terrain-woodland-floor-01",
+     "id": "terrain-woodland-floor-02",
      "tags": [
       "forest",
       "moss",
@@ -62,12 +62,12 @@
    ]
   },
   {
-   "id": "terrain-grain-field",
+   "id": "terrain-grain-field-02",
    "layer": "terrain",
    "subject": "A small hand-sown field of ripening emmer wheat, slightly irregular rows, a grassy edge along the bottom, no fences",
    "assets": [
     {
-     "id": "terrain-grain-field-01",
+     "id": "terrain-grain-field-02",
      "tags": [
       "field",
       "wheat",

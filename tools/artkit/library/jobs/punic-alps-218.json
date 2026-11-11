@@ -264,6 +264,24 @@
      "height_m": 2.6
     }
    ]
+  },
+  {
+   "id": "terrain-alpine-scree-01",
+   "layer": "terrain",
+   "subject": "A high Alpine pass: grey scree and broken stones with patches of old snow and thin tufts of mountain grass",
+   "assets": [
+    {
+     "id": "terrain-alpine-scree-01",
+     "tags": [
+      "scree",
+      "stone",
+      "snow",
+      "mountain",
+      "pass"
+     ],
+     "height_m": 4
+    }
+   ]
   }
  ]
 }

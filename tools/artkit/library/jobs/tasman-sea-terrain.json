@@ -4,21 +4,51 @@
  "note": "Bart 11-11: sea terrain that is not a repeating tile but painted for this perspective (camera only pans sideways and zooms a little), higher resolution, colours matching the wave bands. Laid through the house camera (library perspective: true).",
  "sheets": [
   {
-   "id": "sea-terrain-swell",
+   "id": "sea-terrain-swell-02",
    "layer": "terrain",
-   "hexes": ["#9ccccc", "#84b4b4", "#6c9c9c", "#b4cccc"],
+   "hexes": [
+    "#9ccccc",
+    "#84b4b4",
+    "#6c9c9c",
+    "#b4cccc"
+   ],
    "subject": "Open ocean with a long calm swell: broad low wave rows with soft troughs, a few small whitecaps, the same teal and blue-green as clear North Sea water",
    "assets": [
-    {"id": "sea-terrain-swell-01", "tags": ["water", "sea", "ocean", "swell", "calm"], "height_m": 4}
+    {
+     "id": "sea-terrain-swell-02",
+     "tags": [
+      "water",
+      "sea",
+      "ocean",
+      "swell",
+      "calm"
+     ],
+     "height_m": 4
+    }
    ]
   },
   {
-   "id": "sea-terrain-rough",
+   "id": "sea-terrain-rough-02",
    "layer": "terrain",
-   "hexes": ["#9ccccc", "#84b4b4", "#6c9c9c", "#b4cccc"],
-   "subject": "Rough open sea in a strong wind: steep wave rows with breaking white crests and streaks of foam, deep teal troughs, the same teal and blue-green as clear North Sea water",
+   "hexes": [
+    "#9ccccc",
+    "#84b4b4",
+    "#6c9c9c",
+    "#b4cccc"
+   ],
+   "subject": "Rough open sea in a strong wind: steep wave rows with breaking crests and streaks of foam in pure cool white (never cream or paper-coloured), deep teal troughs, the same teal and blue-green as clear North Sea water",
    "assets": [
-    {"id": "sea-terrain-rough-01", "tags": ["water", "sea", "ocean", "waves", "rough"], "height_m": 4}
+    {
+     "id": "sea-terrain-rough-02",
+     "tags": [
+      "water",
+      "sea",
+      "ocean",
+      "waves",
+      "rough"
+     ],
+     "height_m": 4
+    }
    ]
   }
  ]

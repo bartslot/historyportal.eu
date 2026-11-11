@@ -4,12 +4,12 @@
  "note": "Bart 11-11: more terrain layers like the sea: painted from eye height to the horizon (perspective: true).",
  "sheets": [
   {
-   "id": "terrain-barley-field",
+   "id": "terrain-barley-field-02",
    "layer": "terrain",
-   "subject": "An irrigated field of green barley in narrow strips with small earth channels between them",
+   "subject": "An irrigated field of green barley in long strips that run from left to right, parallel to the horizon, one behind the other, with small earth channels between them also running left to right, the strips getting thinner towards the top; no channel or row runs towards the horizon",
    "assets": [
     {
-     "id": "terrain-barley-field-01",
+     "id": "terrain-barley-field-02",
      "tags": [
       "field",
       "barley",
@@ -21,12 +21,12 @@
    ]
   },
   {
-   "id": "terrain-desert-gravel",
+   "id": "terrain-desert-gravel-02",
    "layer": "terrain",
    "subject": "Dry desert of pale gravel and sand with sparse low dry shrubs and a few stones",
    "assets": [
     {
-     "id": "terrain-desert-gravel-01",
+     "id": "terrain-desert-gravel-02",
      "tags": [
       "desert",
       "sand",
@@ -37,12 +37,12 @@
    ]
   },
   {
-   "id": "terrain-river-mud",
+   "id": "terrain-river-mud-02",
    "layer": "terrain",
    "subject": "A wide river bank of dark wet mud and silt with reeds at the edges, puddles and footprints of birds",
    "assets": [
     {
-     "id": "terrain-river-mud-01",
+     "id": "terrain-river-mud-02",
      "tags": [
       "mud",
       "river",
