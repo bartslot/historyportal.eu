@@ -16,7 +16,8 @@
       "irrigated",
       "grass"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-barley-field-01"
     }
    ]
   },
@@ -32,7 +33,8 @@
       "sand",
       "dry"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-desert-gravel-01"
     }
    ]
   },
@@ -49,7 +51,62 @@
       "wet",
       "reeds"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-river-mud-01"
+    }
+   ]
+  },
+  {
+   "id": "horizon-barley-field-01",
+   "layer": "horizon",
+   "subject": "An irrigated field of green barley in long strips that run from left to right, parallel to the horizon, one behind the other, with small earth channels between them also running left to right, the strips getting thinner towards the top; no channel or row runs towards the horizon",
+   "assets": [
+    {
+     "id": "horizon-barley-field-01",
+     "tags": [
+      "horizon",
+      "far",
+      "field",
+      "barley"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-desert-gravel-01",
+   "layer": "horizon",
+   "subject": "Dry desert of pale gravel and sand with sparse low dry shrubs and a few stones",
+   "assets": [
+    {
+     "id": "horizon-desert-gravel-01",
+     "tags": [
+      "horizon",
+      "far",
+      "desert",
+      "sand"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-river-mud-01",
+   "layer": "horizon",
+   "subject": "A wide river bank of dark wet mud and silt with reeds at the edges, puddles and footprints of birds",
+   "assets": [
+    {
+     "id": "horizon-river-mud-01",
+     "tags": [
+      "horizon",
+      "far",
+      "mud",
+      "river"
+     ],
+     "height_m": 8,
+     "tileable_x": true
     }
    ]
   }

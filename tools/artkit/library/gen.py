@@ -29,7 +29,7 @@ LIBRARY = prompts.MEDIA / 'library'
 TIMEOUT_S = 600
 JUDGE_GATE = 7.0
 # a band is a standing picture to the stage (layer mid, its tags make it a ground band)
-LIBRARY_LAYER = {'band': 'mid', 'field': 'mid', 'terrain': 'ground'}
+LIBRARY_LAYER = {'band': 'mid', 'field': 'mid', 'terrain': 'ground', 'horizon': 'mid'}
 
 
 def rgb(path: Path) -> np.ndarray:
@@ -97,12 +97,12 @@ def cut_stage(job: dict, sheet: dict, work: Path, gates: dict) -> list[dict]:
     entries = []
     for spec, p in zip(sheet['assets'], pieces):
         tiles = spec.get('tileable_x', sheet['layer'] in ('sky', 'bg', 'ground', 'terrain'))
-        seam = {'band': cut.tile_seam, 'terrain': cut.tile_seam, 'ground': cut.tile_both}.get(sheet['layer']) if tiles else None
+        seam = {'band': cut.tile_seam, 'horizon': cut.tile_seam, 'terrain': cut.tile_seam, 'ground': cut.tile_both}.get(sheet['layer']) if tiles else None
         im = Image.fromarray(seam(p['rgba']) if seam else p['rgba'], 'RGBA')
         im.save(out / f"{spec['id']}.webp", quality=90, method=6)
         entries.append({'id': spec['id'], 'layer': LIBRARY_LAYER.get(sheet['layer'], sheet['layer']), 'tags': spec['tags'],
                         'file': f"{spec['id']}.webp", 'w': im.width, 'h': im.height, 'anchor': p['anchor'], 'height_m': spec['height_m'],
-                        'tileable_x': tiles, **({'tileable_y': True} if sheet['layer'] == 'ground' else {}), **({'perspective': True} if sheet['layer'] == 'terrain' else {}), 'motion': spec.get('motion', 'none'),
+                        'tileable_x': tiles, **({'tileable_y': True} if sheet['layer'] == 'ground' else {}), **({'perspective': True} if sheet['layer'] == 'terrain' else {}), **({'horizon': spec['horizon']} if spec.get('horizon') else {}), 'motion': spec.get('motion', 'none'),
                         'era': job.get('era_label', job['era']),
                         'qa': {'sheet': sheet['id'], 'variant': v, 'ink_coverage': gates['ink']['ink_coverage'],
                                'palette_de': gates['colour']['palette_de'], 'ink_kept': gates['colour']['ink_kept'],

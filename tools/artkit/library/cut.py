@@ -144,7 +144,7 @@ def cut_sheet(rgb: np.ndarray, layer: str) -> list[dict]:
         a = alpha[b] * own
         piece = rgba[b].copy()
         piece[..., 3] = (a * 255).astype(np.uint8)
-        if layer in ('band', 'field'):
+        if layer in ('band', 'field', 'horizon'):
             piece = trim_cut_line(piece)
             a = piece[..., 3] / 255.0
         out.append({'rgba': piece, 'anchor': anchor(a), 'paper': paper, 'box': (b[1].start, b[0].start, b[1].stop, b[0].stop)})

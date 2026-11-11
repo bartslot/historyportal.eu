@@ -23,7 +23,8 @@
       "swell",
       "calm"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-sea-swell-01"
     }
    ]
   },
@@ -47,7 +48,44 @@
       "waves",
       "rough"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-sea-rough-01"
+    }
+   ]
+  },
+  {
+   "id": "horizon-sea-swell-01",
+   "layer": "horizon",
+   "subject": "Open ocean with a long calm swell: broad low wave rows with soft troughs, a few small whitecaps, the same teal and blue-green as clear North Sea water",
+   "assets": [
+    {
+     "id": "horizon-sea-swell-01",
+     "tags": [
+      "horizon",
+      "far",
+      "water",
+      "sea"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-sea-rough-01",
+   "layer": "horizon",
+   "subject": "Rough open sea in a strong wind: steep wave rows with breaking crests and streaks of foam in pure cool white (never cream or paper-coloured), deep teal troughs, the same teal and blue-green as clear North Sea water",
+   "assets": [
+    {
+     "id": "horizon-sea-rough-01",
+     "tags": [
+      "horizon",
+      "far",
+      "water",
+      "sea"
+     ],
+     "height_m": 8,
+     "tileable_x": true
     }
    ]
   }

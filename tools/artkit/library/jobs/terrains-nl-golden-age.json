@@ -16,7 +16,8 @@
       "coast",
       "grass"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-dunes-01"
     }
    ]
   },
@@ -33,7 +34,8 @@
       "coast",
       "water"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-beach-01"
     }
    ]
   },
@@ -50,7 +52,8 @@
       "polder",
       "water"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-polder-01"
     }
    ],
    "hexes": [
@@ -71,13 +74,86 @@
       "canal",
       "calm"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-canal-01"
     }
    ],
    "hexes": [
     "#9ccccc",
     "#84b4b4",
     "#b4cccc"
+   ]
+  },
+  {
+   "id": "horizon-dunes-01",
+   "layer": "horizon",
+   "subject": "Coastal dunes of pale sand with clumps of marram grass, soft wind ripples, gentle rises, no paths",
+   "assets": [
+    {
+     "id": "horizon-dunes-01",
+     "tags": [
+      "horizon",
+      "far",
+      "sand",
+      "dune"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-beach-01",
+   "layer": "horizon",
+   "subject": "A flat North Sea beach at low tide: wet shining sand with shallow pools and ripples, a few shells, the surf as thin white lines far off near the top",
+   "assets": [
+    {
+     "id": "horizon-beach-01",
+     "tags": [
+      "horizon",
+      "far",
+      "sand",
+      "beach"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-polder-01",
+   "layer": "horizon",
+   "subject": "A flat Dutch polder meadow of green grass crossed by straight narrow water ditches that run from left to right, parallel to the horizon, one behind the other, getting thinner towards the top; no cows, no windmills",
+   "assets": [
+    {
+     "id": "horizon-polder-01",
+     "tags": [
+      "horizon",
+      "far",
+      "grass",
+      "meadow"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-canal-01",
+   "layer": "horizon",
+   "subject": "The calm water of a wide Amsterdam canal, small ripples and soft reflections of a pale sky, no boats, no quay",
+   "assets": [
+    {
+     "id": "horizon-canal-01",
+     "tags": [
+      "horizon",
+      "far",
+      "water",
+      "canal"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
    ]
   }
  ]

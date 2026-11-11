@@ -15,7 +15,8 @@
       "meadow",
       "field"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-meadow-01"
     }
    ],
    "hexes": [
@@ -36,7 +37,8 @@
       "heather",
       "grass"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-heath-01"
     }
    ]
   },
@@ -52,7 +54,8 @@
       "moss",
       "leaf-litter"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-woodland-floor-01"
     }
    ],
    "hexes": [
@@ -73,7 +76,80 @@
       "wheat",
       "crop"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-grain-field-01"
+    }
+   ]
+  },
+  {
+   "id": "horizon-meadow-01",
+   "layer": "horizon",
+   "subject": "A wide open meadow of fresh green grass with clover, buttercups and a few taller seed heads, uneven and alive, no paths",
+   "assets": [
+    {
+     "id": "horizon-meadow-01",
+     "tags": [
+      "horizon",
+      "far",
+      "grass",
+      "meadow"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-heath-01",
+   "layer": "horizon",
+   "subject": "An open heath of purple heather and low grass with patches of pale sand and a few small grey stones, no paths",
+   "assets": [
+    {
+     "id": "horizon-heath-01",
+     "tags": [
+      "horizon",
+      "far",
+      "heath",
+      "heather"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-woodland-floor-01",
+   "layer": "horizon",
+   "subject": "A sunlit woodland clearing floor: green grass and moss cushions broken by patches of brown leaf litter, small ferns and low herbs, no tree trunks",
+   "assets": [
+    {
+     "id": "horizon-woodland-floor-01",
+     "tags": [
+      "horizon",
+      "far",
+      "forest",
+      "moss"
+     ],
+     "height_m": 8,
+     "tileable_x": true
+    }
+   ]
+  },
+  {
+   "id": "horizon-grain-field-01",
+   "layer": "horizon",
+   "subject": "A small hand-sown field of ripening emmer wheat, slightly irregular rows, a grassy edge along the bottom, no fences",
+   "assets": [
+    {
+     "id": "horizon-grain-field-01",
+     "tags": [
+      "horizon",
+      "far",
+      "field",
+      "wheat"
+     ],
+     "height_m": 8,
+     "tileable_x": true
     }
    ]
   }

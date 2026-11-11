@@ -279,7 +279,26 @@
       "mountain",
       "pass"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-alpine-scree-01"
+    }
+   ]
+  },
+  {
+   "id": "horizon-alpine-scree-01",
+   "layer": "horizon",
+   "subject": "A high Alpine pass: grey scree and broken stones with patches of old snow and thin tufts of mountain grass",
+   "assets": [
+    {
+     "id": "horizon-alpine-scree-01",
+     "tags": [
+      "horizon",
+      "far",
+      "scree",
+      "stone"
+     ],
+     "height_m": 8,
+     "tileable_x": true
     }
    ]
   }

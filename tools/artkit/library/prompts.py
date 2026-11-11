@@ -53,6 +53,15 @@ LAYER = {
              'Flat frontal view, no horizon, no sky drawing, nothing standing on the strips. No people, no animals. Landscape 3:2.'),
     # a terrain painted from eye height (Bart 11-11: the sea): the stage lays it through the house camera, so it must be
     # exactly that view, the horizon its top edge, repeating only sideways
+    # a terrain's own far edge (Bart 11-11: "the terrain should also include a horizon layer so there is no hard edge"):
+    # the stage stands it far out on the floor over the line where the terrain meets the sky
+    'horizon': ('ONE single long low strip running the full width of the canvas from the left edge to the right edge, '
+                'in the lower third of the canvas, white paper above it. {era} The far horizon of {subject}, seen from '
+                'standing eye height: the land (or water) far away, low and hazy, pale soft colour and very few thin '
+                'lines, no single stone, plant or wave bigger than a dot. Its top edge is a soft, low, irregular silhouette '
+                '(distant crests, a far line of low growth); '
+                'its bottom edge is a straight horizontal cut. Nothing close, no single large object, no sky drawing, '
+                'no clouds, no people, no animals. The left end continues seamlessly into the right end. Landscape 3:2.'),
     # zoomed out (Bart 11-11: "too bloated, they need to zoom out"): a wide landscape view, every detail small
     'terrain': ('ONE wide full-bleed panorama, zoomed far out like a wide-angle landscape view. {era} {subject}, seen from '
                 'standing eye height (1.6 m) looking straight ahead: the bottom edge of the canvas is the ground about 4 m '

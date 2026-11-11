@@ -86,7 +86,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
     // far off the tile's rows squeeze into streaks: the art fades into its own slot's colour, and only far beyond
     // that into the colour the far landscape (or the sky) ends in, so a far slot still shows as itself
     c = mix(c, own, smoothstep(fadeNear, fadeFar, d) * (1.0 - pp));
-    c = mix(c, horizonTint, smoothstep(fadeFar, fadeFar * 3.0, d));
+    c = mix(c, horizonTint, smoothstep(fadeFar, fadeFar * 3.0, d) * (1.0 - pp));   // a painting runs on to its own horizon
     // the near band: a strip painted from eye height, projected back onto the floor from the house camera, so from
     // there it looks exactly as painted and still lies on the ground (parallax when the camera moves); its upper part
     // fades into the far floor (t: 0 at the frame's bottom edge, 1 at the band's far edge)

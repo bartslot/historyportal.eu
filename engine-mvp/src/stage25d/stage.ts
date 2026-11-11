@@ -31,6 +31,10 @@ import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } fro
 export const STAGE_LOOK: Record<string, number | string> = { ...PRESETS['History Lines pencil'], paper: 0.35, granulation: 0.2, ...STAGE_SHEET }
 const PAPER = new Color4(0.937, 0.914, 0.863, 1)
 type Stain = ReturnType<typeof makeStain>
+/** Where a terrain's horizon strip stands (metres) and how much of its painted height it keeps: full width, low,
+ *  standing on the floor (a band's Size would shrink it both ways and lift it off the floor) */
+const HORIZON_BAND = { z: 900 }
+const HORIZON_SQUASH = 0.12
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
 interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
@@ -351,7 +355,7 @@ export class Stage {
   /** The backdrops under a point (CSS px), nearest first: ground bands (`band`: its index in set.groundBands) and far
    *  strips (`index` in set.layers), with where on the picture the point lands. The editor checks the picture's alpha. */
   pickBackdrops(x: number, y: number): { band?: number; index?: number; asset: Asset; u: number; v: number }[] {
-    const bandOf = (m: unknown) => this.bands.find((b) => b.handle.mesh === m)
+    const bandOf = (m: unknown) => this.bands.find((b) => b.handle.mesh === m && b.index >= 0)   // a terrain's horizon is not a row
     const stripOf = (m: unknown) => this.built.find((b) => b.handle.mesh === m && b.index >= 0 && b.asset.layer === 'bg')
     const hits = [...(this.scene.multiPick(x, y, (m) => !!bandOf(m) || !!stripOf(m)) ?? [])].sort((a, b) => a.distance - b.distance)
     return hits.flatMap((hit) => {
@@ -491,11 +495,9 @@ export class Stage {
   /** The scene's ground bands: painted strips at their metres, three views wide, drawn by distance (height: pose). */
   private async loadBands(s: Scene, lib: Library & { base: string }): Promise<Band[]> {
     const out: Band[] = []
-    for (const [index, g] of (s.set.groundBands ?? []).entries()) {
-      const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
-      if (!found) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
+    const build = async (found: Asset, g: GroundBand, index: number) => {
       const tex = await loadPremultiplied(urlOf(lib, found, g), this.scene).catch(() => null)
-      if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); continue }
+      if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); return }
       const asset = editedAsset(found, g, tex.getSize())
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
@@ -503,8 +505,20 @@ export class Stage {
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
+      handle.mesh.isPickable = index >= 0
       out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g })
     }
+    for (const [index, g] of (s.set.groundBands ?? []).entries()) {
+      const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
+      if (!found) { console.warn(`stage25d: ${s.id}: no ground band ${g.asset}`); continue }
+      await build(found, g, index)
+    }
+    // the nearest terrain's own far edge (asset.horizon): a low hazy strip standing far out on the floor over the line
+    // where the terrain meets the sky, so the ground never ends on a hard edge (Bart 11-11). It belongs to the terrain:
+    // no row, never picked (index -1)
+    const edge = groundSlots(s.set, lib)[0]?.asset.horizon
+    const edgeAsset = edge ? lib.assets.find((a) => a.id === edge) : undefined
+    if (edgeAsset) await build(edgeAsset, { asset: edgeAsset.id, ...HORIZON_BAND }, -1)
     return out
   }
 
@@ -546,8 +560,9 @@ export class Stage {
       // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
       const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front)   // its skyline on the crest, k x z up, never off the floor
       b.z = p.z
-      b.handle.mesh.scaling.set(p.sx, p.sy, 1)
-      b.handle.mesh.position.set(p.x, p.y, p.z)
+      const edge = b.index < 0   // the terrain's horizon: low, on the floor
+      b.handle.mesh.scaling.set(p.sx, edge ? p.sy * HORIZON_SQUASH : p.sy, 1)
+      b.handle.mesh.position.set(p.x, edge ? 0 : p.y, p.z)
       b.handle.mesh.alphaIndex = p.alphaIndex
       const ppm = pxPerMetre(renderH, p.z - HOUSE.z, fovRad(HOUSE.fov))
       b.handle.setOpacity(p.opacity)

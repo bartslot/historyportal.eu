@@ -469,7 +469,8 @@
       "plain",
       "dry"
      ],
-     "height_m": 4
+     "height_m": 4,
+     "horizon": "horizon-alluvial-plain-01"
     }
    ]
   },
@@ -487,6 +488,24 @@
       "room"
      ],
      "height_m": 4
+    }
+   ]
+  },
+  {
+   "id": "horizon-alluvial-plain-01",
+   "layer": "horizon",
+   "subject": "A flat dry alluvial plain of pale cracked silt with scattered low grass tufts and a few shallow cart ruts running from left to right",
+   "assets": [
+    {
+     "id": "horizon-alluvial-plain-01",
+     "tags": [
+      "horizon",
+      "far",
+      "alluvial",
+      "silt"
+     ],
+     "height_m": 8,
+     "tileable_x": true
     }
    ]
   }

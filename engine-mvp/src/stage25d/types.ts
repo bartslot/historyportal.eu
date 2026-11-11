@@ -19,6 +19,8 @@ export interface Asset {
   tileable_x?: boolean
   /** a terrain painted from eye height down to the horizon, laid through the house camera (ground-gl slotTile) */
   perspective?: boolean
+  /** A terrain's own far edge: the id of a low hazy strip the stage stands far out over the terrain's horizon */
+  horizon?: string
   motion?: MotionKind
   placeholder?: boolean
   qa?: { score?: number }
