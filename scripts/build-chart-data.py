@@ -23,6 +23,12 @@ off that field:
                                           the shore". Only peaks at least MIN_RIDGE_KM inland, spaced,
                                           each carrying `fit` = km to the coast so the layer can cap
                                           its size and a ridge never reaches the shore at any zoom.
+          Bart 2026-11-11 ("these mountains are very very high", "why is there no peak at the Mont
+          Blanc"): real summits first. Natural Earth's named summits (ne_10m_geography_regions_
+          elevation_points, true heights) are placed before anything else, highest first, so Mont
+          Blanc, Triglav and Aneto stand where they are. Then the elevation grid fills each range,
+          higher tiers first. Low hills (the grid's `smaller` tier, under ~600 m) get no peak, only
+          tufts, and every ridge is sized by its height (RIDGE_TIER_SIZE).
   tufts   olive foothills around the ranges, never on a ridge.
   waves   ink wave marks on open water, jittered, ranked 0-3 for zoom.
 
@@ -30,6 +36,8 @@ Deterministic: the same inputs give byte-identical outputs (seeded RNG, sorted i
 builds twice in memory and fails if anything differs.
 
   python3 scripts/build-chart-data.py --land storage/app/naturalearth/ne_50m_land.geojson
+  (summits: ne_10m_geography_regions_elevation_points.geojson next to it, from
+   github.com/nvkelso/natural-earth-vector/tree/master/geojson)
 """
 from __future__ import annotations
 
@@ -64,6 +72,14 @@ TUFT_SPACING_KM, TUFT_CLEAR_KM = 100, 35
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
 
 RIDGE_GLYPHS, TUFT_GLYPHS, WAVE_GLYPHS = 12, 16, 4
+TIERS = ('smaller', 'small', 'medium', 'large')
+RIDGE_TIER_SIZE = {'small': 0.62, 'medium': 0.82, 'large': 1.0}   # `smaller` hills draw no ridge
+SUMMIT_MIN_M = 1100
+
+
+def summit_tier(metres: float) -> str:
+    """A summit's true height → the grid's tier (the grid's are ~10 km averages, so summits sit higher)."""
+    return 'large' if metres >= 2500 else 'medium' if metres >= 1800 else 'small' if metres >= SUMMIT_MIN_M else 'smaller'
 WAVE_STEP_DEG, WAVE_CLEAR_KM = 1.5, 45
 SEED = 1642
 
@@ -497,17 +513,31 @@ def point(p: dict, props: dict) -> dict:
     return {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [round(p['lng'], 3), round(p['lat'], 3)]}, 'properties': props}
 
 
-def ridges_and_tufts(peaks_path: Path, to_sea_km: np.ndarray) -> tuple[list[dict], list[dict]]:
+def ridges_and_tufts(peaks_path: Path, summits_path: Path, to_sea_km: np.ndarray) -> tuple[list[dict], list[dict]]:
     rng = np.random.default_rng(SEED)
     raw = json.loads(peaks_path.read_text())['features']
+    rank = {t: i for i, t in enumerate(TIERS)}
     pts = sorted(({'lng': f['geometry']['coordinates'][0], 'lat': f['geometry']['coordinates'][1],
-                   'sz': float(f['properties'].get('sz', 1))} for f in raw), key=lambda p: (-p['sz'], p['lng'], p['lat']))
+                   'sz': float(f['properties'].get('sz', 1)), 't': f['properties'].get('t', 'medium')} for f in raw),
+                 key=lambda p: (-rank.get(p['t'], 2), -p['sz'], p['lng'], p['lat']))
     for p in pts:
         p['fit'] = round(sample(to_sea_km, p['lng'], p['lat']))
     inland = [p for p in pts if p['fit'] >= MIN_RIDGE_KM]
-    ridges = spaced(inland, RIDGE_SPACING_KM)
+    summits = []
+    for f in json.loads(summits_path.read_text())['features']:
+        metres = f['properties'].get('elevation') or 0
+        if f['properties'].get('featurecla') != 'mountain' or metres < SUMMIT_MIN_M:
+            continue
+        lng, lat = f['geometry']['coordinates']
+        if not -56 <= lat <= 82:   # the elevation grid's own band (build-mountain-points.mjs): no Antarctica
+            continue
+        fit = round(sample(to_sea_km, lng, lat))
+        if fit >= MIN_RIDGE_KM / 2:   # a famous summit may stand nearer the coast than a grid peak
+            summits.append({'lng': lng, 'lat': lat, 'sz': 1.0, 't': summit_tier(metres), 'm': metres, 'fit': fit})
+    summits.sort(key=lambda p: (-p['m'], p['lng'], p['lat']))
+    ridges = spaced(summits + [p for p in inland if p['t'] in RIDGE_TIER_SIZE], RIDGE_SPACING_KM)
     tufts = spaced(inland, TUFT_SPACING_KM, avoid=ridges, clear_km=TUFT_CLEAR_KM)
-    r = [point(p, {'g': int(rng.integers(RIDGE_GLYPHS)), 'sz': round(p['sz'], 2), 'fit': p['fit']}) for p in ridges]
+    r = [point(p, {'g': int(rng.integers(RIDGE_GLYPHS)), 'sz': round(p['sz'] * RIDGE_TIER_SIZE[p['t']], 2), 'fit': p['fit']}) for p in ridges]
     t = [point(p, {'g': int(rng.integers(TUFT_GLYPHS)), 'sz': round(p['sz'], 2), 'fit': p['fit']}) for p in tufts]
     return r, t
 
@@ -540,13 +570,13 @@ def vector_tiles(src: Path, dest: Path) -> None:
                     '--no-tile-size-limit', '--no-tile-compression', *TILE_ARGS[layer], str(src)], check=True)
 
 
-def build(land_path: Path, peaks_path: Path, out: Path, tiles: bool = True) -> dict[str, str]:
+def build(land_path: Path, peaks_path: Path, summits_path: Path, out: Path, tiles: bool = True) -> dict[str, str]:
     lakes_path = land_path.with_name('ne_50m_lakes.geojson')
     land = land_mask(land_path, lakes_path)
     to_land, to_sea = distance_fields(land)
     scale = row_scale()
     to_land_km, to_sea_km = to_land * scale, to_sea * scale
-    ridges, tufts = ridges_and_tufts(peaks_path, to_sea_km)
+    ridges, tufts = ridges_and_tufts(peaks_path, summits_path, to_sea_km)
     files = {
         'peaks.geojson': {'type': 'FeatureCollection', 'features': ridges},
         'tufts.geojson': {'type': 'FeatureCollection', 'features': tufts},
@@ -577,10 +607,12 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--land', type=Path, required=True)
     ap.add_argument('--peaks', type=Path, default=Path('public/timemap/mountains-points.geojson'))
+    ap.add_argument('--summits', type=Path, help='Natural Earth elevation points (default: next to --land)')
     ap.add_argument('--out', type=Path, default=Path('public/map-chart'))
     ap.add_argument('--check', action='store_true', help='build twice and fail unless identical')
     a = ap.parse_args()
-    first = build(a.land, a.peaks, a.out)
+    summits = a.summits or a.land.with_name('ne_10m_geography_regions_elevation_points.geojson')
+    first = build(a.land, a.peaks, summits, a.out)
     if a.check:
-        assert build(a.land, a.peaks, a.out, tiles=False) == first, 'chart data is not deterministic'
+        assert build(a.land, a.peaks, summits, a.out, tiles=False) == first, 'chart data is not deterministic'
         print('deterministic: ok')
