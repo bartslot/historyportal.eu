@@ -53,6 +53,16 @@ class SceneDeleteUndoTest extends TestCase
         return $lesson->scenes()->ordered()->pluck('script_segment', 'order')->all();
     }
 
+    public function test_a_scene_deleted_outside_the_editor_does_not_block_the_next_new_scene(): void
+    {
+        [, $lesson] = $this->lessonWithScenes(3);
+        $lesson->scenes()->where('order', 3)->first()->delete();   // a plain soft delete keeps no order slot
+
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 3, 'kind' => 'narration', 'status' => 'pending']);
+
+        $this->assertSame([1, 2, 3], $lesson->scenes()->ordered()->pluck('order')->all());
+    }
+
     public function test_deleting_a_scene_closes_the_gap_in_the_running_order(): void
     {
         [$teacher, $lesson] = $this->lessonWithScenes();

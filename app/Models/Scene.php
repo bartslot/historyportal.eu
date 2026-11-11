@@ -82,6 +82,17 @@ class Scene extends Model
         static::saved($forgetPlayerCache);
         static::deleted($forgetPlayerCache);
 
+        // (lesson_id, order) is unique over trashed rows too: a soft-deleted scene keeping its order blocked every new
+        // scene at that number (500 on "add scene", 11-11). Every soft delete parks its order out of the way.
+        static::deleting(static function (Scene $scene): void {
+            if ($scene->isForceDeleting() || ! $scene->lesson_id) {
+                return;
+            }
+            $parked = (int) static::withTrashed()->where('lesson_id', $scene->lesson_id)->max('order') + 1000;
+            static::withTrashed()->whereKey($scene->getKey())->toBase()->update(['order' => $parked]);
+            $scene->setRawAttributes([...$scene->getAttributes(), 'order' => $parked], true);
+        });
+
         // Its lesson's content version (LessonVersion): a new, changed or deleted scene, not a status flip.
         static::saved(function (Scene $scene): void {
             if ($scene->wasRecentlyCreated || LessonVersion::contentChanged($scene->getChanges(), LessonVersion::SCENE_IGNORED)) {

@@ -1566,7 +1566,7 @@
     window.stage25dAssets = function stage25dAssets() {
         return {
             lib: null, kind: 'all', query: '', selected: null, fill: null,
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cloud' => __('Clouds'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
             // id: the editor id just selected (scene-object-selected). The stage may still hold the backdrop it had (its
             // own listener can run after this one), so the click decides: the ship kept the Terrain shelf (Bart 11-11)
