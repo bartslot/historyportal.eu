@@ -59,8 +59,57 @@ const spotOf = (f: Figure): Spot => {
 
 /** The shot's two poses held on the scene's speaker; unchanged when nobody speaks. */
 export function holdSpeaker(poses: { from: CamPose; to: CamPose }, scene: Scene): { from: CamPose; to: CamPose } {
+  if (hasBust(scene)) return holdBust(poses)
   const f = speakerFigure(scene)
   if (!f || !f.h_m) return poses
   const others = (scene.figures ?? []).filter((o) => o !== f && o.h_m).map(spotOf)
   return { from: holdPose(poses.from, spotOf(f), others), to: holdPose(poses.to, spotOf(f), others) }
+}
+
+// Close-ups (comic busts): a figure whose pose starts with `bust` is a head-and-shoulders cutout cut off straight at the
+// chest. It stands on a plane (near, or fg behind an over-the-shoulder piece) sized from the camera so the head sits in
+// the upper part of the frame and the frame's bottom edge cuts through the chest: its own bottom edge never shows.
+// The camera of a bust shot stays near the house pose (BUST_CAM) with only a small push or truck, so the sizing holds.
+export const isBust = (pose: string | undefined): boolean => !!pose?.startsWith('bust')
+/** The camera busts are sized from: the house pose (stage25d HOUSE). */
+export const BUST_CAM: CamPose = { x: 0, y: MAX_EYE_Y, z: 0, fov: MAX_FOV }
+/** headTop: where the head's top ends, share of the frame height from the bottom; cut: share of the bust below the frame. */
+export type BustFit = { headTop: number; cut: number }
+export const BUST_FIT = {
+  close: { headTop: 0.85, cut: 0.15 }, // the one bust of the shot, on the near plane
+  back: { headTop: 0.75, cut: 0.35 }, // over the shoulder: bigger, lower, partly out of frame
+  far: { headTop: 0.7, cut: 0.15 }, // the face seen over that shoulder, at fg
+} satisfies Record<string, BustFit>
+const BUST_PUSH_M = 0.4 // a bust shot pushes in at most this far (nearer only raises the frame's bottom edge)
+const BUST_DRIFT_M = 0.2 // and trucks at most this far either side of the house x
+const BUST_FOV_MIN = 46 // a narrower lens would cut the head
+
+const deg = (d: number) => (d * Math.PI) / 180
+/** World heights of the frame's bottom and top edges on the plane at z, seen from cam (the house pitch included). */
+export function frameEdges(z: number, cam: CamPose = BUST_CAM): { bottom: number; top: number } {
+  const d = z - cam.z
+  return { bottom: cam.y - d * Math.tan(deg(cam.fov / 2 - PITCH_UP_DEG)), top: cam.y + d * Math.tan(deg(cam.fov / 2 + PITCH_UP_DEG)) }
+}
+/** Scale and y lift (metres) for a bust of library height hM on the plane at z:
+ *  drawn h = headTop * (top - bottom) / (1 - cut); y = bottom - cut * h. */
+export function bustFit(hM: number, z: number, fit: BustFit, cam: CamPose = BUST_CAM): { scale: number; y: number } {
+  const { bottom, top } = frameEdges(z, cam)
+  const h = (fit.headTop * (top - bottom)) / (1 - fit.cut)
+  return { scale: Math.round((h / hM) * 1000) / 1000, y: Math.round((bottom - fit.cut * h) * 1000) / 1000 }
+}
+
+/** A scene that draws a bust: a figure layer whose `need` (figures.ts: "char:<id> pose:<drawn pose>") is a bust pose. */
+export const hasBust = (scene: Scene): boolean => scene.set.layers.some((l) => l.figure && / pose:bust/.test(l.need ?? ''))
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+const bustPose = (p: CamPose): CamPose => ({
+  ...p, x: clamp(p.x, BUST_CAM.x - BUST_DRIFT_M, BUST_CAM.x + BUST_DRIFT_M), y: BUST_CAM.y,
+  z: clamp(p.z, BUST_CAM.z, BUST_CAM.z + BUST_PUSH_M), fov: clamp(p.fov, BUST_FOV_MIN, BUST_CAM.fov),
+})
+/** A bust shot's poses: held near the house pose, never lower, farther or wider than the pose the bust was sized from;
+ *  a move that clamps to nothing becomes a slow push. */
+export function holdBust(poses: { from: CamPose; to: CamPose }): { from: CamPose; to: CamPose } {
+  const from = bustPose(poses.from), to = bustPose(poses.to)
+  if (Math.abs(to.x - from.x) + Math.abs(to.z - from.z) > 0.05) return { from, to }
+  return { from: { ...from, z: BUST_CAM.z }, to: { ...to, z: BUST_CAM.z + BUST_PUSH_M } }
 }

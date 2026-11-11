@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { figureAsset, frameShare, mainStand, MAIN_MIN, MAX_SCALE, otherStand, OTHER_MIN, placeFigures, SPREAD, speakerOf, spread } from './figures'
-import { FILL_MAX, holdPose, holdSpeaker } from './speaker'
+import { BUST_FIT, bustFit, FILL_MAX, frameEdges, hasBust, holdPose, holdSpeaker } from './speaker'
+import { figureTracks } from './motion'
 import { groundBandsFor } from './bands'
 import type { Library, LibraryAsset, Scene } from './types'
 
@@ -122,5 +123,73 @@ describe('a crane shot cannot throw the speaker away', () => {
     expect(p.y).toBeLessThanOrEqual(1.6)
     expect(p.fov).toBeLessThanOrEqual(50)
     expect(1.3 / (2 * (7 - p.z) * Math.tan((p.fov * Math.PI) / 360))).toBeGreaterThanOrEqual(0.25)
+  })
+})
+
+describe('close-ups (bust poses)', () => {
+  const BUSTS: Library = { bundle: 't', assets: [
+    ...LIB.assets, ...both('opa', 'side', 1.6),
+    ...both('opa', 'bust', 0.53), ...both('opa', 'bust-back', 0.53), ...both('meisje', 'bust', 0.44),
+  ] }
+  const figLayer = (s: Scene, char: string) => s.set.layers.find((l) => l.figure === char)!
+  const HOUSE_CAM = { x: 0, y: 1.6, z: 0, fov: 50 }
+
+  it('a bust stands on the near plane, the frame bottom cuts its chest and the head sits in the upper part', () => {
+    const out = placeFigures(scene([{ char: 'opa', pose: 'bust', x: 0.4 }]), BUSTS)
+    const l = figLayer(out, 'opa')
+    expect(l).toMatchObject({ asset: 'fig-opa-bust-01', depth: 'near', x: 0.4, shadow: 0 })
+    const { bottom, top } = frameEdges(3.5, HOUSE_CAM)
+    const headTop = (l.y ?? 0) + 0.53 * (l.scale ?? 1)
+    expect(l.y!).toBeLessThan(bottom) // the bust's own bottom edge is below the frame
+    expect(headTop).toBeLessThan(top)
+    expect((headTop - bottom) / (top - bottom)).toBeGreaterThan(0.7)
+    expect(out.figures![0]).toMatchObject({ depth: 'near', y: l.y })
+  })
+  it('the camera of a bust shot stays near the house pose: never lower, farther or wider than the pose it was sized from', () => {
+    const out = placeFigures(scene([{ char: 'opa', pose: 'bust', x: 0.4 }]), BUSTS)
+    const held = holdSpeaker({ from: { x: -2, y: 4, z: -3, fov: 58 }, to: { x: 2, y: 1.2, z: 3, fov: 35 } }, out)
+    for (const p of [held.from, held.to]) {
+      expect(p.y).toBe(1.6)
+      expect(p.z).toBeGreaterThanOrEqual(0)
+      expect(p.z).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(p.x)).toBeLessThanOrEqual(0.25)
+      expect(p.fov).toBeLessThanOrEqual(50)
+      expect(frameEdges(3.5, p).bottom).toBeGreaterThanOrEqual(frameEdges(3.5, HOUSE_CAM).bottom - 1e-9)
+    }
+    expect(hasBust(out)).toBe(true)
+  })
+  it('bust-back frames the shot from the near edge it is closer to; the face seen over it is a bust at fg', () => {
+    const out = placeFigures(scene([{ char: 'meisje', pose: 'bust', x: 0.6 }, { char: 'opa', pose: 'bust-back', x: 0.3 }]), BUSTS)
+    const back = figLayer(out, 'opa')
+    expect(back).toMatchObject({ asset: 'fig-opa-bust-back-01', depth: 'near', x: 0.12 })
+    expect(figLayer(out, 'meisje')).toMatchObject({ asset: 'fig-meisje-bust-01', depth: 'fg' })
+    const right = placeFigures(scene([{ char: 'opa', pose: 'bust-back', x: 0.7 }, { char: 'meisje', pose: 'stand' }]), BUSTS)
+    expect(figLayer(right, 'opa').x).toBe(0.88)
+    expect(figLayer(right, 'meisje').asset).toBe('fig-meisje-stand-01')
+    // larger than a plain close-up, and partly out of frame
+    const plain = bustFit(0.53, 3.5, BUST_FIT.close)
+    expect(back.scale!).toBeGreaterThan(plain.scale)
+  })
+  it('a bust with no art falls back to the full-body pose, with a warning, never a crash', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = placeFigures(scene([{ char: 'opa', pose: 'bust-afraid', x: 0.5 }]), BUSTS)
+    expect(figLayer(out, 'opa').asset).toBe('fig-opa-stand-01')
+    expect(figLayer(out, 'opa').depth).toBe('fg')
+    expect(out.figures![0].pose).toBe('bust-afraid') // the writer's ask stays, a re-run picks the art up
+    expect(hasBust(out)).toBe(false)
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+  it('two busts in one shot: the first stays a bust, the second falls back to its full-body pose', () => {
+    const out = placeFigures(scene([{ char: 'meisje', pose: 'bust', x: 0.3 }, { char: 'opa', pose: 'bust-side', x: 0.7 }]), BUSTS)
+    expect(figLayer(out, 'meisje')).toMatchObject({ asset: 'fig-meisje-bust-01', depth: 'near' })
+    expect(figLayer(out, 'opa').asset).toBe('fig-opa-side-01')
+    const two = placeFigures(scene([{ char: 'opa', pose: 'bust' }, { char: 'meisje', pose: 'bust' }]), BUSTS)
+    expect(figLayer(two, 'meisje').asset).toBe('fig-meisje-stand-01')
+  })
+  it('the bust breathes around its own y, not the ground', () => {
+    const out = placeFigures(scene([{ char: 'opa', pose: 'bust', x: 0.4 }]), BUSTS)
+    const y = figureTracks(out, 8)[0].keyframes.map((k) => k.value)
+    expect(Math.abs(y[0] - figLayer(out, 'opa').y!)).toBeLessThan(0.01)
   })
 })

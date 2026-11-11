@@ -1,0 +1,337 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "babylonia-old-babylonian",
+  "era_label": "c. 1750 BCE",
+  "work_suffix": "-closeup",
+  "framing": "large head-and-shoulders close-ups cut off at the chest, like comic book close-up panels, the chest edge cut straight",
+  "note": "Bart 11-11: \"do we also have closeups? make sure to use different angles because we need a bit of comic book + 3D scenes\". Close-up sheet per character; height_m = head-and-shoulders height (the director scales busts itself).",
+  "characters": [
+    {
+      "char": "ana",
+      "height_m": 0.47,
+      "tags": [
+        "girl",
+        "child",
+        "herder",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Ana, an 11-year-old girl of a semi-nomadic herding family of the steppe, alert, curious, serious face, a long dark braid, a knee-length plain wool tunic with a fringed wool shawl over one shoulder, a cord belt, bare feet",
+      "colours": "tunic undyed oatmeal wool, shawl warm madder red-brown with a darker fringe, cord belt dark brown, hair black-brown",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "hazi",
+      "height_m": 0.51,
+      "tags": [
+        "boy",
+        "child",
+        "herder",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Hazi, a 13-year-old boy of the same herding family, proud and impatient face, short dark curly hair, a short wool kilt to the knee and a wool cloak tied on one shoulder, a sling tucked in his belt, leather sandals",
+      "colours": "kilt light brown wool, cloak dark ochre-brown, sling and sandals dark leather brown, hair black",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "nunu",
+      "height_m": 0.49,
+      "tags": [
+        "woman",
+        "elder",
+        "grandmother",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Nunu, the grandmother of the family, a stern weathered old woman with deep lines, slightly bent, a long dark wool dress and a heavy shawl over her head and shoulders, a tall wooden staff",
+      "colours": "dress dark indigo-grey wool, shawl deep brown with a thin red border, staff weathered wood brown, grey hair under the shawl",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "abu",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "father",
+        "hunter",
+        "nomad",
+        "closeup"
+      ],
+      "look": "the father, a lean tired hunter in his thirties, short black beard, hair tied back, a knee-length wool tunic, a cloak, a short wooden spear with a stone point, sandals",
+      "colours": "tunic sand-brown wool, cloak dark olive-brown, spear shaft weathered wood, sandals leather brown, hair and beard black",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "ilshu",
+      "height_m": 0.56,
+      "tags": [
+        "man",
+        "babylonian",
+        "traveller",
+        "official",
+        "closeup"
+      ],
+      "look": "Ilshu, a Babylonian canal inspector in his forties, calm, tired, weathered face, a neatly trimmed dark beard, a round brimless cap, a long fringed tunic of a city man reaching the shins, a cloak, a leather satchel with clay tablets, sandals",
+      "colours": "tunic pale cream linen with a fringe edged in faded blue, cloak muted blue-grey wool, cap off-white, satchel and sandals warm leather brown, beard black",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "belessunu",
+      "height_m": 0.53,
+      "tags": [
+        "woman",
+        "farmer",
+        "babylonian",
+        "closeup"
+      ],
+      "look": "Belessunu, a capable Babylonian woman farmer in her thirties who runs her family field, a long linen dress belted at the waist, a headcloth knotted at the back, sleeves rolled, a curved sickle hanging from her belt, sandals",
+      "colours": "dress pale undyed linen, belt and headcloth soft ochre, sickle blade dull copper, sandals leather brown, hair dark brown",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "scribe",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "scribe",
+        "babylonian",
+        "closeup"
+      ],
+      "look": "a Babylonian scribe in his fifties, shaven head and clean-shaven face, a plain long linen tunic, sandals",
+      "colours": "tunic plain off-white linen, tablet pale clay, stylus reed straw-colour, sandals light leather brown",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    }
+  ]
+}

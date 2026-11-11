@@ -55,6 +55,6 @@ export function figureTracks(scene: Scene, dur: number): Track[] {
       const dx = (f.facing === 'left' ? -1 : 1) * Math.min(0.25, dur * 0.02)
       return { target: t, property: 'x', keyframes: [key(0, x, 'easeOutCubic'), key(dur, x + dx)] }
     }
-    return oscillate(t, 'y', 0, 0.003, 3.6 + i * 0.4, dur, ((i + 1) * PHASE_STEP) % 1)
+    return oscillate(t, 'y', f.y ?? 0, 0.003, 3.6 + i * 0.4, dur, ((i + 1) * PHASE_STEP) % 1)
   })
 }

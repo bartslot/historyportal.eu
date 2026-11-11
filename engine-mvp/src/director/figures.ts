@@ -13,7 +13,7 @@
 import { DEPTH_Z } from './camera'
 import type { Depth, Figure, Library, LibraryAsset, Scene } from './types'
 
-import { MAIN_MIN, speakerFigure } from './speaker'
+import { BUST_FIT, MAIN_MIN, bustFit, isBust, speakerFigure } from './speaker'
 
 export { MAIN_MIN }
 export const OTHER_MIN = 0.08
@@ -29,7 +29,10 @@ export const frameShare = (heightM: number, depth: Depth, scale = 1): number => 
 
 const LADDER: Depth[] = ['mid', 'fg']
 /** The poses a writer may ask for that the library does not draw, and what stands in for them. */
-const POSE_ALIAS: Record<string, string> = { pull: 'push', climb: 'push', row: 'push', lie: 'sit', run: 'walk', talk: 'stand', wave: 'point' }
+const POSE_ALIAS: Record<string, string> = { pull: 'push', climb: 'push', row: 'push', lie: 'sit', run: 'walk', talk: 'stand', wave: 'point', 'bust-side': 'side' }
+/** A bust pose's full-body equivalent (bust-side -> side, any other bust -> stand). */
+const fullBody = (pose: string): string => POSE_ALIAS[pose] ?? 'stand'
+const poseOf = (a: LibraryAsset): string | undefined => a.tags.find((t) => t.startsWith('pose:'))?.slice(5)
 
 const hasTag = (a: LibraryAsset, tag: string) => a.tags.includes(tag)
 
@@ -81,21 +84,46 @@ export function placeFigures(scene: Scene, lib: Library | null): Scene {
   const base = scene.set.layers.filter((l) => !l.figure)
   const figs = scene.figures ?? []
   const main = speakerOf(scene)
-  const placed = figs.flatMap((f: Figure) => {
-    const a = figureAsset(lib, f.char, f.pose, f.facing === 'left' ? 'left' : 'right')
+  // one close-up face per shot: a second bust (bust-back is a framing piece, not a face) becomes its full-body pose;
+  // a bust the library has no art for falls back the same way (figureAsset), with a warning. figures[].pose keeps what
+  // the writer asked for (a re-run picks the bust up once its art is in); the layer's `need` names what is drawn
+  let faces = 0
+  const resolved = figs.flatMap((f: Figure) => {
+    const asked = f.pose ?? 'stand'
+    const pose = isBust(asked) && asked !== 'bust-back' && faces++ > 0 ? fullBody(asked) : asked
+    const a = figureAsset(lib, f.char, pose, f.facing === 'left' ? 'left' : 'right')
     if (!a) return []
+    const drawn = poseOf(a) ?? pose
+    if (isBust(pose) && !isBust(drawn)) console.warn(`director: no ${pose} art for ${f.char}, drawn full-body (${drawn})`)
+    return [{ f, a, pose: isBust(asked) ? drawn : asked }]
+  })
+  const overShoulder = resolved.some((r) => r.pose === 'bust-back')
+  const placed = resolved.map(({ f, a, pose }) => {
     const isMain = f.char === main
     const h = a.height_m ?? 1.7
+    if (isBust(pose)) {
+      // a close-up: near plane (fg when it is the face seen over a bust-back), sized from the house camera
+      const back = pose === 'bust-back'
+      const depth: Depth = back || !overShoulder ? 'near' : 'fg'
+      const { scale, y } = bustFit(h, DEPTH_Z[depth], back ? BUST_FIT.back : overShoulder ? BUST_FIT.far : BUST_FIT.close)
+      const x = back ? ((f.x ?? 0.5) < 0.5 ? 0.12 : 0.88) : (f.x ?? 0.5)
+      return { f, a, pose, depth, scale, y, h, x, main: isMain, shadow: 0 }
+    }
     const { depth, scale } = isMain ? mainStand(h) : otherStand(h, f.depth)
-    return [{ f, a, depth, scale, h, x: f.x ?? 0.5, main: isMain }]
+    return { f, a, pose, depth, scale, y: undefined, h, x: f.x ?? 0.5, main: isMain, shadow: 0.85 }
   })
   if (!placed.length) return base.length === scene.set.layers.length ? scene : { ...scene, set: { ...scene.set, layers: base } }
   const apart = spread(placed)
-  const layers = apart.map((p) => ({ asset: p.a.id, need: `char:${p.f.char} pose:${p.f.pose ?? 'stand'}`, depth: p.depth, x: p.x, scale: p.scale, figure: p.f.char, shadow: 0.85 }))
+  const layers = apart.map((p) => ({ asset: p.a.id, need: `char:${p.f.char} pose:${p.pose}`, depth: p.depth, x: p.x, ...(p.y === undefined ? {} : { y: p.y }), scale: p.scale, figure: p.f.char, shadow: p.shadow }))
   const moved = new Map(apart.map((p) => [p.f, p]))
   return {
     ...scene,
     set: { ...scene.set, layers: [...base, ...layers] },
-    figures: figs.map((f) => { const p = moved.get(f); return p ? { ...f, depth: p.depth, x: p.x, scale: p.scale, h_m: Math.round(p.h * p.scale * 1000) / 1000 } : f }),
+    figures: figs.map((f) => {
+      const p = moved.get(f)
+      if (!p) return f
+      const { y: _old, ...rest } = f
+      return { ...rest, depth: p.depth, x: p.x, scale: p.scale, h_m: Math.round(p.h * p.scale * 1000) / 1000, ...(p.y === undefined ? {} : { y: p.y }) }
+    }),
   }
 }

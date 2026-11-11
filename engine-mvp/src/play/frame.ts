@@ -18,7 +18,7 @@ export function headOnScreen(scene: Scene, layer: SceneLayer, heightM: number, t
   const tanHalf = Math.tan(c.fov / 2)
   const nx = (worldX - c.x) / (dz * tanHalf * ASPECT)
   const pitch = (-HOUSE_PITCH_DEG * Math.PI) / 180 // the house camera looks up a touch
-  const ny = Math.tan(Math.atan2(heightM * at.scale - c.y, dz) - pitch) / tanHalf
+  const ny = Math.tan(Math.atan2(at.y + heightM * at.scale - c.y, dz) - pitch) / tanHalf
   if (Math.abs(nx) > EDGE) return null
   return { x: (nx + 1) / 2, y: Math.min(1, Math.max(0, (1 - ny) / 2)) }
 }

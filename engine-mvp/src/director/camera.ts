@@ -8,7 +8,7 @@
 import { DEPTH_Z } from '../stage25d/layout'
 import type { Beat, CamPose, Camera, MoveKind, Scene } from './types'
 import { round } from './timing'
-import { holdSpeaker, speakerFigure } from './speaker'
+import { hasBust, holdSpeaker, speakerFigure } from './speaker'
 
 export { DEPTH_Z }
 export const EYE_Y = 1.6
@@ -143,8 +143,8 @@ export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number
   const framed = scaled(frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1, nearest), scale, nearest)
   // every shot keeps the speaker readable
   const held = holdSpeaker(framed, scene)
-  // 'through' starts far and ends in front of the speaker (it never flies through them)
-  const { from, to } = move === 'through' ? { from: framed.from, to: held.to } : held
+  // 'through' starts far and ends in front of the speaker (it never flies through them); a bust shot is held throughout
+  const { from, to } = move === 'through' && !hasBust(scene) ? { from: framed.from, to: held.to } : held
   return {
     move, scale, from, to, at_s: round(at), dur_s: round(dur),
     ease: stageEase(opts.hook ? HOOK_CURVE : CURVE[move]), curve: opts.hook ? HOOK_CURVE : CURVE[move],

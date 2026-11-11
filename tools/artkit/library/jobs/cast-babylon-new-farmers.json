@@ -2,7 +2,7 @@
   "bundle": "babylonia-old-babylonian",
   "era": "babylonia-old-babylonian",
   "era_label": "c. 1750 BCE",
-  "note": "Bart 11-11: the cast of Babylon and the new farmers (vault topics/babylon-new-farmers/story-map.md). All invented, plausible for the Old Babylonian period.",
+  "note": "Bart 11-11: the cast of Babylon and the new farmers (vault topics/babylon-new-farmers/story-map.md). All invented, plausible for the Old Babylonian period. Repainted 11-11 with a named expression per pose (no smiles); the smiling set is in library/_backup/cast-babylon-smiling-2026-11-11. Bart 11-11: a TURNAROUND sheet per character (front, 3/4, side, 3/4 back, back, walking both ways) plus one story action; no pushing, no sitting.",
   "characters": [
     {
       "char": "ana",
@@ -13,8 +13,42 @@
         "herder",
         "nomad"
       ],
-      "look": "Ana, an 11-year-old girl of a semi-nomadic herding family of the steppe, bright and curious face, a long dark braid, a knee-length plain wool tunic with a fringed wool shawl over one shoulder, a cord belt, bare feet",
-      "colours": "tunic undyed oatmeal wool, shawl warm madder red-brown with a darker fringe, cord belt dark brown, hair black-brown"
+      "look": "Ana, an 11-year-old girl of a semi-nomadic herding family of the steppe, alert, curious, serious face, a long dark braid, a knee-length plain wool tunic with a fringed wool shawl over one shoulder, a cord belt, bare feet",
+      "colours": "tunic undyed oatmeal wool, shawl warm madder red-brown with a darker fringe, cord belt dark brown, hair black-brown",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "carry",
+          "standing, holding a small cloth seed bag against her chest, three-quarter view, determined face"
+        ]
+      ]
     },
     {
       "char": "hazi",
@@ -26,7 +60,41 @@
         "nomad"
       ],
       "look": "Hazi, a 13-year-old boy of the same herding family, proud and impatient face, short dark curly hair, a short wool kilt to the knee and a wool cloak tied on one shoulder, a sling tucked in his belt, leather sandals",
-      "colours": "kilt light brown wool, cloak dark ochre-brown, sling and sandals dark leather brown, hair black"
+      "colours": "kilt light brown wool, cloak dark ochre-brown, sling and sandals dark leather brown, hair black",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "sling",
+          "standing, whirling a sling above his head, three-quarter view, afraid but brave"
+        ]
+      ]
     },
     {
       "char": "nunu",
@@ -38,7 +106,41 @@
         "nomad"
       ],
       "look": "Nunu, the grandmother of the family, a stern weathered old woman with deep lines, slightly bent, a long dark wool dress and a heavy shawl over her head and shoulders, a tall wooden staff",
-      "colours": "dress dark indigo-grey wool, shawl deep brown with a thin red border, staff weathered wood brown, grey hair under the shawl"
+      "colours": "dress dark indigo-grey wool, shawl deep brown with a thin red border, staff weathered wood brown, grey hair under the shawl",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "forbid",
+          "standing, planting her staff across the way, one hand raised palm out, three-quarter view, stern"
+        ]
+      ]
     },
     {
       "char": "abu",
@@ -50,7 +152,41 @@
         "nomad"
       ],
       "look": "the father, a lean tired hunter in his thirties, short black beard, hair tied back, a knee-length wool tunic, a cloak, a short wooden spear with a stone point, sandals",
-      "colours": "tunic sand-brown wool, cloak dark olive-brown, spear shaft weathered wood, sandals leather brown, hair and beard black"
+      "colours": "tunic sand-brown wool, cloak dark olive-brown, spear shaft weathered wood, sandals leather brown, hair and beard black",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "guard",
+          "standing braced with his spear raised against danger, three-quarter view, afraid, jaw set"
+        ]
+      ]
     },
     {
       "char": "ilshu",
@@ -61,8 +197,42 @@
         "traveller",
         "official"
       ],
-      "look": "Ilshu, a Babylonian canal inspector in his forties, friendly but tired face, a neatly trimmed dark beard, a round brimless cap, a long fringed tunic of a city man reaching the shins, a cloak, a leather satchel with clay tablets, sandals",
-      "colours": "tunic pale cream linen with a fringe edged in faded blue, cloak muted blue-grey wool, cap off-white, satchel and sandals warm leather brown, beard black"
+      "look": "Ilshu, a Babylonian canal inspector in his forties, calm, tired, weathered face, a neatly trimmed dark beard, a round brimless cap, a long fringed tunic of a city man reaching the shins, a cloak, a leather satchel with clay tablets, sandals",
+      "colours": "tunic pale cream linen with a fringe edged in faded blue, cloak muted blue-grey wool, cap off-white, satchel and sandals warm leather brown, beard black",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "read",
+          "standing, holding a clay tablet in both hands and reading it, three-quarter view, focused"
+        ]
+      ]
     },
     {
       "char": "belessunu",
@@ -73,7 +243,41 @@
         "babylonian"
       ],
       "look": "Belessunu, a capable Babylonian woman farmer in her thirties who runs her family field, a long linen dress belted at the waist, a headcloth knotted at the back, sleeves rolled, a curved sickle hanging from her belt, sandals",
-      "colours": "dress pale undyed linen, belt and headcloth soft ochre, sickle blade dull copper, sandals leather brown, hair dark brown"
+      "colours": "dress pale undyed linen, belt and headcloth soft ochre, sickle blade dull copper, sandals leather brown, hair dark brown",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "sickle",
+          "standing, holding the curved sickle and a bunch of barley stalks, three-quarter view, serious"
+        ]
+      ]
     },
     {
       "char": "scribe",
@@ -83,8 +287,42 @@
         "scribe",
         "babylonian"
       ],
-      "look": "a Babylonian scribe in his fifties, shaven head and clean-shaven face, a plain long linen tunic, holding a small clay tablet and a reed stylus, sandals",
-      "colours": "tunic plain off-white linen, tablet pale clay, stylus reed straw-colour, sandals light leather brown"
+      "look": "a Babylonian scribe in his fifties, shaven head and clean-shaven face, a plain long linen tunic, sandals",
+      "colours": "tunic plain off-white linen, tablet pale clay, stylus reed straw-colour, sandals light leather brown",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "read",
+          "standing, reading a clay tablet aloud, one finger raised, three-quarter view, strict"
+        ]
+      ]
     }
   ]
 }

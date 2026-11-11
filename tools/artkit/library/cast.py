@@ -23,14 +23,21 @@ from gen import LIBRARY, TIMEOUT_S, make_image, merge_library
 ROOT = Path(__file__).resolve().parents[3]
 CUTTER = ROOT / 'engine-mvp' / 'tools' / 'cut_figures.py'
 POSES = ['stand', 'walk', 'point', 'kneel', 'carry', 'push', 'dig', 'sit']
-POSE_WORDS = ('(1) standing relaxed, (2) walking in mid stride, (3) pointing ahead with one arm, (4) kneeling on one '
-              'knee, (5) carrying something in both arms, (6) pushing forward with both hands, (7) digging with a '
-              'short wooden hoe, (8) sitting on the ground')
+# Every pose names its face: with no mood the model grins in all eight (Bart 11-11: "why are they all super happy?
+# it's a bit fake"). A story pose sheet is people in a hard season, not a catalogue of smiles.
+POSE_WORDS = ('(1) standing still, quiet watchful face, mouth closed, (2) walking in mid stride, tired steady face, '
+              '(3) pointing ahead with one arm, alert face, eyes wide, brows raised, (4) kneeling on one knee, careful '
+              'concentrating face, looking down, (5) carrying something heavy in both arms, straining face, lips pressed, '
+              '(6) pushing forward with both hands, hard effort, jaw set, brows drawn, (7) digging with a short wooden '
+              'hoe with a copper blade, frowning in concentration, (8) sitting on the ground, worried thoughtful face, '
+              'listening. No smiling, no grins, no teeth showing in any pose: plain, believable faces')
 
 # the History Lines notes (vault topics/history-lines/notes.md), verbatim where they are Bart's words
 INK = ('Draw a character pose sheet as a clean black-and-white educational comic illustration: {era} The same person '
-       'eight times, {look}, in a grid of 4 columns and 2 rows, full body from head to feet, each pose separate with wide '
-       'space around it, nothing touching: ' + POSE_WORDS + '. Every pose faces to the right (three-quarter view), same '
+       'eight times, {look}, in a grid of 4 columns and 2 rows, {framing}, each pose separate with wide '
+       'space around it, nothing touching: {poses}. Each figure turned exactly as its number says (a character turnaround: '
+       'front, three-quarter, side, three-quarter back, back); three-quarter means body AND face turned about 45 degrees, '
+       'both eyes visible; same '
        'face, same hair, same clothes, same proportions in all eight. Use crisp black contours, controlled hatching and '
        'cross-hatching only in the deepest shadows. Keep broad areas of white inside the clothes. Background: solid flat '
        'pure green #00FF00 everywhere around and between the figures, no ground, no shadows, no props except what a pose '
@@ -46,15 +53,29 @@ COLOUR = ('Color the existing black-and-white comic drawing as a clean education
           'and no repainting of linework.')
 
 
+def pose_keys(char: dict) -> list[str]:
+    """A character's own 8 poses from the script (job `poses`: [[key, words], ...], pose 1 a plain stand: the cutter
+    scales the sheet from it), else the generic set."""
+    return [k for k, _ in char['poses']] if char.get('poses') else POSES
+
+
+def pose_words(char: dict) -> str:
+    if not char.get('poses'):
+        return POSE_WORDS
+    return ', '.join(f'({i}) {w}' for i, (_, w) in enumerate(char['poses'], 1)) + \
+        '. No smiling, no grins, no teeth showing in any pose: plain, believable faces'
+
+
 def work_dir(job: dict, char: dict) -> Path:
-    d = LIBRARY / '_work' / job['bundle'] / f"cast-{char['char']}"
+    d = LIBRARY / '_work' / job['bundle'] / f"cast-{char['char']}{job.get('work_suffix', '')}"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def ink(job: dict, char: dict, refs: list[str]) -> None:
     era = prompts.ERA.get(job['era'], job['era'])
-    make_image(INK.format(era=era, look=char['look']), str(work_dir(job, char) / 'ink.png'),
+    make_image(INK.format(era=era, look=char['look'], poses=pose_words(char),
+                          framing=job.get('framing', 'full body from head to feet')), str(work_dir(job, char) / 'ink.png'),
                [str(prompts.INK_ANCHOR), *refs], False, TIMEOUT_S)
 
 
@@ -67,7 +88,7 @@ def colour(job: dict, char: dict, refs: list[str]) -> None:
 def cut(job: dict, char: dict) -> None:
     w = work_dir(job, char)
     out = LIBRARY / job['bundle']
-    subprocess.run([sys.executable, str(CUTTER), str(w / 'colour.png'), char['char'], str(char['height_m']), str(out)], check=True)
+    subprocess.run([sys.executable, str(CUTTER), str(w / 'colour.png'), char['char'], str(char['height_m']), str(out), ','.join(pose_keys(char))], check=True)
     entries = json.loads((out / f"_{char['char']}.json").read_text())
     for e in entries:   # the bundle's own era, and what the figure is, for the resolver and the panel
         e['era'] = job.get('era_label', job['era'])
@@ -98,7 +119,7 @@ def main() -> None:
                 print(f"  {char['char']}: colour", flush=True)
             if a.stage in ('cut', 'all'):
                 cut(job, char)
-                print(f"  {char['char']}: cut into {len(POSES)} poses (+ mirrored)", flush=True)
+                print(f"  {char['char']}: cut into {len(pose_keys(char))} poses (+ mirrored)", flush=True)
         except Exception as e:   # one character failing never stops the cast: it is reported and redone
             print(f"  {char['char']}: FAILED {e}", flush=True)
             continue
