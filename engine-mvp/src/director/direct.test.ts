@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { direct } from './direct'
 import { audit, progressAt, HOOK_S } from './audit'
-import { interactionSeconds, readTime, TIMING } from './timing'
+import { interactionSeconds, modelTotal, readTime, TIMING } from './timing'
 import { DEPTH_Z } from './camera'
 import { LESSON, LIBRARY } from './fixture'
 import type { Camera, Lesson } from './types'
@@ -160,5 +160,40 @@ describe('a branching story', () => {
     const q = branched.scenes[1]
     expect(interactionSeconds(q)).toBe(TIMING.interaction_s.choice)
     expect(interactionSeconds(branched.scenes[2])).toBe(0)
+  })
+})
+
+describe('direct() with map scenes', () => {
+  // The lesson map: no set, figures, camera or sound (lesson.schema.json kind 'map'). Cast: Scene types a stage shot.
+  const mapScene = (id: string, extra: Record<string, unknown> = {}) => ({
+    id, kind: 'map' as const, beat: 'setup' as const, narration: 'Hier, tussen twee rivieren, ligt een groene band.', est_s: 8,
+    interaction: null, fact_refs: ['s1'],
+    map: { labels: [{ name: 'Babylon', lng: 44.42, lat: 32.54 }], region: { name: 'Vruchtbare Halvemaan', highlight: 'fertile-crescent' }, camera: { center: [40.5, 32.5] as [number, number], zoom: 4.2 } },
+    ...extra,
+  }) as unknown as Lesson['scenes'][number]
+  const withMaps: Lesson = { ...LESSON, scenes: [LESSON.scenes[0], mapScene('sc10'), ...LESSON.scenes.slice(1, 4), mapScene('sc11', { branch: { group: 1, role: 'option_a' } }), ...LESSON.scenes.slice(4)] }
+
+  it('passes a map scene through untouched, in its place', () => {
+    const out = direct(withMaps, LIBRARY)
+    expect(out.scenes.map((s) => s.id)).toEqual(withMaps.scenes.map((s) => s.id))
+    expect(out.scenes[1]).toEqual(withMaps.scenes[1])
+    expect(out.scenes[5]).toEqual(withMaps.scenes[5])
+    expect(out.scenes[1]).not.toHaveProperty('camera')
+    expect(out.scenes[1]).not.toHaveProperty('director')
+  })
+
+  it('directs the stage scenes around it as it would without the map', () => {
+    const out = direct(withMaps, LIBRARY)
+    expect(out.scenes.filter((s) => s.kind !== 'map')).toEqual(directed.scenes)
+    expect(audit(out)).toEqual([])
+  })
+
+  it('does not crash on a lesson of only map scenes', () => {
+    const only: Lesson = { ...LESSON, scenes: [mapScene('sc01')] }
+    expect(direct(only, LIBRARY).scenes).toEqual(only.scenes)
+  })
+
+  it('times a map scene on its narration, like any shot', () => {
+    expect(modelTotal(withMaps)).toBeGreaterThan(modelTotal(LESSON))
   })
 })

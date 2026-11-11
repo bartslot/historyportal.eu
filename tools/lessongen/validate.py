@@ -11,7 +11,8 @@ source when it says a number or year, branch groups (game block, question + opti
 each, effects on known meters, a normal scene where they rejoin; spacing on the LONGEST play, the 10-minute minimum
 on the SHORTEST), no verbatim overlap (6-word n-grams) between any prose string and
 any cached LessonUp dump, Bloom mix of the quizzes, 1-4 power meters, text hygiene (no dashes, no emoji,
-balloons <= 8 words), set layers resolve against the art library or are listed in needed_assets.
+balloons <= 8 words), set layers resolve against the art library or are listed in needed_assets, a map scene's
+region names a polygon in public/map-regions (a map scene has no set: it counts in the timeline, nothing to resolve).
 --resolve writes matching library asset ids into the layers and rebuilds needed_assets in place.
 Exit 1 on any error.
 """
@@ -30,6 +31,7 @@ HERE = Path(__file__).resolve().parent
 SCHEMA = json.loads((HERE / "lesson.schema.json").read_text())
 DEFAULT_CORPUS = HERE / ".cache" / "corpus"
 DEFAULT_LIBRARY = Path.home() / "BartsMedia" / "historyportal" / "library"
+MAP_REGIONS = HERE.parent.parent / "public" / "map-regions"  # the lesson map's named regions (lesson-map.js)
 
 TIMING = json.loads((HERE / "timing.json").read_text())  # shared with the S5 director
 SHOT_MIN_S, SHOT_MAX_S = TIMING["shot_min_s"], TIMING["shot_max_s"]
@@ -57,7 +59,8 @@ HARD_FACT = re.compile(
 # Keys whose values are ids, enums, tags or paths, not prose.
 NOT_PROSE = {"id", "url", "need", "asset", "sky", "char", "pose", "depth", "facing", "expression", "beat", "type",
              "kind", "input", "format", "lang", "bundle", "canon_venster", "related_venster", "layer", "tags",
-             "fact_refs", "ledger", "level", "camera", "sound", "needed_assets", "lessonup_ids", "key", "icon", "role"}
+             "fact_refs", "ledger", "level", "camera", "sound", "needed_assets", "lessonup_ids", "key", "icon", "role",
+             "highlight"}
 
 # Every dash character, a spaced hyphen used as a dash, and the emoji blocks. "VOC-schip" is fine.
 BAD_CHARS = re.compile("[\u2010-\u2015\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]|\\s-\\s")
@@ -87,6 +90,15 @@ def interaction_s(it: dict) -> float:
 def total_s(lesson: dict) -> float:
     """Every scene once (both branches): timing.json's model, the director's parity number (--totals)."""
     return sum(scene_s(sc) for sc in lesson["scenes"])
+
+
+def is_map(sc: dict) -> bool:
+    return sc.get("kind") == "map"
+
+
+def region_file(highlight: str) -> Path:
+    """'fertile-crescent' or 'indus-valley.geojson': both a polygon in public/map-regions."""
+    return MAP_REGIONS / (highlight if highlight.endswith(".geojson") else f"{highlight}.geojson")
 
 
 def option_of(sc: dict) -> tuple[int, str] | None:
@@ -266,7 +278,7 @@ def match_asset(need: str, depth: str, library: list[dict]) -> dict | None:
         return bool(a.get("tags")) and norm(a["tags"][0]) == want[0]
 
     hits.sort(key=lambda a: (not is_kind(a), -len(set(want) & tags_of(a)), a.get("layer") != depth,
-                             -(a.get("qa") or {}).get("score", 0)))
+                             -((a.get("qa") or {}).get("score") or 0)))
     return hits[0] if hits else None
 
 
@@ -289,6 +301,8 @@ def resolve(lesson: dict, library_root: Path) -> dict:
     libs = libraries(lesson, library_root)
     needed: dict[tuple[str, str, str], list[str]] = {}
     for sc in lesson["scenes"]:
+        if is_map(sc):
+            continue
         bundle = scene_bundle(lesson, sc)
         wants = [(layer, layer["depth"]) for layer in sc["set"]["layers"]] + [({"need": sc["set"]["sky"]}, "sky")]
         for layer, depth in wants:
@@ -408,13 +422,13 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     # Characters + balloons.
     known_chars = {c["id"] for c in lesson.get("characters", [])}
     for sc in scenes:
-        here = {f["char"] for f in sc["figures"]}
-        for b in sc["balloons"]:
+        here = {f["char"] for f in sc.get("figures", [])}
+        for b in sc.get("balloons", []):
             if len(b["text"].split()) > BALLOON_WORDS_MAX:
                 errors.append(f"{sc['id']}: balloon longer than {BALLOON_WORDS_MAX} words: {b['text']!r}")
             if b["char"] not in here | known_chars:
                 warnings.append(f"{sc['id']}: balloon by {b['char']!r} who is not in the scene")
-        for f in sc["figures"]:
+        for f in sc.get("figures", []):
             if known_chars and f["char"] not in known_chars:
                 warnings.append(f"{sc['id']}: figure {f['char']!r} not in characters")
 
@@ -439,6 +453,11 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
     stats["library"] = {b: "missing" if lib is None else f"{len(lib)} assets" for b, lib in sorted(libs.items())}
     listed = {needed_key(n.get("bundle", ""), n["tags"], n["layer"], lesson["bundle"]) for n in lesson["needed_assets"]}
     for sc in scenes:
+        if is_map(sc):
+            region = sc["map"].get("region")
+            if region and not region_file(region["highlight"]).is_file():
+                errors.append(f"{sc['id']}: map region {region['highlight']!r} has no polygon at {region_file(region['highlight'])}")
+            continue
         bundle = scene_bundle(lesson, sc)
         library = libs[bundle]
         needs = [layer["need"] for layer in sc["set"]["layers"]] + [sc["set"]["sky"]]

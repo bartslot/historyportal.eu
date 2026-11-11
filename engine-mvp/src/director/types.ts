@@ -56,8 +56,21 @@ export type Branch =
   | { group: number; role: 'option_a' | 'option_b'; effects?: BranchEffects }
 export type Game = { meters: { key: string; label: string; icon?: string; start: number }[]; fail_threshold?: number }
 
+/** A map scene's content (lesson.schema.json $defs/map): the lesson map, not the stage. */
+export type MapLabel = { name: string; lng: number; lat: number; kind?: 'city' | 'river' | 'region' | 'camp' }
+export type MapSpec = {
+  labels?: MapLabel[]
+  region?: { name: string; highlight: string }
+  route?: [number, number][]
+  camera?: { center: [number, number]; zoom: number }
+}
+
 export type Scene = {
   id: string; beat: Beat; narration: string; est_s?: number
+  /** 'map': the lesson map shows where it happens (`map`). It has no set, figures, camera or sound,
+   *  and the director passes it through untouched (see isMapScene). Absent = a stage shot. */
+  kind?: 'story' | 'map'
+  map?: MapSpec
   /** Real TTS timings when the narration is recorded: total length and optional word starts. */
   timings?: { duration_s: number; words?: { word: string; start: number; end: number }[] }
   /** habitat: interior | deck | quay | wet | dry, for the set dresser (else read from the layers) */

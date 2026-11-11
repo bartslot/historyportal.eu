@@ -475,3 +475,64 @@ def test_teacher_card_counts_one_branch(lesson):
     out = v.resolve(out, NO_LIBRARY)
     # longest play 206 s -> 3; sc04 6 + choice 30 + option_a 12 = 48 s -> 1 (option_b's 6 s not added)
     assert out["teacher"] == "Duur: 3 minuten, keuze: 1 minuten."
+
+
+# Map scenes: the lesson map shows where it happens. No set, figures or camera; the narration still times it.
+FERTILE_CRESCENT = {"labels": [{"name": "Babylon", "lng": 44.42, "lat": 32.54},
+                               {"name": "Eufraat", "lng": 40.5, "lat": 35.0, "kind": "river"}],
+                    "region": {"name": "Vruchtbare Halvemaan", "highlight": "fertile-crescent"},
+                    "camera": {"center": [40.5, 32.5], "zoom": 4.2}}
+
+
+def _map_scene(sid: str = "sc04", **map_spec) -> dict:
+    return {"id": sid, "kind": "map", "beat": "setup", "narration": "Kijk, hier ligt een groene band door de woestijn.",
+            "est_s": 8, "interaction": None, "fact_refs": ["s1"], "map": map_spec or copy.deepcopy(FERTILE_CRESCENT)}
+
+
+def test_a_map_scene_is_valid_and_counts_in_the_timeline(lesson):
+    before = v.total_s(lesson)
+    lesson["scenes"].insert(2, _map_scene())
+    assert errors_of(lesson) == []
+    assert v.total_s(lesson) == pytest.approx(before + v.shot_s(lesson["scenes"][2]))
+
+
+def test_a_route_map_scene_is_valid(lesson):
+    lesson["scenes"].insert(2, _map_scene(labels=[{"name": "Kamp", "lng": 39.0, "lat": 34.0, "kind": "camp"},
+                                                  {"name": "Babylon", "lng": 44.42, "lat": 32.54}],
+                                          route=[[39.0, 34.0], [41.5, 33.6], [44.42, 32.54]]))
+    assert errors_of(lesson) == []
+
+
+def test_a_map_scene_carries_no_set_or_camera(lesson):
+    sc = _map_scene()
+    sc["set"] = lesson["scenes"][0]["set"]
+    lesson["scenes"].insert(2, sc)
+    assert any(e.startswith("schema: /scenes/2") for e in errors_of(lesson))
+
+
+def test_a_map_scene_needs_something_to_show(lesson):
+    lesson["scenes"].insert(2, _map_scene(camera={"center": [40.0, 33.0], "zoom": 4}))
+    assert any(e.startswith("schema: /scenes/2/map") for e in errors_of(lesson))
+
+
+def test_a_story_scene_still_needs_its_set(lesson):
+    del lesson["scenes"][1]["set"]
+    assert any(e.startswith("schema: /scenes/1") for e in errors_of(lesson))
+
+
+def test_a_map_region_must_exist(lesson):
+    lesson["scenes"].insert(2, _map_scene(region={"name": "Atlantis", "highlight": "atlantis"}))
+    assert any("sc04: map region 'atlantis' has no polygon" in e for e in errors_of(lesson))
+
+
+def test_resolve_leaves_a_map_scene_alone(lesson):
+    lesson["scenes"].insert(2, _map_scene())
+    out = v.resolve(lesson, NO_LIBRARY)
+    assert out["scenes"][2] == lesson["scenes"][2]
+
+
+def test_a_map_scene_can_be_a_branch_shot(lesson):
+    out = _branched(lesson)
+    a2 = next(sc for sc in out["scenes"] if sc["id"] == "sc06")
+    out["scenes"][out["scenes"].index(a2)] = dict(_map_scene("sc06"), branch=a2["branch"])
+    assert errors_of(out) == []

@@ -243,6 +243,30 @@ export function riverPaint (cfg = CHART) {
   }
 }
 
+/**
+ * A named region (lesson.json map.region, e.g. the Fertile Crescent from public/map-regions) as a wash of green
+ * paint: a translucent fill, and over its edge a wide line blurred as wide as it is, so the wash fades out
+ * instead of stopping at a line, and pools a little at the rim the way a watercolour wash dries. No outline.
+ * Under the rivers, so the Tigris and Euphrates read through the green.
+ */
+export const REGION_GREEN = '#7d9b4e'
+export function regionLayers (source) {
+  const edge = ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 22, 6, 40]
+  return [
+    { id: `${source}-wash`, type: 'fill', source, paint: { 'fill-color': REGION_GREEN, 'fill-opacity': 0.26 } },
+    { id: `${source}-edge`, type: 'line', source, layout: { 'line-join': 'round' },
+      paint: { 'line-color': REGION_GREEN, 'line-opacity': 0.3, 'line-width': edge, 'line-blur': edge } },
+  ]
+}
+
+/** A route (lesson.json map.route) drawn in the chart's own ink: a dashed sepia trail, as a hand marks a journey. */
+export function routeLayer (source, cfg = CHART) {
+  return {
+    id: source, type: 'line', source, layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': cfg.inkColor, 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.6, 6, 3], 'line-dasharray': [2, 1.6] },
+  }
+}
+
 /** Re-paint every chart property from the live config. The tuner's only way to touch the map. */
 export function applyChartPaint (map, cfg, paper = null) {
   const { under, over } = chartLayers(cfg)

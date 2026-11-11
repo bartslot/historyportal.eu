@@ -34,10 +34,10 @@ export function boxView (box, { pad = 1, maxZoom = 6 } = {}) {
 /**
  * Bounding box of every point a map block names, or null when it names none.
  *
- * @param {{ annotations?: Array<object>, labels?: Array<object> }} content
+ * @param {{ annotations?: Array<object>, labels?: Array<object>, route?: Array<[number, number]> }} content
  * @returns {{minX:number, minY:number, maxX:number, maxY:number}|null}
  */
-export function contentBox ({ annotations = [], labels = [] } = {}) {
+export function contentBox ({ annotations = [], labels = [], route = [] } = {}) {
   let minX = 180, minY = 90, maxX = -180, maxY = -90
   let found = false
   const add = (lng, lat) => {
@@ -51,6 +51,8 @@ export function contentBox ({ annotations = [], labels = [] } = {}) {
   }
   ;(Array.isArray(annotations) ? annotations : []).forEach((a) => { if (a && a.type === 'focus') add(a.lng, a.lat) })
   ;(Array.isArray(labels) ? labels : []).forEach((l) => { if (l && l.text) add(l.lng, l.lat) })
+  // a map scene's route ([lng, lat] points): the journey is part of what the scene is about
+  ;(Array.isArray(route) ? route : []).forEach((p) => { if (Array.isArray(p)) add(p[0], p[1]) })
   return found ? { minX, minY, maxX, maxY } : null
 }
 

@@ -114,7 +114,7 @@ function soundFor(p: Plan, lesson: Lesson, library: Library | null, silent: bool
     ambience: pickBeds(p.scene, bundleOf(p.scene, lesson), library, prev, region),
     lead_in_s: 0, tail_s: 0,
     silence: silent ? { at_s: 0, dur_s: SILENCE_S } : null,
-    sfx: pickSfx(p.scene, p.narrationAt, p.dur, native),
+    sfx: pickSfx(p.scene, p.narrationAt, p.dur, native, bundleOf(p.scene, lesson), library),
     duck_db: DUCK_DB,
   }
 }
@@ -175,7 +175,17 @@ function enforceVariety(all: Camera[][], plans: Plan[], locked: boolean[], min: 
 /** `libraries`: per bundle, for scenes in another bundle than the lesson's (their set dressing). */
 export type DirectOptions = { libraries?: Record<string, Library> }
 
+/** A map scene (kind 'map') is the lesson map, not the stage: nothing here directs it. */
+export const isMapScene = (s: Scene): boolean => s.kind === 'map'
+
 export function direct(lesson: Lesson, library: Library | null = null, opts: DirectOptions = {}): Lesson {
+  // Map scenes leave the run and come back at their own place, untouched: the stage scenes around them are
+  // directed as if they were neighbours (a map is a cut to another medium, not a shot on the stage).
+  if (lesson.scenes.some(isMapScene)) {
+    const staged = direct({ ...lesson, scenes: lesson.scenes.filter((s) => !isMapScene(s)) }, library, opts)
+    let k = 0
+    return { ...staged, scenes: lesson.scenes.map((s) => (isMapScene(s) ? structuredClone(s) : staged.scenes[k++])) }
+  }
   const src = structuredClone(lesson)
   src.scenes = src.scenes.map((s) => {
     const lib = opts.libraries?.[bundleOf(s, src)] ?? library

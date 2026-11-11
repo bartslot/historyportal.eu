@@ -3,7 +3,7 @@
 // Moves are measured with the ease the STAGE plays (stage25d/layout.ts `ease`), not the finer curve.
 import { ease as stageEase } from '../stage25d/layout'
 import type { Ease } from '../stage25d/types'
-import { cameraLocked, minimums } from './direct'
+import { cameraLocked, isMapScene, minimums } from './direct'
 import { pairRepeat, peakIndex } from './camera'
 import { BALLOON_GAP_S, SHOT_MAX_S, readTime } from './timing'
 import type { Camera, Lesson, Scene } from './types'
@@ -22,7 +22,7 @@ export function progressAt(c: Camera, t: number): number {
 
 export function audit(lesson: Lesson): string[] {
   const problems: string[] = []
-  const scenes = lesson.scenes
+  const scenes = lesson.scenes.filter((s) => !isMapScene(s)) // the lesson map has no camera or sound to audit
   const first = scenes[0]
   if (!first) return ['no scenes']
   const min = minimums(scenes.length)

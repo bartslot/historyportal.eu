@@ -4,8 +4,11 @@ import bank from '../sound/bank.json'
 import type { Library, Scene, SoundPlan } from './types'
 import { round } from './timing'
 
-type Bed = { id: string; bundle: string; base?: boolean; universal?: boolean; gain: number; tags: string[] }
+type Bed = { id: string; bundle: string; base?: boolean; universal?: boolean; indoor?: boolean; gain: number; tags: string[] }
 const BEDS = bank.beds as Bed[]
+/** A bundle's own one-shots: `poses` = foley for those figure poses, `tags` = picked by what the scene says. */
+type Sfx = { id: string; bundle?: string; tags: string[]; poses?: string[] }
+const SFX = bank.sfx as Sfx[]
 const BUNDLES = bank.bundles as Record<string, { regions: string[] }>
 const PLACES = bank.places as unknown as Record<string, string[]>
 
@@ -32,6 +35,7 @@ function sceneTags(scene: Scene, library: Library | null): Set<string> {
   const out = new Set<string>()
   const add = (s?: string | null) => s && words(s).forEach((w) => out.add(w))
   add(text(scene.set.sky))
+  add(scene.set.habitat)
   for (const l of scene.set.layers) {
     if (l.dressed) continue // the set dresser's props decorate; the place is what the story layers say
     add(text(l.need))
@@ -69,21 +73,34 @@ export function pickBeds(scene: Scene, bundle: string, library: Library | null, 
   const best = scored[0]
   // keep the bed of the scene before (same place) unless another fits clearly better
   const extra = before && (!best || best.score < score(before) + 2) ? before : best?.b
+  // a closed room (the tablet house) plays alone: no steppe wind indoors
+  if (extra?.indoor) return [{ id: extra.id, gain: extra.gain }]
   return [{ id: base.id, gain: base.gain }, ...(extra ? [{ id: extra.id, gain: extra.gain }] : [])]
 }
 
 const FOLEY: Record<string, string> = { walk: 'step-grass', kneel: 'wood-knock', carry: 'rope-creak' }
 const UI: Record<string, string> = { quiz: 'reveal', 'power-meter': 'meter-rise', choice: 'reveal' }
 
-/** Foley on the figures' actions (staggered, never on top of each other), the interaction's cue,
- *  and the ink whoosh on the native move. */
-export function pickSfx(scene: Scene, start: number, dur: number, native: boolean): SoundPlan['sfx'] {
+/** Foley on the figures' actions (staggered, never on top of each other; the bundle's own foley for a
+ *  pose wins: dry earth under Babylon, not grass), the one bundle sound the scene names best (a lion in
+ *  the narration growls), the interaction's cue, and the ink whoosh on the native move. */
+export function pickSfx(scene: Scene, start: number, dur: number, native: boolean, bundle?: string, library: Library | null = null): SoundPlan['sfx'] {
   const out: SoundPlan['sfx'] = []
+  const own = bundle ? SFX.filter((x) => x.bundle === bundle) : []
   if (native) out.push({ id: 'ink-whoosh', at_s: round(start) })
   ;(scene.figures ?? []).forEach((f, i) => {
-    const id = FOLEY[f.pose ?? '']
+    const id = own.find((x) => x.poses?.includes(f.pose ?? ''))?.id ?? FOLEY[f.pose ?? '']
     if (id && !out.some((s) => s.id === id)) out.push({ id, at_s: round(start + 0.4 + i * 0.7) })
   })
+  if (own.length) {
+    const tags = sceneTags(scene, library)
+    const best = own
+      .filter((x) => !out.some((s) => s.id === x.id))
+      .map((x) => ({ id: x.id, score: x.tags.filter((t) => tags.has(t)).length }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)[0]
+    if (best) out.push({ id: best.id, at_s: round(Math.max(0, Math.min(start + 1.5, dur - 2))) })
+  }
   const ui = scene.interaction ? UI[scene.interaction.type] : null
   if (ui) out.push({ id: ui, at_s: round(Math.max(0, dur - 1.5)) })
   return out

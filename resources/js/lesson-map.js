@@ -14,7 +14,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
 import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
-import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls, riverPaint } from './map-chart.js'
+import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls, riverPaint, regionLayers, routeLayer } from './map-chart.js'
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { itineraryTour } from './map-itinerary.js'
@@ -51,6 +51,11 @@ const GROUND = {
   text: '#1d1712',
   halo: '#f6f1e4',
 }
+
+// A region polygon is one of ours (public/map-regions, LessonImporter), never a URL from a scene's config.
+const REGION_URL = /^\/map-regions\/[a-z0-9-]+\.geojson$/
+const EMPTY_FC = { type: 'FeatureCollection', features: [] }
+const lngLatOk = (p) => Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1]))
 
 // Cities valid at `year` (gazetteer entries carry valid_from/valid_to; missing = always valid).
 const cityFilter = (year) => ['all',
@@ -101,6 +106,14 @@ export function renderLessonMap (el, opts = {}) {
   const { showCities = false, showBorders = false } = opts
   let layerToggles = { cities: showCities, borders: showBorders }
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
+  // A map scene of a 3D lesson (lesson.json kind 'map'): a highlighted region, a route, and a camera the writer
+  // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
+  const regionUrl = REGION_URL.test(opts.region?.url || '') ? opts.region.url : null
+  const route = (Array.isArray(opts.route) ? opts.route : []).filter(lngLatOk).map((p) => [Number(p[0]), Number(p[1])])
+  const fixedCamera = lngLatOk(opts.camera?.center) && Number.isFinite(Number(opts.camera?.zoom))
+    ? { center: [Number(opts.camera.center[0]), Number(opts.camera.center[1])], zoom: Number(opts.camera.zoom) }
+    : null
+  const revealLabels = opts.revealLabels === true
   // Coerce — the inspector saves the year through a JSON config, so it can arrive as a string.
   let year = Number(opts.year)
   if (!Number.isFinite(year)) year = 1600
@@ -136,10 +149,10 @@ export function renderLessonMap (el, opts = {}) {
   // `fit: 'labels'` (set by the lesson composer on blocks that pin places) goes further: the camera
   // frames the pins and STAYS there; the polity is still highlighted, it just no longer moves the
   // camera. Without the flag, today's polity fit applies.
-  const labelsFit = opts.fit === 'labels'
-    ? labelsView({ annotations, labels: placeLabels }, { width: el.clientWidth || 1280, height: el.clientHeight || 720 })
+  const labelsFit = opts.fit === 'labels' && !fixedCamera
+    ? labelsView({ annotations, labels: placeLabels, route }, { width: el.clientWidth || 1280, height: el.clientHeight || 720 })
     : null
-  const opening = labelsFit || openingView({ annotations, labels: placeLabels })
+  const opening = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })
 
   // The live chart config: the dev tuner edits this copy, never CHART itself.
   const chartCfg = { ...CHART }
@@ -173,10 +186,14 @@ export function renderLessonMap (el, opts = {}) {
         ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
         'lesson-labels': { type: 'geojson', data: labelsFC(placeLabels) },
+        'lesson-region': { type: 'geojson', data: regionUrl ? `${location.origin}${regionUrl}` : EMPTY_FC },
+        'lesson-route': { type: 'geojson', data: route.length >= 2 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route } } : EMPTY_FC },
       },
       layers: [
         // The painted sea, its depth glaze, the land and the olive foothills (map-chart.js).
         ...chart.under,
+        // A highlighted region (the Fertile Crescent): a green wash on the land, under the rivers and the ink.
+        ...regionLayers('lesson-region'),
         {
           id: 'rivers', type: 'line', source: 'rivers', 'source-layer': 'rivers',
           layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -195,6 +212,8 @@ export function renderLessonMap (el, opts = {}) {
           },
         },
         ...chart.over,
+        // A scene's route, in the chart's ink, under every name.
+        routeLayer('lesson-route'),
         {
           id: 'city-dots', type: 'circle', source: 'cities', 'source-layer': 'cities',
           filter: cityFilter(year),
@@ -240,7 +259,7 @@ export function renderLessonMap (el, opts = {}) {
           paint: {
             ...placeLabelPaint(),
             // Hidden until "arrived at" (feature-state shown), then fades in.
-            'text-opacity': ['case', ['boolean', ['feature-state', 'shown'], false], 1, 0],
+            'text-opacity': revealLabels ? 1 : ['case', ['boolean', ['feature-state', 'shown'], false], 1, 0],
             'text-opacity-transition': { duration: 650, delay: 0 },
           },
         },
@@ -248,8 +267,8 @@ export function renderLessonMap (el, opts = {}) {
     },
     center: opening.center,
     zoom: opening.zoom,
-    // A labels fit may frame a region closer than the atlas default (see LABELS_MAX_ZOOM).
-    maxZoom: Math.max(6, labelsFit?.zoom ?? 0),
+    // A labels fit (or the writer's camera) may frame a region closer than the atlas default (see LABELS_MAX_ZOOM).
+    maxZoom: Math.max(6, labelsFit?.zoom ?? 0, fixedCamera?.zoom ?? 0),
     // A voyage revisits the same water on the way out and the way home, and the default cache is
     // small enough that a long crossing evicts the tiles the return leg is about to want — which
     // shows up as the sea reloading in a place the class has already been.
@@ -738,6 +757,7 @@ export function renderLessonMap (el, opts = {}) {
      */
     startItinerary: ({ totalMs = null } = {}) => {
       itinerary?.destroy()
+      if (fixedCamera) return null   // the writer framed this map: it holds still while the narrator speaks
       const stops = (annotations || [])
         .filter((a) => a && a.type === 'focus')
         .map((a, i) => ({ lng: Number(a.lng), lat: Number(a.lat), number: i + 1 }))

@@ -1835,6 +1835,13 @@ Alpine.data('lessonGame', (lesson) => ({
           projection: cfg.projection || 'mercator',
           interactive: mode === 'interactive',
           annotations: cfg.annotations || [],   // read-only focus cities for students
+          // A 3D lesson's map scene (LessonImporter): place names without a dot, a highlighted region,
+          // a route and the writer's camera; its names show at once.
+          labels: cfg.labels || [],
+          revealLabels: Array.isArray(cfg.labels),
+          region: cfg.region || null,
+          route: cfg.route || null,
+          camera: cfg.camera || null,
           // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
           showCities: cfg.show_cities === true,
           showBorders: cfg.show_borders === true,
@@ -2098,6 +2105,9 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _advanceFromMap (index) {
+      // A map inside a story game ends like any scene: a question opens its choice, the last shot of the
+      // chosen run its consequence. The map stays up under the overlay; the next scene tears it down.
+      if (this._storyGame?.handleSceneEnd(index, _sceneQueue[index])) { this.showMapContinue = false; return }
       // Exits BEFORE the teardown: tearing the stage down first removes the very layers that are
       // supposed to be leaving, so the teacher's Build Out would never be seen on a map scene.
       this._afterExits(() => {

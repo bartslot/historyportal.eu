@@ -88,6 +88,13 @@ describe('StoryGameEngine.resolveGroups (pure)', () => {
     expect(groups.get(5).question).toBeNull()
     expect(groups.get(5).afterIndex).toBe(2)
   })
+
+  it('takes a map scene into a run like any other shot (a 3D lesson shows where the choice leads)', () => {
+    const scenes = [optionScene(6, 'option_a', 'West'), { ...optionScene(6, 'option_a'), kind: 'map', branch_choice_label: null }, optionScene(6, 'option_b', 'Oost')]
+    const groups = StoryGameEngine.resolveGroups(scenes)
+    expect(groups.get(6).options.map(o => [o.index, o.last])).toEqual([[0, 1], [2, 2]])
+    expect(StoryGameEngine.computeBeforePlay(groups, { 6: { role: 'option_b' } }, 1, scenes[1])).toBe(3)
+  })
 })
 
 describe('StoryGameEngine.computeBeforePlay (pure)', () => {

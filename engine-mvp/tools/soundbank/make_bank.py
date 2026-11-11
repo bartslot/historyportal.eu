@@ -250,10 +250,12 @@ def main():
     bank = json.loads(BANK.read_text())
     rows = []
     for b in bank['beds']:
+        if b.get('source'): continue  # not ours to synthesise (ElevenLabs, see src/sound/CREDITS.md)
         fn = globals()['bed_' + b['id'].replace('-', '_')]
         write_m4a(loop(fn(LOOP_S + XFADE_S)), out / b['file'], peak=0.5, rms_db=-20)
         rows.append((b['file'], 'ambience bed, seamless 24 s loop'))
     for s in bank['sfx']:
+        if s.get('source'): continue
         fn = globals()['sfx_' + s['id'].replace('-', '_')]
         write_m4a(fn(), out / s['file'], peak=0.6)
         rows.append((s['file'], 'one-shot'))

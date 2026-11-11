@@ -1,0 +1,394 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "babylonia-old-babylonian",
+  "era_label": "c. 1750 BCE",
+  "note": "Bart 11-11: places, animals and props of Babylon and the new farmers (vault topics/babylon-new-farmers).",
+  "sheets": [
+    {
+      "id": "bb-steppe-bg",
+      "layer": "bg",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: the dry rolling steppe at dawn: low bare hills, sparse dry grass and a few thorny shrubs, wide empty land, far away a thin line of green where the river is.",
+      "assets": [
+        {
+          "id": "bb-steppe-backdrop-01",
+          "tags": [
+            "steppe",
+            "hills",
+            "dry"
+          ],
+          "height_m": 20,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "terrain-dry-steppe-01",
+      "layer": "terrain",
+      "subject": "The dry steppe: pale dusty earth, sparse tufts of dry grass, small stones and a few low thorny shrubs",
+      "assets": [
+        {
+          "id": "terrain-dry-steppe-01",
+          "tags": [
+            "steppe",
+            "dry",
+            "earth"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-dry-steppe-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-dry-steppe-01",
+      "layer": "horizon",
+      "subject": "The dry steppe: pale dusty earth, sparse tufts of dry grass, small stones and a few low thorny shrubs",
+      "assets": [
+        {
+          "id": "horizon-dry-steppe-01",
+          "tags": [
+            "steppe",
+            "dry",
+            "earth",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-thicket-bg",
+      "layer": "bg",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: the river bank at dusk seen from the land: a dense thicket of tamarisk trees and tall reeds along the river, the water glinting between them, the far bank low and flat.",
+      "assets": [
+        {
+          "id": "bb-river-thicket-backdrop-01",
+          "tags": [
+            "river",
+            "thicket",
+            "tamarisk",
+            "reeds"
+          ],
+          "height_m": 14,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "bb-thicket-trees",
+      "layer": "mid",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: (1) one tamarisk tree, 6 m high, gnarled trunk, feathery grey-green foliage, a strong low branch about 2.5 m up that a man could sit on; (2) a dense clump of tall river reeds, 3 m high.",
+      "assets": [
+        {
+          "id": "bb-tamarisk-tree-01",
+          "tags": [
+            "tree",
+            "tamarisk"
+          ],
+          "height_m": 6
+        },
+        {
+          "id": "bb-reed-thicket-01",
+          "tags": [
+            "reeds",
+            "thicket"
+          ],
+          "height_m": 3
+        }
+      ]
+    },
+    {
+      "id": "terrain-river-bank-01",
+      "layer": "terrain",
+      "subject": "A river bank at dusk: dark damp earth and mud, tufts of reeds, small pools, fallen leaves of tamarisk",
+      "assets": [
+        {
+          "id": "terrain-river-bank-01",
+          "tags": [
+            "river",
+            "bank",
+            "mud"
+          ],
+          "height_m": 4,
+          "horizon": "horizon-river-bank-01"
+        }
+      ]
+    },
+    {
+      "id": "horizon-river-bank-01",
+      "layer": "horizon",
+      "subject": "A river bank at dusk: dark damp earth and mud, tufts of reeds, small pools, fallen leaves of tamarisk",
+      "assets": [
+        {
+          "id": "horizon-river-bank-01",
+          "tags": [
+            "river",
+            "bank",
+            "mud",
+            "horizon"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-camp-props",
+      "layer": "mid",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: a semi-nomadic herders camp: (1) a low tent of dark woven goat hair stretched over wooden poles, open at the front, 2.2 m high; (2) a second smaller tent, 1.8 m high; (3) a ring of stones with a small fire of dry sticks, 0.6 m high with its flames; (4) a pen of thorny branches for goats, 1 m high.",
+      "assets": [
+        {
+          "id": "bb-herder-tent-01",
+          "tags": [
+            "tent",
+            "camp",
+            "nomad"
+          ],
+          "height_m": 2.2
+        },
+        {
+          "id": "bb-herder-tent-02",
+          "tags": [
+            "tent",
+            "camp",
+            "nomad"
+          ],
+          "height_m": 1.8
+        },
+        {
+          "id": "bb-campfire-01",
+          "tags": [
+            "fire",
+            "camp"
+          ],
+          "height_m": 0.6
+        },
+        {
+          "id": "bb-thorn-pen-01",
+          "tags": [
+            "pen",
+            "fence",
+            "thorn"
+          ],
+          "height_m": 1
+        }
+      ]
+    },
+    {
+      "id": "bb-animals-a",
+      "layer": "mid",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: animals, each a separate full-body animal in side view: (1) a lion of Mesopotamia, a big male with a dark short mane, prowling low and tense, 1.1 m at the shoulder; (2) the same kind of lion slinking away with its head turned back; (3) a horse tethered by a rope, ears back, nervous, 1.5 m at the shoulder, no saddle; (4) a donkey carrying two packs, 1.1 m.",
+      "assets": [
+        {
+          "id": "bb-lion-prowl-01",
+          "tags": [
+            "lion",
+            "animal"
+          ],
+          "height_m": 1.1
+        },
+        {
+          "id": "bb-lion-leave-01",
+          "tags": [
+            "lion",
+            "animal"
+          ],
+          "height_m": 1.0
+        },
+        {
+          "id": "bb-horse-01",
+          "tags": [
+            "horse",
+            "animal"
+          ],
+          "height_m": 1.6
+        },
+        {
+          "id": "bb-donkey-01",
+          "tags": [
+            "donkey",
+            "animal"
+          ],
+          "height_m": 1.2
+        }
+      ]
+    },
+    {
+      "id": "bb-animals-b",
+      "layer": "mid",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: animals, each a separate full-body animal: (1) a thin brown goat grazing, head down; (2) a black goat standing, looking up; (3) a white goat lying down; (4) two oxen side by side under a wooden yoke pulling a wooden seeder plow with a funnel on top, the plow included, 1.5 m high, 3.5 m long.",
+      "assets": [
+        {
+          "id": "bb-goat-graze-01",
+          "tags": [
+            "goat",
+            "animal"
+          ],
+          "height_m": 0.75
+        },
+        {
+          "id": "bb-goat-stand-01",
+          "tags": [
+            "goat",
+            "animal"
+          ],
+          "height_m": 0.8
+        },
+        {
+          "id": "bb-goat-lie-01",
+          "tags": [
+            "goat",
+            "animal"
+          ],
+          "height_m": 0.45
+        },
+        {
+          "id": "bb-oxen-seeder-plow-01",
+          "tags": [
+            "oxen",
+            "plow",
+            "seeder"
+          ],
+          "height_m": 1.5
+        }
+      ]
+    },
+    {
+      "id": "bb-lesson-props",
+      "layer": "prop",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: six separate objects: (1) a shallow clay milk bowl, 0.2 m wide; (2) a cloth food bundle tied with cord, 0.3 m; (3) a fat woven bag of barley seed, 0.5 m; (4) two tied barley sheaves leaning together, 0.9 m; (5) a stack of sun-dried mud bricks, 0.6 m; (6) a broken wooden spear in two pieces, 1.4 m.",
+      "assets": [
+        {
+          "id": "bb-milk-bowl-01",
+          "tags": [
+            "bowl",
+            "milk"
+          ],
+          "height_m": 0.12
+        },
+        {
+          "id": "bb-food-bundle-01",
+          "tags": [
+            "bundle",
+            "food"
+          ],
+          "height_m": 0.3
+        },
+        {
+          "id": "bb-seed-bag-01",
+          "tags": [
+            "bag",
+            "seed",
+            "barley"
+          ],
+          "height_m": 0.5
+        },
+        {
+          "id": "bb-sheaves-pair-01",
+          "tags": [
+            "sheaves",
+            "barley"
+          ],
+          "height_m": 0.9
+        },
+        {
+          "id": "bb-mudbrick-stack-01",
+          "tags": [
+            "mudbrick",
+            "bricks"
+          ],
+          "height_m": 0.6
+        },
+        {
+          "id": "bb-broken-spear-01",
+          "tags": [
+            "spear",
+            "broken"
+          ],
+          "height_m": 0.2
+        }
+      ]
+    },
+    {
+      "id": "bb-home-bands",
+      "layer": "band",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: (1) a dry old riverbed seen across from the side: a shallow hollow with cracked earth and pebbles along its bottom, 1 m high; (2) a newly dug irrigation channel with fresh earth banks and a thin stream of water in it, 0.8 m high; (3) a field of young green barley in rows, 0.5 m high; (4) ripe golden barley ready to cut, 1 m high.",
+      "assets": [
+        {
+          "id": "bb-dry-riverbed-strip-01",
+          "tags": [
+            "riverbed",
+            "dry",
+            "channel"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-new-channel-strip-01",
+          "tags": [
+            "channel",
+            "water",
+            "irrigation"
+          ],
+          "height_m": 0.8,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-young-barley-strip-01",
+          "tags": [
+            "barley",
+            "field",
+            "young"
+          ],
+          "height_m": 0.5,
+          "tileable_x": true
+        },
+        {
+          "id": "bb-ripe-barley-strip-01",
+          "tags": [
+            "barley",
+            "field",
+            "ripe"
+          ],
+          "height_m": 1,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "bb-village-mid",
+      "layer": "mid",
+      "subject": "Southern Mesopotamia c. 1750 BCE, the dry steppe west of the Euphrates and the farmland near Babylon: (1) a low half-built mud-brick house wall, 1.2 m high and 4 m long, bricks still drying beside it; (2) a small finished one-room mud-brick house with a flat reed-and-mud roof and a plain doorway, 2.6 m high; (3) a threshing floor of beaten earth with a heap of barley straw and grain, 0.8 m high.",
+      "assets": [
+        {
+          "id": "bb-half-wall-01",
+          "tags": [
+            "wall",
+            "mudbrick",
+            "building"
+          ],
+          "height_m": 1.2
+        },
+        {
+          "id": "bb-small-house-01",
+          "tags": [
+            "house",
+            "mudbrick",
+            "village"
+          ],
+          "height_m": 2.6
+        },
+        {
+          "id": "bb-threshing-floor-01",
+          "tags": [
+            "threshing",
+            "grain",
+            "straw"
+          ],
+          "height_m": 0.8
+        }
+      ]
+    }
+  ]
+}

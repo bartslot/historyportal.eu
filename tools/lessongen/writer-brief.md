@@ -34,6 +34,13 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
 - A scene set outside the lesson bundle's world gets its own `bundle` (e.g. `near-east-neolithic` for the
   Natufian/Nile/Uruk scenes of a Dutch prehistory lesson); its art and sound come from that bundle.
 - `camera`, `sound`: `null` (the director fills them).
+- Map scene (`kind: "map"`): the painted lesson map instead of the stage, to show WHERE it happens. No `set`,
+  `figures`, `balloons`, `camera` or `sound`; the usual `id`, `beat`, `narration`, `est_s`, `interaction`, `fact_refs`
+  (and `branch` inside a run). `map` holds at least one of: `labels` (`{name, lng, lat, kind?}`, kind city or camp
+  = dot + name, river or region = name only), `region` (`{name, highlight}`: `fertile-crescent`, or a polygon file
+  in `public/map-regions`), `route` (`[[lng, lat], ...]` in order, a dashed ink line); optional `camera`
+  (`{center: [lng, lat], zoom 1.6-8}`, about 4 for the whole Near East), else the map frames the labels and route.
+  Real coordinates from a real source. One map shot is enough to place the story; it times like any shot.
 
 ## Interactions (`interaction` on the scene after which it plays; one per scene at most)
 

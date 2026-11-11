@@ -27,6 +27,10 @@ use InvalidArgumentException;
  * is a run of 1-3 shots; its first shot carries branch_choice_label (from the question's labels) and
  * config.branch_effects, which StoryGameEngine applies once when the run ends.
  *
+ * A map scene (`kind: map`, lesson.schema.json $defs/map) becomes a scene of kind `map`: the painted lesson map
+ * (lesson-map.js) with the scene's labels, region, route and camera, narrated like a story scene and held for its
+ * length (timed), so a story plays on through it. It can be a shot of a branch run like any other scene.
+ *
  * Re-running with the same lesson id finds the lesson by topic `25d:<id>`; without $force it refuses,
  * because a rebuild throws away what a teacher changed.
  */
@@ -41,6 +45,12 @@ final class LessonImporter
 
     /** Fields of the director's scene that the stage reads; the rest stays in the lesson file. */
     private const STAGE_FIELDS = ['set', 'figures', 'camera', 'camera_more', 'motion', 'sound', 'narration_at_s', 'dur_s', 'beat'];
+
+    /** Named regions and region polygons live here (public/map-regions), as lesson-map.js draws them. */
+    private const MAP_REGIONS = 'map-regions';
+
+    /** Label kinds the lesson map draws with a dot (focus pins); river and region names are a label only. */
+    private const DOT_KINDS = ['city', 'camp'];
 
     /**
      * @param  array<string,mixed>  $lesson  the directed lesson
@@ -82,7 +92,9 @@ final class LessonImporter
             foreach ($lesson['scenes'] as $s) {
                 $branch = $game ? $this->branch($s, $previous, $labels, array_column($game['meters'], 'key')) : [];
                 $previous = $s;
-                $scene = $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch);
+                $scene = ($s['kind'] ?? 'story') === 'map'
+                    ? $this->mapScene($row, $s, $order++, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch)
+                    : $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch);
                 $report['scenes']++;
                 $report['branches'] += ($branch['branch_role'] ?? null) === 'question' ? 1 : 0;
                 if ($branch !== [] && is_array($s['interaction'] ?? null)) {
@@ -268,12 +280,127 @@ final class LessonImporter
             'status' => 'ready',
             'config' => ['stage25d' => $stage] + ($lines ? ['lines' => $lines] : []) + ($effects ? ['branch_effects' => $effects] : []),
         ]);
+
+        return $this->save($lesson, $scene, $s, $lang, $audioRoot, $dryRun, $report, $narration);
+    }
+
+    /**
+     * A map scene: config in the shape the player hands renderLessonMap (lesson-player.js _playMapScene).
+     * City and camp labels are focus pins (dot + name, the composer's annotations); river and region labels are
+     * place names without a dot (`labels`, all shown). No camera = the map frames the pins, labels and route.
+     *
+     * @param  array<string,mixed>  $s
+     * @param  array<string,mixed>  $report
+     * @param  array<string,mixed>  $narration
+     * @param  array<string,mixed>  $branch
+     */
+    private function mapScene(Lesson $lesson, array $s, int $order, string $lang, ?string $audioRoot, bool $dryRun, array &$report, array $narration = [], array $branch = []): Scene
+    {
+        $id = (string) ($s['id'] ?? "s{$order}");
+        $spec = is_array($s['map'] ?? null) ? $s['map'] : [];
+        $annotations = [];
+        $names = [];
+        foreach ((array) ($spec['labels'] ?? []) as $label) {
+            $point = $this->lngLat([$label['lng'] ?? null, $label['lat'] ?? null]);
+            $name = trim((string) ($label['name'] ?? ''));
+            if ($point === null || $name === '') {
+                $report['warnings'][] = "{$id}: map label without a name or a place on earth skipped";
+
+                continue;
+            }
+            if (in_array($label['kind'] ?? 'city', self::DOT_KINDS, true)) {
+                $annotations[] = ['type' => 'focus', 'lng' => $point[0], 'lat' => $point[1], 'label' => $name, 'historical' => null, 'capital' => false];
+            } else {
+                $names[] = ['text' => $name, 'lng' => $point[0], 'lat' => $point[1]];
+            }
+        }
+        $route = array_values(array_filter(array_map(fn ($p) => is_array($p) ? $this->lngLat($p) : null, (array) ($spec['route'] ?? []))));
+        $camera = $spec['camera'] ?? null;
+        $center = is_array($camera) ? $this->lngLat((array) ($camera['center'] ?? [])) : null;
+        $duration = (int) ceil(max((float) ($s['dur_s'] ?? 0), (float) ($s['tts_s'] ?? 0), (float) ($s['est_s'] ?? 0), 3.0));
+
+        $effects = $branch['branch_effects'] ?? null;
+        unset($branch['branch_effects']);
+        $scene = new Scene($branch + [
+            'lesson_id' => $lesson->id,
+            'order' => $order,
+            'kind' => 'map',
+            'script_segment' => trim((string) ($s['narration'] ?? '')),
+            'location' => $s['where_when'] ?? null,
+            'chapter_name' => $s['chapter'] ?? null,
+            'duration_seconds' => $duration,
+            'status' => 'ready',
+            'config' => array_filter([
+                'projection' => 'mercator',
+                // the story goes on by itself: the map holds for the narration, no Continue button
+                'playback_mode' => 'timed',
+                'hold_seconds' => $duration,
+                'annotations' => $annotations,
+                'labels' => $names,
+                'region' => $this->region($spec['region'] ?? null, $id, $report),
+                'route' => count($route) >= 2 ? $route : null,
+                'camera' => $center !== null && is_numeric($camera['zoom'] ?? null)
+                    ? ['center' => $center, 'zoom' => max(1.6, min(8.0, (float) $camera['zoom']))] : null,
+                'fit' => $center === null ? 'labels' : null,
+                'branch_effects' => $effects,
+            ], fn ($v) => $v !== null && $v !== []),
+        ]);
+
+        return $this->save($lesson, $scene, $s, $lang, $audioRoot, $dryRun, $report, $narration);
+    }
+
+    /**
+     * @param  array<mixed>  $p  [lng, lat]
+     * @return array{0:float,1:float}|null
+     */
+    private function lngLat(array $p): ?array
+    {
+        [$lng, $lat] = array_values($p) + [null, null];
+        if (! is_numeric($lng) || ! is_numeric($lat) || abs((float) $lng) > 180 || abs((float) $lat) > 85) {
+            return null;
+        }
+
+        return [round((float) $lng, 4), round((float) $lat, 4)];
+    }
+
+    /**
+     * The region as the map reads it: its name and the URL of its polygon in public/map-regions.
+     * 'fertile-crescent' and 'fertile-crescent.geojson' name the same file; a missing file is a warning, no region.
+     *
+     * @param  array<string,mixed>  $report
+     * @return array{name:string,url:string}|null
+     */
+    private function region(mixed $raw, string $id, array &$report): ?array
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        $file = preg_replace('/\.geojson$/', '', (string) ($raw['highlight'] ?? '')).'.geojson';
+        if (! preg_match('/^[a-z0-9-]+\.geojson$/', $file) || ! is_file(public_path(self::MAP_REGIONS.'/'.$file))) {
+            $report['warnings'][] = "{$id}: map region '".($raw['highlight'] ?? '')."' has no polygon in public/".self::MAP_REGIONS;
+
+            return null;
+        }
+
+        return ['name' => trim((string) ($raw['name'] ?? '')), 'url' => '/'.self::MAP_REGIONS.'/'.$file];
+    }
+
+    /**
+     * Save a scene and give it the narrator's recording (story and map scenes alike).
+     *
+     * @param  array<string,mixed>  $s
+     * @param  array<string,mixed>  $report
+     * @param  array<string,mixed>  $narration
+     */
+    private function save(Lesson $lesson, Scene $scene, array $s, string $lang, ?string $audioRoot, bool $dryRun, array &$report, array $narration): Scene
+    {
         if ($dryRun) {
             $report['audio'] += $this->recording($audioRoot, $s) !== null ? 1 : 0;
 
             return $scene;
         }
         $scene->save();
+        $script = (string) $scene->script_segment;
         $src = $this->recording($audioRoot, $s);
         if ($src !== null) {
             $path = "lessons/{$lesson->id}/scenes/{$scene->id}/narration.".pathinfo($src, PATHINFO_EXTENSION);
@@ -283,7 +410,7 @@ final class LessonImporter
                 'audio_provider' => $narration['provider'] ?? null, 'audio_voice' => $narration['voice'] ?? null]);
             $report['audio']++;
         } elseif ($script !== '' && $audioRoot !== null) {
-            $report['warnings'][] = "{$stage['id']}: no recording at {$audioRoot}/".($s['audio'] ?? '?');
+            $report['warnings'][] = ($s['id'] ?? '?').": no recording at {$audioRoot}/".($s['audio'] ?? '?');
         }
 
         return $scene;

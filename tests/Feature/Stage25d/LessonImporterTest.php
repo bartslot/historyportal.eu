@@ -221,6 +221,88 @@ class LessonImporterTest extends TestCase
         $this->assertContains('sc03: choice interaction without a branch (the player has no dilemma card; a branch plays it)', $r['skipped']);
     }
 
+    /** sc01, a Fertile Crescent overview (narrated), sc02 (+ its quiz), a route from the steppe to Babylon, sc03. */
+    private function lessonWithMaps(): array
+    {
+        $lesson = $this->lesson();
+        $map = fn (string $id, array $spec, ?string $audio = null) => [
+            'id' => $id, 'kind' => 'map', 'beat' => 'setup', 'narration' => 'Kijk naar de groene band.', 'est_s' => 8,
+            'tts_s' => 6.4, 'audio' => $audio, 'interaction' => null, 'fact_refs' => ['s1'], 'map' => $spec,
+        ];
+        file_put_contents("{$this->audio}/mini/sc04.mp3", 'ID3fake');
+        array_splice($lesson['scenes'], 1, 0, [$map('sc04', [
+            'labels' => [['name' => 'Babylon', 'lng' => 44.42, 'lat' => 32.54], ['name' => 'Eufraat', 'lng' => 40.5, 'lat' => 35.0, 'kind' => 'river']],
+            'region' => ['name' => 'Vruchtbare Halvemaan', 'highlight' => 'fertile-crescent'],
+            'camera' => ['center' => [40.5, 32.5], 'zoom' => 4.2],
+        ], 'mini/sc04.mp3')]);
+        array_splice($lesson['scenes'], 3, 0, [$map('sc05', [
+            'labels' => [['name' => 'Ons kamp', 'lng' => 39.0, 'lat' => 34.0, 'kind' => 'camp'], ['name' => 'Babylon', 'lng' => 44.42, 'lat' => 32.54]],
+            'route' => [[39.0, 34.0], [41.5, 33.6], [44.42, 32.54]],
+        ])]);
+
+        return $lesson;
+    }
+
+    public function test_a_map_scene_becomes_a_narrated_lesson_map_scene_in_order(): void
+    {
+        $r = app(LessonImporter::class)->import($this->lessonWithMaps(), User::factory()->create(), $this->audio);
+
+        $scenes = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get();
+        $this->assertSame(['stage25d', 'map', 'stage25d', 'game', 'map', 'stage25d'], $scenes->pluck('kind')->all());
+
+        $overview = $scenes[1];
+        $this->assertSame('Kijk naar de groene band.', $overview->script_segment);
+        $this->assertSame('lessons/'.$overview->lesson_id."/scenes/{$overview->id}/narration.mp3", $overview->audio_path);
+        Storage::disk('public')->assertExists($overview->audio_path);
+        $this->assertSame(8, $overview->duration_seconds);
+        // assertEquals: the JSON column gives 35.0 back as 35
+        $this->assertEquals([
+            'projection' => 'mercator',
+            'playback_mode' => 'timed',
+            'hold_seconds' => 8,
+            'annotations' => [['type' => 'focus', 'lng' => 44.42, 'lat' => 32.54, 'label' => 'Babylon', 'historical' => null, 'capital' => false]],
+            'labels' => [['text' => 'Eufraat', 'lng' => 40.5, 'lat' => 35.0]],
+            'region' => ['name' => 'Vruchtbare Halvemaan', 'url' => '/map-regions/fertile-crescent.geojson'],
+            'camera' => ['center' => [40.5, 32.5], 'zoom' => 4.2],
+        ], $overview->config);
+        $this->assertFileExists(public_path('map-regions/fertile-crescent.geojson'));
+
+        $route = $scenes[4]->config;
+        $this->assertEquals([[39.0, 34.0], [41.5, 33.6], [44.42, 32.54]], $route['route']);
+        $this->assertSame('labels', $route['fit'], 'no camera: the map frames the pins and the route');
+        $this->assertSame(['Ons kamp', 'Babylon'], array_column($route['annotations'], 'label'), 'a camp gets a dot like a city');
+        $this->assertArrayNotHasKey('region', $route);
+        $this->assertNull($scenes[4]->audio_path);
+    }
+
+    public function test_a_map_scene_with_an_unknown_region_is_imported_without_it_and_warned(): void
+    {
+        $lesson = $this->lessonWithMaps();
+        $lesson['scenes'][1]['map']['region']['highlight'] = 'atlantis';
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $this->assertContains("sc04: map region 'atlantis' has no polygon in public/map-regions", $r['warnings']);
+        $overview = Lesson::findOrFail($r['lesson_id'])->scenes()->where('kind', 'map')->orderBy('order')->firstOrFail();
+        $this->assertArrayNotHasKey('region', $overview->config);
+    }
+
+    public function test_a_map_scene_can_be_a_shot_of_a_branch_run(): void
+    {
+        $lesson = $this->branchedLesson();
+        $lesson['scenes'][2] = ['id' => 'sc11', 'kind' => 'map', 'beat' => 'setup', 'narration' => 'Ze trekken naar het westen.', 'est_s' => 7,
+            'interaction' => null, 'fact_refs' => ['s1'], 'branch' => $lesson['scenes'][2]['branch'],
+            'map' => ['route' => [[39.0, 34.0], [44.42, 32.54]]]];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $a1 = Lesson::findOrFail($r['lesson_id'])->scenes()->where('branch_role', 'option_a')->orderBy('order')->firstOrFail();
+        $this->assertSame('map', $a1->kind);
+        $this->assertSame(1, $a1->branch_group);
+        $this->assertSame('Trek de steen', $a1->branch_choice_label);
+        $this->assertSame(['moed' => 10, 'voedsel' => -5], $a1->config['branch_effects']['deltas']);
+    }
+
     public function test_a_plain_scene_is_not_a_stage_scene(): void
     {
         $this->assertFalse((new Scene(['kind' => 'narration', 'config' => []]))->isStage25d());
