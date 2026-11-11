@@ -477,45 +477,59 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['grass' => 0.2, 'grassSway' => 1, 'groundGrain' => 0.5], $scene->fresh()->config['stage25d']['look']);
     }
 
-    public function test_a_world_moves_inside_its_range_and_its_file_is_never_the_teachers_to_set(): void
+    public function test_a_world_brings_its_sky_terrain_and_backdrop_and_keeps_the_teachers_layers(): void
     {
+        config(['worlds' => [
+            'heath' => ['label' => 'Heath', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/heath.webp', 'set' => [
+                'sky' => 'sky-overcast-01', 'groundSlots' => [['asset' => 'terrain-heath-02', 'from_m' => 0]],
+                'groundBands' => [['asset' => 'meadow-band-01', 'z' => 30]],
+                'layers' => [['asset' => 'trb-forest-backdrop-01', 'depth' => 'bg', 'x' => 0.5]],
+            ]],
+            'meadow' => ['label' => 'Meadow', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/meadow.webp', 'set' => [
+                'sky' => 'sky-summer-01', 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]],
+                'layers' => [['asset' => 'bg-farmland-01', 'depth' => 'bg', 'x' => 0.5]],
+            ]],
+            'sea' => ['label' => 'Sea', 'bundle' => 'tasman-1642', 'thumb' => 'worlds/sea.webp', 'set' => [
+                'sky' => 'sky-storm-01', 'groundSlots' => [['asset' => 'sea-terrain-rough-02', 'from_m' => 0]], 'layers' => [],
+            ]],
+        ]]);
         $scene = $this->scene();
-        $editor = $this->editor($scene);
-        $editor->call('saveStage25dWorld', 'y', -1.5, $scene->id);
-        $this->assertArrayNotHasKey('world', $scene->fresh()->config['stage25d'], 'no world: nothing to move');
-
         $config = $scene->config;
-        $config['stage25d']['world'] = ['src' => '/storage/worlds/valley.spz'];
+        $config['stage25d']['world'] = ['src' => '/worlds/valley.spz'];   // an old splat world goes when a world is picked
         $scene->update(['config' => $config]);
-        $this->editor($scene)->call('saveStage25dWorld', 'y', -1.5, $scene->id)
-            ->call('saveStage25dWorld', 'scale', 900, $scene->id)
-            ->call('saveStage25dWorld', 'src', 'https://evil.example/x.spz', $scene->id)
-            ->call('saveStage25dWorld', 'rot', 'NaN', $scene->id)
-            ->call('saveStage25dWorld', 'x', 3, $scene->id + 1);
-
-        $this->assertEquals(['src' => '/storage/worlds/valley.spz', 'y' => -1.5, 'scale' => 50], $scene->fresh()->config['stage25d']['world']);
-    }
-
-    public function test_a_teacher_picks_a_world_from_the_library_and_only_from_the_library(): void
-    {
-        $scene = $this->scene();
         $editor = $this->editor($scene);
-        $editor->assertSeeHtml('data-world-pick="valley"');
+        $editor->assertSeeHtml('data-world-pick="heath"');
 
-        $editor->call('pickStage25dWorld', 'valley', $scene->id);
-        $this->assertEquals(['src' => '/worlds/valley.spz', 'y' => -1.0, 'z' => 8.0, 'scale' => 4.0], $scene->fresh()->config['stage25d']['world'], 'it starts where the library lines it up');
+        $editor->call('pickStage25dWorld', 'heath', $scene->id);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertSame('heath', $stage['world_id']);
+        $this->assertArrayNotHasKey('world', $stage);
+        $this->assertSame('sky-overcast-01', $stage['set']['sky']);
+        $this->assertSame('terrain-heath-02', $stage['set']['groundSlots'][0]['asset']);
+        $this->assertSame('meadow-band-01', $stage['set']['groundBands'][0]['asset']);
+        $this->assertSame(['trb-forest-backdrop-01', 'stone-chamber-01'], array_column($stage['set']['layers'], 'asset'), 'the world behind, the teacher\'s layer kept');
+        $this->assertTrue($stage['set']['layers'][0]['world']);
 
-        $editor->call('saveStage25dWorld', 'y', 2, $scene->id)
+        $editor->call('pickStage25dWorld', 'meadow', $scene->id);
+        $set = $scene->fresh()->config['stage25d']['set'];
+        $this->assertSame(['bg-farmland-01', 'stone-chamber-01'], array_column($set['layers'], 'asset'), 'the last world\'s pieces go');
+        $this->assertArrayNotHasKey('groundBands', $set);
+
+        $editor->call('pickStage25dWorld', 'sea', $scene->id)
+            ->call('pickStage25dWorld', 'meadow.set', $scene->id)
             ->call('pickStage25dWorld', '../../etc/passwd', $scene->id)
-            ->call('pickStage25dWorld', 'https://evil.example/x.spz', $scene->id)
-            ->call('pickStage25dWorld', '', $scene->id + 1);
-        $this->assertEquals(['src' => '/worlds/valley.spz', 'y' => 2, 'z' => 8.0, 'scale' => 4.0], $scene->fresh()->config['stage25d']['world'], 'not in the library, or another scene: nothing changes');
-
-        $editor->call('pickStage25dWorld', 'farmland', $scene->id);
-        $this->assertEquals(['src' => '/worlds/farmland.spz', 'painted' => true], $scene->fresh()->config['stage25d']['world'], 'a world lifted from our own painting says so: the paint grade leaves it alone');
+            ->call('pickStage25dWorld', 'heath', $scene->id + 1);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertSame(['meadow', 'nl-prehistory'], [$stage['world_id'], $stage['bundle']], 'another period with the teacher\'s layers, no such world, or another scene: nothing changes');
 
         $editor->call('pickStage25dWorld', '', $scene->id);
-        $this->assertArrayNotHasKey('world', $scene->fresh()->config['stage25d']);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertArrayNotHasKey('world_id', $stage);
+        $this->assertSame(['stone-chamber-01'], array_column($stage['set']['layers'], 'asset'), 'None takes the world away and keeps the rest');
+        $this->assertSame('sky-summer-01', $stage['set']['sky'], 'the sky and terrain stay: a scene always has them');
+
+        $editor->call('deleteObject', 's25_layer-0')->call('pickStage25dWorld', 'sea', $scene->id);
+        $this->assertSame(['tasman-1642', 'sea'], [$scene->fresh()->config['stage25d']['bundle'], $scene->fresh()->config['stage25d']['world_id']], 'an empty scene may take a world from another period');
     }
 
     public function test_the_ground_the_sky_and_the_camera_are_never_copied_or_deleted(): void

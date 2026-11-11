@@ -910,19 +910,15 @@ export async function createStage25d (host, opts = {}) {
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
-    /** The world's placement, for the World section: null when the scene has none. */
+    /** The World section: which ready-made world is on (config/worlds.php key), the scene's period library, and how many
+     *  layers the teacher placed (a world from another period only goes on a scene with none). */
     worldInfo () {
-      return cfg?.world?.src ? { ...WORLD_PLACE_DEFAULTS, ...cfg.world } : null
+      return cfg ? { key: cfg.world_id ?? null, bundle: cfg.bundle ?? null, own: layers.filter((l) => !l.world).length } : null
     },
-    /** Put a library world under the scene (src) or take it away (null): live, and saved by its key (onWorldPick). */
-    async pickWorld (key, src, place = null) {
-      if (!cfg) return
-      const keep = hidden
-      await api.show({ ...cfg, look: lookNow, set: liveSet(), world: src ? { ...(place ?? {}), src } : null })
-      hidden = keep
-      redraw()
+    /** Put a ready-made world under the scene, or take it away (''): the server writes its parts into the scene
+     *  (EditsStage25d pickStage25dWorld) and the stage rebuilds from the saved scene. */
+    pickWorld (key) {
       if (api.sceneId != null) opts.onWorldPick?.(key ?? '', api.sceneId)
-      window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** Move the world: live on the stage, saved on the scene (onWorld). */
     setWorld (patch) {

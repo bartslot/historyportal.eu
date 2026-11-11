@@ -261,47 +261,49 @@ trait EditsStage25d
         'worldReveal' => [0, 20], 'worldPaint' => [0, 1],
     ];
 
-    /** Where a splat world may sit (config.stage25d.world): metres, a size factor, degrees. */
-    private const WORLD_RANGES = ['x' => [-200, 200], 'y' => [-50, 50], 'z' => [-200, 200], 'scale' => [0.05, 50], 'rot' => [-180, 180]];
-
-    /** One placement value of the scene's splat world. Never its file: that is not the teacher's to point anywhere. */
-    #[On('stage25d:world')]
-    public function saveStage25dWorld(string $key, mixed $value, int $sceneId): void
-    {
-        $scene = $this->stage25dScene();
-        if (! $scene || $scene->id !== $sceneId || ! isset(self::WORLD_RANGES[$key]) || ! is_numeric($value) || ! is_finite((float) $value)) {
-            return;
-        }
-        $config = $scene->config;
-        if (empty($config['stage25d']['world']['src'])) {
-            return;
-        }
-        [$min, $max] = self::WORLD_RANGES[$key];
-        $config['stage25d']['world'][$key] = max($min, min($max, (float) $value));
-        $scene->update(['config' => $config]);
-        $this->selectedScene['config']['stage25d']['world'][$key] = $config['stage25d']['world'][$key];
-    }
-
-    /** Put a world from the library (config/worlds.php) under the scene, or take it away (''). A new world starts at
-     *  its own place: the last one's placement was for a different world. */
+    /**
+     * Put a ready-made world (config/worlds.php) under the scene, or take the world away (''). A world brings its sky,
+     * terrain, ground strips and the backdrop and screens standing in it; every layer the teacher placed stays. Its
+     * layers are marked world: true, so the next pick (or None) knows which to take away. A world from another
+     * period's library only goes on a scene with no layers of its own: those pictures would not load there.
+     */
     #[On('stage25d:world-pick')]
     public function pickStage25dWorld(string $world, int $sceneId): void
     {
         $scene = $this->stage25dScene();
-        $file = config("worlds.{$world}.file");
-        if (! $scene || $scene->id !== $sceneId || ($world !== '' && ! is_string($file))) {
+        $preset = $world === '' ? null : (config('worlds', [])[$world] ?? null);   // the exact key: a dotted one must not reach inside
+        if (! $scene || $scene->id !== $sceneId || ($world !== '' && ! is_array($preset))) {
             return;
         }
         $config = $scene->config;
-        if ($world === '') {
-            unset($config['stage25d']['world']);
-        } else {
-            $place = array_intersect_key((array) config("worlds.{$world}.place", []), self::WORLD_RANGES);
-            $config['stage25d']['world'] = ['src' => '/'.$file] + array_map('floatval', $place)
-                + (config("worlds.{$world}.painted") ? ['painted' => true] : []);
+        $stage = $config['stage25d'];
+        $set = $stage['set'] ?? ['layers' => []];
+        $own = array_values(array_filter($set['layers'] ?? [], fn ($l) => empty($l['world'])));
+        if ($preset !== null && ($preset['bundle'] ?? '') !== ($stage['bundle'] ?? '') && $own !== []) {
+            return;
         }
-        $scene->update(['config' => $config]);
-        $this->selectedScene['config']['stage25d'] = $config['stage25d'];
+        unset($stage['world']);   // a splat world (no longer offered) goes too
+        if ($preset === null) {
+            unset($set['groundBands'], $stage['world_id']);
+            $set['layers'] = $own;
+        } else {
+            $parts = $preset['set'];
+            $stage['bundle'] = $preset['bundle'];
+            $stage['world_id'] = $world;
+            unset($set['ground'], $set['groundBands'], $set['skyLayer']);
+            $set = ['sky' => $parts['sky'], 'groundSlots' => $parts['groundSlots']]
+                + (empty($parts['groundBands']) ? [] : ['groundBands' => $parts['groundBands']]) + $set;
+            $set['layers'] = [...array_map(fn ($l) => $l + ['world' => true], $parts['layers'] ?? []), ...$own];
+            // a world may set a look value it needs (calm water strews no foam): only keys the panel offers, in range
+            foreach (array_intersect_key((array) ($preset['look'] ?? []), self::LOOK_RANGES) as $key => $value) {
+                [$min, $max] = self::LOOK_RANGES[$key];
+                $stage['look'][$key] = max($min, min($max, (float) $value));
+            }
+        }
+        $stage['set'] = $set;
+        $config['stage25d'] = $stage;
+        $this->storeStage25dConfig($scene, $config);
+        $this->selectSceneInternal($scene->id);   // the stage rebuilds from the scene as saved (scene:load)
     }
 
     /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */

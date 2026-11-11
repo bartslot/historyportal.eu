@@ -2743,5 +2743,16 @@
     "Farmland": "Akkerland",
     "Terrain": "Terrein",
     "Add terrain layer": "Terreinlaag toevoegen",
-    "Repeat": "Herhalen"
+    "Repeat": "Herhalen",
+    "Another period: only on a scene without layers": "Andere periode: alleen in een scène zonder lagen",
+    "Stormy sea": "Stormachtige zee",
+    "Calm sea": "Kalme zee",
+    "Forest edge": "Bosrand",
+    "Heath": "Heide",
+    "Polder": "Polder",
+    "Dunes": "Duinen",
+    "Alpine pass": "Alpenpas",
+    "Mesopotamian fields": "Mesopotamische akkers",
+    "Euphrates": "Eufraat",
+    "Desert": "Woestijn"
 }

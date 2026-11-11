@@ -2701,5 +2701,16 @@
     "Farmland": "Terres cultivées",
     "Terrain": "Terrain",
     "Add terrain layer": "Ajouter une couche de terrain",
-    "Repeat": "Répéter"
+    "Repeat": "Répéter",
+    "Another period: only on a scene without layers": "Autre époque : seulement dans une scène sans calques",
+    "Stormy sea": "Mer agitée",
+    "Calm sea": "Mer calme",
+    "Forest edge": "Lisière de forêt",
+    "Heath": "Lande",
+    "Polder": "Polder",
+    "Dunes": "Dunes",
+    "Alpine pass": "Col alpin",
+    "Mesopotamian fields": "Champs de Mésopotamie",
+    "Euphrates": "Euphrate",
+    "Desert": "Désert"
 }

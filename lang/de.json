@@ -2701,5 +2701,16 @@
     "Farmland": "Ackerland",
     "Terrain": "Gelände",
     "Add terrain layer": "Geländeebene hinzufügen",
-    "Repeat": "Wiederholen"
+    "Repeat": "Wiederholen",
+    "Another period: only on a scene without layers": "Andere Epoche: nur in einer Szene ohne Ebenen",
+    "Stormy sea": "Stürmische See",
+    "Calm sea": "Ruhige See",
+    "Forest edge": "Waldrand",
+    "Heath": "Heide",
+    "Polder": "Polder",
+    "Dunes": "Dünen",
+    "Alpine pass": "Alpenpass",
+    "Mesopotamian fields": "Mesopotamische Felder",
+    "Euphrates": "Euphrat",
+    "Desert": "Wüste"
 }

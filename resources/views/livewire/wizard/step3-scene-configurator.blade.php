@@ -1494,9 +1494,8 @@
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
             /** Put a library world under the scene, or none: live, and saved. */
-            async pickWorld(key, src, place) { await window.__stage25d?.pickWorld?.(key, src, place); this.sync(); },
-            /** Move the splat world: live, and saved. */
-            setWorld(key, value) { if (!this.world || !Number.isFinite(value)) return; this.world[key] = value; window.__stage25d?.setWorld?.({ [key]: value }); },
+            /** A ready-made world under the scene, or none (''): the server writes it, the stage rebuilds from the scene. */
+            pickWorld(key) { window.__stage25d?.pickWorld?.(key); },
             /** Frame the start or the end of the camera move on the canvas. */
             frame(end) { this.camEnd = end; window.__timelineKeying?.seekTo?.(end); this.sync(); },
             /** Draw the camera preview again once the start or end has settled (at once the first time). */
