@@ -364,7 +364,7 @@ class StageEditingTest extends TestCase
         $this->assertSame(['tree-birch-01', 'tree-birch-01'], array_column($scene->fresh()->config['stage25d']['set']['layers'], 'asset'));
 
         $editor->call('deleteObject', 's25_layer-0')->call('deleteObject', 's25_layer-0');
-        $this->assertCount(1, $scene->fresh()->config['stage25d']['set']['layers'], 'the last layer stays');
+        $this->assertCount(0, $scene->fresh()->config['stage25d']['set']['layers'], 'the last layer goes too: the scene keeps its sky and terrain');
     }
 
     public function test_a_layer_moves_to_another_depth_but_the_sky_and_unknown_depths_stay(): void

@@ -838,6 +838,14 @@ export async function createStage25d (host, opts = {}) {
     async addLayer (assetId, at = null) {
       const a = assets.get(assetId)
       if (!a) return
+      // a scene has one sky and one terrain: their pictures replace, never stack as a layer (Bart 11-11: "sky autumn is
+      // added here as not a replacement of the sky element")
+      if (a.layer === 'sky') { await api.swapAsset('sky', assetId); api.select('sky'); return }
+      if (a.layer === 'ground') {
+        if (terrainSlot()) await api.swapAsset('terrain', assetId)
+        else { await api.setGroundSlots([{ asset: assetId, from_m: 0 }]); api.select('terrain') }
+        return
+      }
       // a character without a drop point stands near enough to read (fg), a step beside the ones added before it
       const depth = ['mid', 'fg', 'near', 'bg', 'sky'].includes(a.layer) ? a.layer : a.layer === 'figure' ? 'fg' : a.layer === 'cloud' ? 'sky' : 'mid'
       const beside = at ? 0 : layers.filter((l) => l.asset === assetId).length
