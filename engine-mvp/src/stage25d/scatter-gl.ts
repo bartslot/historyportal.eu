@@ -15,7 +15,7 @@ Effect.ShadersStore.stageStrewnVertexShader = `
   uniform vec3 camPos;
   uniform float time, sway, land;
   varying vec2 vUV;
-  varying float vUp, vDist;
+  varying float vUp, vDist, vAcross;
   varying vec3 vFoot;
   // layout.ts groundHeight (GLSL twin): the floor rises onto the far landscape's land line from 22 m to 70 m
   float groundY(float z) {
@@ -28,20 +28,23 @@ Effect.ShadersStore.stageStrewnVertexShader = `
     float up = quad.y;
     float bend = sway * 0.05 * quad.z * up * up * (0.6 * sin(time * 1.3 + extra.x) + 0.4 * sin(time * 2.1 + extra.x * 1.7));
     vec3 p = position + right * (quad.x * quad.w + bend) + vec3(0.0, up * quad.z + groundY(position.z), 0.0);
-    vUV = uv; vUp = up; vFoot = extra.yzw; vDist = length(to);
+    vUV = uv; vUp = up; vAcross = quad.x + 0.5; vFoot = extra.yzw; vDist = length(to);
     gl_Position = viewProjection * vec4(p, 1.0);
   }`
 
 Effect.ShadersStore.stageStrewnFragmentShader = `
   precision highp float;
   varying vec2 vUV;
-  varying float vUp, vDist;
+  varying float vUp, vDist, vAcross;
   varying vec3 vFoot;
   uniform sampler2D tex;
   uniform vec3 haze;
   uniform float opacity;
   void main(void) {
     vec4 c = texture2D(tex, vUV);   // premultiplied
+    // a clump cut from its sheet can run into the cell's border: fade the sides and top so it never ends on a
+    // straight line (Bart 11-11: "many sprites of plants with hard edges"); the foot fades a little into its ground
+    c *= smoothstep(0.0, 0.1, vAcross) * smoothstep(0.0, 0.1, 1.0 - vAcross) * smoothstep(0.0, 0.1, 1.0 - vUp) * smoothstep(0.0, 0.05, vUp);
     if (c.a < 0.01) discard;
     // the foot sinks into the ground it stands on, the far ones go toward the horizon's colour
     float foot = (1.0 - smoothstep(0.0, 0.3, vUp)) * 0.65;
