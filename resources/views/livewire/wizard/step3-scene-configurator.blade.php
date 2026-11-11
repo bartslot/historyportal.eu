@@ -3305,8 +3305,17 @@
             src: '',
             base: @js(route('lesson.play', ['lessonCode' => $lesson->lesson_code]).'?embed=1&autoplay=1&scene_id='),
             init() { if (this.open) this.openAt($wire.selectedSceneId) },
-            openAt(id) { this.src = this.base + encodeURIComponent(id ?? ''); this.open = true },
-            close() { this.open = false; this.src = '' },
+            // The frame is built here, not by <template x-if>: inside wire:ignore a morph can leave an x-if copy behind
+            // and draw another, and two players is two voices (thumb-size, 11-11). replaceChildren holds one at most.
+            openAt(id) {
+                this.src = this.base + encodeURIComponent(id ?? '');
+                this.open = true;
+                const frame = Object.assign(document.createElement('iframe'), { src: this.src, title: @js(__('Play the lesson')), className: 'h-full w-full border-0' });
+                frame.allow = 'autoplay; fullscreen';
+                frame.addEventListener('load', () => this.watchEsc(frame));
+                this.$refs.frameHost.replaceChildren(frame);
+            },
+            close() { this.open = false; this.src = ''; this.$refs.frameHost?.replaceChildren() },
             watchEsc(frame) {
                 try { frame.contentWindow.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close() }) } catch (_) {}
                 frame.focus()
@@ -3317,10 +3326,7 @@
          x-show="open" x-cloak wire:ignore
          data-play-overlay data-play-open="{{ $playOnOpen ? '1' : '0' }}"
          class="fixed inset-0 z-[300] bg-black" role="dialog" aria-modal="true" aria-label="{{ __('Play the lesson') }}">
-        <template x-if="open && src">
-            <iframe :src="src" x-on:load="watchEsc($el)" allow="autoplay; fullscreen"
-                    class="h-full w-full border-0" title="{{ __('Play the lesson') }}"></iframe>
-        </template>
+        <div x-ref="frameHost" class="h-full w-full" data-play-frame-host></div>
         <button type="button" x-on:click="close()" data-play-close
                 class="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
                 data-tooltip="{{ __('Close') }}" aria-label="{{ __('Close') }}">

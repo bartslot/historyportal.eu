@@ -77,17 +77,16 @@
 
     </div>
 
-    <template x-if="words.length > 0">
-        <p class="leading-relaxed text-sm">
-            <template x-for="(word, idx) in words" :key="`${word}-${idx}`">
-                <span
-                    class="transition-opacity duration-100"
-                    :class="idx === activeWordIndex ? 'opacity-100 text-primary' : 'opacity-80 text-slate-300'"
-                    x-text="`${word} `"
-                ></span>
-            </template>
-        </p>
-    </template>
+    {{-- x-show, not <template x-if>: inside wire:ignore a morph can leave x-if's copy behind and draw another (thumb-size, 11-11). --}}
+    <p class="leading-relaxed text-sm" x-show="words.length > 0">
+        <template x-for="(word, idx) in words" :key="`${word}-${idx}`">
+            <span
+                class="transition-opacity duration-100"
+                :class="idx === activeWordIndex ? 'opacity-100 text-primary' : 'opacity-80 text-slate-300'"
+                x-text="`${word} `"
+            ></span>
+        </template>
+    </p>
 
     <p x-show="error" x-text="errorMessage" class="text-xs text-error"></p>
     <audio
