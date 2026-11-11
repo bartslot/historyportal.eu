@@ -23,7 +23,7 @@ Effect.ShadersStore.stageGroundVertexShader = `
 
 /** Slots 1..5 of the floor (slot 0 is `tex`): each one's own sampler, blended in over a noise-broken border. */
 const SLOT_GLSL = [1, 2, 3, 4, 5].map((i) => `
-    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}], slotPersp[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); }`).join('')
+    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}], slotPersp[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); pp = mix(pp, slotPersp[${i}], k${i}); }`).join('')
 
 Effect.ShadersStore.stageGroundFragmentShader = `
   precision highp float;
@@ -49,7 +49,9 @@ Effect.ShadersStore.stageGroundFragmentShader = `
       vec4 cl = houseVP * vec4(vW.x, 0.0, vW.z, 1.0);
       vec2 n = cl.xy / max(cl.w, 1e-4);
       float v = clamp((n.y + 1.0) / max(houseTop + 1.0, 1e-3), 0.0, 1.0);
-      return tileAt(t, vec2((n.x * 0.5 + 0.5) * abs(tl), 1.0 - v));
+      // read sharp: tileAt's blurred mip mix hides a small tile's repeats, but on a painting it is only smear
+      // (Bart 11-11: "all these terrain layers look very blurry")
+      return texture2D(t, vec2((n.x * 0.5 + 0.5) * abs(tl), 1.0 - v)).rgb;
     }
     // the picture's top row lies FAR from the camera (textures load top row first, invertY false): a tuft drawn
     // standing reads standing, not upside down (Bart 11-10: "the floor is flipped"). A negative tl (a slot the teacher
@@ -68,10 +70,11 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   void main(void) {
     float d = distance(vW.xz, camPos.xz);
     vec3 c = base, own = base;
+    float pp = 0.0;   // how much of this pixel is a perspective painting (it does its own distance)
     if (useTex > 0.5) {
       // near to far, each ground picture from its distance on (set.groundSlots), the borders broken by a world noise
       float dn = d * (1.0 + 0.35 * (fbm(vW.xz * 0.05 + 3.0) - 0.5));
-      c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0];${SLOT_GLSL}
+      c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0]; pp = slotPersp[0];${SLOT_GLSL}
     }
     // low-frequency value and hue drift over the field (vary), the way a hand wash is never even
     c *= 1.0 + vary * 0.32 * (fbm(vW.xz * 0.022) - 0.5);
@@ -82,7 +85,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
     c *= 1.0 - grain * wash * 2.0 * (0.18 * (broad - 0.5) * 2.0 + 0.12 * smoothstep(0.35, 0.8, gran));
     // far off the tile's rows squeeze into streaks: the art fades into its own slot's colour, and only far beyond
     // that into the colour the far landscape (or the sky) ends in, so a far slot still shows as itself
-    c = mix(c, own, smoothstep(fadeNear, fadeFar, d));
+    c = mix(c, own, smoothstep(fadeNear, fadeFar, d) * (1.0 - pp));
     c = mix(c, horizonTint, smoothstep(fadeFar, fadeFar * 3.0, d));
     // the near band: a strip painted from eye height, projected back onto the floor from the house camera, so from
     // there it looks exactly as painted and still lies on the ground (parallax when the camera moves); its upper part
