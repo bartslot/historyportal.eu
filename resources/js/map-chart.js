@@ -30,6 +30,8 @@
 /** Painted assets and baked tiles, all under public/map-chart. */
 export const CHART_BASE = '/map-chart'
 export const RIDGE_GLYPHS = 12
+/** Rounded olive hills for the middle ranges (build-chart-data.py HILL_TIERS): a peak's `i` names its set. */
+export const HILL_GLYPHS = 12
 export const TUFT_GLYPHS = 16
 export const WAVE_GLYPHS = 4
 
@@ -156,7 +158,7 @@ export function chartLayers (cfg = CHART) {
       paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': shownAtZoom() } },
     // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-ridge-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
+      layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
     // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
     { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
@@ -174,6 +176,7 @@ export function chartImages () {
     { id: 'chart-land', url: art('land.webp'), pixelRatio: 1 },
     { id: 'chart-sea-grain', url: art('sea-grain.webp'), pixelRatio: 1 },
     ...Array.from({ length: RIDGE_GLYPHS }, (_, i) => ({ id: `chart-ridge-${i}`, url: art(`ridge-${i}.webp`), pixelRatio: 2 })),
+    ...Array.from({ length: HILL_GLYPHS }, (_, i) => ({ id: `chart-hill-${i}`, url: art(`hill-${i}.webp`), pixelRatio: 2 })),
     ...Array.from({ length: TUFT_GLYPHS }, (_, i) => ({ id: `chart-tuft-${i}`, url: art(`tuft-${i}.webp`), pixelRatio: 2 })),
     // The wave strokes are vector; rasterised at 4x so they stay crisp on a projector.
     ...Array.from({ length: WAVE_GLYPHS }, (_, i) => ({ id: `chart-wave-${i}`, url: art(`wave-${i}.svg`), pixelRatio: 4, raster: [180, 36] })),

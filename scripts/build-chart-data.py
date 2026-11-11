@@ -72,8 +72,10 @@ TUFT_SPACING_KM, TUFT_CLEAR_KM = 100, 35
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
 
 RIDGE_GLYPHS, TUFT_GLYPHS, WAVE_GLYPHS = 12, 16, 4
+HILL_GLYPHS = 12                   # rounded olive hills (ChatGPT sheet, 11-11) for the middle ranges
 TIERS = ('smaller', 'small', 'medium', 'large')
 RIDGE_TIER_SIZE = {'small': 0.62, 'medium': 0.82, 'large': 1.0}   # `smaller` hills draw no ridge
+HILL_TIERS = {'small'}   # Bart 11-11: middle ranges (Vosges, Black Forest, Harz) are rounded hills, not sharp peaks
 SUMMIT_MIN_M = 1100
 
 
@@ -537,7 +539,9 @@ def ridges_and_tufts(peaks_path: Path, summits_path: Path, to_sea_km: np.ndarray
     summits.sort(key=lambda p: (-p['m'], p['lng'], p['lat']))
     ridges = spaced(summits + [p for p in inland if p['t'] in RIDGE_TIER_SIZE], RIDGE_SPACING_KM)
     tufts = spaced(inland, TUFT_SPACING_KM, avoid=ridges, clear_km=TUFT_CLEAR_KM)
-    r = [point(p, {'g': int(rng.integers(RIDGE_GLYPHS)), 'sz': round(p['sz'] * RIDGE_TIER_SIZE[p['t']], 2), 'fit': p['fit']}) for p in ridges]
+    hill = lambda p: p['t'] in HILL_TIERS
+    r = [point(p, {'i': 'hill' if hill(p) else 'ridge', 'g': int(rng.integers(HILL_GLYPHS if hill(p) else RIDGE_GLYPHS)),
+                   'sz': round(p['sz'] * RIDGE_TIER_SIZE[p['t']], 2), 'fit': p['fit']}) for p in ridges]
     t = [point(p, {'g': int(rng.integers(TUFT_GLYPHS)), 'sz': round(p['sz'], 2), 'fit': p['fit']}) for p in tufts]
     return r, t
 
