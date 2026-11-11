@@ -53,7 +53,7 @@ class LessonImporterTest extends TestCase
         $this->assertSame(2, $r['audio']);
         $this->assertSame(2, $r['balloons']);
         $this->assertSame(1, $r['quizzes']);
-        $this->assertCount(1, $r['skipped'], 'power-meter is reported, not dropped');
+        $this->assertSame(['sc03: power-meter without right words'], $r['skipped'], 'an empty power meter is reported, not dropped');
 
         $lesson = Lesson::findOrFail($r['lesson_id']);
         $this->assertSame('25d:mini', $lesson->topic);
@@ -301,6 +301,127 @@ class LessonImporterTest extends TestCase
         $this->assertSame(1, $a1->branch_group);
         $this->assertSame('Trek de steen', $a1->branch_choice_label);
         $this->assertSame(['moed' => 10, 'voedsel' => -5], $a1->config['branch_effects']['deltas']);
+    }
+
+    private function harvestMeter(): array
+    {
+        return ['type' => 'power-meter', 'name' => 'De oogst binnen', 'moves' => 'gerst van het veld in de zakken', 'input' => 'woorden',
+            'right' => ['sikkel', 'schoven', ' dorsen '], 'wrong' => ['zaaien', 'overstroming'],
+            'prompt' => 'Roep de woorden die de oogst binnenhalen!', 'payoff' => 'En daar gaat de gerst de zakken in.', 'why' => 'Zo oogstten boeren gerst.'];
+    }
+
+    private function openQuestion(): array
+    {
+        return ['type' => 'quiz', 'format' => 'open', 'question' => 'Zou jij zaad lenen of zaad als loon nemen, en waarom?',
+            'options' => [], 'correct' => null, 'bloom' => 5, 'explain' => 'Geef een reden: terugbetalen, werk, eten of vertrouwen.'];
+    }
+
+    public function test_a_power_meter_becomes_the_scenes_own_moment_with_its_words(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][2]['interaction'] = $this->harvestMeter();
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $this->assertSame(1, $r['meters']);
+        $this->assertSame([], $r['skipped']);
+        $scenes = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get();
+        $this->assertSame(['stage25d', 'stage25d', 'game', 'stage25d'], $scenes->pluck('kind')->all(), 'no extra scene: the meter is a moment of its scene');
+        $moment = $scenes[3]->config['moment'];
+        $this->assertTrue($moment['enabled']);
+        $this->assertSame('words', $moment['input']);
+        $this->assertSame(['right' => ['sikkel', 'schoven', 'dorsen'], 'wrong' => ['zaaien', 'overstroming']], $moment['words']);
+        $this->assertSame(3, $moment['goal']);
+        $this->assertSame('end', $moment['at']);
+        $this->assertSame('Roep de woorden die de oogst binnenhalen!', $moment['prompt']);
+        $this->assertSame('En daar gaat de gerst de zakken in.', $moment['after']);
+        $this->assertSame('Zo oogstten boeren gerst.', $moment['why']);
+        $this->assertSame('none', $moment['payoff']['type']);
+        $this->assertSame($moment, $scenes[3]->config['moment_default'], 'the editor\'s Reset puts this back');
+        $this->assertSame('sc03', $scenes[3]->config['stage25d']['id'], 'still the stage scene');
+    }
+
+    public function test_a_sound_meter_needs_no_words_and_an_unknown_input_is_reported(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['interaction'] = ['input' => 'blazen', 'right' => []] + $this->harvestMeter();
+        $lesson['scenes'][2]['interaction'] = ['input' => 'zingen'] + $this->harvestMeter();
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $this->assertSame(1, $r['meters']);
+        $this->assertSame(["sc03: power-meter with an unknown input 'zingen'"], $r['skipped']);
+        $first = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->firstOrFail();
+        $this->assertSame('blow', $first->config['moment']['input']);
+    }
+
+    public function test_an_open_question_becomes_a_team_discussion_card_after_its_scene(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['interaction'] = $this->openQuestion();
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $this->assertSame(1, $r['discussions']);
+        $row = Lesson::findOrFail($r['lesson_id']);
+        $scenes = $row->scenes()->orderBy('order')->get();
+        $this->assertSame(['stage25d', 'game', 'stage25d', 'game', 'stage25d'], $scenes->pluck('kind')->all());
+        $card = $scenes[1];
+        $this->assertSame('team', $card->game_type);
+        $this->assertSame(120, $card->duration_seconds);
+        $team = $card->config['team'];
+        $this->assertSame('discuss', $team['mode']);
+        $this->assertSame('Zou jij zaad lenen of zaad als loon nemen, en waarom?', $team['question']);
+        $this->assertSame('Geef een reden: terugbetalen, werk, eten of vertrouwen.', $team['closing']);
+        $this->assertSame(2, $team['minutes']);
+        $this->assertSame(1, $row->quizQuestions()->count(), 'an open question is no multiple-choice row');
+    }
+
+    public function test_a_class_action_question_becomes_an_untimed_discussion_card(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['interaction'] = $this->openQuestion();
+        $lesson['scenes'][0]['class_action_s'] = 20;
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $card = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get()[1];
+        $this->assertSame(0, $card->config['team']['minutes'], 'no timer: the teacher moves on');
+        $this->assertSame(20, $card->duration_seconds);
+        $this->assertSame([], preg_grep('/class action/', $r['warnings']));
+    }
+
+    public function test_a_class_action_without_a_question_is_still_reported(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['class_action_s'] = 20;
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio, dryRun: true);
+
+        $this->assertCount(1, preg_grep('/class action/', $r['warnings']));
+    }
+
+    public function test_meter_and_discussion_keep_their_place_in_a_story_game(): void
+    {
+        $lesson = $this->branchedLesson();
+        $lesson['scenes'][0]['interaction'] = $this->harvestMeter();   // sc01, before the branch
+        $lesson['scenes'][5]['interaction'] = $this->openQuestion();   // sc02, where the runs rejoin
+        $lesson['scenes'][5]['class_action_s'] = 25;
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $this->assertSame([1, 1, 1], [$r['meters'], $r['discussions'], $r['branches']]);
+        $this->assertSame([], preg_grep('/class action/', $r['warnings']), 'a class action with its question becomes an untimed discussion card');
+        $row = Lesson::findOrFail($r['lesson_id']);
+        $this->assertSame('story_game', $row->game_type);
+        $scenes = $row->scenes()->orderBy('order')->get();
+        // sc01 (meter), question, option_a x2, option_b, sc02, its discussion card, sc03
+        $this->assertSame(['stage25d', 'stage25d', 'stage25d', 'stage25d', 'stage25d', 'stage25d', 'game', 'stage25d'], $scenes->pluck('kind')->all());
+        $this->assertSame([null, 'question', 'option_a', 'option_a', 'option_b', null, null, null], $scenes->pluck('branch_role')->all());
+        $this->assertSame(range(0, 7), $scenes->pluck('order')->all());
+        $this->assertSame(['sikkel', 'schoven', 'dorsen'], $scenes[0]->config['moment']['words']['right']);
+        $this->assertNull($scenes[0]->branch_group, 'the meter scene is outside the branch: the engine lets it end normally');
+        $this->assertSame('team', $scenes[6]->game_type);
     }
 
     public function test_a_plain_scene_is_not_a_stage_scene(): void

@@ -9,6 +9,8 @@ use App\Models\Lesson;
 use App\Models\Narrator;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\Lessons\MomentSpec;
+use App\Services\Lessons\TeamGameSpec;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -19,8 +21,13 @@ use InvalidArgumentException;
  * Every story scene becomes a `stage25d` scene whose config.stage25d is the director's scene, field for
  * field, so the editor, the player and an export back to lesson.json all read the same shape. The narrator
  * is the only voice: its recording is the scene's audio, balloons are silent timed layers (config.lines).
- * A quiz interaction becomes the lesson's normal quiz scene right after; meter and choice cards are not
- * mapped yet and are reported, never dropped silently.
+ * A quiz interaction becomes the lesson's normal quiz scene right after. A power meter becomes the scene's own
+ * power-meter moment (config.moment, MomentSpec): the narration reaches the end, the class fills the meter, the
+ * story goes on, so it keeps its place in a story game. An open question (format open: no options, `explain` =
+ * what a good answer holds) becomes a team discussion card right after (game_type team, mode discuss: the
+ * question, a timer, `explain` as the closing line); on a scene with class_action_s the card has no timer (the
+ * class says ideas aloud, the teacher moves on). A choice card without a branch, and a class action without a
+ * question (the player has no hold for it), are reported, never dropped silently.
  *
  * A branching story (lesson.game + scene.branch, validate.py check_branches) becomes the player's story
  * game: game_type story_game with game_config.meters, and per scene branch_group / branch_role. An option
@@ -43,6 +50,12 @@ final class LessonImporter
 
     private const METERS_MAX = 4;
 
+    /** lesson.schema.json power_meter.input (the story-gamification skill's Dutch names) -> MomentSpec::INPUTS. */
+    private const METER_INPUTS = ['woorden' => 'words', 'luider' => 'loudness', 'blazen' => 'blow', 'ritme' => 'rhythm', 'stilte' => 'silence', 'schudden' => 'motion'];
+
+    /** An open question's play time: timing.json interaction_s "quiz.open" (120 s). */
+    private const OPEN_SECONDS = 120;
+
     /** Fields of the director's scene that the stage reads; the rest stays in the lesson file. */
     private const STAGE_FIELDS = ['set', 'figures', 'camera', 'camera_more', 'motion', 'sound', 'narration_at_s', 'dur_s', 'beat'];
 
@@ -55,7 +68,7 @@ final class LessonImporter
     /**
      * @param  array<string,mixed>  $lesson  the directed lesson
      * @param  string  $audioRoot  folder the scenes' `audio` ("hunebedden/sc01.mp3") is relative to; null = no narration
-     * @return array{lesson_id:?int,topic:string,scenes:int,audio:int,balloons:int,quizzes:int,keys:int,branches:int,skipped:list<string>,warnings:list<string>}
+     * @return array{lesson_id:?int,topic:string,scenes:int,audio:int,balloons:int,quizzes:int,meters:int,discussions:int,keys:int,branches:int,skipped:list<string>,warnings:list<string>}
      */
     public function import(array $lesson, User $teacher, ?string $audioRoot = null, bool $force = false, bool $dryRun = false): array
     {
@@ -66,7 +79,7 @@ final class LessonImporter
             throw new InvalidArgumentException('lesson.json has no scenes.');
         }
         $topic = self::TOPIC_PREFIX.$id;
-        $report = ['lesson_id' => null, 'topic' => $topic, 'scenes' => 0, 'audio' => 0, 'balloons' => 0, 'quizzes' => 0, 'keys' => 0, 'branches' => 0, 'skipped' => [], 'warnings' => []];
+        $report = ['lesson_id' => null, 'topic' => $topic, 'scenes' => 0, 'audio' => 0, 'balloons' => 0, 'quizzes' => 0, 'meters' => 0, 'discussions' => 0, 'keys' => 0, 'branches' => 0, 'skipped' => [], 'warnings' => []];
         $game = $this->game($lesson['game'] ?? null);
 
         $existing = Lesson::withTrashed()->where('teacher_id', $teacher->id)->where('topic', $topic)->first();
@@ -97,6 +110,9 @@ final class LessonImporter
                     : $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch);
                 $report['scenes']++;
                 $report['branches'] += ($branch['branch_role'] ?? null) === 'question' ? 1 : 0;
+                if (($s['class_action_s'] ?? 0) > 0 && ! is_array($s['interaction'] ?? null)) {
+                    $report['warnings'][] = "{$s['id']}: class action of {$s['class_action_s']} s has no hold in the player (a narrated scene moves on when its narration ends)";
+                }
                 if ($branch !== [] && is_array($s['interaction'] ?? null)) {
                     // the player cannot play a quiz inside a branch: it would sit between the runs
                     $report['skipped'][] = "{$s['id']}: interaction on a branch scene (the choice is the interaction)";
@@ -438,6 +454,16 @@ final class LessonImporter
             return;
         }
         $type = (string) ($i['type'] ?? '');
+        if ($type === 'power-meter') {
+            $this->powerMeter($s, $i, $after, $dryRun, $report);
+
+            return;
+        }
+        if ($type === 'quiz' && ($i['format'] ?? null) === 'open') {
+            $this->discussion($lesson, $s, $i, $order, $quizIndex, $dryRun, $report);
+
+            return;
+        }
         $options = array_values((array) ($i['options'] ?? []));
         if ($type !== 'quiz' || count($options) < 2) {
             // A choice card without a branch has no player card (no dilemma/vote scene): give it a `branch` to play it.
@@ -474,6 +500,84 @@ final class LessonImporter
             'asks_ahead' => false,
             'explanation' => $i['explain'] ?? null,
             'points' => 10,
+        ]);
+    }
+
+    /**
+     * A power meter as the scene's own moment, in the shape the composer and the editor store (config.moment plus
+     * config.moment_default for the editor's Reset). It plays when the narration ends (`at: end`), before the
+     * player moves on. `payoff` is the line after a full meter; the stage has no asset-id layers for a payoff
+     * move, so the payoff type is none.
+     *
+     * @param  array<string,mixed>  $s
+     * @param  array<string,mixed>  $i
+     * @param  array<string,mixed>  $report
+     */
+    private function powerMeter(array $s, array $i, Scene $scene, bool $dryRun, array &$report): void
+    {
+        $raw = (string) ($i['input'] ?? 'woorden');
+        $input = self::METER_INPUTS[$raw] ?? (in_array($raw, MomentSpec::INPUTS, true) ? $raw : null);
+        $right = array_values(array_filter(array_map(fn ($w) => trim((string) $w), (array) ($i['right'] ?? [])), fn ($w) => $w !== ''));
+        if ($input === null || ($input === 'words' && $right === [])) {
+            $report['skipped'][] = "{$s['id']}: power-meter ".($input === null ? "with an unknown input '{$raw}'" : 'without right words');
+
+            return;
+        }
+        $moment = MomentSpec::normalize([
+            'name' => $i['name'] ?? '',
+            'prompt' => $i['prompt'] ?? '',
+            'input' => $input,
+            'words_style' => 'stream',
+            'words' => ['right' => $right, 'wrong' => (array) ($i['wrong'] ?? [])],
+            'after' => $i['payoff'] ?? '',
+            'why' => $i['why'] ?? '',
+            'at' => 'end',
+            'payoff' => ['type' => 'none'],
+        ]);
+        $report['meters']++;
+        if (! $dryRun) {
+            $scene->update(['config' => array_merge((array) $scene->config, ['moment' => $moment, 'moment_default' => $moment])]);
+        }
+    }
+
+    /**
+     * An open question as a team discussion card right after the scene (TeamGameSpec mode discuss): the question
+     * with a timer of the open question's play time, then `explain` (what a good answer holds) as the closing line.
+     *
+     * @param  array<string,mixed>  $s
+     * @param  array<string,mixed>  $i
+     * @param  array<string,mixed>  $report
+     */
+    private function discussion(Lesson $lesson, array $s, array $i, int &$order, int &$quizIndex, bool $dryRun, array &$report): void
+    {
+        if (trim((string) ($i['question'] ?? '')) === '') {
+            $report['skipped'][] = "{$s['id']}: open question without a question";
+
+            return;
+        }
+        $report['discussions']++;
+        $classAction = ($s['class_action_s'] ?? 0) > 0;
+        if ($dryRun) {
+            $order++;
+
+            return;
+        }
+        $team = TeamGameSpec::normalize([
+            'mode' => 'discuss',
+            'question' => $i['question'],
+            'closing' => $i['explain'] ?? '',
+            // a class action (the class says ideas aloud) has no timer: the teacher moves on when the talk is done
+            'minutes' => $classAction ? 0 : intdiv(self::OPEN_SECONDS, 60),
+        ]);
+        $lesson->scenes()->create([
+            'order' => $order++,
+            'kind' => 'game',
+            'game_type' => 'team',
+            'game_segment_index' => $quizIndex++,
+            'duration_seconds' => $classAction ? (int) $s['class_action_s'] : self::OPEN_SECONDS,
+            'background_color' => '#0f172a',
+            'status' => 'ready',
+            'config' => ['team' => $team, 'team_default' => $team],
         ]);
     }
 }

@@ -43,7 +43,7 @@ class ImportStage25dLesson extends Command
 
             return self::FAILURE;
         }
-        $this->info(($this->option('dry-run') ? '[dry run] ' : '')."{$r['topic']}: lesson ".($r['lesson_id'] ?? '-').", {$r['scenes']} scenes, {$r['audio']} recordings, {$r['balloons']} balloons, {$r['quizzes']} quizzes");
+        $this->info(($this->option('dry-run') ? '[dry run] ' : '')."{$r['topic']}: lesson ".($r['lesson_id'] ?? '-').", {$r['scenes']} scenes, {$r['audio']} recordings, {$r['balloons']} balloons, {$r['quizzes']} quizzes, {$r['meters']} power meters, {$r['discussions']} discussions, {$r['branches']} branches");
         foreach ($r['skipped'] as $line) {
             $this->warn("  skipped {$line}");
         }
