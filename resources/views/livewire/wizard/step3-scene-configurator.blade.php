@@ -1575,6 +1575,11 @@
                 this.selected = id
                     ? (/^s25_(sky|terrain|band-\d+)$/.exec(id)?.[1] ?? id)
                     : (window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null);
+                // a picked layer opens its own shelf (Bart 11-11: the ship shows Backdrop, a tree Middle ground)
+                const own = /^s25_(layer-\d+)$/.exec(id ?? '')?.[1];
+                const asset = own && window.__stage25d?.layerInfo?.(own)?.asset;
+                const shelf = asset && this.lib?.assets?.find((a) => a.id === asset)?.shelf;
+                if (shelf && !this.fill) this.kind = shelf;
                 if (!(window.__stage25d?.empty ?? []).includes(this.fill)) this.fill = null;   // that part has its picture now, or this is another scene
             },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
