@@ -38,9 +38,9 @@
    ]
   },
   {
-   "id": "terrain-polder",
+   "id": "terrain-polder-02",
    "layer": "terrain",
-   "subject": "A flat Dutch polder meadow of green grass cut by straight narrow water ditches running away from the viewer, no cows, no windmills",
+   "subject": "A flat Dutch polder meadow of green grass crossed by straight narrow water ditches that run from left to right, parallel to the horizon, one behind the other, getting thinner towards the top; no cows, no windmills",
    "assets": [
     {
      "id": "terrain-polder-01",

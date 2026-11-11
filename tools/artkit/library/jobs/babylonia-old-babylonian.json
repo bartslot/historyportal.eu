@@ -18,6 +18,32 @@
      ],
      "height_m": 3.2,
      "tileable_x": true
+    },
+    {
+     "id": "bb-school-wall-doorway-01",
+     "tags": [
+      "school",
+      "interior",
+      "plaster",
+      "mudbrick",
+      "depth-screen",
+      "doorway"
+     ],
+     "height_m": 3.2,
+     "tileable_x": true
+    },
+    {
+     "id": "bb-school-wall-windows-01",
+     "tags": [
+      "school",
+      "interior",
+      "plaster",
+      "mudbrick",
+      "depth-screen",
+      "windows"
+     ],
+     "height_m": 3.2,
+     "tileable_x": true
     }
    ]
   },
