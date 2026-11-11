@@ -1,0 +1,49 @@
+{
+  "bundle": "near-east-neolithic",
+  "era": "near-east-neolithic",
+  "era_label": "",
+  "sheets": [
+    {
+      "id": "far-bands-dry-sheet-01",
+      "layer": "band",
+      "subject": "Arranged in three wide strips stacked one above the other with wide white paper between them: (1) top strip, 35 m high: low dry ochre hills with soft rounded crests and a few dark scrub dots; (2) middle strip, 14 m high: a distant date-palm grove, a loose row of palm crowns of different heights over a low green-grey undergrowth; (3) bottom strip, 5 m high: a distant line of low tamarisk and dry scrub along the plain, broken and irregular. Far away, near the horizon: pale and hazy with distance (aerial perspective, cooler and lighter toward the top), little detail, no single tree or rock larger than a thumbnail, sparse outlines and light single-direction hatching, never solid black. No people, no animals, no buildings, no roads, no fences, no water, no sky. Each strip's left and right edges have the same height and the same ground line so it can repeat sideways; a straight lower edge.",
+      "assets": [
+        {
+          "id": "far-hills-dry-01",
+          "tags": [
+            "far",
+            "hills",
+            "dry",
+            "horizon",
+            "arid"
+          ],
+          "height_m": 35,
+          "tileable_x": true
+        },
+        {
+          "id": "far-palms-01",
+          "tags": [
+            "far",
+            "palms",
+            "grove",
+            "horizon",
+            "arid"
+          ],
+          "height_m": 14,
+          "tileable_x": true
+        },
+        {
+          "id": "far-scrub-01",
+          "tags": [
+            "far",
+            "scrub",
+            "horizon",
+            "arid"
+          ],
+          "height_m": 5,
+          "tileable_x": true
+        }
+      ]
+    }
+  ]
+}

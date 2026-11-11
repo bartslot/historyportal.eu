@@ -47,12 +47,19 @@ import json
 import math
 import shutil
 import subprocess
+import sys
 import tempfile
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'tools' / 'watercolour'))
+import aquarel  # noqa: E402  the shared watercolour method (docs/aquarel-method.md)
+from aquarel import hue_to_rgb, periodic_noise  # noqa: E402
 
 N = 8192                       # raster width/height in px (Web Mercator, whole world)
 PAD = 512                      # horizontal wrap padding so distances cross the antimeridian
@@ -380,21 +387,184 @@ def glaze_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
 WASH_SOURCES = {'sea': ['wash-sea-1', 'wash-sea-2'], 'land': ['wash-land-1', 'wash-land-2']}
 WASH_BASE = {'sea': 'public/map-chart/art/sea.webp', 'land': 'public/map-chart/art/land.webp'}
 SEA_WASH_SOFTEN_PX = 4.0         # at z4 (~6 km): keeps passes, drops the mottle
-SEA_WASH_CONTRAST = 1.8          # broad, uneven passes across the water (ChatGPT round 8: 'too uniform')
-WASH_CONTRAST = 1.3              # a little more than painted: the washes are seen through the base
+SEA_WASH_CONTRAST = 2.2          # broad, uneven passes across the water (ChatGPT round 8: 'too uniform')
+WASH_CONTRAST = 1.7              # a little more than painted: the washes are seen through the base
 WASH_CELL_PX = 1024              # one painted sheet spans 1024 px at z4 (~2,500 km at 40°)
 WASH_LAND_FADE_KM = 14           # the land wash thins out over the last km before the coast
 BLEED_KM = 9                     # pigment pooling along the shore, on the water side
 BLEED_RGB = (58, 140, 160)
 
 
-def periodic_noise(n: int, scale: float, seed: int) -> np.ndarray:
-    rng = np.random.default_rng(seed)
-    f = np.fft.fft2(rng.standard_normal((n, n)))
-    k = np.sqrt(np.add.outer(np.fft.fftfreq(n) ** 2, np.fft.fftfreq(n) ** 2)) * n
-    f *= np.exp(-(k / scale) ** 2)
-    r = np.real(np.fft.ifft2(f))
-    return (r - r.min()) / (r.max() - r.min())
+# The colours of the earth as it is (Bart 11-11: "more green, in beautiful aquarel style, the colours of earth how it
+# is"): NASA's Blue Marble (public domain, the globe already shows it), softened into washes and thinned like diluted
+# pigment on the paper, so forest paints olive, steppe pale green, desert sand and ice stays paper.
+EARTH_URL = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg'
+EARTH_CACHE = Path('storage/app/chart-earth/bluemarble-z4.webp')
+EARTH_SOFTEN_PX = 5      # at z4 (~10 km/px at the equator): a wash, never a photo
+EARTH_PIGMENT = 0.22     # 1 = the photo's own colour, 0 = bare paper; the exponent of the colour on the paper
+EARTH_COAST_KEEP = 0.85  # how much of the land wash still lies on the coast itself
+EARTH_GREEN = 0.7        # how far olive and khaki turn toward sap green (0 = the photo's own hue)
+EARTH_SAP_HUE = 100      # a fresh sap green
+EARTH_FRESH = 1.5        # the photo's greens are olive-brown: a little more colour, so a wash reads fresh, not muddy
+EARTH_WARP_PX = 9        # the wash edges wander, so a forest edge is a painted edge, not a blurred border
+
+
+def earth_colour(size: int) -> np.ndarray:
+    """The Blue Marble at z4 (fetched once, cached), as float RGB 0..1 at `size`, softened and with wandering edges."""
+    if not EARTH_CACHE.exists():
+        n = 16
+        def tile(xy):
+            x, y = xy
+            with urllib.request.urlopen(EARTH_URL.format(z=4, x=x, y=y), timeout=60) as r:
+                return xy, Image.open(__import__('io').BytesIO(r.read())).convert('RGB')
+        sheet = Image.new('RGB', (256 * n, 256 * n))
+        with ThreadPoolExecutor(8) as pool:
+            for (x, y), im in pool.map(tile, [(x, y) for x in range(n) for y in range(n)]):
+                sheet.paste(im, (x * 256, y * 256))
+        EARTH_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        sheet.save(EARTH_CACHE, lossless=True, method=4)
+    rgb = np.asarray(Image.open(EARTH_CACHE).convert('RGB').resize((size, size), Image.LANCZOS), float) / 255
+    k = size / 4096
+    rgb = ndimage.gaussian_filter(rgb, sigma=(EARTH_SOFTEN_PX * k, EARTH_SOFTEN_PX * k, 0), mode='wrap')
+    warp = periodic_noise(512, 24, 9)
+    wx = np.asarray(Image.fromarray((warp * 255).astype(np.uint8)).resize((size, size), Image.BICUBIC), float) / 255 - 0.5
+    wy = np.roll(wx, size // 3, axis=0)
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    coords = [np.clip(yy + wy * EARTH_WARP_PX * 2 * k, 0, size - 1), (xx + wx * EARTH_WARP_PX * 2 * k) % size]
+    rgb = np.dstack([ndimage.map_coordinates(rgb[..., c], coords, order=1, mode='wrap') for c in range(3)])
+    grey = rgb.mean(axis=2, keepdims=True)
+    rgb = grey + (rgb - grey) * EARTH_FRESH
+    # Bart 11-11 "it looks a bit brown green": the photo's farmland and forest are olive and khaki (hue 40-90). Those hues
+    # turn toward a fresh sap green; the deserts' sand (hue under ~38) and the snow (no colour) stay as they are.
+    rgb = np.clip(rgb, 0, 1)
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    chroma = mx - mn
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    hue = np.where(mx == r, ((g - b) / (chroma + 1e-6)) % 6, np.where(mx == g, (b - r) / (chroma + 1e-6) + 2, (r - g) / (chroma + 1e-6) + 4)) * 60
+    veg = np.clip((hue - 38) / 14, 0, 1) * np.clip((140 - hue) / 30, 0, 1) * np.clip(chroma / 0.06, 0, 1)
+    new_hue = hue + (EARTH_SAP_HUE - hue) * EARTH_GREEN * veg
+    new_chroma = chroma * (1 + 0.35 * veg)
+    return np.clip(aquarel.paint(hue_to_rgb(new_hue, new_chroma, mx) * 255, aquarel.RECIPES['map-land'], 31) / 255, 0, 1)
+
+
+# The mountains, hills and tufts take the land's colour (Bart 11-11: "the base of the hills and the mountains should
+# fade into the aquarel land, whatever colour it is; if it's green the hills should be green too"). Symbols cannot read
+# the land under them, so each drawing is baked in GLYPH_FAMILIES earth colours (the land colours under all of them,
+# clustered) with its foot fading out, and every peak and tuft names its family (`f`).
+GLYPH_FAMILIES = 6
+GLYPH_FOOT = 0.22            # the bottom share of a drawing that fades into the land
+GLYPH_FOOT_BY_KIND = {'hill': 0.5, 'tuft': 0.35}   # a low hill is mostly foot: it melts over half its height
+GLYPH_SHADE = 0.78           # a drawing is a deeper wash of its land's colour, so it keeps its body and only its foot melts in
+GLYPH_SETS = {'ridge': 12, 'hill': 12, 'tuft': 16}
+GLYPH_LAYOUT_FILE = Path('resources/js/map-chart-glyphs.json')
+
+
+def land_paper() -> np.ndarray:
+    return np.asarray(Image.open(WASH_BASE['land']).convert('RGB'), float).reshape(-1, 3).mean(0)
+
+
+def land_colours(points: list[dict], earth: np.ndarray) -> np.ndarray:
+    """The washed land colour (0..255) under each point, as the land wash paints it."""
+    k = earth.shape[0] / N
+    out = []
+    for p in points:
+        x, y = merc_px(p['lng'], p['lat'])
+        out.append(earth[min(earth.shape[0] - 1, int(y * k)), int(x * k) % earth.shape[1]])
+    return land_paper() * np.clip(np.array(out), 1e-3, 1) ** EARTH_PIGMENT
+
+
+def families(colours: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Plain k-means, seeded by brightness quantiles so it is deterministic: (centres, label per colour)."""
+    lum = colours @ np.array([0.3, 0.59, 0.11])
+    centres = np.array([colours[np.argsort(lum)[int(q * (len(lum) - 1))]] for q in np.linspace(0.05, 0.95, GLYPH_FAMILIES)])
+    for _ in range(20):
+        labels = np.argmin(((colours[:, None] - centres[None]) ** 2).sum(-1), axis=1)
+        centres = np.array([colours[labels == i].mean(0) if (labels == i).any() else centres[i] for i in range(GLYPH_FAMILIES)])
+    return centres, labels
+
+
+def tinted(glyph: Image.Image, colour: np.ndarray, kind: str) -> Image.Image:
+    """The drawing in a land colour: its watercolour (never its ink) takes the colour, most at the foot, and the foot fades out."""
+    a = np.asarray(glyph.convert('RGBA'), float)
+    rgb, alpha = a[..., :3], a[..., 3]
+    h = a.shape[0]
+    down = np.linspace(0, 1, h)[:, None]
+    lum = rgb @ np.array([0.3, 0.59, 0.11]) / 255
+    # a tuft is all wash (its greens are darker than a ridge's paper-light flanks); a ridge keeps its ink and hatching
+    # a tuft or a hill is all wash; a ridge keeps the paper-light rock of its flanks, its ink and hatching
+    wash = np.clip((lum - 0.12) / 0.25, 0, 1) if kind != 'ridge' else np.clip((lum - 0.35) / 0.3, 0, 1)
+    t = {'tuft': np.full_like(down, 0.75), 'hill': 0.5 + 0.4 * down}.get(kind, 0.3 + 0.55 * down) * wash
+    # a deeper wash of the land's colour up top, exactly the land's colour at the foot (Bart 11-11: the small hills
+    # ended on a hard, darker line), so the foot has nothing to stand out with
+    shade = (GLYPH_SHADE + (1 - GLYPH_SHADE) * np.clip((down - 0.4) / 0.6, 0, 1))[..., None]
+    rgb = rgb * (1 - t[..., None]) + colour * shade * t[..., None]
+    foot = GLYPH_FOOT_BY_KIND.get(kind, GLYPH_FOOT)
+    fade = np.clip((1 - down) / foot, 0, 1)
+    fade = fade * fade * (3 - 2 * fade)          # smoothstep: no line where the fade begins either
+    return Image.fromarray(np.dstack([np.clip(rgb, 0, 255), alpha * fade]).astype(np.uint8), 'RGBA')
+
+
+def glyph_atlases(centres: np.ndarray, out: Path) -> dict:
+    """One atlas per family, same layout for all: art/glyphs-<f>.webp, layout in GLYPH_LAYOUT_FILE."""
+    art = out / 'art'
+    sources = [(f'{kind}-{i}', kind, Image.open(art / f'{kind}-{i}.webp')) for kind, n in GLYPH_SETS.items() for i in range(n)]
+    width = 1024
+    rects, x, y, row = {}, 0, 0, 0
+    for name, _, im in sources:
+        if x + im.width > width:
+            x, y, row = 0, y + row + 2, 0
+        rects[name] = [x, y, im.width, im.height]
+        x, row = x + im.width + 2, max(row, im.height)
+    height = y + row
+    for f, colour in enumerate(centres):
+        sheet = Image.new('RGBA', (width, height))
+        for name, kind, im in sources:
+            sheet.paste(tinted(im, colour, kind), tuple(rects[name][:2]))
+        sheet.save(art / f'glyphs-{f}.webp', quality=90, alpha_quality=92, method=6)   # lossy WebP: half the size of lossless
+    layout = {'families': len(centres), 'colours': [[round(c) for c in col] for col in centres], 'rects': rects}
+    GLYPH_LAYOUT_FILE.write_text(json.dumps(layout, indent=1) + '\n')
+    return layout
+
+
+# The water in watercolour by its real depth (Bart 11-11: "make the water more beautiful", "aquarel style water"): the
+# sea floor from the elevation tiles the project already reads (AWS Terrain Tiles, Terrarium), softened like the land,
+# laid as a colour ramp under the painted sea wash: pale aqua on the shelves, teal on the slopes, a soft deep blue out
+# on the ocean. The distance glaze still paints the pale band along every coast on top.
+DEPTH_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+DEPTH_CACHE = Path('storage/app/chart-earth/depth-z4.npz')
+DEPTH_SOFTEN_PX = 7      # at z4: broad washes, never the sea floor's ridges
+DEPTH_RAMP = [           # metres below the sea, watercolour colour
+    (0, (196, 236, 230)), (150, (166, 222, 222)), (800, (122, 196, 212)),
+    (2500, (88, 160, 196)), (5000, (70, 134, 182)),
+]
+
+
+def sea_depth(size: int) -> np.ndarray:
+    """Metres below sea level (0 on land) at `size`, fetched once at z4 and cached, softened, with wandering edges."""
+    if not DEPTH_CACHE.exists():
+        n = 16
+        def tile(xy):
+            x, y = xy
+            with urllib.request.urlopen(DEPTH_URL.format(z=4, x=x, y=y), timeout=60) as r:
+                a = np.asarray(Image.open(__import__('io').BytesIO(r.read())).convert('RGB'), float)
+            return xy, a[..., 0] * 256 + a[..., 1] + a[..., 2] / 256 - 32768
+        grid = np.zeros((256 * n, 256 * n), np.float32)
+        with ThreadPoolExecutor(8) as pool:
+            for (x, y), h in pool.map(tile, [(x, y) for x in range(n) for y in range(n)]):
+                grid[y * 256:(y + 1) * 256, x * 256:(x + 1) * 256] = h
+        DEPTH_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(DEPTH_CACHE, depth=np.clip(-grid, 0, None).astype(np.float16))   # metres below sea, 0 on land
+    depth = np.load(DEPTH_CACHE)['depth'].astype(np.float32)
+    depth = np.asarray(Image.fromarray(depth.astype(np.float32)).resize((size, size), Image.BILINEAR))
+    k = size / 4096
+    return ndimage.gaussian_filter(depth, sigma=DEPTH_SOFTEN_PX * k, mode='wrap')
+
+
+def depth_colour(depth: np.ndarray) -> np.ndarray:
+    """The ramp's colour (0..255) at each depth, interpolated on the square root of the depth (shallow water changes fastest)."""
+    xs = np.sqrt([d for d, _ in DEPTH_RAMP])
+    r = np.sqrt(depth)
+    return np.dstack([np.interp(r, xs, [c[i] for _, c in DEPTH_RAMP]) for i in range(3)])
 
 
 def wash_canvas(names: list, size: int, seed: int, contrast: float = 0) -> np.ndarray:
@@ -443,7 +613,7 @@ def save_level(img: Image.Image, z: int, out: Path) -> int:
     return 4 ** z
 
 
-def wash_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
+def wash_tiles(land: np.ndarray, scale: np.ndarray, out: Path, earth: np.ndarray) -> int:
     """Three raster sets: sea wash and shore bleed (drawn UNDER the land fill, which clips them
     exactly at the coast) and the land wash (over the fill, fading out just inside the coast).
 
@@ -456,6 +626,8 @@ def wash_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
     # Only the broad passes of the sea wash: its granulation, magnified past z4, read as chunky digital
     # mottling (ChatGPT round 6). The fine grain on the water comes from the base paint and the paper.
     sea = ndimage.gaussian_filter(wash_canvas(WASH_SOURCES['sea'], size, 11, contrast=SEA_WASH_CONTRAST), sigma=(SEA_WASH_SOFTEN_PX, SEA_WASH_SOFTEN_PX, 0), mode='wrap')
+    # the painted wash keeps its passes and granulation; its colour is the sea's depth
+    sea = np.clip(aquarel.paint(depth_colour(sea_depth(size)), aquarel.RECIPES['map-sea'], 47) * sea / sea.reshape(-1, 3).mean(axis=0), 0, 255)
     count += save_pyramid(Image.fromarray(np.dstack([sea, np.full((size, size), 255.)]).astype(np.uint8), 'RGBA'), out / 'wash-sea')
     land_paint = Image.fromarray(wash_canvas(WASH_SOURCES['land'], size, 23).astype(np.uint8))
     wobble_full = Image.fromarray((periodic_noise(512, 24, 5) * 255).astype(np.uint8))
@@ -467,8 +639,13 @@ def wash_tiles(land: np.ndarray, scale: np.ndarray, out: Path) -> int:
         pad = max(4, n // 16)
         to_land = ndimage.distance_transform_edt(~np.pad(mask, ((0, 0), (pad, pad)), mode='wrap'))[:, pad:-pad] * row_km
         to_sea = ndimage.distance_transform_edt(np.pad(mask, ((0, 0), (pad, pad)), mode='wrap'))[:, pad:-pad] * row_km
-        fade = np.clip(to_sea / WASH_LAND_FADE_KM, 0, 1) * mask
+        # the earth's colour runs to the coast: a wash that thinned out there showed the cream base as a pale rim
+        fade = (EARTH_COAST_KEEP + (1 - EARTH_COAST_KEEP) * np.clip(to_sea / WASH_LAND_FADE_KM, 0, 1)) * mask
         paint = np.asarray(land_paint.resize((n, n), Image.LANCZOS), float)
+        # the painted wash keeps its own watercolour variation; its colour is the earth's, thinned on the paper
+        grain = paint / paint.reshape(-1, 3).mean(axis=0)
+        pigment = np.clip(earth[:: size // n, :: size // n] if n < size else earth, 1e-3, 1) ** EARTH_PIGMENT
+        paint = np.clip(paint.reshape(-1, 3).mean(axis=0) * pigment * grain, 0, 255)
         count += save_level(Image.fromarray(np.dstack([paint, fade * 255]).astype(np.uint8), 'RGBA'), z, out / 'wash-land')
         wobble = 0.6 + 0.8 * np.asarray(wobble_full.resize((n, n), Image.BICUBIC), float) / 255
         bleed = np.exp(-to_land / (BLEED_KM * wobble)) * ~mask
@@ -581,7 +758,12 @@ def build(land_path: Path, peaks_path: Path, summits_path: Path, out: Path, tile
     to_land, to_sea = distance_fields(land)
     scale = row_scale()
     to_land_km, to_sea_km = to_land * scale, to_sea * scale
+    earth = earth_colour(256 * 2 ** GLAZE_MAX_Z)
     ridges, tufts = ridges_and_tufts(peaks_path, summits_path, to_sea_km)
+    pts = [{'lng': f['geometry']['coordinates'][0], 'lat': f['geometry']['coordinates'][1]} for f in ridges + tufts]
+    centres, labels = families(land_colours(pts, earth))
+    for feature, label in zip(ridges + tufts, labels):
+        feature['properties']['f'] = int(label)
     files = {
         'peaks.geojson': {'type': 'FeatureCollection', 'features': ridges},
         'tufts.geojson': {'type': 'FeatureCollection', 'features': tufts},
@@ -603,7 +785,14 @@ def build(land_path: Path, peaks_path: Path, summits_path: Path, out: Path, tile
         # so a rebuild reaches every teacher at once (resources/js/map-chart.js)
         VERSION_FILE.write_text(json.dumps({n.removesuffix('.geojson'): d[:10] for n, d in digests.items()}, indent=2) + '\n')
         print('glaze tiles:', glaze_tiles(land, scale, out / 'glaze'))
-        print('wash tiles:', wash_tiles(land, scale, out))
+        print('wash tiles:', wash_tiles(land, scale, out, earth))
+        print('glyph families:', glyph_atlases(centres, out)['colours'])
+        # the land wash and the drawings change with every look tweak: versioned like the vector tiles
+        versions = json.loads(VERSION_FILE.read_text())
+        for name in ('wash-land', 'wash-sea'):
+            versions[name] = hashlib.sha256((out / f'{name}/0/0/0.webp').read_bytes()).hexdigest()[:10]
+        versions['glyphs'] = hashlib.sha256(b''.join((out / f'art/glyphs-{f}.webp').read_bytes() for f in range(GLYPH_FAMILIES))).hexdigest()[:10]
+        VERSION_FILE.write_text(json.dumps(versions, indent=2) + '\n')
         for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, lakes_path)):
             text = json.dumps(data, separators=(',', ':'))
             (out / f'{name}.geojson').write_text(text)

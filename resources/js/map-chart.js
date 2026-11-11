@@ -29,6 +29,7 @@
 
 /** Painted assets and baked tiles, all under public/map-chart. */
 import CHART_DATA_VERSION from './map-chart-version.json'
+import GLYPHS from './map-chart-glyphs.json'
 
 export const CHART_BASE = '/map-chart'
 export const RIDGE_GLYPHS = 12
@@ -53,7 +54,7 @@ export const CHART = Object.freeze({
   tuftOpacity: 0.55,
   waveOpacity: 0.8,
   waveScale: 1.5,
-  seaWash: 0.6,                // painted sea washes over the base sea (Bart 10-26: "lots of watercolour textures")
+  seaWash: 0.85,               // was 0.6: the wash now carries the sea's depth colours (Bart 11-11, aquarel water); painted sea washes over the base sea (Bart 10-26: "lots of watercolour textures")
   seaGrain: 0.14,              // the paint's granulation over the water, at screen scale (the baked glaze is too soft for it)
   shoreBleed: 0.7,            // pigment pooled along the shore, water side
   landWash: 0.85,              // painted land washes over the base land
@@ -71,7 +72,7 @@ const kmAt = (km, z) => km * 2 ** (4 - z)
 
 /** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
 export function chartSources (origin = '') {
-  const raster = (name) => ({ type: 'raster', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 })
+  const raster = (name) => ({ type: 'raster', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.webp${CHART_DATA_VERSION[name] ? `?v=${CHART_DATA_VERSION[name]}` : ''}`], tileSize: 256, maxzoom: 4 })
   // ?v=: the build's own content hash (scripts/build-chart-data.py), so a month-long cache never serves old peaks
   const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf?v=${CHART_DATA_VERSION[name] ?? ''}`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
   return {
@@ -150,7 +151,7 @@ export function chartLayers (cfg = CHART) {
       paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': shownAtZoom(cfg.landEdgeOpacity),
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-tuft-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
+      layout: { 'icon-image': ['concat', 'chart-tuft-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
   ]
   const over = [
@@ -164,7 +165,7 @@ export function chartLayers (cfg = CHART) {
       paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': shownAtZoom() } },
     // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
+      layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
     // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
     { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
@@ -181,20 +182,39 @@ export function chartImages () {
     { id: 'chart-sea', url: art('sea.webp'), pixelRatio: 1 },
     { id: 'chart-land', url: art('land.webp'), pixelRatio: 1 },
     { id: 'chart-sea-grain', url: art('sea-grain.webp'), pixelRatio: 1 },
-    ...Array.from({ length: RIDGE_GLYPHS }, (_, i) => ({ id: `chart-ridge-${i}`, url: art(`ridge-${i}.webp`), pixelRatio: 2 })),
-    ...Array.from({ length: HILL_GLYPHS }, (_, i) => ({ id: `chart-hill-${i}`, url: art(`hill-${i}.webp`), pixelRatio: 2 })),
-    ...Array.from({ length: TUFT_GLYPHS }, (_, i) => ({ id: `chart-tuft-${i}`, url: art(`tuft-${i}.webp`), pixelRatio: 2 })),
+    // ridges, hills and tufts: one atlas per land-colour family (build-chart-data.py glyph_atlases), cut up on load
+    ...Array.from({ length: GLYPHS.families }, (_, f) => ({ id: `chart-glyphs-${f}`, url: art(`glyphs-${f}.webp?v=${CHART_DATA_VERSION.glyphs ?? ''}`), pixelRatio: 2, atlas: f })),
     // The wave strokes are vector; rasterised at 4x so they stay crisp on a projector.
     ...Array.from({ length: WAVE_GLYPHS }, (_, i) => ({ id: `chart-wave-${i}`, url: art(`wave-${i}.svg`), pixelRatio: 4, raster: [180, 36] })),
   ]
 }
 
+/** Which land-colour family a peak or tuft is drawn in (its `f`; tiles from before the families have none: 0). */
+const FAMILY = ['to-string', ['coalesce', ['get', 'f'], 0]]
+
+/** One family's atlas cut into its drawings: chart-ridge-<f>-<g>, chart-hill-<f>-<g>, chart-tuft-<f>-<g>. */
+function addAtlas (map, img, family, pixelRatio) {
+  const canvas = document.createElement('canvas')
+  canvas.width = img.width; canvas.height = img.height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(img, 0, 0)
+  for (const [name, [x, y, w, h]] of Object.entries(GLYPHS.rects)) {
+    const [kind, g] = name.split('-')
+    const id = `chart-${kind}-${family}-${g}`
+    if (!map.hasImage(id)) map.addImage(id, ctx.getImageData(x, y, w, h), { pixelRatio })
+  }
+}
+
 /** Load the painted images into the map. A missing image costs that element, never the map. */
 export function addChartImages (map, { origin = '', isGone = () => false } = {}) {
-  const load = ({ id, url, pixelRatio, raster }) => new Promise((resolve) => {
+  const load = ({ id, url, pixelRatio, raster, atlas }) => new Promise((resolve) => {
     const img = raster ? new Image(raster[0], raster[1]) : new Image()
     img.onload = () => {
-      try { if (!isGone() && !map.hasImage(id)) map.addImage(id, img, { pixelRatio }) } catch (_) { /* map torn down */ }
+      try {
+        if (isGone()) return resolve()
+        if (atlas !== undefined) addAtlas(map, img, atlas, pixelRatio)
+        else if (!map.hasImage(id)) map.addImage(id, img, { pixelRatio })
+      } catch (_) { /* map torn down */ }
       resolve()
     }
     img.onerror = () => { console.warn(`[map-chart] missing ${url}`); resolve() }

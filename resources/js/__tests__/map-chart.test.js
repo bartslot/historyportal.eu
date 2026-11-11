@@ -39,7 +39,7 @@ describe('map-chart: the watercolour sea chart', () => {
     });
 
     it('ships every image and tile set it asks for', () => {
-        for (const img of chartImages()) expect(existsSync(`${PUBLIC}${img.url}`), img.url).toBe(true);
+        for (const img of chartImages()) expect(existsSync(`${PUBLIC}${img.url.split("?")[0]}`), img.url).toBe(true);
         for (const set of ['wash-sea/0/0/0.webp', 'wash-land/0/0/0.webp', 'bleed/0/0/0.webp', 'land.geojson', 'lakes.geojson', 'coast.geojson', 'glaze/0/0/0.webp', 'peaks/3', 'tufts/3', 'waves/0/0/0.pbf']) {
             expect(existsSync(`${PUBLIC}/map-chart/${set}`), set).toBe(true);
         }

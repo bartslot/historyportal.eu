@@ -1,0 +1,50 @@
+{
+  "bundle": "nl-prehistory",
+  "era": "nl-prehistory",
+  "era_label": "c. 3400-2850 BCE",
+  "sheets": [
+    {
+      "id": "far-bands-green-sheet-01",
+      "layer": "band",
+      "subject": "Arranged in three wide strips stacked one above the other with wide white paper between them: (1) top strip, 18 m high: a distant wooded skyline, an irregular row of oak and beech crowns of different heights with small gaps; (2) middle strip, 30 m high: low rolling green hills with a few small copses on the slopes, gentle soft crests; (3) bottom strip, 8 m high: a distant hedgerow line with scattered single trees and bushes rising from it at irregular intervals. Far away, near the horizon: pale and hazy with distance (aerial perspective, cooler and lighter toward the top), little detail, no single tree or rock larger than a thumbnail, sparse outlines and light single-direction hatching, never solid black. No people, no animals, no buildings, no roads, no fences, no water, no sky. Each strip's left and right edges have the same height and the same ground line so it can repeat sideways; a straight lower edge.",
+      "assets": [
+        {
+          "id": "far-treeline-01",
+          "tags": [
+            "far",
+            "trees",
+            "woodland",
+            "horizon",
+            "temperate"
+          ],
+          "height_m": 18,
+          "tileable_x": true
+        },
+        {
+          "id": "far-hills-green-01",
+          "tags": [
+            "far",
+            "hills",
+            "green",
+            "horizon",
+            "temperate"
+          ],
+          "height_m": 30,
+          "tileable_x": true
+        },
+        {
+          "id": "far-hedgerow-01",
+          "tags": [
+            "far",
+            "hedge",
+            "trees",
+            "horizon",
+            "temperate"
+          ],
+          "height_m": 8,
+          "tileable_x": true
+        }
+      ]
+    }
+  ]
+}
