@@ -5,7 +5,7 @@
     $isBackdrop = $layerId === 'sky' || str_starts_with((string) $layerId, 'band-');
     $names = [
         'sheetGrain' => __('Paper grain'), 'groundDetail' => __('Ground detail'), 'sunLight' => __('Sunlight'),
-        'castShadow' => __('Shadows'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
+        'castShadow' => __('Shadows'), 'edgeSoft' => __('Soft edges'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
         'groundWash' => __('Watercolour'), 'groundGrain' => __('Grain size'), 'grass' => __('Grass'), 'grassSway' => __('Grass sway'), 'horizonBushes' => __('Horizon bushes'),
         'worldReveal' => __('Build-up'), 'worldPaint' => __('Painted'),
     ];

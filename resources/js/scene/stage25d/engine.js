@@ -41,7 +41,7 @@ const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'os
 
 /** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
 export const ADD_SCALE = 0.4
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)

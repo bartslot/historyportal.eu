@@ -8,8 +8,9 @@ export const GRASS_RANGE = [3, 60] as const
 /** Bushes on the horizon stand this far out, at most HORIZON_MAX of them. */
 export const HORIZON_RANGE = [60, 300] as const
 export const HORIZON_MAX = 80
-/** Horizon bushes stand this much taller than their picture's own height: a row of shrubs 100 m off reads as tufts. */
-export const HORIZON_SIZE = 1.8
+/** Horizon bushes against their picture's own height. Was 1.8 (to read as tufts 100 m off); Bart 11-11: "less tall
+ *  bushes afar, they are too tall". A bit under life size, so the row reads far. */
+export const HORIZON_SIZE = 0.8
 
 export interface StrewPlan { picks: Sprite[]; clumps: Clump[]; horizon?: boolean }
 

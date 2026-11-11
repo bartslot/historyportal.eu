@@ -101,6 +101,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform vec2 uvFit;                          // the drawing's uv as uv of its atlas (a puppet), else 1 1
   uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
   ${GL_NOISE}
+  #define EDGE_FEATHER_PX 6.0                      // at edgeSoft 1: the cut fades out over this many 1080p px
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
   // a frame of a sheet is read inside its own cell only, so no tap ever reaches the next frame
@@ -226,6 +227,14 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       c *= 1.0 - edgeSoft * rim * 0.85 * smoothstep(0.35, 0.75, nz);
       float bleed = edgeSoft * 0.3 * acc.a * smoothstep(0.45, 0.8, nz) * (1.0 - c.a);
       c += vec4(acc.rgb / max(acc.a, 1e-3), 1.0) * bleed;
+      // and it melts into what stands behind it (Bart 11-11: "softer edges, blending into the environment"): the
+      // silhouette fades out over a few screen px inside its cut. around(): a cut between two parts is no edge.
+      float soft = 0.0;
+      for (int k = 0; k < 8; k++) {
+        float a = float(k) * 0.785398 + 0.39;
+        soft += around(uv, vec2(cos(a), sin(a)) * pxUV * EDGE_FEATHER_PX * edgeSoft).a;
+      }
+      c *= mix(1.0, smoothstep(0.15, 0.95, soft / 8.0), edgeSoft);
     }
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
     // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
