@@ -72,6 +72,7 @@ TUFT_SPACING_KM, TUFT_CLEAR_KM = 100, 35
 # where the land tiles draw nothing at that zoom (Samoa, Lakshadweep).
 
 RIDGE_GLYPHS, TUFT_GLYPHS, WAVE_GLYPHS = 12, 16, 4
+VERSION_FILE = Path('resources/js/map-chart-version.json')
 HILL_GLYPHS = 12                   # rounded olive hills (ChatGPT sheet, 11-11) for the middle ranges
 TIERS = ('smaller', 'small', 'medium', 'large')
 RIDGE_TIER_SIZE = {'small': 0.62, 'medium': 0.82, 'large': 1.0}   # `smaller` hills draw no ridge
@@ -598,6 +599,9 @@ def build(land_path: Path, peaks_path: Path, summits_path: Path, out: Path, tile
                 src.write_text(text)
                 vector_tiles(src, out / name.removesuffix('.geojson'))
     if tiles:
+        # the tiles are cached for a month (SiteGround's proxy and the browser): the map asks for them by this version,
+        # so a rebuild reaches every teacher at once (resources/js/map-chart.js)
+        VERSION_FILE.write_text(json.dumps({n.removesuffix('.geojson'): d[:10] for n, d in digests.items()}, indent=2) + '\n')
         print('glaze tiles:', glaze_tiles(land, scale, out / 'glaze'))
         print('wash tiles:', wash_tiles(land, scale, out))
         for name, data in zip(('land', 'lakes', 'coast'), chart_shapes(land_path, lakes_path)):

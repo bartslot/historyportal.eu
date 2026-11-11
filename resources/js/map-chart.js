@@ -28,6 +28,8 @@
  */
 
 /** Painted assets and baked tiles, all under public/map-chart. */
+import CHART_DATA_VERSION from './map-chart-version.json'
+
 export const CHART_BASE = '/map-chart'
 export const RIDGE_GLYPHS = 12
 /** Rounded olive hills for the middle ranges (build-chart-data.py HILL_TIERS): a peak's `i` names its set. */
@@ -67,7 +69,8 @@ const kmAt = (km, z) => km * 2 ** (4 - z)
 /** Sources the chart needs on top of the lesson map's own land tiles and coastline. */
 export function chartSources (origin = '') {
   const raster = (name) => ({ type: 'raster', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.webp`], tileSize: 256, maxzoom: 4 })
-  const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
+  // ?v=: the build's own content hash (scripts/build-chart-data.py), so a month-long cache never serves old peaks
+  const tiles = (name) => ({ type: 'vector', tiles: [`${origin}${CHART_BASE}/${name}/{z}/{x}/{y}.pbf?v=${CHART_DATA_VERSION[name] ?? ''}`], minzoom: name === 'waves' ? 0 : 3, maxzoom: 5 })
   return {
     // Land, lakes and coast come from ONE set of drawn rings (scripts/build-chart-data.py), so the fill
     // and the ink always agree, and an islet leaves the map whole (fill and outline) as you zoom out.
