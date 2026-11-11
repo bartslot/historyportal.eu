@@ -33,28 +33,51 @@
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ __('World') }}</span>
         </div>
 
-        {{-- A ready-made world (config/worlds.php): sky, terrain, ground strips and the backdrop and screens standing in
-             it. A pick keeps the teacher's own layers; a world from another period only goes on a scene without any. --}}
+        {{-- Save as world (Bart 11-11): this scene's place becomes a world of the teacher's own, first among the tiles. --}}
+        <div class="mt-3" x-data="{ naming: false, name: '' }" data-stage25d-world-save>
+            <button type="button" class="btn btn-sm w-full" x-show="!naming" x-on:click="naming = true; $nextTick(() => $refs.worldName.focus())">{{ __('Save as world') }}</button>
+            <form class="flex gap-2" x-show="naming" x-cloak x-on:submit.prevent="name.trim() && saveWorld(name.trim()); naming = false; name = ''">
+                <input type="text" x-ref="worldName" x-model="name" maxlength="60" class="input input-sm min-w-0 flex-1"
+                       placeholder="{{ __('World name') }}" aria-label="{{ __('World name') }}" x-on:keydown.escape.stop="naming = false; name = ''" />
+                <button type="submit" class="btn btn-sm btn-primary" :disabled="!name.trim()">{{ __('Save') }}</button>
+            </form>
+        </div>
+
+        {{-- The worlds: the teacher's own first, then the ready-made ones (config/worlds.php). A pick brings sky, terrain,
+             ground strips and the layers standing in it, and keeps the teacher's own layers; a world from another period
+             only goes on a scene without any. --}}
         @php
-            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'bundle' => $w['bundle'], 'thumb' => asset($w['thumb'])])->values();
+            $own = \App\Models\StageWorld::where('user_id', auth()->id())->latest()->get()
+                ->map(fn ($w) => ['key' => $w->key(), 'label' => $w->name, 'bundle' => $w->bundle, 'thumb' => $w->preset()['thumb'], 'mine' => true]);
+            $ready = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'bundle' => $w['bundle'], 'thumb' => asset($w['thumb']), 'mine' => false])
+                ->sortBy('label');
+            $worlds = $own->concat($ready)->values();
         @endphp
-        @if ($worlds->isNotEmpty())
-            <div class="mt-3 grid grid-cols-2 gap-2" data-stage25d-world-picker>
-                <button type="button" class="flex aspect-video items-center justify-center rounded-md border bg-base-200 text-xs font-medium text-panel-value"
-                        :class="world?.key ? 'border-panel-hairline' : 'border-base-content'" data-world-pick="" x-on:click="pickWorld('')">{{ __('None') }}</button>
-                @foreach ($worlds->sortBy(fn ($w) => $w['label']) as $w)
-                    <button type="button" class="relative aspect-video overflow-hidden rounded-md border disabled:cursor-not-allowed disabled:opacity-40"
+        <div class="mt-3 grid grid-cols-2 gap-2" data-stage25d-world-picker>
+            <button type="button" class="flex aspect-video items-center justify-center rounded-md border bg-base-200 text-xs font-medium text-panel-value" style="order: -2"
+                    :class="world?.key ? 'border-panel-hairline' : 'border-base-content'" data-world-pick="" x-on:click="pickWorld('')">{{ __('None') }}</button>
+            @foreach ($worlds as $w)
+                <div class="relative" wire:key="world-tile-{{ $w['key'] }}" :style="{ order: @js($w['mine']) ? -1 : (world?.bundle === @js($w['bundle']) ? 0 : 1) }">
+                    <button type="button" class="relative block aspect-video w-full overflow-hidden rounded-md border bg-base-200 disabled:cursor-not-allowed disabled:opacity-40"
                             :class="world?.key === @js($w['key']) ? 'border-base-content' : 'border-panel-hairline'"
-                            :style="{ order: world?.bundle === @js($w['bundle']) ? 0 : 1 }"
                             :disabled="world && world.bundle !== @js($w['bundle']) && world.own > 0"
                             :title="world && world.bundle !== @js($w['bundle']) && world.own > 0 ? @js(__('Another period: only on a scene without layers')) : ''"
                             data-world-pick="{{ $w['key'] }}" aria-label="{{ $w['label'] }}" x-on:click="pickWorld(@js($w['key']))">
-                        <img src="{{ $w['thumb'] }}" alt="" class="size-full object-cover" loading="lazy" />
-                        <span class="absolute bottom-1 left-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content">{{ $w['label'] }}</span>
+                        @if ($w['thumb'])
+                            <img src="{{ $w['thumb'] }}" alt="" class="size-full object-cover" loading="lazy" />
+                        @endif
+                        <span class="absolute bottom-1 left-1 max-w-[calc(100%-0.5rem)] truncate rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content">{{ $w['label'] }}</span>
                     </button>
-                @endforeach
-            </div>
-        @endif
+                    @if ($w['mine'])
+                        <button type="button" class="absolute right-0 top-0 grid h-8 w-8 place-items-center rounded-md bg-base-100/70 text-panel-value hover:text-base-content"
+                                data-world-remove="{{ $w['key'] }}" aria-label="{{ __('Remove world') }}" data-tooltip="{{ __('Remove world') }}"
+                                wire:click="removeStage25dWorld(@js($w['key']))">
+                            <x-icons.x-mark class="h-4 w-4" />
+                        </button>
+                    @endif
+                </div>
+            @endforeach
+        </div>
 
         {{-- How the world looks: light, grass, paper, clouds. --}}
         <x-ui.settings-section :title="__('Look')" :open="true" class="-mx-4 mt-3 w-auto!" data-stage25d-look-section>

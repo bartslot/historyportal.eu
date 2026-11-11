@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Models\StageWorld;
 use App\Services\Editor\Cutouts;
 use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\LayerKeys;
@@ -271,7 +272,7 @@ trait EditsStage25d
     public function pickStage25dWorld(string $world, int $sceneId): void
     {
         $scene = $this->stage25dScene();
-        $preset = $world === '' ? null : (config('worlds', [])[$world] ?? null);   // the exact key: a dotted one must not reach inside
+        $preset = $world === '' ? null : $this->worldPreset($world);
         if (! $scene || $scene->id !== $sceneId || ($world !== '' && ! is_array($preset))) {
             return;
         }
@@ -304,6 +305,117 @@ trait EditsStage25d
         $config['stage25d'] = $stage;
         $this->storeStage25dConfig($scene, $config);
         $this->selectSceneInternal($scene->id);   // the stage rebuilds from the scene as saved (scene:load)
+    }
+
+    /** A world by its picker key: a ready-made one (config/worlds.php) or one this teacher saved ('mine:<id>'). */
+    private function worldPreset(string $key): ?array
+    {
+        if (str_starts_with($key, StageWorld::KEY_PREFIX)) {
+            $own = StageWorld::where('user_id', auth()->id())->find((int) substr($key, strlen(StageWorld::KEY_PREFIX)));
+
+            return $own?->preset();
+        }
+        $preset = config('worlds', [])[$key] ?? null;   // the exact key: a dotted one must not reach inside
+
+        return is_array($preset) ? $preset : null;
+    }
+
+    /** A saved world's picture: a small JPEG the stage grabbed (engine still()), at most this many bytes. */
+    private const WORLD_THUMB_MAX_BYTES = 400_000;
+
+    /**
+     * Save the scene's place as a world of this teacher's (Bart 11-11): its sky, terrain, ground strips, look and every
+     * layer but the characters (a world is the place, the story's people are not part of it). Balloons and the camera
+     * live outside the layers, so they never come along.
+     */
+    public function saveStage25dWorldAs(string $name, ?string $thumb = null): void
+    {
+        $scene = $this->stage25dScene();
+        $name = trim(strip_tags($name));
+        if (! $scene || $name === '' || mb_strlen($name) > 60) {
+            return;
+        }
+        $stage = $scene->config['stage25d'];
+        $bundle = (string) ($stage['bundle'] ?? '');
+        $set = (array) ($stage['set'] ?? []);
+        if ($bundle === '' || empty($set['sky']) || empty($set['groundSlots'])) {
+            $this->dispatch('toast', type: 'info', message: __('Give the scene a sky and a terrain first.'));
+
+            return;
+        }
+        $layers = array_values(array_map(
+            fn (array $l) => array_diff_key($l, ['world' => true, 'figure' => true]),
+            array_filter((array) ($set['layers'] ?? []), fn ($l) => is_array($l) && ! $this->isCharacterLayer($bundle, $l)),
+        ));
+        $world = StageWorld::create([
+            'user_id' => auth()->id(),
+            'name' => $name,
+            'bundle' => $bundle,
+            'parts' => [
+                'set' => ['sky' => $set['sky'], 'groundSlots' => $set['groundSlots']]
+                    + (empty($set['groundBands']) ? [] : ['groundBands' => $set['groundBands']]) + ['layers' => $layers],
+                'look' => array_intersect_key((array) ($stage['look'] ?? []), self::LOOK_RANGES),
+            ],
+        ]);
+        $jpeg = $this->worldThumb($thumb);
+        if ($jpeg !== null) {
+            $path = "worlds/{$world->user_id}/{$world->id}.jpg";
+            Storage::disk('public')->put($path, $jpeg);
+            $world->update(['thumb_path' => $path]);
+        }
+        // the scene now stands in that world: its tile is the chosen one, and the layers it took are the world's pieces
+        // here too, so None takes them away and picking the world again does not stand them twice
+        $config = $scene->config;
+        $config['stage25d']['world_id'] = $world->key();
+        $config['stage25d']['set']['layers'] = array_map(
+            fn ($l) => is_array($l) && ! $this->isCharacterLayer($bundle, $l) ? ['world' => true] + $l : $l,
+            (array) ($config['stage25d']['set']['layers'] ?? []),
+        );
+        $this->storeStage25dConfig($scene, $config);
+        $this->selectSceneInternal($scene->id);   // the stage rebuilds from the scene as saved (scene:load)
+        $this->dispatch('toast', type: 'success', message: __('World saved.'));
+    }
+
+    /** Take one of this teacher's saved worlds out of the list. Scenes built in it keep everything they have. */
+    public function removeStage25dWorld(string $key): void
+    {
+        if (! str_starts_with($key, StageWorld::KEY_PREFIX)) {
+            return;
+        }
+        $world = StageWorld::where('user_id', auth()->id())->find((int) substr($key, strlen(StageWorld::KEY_PREFIX)));
+        if ($world === null) {
+            return;
+        }
+        if ($world->thumb_path) {
+            Storage::disk('public')->delete($world->thumb_path);
+        }
+        $world->delete();
+    }
+
+    /** A character: a figure of a series in the library, or a layer a balloon is grouped with. */
+    private function isCharacterLayer(string $bundle, array $layer): bool
+    {
+        if (is_string($layer['figure'] ?? null) && $layer['figure'] !== '') {
+            return true;
+        }
+        $asset = LibraryBundle::asset($bundle, (string) ($layer['asset'] ?? ''));
+
+        return $asset !== null && (($asset['layer'] ?? null) === 'figure' || str_starts_with((string) ($asset['id'] ?? ''), 'fig-'));
+    }
+
+    /** The JPEG bytes of a data URL the stage grabbed, or null when it is anything else. */
+    private function worldThumb(?string $dataUrl): ?string
+    {
+        if ($dataUrl === null || ! str_starts_with($dataUrl, 'data:image/jpeg;base64,')) {
+            return null;
+        }
+        $bytes = base64_decode(substr($dataUrl, 23), true);
+        if ($bytes === false || strlen($bytes) > self::WORLD_THUMB_MAX_BYTES) {
+            return null;
+        }
+        $info = @getimagesizefromstring($bytes);
+
+        return ($info['mime'] ?? null) === 'image/jpeg' ? $bytes : null;
     }
 
     /** At most this many ground pictures on one floor (engine-mvp stage25d/ground.ts GROUND_SLOTS_MAX). */

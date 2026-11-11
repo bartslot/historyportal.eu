@@ -1497,6 +1497,8 @@
             /** Put a library world under the scene, or none: live, and saved. */
             /** A ready-made world under the scene, or none (''): the server writes it, the stage rebuilds from the scene. */
             pickWorld(key) { window.__stage25d?.pickWorld?.(key); },
+            // Save as world: the stage as it looks now is the tile's picture (a small JPEG), the scene's place the world
+            async saveWorld(name) { const still = await window.__stage25d?.still?.(320).catch(() => null); await this.$wire.saveStage25dWorldAs(name, still ?? null); },
             /** Frame the start or the end of the camera move on the canvas. */
             frame(end) { this.camEnd = end; window.__timelineKeying?.seekTo?.(end); this.sync(); },
             /** Draw the camera preview again once the start or end has settled (at once the first time). */

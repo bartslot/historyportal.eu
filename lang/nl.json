@@ -2755,5 +2755,10 @@
     "Mesopotamian fields": "Mesopotamische akkers",
     "Euphrates": "Eufraat",
     "Desert": "Woestijn",
-    "Soft edges": "Zachte randen"
+    "Soft edges": "Zachte randen",
+    "Save as world": "Bewaar als wereld",
+    "World name": "Naam van de wereld",
+    "Remove world": "Wereld verwijderen",
+    "World saved.": "Wereld bewaard.",
+    "Give the scene a sky and a terrain first.": "Geef de scène eerst een lucht en een terrein."
 }

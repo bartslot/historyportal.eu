@@ -2713,5 +2713,10 @@
     "Mesopotamian fields": "Campi mesopotamici",
     "Euphrates": "Eufrate",
     "Desert": "Deserto",
-    "Soft edges": "Bordi morbidi"
+    "Soft edges": "Bordi morbidi",
+    "Save as world": "Salva come mondo",
+    "World name": "Nome del mondo",
+    "Remove world": "Rimuovi il mondo",
+    "World saved.": "Mondo salvato.",
+    "Give the scene a sky and a terrain first.": "Dai prima alla scena un cielo e un terreno."
 }

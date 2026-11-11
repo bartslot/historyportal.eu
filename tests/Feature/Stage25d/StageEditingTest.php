@@ -8,6 +8,7 @@ use App\Enums\LessonStatus;
 use App\Livewire\Wizard\Step3SceneConfigurator;
 use App\Models\Lesson;
 use App\Models\Scene;
+use App\Models\StageWorld;
 use App\Models\User;
 use App\Services\Stage25d\SceneStill;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -475,6 +476,70 @@ class StageEditingTest extends TestCase
             ->call('saveStage25dLook', 'grassSway', 3, $scene->id)
             ->call('saveStage25dLook', 'groundGrain', 0.1, $scene->id);
         $this->assertEquals(['grass' => 0.2, 'grassSway' => 1, 'groundGrain' => 0.5], $scene->fresh()->config['stage25d']['look']);
+    }
+
+    /** A real little JPEG data URL, as the stage's still() gives one. */
+    private function jpegDataUrl(): string
+    {
+        $img = imagecreatetruecolor(32, 18);
+        ob_start();
+        imagejpeg($img);
+
+        return 'data:image/jpeg;base64,'.base64_encode((string) ob_get_clean());
+    }
+
+    public function test_a_scene_saved_as_a_world_keeps_its_place_and_leaves_the_characters_out(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
+            ['id' => 'fig-farmer-stand', 'layer' => 'figure', 'file' => 'f.webp'],
+        ]]));
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set'] += ['sky' => 'sky-summer-01', 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]], 'groundBands' => [['asset' => 'grass-band-01', 'z' => 30]]];
+        $config['stage25d']['set']['layers'][] = ['asset' => 'fig-farmer-stand', 'depth' => 'mid', 'x' => 0.3];
+        $config['stage25d']['set']['layers'][] = ['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.8, 'figure' => 'farmer-1', 'world' => true];
+        $config['stage25d']['look'] = ['grass' => 0.2, 'edgeSoft' => 0.5, 'nonsense' => 9];
+        $scene->update(['config' => $config]);
+
+        $this->editor($scene)->call('saveStage25dWorldAs', '  <b>My heath</b> ', $this->jpegDataUrl());
+
+        $world = StageWorld::sole();
+        $this->assertSame([$scene->lesson->teacher_id, 'My heath', 'nl-prehistory'], [$world->user_id, $world->name, $world->bundle]);
+        $this->assertSame(['sky-summer-01', 'terrain-meadow-02', 'grass-band-01'], [$world->parts['set']['sky'], $world->parts['set']['groundSlots'][0]['asset'], $world->parts['set']['groundBands'][0]['asset']]);
+        $this->assertSame([['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.6]], $world->parts['set']['layers'], 'a figure of the library and a layer with a balloon stay out');
+        $this->assertSame(['grass' => 0.2, 'edgeSoft' => 0.5], $world->parts['look']);
+        Storage::disk('public')->assertExists($world->thumb_path);
+        $this->assertSame($world->key(), $scene->fresh()->config['stage25d']['world_id'], 'the scene stands in its new world');
+        $this->assertSame([true, null, true], array_map(fn ($l) => $l['world'] ?? null, $scene->fresh()->config['stage25d']['set']['layers']), 'its pieces are the world\'s now, the character stays the teacher\'s');
+
+        $this->editor($scene)->call('saveStage25dWorldAs', str_repeat('x', 61))->call('saveStage25dWorldAs', '   ', 'data:image/png;base64,AAAA');
+        $this->assertSame(1, StageWorld::count(), 'no name, or one too long: nothing saved');
+    }
+
+    public function test_a_saved_world_is_offered_to_its_teacher_only_and_picks_like_a_ready_made_one(): void
+    {
+        $scene = $this->scene();
+        $world = StageWorld::create(['user_id' => $scene->lesson->teacher_id, 'name' => 'My heath', 'bundle' => 'nl-prehistory', 'parts' => [
+            'set' => ['sky' => 'sky-overcast-01', 'groundSlots' => [['asset' => 'terrain-heath-02', 'from_m' => 0]], 'layers' => [['asset' => 'bg-farmland-01', 'depth' => 'bg', 'x' => 0.5]]],
+            'look' => ['grass' => 0.3],
+        ]]);
+        $other = StageWorld::create(['user_id' => User::factory()->create()->id, 'name' => 'Not mine', 'bundle' => 'nl-prehistory', 'parts' => ['set' => ['sky' => 'x', 'groundSlots' => []], 'look' => []]]);
+
+        $editor = $this->editor($scene)->call('selectInspectorTarget', 's25_world')
+            ->assertSeeHtml('data-world-pick="'.$world->key().'"')->assertDontSeeHtml('data-world-pick="'.$other->key().'"');
+
+        $editor->call('pickStage25dWorld', $other->key(), $scene->id);
+        $this->assertArrayNotHasKey('world_id', $scene->fresh()->config['stage25d'], 'another teacher\'s world is not there to pick');
+
+        $editor->call('pickStage25dWorld', $world->key(), $scene->id);
+        $stage = $scene->fresh()->config['stage25d'];
+        $this->assertSame([$world->key(), 'sky-overcast-01', 0.3], [$stage['world_id'], $stage['set']['sky'], $stage['look']['grass']]);
+        $this->assertSame(['bg-farmland-01', 'stone-chamber-01'], array_column($stage['set']['layers'], 'asset'));
+
+        $editor->call('removeStage25dWorld', $other->key())->call('removeStage25dWorld', $world->key());
+        $this->assertSame(['Not mine'], StageWorld::pluck('name')->all(), 'a teacher removes their own world only');
+        $this->assertSame('sky-overcast-01', $scene->fresh()->config['stage25d']['set']['sky'], 'the scene keeps what it has');
     }
 
     public function test_a_world_brings_its_sky_terrain_and_backdrop_and_keeps_the_teachers_layers(): void

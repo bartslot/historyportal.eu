@@ -2713,5 +2713,10 @@
     "Mesopotamian fields": "Mesopotamische Felder",
     "Euphrates": "Euphrat",
     "Desert": "Wüste",
-    "Soft edges": "Weiche Kanten"
+    "Soft edges": "Weiche Kanten",
+    "Save as world": "Als Welt speichern",
+    "World name": "Name der Welt",
+    "Remove world": "Welt entfernen",
+    "World saved.": "Welt gespeichert.",
+    "Give the scene a sky and a terrain first.": "Gib der Szene zuerst einen Himmel und ein Gelände."
 }
