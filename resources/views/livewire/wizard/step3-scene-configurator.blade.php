@@ -1568,9 +1568,13 @@
             lib: null, kind: 'all', query: '', selected: null, fill: null,
             labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cutouts' => __('My cut-outs')]),
             init() { this.sync(); },
-            sync() {
+            // id: the editor id just selected (scene-object-selected). The stage may still hold the backdrop it had (its
+            // own listener can run after this one), so the click decides: the ship kept the Terrain shelf (Bart 11-11)
+            sync(id = null) {
                 this.lib = window.__stage25d?.library?.() ?? null;
-                this.selected = window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null;
+                this.selected = id
+                    ? (/^s25_(sky|terrain|band-\d+)$/.exec(id)?.[1] ?? id)
+                    : (window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null);
                 if (!(window.__stage25d?.empty ?? []).includes(this.fill)) this.fill = null;   // that part has its picture now, or this is another scene
             },
             /** Change picture: this tab in Replace mode, showing the pictures of the selected one's own kind. */
