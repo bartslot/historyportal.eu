@@ -498,7 +498,8 @@ class StageEditingTest extends TestCase
         $config['stage25d']['world'] = ['src' => '/worlds/valley.spz'];   // an old splat world goes when a world is picked
         $scene->update(['config' => $config]);
         $editor = $this->editor($scene);
-        $editor->assertSeeHtml('data-world-pick="heath"');
+        $editor->call('selectInspectorTarget', 's25_world')->assertSet('activeStage25dLayer', 'world')
+            ->assertSeeHtml('data-world-pick="heath"')->assertSeeHtml('data-stage25d-look');   // the World row's own panel
 
         $editor->call('pickStage25dWorld', 'heath', $scene->id);
         $stage = $scene->fresh()->config['stage25d'];
@@ -591,7 +592,7 @@ class StageEditingTest extends TestCase
         $editor->call('selectInspectorTarget', 's25_layer-0')->assertSet('activeStage25dLayer', 'layer-0')
             ->assertSeeHtml('data-stage25d-inspector="layer-0"');
         $editor->call('selectInspectorTarget', 's25_layer-9')->assertSet('activeStage25dLayer', null);
-        $editor->call('selectInspectorTarget', '')->assertSeeHtml('data-stage25d-look')
+        $editor->call('selectInspectorTarget', '')->assertDontSeeHtml('data-stage25d-look')
             ->assertDontSeeHtml('data-scene-mode')->assertSee('Scene details');   // a scene is 2D or 3D for good (Bart, 2026-11-07)
         $this->assertStringContainsString('hook', $this->editor($scene)->html(), 'the rail caption falls back to the beat');
     }

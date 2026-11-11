@@ -25,7 +25,54 @@
      x-on:timeline-changed.window="sync()" x-on:scene-objects-changed.window="sync()" x-on:stage25d-synced.window="sync()" x-on:stage25d-edited.window="sync()" x-on:timeline-playing.window="camPlaying = !!$event.detail"
      x-on:focusin="showHud($event)" x-on:input="showHud($event)">
 
-    @if ($layerId === 'camera')
+    @if ($layerId === 'world')
+        {{-- The World row (Bart 11-11): the ready-made world under the scene and how it looks. --}}
+        <div class="-mx-4 -mt-4 flex items-center gap-2 border-b border-panel-hairline px-4 py-3">
+            <x-ui.panel-breadcrumb :label="__('Scene')"
+                                   x-on:click="window.__stage25d?.select(null); window.__clearLayerGuard?.(); $wire.selectInspectorTarget('')" />
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ __('World') }}</span>
+        </div>
+
+        {{-- A ready-made world (config/worlds.php): sky, terrain, ground strips and the backdrop and screens standing in
+             it. A pick keeps the teacher's own layers; a world from another period only goes on a scene without any. --}}
+        @php
+            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'bundle' => $w['bundle'], 'thumb' => asset($w['thumb'])])->values();
+        @endphp
+        @if ($worlds->isNotEmpty())
+            <div class="mt-3 grid grid-cols-2 gap-2" data-stage25d-world-picker>
+                <button type="button" class="flex aspect-video items-center justify-center rounded-md border bg-base-200 text-xs font-medium text-panel-value"
+                        :class="world?.key ? 'border-panel-hairline' : 'border-base-content'" data-world-pick="" x-on:click="pickWorld('')">{{ __('None') }}</button>
+                @foreach ($worlds->sortBy(fn ($w) => $w['label']) as $w)
+                    <button type="button" class="relative aspect-video overflow-hidden rounded-md border disabled:cursor-not-allowed disabled:opacity-40"
+                            :class="world?.key === @js($w['key']) ? 'border-base-content' : 'border-panel-hairline'"
+                            :style="{ order: world?.bundle === @js($w['bundle']) ? 0 : 1 }"
+                            :disabled="world && world.bundle !== @js($w['bundle']) && world.own > 0"
+                            :title="world && world.bundle !== @js($w['bundle']) && world.own > 0 ? @js(__('Another period: only on a scene without layers')) : ''"
+                            data-world-pick="{{ $w['key'] }}" aria-label="{{ $w['label'] }}" x-on:click="pickWorld(@js($w['key']))">
+                        <img src="{{ $w['thumb'] }}" alt="" class="size-full object-cover" loading="lazy" />
+                        <span class="absolute bottom-1 left-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content">{{ $w['label'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- How the world looks: light, grass, paper, clouds. --}}
+        <x-ui.settings-section :title="__('Look')" :open="true" class="-mx-4 mt-3 w-auto!" data-stage25d-look-section>
+            <div class="space-y-1">
+                <template x-for="c in look" :key="c.key">
+                    <label class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">
+                        <span class="w-28 shrink-0 select-none text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label" x-text="names[c.key] ?? c.key"></span>
+                        <span class="range-panel-knob min-w-0 flex-1">
+                            <input type="range" class="range range-panel" :min="c.min" :max="c.max" :step="c.step"
+                                   :value="c.value" :aria-label="names[c.key] ?? c.key" :data-stage25d-look="c.key"
+                                   x-on:input="c.value = Number($event.target.value); setLook(c.key, c.value)" />
+                        </span>
+                        <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(c.value ?? 0).toFixed(2)"></span>
+                    </label>
+                </template>
+            </div>
+        </x-ui.settings-section>
+    @elseif ($layerId === 'camera')
         {{-- The camera: the canvas shows the start or the end of its move, and the teacher frames it right there.
              The player glides from one to the other over the scene. --}}
         <div class="-mx-4 -mt-4 flex items-center gap-2 border-b border-panel-hairline px-4 py-3">
@@ -319,47 +366,5 @@
                 @endforeach
             </div>
         </x-ui.settings-section>
-    @else
-        <div class="space-y-1">
-            <template x-for="c in look" :key="c.key">
-                <label class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">
-                    <span class="w-28 shrink-0 select-none text-xs font-semibold uppercase leading-tight tracking-wide text-panel-label" x-text="names[c.key] ?? c.key"></span>
-                    <span class="range-panel-knob min-w-0 flex-1">
-                        <input type="range" class="range range-panel" :min="c.min" :max="c.max" :step="c.step"
-                               :value="c.value" :aria-label="names[c.key] ?? c.key" :data-stage25d-look="c.key"
-                               x-on:input="c.value = Number($event.target.value); setLook(c.key, c.value)" />
-                    </span>
-                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="+Number(c.value ?? 0).toFixed(2)"></span>
-                </label>
-            </template>
-        </div>
-
-        {{-- A ready-made world (config/worlds.php): sky, terrain, ground strips and the backdrop and screens standing in
-             it. A pick keeps the teacher's own layers; a world from another period only goes on a scene without any. --}}
-        @php
-            $worlds = collect(config('worlds', []))->map(fn ($w, $key) => ['key' => $key, 'label' => __($w['label']), 'bundle' => $w['bundle'], 'thumb' => asset($w['thumb'])])->values();
-        @endphp
-        @if ($worlds->isNotEmpty())
-            <div class="mt-3" data-stage25d-world-picker>
-                <div class="divider my-2" role="presentation"></div>
-                <span class="block select-none text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('World') }}</span>
-                <div class="mt-2 grid grid-cols-2 gap-2">
-                    <button type="button" class="flex aspect-video items-center justify-center rounded-md border bg-base-200 text-xs font-medium text-panel-value"
-                            :class="world?.key ? 'border-panel-hairline' : 'border-base-content'" data-world-pick="" x-on:click="pickWorld('')">{{ __('None') }}</button>
-                    @foreach ($worlds->sortBy(fn ($w) => $w['label']) as $w)
-                        <button type="button" class="relative aspect-video overflow-hidden rounded-md border disabled:cursor-not-allowed disabled:opacity-40"
-                                :class="world?.key === @js($w['key']) ? 'border-base-content' : 'border-panel-hairline'"
-                                :style="{ order: world?.bundle === @js($w['bundle']) ? 0 : 1 }"
-                                :disabled="world && world.bundle !== @js($w['bundle']) && world.own > 0"
-                                :title="world && world.bundle !== @js($w['bundle']) && world.own > 0 ? @js(__('Another period: only on a scene without layers')) : ''"
-                                data-world-pick="{{ $w['key'] }}" aria-label="{{ $w['label'] }}" x-on:click="pickWorld(@js($w['key']))">
-                            <img src="{{ $w['thumb'] }}" alt="" class="size-full object-cover" loading="lazy" />
-                            <span class="absolute bottom-1 left-1 rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content">{{ $w['label'] }}</span>
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
     @endif
 </div>

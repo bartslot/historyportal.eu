@@ -1415,7 +1415,8 @@
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (!id) { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; return; }
+                if (id === 'world') { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; return; }
+                if (!id) return;
                 if (id === 'camera') {
                     this.cam = stage.cameraInfo?.() ?? null;
                     this.camFrames = stage.cameraFrames?.(this.camPreview) ?? null;
@@ -1572,7 +1573,7 @@
             sync(id = null) {
                 this.lib = window.__stage25d?.library?.() ?? null;
                 this.selected = id
-                    ? (/^s25_(sky|terrain|band-\d+)$/.exec(id)?.[1] ?? id)
+                    ? (/^s25_(sky|terrain|band-\d+)$/.exec(id)?.[1] ?? (id === 's25_world' ? null : id))
                     : (window.__stage25d?.backdrop ?? window.__stage25d?.selection ?? null);
                 // a picked layer opens its own shelf (Bart 11-11: the ship shows Backdrop, a tree Middle ground)
                 const own = /^s25_(layer-\d+)$/.exec(id ?? '')?.[1];
@@ -1680,10 +1681,11 @@
                     .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true }));
                 // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
-                // Grouped under "Scene" (Bart, 2026-11-10): one ground and one sky, never copied or deleted, only swapped.
+                // Grouped under "World" (Bart, 2026-11-10/11): one ground and one sky, never copied or deleted, only swapped.
+                // The World row itself is selectable: it opens the world's own settings (picker and look).
                 const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop || i.scenery)
                     .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.id === 'terrain' ? @js(__('Terrain')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
-                const s25Sky = s25Backdrop.length ? [{ id: '__s25scene__', icon: 'group', label: @js(__('Scene')), bg: true, group: true }, ...s25Backdrop] : [];
+                const s25Sky = s25Backdrop.length ? [{ id: 's25_world', icon: 'group', label: @js(__('World')), bg: false, s25: true, s25sky: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
                 const artItems = [...arts].reverse().map((a) =>
@@ -1799,7 +1801,6 @@
             // Click a row → select that object: highlight the row, ring the object on the canvas
             // (the layer broadcasts back so canvas↔list stay in sync), and scroll it into view.
             select(obj) {
-                if (obj.group) return;   // the "Scene" group header names its rows, it is not an object
                 this.selectedId = obj.id;
                 if (obj.voyage) {
                     // Route waypoint layers → open the Format inspector and focus the Waypoint tab

@@ -542,6 +542,13 @@ export async function createStage25d (host, opts = {}) {
     /** Select a layer by editor id (a timeline row was clicked); the canvas draws its box. A backdrop row (the sky, a
      *  ground band) has no box: it is the selection for the panel and the Assets tab. */
     select (id) {
+      if (id === 'world') {   // the World row: its sky, terrain and look, with no box on the canvas
+        backdrop = null
+        pointer?.select(null)
+        api.frameCamera(false)
+        window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: 's25_world' } }))
+        return
+      }
       if (id === 'camera') {
         backdrop = null
         pointer?.select(null)
