@@ -10,7 +10,7 @@
  * Times are on the narration's clock: the stage starts narration_at_s into a scene (engine.js `lead`), so scene
  * time `lead` is the narrator's first word = 0 here. An sfx cued before that word fires on it rather than never.
  */
-import { LessonSound } from '@stage25d/sound/player'
+// LessonSound is imported on demand in unlock() (keeps it out of the player's eager bundle)
 import { isStage25d } from './config.js'
 
 /** A scene that nothing follows keeps its beds looping this long, until the next scene, a card or leave(). */
@@ -73,8 +73,9 @@ export function soundWindow (queue, index, prevIndex = null, spokenS = 0) {
  * before that every call is a no-op, so a lesson without stage sound never makes one.
  * `make(ctx)` is for tests (a fake engine); the page leaves it out.
  */
-export function createStageSound ({ make = (ctx) => new LessonSound(ctx), AudioCtx = null } = {}) {
+export function createStageSound ({ make = null, AudioCtx = null } = {}) {
   let sound = null
+  let pending = null      // the engine module loading after unlock()
   let level = 1
   let lastIndex = null   // the stage scene whose sound is playing, so the next one can fade it out
   let fadeTimer = null
@@ -90,14 +91,20 @@ export function createStageSound ({ make = (ctx) => new LessonSound(ctx), AudioC
       level = startLevel
       if (sound) return
       const Ctx = AudioCtx || globalThis.AudioContext || globalThis.webkitAudioContext
-      if (!Ctx) return
-      try { sound = make(new Ctx()) } catch (e) { console.warn('stage sound: no AudioContext', e); return }
-      sound.master.gain.value = level
-      sound.resume().catch(() => {})
+      if (!Ctx || pending) return
+      let ctx
+      try { ctx = new Ctx() } catch (e) { console.warn('stage sound: no AudioContext', e); return }
+      ctx.resume?.().catch(() => {})   // inside the gesture: the context may start
+      const ready = (engine) => { sound = engine; sound.master.gain.value = level; sound.resume().catch(() => {}) }
+      if (make) { ready(make(ctx)); return }
+      // The engine loads only for a lesson that has stage sound, so it stays out of the player's eager bundle.
+      pending = import('@stage25d/sound/player').then(({ LessonSound }) => ready(new LessonSound(ctx)))
+        .catch((e) => console.warn('stage sound: engine did not load', e))
     },
 
     /** queue[index] starts its narration; `clock()` reads it (seconds). Loads the files, then plays on time. */
     async play (queue, index, clock = () => 0, spokenS = 0) {
+      if (!sound && pending) await pending   // the first scene can start while the engine is still loading
       if (!sound) return
       if (!hasStageSound(queue[index])) { this.leave(); return }
       const mine = ++req

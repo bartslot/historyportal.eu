@@ -195,6 +195,12 @@
     "file": "assets/vite-helpers-DqutJMZx.js",
     "name": "vite-helpers"
   },
+  "engine-mvp/src/sound/player.ts": {
+    "file": "assets/player-kiiXS9Aa.js",
+    "name": "player",
+    "src": "engine-mvp/src/sound/player.ts",
+    "isDynamicEntry": true
+  },
   "node_modules/three/build/three.module.js": {
     "file": "assets/three.module-CpB-wl7P.js",
     "name": "three.module",
@@ -309,7 +315,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DPIlLnjK.js",
+    "file": "assets/lesson-player-95RlJbzN.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -329,6 +335,7 @@
       "resources/js/scene/tempo.js"
     ],
     "dynamicImports": [
+      "engine-mvp/src/sound/player.ts",
       "resources/js/scene/StoryGameEngine.js",
       "resources/js/avatar-3d.js",
       "resources/js/scene/ParallaxScene.js",
