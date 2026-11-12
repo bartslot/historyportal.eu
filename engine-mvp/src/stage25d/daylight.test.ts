@@ -72,7 +72,8 @@ describe('daylight: one light per scene', () => {
     const l = daylightOf({ daylight: { time: 'day' } })
     expect(skyAt(l, 0)).toEqual(l.sky.horizon)
     expect(skyAt(l, 1)).toEqual(l.sky.top)
-    expect(skyAt(l, 0.45)).toEqual(l.sky.mid)
+    expect(skyAt(l, 0.5)).toEqual(l.sky.mid)
+    expect(skyAt(l, 0.1)).toEqual(l.sky.horizon)   // the horizon colour reaches up past the far landscape
   })
 })
 

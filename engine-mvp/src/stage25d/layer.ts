@@ -97,6 +97,9 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float edgeSoft, footM, grounding, grass, light, sunSide, drift, height;
   uniform float bottomFade;                    // ground bands: alpha ramps to 0 over this share of the height, from the bottom
   uniform vec3 footTint, sunColour, shadeColour;
+  uniform vec3 ambient;                        // the time of day's light (daylight.ts), on everything painted
+  uniform float tone;                          // a cloud: how far its paint goes toward the time's cloud colours
+  uniform vec3 toneLight, toneShade, toneUnder;
   uniform vec4 cell;                           // an animation: the frame's part of the sheet (u0, v0, du, dv), else 0 0 1 1
   uniform vec2 uvFit;                          // the drawing's uv as uv of its atlas (a puppet), else 1 1
   uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
@@ -138,6 +141,20 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     vec4 c = tap(uv);                       // premultiplied
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
+    // the time of day lights everything painted, before the haze: far layers still fade into the sky's own colour.
+    // A flame keeps its own light.
+    vec3 amb = kind == 4.0 ? vec3(1.0) : ambient;
+    c.rgb *= amb;
+    // a cloud takes the sky's colours: its light parts the lit top, its washes the shade, its lower edge the underside
+    // (warm at dusk and dawn, dark at night). Its ink lines stay as drawn.
+    if (tone > 0.0 && c.a > 0.004) {
+      vec3 s = c.rgb / c.a;
+      float l = lum(s);
+      vec3 t = mix(toneShade, toneLight, smoothstep(0.45, 0.95, l));
+      t = mix(t, toneUnder, (1.0 - smoothstep(0.05, 0.5, vH)) * smoothstep(0.45, 0.9, l) * 0.85);
+      t *= 0.3 + 0.7 * smoothstep(0.15, 0.55, l);
+      c.rgb = mix(s, t, tone * (1.0 - inkOf(s))) * c.a;
+    }
     if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
       float ink = inkOf(s);
@@ -152,7 +169,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
           #else
           vec4 n = tap(uv + d * pxUV * lineThin);
           #endif
-          if (n.a > 0.9) { vec3 ns = n.rgb / n.a; float nl = lum(ns); if (nl > bl) { best = ns; bl = nl; } }
+          if (n.a > 0.9) { vec3 ns = n.rgb / n.a * amb; float nl = lum(ns); if (nl > bl) { best = ns; bl = nl; } }
           else edge = min(edge, n.a);
         }
         s = mix(s, best, ink);
@@ -226,7 +243,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float nz = fbm(px / 2.0 + 41.0);
       c *= 1.0 - edgeSoft * rim * 0.85 * smoothstep(0.35, 0.75, nz);
       float bleed = edgeSoft * 0.3 * acc.a * smoothstep(0.45, 0.8, nz) * (1.0 - c.a);
-      c += vec4(acc.rgb / max(acc.a, 1e-3), 1.0) * bleed;
+      c += vec4(acc.rgb / max(acc.a, 1e-3) * amb, 1.0) * bleed;
       // and it melts into what stands behind it (Bart 11-11: "softer edges, blending into the environment"): the
       // silhouette fades out over a few screen px inside its cut. around(): a cut between two parts is no edge.
       float soft = 0.0;
@@ -368,6 +385,10 @@ export interface LayerHandle {
   setBent(bent: BentPicture, bones: Record<string, number>): void
   /** A point of the bent drawing (its px) in the world, where setBent put it. */
   worldOf(bent: BentPicture, px: number, py: number): Vector3
+  /** the time of day (daylight.ts): the light on the picture, its lit side's and its shaded side's colour */
+  setLight(ambient: readonly number[], sun: readonly number[], shade: readonly number[]): void
+  /** a cloud: how far it takes the time's cloud colours (0 = as painted) */
+  setTone(k: number, t?: { light: readonly number[]; shade: readonly number[]; under: readonly number[] }): void
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
 }
@@ -411,7 +432,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale'],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale'],
     samplers: rest ? ['tex', 'rest'] : ['tex'],
     defines: rest ? ['#define REST'] : [],
     needAlphaBlending: true,
@@ -429,7 +450,8 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
   mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
-  mat.setFloat('outlineW', 0).setFloat('etch', 0)
+  mat.setFloat('outlineW', 0).setFloat('etch', 0).setFloat('tone', 0)
+  mat.setVector3('ambient', new Vector3(1, 1, 1)).setVector3('sunColour', Vector3.FromArray(SUN_COLOUR)).setVector3('shadeColour', Vector3.FromArray(SHADE_COLOUR))
   mat.setVector4('cell', new Vector4(0, 0, 1, 1))
   mat.setVector2('uvFit', new Vector2(1, 1))
   mesh.material = mat
@@ -476,7 +498,14 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
         .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)
-      mat.setVector3('footTint', Vector3.FromArray(a.footTint)).setVector3('sunColour', Vector3.FromArray(SUN_COLOUR)).setVector3('shadeColour', Vector3.FromArray(SHADE_COLOUR))
+      mat.setVector3('footTint', Vector3.FromArray(a.footTint))
+    },
+    setLight: (ambient, sun, shade) => {
+      mat.setVector3('ambient', Vector3.FromArray(ambient)).setVector3('sunColour', Vector3.FromArray(sun)).setVector3('shadeColour', Vector3.FromArray(shade))
+    },
+    setTone: (k, t) => {
+      mat.setFloat('tone', k)
+      if (t) mat.setVector3('toneLight', Vector3.FromArray(t.light)).setVector3('toneShade', Vector3.FromArray(t.shade)).setVector3('toneUnder', Vector3.FromArray(t.under))
     },
     setGroundLine: (f) => { mat.setFloat('groundLine', f) },
     setFeather: (f, tint) => {

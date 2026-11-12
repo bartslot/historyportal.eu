@@ -27,7 +27,7 @@ export const cloudArt = (lib: { assets: Asset[] }): Asset[] => {
 export interface CloudSpot { asset: Asset; x: number; lift: number; scale: number; slot: number }
 
 /** Where high and low clouds float: their bottom's height over the horizon, a share of the frame. */
-const LIFT: Record<string, [number, number]> = { high: [0.5, 0.78], low: [0.08, 0.22], default: [0.16, 0.6] }
+const LIFT: Record<string, [number, number]> = { high: [0.5, 0.8], low: [0.22, 0.34], default: [0.26, 0.64] }
 const liftOf = (a: Asset) => (a.tags.includes('high') ? LIFT.high : a.tags.includes('low') ? LIFT.low : LIFT.default)
 
 /** The clouds of a scene: `amount` 0..1 of CLOUDS_MAX, picked from `chosen` (ids; null = every one of `art`). */

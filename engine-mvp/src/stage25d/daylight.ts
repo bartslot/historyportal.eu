@@ -52,8 +52,8 @@ export const PRESETS: Record<TimeOfDay, Preset> = {
     sky: { top: '#0f1f4f', mid: '#1f4b98', horizon: '#4f78b8' },
     ambient: [0.5, 0.57, 0.8], sun: [0.92, 0.96, 1.1], shade: [0.72, 0.76, 0.95],
     shadow: [0.05, 0.08, 0.2], shadowK: 0.55,
-    cloud: { light: [0.78, 0.83, 0.94], shade: [0.24, 0.3, 0.5], under: [0.16, 0.2, 0.36], tone: 0.85 },
-    sunAt: { x: 0.74, height: 0.6 }, stars: 1,
+    cloud: { light: [0.6, 0.66, 0.84], shade: [0.2, 0.25, 0.44], under: [0.14, 0.17, 0.32], tone: 0.9 },
+    sunAt: { x: 0.74, height: 0.28 }, stars: 1,
   },
 }
 
@@ -133,7 +133,7 @@ export function daylightOf(set: Pick<Scene['set'], 'daylight' | 'sky'> | undefin
   }
 }
 
-const elevationOf = (height: number) => ((ELEVATION.low + height * (ELEVATION.high - ELEVATION.low)) * Math.PI) / 180
+export const elevationOf = (height: number) => ((ELEVATION.low + height * (ELEVATION.high - ELEVATION.low)) * Math.PI) / 180
 
 /** The direction the light travels from a sun at (x across the frame, height over the horizon). The sun stands in the
  *  sky in front of the camera, so the light always comes toward the viewer: shadows fall forward, where they show,
@@ -159,6 +159,6 @@ export function castPoint(x: number, z: number, h: number, dir: [number, number,
 /** The sky's colour at a height share of the frame (0 at the horizon, 1 at the top): the gradient sky-gl.ts paints. */
 export function skyAt(light: Pick<Light, 'sky'>, k: number): RGB {
   const t = Math.min(1, Math.max(0, k))
-  const [a, b, f] = t < 0.45 ? [light.sky.horizon, light.sky.mid, t / 0.45] : [light.sky.mid, light.sky.top, (t - 0.45) / 0.55]
+  const [a, b, f] = t < 0.5 ? [light.sky.horizon, light.sky.mid, Math.max(0, (t - 0.1) / 0.4)] : [light.sky.mid, light.sky.top, (t - 0.5) / 0.5]
   return a.map((v, i) => v + (b[i] - v) * f) as RGB
 }

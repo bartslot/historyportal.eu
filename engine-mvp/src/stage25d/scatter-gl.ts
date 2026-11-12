@@ -38,7 +38,7 @@ Effect.ShadersStore.stageStrewnFragmentShader = `
   varying float vUp, vDist, vAcross;
   varying vec3 vFoot;
   uniform sampler2D tex;
-  uniform vec3 haze;
+  uniform vec3 haze, ambient;
   uniform float opacity;
   void main(void) {
     vec4 c = texture2D(tex, vUV);   // premultiplied
@@ -48,19 +48,19 @@ Effect.ShadersStore.stageStrewnFragmentShader = `
     if (c.a < 0.01) discard;
     // the foot sinks into the ground it stands on, the far ones go toward the horizon's colour
     float foot = (1.0 - smoothstep(0.0, 0.3, vUp)) * 0.65;
-    c.rgb = mix(c.rgb, vFoot * c.a, foot);
+    c.rgb = mix(c.rgb, vFoot * c.a, foot) * ambient;   // the time of day's light, before the far ones fade into the air
     c.rgb = mix(c.rgb, haze * c.a, smoothstep(40.0, 320.0, vDist) * 0.55);
     gl_FragColor = c * opacity;
   }`
 
-export interface Strewn { meshes: Mesh[]; update(time: number, sway: number, land: number, cam: Vector3, opacity: number): void; dispose(): void }
+export interface Strewn { meshes: Mesh[]; update(time: number, sway: number, land: number, cam: Vector3, opacity: number, ambient?: readonly number[]): void; dispose(): void }
 
 /** Quads for the clumps of one picture (picks[c.pick] whose file is `tex`), one mesh per distance bucket. foot(z):
  *  the ground colour at that distance. */
 export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clumps: Clump[], foot: (z: number) => [number, number, number], haze: [number, number, number], name: string): Strewn {
   const mat = new ShaderMaterial(`strewn:${name}`, scene, 'stageStrewn', {
     attributes: ['position', 'quad', 'uv', 'extra'],
-    uniforms: ['viewProjection', 'camPos', 'time', 'sway', 'land', 'haze', 'opacity'],
+    uniforms: ['viewProjection', 'camPos', 'time', 'sway', 'land', 'haze', 'opacity', 'ambient'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -95,9 +95,9 @@ export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clump
   })
   return {
     meshes,
-    update(time, sway, land, cam, opacity) {
+    update(time, sway, land, cam, opacity, ambient = [1, 1, 1]) {
       mat.setFloat('time', time).setFloat('sway', sway).setFloat('land', land).setFloat('opacity', opacity)
-        .setVector3('camPos', cam)
+        .setVector3('camPos', cam).setVector3('ambient', Vector3.FromArray(ambient))
       meshes.forEach((m) => { m.isVisible = opacity > 0.001 })
     },
     dispose() { meshes.forEach((m) => m.dispose()); mat.dispose() },
