@@ -75,6 +75,8 @@ trait EditsStage25d
                 $band['asset'] = $asset['id'];
             }
             $this->storeStage25dSetPart($scene, ['groundBands', $at], [...$band, ...self::backdropValues($patch['band'], self::BAND_FIELDS)]);
+            $this->skipQuietRender();   // values only: the stage shows them (Step3SceneConfigurator::isQuietCall)
+            $this->renderedFingerprint = $this->lessonFingerprint();
 
             return;
         }
@@ -128,6 +130,10 @@ trait EditsStage25d
             $layers[$index]['keys'] = $keys;
         }
         $this->storeStage25dLayers($scene, $layers);
+        // Moved, sized, turned, faded or posed: the stage and its Format panel already show it (isQuietCall), and the
+        // next poll must not draw it either. Anything else (a picture, a depth, keys, motion) renders as before.
+        $this->skipQuietRender();
+        $this->renderedFingerprint = $this->lessonFingerprint();
     }
 
     /** From the middle of the head to the nose, as a share of the figure's height. */

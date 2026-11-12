@@ -42,6 +42,7 @@ use App\Services\Diorama\LibraryAssets;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\SceneArrow;
+use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\StageSet;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
@@ -4594,6 +4595,31 @@ class Step3SceneConfigurator extends Component
     private const QUIET_CALLS = ['poll', 'saveStage25dStill'];
 
     /**
+     * A call that changes nothing the server draws: a quiet one, or a stage25d layer moved, sized, turned, faded or
+     * posed on the stage, or a ground strip's values (`stage25d:layer` without a new picture, depth, keys or motion),
+     * which the stage and its Format panel already show.
+     *
+     * @param  array<string,mixed>  $call
+     */
+    private static function isQuietCall(array $call): bool
+    {
+        if (in_array($call['method'] ?? null, self::QUIET_CALLS, true)) {
+            return true;
+        }
+        $patch = ($call['params'][1] ?? [])['patch'] ?? null;
+        if (($call['method'] ?? null) !== '__dispatch' || ($call['params'][0] ?? null) !== 'stage25d:layer' || ! is_array($patch) || $patch === []) {
+            return false;
+        }
+        // a ground strip's distance, size or opacity, not another picture
+        $band = $patch['band'] ?? null;
+        if (is_array($band) && count($patch) === 1) {
+            return array_diff(array_keys($band), ['index', 'x', 'z', 'scale', 'opacity']) === [];
+        }
+
+        return array_diff(array_keys($patch), LayerKeys::FIELDS) === [];
+    }
+
+    /**
      * Skip this request's render, unless a teacher's action rode along: Livewire sends calls made at the same moment
      * in one request (the poll tick and a selection, say), and a skipped render would swallow that action's change.
      */
@@ -4604,8 +4630,8 @@ class Step3SceneConfigurator extends Component
             if (($memo['id'] ?? null) !== $this->getId()) {
                 continue;
             }
-            $calls = array_column((array) ($component['calls'] ?? []), 'method');
-            if (! empty($component['updates']) || array_diff($calls, self::QUIET_CALLS) !== []) {
+            $loud = array_filter((array) ($component['calls'] ?? []), fn ($call) => ! self::isQuietCall((array) $call));
+            if (! empty($component['updates']) || $loud !== []) {
                 return;
             }
         }

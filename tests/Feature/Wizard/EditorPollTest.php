@@ -103,6 +103,52 @@ class EditorPollTest extends TestCase
         $this->assertEquals($stamp, $scene->fresh()->updated_at, 'not written again');
     }
 
+    public function test_a_layer_moved_on_the_stage_is_saved_without_a_render_and_the_poll_stays_quiet(): void
+    {
+        [$editor, $scene] = $this->editor();
+        $this->stageLayer($scene);
+        $this->travel(5)->seconds();
+
+        $editor->dispatch('stage25d:layer', index: 0, patch: ['x' => 0.4, 'z' => 7.5], sceneId: $scene->id);
+
+        $this->assertFalse($this->rendered($editor), 'the stage and its Format panel already show it');
+        $this->assertSame(0.4, $scene->fresh()->config['stage25d']['set']['layers'][0]['x']);
+        $editor->call('poll');
+        $this->assertFalse($this->rendered($editor), 'nor does the next poll draw it again');
+    }
+
+    public function test_a_ground_strip_moved_back_is_saved_without_a_render_but_a_new_strip_picture_is_drawn(): void
+    {
+        [$editor, $scene] = $this->editor();
+        $config = $scene->config;
+        $config['stage25d']['set']['groundBands'] = [['asset' => 'terrain-dunes-01', 'z' => 40.0]];
+        $scene->update(['config' => $config]);
+
+        $editor->dispatch('stage25d:layer', index: 0, patch: ['band' => ['index' => 0, 'z' => 80.0]], sceneId: $scene->id);
+        $this->assertFalse($this->rendered($editor));
+        $this->assertEquals(80.0, $scene->fresh()->config['stage25d']['set']['groundBands'][0]['z']);
+
+        $editor->dispatch('stage25d:layer', index: 0, patch: ['band' => ['index' => 0, 'asset' => 'terrain-dunes-02']], sceneId: $scene->id);
+        $this->assertTrue($this->rendered($editor));
+    }
+
+    public function test_a_layer_edit_the_page_shows_is_still_drawn(): void
+    {
+        [$editor, $scene] = $this->editor();
+        $this->stageLayer($scene);
+
+        $editor->dispatch('stage25d:layer', index: 0, patch: ['x' => 0.4, 'depth' => 'fg'], sceneId: $scene->id);
+
+        $this->assertTrue($this->rendered($editor));
+    }
+
+    private function stageLayer(Scene $scene): void
+    {
+        $config = $scene->config;
+        $config['stage25d']['set']['layers'] = [['asset' => 'girl-01', 'depth' => 'mid', 'x' => 0.2, 'z' => 7.0]];
+        $scene->update(['config' => $config]);
+    }
+
     public function test_an_idle_lesson_polls_slowly_and_one_being_made_polls_fast(): void
     {
         [$editor, $scene] = $this->editor();
