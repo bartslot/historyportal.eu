@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { MAX_ZOOM, MIN_ZOOM, panBy, zoomAround } from './stage-zoom.js'
+import { MAX_ZOOM, MIN_ZOOM, installStageZoom, panBy, zoomAround } from './stage-zoom.js'
 
 const rect = { left: 200, top: 100, width: 800, height: 450, right: 1000, bottom: 550 }
 const area = { left: 100, top: 64, right: 1100, bottom: 700 }
@@ -39,5 +39,24 @@ describe('stage zoom', () => {
     const b = boxOf(v)
     expect(b.left + b.width).toBeGreaterThanOrEqual(area.left + 80 - 1e-6)
     expect(b.top).toBeLessThanOrEqual(area.bottom - 80 + 1e-6)
+  })
+})
+
+describe('stage zoom: where the wheel counts', () => {
+  test('a wheel over a panel above the work area scrolls the panel, never the stage', () => {
+    document.body.innerHTML = '<div id="area"></div><div id="root"></div><aside id="panel"><div id="row"></div></aside>'
+    const root = document.getElementById('root'), area = document.getElementById('area')
+    const zoom = installStageZoom(root, area)
+    const pinch = (el) => el.dispatchEvent(new WheelEvent('wheel', { deltaY: -50, ctrlKey: true, bubbles: true, cancelable: true }))
+    pinch(document.getElementById('row'))
+    expect(zoom.view.z).toBe(1)
+    pinch(area)
+    expect(zoom.view.z).toBeGreaterThan(1)
+    const before = zoom.view
+    const scroll = new WheelEvent('wheel', { deltaY: 40, bubbles: true, cancelable: true })
+    document.getElementById('row').dispatchEvent(scroll)
+    expect(zoom.view).toBe(before)   // untouched: the panel scrolls
+    expect(scroll.defaultPrevented).toBe(false)
+    zoom.destroy()
   })
 })

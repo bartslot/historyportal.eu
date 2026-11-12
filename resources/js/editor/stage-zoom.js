@@ -73,7 +73,9 @@ export function installStageZoom (root, area = document.getElementById('lesson-s
     clip()
     if (!raf) raf = requestAnimationFrame(refit)
   }
-  const overWork = (e) => root.contains(e.target) || (area && (e.target === area || inside(area.getBoundingClientRect(), e.clientX, e.clientY)))
+  // only the stage and the bare work area around it: a panel floating over the work area (rail, inspector, the deck)
+  // scrolls itself (Bart 11-12: "we should scroll or move only the canvas when we are hovering the canvas panel")
+  const overWork = (e) => root.contains(e.target) || (!!area && area.contains(e.target))
 
   const wheel = (e) => {
     const zoomKey = e.ctrlKey || e.metaKey
@@ -111,4 +113,3 @@ export function installStageZoom (root, area = document.getElementById('lesson-s
   return root.__stageZoom
 }
 
-const inside = (r, x, y) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
