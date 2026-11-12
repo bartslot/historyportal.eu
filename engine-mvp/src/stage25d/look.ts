@@ -55,7 +55,8 @@ export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | '
     // its contact is the stain and the cast shadow under it
     grounding: kind === 'figure' ? 0 : num(look, 'grounding'), grass: kind === 'figure' ? 0 : num(look, 'grassOverlap'),
     light: sky ? 0 : num(look, 'sunLight') * (kind === 'strip' ? 0.5 : 1),
-    sunSide: sunX > 0 ? -1 : 1,                        // light travelling right comes from the left
+    // light travelling right comes from the left; a sun straight ahead lights both sides alike
+    sunSide: Math.max(-1, Math.min(1, -sunX * 2.5)),
     drift: sky ? num(look, 'cloudDrift') : 0,
     footTint,
   }
