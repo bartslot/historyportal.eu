@@ -175,6 +175,8 @@ let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
 let _stage25d       = null   // live Babylon 2.5D stage (a scene of kind stage25d), mounted lazily
 const _stageSound   = createStageSound()   // the stage scenes' beds + sfx; its AudioContext waits for startLesson's click
 if (typeof window !== 'undefined') window.__stageSound = _stageSound   // tests and the dev panel read engine.state() / engine.log
+// The editor's title-screen miniatures (?title_preview=1): they only ever show the title, so they fetch no narration.
+const TITLE_PREVIEW = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('title_preview') === '1'
 
 // ── Alpine component ──────────────────────────────────────────────────────────
 // Alpine is imported directly (no Livewire on this page) — register before start()
@@ -1312,6 +1314,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // The chapters on the bar, quizzes and games in them too: the class sees what is coming.
       this.chapters = buildChapters(_sceneQueue, n => t('Chapter :number', { number: n + 1 }))
+      if (TITLE_PREVIEW) return
 
       // Warm every narrated scene up front, BEFORE the early return below — a lesson can open with
       // a quiz or map scene that has no audio of its own, and those lessons need warming most.
