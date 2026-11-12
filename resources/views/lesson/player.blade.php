@@ -27,10 +27,8 @@
         $titleFont = $titlePoster['subtitle']['font'] ?? null;
     @endphp
     @if ($titleFont === 'comic' || ($titlePoster && $lesson->expect))
-        {{-- The comic poster's subtitle lettering and the expect strip (Figma: Coming Soon). --}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Coming+Soon&display=swap">
+        {{-- The comic poster's subtitle lettering and the expect strip: Coming Soon (app.css @font-face). --}}
+        <link rel="preload" href="/fonts/coming-soon/ComingSoon-Regular.woff2" as="font" type="font/woff2" crossorigin>
     @endif
     @if ($titleFont === 'lettering')
         {{-- The comic cover's live subtitle is set in ComicRoma Lettering Bold (app.css @font-face);

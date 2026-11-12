@@ -599,6 +599,16 @@
     font-display: swap;
 }
 
+/* ─── Coming Soon: the comic poster's subtitle and the expect strip (Figma). Self-hosted: the Google Fonts
+   stylesheet held the player's first paint ~0.8 s on mobile. Fetched only when a title uses it. */
+@font-face {
+    font-family: 'Coming Soon';
+    src: url('/fonts/coming-soon/ComingSoon-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ─── ComicRoma Balloon SemiBold: the speech balloons' lettering. Coming Soon (Apache 2.0) with
    every outline offset ~25% heavier, built in branding/historyportalBranding/font-build/balloon;
    LICENSE + NOTICE in public/fonts/balloon. Preloaded by the player only when a lesson has balloons. */

@@ -24,10 +24,6 @@
         <meta name="description" content="{{ __('History lessons your class wants to see the end of. Real paintings, a narrated story, and a game they finish themselves. Built in minutes, plays anywhere.') }}">
     @endisset
 
-    {{-- The narration audio and museum imagery come from the same origin, but fonts and tiles do
-         not: warming those connections early shaves a round trip off first paint. --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-font-switch />
