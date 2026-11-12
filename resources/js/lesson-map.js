@@ -86,7 +86,9 @@ const polityFilter = (year) => ['all',
  * @param {{ qid?: string, year?: number, interactive?: boolean }} opts
  */
 export function renderLessonMap (el, opts = {}) {
-  const { qid = null, interactive = true, annotations = [], editable = false, onAnnotationsChange = null, onPolityClick = null } = opts
+  const { qid = null, interactive = true, editable = false, onAnnotationsChange = null, onPolityClick = null } = opts
+  // `let`: showScene() hands the same map another scene's pins.
+  let annotations = Array.isArray(opts.annotations) ? opts.annotations : []
   // Flat, always: the painted chart does not wrap onto a globe (its wave marks stand off the limb and
   // the sea fill floods the space around it). A stored 'globe' projection on old scenes is ignored.
   const projection = 'mercator'
@@ -149,10 +151,12 @@ export function renderLessonMap (el, opts = {}) {
   // `fit: 'labels'` (set by the lesson composer on blocks that pin places) goes further: the camera
   // frames the pins and STAYS there; the polity is still highlighted, it just no longer moves the
   // camera. Without the flag, today's polity fit applies.
-  const labelsFit = opts.fit === 'labels' && !fixedCamera
+  const labelsFitFor = (fit) => (fit === 'labels' && !fixedCamera
     ? labelsView({ annotations, labels: placeLabels, route }, { width: el.clientWidth || 1280, height: el.clientHeight || 720 })
-    : null
+    : null)
+  let labelsFit = labelsFitFor(opts.fit)
   const opening = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })
+  const maxZoomFor = () => Math.max(6, labelsFit?.zoom ?? 0, fixedCamera?.zoom ?? 0)
 
   // The live chart config: the dev tuner edits this copy, never CHART itself.
   const chartCfg = { ...CHART }
@@ -272,7 +276,7 @@ export function renderLessonMap (el, opts = {}) {
     center: opening.center,
     zoom: opening.zoom,
     // A labels fit (or the writer's camera) may frame a region closer than the atlas default (see LABELS_MAX_ZOOM).
-    maxZoom: Math.max(6, labelsFit?.zoom ?? 0, fixedCamera?.zoom ?? 0),
+    maxZoom: maxZoomFor(),
     // A voyage revisits the same water on the way out and the way home, and the default cache is
     // small enough that a long crossing evicts the tiles the return leg is about to want — which
     // shows up as the sea reloading in a place the class has already been.
@@ -742,6 +746,34 @@ export function renderLessonMap (el, opts = {}) {
     },
     /** Reveal every label at once (e.g. the editor may prefer to show them all). */
     revealAllLabels: () => { revealAll = true; applyLabelReveal() },
+    /**
+     * Put another map scene on this same map: its year, territory, pins, detail switches and framing.
+     * The editor calls it when the teacher steps from one map scene to the next. Rebuilding the map
+     * for that fetched the whole chart again (its paper, its images, every tile) for a map that was
+     * already on screen; this keeps all of it and only moves the camera.
+     */
+    showScene: (o = {}) => {
+      annotations = Array.isArray(o.annotations) ? o.annotations : []
+      anno?.update(annotations)
+      layerToggles = { cities: o.showCities === true, borders: o.showBorders === true }
+      applyLayerToggles()
+      const y = Number(o.year)
+      setYear(Number.isFinite(y) ? y : 1600)
+      labelsFit = labelsFitFor(o.fit)
+      map.setMaxZoom(maxZoomFor())
+      const view = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })
+      whenStyleReady(() => map.easeTo({ ...view, duration: 600 }))
+      // The territory: highlight it, and fit to it once its tiles are in (unless the pins own the camera).
+      const id = o.qid || null
+      if (highlighted !== id) {
+        setHighlight(highlighted, false)
+        setHighlight(id, true)
+        highlighted = id
+      }
+      activeQid = id
+      didFit = false
+      if (id) requestAfterTiles(fitToPolity)
+    },
     /** Kept for callers; the chart is always flat (see `projection` above). */
     setProjection: () => {},
     beginAddFocus: () => anno?.beginAddFocus(),
