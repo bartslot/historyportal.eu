@@ -53,7 +53,7 @@
                              image, so the fallback is a deliberate title card instead. --}}
                         <div class="relative aspect-[16/10] overflow-hidden bg-slate-950">
                             @if ($poster)
-                                <img src="{{ $poster }}" alt="{{ $lesson->title }}" loading="lazy" decoding="async"
+                                <img src="{{ $poster }}" alt="{{ $lesson->title }}" @if ($loop->first) fetchpriority="high" @else loading="lazy" @endif decoding="async"
                                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none">
                             @else
                                 <div class="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,color-mix(in_oklab,var(--color-primary)_16%,transparent),transparent_60%),radial-gradient(circle_at_75%_85%,rgba(56,189,248,0.14),transparent_55%)] px-5">

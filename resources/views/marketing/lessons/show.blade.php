@@ -51,7 +51,7 @@
         </header>
 
         @if ($poster)
-            <img src="{{ $poster }}" alt="{{ $heading }}" loading="lazy" decoding="async"
+            <img src="{{ $poster }}" alt="{{ $heading }}" fetchpriority="high" decoding="async"
                  class="mt-8 w-full rounded-2xl border border-slate-800 object-cover">
         @endif
 
