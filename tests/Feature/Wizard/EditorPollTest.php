@@ -103,6 +103,29 @@ class EditorPollTest extends TestCase
         $this->assertEquals($stamp, $scene->fresh()->updated_at, 'not written again');
     }
 
+    public function test_an_idle_lesson_polls_slowly_and_one_being_made_polls_fast(): void
+    {
+        [$editor, $scene] = $this->editor();
+        $editor->assertSeeHtml('wire:poll.15s="poll"')->assertDontSeeHtml('wire:poll.3s');
+
+        $this->travel(5)->seconds();
+        $scene->update(['status' => 'generating']);
+        $editor->call('poll');
+
+        $editor->assertSeeHtml('wire:poll.3s="poll"')->assertDontSeeHtml('wire:poll.15s');
+    }
+
+    public function test_a_world_being_made_polls_fast(): void
+    {
+        [$editor, $scene] = $this->editor();
+        $this->travel(5)->seconds();
+        $scene->update(['world_labs_status' => 'pending']);
+
+        $editor->call('poll');
+
+        $editor->assertSeeHtml('wire:poll.3s="poll"');
+    }
+
     public function test_a_teacher_action_sent_in_the_same_request_as_the_poll_is_still_drawn(): void
     {
         [$editor] = $this->editor();

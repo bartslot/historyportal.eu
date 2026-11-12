@@ -23,7 +23,7 @@ import { join } from 'node:path'
 const REPORT_DIR = join(process.cwd(), 'tests/playwright/results/idle-poll-cost')
 const LESSON = Number(process.env.PERF_LESSON_ID ?? process.env.PW_TEACHER_LESSON_ID ?? 41)
 const IDLE_MS = 30_000
-const DECLARED_CADENCE_MS = 3_000
+const DECLARED_CADENCE_MS = 15_000   // 3 s only while something is being made (Step3SceneConfigurator::isMaking)
 
 type Poll = { at: number; encoded: number; raw: number; gzip: number }
 

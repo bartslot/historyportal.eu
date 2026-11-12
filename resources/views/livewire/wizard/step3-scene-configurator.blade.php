@@ -11,13 +11,16 @@
     @endif
 @endpush
 
-<div class="contents" x-data="step3SceneConfigurator" wire:poll.3s="poll"
+<div class="contents" x-data="step3SceneConfigurator"
      {{-- Optional chaining throughout: this effect runs on first paint, which can beat the view
           store's registration (a pushed script racing alpine:init). Without the `?.` the effect
           throws and Alpine tears down the component's reactive effects. --}}
      x-effect="document.documentElement.style.setProperty('--objlist-w', $store.view?.objects ? ($store.view?.objectsW ?? 208) + 'px' : '0px');
                document.documentElement.style.setProperty('--ruler-w', $store.view?.rulers ? '20px' : '0px');
                window.__placeRulers && requestAnimationFrame(window.__placeRulers)">
+    {{-- The poll: every 3 s while something is being made, every 15 s otherwise (render()). The key swaps the
+         element when the pace changes, so Livewire starts the new interval. --}}
+    <div hidden wire:key="editor-poll-{{ $pollEvery }}" wire:poll.{{ $pollEvery }}="poll"></div>
 
     {{-- Letterboxed canvas stage. The lesson lives in the WORK AREA between the fixed chrome —
          the scene rail (left, 11rem) and the docked inspector (right, 24rem) — below the top

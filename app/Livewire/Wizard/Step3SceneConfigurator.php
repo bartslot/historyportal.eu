@@ -6278,6 +6278,20 @@ class Step3SceneConfigurator extends Component
         // what this render shows: the poll skips its own render until the lesson changes (poll())
         $this->renderedFingerprint = $this->lessonFingerprint();
 
-        return view('livewire.wizard.step3-scene-configurator');
+        return view('livewire.wizard.step3-scene-configurator', ['pollEvery' => $this->isMaking() ? '3s' : '15s']);
+    }
+
+    /**
+     * Something for this lesson is being made in the background (a voice, a picture, a world, a painting
+     * search): the editor polls every 3 s. Otherwise every 15 s, which still brings in what changed
+     * elsewhere (the crew, another tab) without a request every 3 s from every open editor.
+     */
+    private function isMaking(): bool
+    {
+        return $this->paintingPickerOpen
+            || in_array($this->lesson->status, [LessonStatus::Pending, LessonStatus::Generating, LessonStatus::ScenesGenerating], true)
+            || $this->lesson->scenes()
+                ->where(fn ($q) => $q->awaitingMedia()->orWhereIn('world_labs_status', ['pending', 'generating']))
+                ->exists();
     }
 }
