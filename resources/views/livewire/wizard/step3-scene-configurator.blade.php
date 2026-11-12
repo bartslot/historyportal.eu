@@ -2962,10 +2962,11 @@
     <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode(\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson)) }}"></div>
     <div hidden wire:ignore data-cutout-labels="{{ json_encode(\App\Services\Editor\Cutouts::labels()) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
 
-    {{-- Scene rail (vertical, left edge) --}}
-    <x-lesson.timeline :scenes="$this->scenes" :selected-scene-id="$this->titleSelected ? null : $selectedSceneId" editable
-                       :problems="$this->problemsByScene"
-                       :title-screen="['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected]" />
+    {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
+         The selected thumb is announced to it here: the element is new whenever the selection changes. --}}
+    <livewire:wizard.scene-rail :lesson-id="$lesson->id" :selected-scene-id="$selectedSceneId" :title-selected="$this->titleSelected" wire:key="scene-rail" />
+    <div hidden wire:key="rail-sel-{{ $this->titleSelected ? 'title' : $selectedSceneId }}"
+         x-data x-init="window.__railSel = { id: @js($selectedSceneId), title: @js($this->titleSelected) }; window.dispatchEvent(new CustomEvent('rail-selected', { detail: window.__railSel }))"></div>
 
     {{-- Rail resize handle — drag the rail's right edge to resize it; drag it under 24px (near
          the edge) and it disappears completely. Sits at the rail's right edge; when the rail is

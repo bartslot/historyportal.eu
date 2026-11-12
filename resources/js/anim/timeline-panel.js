@@ -181,7 +181,7 @@ export const animationTimeline = (config = {}) => ({
     const flushBeforeRequest = () => this.flushSave()
     window.addEventListener('scene:before-undo', flushBeforeRequest)
     document.addEventListener('click', (event) => {
-      if (event.target.closest?.('[wire\\:click^="selectScene("]')) flushBeforeRequest()
+      if (event.target.closest?.('[wire\\:click*="selectScene("]')) flushBeforeRequest()
     }, true)
     window.addEventListener('pagehide', () => {
       this.stashDraft()

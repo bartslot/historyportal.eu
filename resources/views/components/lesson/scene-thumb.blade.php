@@ -6,6 +6,8 @@
     'editable' => false,   // Configure step: the hover menu that duplicates or deletes the scene
     // What LessonProblems found on this scene (the editor passes them; null = the old status dot).
     'problems' => null,
+    // The Livewire component the clicks go to: '$parent.' inside SceneRail.
+    'call'     => '',
 ])
 
 {{-- data-thumb / data-thumb-selected let the rail's @container "compact" rules (timeline.blade)
@@ -26,7 +28,7 @@
 @endif
 <button type="button"
         wire:key="scene-thumb-{{ $scene->id }}"
-        wire:click="selectScene({{ $scene->id }})"
+        wire:click="{{ $call }}selectScene({{ $scene->id }})"
         data-scene-id="{{ $scene->id }}"
         data-thumb
         aria-label="{{ $sceneAriaLabel }}"
@@ -35,8 +37,9 @@
             'group relative shrink-0 aspect-video rounded-md overflow-hidden transition-all',
             'w-full' => $wide,
             'w-32' => ! $wide,
-            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900'        => $selected,
-            'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => ! $selected && $scene->status !== 'failed',
+            // selected: marked by the attribute (the rail moves it in the browser, timeline.blade markSelected)
+            'data-thumb-selected:ring-2 data-thumb-selected:ring-primary data-thumb-selected:ring-offset-2 data-thumb-selected:ring-offset-slate-900',
+            'ring-1 ring-slate-700/50 hover:ring-slate-500'                    => $scene->status !== 'failed',
             'ring-1 ring-error/50'                                          => $scene->status === 'failed',
         ])>
     {{-- Full thumbnail (image / year / place / badges). Hidden by the compact @container rule. --}}
@@ -155,7 +158,7 @@
         style="position: fixed; inset: auto;">
         <li>
             <button type="button" data-scene-duplicate="{{ $scene->id }}"
-                    wire:click.stop="duplicateScene({{ $scene->id }})" wire:loading.attr="disabled"
+                    wire:click.stop="{{ $call }}duplicateScene({{ $scene->id }})" wire:loading.attr="disabled"
                     x-on:click="$el.closest('[popover]').hidePopover()">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#rail-duplicate"/></svg>
                 {{ __('Duplicate scene') }}
@@ -163,7 +166,7 @@
         </li>
         <li>
             <button type="button" data-scene-delete="{{ $scene->id }}" class="text-error"
-                    wire:click.stop="deleteScene({{ $scene->id }})" wire:loading.attr="disabled"
+                    wire:click.stop="{{ $call }}deleteScene({{ $scene->id }})" wire:loading.attr="disabled"
                     x-on:click="$el.closest('[popover]').hidePopover()">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#rail-delete"/></svg>
                 {{ __('Delete scene') }}

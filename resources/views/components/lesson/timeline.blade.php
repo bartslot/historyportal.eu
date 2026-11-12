@@ -6,6 +6,8 @@
     'titleScreen'     => null,
     // Configure only: LessonProblems per scene id, for the thumbnail's dot.
     'problems'        => [],
+    // The Livewire component the rail's clicks go to: '$parent.' when the rail is its own component (SceneRail).
+    'call'            => '',
 ])
 
 {{-- Vertical scene rail (LessonUp/Keynote-style): numbered thumbnails down the left edge.
@@ -52,14 +54,13 @@
         @if ($titleScreen)
             <div class="px-3 pt-3">
                 <button type="button"
-                        wire:click="selectTitle"
+                        wire:click="{{ $call }}selectTitle"
                         data-thumb data-title-thumb
                         aria-label="{{ __('Title screen') }}"
                         @if ($titleScreen['selected']) data-thumb-selected aria-current="true" @endif
                         @class([
                             'group relative aspect-video w-full overflow-hidden rounded-md transition-all',
-                            'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' => $titleScreen['selected'],
-                            'ring-1 ring-slate-700/50 hover:ring-slate-500' => ! $titleScreen['selected'],
+                            'ring-1 ring-slate-700/50 hover:ring-slate-500 data-thumb-selected:ring-2 data-thumb-selected:ring-primary data-thumb-selected:ring-offset-2 data-thumb-selected:ring-offset-slate-900',
                         ])>
                     <span data-thumb-full class="contents">
                         <div class="absolute inset-0 bg-slate-800/60"></div>
@@ -92,7 +93,7 @@
                     {{-- Insert here: after the scene above, or first (0) above scene 1. --}}
                     <button type="button"
                             data-no-drag data-rail-gap
-                            wire:click="openAddSceneAfter({{ $loop->first ? 0 : $scenes->values()[$loop->index - 1]->id }})"
+                            wire:click="{{ $call }}openAddSceneAfter({{ $loop->first ? 0 : $scenes->values()[$loop->index - 1]->id }})"
                             class="flex h-8 w-full items-center justify-center text-white/30 transition-colors hover:text-primary"
                             data-tooltip="{{ __('Add scene here') }}" aria-label="{{ __('Add scene here') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
@@ -105,6 +106,7 @@
                                       :selected="$scene->id === $selectedSceneId"
                                       :number="$loop->iteration"
                                       :editable="$editable"
+                                      :call="$call"
                                       wide />
             @endforeach
 
@@ -112,7 +114,7 @@
                 {{-- At the end, whatever is selected. --}}
                 <button type="button"
                         data-no-drag data-rail-add
-                        wire:click="openAddSceneAfter({{ $scenes->last()?->id ?? 0 }})"
+                        wire:click="{{ $call }}openAddSceneAfter({{ $scenes->last()?->id ?? 0 }})"
                         class="flex aspect-video w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-white/20 text-white/40 transition-all hover:border-primary hover:text-primary"
                         data-tooltip="{{ __('Add scene') }}" aria-label="{{ __('Add scene') }}">
                     {{-- A drawn plus, not the "+" glyph: a font's plus sits off its box's centre. --}}
@@ -156,8 +158,22 @@
             },
         })
     }
+    // The selected thumb is marked here, not by a render (SceneRail): the editor announces it (rail-selected) and
+    // the mark is put back after the rail itself re-renders.
+    function markSelected() {
+        const sel = window.__railSel
+        if (!sel) return
+        document.querySelectorAll('[data-rail-col] [data-thumb]').forEach((b) => {
+            const on = sel.title ? b.hasAttribute('data-title-thumb') : !b.hasAttribute('data-title-thumb') && Number(b.dataset.sceneId) === sel.id
+            b.toggleAttribute('data-thumb-selected', on)
+            if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current')
+        })
+    }
+    window.addEventListener('rail-selected', (e) => { window.__railSel = e.detail; markSelected() })
     function boot() {
         mountTimelineSortable()
+        markSelected()
+        window.Livewire?.hook('morphed', ({ component }) => { if (component?.name === 'wizard.scene-rail') markSelected() })
         // wire:poll.3s re-renders the rail; if the morph swaps the track element, re-mount on it.
         window.Livewire?.hook('morph.updated', ({ el }) => { if (el && el.id === 'timeline-track') mountTimelineSortable() })
     }

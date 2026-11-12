@@ -996,7 +996,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         for (const q of [stage25dLayerSaves, stage25dLookSaves, stage25dWorldSaves, stage25dDaylightSaves]) q.flush()
     })
     document.addEventListener('click', (event) => {
-        if (event.target.closest?.('[wire\\:click^="selectScene("]')) dioMoves.flush()
+        if (event.target.closest?.('[wire\\:click*="selectScene("]')) dioMoves.flush()
     }, true)
 
     // The scene's title block sits on the camera frame, not the canvas box: zoomed or panned, it
@@ -1025,6 +1025,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     const stage25dWorldSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:world', save), DIO_MOVE_PAUSE_MS)
     // The scene's time of day (the Sky panel): the whole set.daylight, the newest per scene
     const stage25dDaylightSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:daylight', save), DIO_MOVE_PAUSE_MS)
+    const stage25dSoilSaves = createKeyedSaveQueue((save) => window.Livewire?.dispatch('stage25d:soil', save), DIO_MOVE_PAUSE_MS)
     const _stage25dStillAsked = new Set()
     const _stage25dStillBusy = new Set()
     // The open scene's thumbnail follows its edits, a few seconds after the last one; only while the stage shows the
@@ -1120,7 +1121,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--color-panel);'   // only the stage's own canvas takes the pointer; the 2D canvas under it never shows through
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onWorldPick: (world, sceneId) => window.Livewire?.dispatch('stage25d:world-pick', { world, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onDaylight: (daylight, sceneId) => { if (sceneId != null) stage25dDaylightSaves.schedule(String(sceneId), { daylight, sceneId }) }, onWorld: (key, value, sceneId) => { if (sceneId != null) stage25dWorldSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
+            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onWorldPick: (world, sceneId) => window.Livewire?.dispatch('stage25d:world-pick', { world, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onDaylight: (daylight, sceneId) => { if (sceneId != null) stage25dDaylightSaves.schedule(String(sceneId), { daylight, sceneId }) }, onSoil: (soil, sceneId) => { if (sceneId != null) stage25dSoilSaves.schedule(String(sceneId), { soil, sceneId }) }, onWorld: (key, value, sceneId) => { if (sceneId != null) stage25dWorldSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {

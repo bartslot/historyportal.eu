@@ -4606,6 +4606,9 @@ class Step3SceneConfigurator extends Component
         if (in_array($call['method'] ?? null, self::QUIET_CALLS, true)) {
             return true;
         }
+        if (($call['method'] ?? null) === '__dispatch' && ($call['params'][0] ?? null) === 'stage25d:soil') {
+            return true;   // the soil colour: the stage shows it already
+        }
         $patch = ($call['params'][1] ?? [])['patch'] ?? null;
         if (($call['method'] ?? null) !== '__dispatch' || ($call['params'][0] ?? null) !== 'stage25d:layer' || ! is_array($patch) || $patch === []) {
             return false;
@@ -4637,6 +4640,10 @@ class Step3SceneConfigurator extends Component
         }
         $this->skipRender();
     }
+
+    /** What the scene rail last drew (SceneRail::fingerprint). */
+    #[Locked]
+    public ?string $railShown = null;
 
     /** The lesson as the editor last drew it (lessonFingerprint): the poll renders only when it changed. */
     #[Locked]
@@ -6303,6 +6310,12 @@ class Step3SceneConfigurator extends Component
     {
         // what this render shows: the poll skips its own render until the lesson changes (poll())
         $this->renderedFingerprint = $this->lessonFingerprint();
+        // the scene rail renders on its own, only when what it draws changed (SceneRail)
+        $rail = SceneRail::fingerprint($this->lesson, $this->scenes, $this->problemsByScene);
+        if ($this->railShown !== null && $rail !== $this->railShown) {
+            $this->dispatch('rail-refresh')->to(SceneRail::class);
+        }
+        $this->railShown = $rail;
 
         return view('livewire.wizard.step3-scene-configurator', ['pollEvery' => $this->isMaking() ? '3s' : '15s']);
     }
