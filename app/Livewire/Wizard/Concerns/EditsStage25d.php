@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Models\StageWorld;
 use App\Services\Editor\Cutouts;
 use App\Services\Lessons\FigureMouth;
+use App\Services\Stage25d\Daylight;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
@@ -291,8 +292,9 @@ trait EditsStage25d
             $parts = $preset['set'];
             $stage['bundle'] = $preset['bundle'];
             $stage['world_id'] = $world;
-            unset($set['ground'], $set['groundBands'], $set['skyLayer']);
-            $set = ['sky' => $parts['sky'], 'groundSlots' => $parts['groundSlots']]
+            unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight']);   // the world's sky, not the scene's own
+            $set = ['sky' => $parts['sky'] ?? null, 'groundSlots' => $parts['groundSlots']]
+                + (is_array($parts['daylight'] ?? null) ? ['daylight' => $parts['daylight']] : [])
                 + (empty($parts['groundBands']) ? [] : ['groundBands' => $parts['groundBands']]) + $set;
             $set['layers'] = [...array_map(fn ($l) => $l + ['world' => true], $parts['layers'] ?? []), ...$own];
             // a world may set a look value it needs (calm water strews no foam): only keys the panel offers, in range
@@ -338,7 +340,7 @@ trait EditsStage25d
         $stage = $scene->config['stage25d'];
         $bundle = (string) ($stage['bundle'] ?? '');
         $set = (array) ($stage['set'] ?? []);
-        if ($bundle === '' || empty($set['sky']) || empty($set['groundSlots'])) {
+        if ($bundle === '' || (empty($set['sky']) && ! Daylight::isOwn($set)) || empty($set['groundSlots'])) {
             $this->dispatch('toast', type: 'info', message: __('Give the scene a sky and a terrain first.'));
 
             return;
@@ -352,7 +354,8 @@ trait EditsStage25d
             'name' => $name,
             'bundle' => $bundle,
             'parts' => [
-                'set' => ['sky' => $set['sky'], 'groundSlots' => $set['groundSlots']]
+                'set' => ['sky' => $set['sky'] ?? null, 'groundSlots' => $set['groundSlots']]
+                    + (is_array($set['daylight'] ?? null) ? ['daylight' => $set['daylight']] : [])
                     + (empty($set['groundBands']) ? [] : ['groundBands' => $set['groundBands']]) + ['layers' => $layers],
                 'look' => array_intersect_key((array) ($stage['look'] ?? []), self::LOOK_RANGES),
             ],
@@ -455,6 +458,34 @@ trait EditsStage25d
             }
         }
         $this->storeStage25dConfig($scene, $config);
+    }
+
+    /**
+     * The scene's time of day (config.stage25d.set.daylight, the Sky panel): the whole block, held to what the stage reads
+     * (Daylight::clean). Null takes it away: the scene's sky picture again, lit as its tags say.
+     *
+     * @param  array<string,mixed>|null  $daylight
+     */
+    #[On('stage25d:daylight')]
+    public function saveStage25dDaylight(?array $daylight, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId) {
+            return;
+        }
+        if ($daylight === null) {
+            $config = $scene->config;
+            unset($config['stage25d']['set']['daylight']);
+            if ($config !== $scene->config) {
+                $this->storeStage25dConfig($scene, $config);
+            }
+
+            return;
+        }
+        $clean = Daylight::clean($daylight, (string) ($scene->config['stage25d']['bundle'] ?? ''));
+        if ($clean !== null) {
+            $this->storeStage25dSetPart($scene, ['daylight'], $clean);
+        }
     }
 
     /** One scene look value (config.stage25d.look.<key>). */

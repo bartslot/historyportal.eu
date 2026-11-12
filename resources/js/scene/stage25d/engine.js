@@ -18,6 +18,8 @@ import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion,
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
+import { daylightOf, hasSky, isDynamic, PRESETS, TIMES } from '@stage25d/stage25d/daylight'
+import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
@@ -102,10 +104,13 @@ function libraryOf (bundle) {
   return libraries.get(bundle)
 }
 
+/** Under a splat world the world is the sky: the scene keeps its time of day's light, never a sky of its own over it. */
+const worldDaylight = (d) => (d ? { ...d, painted: true } : undefined)
+
 /** The director's scene fields the stage reads, from config.stage25d. */
 export const stageScene = (cfg) => ({
   id: cfg.id ?? 'scene',
-  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
+  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null, daylight: worldDaylight(cfg.set?.daylight) } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
   camera: cfg.camera ?? null,
   camera_more: cfg.camera_more ?? [],
   camera_motion: cfg.camera_motion ?? null,
@@ -143,6 +148,7 @@ export async function createStage25d (host, opts = {}) {
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
   let bands = []            // the ground bands (set.groundBands), live like the layers
   let skyNow = {}           // the sky picture's own values (set.skyLayer), live like the layers
+  let daylightNow = null    // the scene's time of day (set.daylight, daylight.ts), live: no rebuild for a colour or a cloud
   let hidden = new Set()    // rows the eye took off the canvas, 'layer-<i>' or 'band-<n>' (never saved)
   let seenEdit = null       // editSig of the last server config adopted
   let libData = null        // the library on stage: { bundle, base, assets }
@@ -213,7 +219,8 @@ export async function createStage25d (host, opts = {}) {
   const redraw = () => {
     if (!scene || !stage) return
     const off = (l, id) => (hidden.has(id) ? { ...l, opacity: 0, keys: [] } : l)
-    scene = { ...scene, set: { ...scene.set, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
+    const daylight = (cfg?.world?.src ? worldDaylight(daylightNow) : daylightNow) ?? undefined
+    scene = { ...scene, set: { ...scene.set, daylight, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
     stage.rebind(scene)
   }
   /** 'band-2' -> 2 when that ground band exists, else -1. */
@@ -243,7 +250,7 @@ export async function createStage25d (host, opts = {}) {
     redraw()
     return saved
   }
-  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow }, camera: camNow, camera_more: camMore, camera_motion: camMotion })
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined }, look: lookNow, camera: camNow, camera_more: camMore, camera_motion: camMotion })
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
@@ -299,7 +306,9 @@ export async function createStage25d (host, opts = {}) {
     window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_camera') api.frameCamera(false) })
   }
   /** The set as the teacher sees it now: a rebuild (an asset swap, a new layer) keeps every live edit. */
-  const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow })
+  const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined })
+  /** The scene's set as it stands now, for the sky rules (daylight.ts hasSky, isDynamic). */
+  const setNow = () => ({ ...(cfg?.set ?? {}), daylight: daylightNow ?? undefined })
   /** Change a row and save it (onCommit: a layer by index; a band or the sky as its own patch). */
   const commit = (id, patch) => {
     const saved = edit(id, patch)
@@ -346,7 +355,7 @@ export async function createStage25d (host, opts = {}) {
     const hit = stage?.pickBackdrops?.(x, y).find((h) => !hidden.has(h.band !== undefined ? `band-${h.band}` : `layer-${h.index}`) && alpha.opaque(h.asset, h.u, h.v))
     // nothing painted there: the bare floor is the terrain, above it the sky
     const floor = !hit && terrainSlot() && stage ? groundUnderRay(stage.pointerRay(x, y), 0) : null
-    const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : floor ? 'terrain' : (cfg?.set?.sky ? 'sky' : null)
+    const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : floor ? 'terrain' : (hasSky(setNow()) ? 'sky' : null)
     if (id) api.select(id)
     return !!id
   }
@@ -384,6 +393,7 @@ export async function createStage25d (host, opts = {}) {
       layers = next.set.layers
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
       skyNow = { ...(next.set.skyLayer ?? {}) }
+      daylightNow = cfgNow.set?.daylight ?? null
       camNow = next.camera
       camMore = next.camera_more ?? []
       camMotion = next.camera_motion ?? null
@@ -505,6 +515,9 @@ export async function createStage25d (host, opts = {}) {
       layers = layers.map((l, i) => take(l, cfgNow.set?.layers?.[i]))
       bands = bands.map((g, i) => take(g, cfgNow.set?.groundBands?.[i]))
       skyNow = take(skyNow, cfgNow.set?.skyLayer)
+      daylightNow = cfgNow.set?.daylight ?? null
+      lookNow = { ...(cfgNow.look ?? {}) }   // an undone slider: the look is live, never a rebuild
+      stage.setLook(lookNow)
       camNow = cfgNow.camera ?? null
       camMore = cfgNow.camera_more ?? []
       camMotion = cfgNow.camera_motion ?? null
@@ -574,7 +587,7 @@ export async function createStage25d (host, opts = {}) {
       const set = cfg?.set
       if (!set) return []
       const bare = String(set.ground ?? '').startsWith('#') && !set.groundSlots?.length && !set.groundBands?.length
-      return [...(set.sky ? [] : ['sky']), ...(bare ? ['ground'] : [])]
+      return [...(hasSky(setNow()) ? [] : ['sky']), ...(bare ? ['ground'] : [])]
     },
     get skySelected () { return backdrop === 'sky' },
     /** The selected backdrop row ('sky', 'band-<n>'), or null. */
@@ -686,6 +699,8 @@ export async function createStage25d (host, opts = {}) {
       // on the floor; a far strip moves across, up and away; a picture on the ground moves along it.
       if (id === 'sky') {
         const sky = skyAsset()
+        // the scene's own sky (set.daylight): no picture, its panel is the time of day (daylightInfo)
+        if (isDynamic(setNow())) return { id, asset: null, depth: 'sky', figure: null, backdrop: true, role: 'sky', own: true, fields: [], label: SKY_NAME[(document.documentElement.lang || 'en').slice(0, 2)] ?? 'Sky', file: null, motion: null }
         return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: skyNow.src ?? `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
       // the terrain (Bart 11-10: like the sky, a part of the Scene): its picture and a flip, nothing to move
@@ -818,9 +833,13 @@ export async function createStage25d (host, opts = {}) {
         return
       }
       if (id === 'sky') {
-        if (assets.get(assetId)?.layer !== 'sky' || skyAsset()?.id === assetId) return
-        await api.show({ ...cfg, set: { ...liveSet(), sky: assetId } })
+        // a painted sky over the scene: the time of day stays, for its light, but the picture is the sky
+        const own = isDynamic(setNow())
+        if (assets.get(assetId)?.layer !== 'sky' || (skyAsset()?.id === assetId && !own)) return
+        if (own) daylightNow = { ...daylightNow, painted: true }
+        await api.show({ ...cfg, look: lookNow, set: { ...liveSet(), sky: assetId } })
         if (api.sceneId != null) opts.onCommit?.(0, { sky: assetId }, api.sceneId)
+        if (own && api.sceneId != null) opts.onDaylight?.(daylightNow, api.sceneId)
         window.dispatchEvent(new CustomEvent('stage25d-synced'))
         return
       }
@@ -917,6 +936,45 @@ export async function createStage25d (host, opts = {}) {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       return newestOf(libData.assets.filter((a) => a.layer === 'sky'), [cfg?.set?.sky]).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
     },
+    /** The Sky panel (Bart 11-12): the scene's time of day as it lights the scene now, its colours, the cloud cut-outs it
+     *  can show, the sun, and the four times' own gradients for their tiles. Null before a scene is shown. */
+    daylightInfo () {
+      if (!cfg || !libData) return null
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      const set = setNow()
+      const light = daylightOf(set, skyAsset())
+      const chosen = daylightNow?.clouds?.assets ?? null
+      return {
+        time: light.time, own: isDynamic(set), painted: !!cfg.set?.sky, auto: light.auto, sun: light.sun,
+        colours: light.hex, custom: Object.keys(daylightNow?.colours ?? {}).length > 0,
+        amount: daylightNow?.clouds?.amount ?? 0.4,
+        clouds: cloudArt(libData).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: BUILT_IN_CLOUDS.includes(a) ? BUILT_IN_CLOUD_BASE + a.file : thumbOf(a), on: !chosen || chosen.includes(a.id) })),
+        times: TIMES.map((t) => ({ id: t, sky: PRESETS[t].sky })),
+      }
+    },
+    /** Change the time of day: live on the stage and saved (onDaylight). A patch merges into the scene's set.daylight
+     *  (`colours: null`, `sun: null`: back to the time's own); the first one gives the scene its own sky. Turning a
+     *  painted sky into an own one (or back) is the one change that rebuilds: the picture loads or goes. */
+    async setDaylight (patch) {
+      if (!cfg || !stage) return
+      const before = isDynamic(setNow())
+      const base = daylightNow ?? { time: daylightOf(setNow(), skyAsset()).time }
+      const next = { ...base, ...patch }
+      for (const k of ['colours', 'sun', 'clouds']) if (next[k] === null) delete next[k]
+      if (patch.painted === false) delete next.painted
+      daylightNow = next
+      cfg = { ...cfg, set: { ...cfg.set, daylight: next } }   // a rebuild (a layer added, a sky picked) starts from cfg
+      seenEdit = liveSig()
+      if (isDynamic(setNow()) !== before) {
+        const keep = hidden
+        await api.show({ ...cfg, look: lookNow, set: liveSet() })
+        hidden = keep
+        window.dispatchEvent(new CustomEvent('stage25d-synced'))
+      }
+      redraw()
+      if (api.sceneId != null) opts.onDaylight?.(next, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */
     /** Which terrain slot a picture from the Assets tab replaces. */
     pickTerrainSlot (i) { terrainAt = Math.max(0, Number(i) || 0) },
@@ -952,7 +1010,7 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, cloudDrift: !!cfg?.set?.sky, worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, cloudDrift: hasSky(setNow()), worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }
@@ -1022,7 +1080,7 @@ export async function createStage25d (host, opts = {}) {
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
         ...(terrainSlot() ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
-        ...(cfg?.set?.sky ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
+        ...(hasSky(setNow()) ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },
       ]
     },

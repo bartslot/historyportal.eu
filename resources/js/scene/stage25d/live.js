@@ -21,17 +21,23 @@ export const layerIndex = (id) => {
 
 const without = (layer) => Object.fromEntries(Object.entries(layer).filter(([k]) => !EDITABLE.includes(k) && !isBoneField(k)))
 
-/** The config minus the editable fields of the layers, the ground bands and the sky picture, and the camera move: equal
- *  signatures = the same set, nothing to rebuild. */
+/** The scene draws its own sky (set.daylight, daylight.ts isDynamic) instead of loading its sky picture. */
+const ownSky = (daylight) => !!daylight && !daylight.painted
+
+/** The config minus the editable fields of the layers, the ground bands and the sky picture, the camera move, the look
+ *  sliders and the time of day: equal signatures = the same set, nothing to rebuild. Only whether the scene paints its
+ *  own sky is structure (a painted sky has a picture to load). */
 export const structureSig = (cfg) => {
-  const { layers = [], groundBands = [], skyLayer = {}, ...rest } = cfg?.set ?? {}
-  const { camera, camera_more, camera_motion, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
-  return JSON.stringify({ ...unframed, set: { ...rest, layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
+  const { layers = [], groundBands = [], skyLayer = {}, daylight, ...rest } = cfg?.set ?? {}
+  const { camera, camera_more, camera_motion, look, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
+  return JSON.stringify({ ...unframed, set: { ...rest, ownSky: ownSky(daylight), layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
 }
 
 const edits = (l) => [...EDITABLE.map((f) => l?.[f] ?? null), boneFields(l)]
 
-/** Only the editable fields and the camera move: changes when the server's copy of an edit changes (undo, redo, import). */
+/** Only the editable fields, the camera move, the time of day and the look: changes when the server's copy of an edit
+ *  changes (undo, redo, import). */
 export const editSig = (cfg) => JSON.stringify([
   (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [], cfg?.camera_motion ?? null,
+  cfg?.set?.daylight ?? null, cfg?.look ?? {},
 ])

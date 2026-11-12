@@ -46,6 +46,9 @@ final class LessonImporter
     /** Fields of the director's scene that the stage reads; the rest stays in the lesson file. */
     private const STAGE_FIELDS = ['set', 'figures', 'camera', 'camera_more', 'motion', 'sound', 'narration_at_s', 'dur_s', 'beat'];
 
+    /** A forced re-import's teacher work it keeps: each scene's time of day (set.daylight), by the scene's stage id. */
+    private array $keptDaylight = [];
+
     /** Named regions and region polygons live here (public/map-regions), as lesson-map.js draws them. */
     private const MAP_REGIONS = 'map-regions';
 
@@ -66,6 +69,7 @@ final class LessonImporter
             throw new InvalidArgumentException('lesson.json has no scenes.');
         }
         $topic = self::TOPIC_PREFIX.$id;
+        $this->keptDaylight = [];
         $report = ['lesson_id' => null, 'topic' => $topic, 'scenes' => 0, 'audio' => 0, 'balloons' => 0, 'quizzes' => 0, 'keys' => 0, 'branches' => 0, 'skipped' => [], 'warnings' => []];
         $game = $this->game($lesson['game'] ?? null);
 
@@ -77,6 +81,11 @@ final class LessonImporter
         $run = function () use ($lesson, $teacher, $audioRoot, $topic, $bundle, $existing, $dryRun, $game, &$report): void {
             $row = $dryRun ? new Lesson : $this->lessonRow($lesson, $teacher, $topic, $existing, $game);
             if (! $dryRun && $existing) {
+                // the time of day a teacher gave a scene stays when the file gives it none (Bart 11-12: the Sky panel)
+                $this->keptDaylight = $row->scenes()->get(['config'])
+                    ->filter(fn (Scene $sc) => is_array($sc->config['stage25d']['set']['daylight'] ?? null) && isset($sc->config['stage25d']['id']))
+                    ->mapWithKeys(fn (Scene $sc) => [(string) $sc->config['stage25d']['id'] => $sc->config['stage25d']['set']['daylight']])
+                    ->all();
                 $stale = $row->scenes()->pluck('id');
                 $row->quizQuestions()->delete();
                 $row->scenes()->withTrashed()->forceDelete();
@@ -238,6 +247,9 @@ final class LessonImporter
             if (array_key_exists($f, $s)) {
                 $stage[$f] = $s[$f];
             }
+        }
+        if (! isset($stage['set']['daylight']) && is_array($stage['set'] ?? null) && isset($this->keptDaylight[$stage['id']])) {
+            $stage['set']['daylight'] = $this->keptDaylight[$stage['id']];
         }
         // The director's figure tracks become keys on the figure's own layer, the shape the editor and the stage read.
         [$stage, $motion] = LayerKeys::fromMotion($stage);

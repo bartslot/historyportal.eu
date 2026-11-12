@@ -469,6 +469,58 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['cloudDrift' => 1, 'housePitch' => 4.5], $scene->fresh()->config['stage25d']['look'], 'birds and smoke are gone (Bart 11-10)');
     }
 
+    public function test_a_time_of_day_saves_held_to_what_the_stage_reads_and_opens_the_sky_row(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
+            ['id' => 'cloud-own-01', 'layer' => 'cloud', 'file' => 'c.webp'],
+        ]]));
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+        $editor->call('selectInspectorTarget', 's25_sky')->assertSet('activeStage25dLayer', null);
+
+        $editor->call('saveStage25dDaylight', [
+            'time' => 'dusk', 'colours' => ['top' => '#AABBCC', 'mid' => 'red', 'bogus' => '#000000'],
+            'clouds' => ['amount' => 4, 'assets' => ['cloud-own-01', 'cloud-bank-01', 'stone-chamber-01', 7]],
+            'sun' => ['x' => -1, 'height' => 0.25], 'painted' => 'yes', 'extra' => 1,
+        ], $scene->id);
+        $this->assertEquals([   // JSON keeps 1.0 as 1
+            'time' => 'dusk', 'colours' => ['top' => '#aabbcc'],
+            'clouds' => ['amount' => 1.0, 'assets' => ['cloud-own-01', 'cloud-bank-01']],
+            'sun' => ['x' => 0.0, 'height' => 0.25],
+        ], $scene->fresh()->config['stage25d']['set']['daylight']);
+        $editor->call('selectInspectorTarget', 's25_sky')->assertSet('activeStage25dLayer', 'sky');
+
+        $editor->call('saveStage25dDaylight', ['time' => 'noon'], $scene->id)->call('saveStage25dDaylight', ['time' => 'night'], $scene->id + 1);
+        $this->assertSame('dusk', $scene->fresh()->config['stage25d']['set']['daylight']['time'], 'no such time, or another scene: nothing saved');
+
+        $editor->call('saveStage25dDaylight', null, $scene->id);
+        $this->assertArrayNotHasKey('daylight', $scene->fresh()->config['stage25d']['set']);
+    }
+
+    public function test_a_world_carries_the_scenes_own_sky_and_a_picked_world_replaces_it(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set'] += ['daylight' => ['time' => 'night'], 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]]];
+        $scene->update(['config' => $config]);
+
+        $this->editor($scene)->call('saveStage25dWorldAs', 'Night heath');
+        $world = StageWorld::sole();
+        $this->assertSame(['night', null], [$world->parts['set']['daylight']['time'], $world->parts['set']['sky']], 'its own sky needs no picture');
+
+        config(['worlds' => ['meadow' => ['label' => 'Meadow', 'bundle' => 'nl-prehistory', 'thumb' => 'm.webp', 'set' => [
+            'sky' => 'sky-summer-01', 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]], 'layers' => [],
+        ]]]]);
+        $editor = $this->editor($scene)->call('pickStage25dWorld', 'meadow', $scene->id);
+        $set = $scene->fresh()->config['stage25d']['set'];
+        $this->assertSame('sky-summer-01', $set['sky']);
+        $this->assertArrayNotHasKey('daylight', $set, 'the world\'s painted sky shows');
+
+        $editor->call('pickStage25dWorld', $world->key(), $scene->id);
+        $this->assertSame(['time' => 'night'], $scene->fresh()->config['stage25d']['set']['daylight']);
+    }
+
     public function test_the_ground_sliders_save_like_every_look_slider(): void
     {
         $scene = $this->scene();
