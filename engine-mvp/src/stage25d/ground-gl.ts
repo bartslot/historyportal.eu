@@ -35,6 +35,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   uniform float houseTop;       // where the horizon is in that view (ndc y)
   uniform vec3 slotColour[6];   // each slot's own median colour: its far floor fades into it, not into one tint
   uniform vec3 base, horizonTint, camPos;
+  uniform vec3 ambient;         // the time of day's light (daylight.ts) on the painted ground
   uniform float useNear, nearTop, nearSpan;
   uniform mat4 nearVP;          // the house camera: the near band is projected from where it was painted
   ${NOISE}
@@ -76,6 +77,8 @@ Effect.ShadersStore.stageGroundFragmentShader = `
       float dn = d * (1.0 + 0.35 * (fbm(vW.xz * 0.05 + 3.0) - 0.5));
       c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0]; pp = slotPersp[0];${SLOT_GLSL}
     }
+    // the time of day lights the ground; the horizon it fades into is lit already where it is ground (stage.ts)
+    c *= ambient; own *= ambient;
     // low-frequency value and hue drift over the field (vary), the way a hand wash is never even
     c *= 1.0 + vary * 0.32 * (fbm(vW.xz * 0.022) - 0.5);
     c.rb *= 1.0 + vary * vec2(0.08, -0.08) * (fbm(vW.xz * 0.017 + 7.0) - 0.5);
@@ -99,7 +102,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
         // fades out at its far edge (t) and below its bottom edge (a camera behind the house sees nearer floor); across
         // it never ends: u runs on and the texture repeats (tileable) or mirrors (one painting)
         float k = (1.0 - smoothstep(0.7, 1.0, t)) * smoothstep(-0.08, 0.0, t);
-        c = b.rgb * k + c * (1.0 - b.a * k);
+        c = b.rgb * ambient * k + c * (1.0 - b.a * k);
       }
     }
     gl_FragColor = vec4(c, 1.0);
@@ -131,6 +134,7 @@ Effect.ShadersStore.stageStainFragmentShader = `
   precision highp float;
   varying vec2 vUV;
   uniform float opacity, seed, etch, aspect;
+  uniform vec3 tint;   // the time of day's shadow colour (daylight.ts)
   ${NOISE}
   ${HATCH_GLSL}
   void main(void) {
@@ -140,7 +144,7 @@ Effect.ShadersStore.stageStainFragmentShader = `
     float rim = 0.78 + 0.22 * vnoise(vec2(ang * 2.2 + seed, seed));
     float r = length(p) / rim;
     float a = (1.0 - smoothstep(0.25, 1.0, r)) * (0.7 + 0.3 * fbm(vUV * 6.0 + seed)) * opacity;
-    vec3 colour = vec3(0.27, 0.23, 0.18);
+    vec3 colour = tint;
     // etched: the same shape in ink strokes, as many across whatever the size, denser toward the foot
     if (etch > 0.0) {
       vec2 q = vec2(vUV.x, vUV.y * aspect) * 16.0;
@@ -167,17 +171,18 @@ export const nearWrapU = (tileable: boolean) => (tileable ? Texture.WRAP_ADDRESS
 /** Live floor values (lesson.look): read every frame. */
 export interface FloorLive { detail: number; vary: number; mixTile: number; tileScale: number; wash: number; grainSize: number }
 
-export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void; live(f: FloorLive): void; near(b: NearBand | null): void; house(p: { vp: Matrix; top: number }): void } {
+export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): void; follow(cam: Vector3): void; live(f: FloorLive): void; near(b: NearBand | null): void; house(p: { vp: Matrix; top: number }): void; light(ambient: readonly number[]): void } {
   const mesh = MeshBuilder.CreateGround('ground', { width: 2400, height: 2400 }, scene)
   const mat = new ShaderMaterial('ground', scene, 'stageGround', {
     attributes: ['position'],
-    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotPersp', 'houseVP', 'houseTop', 'slotColour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos'],
+    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotPersp', 'houseVP', 'houseTop', 'slotColour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos', 'ambient'],
     samplers: ['tex', 'tex1', 'tex2', 'tex3', 'tex4', 'tex5', 'nearTex'],
     needAlphaBlending: true,   // sorted with the layers (it outputs alpha 1): see GROUND_SLOT
   })
   const blank = new RawTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, Constants.TEXTUREFORMAT_RGBA, scene)
   for (const t of SLOT_SAMPLERS) mat.setTexture(t, blank)
   mat.setTexture('nearTex', blank)
+  mat.setVector3('ambient', new Vector3(1, 1, 1))
   mat.setFloat('detail', 1).setFloat('vary', 0).setFloat('mixTile', 0).setFloat('useNear', 0).setFloat('tileScale', 1).setFloat('wash', 0.5).setFloat('grainSize', 1)
   mesh.material = mat
   mesh.metadata = { noGBuffer: true }   // no ink line where the floor meets the far landscape
@@ -200,6 +205,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
         .setVector3('base', Vector3.FromArray(l.base)).setVector3('horizonTint', Vector3.FromArray(l.tint))
     },
     follow(cam) { mat.setVector3('camPos', cam) },
+    light(ambient) { mat.setVector3('ambient', Vector3.FromArray(ambient)) },
     house(p) { mat.setMatrix('houseVP', p.vp).setFloat('houseTop', p.top) },
     live(f) {
       mat.setFloat('detail', f.detail).setFloat('vary', f.vary).setFloat('mixTile', f.mixTile).setFloat('tileScale', f.tileScale)
@@ -222,7 +228,7 @@ let stainSeed = 0
 /** A soft painted stain lying on the ground, centred on `parent`'s origin (its anchor), w x d metres. With `cast`,
  *  it is a cast shadow instead: `length` metres long from the anchor along `dir` (the light's direction on the ground,
  *  x and z), w wide. */
-export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene, cast?: { dir: [number, number]; length: number }): { mesh: Mesh; setOpacity(o: number): void; setEtch(e: number): void } {
+export function makeStain(parent: TransformNode, w: number, d: number, scene: Scene, cast?: { dir: [number, number]; length: number }): { mesh: Mesh; setOpacity(o: number): void; setEtch(e: number): void; setTint(c: readonly number[]): void } {
   const mesh = MeshBuilder.CreatePlane(`stain${cast ? '-cast' : ''}:${parent.name}`, { width: w, height: cast ? cast.length : d }, scene)
   mesh.rotation.x = Math.PI / 2                 // flat on the floor
   if (cast) {                                   // turned along the light, starting at the anchor
@@ -232,14 +238,15 @@ export function makeStain(parent: TransformNode, w: number, d: number, scene: Sc
   } else mesh.position.set(0, 0.02, -d * 0.18)  // a little toward the camera: the dark core shows in front of the foot
   mesh.parent = parent
   const mat = new ShaderMaterial(mesh.name, scene, 'stageStain', {
-    attributes: ['position', 'uv'], uniforms: ['worldViewProjection', 'opacity', 'seed', 'etch', 'aspect'], needAlphaBlending: true,
+    attributes: ['position', 'uv'], uniforms: ['worldViewProjection', 'opacity', 'seed', 'etch', 'aspect', 'tint'], needAlphaBlending: true,
   })
   mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
   mat.disableDepthWrite = true
   mat.backFaceCulling = false
+  mat.setVector3('tint', new Vector3(0.27, 0.23, 0.18))
   mat.setFloat('seed', (stainSeed++ * 7.31) % 97).setFloat('opacity', 0).setFloat('etch', 0).setFloat('aspect', (cast ? cast.length : d) / Math.max(w, 0.01))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true }
   mesh.isPickable = false
-  return { mesh, setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 }, setEtch: (e) => { mat.setFloat('etch', e) } }
+  return { mesh, setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 }, setEtch: (e) => { mat.setFloat('etch', e) }, setTint: (c) => { mat.setVector3('tint', Vector3.FromArray(c)) } }
 }

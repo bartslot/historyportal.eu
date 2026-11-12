@@ -6,14 +6,14 @@
 import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
 import {
-  Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3, VertexBuffer,
+  Color3, Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3, VertexBuffer,
   type LinesMesh, type RawTexture,
 } from '@babylonjs/core'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { STAIN_SLOT_GAP, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
@@ -25,6 +25,9 @@ import { spritesOf } from './scatter'
 import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
 import { LessonDoc } from './edits'
+import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './daylight'
+import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
+import { makeSky } from './sky-gl'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
@@ -37,10 +40,20 @@ type Stain = ReturnType<typeof makeStain>
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
+const mul3 = (a: readonly number[], b: readonly number[]) => a.map((v, i) => v * b[i]) as RGB
+const WHITE: RGB = [1, 1, 1]
+/** The box a scene's own sky takes: a tiled sky's (placeLayer covers the view, a camera move never finds its edge). */
+const OWN_SKY: Asset = { id: 'sky:own', layer: 'sky', tags: [], file: '', w: 16, h: 9, anchor: [0.5, 1], height_m: 0, tileable_x: true }
+/** The sun's disc, as a share of the house frame's height; the moon's a little smaller. */
+const SUN_R = 0.032
+/** How far the sun glows around its disc at each time (the moon only a little). */
+const SUN_GLOW = { dawn: 0.9, day: 0.6, dusk: 1, night: 0.35 }
+/** One cloud on stage: its picture and where it floats. */
+interface Cloud { handle: LayerHandle; spot: CloudSpot; layer: SceneLayer }
 
 export class Stage {
   readonly engine: Engine
@@ -61,6 +74,22 @@ export class Stage {
   private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
   private strewKey = ''
   private hasSky = true
+  /** the scene's own sky (set.daylight), and its clouds; off for a scene with a painted sky picture */
+  private ownSky: ReturnType<typeof makeSky>
+  private dynamicSky = false
+  private clouds: Cloud[] = []
+  private cloudSrc: { sceneId: string; art: Asset[]; tex: Map<string, RawTexture> } | null = null
+  private cloudKey = ''
+  /** where the built-in clouds are served from (the app's public folder) */
+  cloudBase = BUILT_IN_CLOUD_BASE
+  /** the time of day the scene is lit by (daylight.ts), and what it was made from: relit when that changes */
+  light: Light = daylightOf(undefined)
+  private lightKey: unknown = null
+  private skyAsset: Asset | null = null
+  /** what the floor's look is made from, kept so a new time of day relights it without a rebuild */
+  private groundIn: { slots: FloorSlot[]; far: RGB | null | undefined; banded: boolean; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
+  private hemi: HemisphericLight
+  private sunLamp: DirectionalLight
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
   private nearAsset: Asset | null = null
   /** the sky's own colour where it meets the floor: far layers' lines and washes go toward it (look.ts haze) */
@@ -82,9 +111,13 @@ export class Stage {
     this.camera.minZ = 0.1
     this.camera.maxZ = 2000
     // light for 3D figures (S3); the painted layers are unlit
-    new HemisphericLight('sky', new Vector3(0, 1, 0), this.scene).intensity = 0.7
-    new DirectionalLight('sun', this.sunDir, this.scene).intensity = 1.2
+    this.hemi = new HemisphericLight('sky', new Vector3(0, 1, 0), this.scene)
+    this.hemi.intensity = 0.7
+    this.sunLamp = new DirectionalLight('sun', this.sunDir, this.scene)
+    this.sunLamp.intensity = 1.2
     this.sceneLib = lib
+    this.ownSky = makeSky(this.scene)
+    this.ownSky.mesh.setEnabled(false)
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook([], null, lib))
     createLookChain(this.scene, this.camera, {
@@ -179,8 +212,10 @@ export class Stage {
     const token = ++this.buildToken
     const next: Built[] = []
     const wanted: { layer: SceneLayer; order: number; index: number }[] = []
-    this.hasSky = !!s.set.sky
-    if (s.set.sky) wanted.push({ layer: skyLayerOf(s), order: 0, index: -1 })
+    // a scene with its own sky (set.daylight) draws it itself (sky-gl.ts): no picture to load
+    const dynamic = isDynamic(s.set)
+    this.hasSky = dynamic || !!s.set.sky
+    if (s.set.sky && !dynamic) wanted.push({ layer: skyLayerOf(s), order: 0, index: -1 })
     const perDepth: Record<string, number> = { sky: 1 }
     s.set.layers.forEach((layer, index) => { const d = layer.depth; perDepth[d] = perDepth[d] ?? 0; wanted.push({ layer, order: perDepth[d]++, index }) })
     const misses: { need: unknown; reason: string }[] = []
@@ -204,7 +239,9 @@ export class Stage {
       const blinkSrc = blinkOf(asset, layer, lib.base)
       const blinkTex = blinkSrc ? await loadPremultiplied(blinkSrc.url, this.scene).catch(() => null) : null
       if (token !== this.buildToken) return
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined)
+      // what stands on the floor throws its own shadow (layer.ts makeCast): not far strips, ground strips, decals or sky props
+      const casts = STANDING.includes(layer.depth) && !asset.tileable_x && !liesFlat(layer, asset) && !isGroundStrip(asset) && asset.layer !== 'bg'
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts })
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -213,18 +250,16 @@ export class Stage {
       handle.mesh.alphaIndex = flat ? DECAL_SLOT : p.alphaIndex
       if (flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
-      // a contact stain on the ground under standing things (not under far strips or floating sky props)
-      let stain: Stain | undefined, cast: Stain | undefined, stainDepth: ((z: number) => number) | undefined
+      // a contact stain on the ground under standing things (not under far strips or floating sky props): the dark
+      // under the soles (Bart 11-04). The shadow along the sun is the picture's own (setCast in pose).
+      let stain: Stain | undefined, stainDepth: ((z: number) => number) | undefined
       if (STANDING.includes(layer.depth) && !asset.tileable_x && !flat && !isGroundStrip(asset)) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stainDepth = (z) => stainSize(asset, p.w, p.h, z).d / sz.d   // the stain's depth at another distance, as a share of this one
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
-        // and its shadow, cast along the one sun (S3's makeStain cast: puppets and props share the light)
-        cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
-        cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -252,7 +287,6 @@ export class Stage {
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order, 0, 0, skyCover(s))
     const skyHaze = sky && skyP ? bandAt(bandColours.get(urlOf(lib, sky.asset, sky.layer)) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
     // with ground bands the floor fades into paper, never into the sky: the bands carry the horizon
-    const tint = far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : s.set.groundBands?.length ? null : skyHaze
     const bandsNext = await this.loadBands(s, lib)
     // the sprites the ground can be strewn with, loaded now so a Gras slider move never waits on a file
     const bandTags = s.set.groundBands?.length ? [...new Set(s.set.groundBands.flatMap((g) => resolveAsset(lib, { asset: g.asset }, 'ground_band')?.tags ?? []))] : null
@@ -261,7 +295,15 @@ export class Stage {
     const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front }).flatMap((p) => p.picks.map((pk) => pk.file)))]
     const strewTex = new Map<string, RawTexture>()
     await Promise.all(wantFiles.map(async (f) => { const t = await loadPremultiplied(lib.base + f, this.scene).catch(() => null); if (t) strewTex.set(f, t) }))
-    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
+    // the clouds an own sky can show, loaded now so a change of cloud or Amount never waits on a file
+    const art = dynamic ? cloudArt(lib) : []
+    const cloudTex = new Map<string, RawTexture>()
+    await Promise.all(art.map(async (a) => {
+      const url = (BUILT_IN_CLOUDS.includes(a) ? this.cloudBase : lib.base) + a.file
+      const t = await loadPremultiplied(url, this.scene).catch(() => { misses.push({ need: a.id, reason: `file did not load: ${url}` }); return null })
+      if (t) cloudTex.set(a.id, t)
+    }))
+    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
       bandsNext.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
@@ -276,15 +318,20 @@ export class Stage {
     this.shownPictures.clear()
     // the colour a standing thing's foot sinks into: the floor art's own average, else the floor's wash
     const tileBands = slotsNext[0] ? (bandColours.get(lib.base + slotsNext[0].asset.file) ?? []).filter((c): c is [number, number, number] => !!c) : []
-    // with ground bands the floor is only the paper behind them: no tile can show between the painted strips
-    const look = this.groundLook(slotsNext, tint, lib, choice.kind === 'paper' ? choice.colour : undefined)
-    this.horizonTint = look.tint
     this.strip = strip
-    this.footTint = tileBands.length ? mean3(tileBands) : look.base
     this.nearTex = nearTex
     this.nearAsset = nearAsset
-    this.hazeTint = skyHaze ?? look.tint
-    this.ground.set(look)
+    // the floor's look, lit by the scene's time of day (relight): with ground bands the floor is only the paper behind
+    // them, no tile can show between the painted strips
+    this.groundIn = { slots: slotsNext, far: far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : undefined, banded: !!s.set.groundBands?.length, wash: choice.kind === 'paper' ? choice.colour : undefined, lib, measuredHaze: skyHaze, tileFoot: tileBands.length ? mean3(tileBands) : null }
+    this.skyAsset = s.set.sky ? resolveAsset(lib, { asset: s.set.sky }, 'sky') : null
+    this.dynamicSky = dynamic
+    this.ownSky.mesh.setEnabled(dynamic)
+    this.cloudSrc = dynamic ? { sceneId: s.id, art, tex: cloudTex } : null
+    this.cloudKey = '\0'   // never a real key: makeClouds below always runs (a painted sky: the last scene's clouds go)
+    this.lightKey = null
+    this.relight(s)
+    this.makeClouds()
     this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
@@ -296,13 +343,93 @@ export class Stage {
   /** The floor's look: art tiled in world metres (or a paper wash), fading toward the far landscape into the colour
    *  that landscape's own ground is painted in. The wash is mostly that colour already: perspective squeezes the far
    *  half of the floor into a thin line, so a pale floor fading to a dark horizon reads as a band. */
-  private groundLook(slots: FloorSlot[], tint: [number, number, number] | null, lib: Library, wash?: string): GroundLook {
+  private groundLook(slots: FloorSlot[], tint: [number, number, number] | null, lib: Library, wash?: string, ambient: RGB = WHITE, tintIsSky = false): GroundLook {
     const paper = hexRgb(wash ?? lib.paper ?? PAPER_HEX)
     const horizon = tint ?? paper
+    // the floor shader lights its own colours (base); the horizon it fades into is lit here when it is ground (a far
+    // strip's edge, the paper), never when it is the sky's own colour
     return {
       slots,
-      base: mix3(paper, horizon, GROUND_WASH), tint: horizon,
+      base: mix3(paper, horizon, GROUND_WASH), tint: tint && tintIsSky ? horizon : mul3(horizon, ambient),
       fadeNear: DEPTH_Z.fg, fadeFar: DEPTH_Z.bg * 0.75, grain: slots.length ? 0.5 : 1,   // flat tint before the strip: no step at its edge
+    }
+  }
+
+  /** Light the scene by its time of day (daylight.ts): the 3D figures' lamps, the sun's direction, the floor's horizon
+   *  and the air's colour. Only when set.daylight or the sky picture changed (the editor's edits arrive as a new object). */
+  private relight(s: Scene) {
+    // by value: under a splat world the editor hands a fresh copy of the same daylight on every redraw
+    const key = JSON.stringify([s.set.daylight ?? null, s.set.sky ?? null])
+    if (key === this.lightKey) return
+    this.lightKey = key
+    const l = (this.light = daylightOf(s.set, this.skyAsset))
+    const amb = l.preset.ambient
+    this.sunDir.set(l.dir[0], l.dir[1], l.dir[2])   // in place: the sun lamp holds this vector
+    this.hemi.diffuse = Color3.FromArray(amb)
+    this.sunLamp.diffuse = Color3.FromArray(l.preset.sun)
+    this.sunLamp.intensity = 1.2 * Math.min(1, l.shadowK + 0.3)
+    const g = this.groundIn
+    if (!g) return
+    // the air: the own sky's horizon colour, else the painted sky's where it meets the floor
+    const skyHaze = l.dynamic ? l.sky.horizon : g.measuredHaze
+    const tint = g.far !== undefined ? g.far : g.banded ? null : skyHaze
+    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !g.banded && !!skyHaze)
+    this.horizonTint = look.tint
+    this.footTint = g.tileFoot ?? look.base
+    this.hazeTint = skyHaze ?? look.tint
+    this.ground.set(look)
+    this.ground.light(amb)
+    this.strewKey = ''   // the grass fades into the air's colour, set when it is strewn
+  }
+
+  /** The own sky's clouds (clouds.ts): made again when the scene, the chosen cut-outs or the Amount changed. */
+  private makeClouds() {
+    const src = this.cloudSrc
+    const chosen = this.light.clouds.assets
+    const key = src ? `${src.sceneId}:${chosen?.join(',') ?? '*'}:${this.light.clouds.amount}` : ''
+    if (key === this.cloudKey) return
+    this.cloudKey = key
+    this.clouds.forEach((c) => { c.handle.mesh.dispose(); c.handle.material.dispose() })
+    this.clouds = []
+    if (!src) return
+    for (const spot of cloudPlan({ sceneId: src.sceneId, art: src.art.filter((a) => src.tex.has(a.id)), chosen, amount: this.light.clouds.amount })) {
+      const tex = src.tex.get(spot.asset.id)!
+      const layer: SceneLayer = { asset: spot.asset.id, depth: 'sky', x: spot.x, scale: spot.scale }
+      const p = placeLayer(spot.asset, layer, 0)
+      const handle = makeLayer(spot.asset, tex, p.w, p.h, 1, this.scene)
+      handle.mesh.alphaIndex = CLOUD_SLOT + spot.slot * CLOUD_SLOT_STEP   // after the sky, before any cloud placed by hand
+      this.clouds.push({ handle, spot, layer })
+    }
+  }
+
+  /** Pose the own sky and its clouds for the camera now. */
+  private poseSky(s: Scene, c: { y: number }, clock: number, renderH: number, paper: Paper) {
+    if (!this.dynamicSky) return
+    const l = this.light
+    const z = DEPTH_Z.sky, zRel = z - HOUSE.z
+    const spanY = zRel * Math.tan(fovRad(HOUSE.fov) / 2)   // eye line to the house frame's top, at the sky
+    const p = placeLayer(OWN_SKY, { depth: 'sky' }, 0, 0, 0, skyCover(s))
+    this.ownSky.place(p, c.y, spanY, pxPerMetre(1080, zRel, fovRad(HOUSE.fov)))
+    const disc = mix3(WHITE, l.preset.sun.map((v) => v / Math.max(...l.preset.sun)), 0.6)
+    this.ownSky.set({
+      top: l.sky.top, mid: l.sky.mid, horizon: l.sky.horizon, fill: l.sky.horizon,
+      sun: { at: [(l.sun.x - 0.5) * viewWidthAt(zRel), c.y + zRel * Math.tan(elevationOf(l.sun.height))], r: SUN_R * 2 * spanY * (l.time === 'night' ? 0.8 : 1), colour: disc, glow: SUN_GLOW[l.time], moon: l.time === 'night' },
+      stars: l.preset.stars, wash: lookNum(this.look, 'groundWash') * 2,
+    }, paper)
+    this.makeClouds()
+    const base = z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45   // where placeLayer floats a sky prop's foot
+    const drift = lookNum(this.look, 'cloudDrift') / STAGE_SHEET.cloudDrift
+    for (const cl of this.clouds) {
+      const lp = placeLayer(cl.spot.asset, { ...cl.layer, y: c.y + cl.spot.lift * spanY - base }, 0)
+      cl.handle.mesh.position.set(lp.x, lp.y, lp.z)
+      cl.handle.setOpacity(1)
+      cl.handle.setPaper(paper, pxUV(lp.w, lp.h, 1, pxPerMetre(1080, zRel, fovRad(HOUSE.fov)), 1080))
+      cl.handle.setLine(lineOf(this.look, 'sky'), 1, pxUV(lp.w, lp.h, 1, pxPerMetre(renderH, zRel, this.camera.fov), renderH), this.hazeTint)
+      cl.handle.setAlive({ edgeSoft: lookNum(this.look, 'edgeSoft'), footM: 0, grounding: 0, grass: 0, light: 0, sunSide: 0, drift: 0, footTint: WHITE })
+      cl.handle.setLight(WHITE, l.preset.sun, l.preset.shade)
+      cl.handle.setTone(l.preset.cloud.tone, l.preset.cloud)
+      cl.handle.setMotion({ kind: 'drift', amount: drift, speed: 1 })
+      cl.handle.material.setFloat('time', clock)
     }
   }
 
@@ -583,6 +710,11 @@ export class Stage {
     this.ground.near(this.nearTex ? { tex: this.nearTex, ...houseProjection(pitch, this.engine.getAspectRatio(this.camera), L('nearFar')), span: NEAR_SPAN, tileable: !!this.nearAsset?.tileable_x } : null)
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
+    this.relight(s)
+    const lit = this.light.preset
+    const run = Math.hypot(this.sunDir.x, this.sunDir.z) || 1
+    const sunGround = [this.sunDir.x / run, this.sunDir.z / run] as const   // the light's direction along the ground
+    this.poseSky(s, c, clock, renderH, paper)
     const bandK = lookNum(this.look, 'bandHeight')
     const horizon = this.horizonOf(s)
     const land = landHeight(horizon, this.strip)   // where pictures on the far ground stand: the strip's land line
@@ -603,10 +735,11 @@ export class Stage {
       b.handle.setPaper(paper, pxUV(p.w, p.h, 1, ppm, renderH))
       b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(p.w, p.h, 1, ppm, renderH), this.hazeTint)
       b.handle.setMotion(motionOf(b.asset, { ...b.band, depth: 'bg' }))
+      b.handle.setLight(lit.ambient, lit.sun, lit.shade)
       b.handle.material.setFloat('time', clock)
     })
     this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
-    this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
+    this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1, lit.ambient))
     const dt = this.lastClock === null ? 0 : Math.min(0.1, Math.max(0, clock - this.lastClock))
     this.lastClock = clock
     if (!this.paused) this.blinkTime += dt
@@ -626,7 +759,6 @@ export class Stage {
         if (!b.flat) b.handle.mesh.alphaIndex = p.alphaIndex
         if (b.stain) b.stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
         if (b.stain && b.stainDepth) b.stain.mesh.scaling.y = b.stainDepth(p.z)   // a stain is as deep as it looks from here
-        if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
@@ -642,12 +774,23 @@ export class Stage {
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
       b.stain?.setEtch(b.layer.etch ?? 0)
-      b.cast?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
-      b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity)
+      b.stain?.setTint(lit.shadow)
+      // its shadow away from the sun, on the ground under it (a lifted picture's falls further off; layer.shadow 0 = none)
+      // drawn in the slot of its nearest point: over the ground strips it falls across, before what stands there
+      const castNear = p.z + sunGround[1] * p.h * k.scale * this.light.reach
+      b.handle.setCast({
+        dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow,
+        slot: Math.max(stainIndex(b.handle.mesh.alphaIndex), bandSlot(Math.max(castNear, 1)) - 2 * STAIN_SLOT_GAP),
+        opacity: lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK, time: clock, etch: b.layer.etch ?? 0,
+      })
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
       // the light runs across the picture's u: on an atlas that is not across the figure, so a puppet takes none yet
-      b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, this.footTint), ...(puppetOf(b.asset, b.layer) ? { light: 0 } : {}) })
+      b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, mul3(this.footTint, lit.ambient)), ...(puppetOf(b.asset, b.layer) ? { light: 0 } : {}) })
+      // the time of day: a painted sky keeps its own colours, a cloud takes the time's cloud colours instead
+      const cloud = b.asset.layer === 'cloud' || (b.layer.depth === 'sky' && b.asset.tags.includes('cloud'))
+      b.handle.setLight(kind === 'sky' || cloud ? WHITE : lit.ambient, lit.sun, lit.shade)
+      b.handle.setTone(cloud ? lit.cloud.tone : 0, lit.cloud)
       b.handle.setMotion(motionOf(b.asset, b.layer))
       b.handle.material.setFloat('time', clock)
       if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, frameT)))   // the scene's time: a seek shows the same frame
@@ -683,7 +826,9 @@ const GRID_FADE_START_M = 40
 const GRID_FADE_END_M = 120
 
 /** A cast shadow's length per metre of height: the sun's run over its fall. */
-const castLength = (d: Vector3) => Math.min(1.5, Math.hypot(d.x, d.z) / Math.max(-d.y, 0.2))
+/** The own sky's clouds draw after the sky (slot 1) and before the first cloud placed by hand (slot 3). */
+const CLOUD_SLOT = 1.1
+const CLOUD_SLOT_STEP = 0.1
 const mean3 = (cs: [number, number, number][]): [number, number, number] => [0, 1, 2].map((i) => cs.reduce((s, c) => s + c[i], 0) / cs.length) as [number, number, number]
 
 /** Depths where things stand on the floor (and get a contact stain). */
@@ -754,7 +899,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
   doc.subscribe(() => {
     const s = tl.scene
     stage.setLook(doc.lesson.look)
-    if (!builtScene || s.bundle !== builtScene.bundle || s.set.ground !== builtScene.set.ground || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky || s.set.near !== builtScene.set.near
+    if (!builtScene || s.bundle !== builtScene.bundle || s.set.ground !== builtScene.set.ground || s.set.layers.length !== builtScene.set.layers.length || s.set.sky !== builtScene.set.sky || isDynamic(s.set) !== isDynamic(builtScene.set) || s.set.near !== builtScene.set.near
       || s.set.layers.some((l, i) => l.asset !== builtScene!.set.layers[i].asset || l.need !== builtScene!.set.layers[i].need || l.depth !== builtScene!.set.layers[i].depth)) {
       void tl.rebuild()
       return

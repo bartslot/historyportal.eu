@@ -2718,5 +2718,17 @@
     "World name": "Nom du monde",
     "Remove world": "Supprimer le monde",
     "World saved.": "Monde enregistré.",
-    "Give the scene a sky and a terrain first.": "Donnez d'abord un ciel et un terrain à la scène."
+    "Give the scene a sky and a terrain first.": "Donnez d'abord un ciel et un terrain à la scène.",
+    "Time of day": "Moment de la journée",
+    "Dawn": "Aube",
+    "Day": "Jour",
+    "Dusk": "Crépuscule",
+    "Colours": "Couleurs",
+    "Middle": "Milieu",
+    "Horizon": "Horizon",
+    "Reset colours": "Rétablir les couleurs",
+    "Across": "Latéral",
+    "Painted sky": "Ciel peint",
+    "Own sky": "Ciel propre",
+    "Cloud cover": "Couverture"
 }

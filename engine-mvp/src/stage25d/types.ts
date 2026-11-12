@@ -124,6 +124,21 @@ export interface SceneLayer {
   play?: { speed?: number; offset?: number; frames?: number[]; loop?: boolean }
 }
 
+export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night'
+
+/** The scene's sky as a time of day (daylight.ts): a painted gradient with clouds, lit by a sun (a moon at night) whose
+ *  place throws every shadow. `painted`: keep drawing set.sky, take only the light from here. Unset = set.sky as before. */
+export interface Daylight {
+  time: TimeOfDay
+  /** '#rrggbb' over the time's own sky colours */
+  colours?: { top?: string; mid?: string; horizon?: string }
+  /** which cloud cut-outs (asset ids; none = all), and how many of them: 0..1 */
+  clouds?: { assets?: string[]; amount?: number }
+  /** where the sun stands: x 0..1 across the frame, height 0..1 over the horizon; unset = the time's own */
+  sun?: { x: number; height: number }
+  painted?: boolean
+}
+
 export interface CamPose { x: number; y: number; z: number; fov: number }
 export type Ease = 'linear' | 'in' | 'out' | 'inOut'
 export type CameraMotionKind = 'none' | 'sway' | 'handheld' | 'shake'
@@ -143,7 +158,7 @@ export interface Scene {
   /** layered ground: painted bands standing on the floor at metres z (2..2000), each drawn over the one behind */
   /** groundBands[i] and skyLayer take a layer's own values too (x, z, scale, opacity, motion, keys; the sky's y lifts it):
    *  the teacher sizes and moves the backdrop like any picture. A band always stands on the floor (stage.ts pose). */
-  set: { sky?: string | null; skyLayer?: GroundBandProps; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; groundSlots?: { asset: string; from_m: number; flip?: boolean; repeat?: number }[]; layers: SceneLayer[] }
+  set: { sky?: string | null; skyLayer?: GroundBandProps; daylight?: Daylight; ground?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; groundSlots?: { asset: string; from_m: number; flip?: boolean; repeat?: number }[]; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

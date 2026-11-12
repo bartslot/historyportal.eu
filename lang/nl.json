@@ -2760,5 +2760,17 @@
     "World name": "Naam van de wereld",
     "Remove world": "Wereld verwijderen",
     "World saved.": "Wereld bewaard.",
-    "Give the scene a sky and a terrain first.": "Geef de scène eerst een lucht en een terrein."
+    "Give the scene a sky and a terrain first.": "Geef de scène eerst een lucht en een terrein.",
+    "Time of day": "Tijd van de dag",
+    "Dawn": "Ochtend",
+    "Day": "Dag",
+    "Dusk": "Avond",
+    "Colours": "Kleuren",
+    "Middle": "Midden",
+    "Horizon": "Horizon",
+    "Reset colours": "Kleuren terug",
+    "Across": "Links-rechts",
+    "Painted sky": "Geschilderde lucht",
+    "Own sky": "Eigen lucht",
+    "Cloud cover": "Bewolking"
 }

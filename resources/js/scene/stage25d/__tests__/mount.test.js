@@ -60,6 +60,49 @@ describe('stage25d live edits', () => {
     expect(stage.matches(cfg({ set: { layers: [{ asset: 'a', depth: 'mid', x: 0.2 }, { asset: 'b', depth: 'fg', figure: 'meisje' }] } }))).toBe(true)
   })
 
+  it('a time of day is live and saved; only turning the painted sky into an own sky rebuilds', async () => {
+    const saved = []
+    const stage = await mountStage25d(document.getElementById('h'), { onDaylight: (d, scene) => saved.push([d, scene]) })
+    stage.sceneId = 7
+    await stage.show(cfg({ set: { sky: 'sky-hot-01', layers: [] } }))
+    expect(stage.daylightInfo()).toMatchObject({ time: 'day', own: false, painted: true })
+    await stage.setDaylight({ time: 'dusk' })                // a painted sky stays: the time lights it
+    expect(calls.built).toHaveLength(1)
+    expect(calls.rebound.set.daylight).toEqual({ time: 'dusk', painted: true })
+    await stage.setDaylight({ painted: false })              // Own sky: the scene paints its own, the picture goes
+    expect(calls.built).toHaveLength(2)
+    expect(calls.built[1].set.daylight).toEqual({ time: 'dusk' })
+    await stage.setDaylight({ clouds: { amount: 0.8 } })     // then everything is live
+    await stage.setDaylight({ colours: { top: '#112233' } })
+    expect(calls.built).toHaveLength(2)
+    expect(calls.rebound.set.daylight).toEqual({ time: 'dusk', clouds: { amount: 0.8 }, colours: { top: '#112233' } })
+    expect(saved.at(-1)).toEqual([{ time: 'dusk', clouds: { amount: 0.8 }, colours: { top: '#112233' } }, 7])
+    await stage.setDaylight({ colours: null })               // back to the time's own colours
+    expect(saved.at(-1)[0]).toEqual({ time: 'dusk', clouds: { amount: 0.8 } })
+    expect(stage.daylightInfo()).toMatchObject({ time: 'dusk', own: true, custom: false, amount: 0.8 })
+    expect(stage.items().some((i) => i.id === 'sky')).toBe(true)
+  })
+
+  it('an undone look slider is taken from the server copy without a rebuild', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(cfg({ look: { sunLight: 0.6 } }))
+    stage.setLook('sunLight', 0.2)
+    expect(stage.matches(cfg({ look: { sunLight: 0.6 } }))).toBe(true)
+    expect(stage.adopt(cfg({ look: { sunLight: 0.6 } }))).toBe(true)   // the undo
+    expect(calls.looks.at(-1)).toEqual({ sunLight: 0.6 })
+    expect(calls.built).toHaveLength(1)
+  })
+
+  it('an undone time of day is taken from the server copy without a rebuild', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    const own = (time) => cfg({ set: { sky: 'sky-hot-01', daylight: { time }, layers: [] } })
+    await stage.show(own('night'))
+    expect(stage.matches(own('dawn'))).toBe(true)
+    expect(stage.adopt(own('dawn'))).toBe(true)
+    expect(calls.built).toHaveLength(1)
+    expect(calls.rebound.set.daylight).toEqual({ time: 'dawn' })
+  })
+
   it('lists the painted landscape (ground bands) and the sky as backdrop rows; a band takes another picture', async () => {
     const saved = []
     const selected = []

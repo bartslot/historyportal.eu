@@ -107,6 +107,25 @@ class LessonImporterTest extends TestCase
         $this->assertSame(1, Lesson::where('topic', '25d:mini')->count());
     }
 
+    public function test_a_forced_reimport_keeps_the_time_of_day_a_teacher_gave_a_scene(): void
+    {
+        $teacher = User::factory()->create();
+        $importer = app(LessonImporter::class);
+        $first = $importer->import($this->lesson(), $teacher, $this->audio);
+        $scenes = Scene::where('lesson_id', $first['lesson_id'])->where('kind', 'stage25d')->orderBy('order')->get();
+        $config = $scenes[0]->config;
+        $config['stage25d']['set']['daylight'] = ['time' => 'night'];
+        $scenes[0]->update(['config' => $config]);
+        $lesson = $this->lesson();
+        $lesson['scenes'][1]['set']['daylight'] = ['time' => 'dawn'];   // the file's own wins where it has one
+
+        $again = $importer->import($lesson, $teacher, $this->audio, force: true);
+
+        $times = Scene::where('lesson_id', $again['lesson_id'])->where('kind', 'stage25d')->orderBy('order')->get()
+            ->map(fn (Scene $s) => $s->config['stage25d']['set']['daylight']['time'] ?? null)->all();
+        $this->assertSame(['night', 'dawn'], array_slice($times, 0, 2));
+    }
+
     public function test_dry_run_writes_nothing(): void
     {
         $teacher = User::factory()->create();

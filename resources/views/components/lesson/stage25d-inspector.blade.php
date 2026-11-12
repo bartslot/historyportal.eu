@@ -192,7 +192,7 @@
         </div>
 
         {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
-        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain'">
+        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain' && !info?.own">
             <button type="button" class="absolute inset-0 flex items-center justify-center"
                     data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
                     x-on:click="pickPicture()" x-on:dblclick="editPicture()">
@@ -227,19 +227,10 @@
             <span x-text="info?.anim ? @js(__('Edit frames')) : @js(__('Edit picture'))"></span>
         </button>
 
-        {{-- Every sky of the period: a click puts it over the scene (Bart 11-11: choose here, not in the Assets tab). --}}
-        <template x-if="skies && skies.length">
-            <div class="mt-3 grid grid-cols-2 gap-2" data-stage25d-sky-grid>
-                <template x-for="o in skies" :key="o.id">
-                    <button type="button" class="relative aspect-[3/2] overflow-hidden rounded-md border bg-base-200" :aria-label="o.label"
-                            :class="info?.asset === o.id ? 'border-base-content' : 'border-panel-hairline'"
-                            :data-stage25d-sky-option="o.id" x-on:click="pickSky(o.id)">
-                        <img :src="o.thumb" alt="" class="size-full object-cover" loading="lazy" />
-                        <span class="absolute bottom-1 left-1 max-w-[calc(100%-0.5rem)] truncate rounded-xs bg-base-100/70 px-1 text-xs font-semibold leading-4 text-base-content" x-text="o.label"></span>
-                    </button>
-                </template>
-            </div>
-        </template>
+        {{-- The sky: its time of day, colours, clouds and sun; the period's painted skies folded away under it. --}}
+        @if ($layerId === 'sky')
+            <x-lesson.stage25d-sky />
+        @endif
 
         {{-- A character (a figure of a series): its other pictures, another character in the same stance, and a balloon
              that is grouped with it (it moves along). --}}

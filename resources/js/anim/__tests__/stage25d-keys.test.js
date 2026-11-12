@@ -83,6 +83,20 @@ describe('what needs a rebuild', () => {
     expect(editSig(cfg({ x: 0.1 }))).toBe(editSig(cfg({ x: 0.1 })))
   })
 
+  it('a time of day, its colours, clouds or sun and the look sliders are edits, never a rebuild', () => {
+    const sky = (daylight, look) => ({ ...cfg({}), look, set: { sky: 'sky-hot-01', daylight, layers: [{ asset: 'a', depth: 'mid' }] } })
+    expect(structureSig(sky({ time: 'dusk' }))).toBe(structureSig(sky({ time: 'night', clouds: { amount: 1 }, sun: { x: 0.2, height: 0.5 } }, { sunLight: 0.2 })))
+    expect(editSig(sky({ time: 'dusk' }))).not.toBe(editSig(sky({ time: 'night' })))
+    expect(editSig(sky({ time: 'dusk' }, { sunLight: 0.2 }))).not.toBe(editSig(sky({ time: 'dusk' }, { sunLight: 0.3 })))
+  })
+
+  it('a scene that turns from its painted sky to its own sky (or back) is rebuilt: one has a picture to load', () => {
+    const sky = (daylight) => ({ ...cfg({}), set: { sky: 'sky-hot-01', daylight, layers: [] } })
+    expect(structureSig(sky(undefined))).not.toBe(structureSig(sky({ time: 'day' })))
+    expect(structureSig(sky({ time: 'day' }))).not.toBe(structureSig(sky({ time: 'day', painted: true })))
+    expect(structureSig(sky(undefined))).toBe(structureSig(sky({ time: 'night', painted: true })))
+  })
+
   it('layer ids', () => {
     expect([layerIndex('layer-12'), layerIndex('camera')]).toEqual([12, -1])
   })
