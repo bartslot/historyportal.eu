@@ -1,7 +1,10 @@
 // The even part of the one warm wash the whole picture is painted over (look.ts sheetWash), after the shared post
 // chain. No pattern here: the paper's tooth, grain and wash patches belong to each picture (layer.ts PAPER_GLSL) and
 // the floor, so they move with what they are painted on; a pattern fixed to the screen would slide over a pan.
-import { Effect, PostProcess, Vector3, type Camera } from '@babylonjs/core'
+import { Effect } from '@babylonjs/core/Materials/effect'
+import { PostProcess } from '@babylonjs/core/PostProcesses/postProcess'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import type { Camera } from '@babylonjs/core/Cameras/camera'
 import { WASH_COLOUR } from './look'
 
 Effect.ShadersStore.stageSheetFragmentShader = `

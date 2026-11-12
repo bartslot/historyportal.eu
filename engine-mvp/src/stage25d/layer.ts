@@ -1,10 +1,16 @@
 // One painted layer: an unlit, alpha-blended plane in metres, anchored at its ground point, with its motion in the
 // vertex/fragment shader. Textures are uploaded PREMULTIPLIED (rgb * a, done here on the CPU), so filtering and
 // mipmaps never mix the colour of transparent pixels into the edge: no light or dark halos at any size.
-import {
-  Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexBuffer, VertexData,
-  type Scene,
-} from '@babylonjs/core'
+import { Constants } from '@babylonjs/core/Engines/constants'
+import { Effect } from '@babylonjs/core/Materials/effect'
+import { Mesh } from '@babylonjs/core/Meshes/mesh'
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
+import { Vector2, Vector3, Vector4 } from '@babylonjs/core/Maths/math.vector'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
+import type { Scene } from '@babylonjs/core/scene'
 import type { Asset, BlinkEye, MotionSpec, Puppet } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'

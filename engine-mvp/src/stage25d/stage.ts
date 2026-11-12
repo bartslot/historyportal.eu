@@ -5,10 +5,21 @@
 //   player.doc (undoable teacher edits) / stage.groundPoint(x, depth)
 import '../globals-core'                  // the engine modules read Babylon from window.BABYLON
 import '../engine/look-shaders.js'
-import {
-  Color3, Color4, Constants, Engine, HemisphericLight, DirectionalLight, Matrix, MeshBuilder, Scene as BScene, UniversalCamera, Vector3, VertexBuffer,
-  type LinesMesh, type RawTexture,
-} from '@babylonjs/core'
+// Babylon by its module paths (the barrel was 8.4 MB). These add the scene methods the stage calls:
+import '@babylonjs/core/Culling/ray'                                 // scene.pick / multiPick / createPickingRay
+import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent'   // ShadowGenerator on a scene
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
+import { Constants } from '@babylonjs/core/Engines/constants'
+import { Engine } from '@babylonjs/core/Engines/engine'
+import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
+import { Scene as BScene } from '@babylonjs/core/scene'
+import { UniversalCamera } from '@babylonjs/core/Cameras/universalCamera'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
+import type { LinesMesh } from '@babylonjs/core/Meshes/linesMesh'
+import type { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'

@@ -6,7 +6,7 @@
 //   line by depth: far layers draw their ink lighter, thinner and into the sky's haze (aerial perspective), so a
 //          line-weight mismatch between layers reads as distance, not as a cut-out.
 // Every value is a key of lesson.look (teacher-editable, undoable, a slider in the panel).
-import { Matrix, Vector3 } from '@babylonjs/core'
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { fovRad, HOUSE, HOUSE_PITCH_DEG } from './layout'
 import type { Depth } from './types'
 

@@ -3,7 +3,16 @@
 // toward the horizon it fades into the colour the far landscape ends in, so the bg strip's feathered edge meets it.
 import { GROUND_SLOT } from './layout'
 import { GROUND_TILE_M } from './ground'
-import { Constants, Effect, Matrix, MeshBuilder, RawTexture, ShaderMaterial, Texture, Vector3, type Mesh, type Scene, type TransformNode } from '@babylonjs/core'
+import { Constants } from '@babylonjs/core/Engines/constants'
+import { Effect } from '@babylonjs/core/Materials/effect'
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
+import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+import type { Scene } from '@babylonjs/core/scene'
+import type { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 
 const NOISE = `
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }

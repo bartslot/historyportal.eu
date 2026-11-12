@@ -5,11 +5,16 @@
 // wherever the shifted mask lands. Blue also tells the studio's post ink to leave anime faces alone:
 // their lines are painted and hulled, a Sobel pass would only ring the eyes like glasses.
 // ONE mask per scene, shared by all anime actors.
-import {
-  Color3, RenderTargetTexture, Vector3,
-  type AbstractMesh, type Camera, type DirectionalLight, type Material, type Mesh, type Scene,
-} from '@babylonjs/core'
-import { CustomMaterial } from '@babylonjs/materials'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { RenderTargetTexture } from '@babylonjs/core/Materials/Textures/renderTargetTexture'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
+import type { Camera } from '@babylonjs/core/Cameras/camera'
+import type { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import type { Material } from '@babylonjs/core/Materials/material'
+import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+import type { Scene } from '@babylonjs/core/scene'
+import { CustomMaterial } from '@babylonjs/materials/custom/customMaterial'
 import { clampPitch, type AnimeHandle } from './anime-look'
 
 function flat(name: string, rgb: Color3, scene: Scene) {

@@ -2,7 +2,13 @@
 // is one WebGL canvas and the sky stands behind the landscape inside it, so the blend is done here, not in CSS: the
 // gradient is the pigment, the wash's pools, blooms and dry streaks and the paper's tooth multiply over it (Bart 11-12:
 // "the texture is then showing over the blue hues"). The sun, or the moon at night, stands where the light comes from.
-import { Constants, Effect, MeshBuilder, ShaderMaterial, Vector2, Vector3, type Mesh, type Scene } from '@babylonjs/core'
+import { Constants } from '@babylonjs/core/Engines/constants'
+import { Effect } from '@babylonjs/core/Materials/effect'
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial'
+import { Vector2, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+import type { Scene } from '@babylonjs/core/scene'
 import { GL_NOISE } from './ground-gl'
 import { LINE_BY_DEPTH_GLSL, PAPER_GLSL } from './layer'
 import type { Paper } from './look'

@@ -1,7 +1,15 @@
 // Strewn ground on the GPU (scatter.ts has the pure parts): every clump of one picture in one distance bucket is one
 // mesh of quads, turned to the camera about the vertical in the vertex shader, so 600 clumps cost a few draw calls.
 // A clump's foot takes the colour of the ground it stands on, its top sways a very small amount (look.grassSway).
-import { Constants, Effect, Mesh, ShaderMaterial, Vector3, VertexBuffer, VertexData, type RawTexture, type Scene } from '@babylonjs/core'
+import { Constants } from '@babylonjs/core/Engines/constants'
+import { Effect } from '@babylonjs/core/Materials/effect'
+import { Mesh } from '@babylonjs/core/Meshes/mesh'
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
+import type { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
+import type { Scene } from '@babylonjs/core/scene'
 import { BUCKET_EDGES, bucketOf, type Clump, type Sprite } from './scatter'
 import { bandSlot } from './layout'
 

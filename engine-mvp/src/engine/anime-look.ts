@@ -6,13 +6,23 @@
 //   3 face lines  eyes, lashes, brows, mouth are PAINTED parts of the model (VRoid/MToon faces);
 //                 geometry and post edges cannot find a line on a smooth cheek
 // Settings come from the model's own VRMC_materials_mtoon block when it is a VRM, else defaults.
-import {
-  Axis, Color3, Mesh, PBRMaterial, Quaternion, RawTexture, ShadowGenerator, StandardMaterial, Texture, TransformNode, Vector2, Vector3,
-  VertexBuffer, VertexData,
-  type DirectionalLight,
-  type AbstractMesh, type BaseTexture, type Scene,
-} from '@babylonjs/core'
-import { CustomMaterial } from '@babylonjs/materials'
+import { Axis } from '@babylonjs/core/Maths/math.axis'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { Mesh } from '@babylonjs/core/Meshes/mesh'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { Quaternion, Vector2, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
+import type { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
+import type { BaseTexture } from '@babylonjs/core/Materials/Textures/baseTexture'
+import type { Scene } from '@babylonjs/core/scene'
+import { CustomMaterial } from '@babylonjs/materials/custom/customMaterial'
 
 export type ToonParams = {
   shadeColor: Color3        // gamma space
