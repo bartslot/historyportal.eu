@@ -502,6 +502,8 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
     setPeeking (on) { peeking = !!on },
+    /** The Camera row is selected: the canvas's wheel moves the lens (editor/stage-zoom.js leaves it alone then). */
+    get framing () { return framing },
     /** The picture editor's work on the stage before it is saved; null: the row's own file again. */
     showPicture (id, url) {
       const row = id === 'sky' ? { sky: true } : bandIndex(id) >= 0 ? { band: bandIndex(id) } : layerIndex(id) >= 0 ? { layer: layerIndex(id) } : null

@@ -32,6 +32,7 @@ import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
 import { lessonMusicTempo, sceneMusicPreview } from './scene/music-preview.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
+import { installStageZoom } from './editor/stage-zoom.js';
 import { drawTool } from './editor/draw-layer.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
@@ -42,6 +43,7 @@ window.__objectListDrop = resolveDrop;
 window.__objectListShield = shieldListFromAlpine;
 // The editor's stage: a click on the title screen's title opens its field (step3 @script).
 window.installTitleStagePick = installTitleStagePick;
+window.installStageZoom = installStageZoom;
 // Uitknippen: a double-click on any picture on the canvas opens it (editor/cutout-dialog.js, loaded on first use).
 window.addEventListener('image-edit:open', (e) => {
     document.documentElement.style.cursor = 'progress';   // the first time its code still has to come in

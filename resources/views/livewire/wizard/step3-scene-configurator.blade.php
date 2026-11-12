@@ -49,8 +49,9 @@
                 --lbw: calc(100vw - var(--work-left) - var(--work-right, 16rem));
                 --lbh: min(calc(var(--lbw) * 0.5625), calc(100vh - var(--top-inset) - var(--work-bottom)));
                 --stw: calc(var(--lbh) * 16 / 9);
-                left: calc(var(--work-left) + (var(--lbw) - var(--stw)) / 2); width: var(--stw);
-                height: var(--lbh); top: calc(var(--top-inset) + (100vh - var(--top-inset) - var(--work-bottom) - var(--lbh)) / 2);"
+                --stz: var(--stage-zoom, 1);
+                left: calc(var(--work-left) + (var(--lbw) - var(--stw) * var(--stz)) / 2 + var(--stage-pan-x, 0px)); width: calc(var(--stw) * var(--stz));
+                height: calc(var(--lbh) * var(--stz)); top: calc(var(--top-inset) + (100vh - var(--top-inset) - var(--work-bottom) - var(--lbh) * var(--stz)) / 2 + var(--stage-pan-y, 0px));"
          data-character-url=""
          data-territory="{{ $lesson->topic }}"
          data-flag="{{ $lesson->territoryFlagUrl() }}"
@@ -107,6 +108,7 @@
         const boot = () => {
             const root = document.getElementById('lesson-canvas-root')
             if (!root) return
+            window.installStageZoom?.(root)   // pinch / Ctrl or Cmd + scroll: the stage bigger or smaller (editor/stage-zoom.js)
             const aside = document.querySelector('aside[x-ref="inspectorPanel"]')
             if (!aside) { requestAnimationFrame(boot); return }
             let raf = 0
