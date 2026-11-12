@@ -37,6 +37,14 @@
 <aside {{ $attributes->merge(['class' => 'fixed left-0 top-0 bottom-0 z-30 overflow-hidden']) }}
        style="width: var(--rail-w, 11rem)">
     <div class="lp-panel-surface" aria-hidden="true"></div>
+    {{-- The scene thumbs' repeated icons, drawn once and reused with <use> (scene-thumb.blade): inline, each
+         thumb carried ~9 KB of SVG, 1.3 MB on a 163-scene lesson, in every Livewire response. --}}
+    <svg width="0" height="0" class="absolute" aria-hidden="true">
+        <symbol id="rail-story" viewBox="0 0 53 45"><x-lesson.icon-story style="width:100%;height:100%" /></symbol>
+        <symbol id="rail-more" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" /></symbol>
+        <symbol id="rail-duplicate" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" /></symbol>
+        <symbol id="rail-delete" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></symbol>
+    </svg>
     <div class="lp-panel-content">
     <div class="flex h-full flex-col pt-20" data-rail-col>
         {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
