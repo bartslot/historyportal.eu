@@ -249,7 +249,7 @@ class TitlePosterTest extends TestCase
 
         $html = $play();
         $this->assertStringContainsString('"title_style":"poster"', $html);
-        $this->assertStringContainsString('family=Coming+Soon', $html);
+        $this->assertStringContainsString('fonts/coming-soon/ComingSoon-Regular.woff2', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/poster\\\\?/mask\.svg#', $html);
         $this->assertStringContainsString('"title_logo_url":null', $html);
         // The badges live in "About this lesson", below the hero, never on the artwork.
@@ -259,14 +259,14 @@ class TitlePosterTest extends TestCase
         $html = $play();
         $this->assertStringContainsString('"title_style":"banner"', $html);
         $this->assertMatchesRegularExpression('#lesson-titles\\\\?/tasman-standard\\\\?/banner\\\\?/painting-gulls\.webp#', $html);
-        $this->assertStringContainsString('family=Coming+Soon', $html);
+        $this->assertStringContainsString('fonts/coming-soon/ComingSoon-Regular.woff2', $html);
         $this->assertDoesNotMatchRegularExpression('#<ul class="[^"]*\bflex-col\b[^"]*"[^>]*data-lesson-types#', $html, 'one row in the section');
 
         $lesson->update(['title_style' => 'logo']);
         $html = $play();
         $this->assertStringContainsString('"title_poster":null', $html);
         $this->assertMatchesRegularExpression('#lesson-logos\\\\?/tasman-standard\.svg#', $html);
-        $this->assertStringNotContainsString('family=Coming+Soon', $html);
+        $this->assertStringNotContainsString('fonts/coming-soon/ComingSoon-Regular.woff2', $html);
 
         $this->assertStringNotContainsString('ComicRoma.woff2', $html, 'ComicRoma is preloaded only for the lettered title');
 
