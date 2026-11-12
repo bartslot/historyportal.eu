@@ -189,7 +189,10 @@
             // Never steal the shortcut from a field the teacher is typing in. One shared guard —
             // resources/js/ui/keyboard.js — so this and Delete below and the timeline's Space all
             // agree on what "typing" means.
-            if (window.__isTypingTarget?.(e.target)) return;
+            // A slider, a colour swatch or a tick box keeps focus after a drag but holds no typing to undo: Cmd-Z there
+            // is the editor's undo (the Sky panel's sliders, the look sliders).
+            const pick = ['range', 'color', 'checkbox', 'radio'].includes(e.target?.type);
+            if (window.__isTypingTarget?.(e.target) && !pick) return;
             e.preventDefault();
             if (e.shiftKey) {                       // Cmd-Shift-Z: redo
                 const w = window.__step3Wire();
@@ -1502,7 +1505,7 @@
             tileSky(time) {
                 const t = this.sky?.times?.find((x) => x.id === time);
                 if (!t) return '';
-                const dark = time === 'dusk' || time === 'night';
+                const dark = time === 'night';   // the label sits on the tile's lower, lighter half
                 return `background: linear-gradient(to bottom, ${t.sky.top}, ${t.sky.mid} 55%, ${t.sky.horizon}); color: ${dark ? 'var(--color-base-content)' : 'var(--color-base-100)'}`;
             },
             /** A panel slider's fill (.range-panel reads --range-pct), for a 0..1 value. */
@@ -1512,7 +1515,7 @@
                 await window.__stage25d?.setDaylight?.(patch);
                 this.sky = window.__stage25d?.daylightInfo?.() ?? this.sky;
             },
-            setTime(time) { this.daylight({ time }); },
+            setTime(time) { this.daylight({ time, sun: null }); },   // the new time's own sun: a moved one can sit under the land
             setColour(key, hex) { this.daylight({ colours: { ...(this.sky?.ownColours ?? {}), [key]: hex } }); },
             resetColours() { this.daylight({ colours: null }); },
             /** The cut-outs the sky draws its clouds from: all of them is no list; the last one stays on. */
@@ -1529,6 +1532,8 @@
             setSun(axis, v) { this.daylight({ sun: { ...(this.sky?.sun ?? {}), [axis]: v } }); },
             autoSun() { this.daylight({ sun: null }); },
             ownSky() { this.daylight({ painted: false }); },
+            /** The last cloud cut-out that is on stays on (Cloud cover 0 is the clear sky). */
+            lastCloud(c) { return c.on && (this.sky?.clouds ?? []).filter((x) => x.on).length === 1; },
             /** Put a library world under the scene, or none: live, and saved. */
             /** A ready-made world under the scene, or none (''): the server writes it, the stage rebuilds from the scene. */
             pickWorld(key) { window.__stage25d?.pickWorld?.(key); },

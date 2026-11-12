@@ -293,10 +293,14 @@ Effect.ShadersStore.stageCastVertexShader = `
   void main(void) {
     float h = clamp(position.y / max(height, 0.001), 0.0, 1.0);
     vec4 w = world * vec4(moved(position, h), 1.0);
-    w.xz += sunGround * max(w.y - groundY, 0.0) * reach;
-    w.y = groundY + 0.03;
-    vUV = uv; vUp = h; vG = w.xz;
-    gl_Position = viewProjection * w;
+    // a painted card has no depth: laid down along a sideways light it would be a line. Like a sprite's shadow, its
+    // width lies across the light and its height along it, from its feet (with the light toward the camera this is
+    // exactly the card's own projection)
+    vec3 foot = (world * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    vec2 across = vec2(-sunGround.y, sunGround.x);
+    vec2 g = foot.xz + across * (w.x - foot.x) + sunGround * max(w.y - groundY, 0.0) * reach;
+    vUV = uv; vUp = h; vG = g;
+    gl_Position = viewProjection * vec4(g.x, groundY + 0.03, g.y, 1.0);
   }`
 
 Effect.ShadersStore.stageCastFragmentShader = `
@@ -317,7 +321,7 @@ Effect.ShadersStore.stageCastFragmentShader = `
   void main(void) {
     float a = tap(vec2(vUV.x * uRepeat, vUV.y)).a;
     // a drawn edge: the silhouette cut where its alpha passes a line that wanders a little, never a blur
-    if (a < 0.5 + 0.25 * (fbm(vG * 2.5 + seed) - 0.5)) discard;
+    if (a < 0.5 + 0.25 * (fbm(vG * 1.4 + seed) - 0.5)) discard;
     // one wash, laid unevenly by hand, a touch lighter toward its far end
     float k = opacity * (1.0 - 0.3 * vUp) * (0.85 + 0.3 * fbm(vG * 0.45 + seed));
     vec3 c = mix(vec3(1.0), tint, clamp(k, 0.0, 1.0));

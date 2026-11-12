@@ -28,8 +28,8 @@ export interface Preset {
 /** The four skies, sampled from our own painted skies (sky-morning-02, sky-clear-01, sky-dusk-01, sky-night-01). */
 export const PRESETS: Record<TimeOfDay, Preset> = {
   dawn: {
-    sky: { top: '#93c4ec', mid: '#d9d3e6', horizon: '#f6d3b2' },
-    ambient: [1.0, 0.95, 0.93], sun: [1.08, 0.98, 0.88], shade: [0.86, 0.9, 1.05],
+    sky: { top: '#8fbfe6', mid: '#e3cbd6', horizon: '#f6c6a0' },
+    ambient: [1.0, 0.93, 0.87], sun: [1.08, 0.98, 0.88], shade: [0.86, 0.9, 1.05],
     shadow: [0.33, 0.27, 0.38], shadowK: 0.9,
     cloud: { light: [1.0, 0.94, 0.89], shade: [0.78, 0.76, 0.86], under: [0.96, 0.74, 0.64], tone: 0.55 },
     sunAt: { x: 0.18, height: 0.12 }, stars: 0,
@@ -53,7 +53,7 @@ export const PRESETS: Record<TimeOfDay, Preset> = {
     ambient: [0.5, 0.57, 0.8], sun: [0.92, 0.96, 1.1], shade: [0.72, 0.76, 0.95],
     shadow: [0.05, 0.08, 0.2], shadowK: 0.55,
     cloud: { light: [0.6, 0.66, 0.84], shade: [0.2, 0.25, 0.44], under: [0.14, 0.17, 0.32], tone: 0.9 },
-    sunAt: { x: 0.74, height: 0.28 }, stars: 1,
+    sunAt: { x: 0.74, height: 0.18 }, stars: 1,
   },
 }
 
@@ -64,7 +64,7 @@ export const SHADOW_REACH_MAX = 3
 /** Overcast, rain, storm, mist: the sun is behind cloud, shadows are this much of their strength. */
 export const DULL_SHADOW = 0.35
 /** The sun's height 0..1 as degrees over the horizon. */
-const ELEVATION = { low: 4, high: 70 }
+const ELEVATION = { low: 8, high: 70 }   // 8: lowest, it still clears the far landscape's land line
 /** How far from straight toward the camera the light turns when the sun stands at the frame's side (degrees). */
 const SIDEWAYS_DEG = 70
 

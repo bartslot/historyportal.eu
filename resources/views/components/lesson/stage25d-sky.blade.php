@@ -25,8 +25,14 @@
         @endforeach
     </div>
 
+    {{-- A painted sky: the time and the sun light the scene, the picture stays. Own sky paints the scene's own instead. --}}
+    <button type="button" class="btn btn-sm w-full gap-2" x-show="sky && !sky.own" x-cloak data-stage25d-own-sky x-on:click="ownSky()">
+        <x-icons.paint-brush class="h-4 w-4" />
+        <span>{{ __('Own sky') }}</span>
+    </button>
+
     {{-- The sky's own colours over the time's: a swatch opens the picker, the canvas follows the drag. --}}
-    <x-ui.settings-section :title="__('Colours')" :open="true" class="-mx-4 w-auto!" data-stage25d-sky-colours>
+    <x-ui.settings-section :title="__('Colours')" :open="true" class="-mx-4 w-auto!" x-show="sky?.own" data-stage25d-sky-colours>
         <x-ui.panel-row :label="__('Sky')">
             <div class="flex w-full items-center gap-2">
                 @foreach ($colours as $key => $label)
@@ -47,25 +53,25 @@
     </x-ui.settings-section>
 
     {{-- Clouds: which cut-outs drift over the sky and how many of them. They take the time's colours themselves. --}}
-    <x-ui.settings-section :title="__('Clouds')" :open="true" class="-mx-4 w-auto!" data-stage25d-sky-clouds>
+    <x-ui.settings-section :title="__('Clouds')" :open="true" class="-mx-4 w-auto!" x-show="sky?.own" data-stage25d-sky-clouds>
         <div class="space-y-1">
             <div class="grid grid-cols-5 gap-2 pb-1">
                 <template x-for="c in sky?.clouds ?? []" :key="c.id">
-                    <button type="button" class="relative h-11 overflow-hidden rounded-md border p-1"
-                            :class="c.on ? 'border-base-content' : 'border-panel-hairline opacity-50'" :style="tileSky(sky?.time)"
+                    <button type="button" class="relative h-11 overflow-hidden rounded-md border p-1 disabled:cursor-not-allowed"
+                            :class="c.on ? 'border-base-content' : 'border-panel-hairline opacity-50'" :style="tileSky(sky?.time)" :disabled="lastCloud(c)"
                             :aria-pressed="c.on" :aria-label="c.label" :data-tooltip="c.label" :data-stage25d-cloud="c.id" x-on:click="toggleCloud(c.id)">
                         <img :src="c.thumb" alt="" class="size-full object-contain" loading="lazy" />
                     </button>
                 </template>
             </div>
-            <x-ui.panel-row :label="__('Cloud cover')">
+            <x-ui.panel-row :label="__('Cloud cover')" stacked>
                 <span class="range-panel-knob min-w-0 flex-1" :style="fill(sky?.amount)">
                     <input type="range" class="range range-panel" min="0" max="1" step="0.05" aria-label="{{ __('Cloud cover') }}" data-stage25d-sky-amount
                            :value="sky?.amount" :style="fill(sky?.amount)" x-on:input="setAmount(Number($event.target.value))" />
                 </span>
                 <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="Math.round((sky?.amount ?? 0) * 100)"></span>
             </x-ui.panel-row>
-            <x-ui.panel-row :label="__('Drift')">
+            <x-ui.panel-row :label="__('Drift')" stacked>
                 <span class="range-panel-knob min-w-0 flex-1" :style="fill(drift)">
                     <input type="range" class="range range-panel" min="0" max="1" step="0.01" aria-label="{{ __('Drift') }}" data-stage25d-sky-drift
                            :value="drift" :style="fill(drift)" x-on:input="drift = Number($event.target.value); setLook('cloudDrift', drift)" />
@@ -79,7 +85,7 @@
     <x-ui.settings-section :title="__('Sun')" :open="true" class="-mx-4 w-auto!" data-stage25d-sky-sun>
         <div class="space-y-1">
             @foreach (['x' => __('Across'), 'height' => __('Height')] as $axis => $label)
-                <x-ui.panel-row :label="$label">
+                <x-ui.panel-row :label="$label" stacked>
                     <span class="range-panel-knob min-w-0 flex-1" :style="fill(sky?.sun?.{{ $axis }})">
                         <input type="range" class="range range-panel" min="0" max="1" step="0.01" aria-label="{{ $label }}" data-stage25d-sun="{{ $axis }}"
                                :value="sky?.sun?.{{ $axis }}" :style="fill(sky?.sun?.{{ $axis }})" x-on:input="setSun('{{ $axis }}', Number($event.target.value))" />
@@ -99,10 +105,6 @@
 
     {{-- The period's painted skies: one over the scene instead of its own; its light still follows the time above. --}}
     <x-ui.settings-section :title="__('Painted sky')" :open="false" class="-mx-4 w-auto!" data-stage25d-painted-sky>
-        <button type="button" class="btn btn-sm mb-2 w-full gap-2" x-show="sky && !sky.own" x-cloak data-stage25d-own-sky x-on:click="ownSky()">
-            <x-icons.paint-brush class="h-4 w-4" />
-            <span>{{ __('Own sky') }}</span>
-        </button>
         <template x-if="skies && skies.length">
             <div class="grid grid-cols-2 gap-2" data-stage25d-sky-grid>
                 <template x-for="o in skies" :key="o.id">

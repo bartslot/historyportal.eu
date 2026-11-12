@@ -13,7 +13,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { STAIN_SLOT_GAP, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
@@ -740,8 +740,11 @@ export class Stage {
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.stain?.setTint(lit.shadow)
       // its shadow away from the sun, on the ground under it (a lifted picture's falls further off; layer.shadow 0 = none)
+      // drawn in the slot of its nearest point: over the ground strips it falls across, before what stands there
+      const castNear = p.z + sunGround[1] * p.h * k.scale * this.light.reach
       b.handle.setCast({
-        dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow, slot: stainIndex(b.handle.mesh.alphaIndex),
+        dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow,
+        slot: Math.max(stainIndex(b.handle.mesh.alphaIndex), bandSlot(Math.max(castNear, 1)) - 2 * STAIN_SLOT_GAP),
         opacity: lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK, time: clock, etch: b.layer.etch ?? 0,
       })
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'

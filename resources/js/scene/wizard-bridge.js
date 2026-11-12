@@ -1014,7 +1014,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // An undo or a redo keeps a layer that is still there selected. When it is gone (or a balloon was deleted) the server
     // forgot what the panel pointed at: the stage drops its box too, or the next tile click would change a picture the
     // teacher no longer sees selected.
-    window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) window.__stage25d?.clearSelection?.() })
+    // ...and the panel's own memory of it goes too, so a click on the same backdrop (the sky) opens its panel again
+    window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) { window.__stage25d?.clearSelection?.(); window.__clearLayerGuard?.() } })
     window.addEventListener('stage25d:deselect', () => window.__stage25d?.clearSelection?.())
     window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
     let _stage25d = null

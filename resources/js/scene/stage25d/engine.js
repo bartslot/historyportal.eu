@@ -18,7 +18,7 @@ import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion,
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
-import { daylightOf, hasSky, isDynamic, PRESETS, TIMES } from '@stage25d/stage25d/daylight'
+import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stage25d/stage25d/daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
@@ -836,10 +836,11 @@ export async function createStage25d (host, opts = {}) {
         // a painted sky over the scene: the time of day stays, for its light, but the picture is the sky
         const own = isDynamic(setNow())
         if (assets.get(assetId)?.layer !== 'sky' || (skyAsset()?.id === assetId && !own)) return
-        if (own) daylightNow = { ...daylightNow, painted: true }
+        // the picture shows a time of its own (its tags): the scene's light follows it
+        if (daylightNow) daylightNow = { ...daylightNow, painted: true, time: timeOfTags(assets.get(assetId)?.tags), sun: undefined }
         await api.show({ ...cfg, look: lookNow, set: { ...liveSet(), sky: assetId } })
         if (api.sceneId != null) opts.onCommit?.(0, { sky: assetId }, api.sceneId)
-        if (own && api.sceneId != null) opts.onDaylight?.(daylightNow, api.sceneId)
+        if (daylightNow && api.sceneId != null) opts.onDaylight?.(JSON.parse(JSON.stringify(daylightNow)), api.sceneId)
         window.dispatchEvent(new CustomEvent('stage25d-synced'))
         return
       }
@@ -958,7 +959,8 @@ export async function createStage25d (host, opts = {}) {
     async setDaylight (patch) {
       if (!cfg || !stage) return
       const before = isDynamic(setNow())
-      const base = daylightNow ?? { time: daylightOf(setNow(), skyAsset()).time }
+      // a scene with a painted sky keeps it: a time lights it, Own sky (painted: false) replaces it
+      const base = daylightNow ?? { time: daylightOf(setNow(), skyAsset()).time, ...(cfg.set?.sky ? { painted: true } : {}) }
       const next = { ...base, ...patch }
       for (const k of ['colours', 'sun', 'clouds']) if (next[k] === null) delete next[k]
       if (patch.painted === false) delete next.painted

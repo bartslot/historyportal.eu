@@ -66,7 +66,10 @@ describe('stage25d live edits', () => {
     stage.sceneId = 7
     await stage.show(cfg({ set: { sky: 'sky-hot-01', layers: [] } }))
     expect(stage.daylightInfo()).toMatchObject({ time: 'day', own: false, painted: true })
-    await stage.setDaylight({ time: 'dusk' })                // the first touch: the scene paints its own sky
+    await stage.setDaylight({ time: 'dusk' })                // a painted sky stays: the time lights it
+    expect(calls.built).toHaveLength(1)
+    expect(calls.rebound.set.daylight).toEqual({ time: 'dusk', painted: true })
+    await stage.setDaylight({ painted: false })              // Own sky: the scene paints its own, the picture goes
     expect(calls.built).toHaveLength(2)
     expect(calls.built[1].set.daylight).toEqual({ time: 'dusk' })
     await stage.setDaylight({ clouds: { amount: 0.8 } })     // then everything is live
