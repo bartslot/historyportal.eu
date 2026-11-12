@@ -5,7 +5,7 @@ import {
   Constants, Effect, Mesh, RawTexture, ShaderMaterial, Texture, Vector2, Vector3, Vector4, VertexBuffer, VertexData,
   type Scene,
 } from '@babylonjs/core'
-import type { Asset, MotionSpec, Puppet } from './types'
+import type { Asset, BlinkEye, MotionSpec, Puppet } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
@@ -129,6 +129,31 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     return past(q) ? vec4(0.0) : tap(q);
     #endif
   }
+  #ifdef BLINK
+  // a close-up blinks (blink.ts): per eye the closed lid's edge slides from just above the eye box down to the closed
+  // lash line; above the edge the closed picture in place, on a thin band above it the closed lash line riding the
+  // edge, below it the open eye. Never a fade. Blended in with a soft ellipse in the box: no rectangles.
+  uniform sampler2D blinkTex;                // the closed-eye picture, pixel-aligned with tex, premultiplied
+  uniform float blinkT;                      // 0 open .. 1 closed
+  uniform vec4 eyeBox0, eyeBox1;             // x0 y0 x1 y1, fractions of the picture, y from the top (x1 <= x0: no eye)
+  uniform vec3 eyeLash0, eyeLash1;           // the closed lash line's y at the box's left edge, middle, right edge
+  #define LASH_BAND 0.0045                   // the band of closed lash line that travels with the edge (~7 px of 1588)
+  #define LID_ABOVE 0.0025                   // the edge starts this far above the box (~4 px)
+  vec4 lidOver(vec4 c, vec2 uv, vec4 box, vec3 lash) {
+    if (box.z <= box.x) return c;
+    vec2 q = (uv - box.xy) / (box.zw - box.xy);          // 0..1 inside the box
+    float m = 1.0 - smoothstep(0.9, 1.25, length((q - 0.5) * 2.0));
+    float top = box.y - LID_ABOVE;
+    if (m <= 0.0 || uv.y < top || uv.y > box.w + LID_ABOVE) return c;
+    float u = clamp(q.x, 0.0, 1.0);
+    float ly = lash.x * 2.0 * (u - 0.5) * (u - 1.0) - lash.y * 4.0 * u * (u - 1.0) + lash.z * 2.0 * u * (u - 0.5);
+    float edge = top + blinkT * (ly - top);
+    vec4 col = c;
+    if (uv.y < edge) col = texture2D(blinkTex, uv);
+    if (blinkT > 0.02 && uv.y >= edge - LASH_BAND && uv.y < edge + LASH_BAND / 7.0) col = texture2D(blinkTex, vec2(uv.x, uv.y + ly - edge));
+    return mix(c, col, m);
+  }
+  #endif
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
@@ -138,6 +163,9 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       uv.y += k * 0.002 * sin(uv.x * 45.0 / uRepeat + time * speed * 1.6);
     }
     vec4 c = tap(uv);                       // premultiplied
+    #ifdef BLINK
+    if (blinkT > 0.0) c = lidOver(lidOver(c, uv, eyeBox0, eyeLash0), uv, eyeBox1, eyeLash1);
+    #endif
     if (kind == 4.0) c.rgb *= 1.0 + amount * 0.12 * (sin(time * speed * 13.0 + phase) * 0.5 + sin(time * speed * 31.0) * 0.5);
     if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
@@ -374,6 +402,8 @@ export interface LayerHandle {
   worldOf(bent: BentPicture, px: number, py: number): Vector3
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
+  /** a close-up's lid: 0 open .. 1 closed (no-op on a layer built without a blink) */
+  setBlink(t: number): void
 }
 
 let seed = 0
@@ -411,18 +441,29 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
   return p
 }
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture): LayerHandle {
+/** A close-up's blink for makeLayer: the closed-eye texture and its eyes (blink.ts blinkOf). */
+export interface LayerBlink { tex: RawTexture; eyes: BlinkEye[] }
+
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink): LayerHandle {
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale'],
-    samplers: rest ? ['tex', 'rest'] : ['tex'],
-    defines: rest ? ['#define REST'] : [],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : [])],
+    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : [])],
+    defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : [])],
     needAlphaBlending: true,
   })
   tex.wrapU = uRepeat !== 1 ? Texture.WRAP_ADDRESSMODE : Texture.CLAMP_ADDRESSMODE
   mat.setTexture('tex', tex)
   if (rest) mat.setTexture('rest', rest)
+  if (blink) {
+    mat.setTexture('blinkTex', blink.tex).setFloat('blinkT', 0)
+    for (const i of [0, 1]) {
+      const e = blink.eyes[i]
+      mat.setVector4(`eyeBox${i}`, e ? new Vector4(e.x0, e.y0, e.x1, e.y1) : new Vector4(0, 0, 0, 0))
+      mat.setVector3(`eyeLash${i}`, e ? Vector3.FromArray(e.lash) : Vector3.Zero())
+    }
+  }
   mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
   mat.disableDepthWrite = true          // planes never hide each other by depth: draw order (alphaIndex) does that
   mat.backFaceCulling = false
@@ -477,6 +518,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
     setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
     setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
+    setBlink: (t) => { if (blink) mat.setFloat('blinkT', t) },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
         .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)

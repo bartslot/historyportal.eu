@@ -22,6 +22,8 @@ export interface Asset {
   /** A terrain's own far edge: the id of a low hazy strip the stage stands far out over the terrain's horizon */
   horizon?: string
   motion?: MotionKind
+  /** a close-up's blink (blink.ts): a pixel-aligned closed-eye picture beside `file`, and its eyes */
+  blink?: { file: string; eyes: BlinkEye[] }
   placeholder?: boolean
   qa?: { score?: number }
   /** an animation (sprite.ts): `file` is a sheet of cols x rows frames, w x h is ONE frame */
@@ -37,6 +39,10 @@ export interface Asset {
   /** default true; false stays on the last frame */
   loop?: boolean
 }
+
+/** One eye of a blink, in fractions of the picture (x from the left, y from the TOP): its box, and the y of the closed
+ *  lash line at the box's left edge, middle and right edge (a parabola through the three). */
+export interface BlinkEye { x0: number; x1: number; y0: number; y1: number; lash: [number, number, number] }
 
 export interface Library {
   version: number

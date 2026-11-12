@@ -134,6 +134,7 @@ export async function createStage25d (host, opts = {}) {
   let heights = new Map()   // library asset id -> height in metres, for the speaker's head
   let manualT = 0
   let clock = null
+  let isPaused = null       // the player's pause (play's second argument): close-ups stop blinking
   let lead = 0   // the narration starts this many seconds into the scene (director's narration_at_s)
   let motionClock = 0
   let heldAt = -1           // the scene's time at the last frame
@@ -188,6 +189,8 @@ export async function createStage25d (host, opts = {}) {
       motionClock += step
       last = now
       stage.tick(now)
+      // close-ups blink only while the lesson runs: in the editor while it plays, in the player unless paused
+      stage.paused = pointer ? !window.__timelineKeying?.playing?.() : !!isPaused?.()
       if (pointer) {
         stage.fadeLayers(selectionFade(), IN_FRONT_OPACITY)
         // in the editor the camera only moves on its own when it is what you are looking at: playing, or the Camera row
@@ -542,10 +545,10 @@ export async function createStage25d (host, opts = {}) {
     },
     /** The editor poses the scene at t seconds. */
     update (t) {
-      clock = null; manualT = Math.max(0, t)
+      clock = null; isPaused = null; manualT = Math.max(0, t)
     },
-    /** The player follows a clock (the narration's currentTime). */
-    play (getT) { clock = () => lead + getT() },
+    /** The player follows a clock (the narration's currentTime); `paused` says when the class paused the lesson. */
+    play (getT, paused = null) { clock = () => lead + getT(); isPaused = paused },
     /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer.
      *  `hold`: show it, save nothing yet (a gesture still going on); `done`: the gesture's last value, saved now. */
     moveLayer (id, prop, value, { hold = false, done = false } = {}) {

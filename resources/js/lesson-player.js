@@ -1167,7 +1167,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (_bgCanvas) _bgCanvas.style.opacity = '0'
         host.style.opacity = '1'
         if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
-        stage.play(() => this._audio?.currentTime ?? 0)
+        stage.play(() => this._audio?.currentTime ?? 0, () => this.playbackPaused)
         window.__stage25d = stage   // balloon tails ask it where a speaker's head is (BalloonLayer)
         this._preloadNextStage(stage, scene)
       } catch (e) {

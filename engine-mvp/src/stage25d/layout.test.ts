@@ -481,6 +481,14 @@ describe('figures breathe by default', () => {
     expect(motionOf({ ...fig, motion: 'flicker' } as Asset, { asset: 'man' } as never).kind).toBe('flicker')
     expect(motionOf({ ...fig, motion: 'sway' } as Asset, { asset: 'man' } as never).kind).toBe('breathe')
   })
+
+  it('a close-up (bust) does not breathe: the stretch swells a face; the teacher can still pick it', () => {
+    const bust = { id: 'fig-ana-bust-01', file: 'b.webp', layer: 'figure', tags: ['pose:bust'], motion: 'none' } as unknown as Asset
+    expect(motionOf(bust, { asset: bust.id } as never).kind).toBe('none')
+    expect(motionOf({ ...bust, id: 'fig-ana-bust-side-01-l', tags: [] } as Asset, { asset: 'x' } as never).kind).toBe('none')
+    expect(motionOf({ ...bust, id: 'x', tags: ['closeup'] } as Asset, { asset: 'x' } as never).kind).toBe('none')
+    expect(motionOf(bust, { asset: bust.id, motion: 'breathe' } as never).kind).toBe('breathe')
+  })
 })
 
 describe('cameraWobble', () => {

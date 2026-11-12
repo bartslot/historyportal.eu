@@ -16,6 +16,7 @@ import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
+import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
@@ -36,7 +37,7 @@ type Stain = ReturnType<typeof makeStain>
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -158,6 +159,8 @@ export class Stage {
     for (const layer of layers) {
       const asset = resolveAsset(lib, layer, layer.depth)
       if (asset) urls.add(layer.src ?? puppetOf(asset, layer, lib.base)?.atlas ?? urlOf(lib, asset, layer))
+      const blink = asset ? blinkOf(asset, layer, lib.base) : null
+      if (blink) urls.add(blink.url)
     }
     for (const sl of groundSlots(s.set, lib)) urls.add(lib.base + sl.asset.file)
     for (const g of s.set.groundBands ?? []) {
@@ -197,7 +200,11 @@ export class Stage {
       // a figure of parts reads its ink off the drawing put back together, so a cut between parts draws no line
       const rest = puppet ? await restDrawing(layer.src ? { ...puppet, atlas: layer.src } : puppet, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest)
+      // a close-up blinks: its closed-eye picture (a missing one only costs the blink)
+      const blinkSrc = blinkOf(asset, layer, lib.base)
+      const blinkTex = blinkSrc ? await loadPremultiplied(blinkSrc.url, this.scene).catch(() => null) : null
+      if (token !== this.buildToken) return
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined)
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -217,7 +224,7 @@ export class Stage {
         cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
         cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -426,6 +433,11 @@ export class Stage {
   /** The camera's own motion is on; the editor stills it while working. Someone who asked for less motion never gets it. */
   cameraAlive = true
   private readonly calm = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+  /** The lesson is paused: close-ups stop blinking (the wrapper sets it; layer motion keeps breathing). */
+  paused = false
+  /** blink time: runs with the motion clock, but not while paused (blink.ts) */
+  private blinkTime = 0
+  private lastClock: number | null = null
 
   private faded = new Set<number>()
   private fadedTo = 1
@@ -595,7 +607,11 @@ export class Stage {
     })
     this.strew(lookNum(this.look, 'grass'), lookNum(this.look, 'horizonBushes'))
     this.strewn.forEach((m) => m.update(clock, lookNum(this.look, 'grassSway'), land, this.camera.position, 1))
+    const dt = this.lastClock === null ? 0 : Math.min(0.1, Math.max(0, clock - this.lastClock))
+    this.lastClock = clock
+    if (!this.paused) this.blinkTime += dt
     for (const b of this.built) {
+      if (b.blink) b.handle.setBlink(b.blink(this.blinkTime))
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
       b.handle.mesh.position.x = p.x
@@ -757,6 +773,7 @@ export async function playLesson(lessonOrUrl: Lesson | string, libraryUrl?: stri
     frames.push(now); while (frames.length && now - frames[0] > 1000) frames.shift()
     stage.tick(now)
     motionClock += dt                            // layer motion keeps breathing while paused or holding
+    stage.paused = tl.mode === 'paused'          // ...but a close-up stops blinking
     tl.tick(dt)
     const hold = tl.mode === 'holding' ? { t: tl.holdT, ...doc.lesson.hold } : undefined
     stage.pose(tl.scene, tl.t, motionClock, hold)

@@ -1,6 +1,7 @@
 // Pure stage maths: where a layer stands, how big it is, and where the camera is at time t.
 // Metres everywhere. The house camera stands at x 0, eye height, looking down +z with a small fixed tilt.
 import type { Asset, CamPose, CameraMotion, CameraMotionKind, CameraMove, Depth, Ease, GroundBand, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
+import { isBust } from './blink'
 
 /** Distance from the house camera to each depth plane. Wide gaps between them = strong parallax on a truck. */
 /** near: framing tufts, reeds and stones at the frame's bottom edge (partly out of frame), in front of fg */
@@ -283,9 +284,11 @@ export const MOTION_CODE: Record<MotionKind, number> = { none: 0, sway: 1, drift
 
 /** A figure breathes unless the teacher stills it, so a held frame never looks frozen. The library marks every
  *  figure 'none', which only meant "no sway", so for a figure that counts as not set. */
-export const defaultMotion = (asset?: Pick<Asset, 'layer' | 'motion'>): MotionKind => {
+export const defaultMotion = (asset?: Pick<Asset, 'layer' | 'motion'> & Partial<Pick<Asset, 'id' | 'tags'>>): MotionKind => {
   // Bart 11-10: no sway unless the teacher picks it; a library 'sway' is not a default any more
   const own = asset?.motion === 'sway' ? 'none' : asset?.motion ?? 'none'
+  // a close-up never breathes: the stretch swells a face like a balloon (Bart 11-12); it blinks instead (blink.ts)
+  if (isBust(asset)) return own
   return asset?.layer === 'figure' && own === 'none' ? 'breathe' : own
 }
 
