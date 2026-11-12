@@ -2760,5 +2760,17 @@
     "{1} Re-narrate 1 scene (about :chars characters).|[2,*] Re-narrate :count scenes (about :chars characters).": "{1} Volver a narrar 1 escena (unos :chars caracteres).|[2,*] Volver a narrar :count escenas (unos :chars caracteres).",
     "{1} Write 1 script again.|[2,*] Write :count scripts again.": "{1} Volver a escribir 1 guion.|[2,*] Volver a escribir :count guiones.",
     "© :year History Portal, part of The Learning Portal. All rights reserved.": "© :year History Portal, parte de The Learning Portal. Todos los derechos reservados.",
-    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "«¡Ya basta!», grita un político, dando un puñetazo en la mesa de madera."
+    "“Enough is enough!” a politician shouts, slamming his fist on the wooden table.": "«¡Ya basta!», grita un político, dando un puñetazo en la mesa de madera.",
+    "Cloud cover": "Nubosidad",
+    "Time of day": "Hora del día",
+    "Dawn": "Amanecer",
+    "Day": "Día",
+    "Dusk": "Atardecer",
+    "Colours": "Colores",
+    "Middle": "Centro",
+    "Horizon": "Horizonte",
+    "Reset colours": "Restablecer colores",
+    "Across": "Lateral",
+    "Painted sky": "Cielo pintado",
+    "Own sky": "Cielo propio"
 }

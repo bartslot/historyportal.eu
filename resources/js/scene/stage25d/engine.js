@@ -946,7 +946,7 @@ export async function createStage25d (host, opts = {}) {
       const chosen = daylightNow?.clouds?.assets ?? null
       return {
         time: light.time, own: isDynamic(set), painted: !!cfg.set?.sky, auto: light.auto, sun: light.sun,
-        colours: light.hex, custom: Object.keys(daylightNow?.colours ?? {}).length > 0,
+        colours: light.hex, ownColours: { ...(daylightNow?.colours ?? {}) }, custom: Object.keys(daylightNow?.colours ?? {}).length > 0,
         amount: daylightNow?.clouds?.amount ?? 0.4,
         clouds: cloudArt(libData).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: BUILT_IN_CLOUDS.includes(a) ? BUILT_IN_CLOUD_BASE + a.file : thumbOf(a), on: !chosen || chosen.includes(a.id) })),
         times: TIMES.map((t) => ({ id: t, sky: PRESETS[t].sky })),

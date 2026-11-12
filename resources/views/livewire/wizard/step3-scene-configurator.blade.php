@@ -1403,7 +1403,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1427,6 +1427,8 @@
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.ground = id === 'terrain' ? (stage.groundSlots?.() ?? null) : null;
                 this.skies = id === 'sky' ? (stage.skyOptions?.() ?? []) : null;
+                this.sky = id === 'sky' ? (stage.daylightInfo?.() ?? null) : null;
+                if (id === 'sky') this.drift = (stage.lookControls?.() ?? []).find((c) => c.key === 'cloudDrift')?.value ?? this.drift;
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
                     const v = window.__timelineKeying?.value?.('s25:' + id, p);
@@ -1496,6 +1498,37 @@
             /** Another character in the same stance. */
             async character(series) { await window.__stage25d?.switchCharacter?.(id, series); this.sync(); },
             setLook(key, value) { window.__stage25d?.setLook?.(key, value); },
+            /** The Sky panel (stage25d-sky): a time tile painted in that time's own sky, its icon readable on it. */
+            tileSky(time) {
+                const t = this.sky?.times?.find((x) => x.id === time);
+                if (!t) return '';
+                const dark = time === 'dusk' || time === 'night';
+                return `background: linear-gradient(to bottom, ${t.sky.top}, ${t.sky.mid} 55%, ${t.sky.horizon}); color: ${dark ? 'var(--color-base-content)' : 'var(--color-base-100)'}`;
+            },
+            /** A panel slider's fill (.range-panel reads --range-pct), for a 0..1 value. */
+            fill(v) { const p = Math.round((Number(v) || 0) * 100); return `--range-pct: ${p}%; --range-t: ${p / 100}`; },
+            /** Change the time of day: live on the canvas, saved, one undo step (engine setDaylight). */
+            async daylight(patch) {
+                await window.__stage25d?.setDaylight?.(patch);
+                this.sky = window.__stage25d?.daylightInfo?.() ?? this.sky;
+            },
+            setTime(time) { this.daylight({ time }); },
+            setColour(key, hex) { this.daylight({ colours: { ...(this.sky?.ownColours ?? {}), [key]: hex } }); },
+            resetColours() { this.daylight({ colours: null }); },
+            /** The cut-outs the sky draws its clouds from: all of them is no list; the last one stays on. */
+            cloudPatch(amount, on) {
+                const all = this.sky?.clouds ?? [];
+                return { amount, ...(on.length && on.length < all.length ? { assets: on } : {}) };
+            },
+            toggleCloud(id) {
+                const on = (this.sky?.clouds ?? []).filter((c) => c.on).map((c) => c.id);
+                const next = on.includes(id) ? on.filter((x) => x !== id) : [...on, id];
+                if (next.length) this.daylight({ clouds: this.cloudPatch(this.sky.amount, next) });
+            },
+            setAmount(v) { this.daylight({ clouds: this.cloudPatch(v, (this.sky?.clouds ?? []).filter((c) => c.on).map((c) => c.id)) }); },
+            setSun(axis, v) { this.daylight({ sun: { ...(this.sky?.sun ?? {}), [axis]: v } }); },
+            autoSun() { this.daylight({ sun: null }); },
+            ownSky() { this.daylight({ painted: false }); },
             /** Put a library world under the scene, or none: live, and saved. */
             /** A ready-made world under the scene, or none (''): the server writes it, the stage rebuilds from the scene. */
             pickWorld(key) { window.__stage25d?.pickWorld?.(key); },
