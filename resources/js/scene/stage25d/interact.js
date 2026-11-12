@@ -64,7 +64,8 @@ export const figureInView = (boxes, selected) => {
  * @param {(index: number) => number} [c.footY]                 how high a layer's feet stand now
  * @param {() => number[]} c.eye                                where the camera stands on the ground, [x, z]
  * @param {(index: number) => void} [c.onSettled]               a drag along the ground ended
- * @param {(x: number, y: number) => boolean} [c.onEmpty]       a press on no standing picture; true when it selected a backdrop
+ * @param {(x: number, y: number) => boolean | { move: (dx: number, dy: number) => void, end: () => void }} [c.onEmpty]
+ *        a press on no standing picture; true when it selected a backdrop, its drag when that backdrop moves
  * @param {(bone: string) => string} [c.boneLabel]             a bone's name for its handle, in the teacher's language
  */
 export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone }) {
@@ -211,7 +212,13 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     const hit = inBox ? { index: selected } : painted
     const next = inBox && painted && painted.index !== selected ? painted.index : down
     if (!hit) {
-      if (onEmpty(x, y)) e.stopPropagation()   // a backdrop was selected: not "the scene"
+      const held = onEmpty(x, y)
+      if (held) e.stopPropagation()   // a backdrop was selected: not "the scene"
+      // a backdrop that moves (a ground band) hands back its drag: { move(dx, dy), end() }
+      if (held && typeof held === 'object') {
+        drag = { mode: 'backdrop', held, start: [x, y], id: e.pointerId, el: canvas }
+        canvas.setPointerCapture?.(e.pointerId)
+      }
       return
     }
     e.stopPropagation()   // the editor's "empty canvas = the scene is selected" press must not undo this selection
@@ -271,6 +278,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   function onMoveEvent (e) {
     const { x, y } = local(e)
+    if (drag?.mode === 'backdrop') { drag.held.move(x - drag.start[0], y - drag.start[1]); return }
     if (drag?.mode === 'bone') {
       // clockwise on screen is clockwise for the bone, unless the figure shows mirrored; held to the joint's limits as it goes,
       // so turning back from past a limit moves at once
@@ -328,6 +336,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onUp = (e) => {
     if (!drag) return
     drag.el.releasePointerCapture?.(drag.id)
+    if (drag.mode === 'backdrop') { drag.held.end(); drag = null; return }
     if (drag.mode === 'bone' && drag.sent !== undefined) onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { done: true })   // one save
     const index = drag.index
     const moved = (drag.mode === 'move' && drag.ground) || drag.byDistance

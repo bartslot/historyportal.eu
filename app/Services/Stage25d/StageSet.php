@@ -17,8 +17,10 @@ use Illuminate\Support\Collection;
  */
 final class StageSet
 {
-    /** Where a ground band stands (m); the importer's lessons put theirs at 30. */
-    private const BAND_Z = 30;
+    /** The nearest strip's standard place (Bart 11-12): 7 m out, at 40 % size, fully there. */
+    private const BAND_Z = 7;
+
+    private const BAND_SCALE = 0.4;
 
     /** The tallest plant (m) that may stand in front of the people. */
     private const NEAR_MAX_M = 4.0;
@@ -97,7 +99,7 @@ final class StageSet
         return array_filter([
             'sky' => $sky['id'] ?? null,
             'layers' => $far ? [['asset' => $far['id'], 'depth' => 'bg', 'x' => 0.5]] : [],
-            'groundBands' => $band ? [['asset' => $band['id'], 'z' => self::BAND_Z]] : null,
+            'groundBands' => $band ? [['asset' => $band['id'], 'z' => self::BAND_Z, 'scale' => self::BAND_SCALE]] : null,
         ], fn ($v) => $v !== null);
     }
 

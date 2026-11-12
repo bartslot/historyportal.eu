@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
-import { cameraWobble } from './layout'
+import { cameraWobble, tileU } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -536,4 +536,13 @@ describe('skyCover: the sky reaches every frame the scene camera shows', () => {
     expect(k).toBeGreaterThan(COVER_MARGIN * 1.6)
   })
   it('zoomed in only: unchanged', () => expect(skyCover({ camera: { from: { fov: 50 }, to: { fov: 30 } } as never })).toBe(COVER_MARGIN))
+})
+
+describe('a repeated ground band', () => {
+  it('maps a point on any copy into the one picture, every other copy mirrored', () => {
+    expect(tileU(0.5 / 7, 7, true)).toBeCloseTo(0.5)
+    expect(tileU(1.25 / 7, 7, true)).toBeCloseTo(0.75)   // the second copy is mirrored: its quarter is the picture's three quarters
+    expect(tileU(1.25 / 7, 7, false)).toBeCloseTo(0.25)  // a tileable picture repeats as it is
+    expect(tileU(2.25 / 7, 7, true)).toBeCloseTo(0.25)
+  })
 })

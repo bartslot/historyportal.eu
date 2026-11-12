@@ -1736,7 +1736,8 @@
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 // Grouped under "World" (Bart, 2026-11-10/11): one ground and one sky, never copied or deleted, only swapped.
                 // The World row itself is selectable: it opens the world's own settings (picker and look).
-                const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => i.backdrop || i.scenery)
+                // The strips (ground bands) live inside Terrain (Bart 11-12: "only 1 layer which is terrain"): its panel lists them.
+                const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => (i.backdrop || i.scenery) && !String(i.id).startsWith('band-'))
                     .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.id === 'terrain' ? @js(__('Terrain')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
                 const s25Sky = s25Backdrop.length ? [{ id: 's25_world', icon: 'group', label: @js(__('World')), bg: false, s25: true, s25sky: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.

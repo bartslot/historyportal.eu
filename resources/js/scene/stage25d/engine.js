@@ -14,7 +14,7 @@ import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
-import { HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -361,7 +361,24 @@ export async function createStage25d (host, opts = {}) {
     const floor = !hit && terrainSlot() && stage ? groundUnderRay(stage.pointerRay(x, y), 0) : null
     const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : floor ? 'terrain' : (hasSky(setNow()) ? 'sky' : null)
     if (id) api.select(id)
-    return !!id
+    return hit?.band !== undefined ? (bandDrag(id, x, y) ?? true) : !!id
+  }
+  /** A ground band dragged on the canvas (Bart 11-12: "drag up/down = distance"): up is farther, down nearer. The ground
+   *  under the press stays under the pointer, so the band follows the hand at any distance. Null: no ground there. */
+  const bandDrag = (id, x, y) => {
+    const floorAt = (py) => groundUnderRay(stage.pointerRay(x, py), 0)?.[1]
+    const pressed = floorAt(y), z0 = api.readLayerProp(id, 'z')
+    if (!(pressed > 0) || !(z0 > 0)) return null
+    let last = null
+    return {
+      move: (dx, dy) => {
+        const under = floorAt(y + dy)
+        if (!(under > 0)) return   // above the horizon: it stays where it got to
+        last = Math.round(Math.min(BAND_Z[1], Math.max(BAND_Z[0], (z0 * under) / pressed)) * 10) / 10
+        api.moveLayer(id, 'z', last, { hold: true })
+      },
+      end: () => { if (last !== null) api.moveLayer(id, 'z', last, { done: true }) },
+    }
   }
   /** A painted strip of ground and a picture lying flat stand on the floor itself, not on the ground rising into the
    *  far landscape. */
@@ -727,9 +744,17 @@ export async function createStage25d (host, opts = {}) {
         return sky ? { id, asset: sky.id, depth: 'sky', figure: null, backdrop: true, role: 'sky', fields: [], label: layerLabel({}, sky, (document.documentElement.lang || 'en').slice(0, 2)), file: skyNow.src ?? `${libData.base}${sky.file}`, motion: motionOf(skyNow, sky) } : null
       }
       // the terrain (Bart 11-10: like the sky, a part of the Scene): its picture and a flip, nothing to move
+      // its strips (the ground bands) live in it too (Bart 11-12: one Terrain in the World, holding its slots and strips)
       if (id === 'terrain') {
         const t = terrainSlot()
-        return t ? { id, asset: t.asset.id, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t.flip, label: layerLabel({}, t.asset, (document.documentElement.lang || 'en').slice(0, 2)), file: `${libData.base}${t.asset.file}`, motion: null } : null
+        const lang = (document.documentElement.lang || 'en').slice(0, 2)
+        const labels = api.items()
+        const strips = bands.map((g, n) => {
+          const a = assets.get(g.asset)
+          return { id: `band-${n}`, label: labels.find((row) => row.id === `band-${n}`)?.label ?? '', file: g.src ?? (a ? `${libData.base}${a.file}` : null) }
+        })
+        if (!t && !strips.length) return null
+        return { id, asset: t?.asset.id ?? null, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t?.flip, label: t ? layerLabel({}, t.asset, lang) : (TERRAIN_NAME[lang] ?? 'Terrain'), file: t ? `${libData.base}${t.asset.file}` : null, motion: null, strips }
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
@@ -1113,7 +1138,7 @@ export async function createStage25d (host, opts = {}) {
       return [
         ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
-        ...(terrainSlot() ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
+        ...(terrainSlot() || bands.length ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
         ...(hasSky(setNow()) ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),
         { id: 'camera', label: CAMERA_NAME[lang] ?? 'Camera', icon: 'camera', depth: null, keys: [] },
       ]

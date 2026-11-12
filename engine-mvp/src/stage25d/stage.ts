@@ -13,14 +13,14 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { STAIN_SLOT_GAP, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { STAIN_SLOT_GAP, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
-import { makeGround, makeStain, type FloorSlot, type GroundLook } from './ground-gl'
+import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
 import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
@@ -517,7 +517,7 @@ export class Stage {
       const uv = hit.getTextureCoordinates()
       if (!uv) return []
       const band = bandOf(hit.pickedMesh)
-      if (band) return [{ band: band.index, asset: band.asset, u: uv.x, v: uv.y }]
+      if (band) return [{ band: band.index, asset: band.asset, u: tileU(uv.x, BAND_REPEAT, !band.asset.tileable_x), v: uv.y }]
       const strip = stripOf(hit.pickedMesh)!
       return [{ index: strip.index, asset: strip.asset, u: uv.x, v: uv.y }]
     })
@@ -677,8 +677,10 @@ export class Stage {
       if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); return }
       const asset = editedAsset(found, g, tex.getSize())
       // the picture keeps its own proportions: its width is three views, its height follows its aspect
+      // repeated sideways (BAND_REPEAT), mirrored where the picture does not tile: w stays one copy's width
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
-      const handle = makeLayer(asset, tex, w, h, 1, this.scene)
+      const handle = makeLayer(asset, tex, w * BAND_REPEAT, h, BAND_REPEAT, this.scene)
+      tex.wrapU = nearWrapU(!!asset.tileable_x)
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)

@@ -18,6 +18,15 @@ export const COVER_MARGIN = 1.6             // wide strips (sky, tileable bg) sp
  *  views wide, its height from the picture's own aspect. */
 export const BAND_VIEWS = 3
 export const bandWidth = (z: number) => BAND_VIEWS * viewWidthAt(z)
+/** A ground band repeats sideways this many times, centred (Bart 11-12: "the terrains have to be repeating"): a moving
+ *  camera never finds its edge. A picture that is not tileable repeats mirrored (ground-gl nearWrapU), so no seam shows. */
+export const BAND_REPEAT = 7
+/** Where a point across a repeated picture (u 0..1 over all `n` copies) falls in one copy of it; every other copy
+ *  mirrored when `mirror`. */
+export function tileU(u: number, n: number, mirror: boolean): number {
+  const t = u * n, i = Math.floor(t), f = t - i
+  return mirror && i % 2 === 1 ? 1 - f : f
+}
 /** A band's height in metres: the look's band height (k, a share of its distance) times its distance. Stands the hill
  *  crest a little above the one behind (k ~0.15), so the hunebed at 22 m shows and the 40 m crest sits near the horizon. */
 export const bandHeight = (z: number, k: number) => k * z

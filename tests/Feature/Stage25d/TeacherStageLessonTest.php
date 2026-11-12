@@ -84,7 +84,7 @@ class TeacherStageLessonTest extends TestCase
         $this->assertSame(['id' => 's3', 'bundle' => 'nl-prehistory', 'set' => [
             'sky' => 'sky-summer-01',
             'layers' => [['asset' => 'bg-farmland-01', 'depth' => 'bg', 'x' => 0.5]],
-            'groundBands' => [['asset' => 'meadow-band-01', 'z' => 30]],
+            'groundBands' => [['asset' => 'meadow-band-01', 'z' => 7, 'scale' => 0.4]],
         ]], $stage);
     }
 

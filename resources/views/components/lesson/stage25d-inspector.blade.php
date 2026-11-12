@@ -186,8 +186,13 @@
         </button>
     @elseif ($layerId)
         <div class="-mx-4 -mt-4 flex items-center gap-2 border-b border-panel-hairline px-4 py-3">
-            <x-ui.panel-breadcrumb :label="__('Scene')"
-                                   x-on:click="window.__stage25d?.select(null); window.__clearLayerGuard?.(); $wire.selectInspectorTarget('')" />
+            @if (str_starts_with((string) $layerId, 'band-'))
+                {{-- a strip lives inside the Terrain: back goes there --}}
+                <x-ui.panel-breadcrumb :label="__('Terrain')" x-on:click="window.__clearLayerGuard?.(); window.__stage25d?.select('terrain')" />
+            @else
+                <x-ui.panel-breadcrumb :label="__('Scene')"
+                                       x-on:click="window.__stage25d?.select(null); window.__clearLayerGuard?.(); $wire.selectInspectorTarget('')" />
+            @endif
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content" x-text="info?.label"></span>
         </div>
 
@@ -285,6 +290,22 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- The terrain's strips (Bart 11-12: the ground bands live in the Terrain, not as rows of the World): a click opens
+             one; on the canvas a strip drags up and down for its distance. --}}
+        <template x-if="info?.role === 'terrain' && info?.strips?.length">
+            <x-ui.settings-section :title="__('Strips')" :open="true" class="-mx-4 w-auto!" data-stage25d-strips>
+                <div class="space-y-2">
+                    <template x-for="strip in info.strips" :key="strip.id">
+                        <button type="button" class="flex w-full items-center gap-2 rounded-md border border-panel-hairline bg-base-200 p-1 text-left"
+                                :data-stage25d-strip="strip.id" x-on:click="window.__clearLayerGuard?.(); window.__stage25d?.select(strip.id)">
+                            <img :src="strip.file" alt="" class="h-8 w-24 shrink-0 rounded-xs object-cover" loading="lazy" />
+                            <span class="min-w-0 flex-1 truncate text-xs font-semibold text-base-content" x-text="strip.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </x-ui.settings-section>
+        </template>
 
         {{-- The terrain's slots, near to far (Bart 11-11: the old ground layers, now inside the terrain): each a picture
              from its distance on, the nearest from the camera; each brings its own billboards (strew). --}}
