@@ -89,6 +89,7 @@
         </div>
         @if ($scene->image_path)
             <img src="{{ \App\Support\MediaUrl::of($scene->image_path) }}"
+                 loading="lazy" decoding="async"
                  onerror="this.style.display='none'"
                  class="relative w-full h-full object-cover" alt="" />
         @endif
