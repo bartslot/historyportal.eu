@@ -101,7 +101,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform vec2 uvFit;                          // the drawing's uv as uv of its atlas (a puppet), else 1 1
   uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
   ${GL_NOISE}
-  #define EDGE_FEATHER_PX 6.0                      // at edgeSoft 1: the cut fades out over this many 1080p px
+  #define EDGE_FEATHER_PX 1.5                      // at edgeSoft 1: the cut fades out over this many 1080p px (anti-aliasing only)
   #define EDGE_FEATHER_MAX_UV 0.025                // ...but over at most this share of the picture (small far pictures keep their edge)
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
@@ -242,20 +242,11 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float blade = smoothstep(0.4, 0.95, fbm(vec2(px.x / 2.2, 7.0)));
       if (vH < grass * foot * 1.4 * blade) c *= 1.0 - 0.85 * grass;
     }
-    // a painted edge, never a scissor cut: the rim breaks up in the paper's grain and bleeds a little outward
+    // The art's own black contour IS the edge: nothing here may eat into it. A noise rim that broke the cut up and bled
+    // outward, and a 6 px feather, wiped the ink line on every picture (Bart 11-12: "this edge is really bad ... the
+    // outline is cut out and the edges are not sharp"). What stays is a 1.5 px fade, so the cut is anti-aliased, not a
+    // scissor step.
     if (edgeSoft > 0.0 && outlineW <= 0.0) {
-      float amin = 1.0; vec4 acc = vec4(0.0);
-      for (int k = 0; k < 8; k++) {
-        float a = float(k) * 0.785398;
-        vec4 n = tap(uv + vec2(cos(a), sin(a)) * grainUV * 2.5);
-        amin = min(amin, n.a); acc += n;
-      }
-      acc /= 8.0;
-      float rim = (1.0 - amin) * step(0.004, c.a);       // this pixel is on the cut
-      float nz = fbm(px / 2.0 + 41.0);
-      c *= 1.0 - edgeSoft * rim * 0.85 * smoothstep(0.35, 0.75, nz);
-      float bleed = edgeSoft * 0.3 * acc.a * smoothstep(0.45, 0.8, nz) * (1.0 - c.a);
-      c += vec4(acc.rgb / max(acc.a, 1e-3), 1.0) * bleed;
       // and it melts into what stands behind it (Bart 11-11: "softer edges, blending into the environment"): the
       // silhouette fades out over a few screen px inside its cut. around(): a cut between two parts is no edge.
       // The feather is a few screen px, but never more than a small share of the picture itself: on a far donkey 25 px
