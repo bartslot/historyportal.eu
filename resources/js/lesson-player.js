@@ -177,6 +177,8 @@ const _stageSound   = createStageSound()   // the stage scenes' beds + sfx; its 
 if (typeof window !== 'undefined') window.__stageSound = _stageSound   // tests and the dev panel read engine.state() / engine.log
 // The editor's title-screen miniatures (?title_preview=1): they only ever show the title, so they fetch no narration.
 const TITLE_PREVIEW = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('title_preview') === '1'
+// How many narrated scenes ahead the player fetches into the HTTP cache (_warmNarration).
+const WARM_AHEAD = 3
 
 // ── Alpine component ──────────────────────────────────────────────────────────
 // Alpine is imported directly (no Livewire on this page) — register before start()
@@ -1316,9 +1318,9 @@ Alpine.data('lessonGame', (lesson) => ({
       this.chapters = buildChapters(_sceneQueue, n => t('Chapter :number', { number: n + 1 }))
       if (TITLE_PREVIEW) return
 
-      // Warm every narrated scene up front, BEFORE the early return below — a lesson can open with
+      // Warm the next narrated scenes, BEFORE the early return below — a lesson can open with
       // a quiz or map scene that has no audio of its own, and those lessons need warming most.
-      this._warmNarration()
+      this._warmNarration(this._startSceneIndex ?? 0)
 
       // A map block can be first in the queue — only preload audio when the first scene has it.
       if (!_sceneQueue[0].audio_url) return
@@ -1348,27 +1350,30 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     /**
-     * Warm every scene's narration into the HTTP cache, in order, one at a time.
+     * Warm the narration of the next WARM_AHEAD narrated scenes into the HTTP cache, in order, one at a time,
+     * and move the window on as the lesson plays (_playScene calls this with its index).
      *
-     * A lesson is roughly 750 KB of audio per scene. Fetched on demand, jumping to a chapter meant
-     * waiting for that download — one to two seconds on classroom wifi, on a click that should feel
-     * instant. Warming them while the first scene plays makes every later jump a cache hit.
+     * A lesson is roughly 750 KB of audio per scene. Fetched on demand, the next scene waited for its download,
+     * one to two seconds on classroom wifi. Warming the whole lesson up front fixed that but fetched every file
+     * before the teacher pressed start: 155 files and 14.5 MB for a long lesson, sharing the line with the first
+     * scene. Three ahead keeps the next scenes instant and leaves a class that loses wifi three scenes in hand.
      *
-     * Deliberately sequential and started after the first scene is ready, so it never competes with
-     * the audio the class is listening to right now. Failures are ignored: this is an optimisation,
-     * and the player still fetches on demand if a warm never happened.
+     * Sequential, and the first round waits a moment, so it never competes with the audio the class is
+     * listening to right now. Failures are ignored: the player still fetches on demand.
      */
-    _warmNarration () {
+    _warmNarration (from = 0) {
+      this._warmed ??= new Set()
+      this._warmQueue = _sceneQueue.slice(from + 1)
+        .map(s => s.audio_url)
+        .filter(url => url && !this._warmed.has(url))
+        .slice(0, WARM_AHEAD)
       if (this._warmingNarration) return
       this._warmingNarration = true
 
-      const urls = _sceneQueue
-        .map(s => s.audio_url)
-        .filter((url, i) => url && i > 0)
-
       const warmNext = () => {
-        const url = urls.shift()
+        const url = this._warmQueue.shift()
         if (!url) { this._warmingNarration = false; return }
+        this._warmed.add(url)
 
         const probe = new Audio()
         probe.preload = 'auto'
@@ -1393,7 +1398,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       // Give the first scene a moment of clear air before competing for bandwidth.
-      setTimeout(warmNext, 1200)
+      setTimeout(warmNext, this._warmed.size ? 0 : 1200)
     },
 
     // ── Script event processing ────────────────────────────────────────
@@ -1592,6 +1597,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!scene) { this._onAudioEnded(); return }
       const cameFrom = this._lastPlayed ?? null
       this._lastPlayed = index
+      if (!TITLE_PREVIEW) this._warmNarration(index)
 
       this._tel.log('scene_started', { sceneIndex: index, sceneId: scene.id })
 
