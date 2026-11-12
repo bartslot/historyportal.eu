@@ -102,6 +102,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform float outlineW, etch, width;         // the teacher's ink on this picture: 1080p px inside its edge, hatching in its shade
   ${GL_NOISE}
   #define EDGE_FEATHER_PX 6.0                      // at edgeSoft 1: the cut fades out over this many 1080p px
+  #define EDGE_FEATHER_MAX_UV 0.025                // ...but over at most this share of the picture (small far pictures keep their edge)
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
   // a frame of a sheet is read inside its own cell only, so no tap ever reaches the next frame
@@ -229,10 +230,13 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       c += vec4(acc.rgb / max(acc.a, 1e-3), 1.0) * bleed;
       // and it melts into what stands behind it (Bart 11-11: "softer edges, blending into the environment"): the
       // silhouette fades out over a few screen px inside its cut. around(): a cut between two parts is no edge.
+      // The feather is a few screen px, but never more than a small share of the picture itself: on a far donkey 25 px
+      // tall six px wiped out the whole outline (Bart 11-12: "far away assets are very blurry and edges are gone").
+      vec2 reach = min(pxUV * EDGE_FEATHER_PX, vec2(EDGE_FEATHER_MAX_UV)) * edgeSoft;
       float soft = 0.0;
       for (int k = 0; k < 8; k++) {
         float a = float(k) * 0.785398 + 0.39;
-        soft += around(uv, vec2(cos(a), sin(a)) * pxUV * EDGE_FEATHER_PX * edgeSoft).a;
+        soft += around(uv, vec2(cos(a), sin(a)) * reach).a;
       }
       c *= mix(1.0, smoothstep(0.15, 0.95, soft / 8.0), edgeSoft);
     }

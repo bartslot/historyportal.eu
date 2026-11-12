@@ -536,3 +536,18 @@ def test_a_map_scene_can_be_a_branch_shot(lesson):
     a2 = next(sc for sc in out["scenes"] if sc["id"] == "sc06")
     out["scenes"][out["scenes"].index(a2)] = dict(_map_scene("sc06"), branch=a2["branch"])
     assert errors_of(out) == []
+
+
+def test_world_logic_people_never_stand_on_water_and_animals_stay_near():
+    from validate import check_world
+    sc = {'id': 'sc01', 'set': {'ground': 'terrain-river-water-01', 'habitat': 'quay',
+                                'layers': [{'asset': 'bb-donkey-01', 'depth': 'mid'}]},
+          'figures': [{'char': 'ilshu', 'pose': 'walk'}]}
+    errors, warnings = check_world([sc])
+    assert errors and 'cannot stand on water' in errors[0]
+    assert warnings and 'bb-donkey-01' in warnings[0]
+    ok = {'id': 'sc02', 'set': {'ground': 'terrain-river-bank-01', 'layers': [{'asset': 'bb-donkey-01', 'depth': 'fg'}]},
+          'figures': [{'char': 'ilshu', 'pose': 'walk'}]}
+    assert check_world([ok]) == ([], [])
+    bust = {'id': 'sc03', 'set': {'ground': 'terrain-river-water-01'}, 'figures': [{'char': 'ana', 'pose': 'bust'}]}
+    assert check_world([bust])[0] == []

@@ -323,6 +323,30 @@ def resolve(lesson: dict, library_root: Path) -> dict:
     return lesson
 
 
+
+# World logic (Bart 11-12, a man walking across a river: "people cannot walk on water ... donkey and horse are very far
+# away ... what was the check for the correctness/logics?"). There was none; these are the first two.
+WATER = ('water', 'sea', 'river-water', 'marsh-water', 'lake')
+ANIMALS = ('lion', 'donkey', 'horse', 'goat', 'oxen', 'ox-', 'sheep', 'cow', 'dog', 'gazelle', 'onager')
+
+
+def check_world(scenes: list[dict]) -> tuple[list[str], list[str]]:
+    """People stand on land; an animal that is part of the action stands with the people, not far behind them."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    for sc in scenes:
+        st = sc.get("set") or {}
+        figs = [f for f in sc.get("figures") or [] if not str(f.get("pose", "")).startswith("bust")]
+        ground = str(st.get("ground") or "")
+        if figs and any(w in ground for w in WATER) and st.get("habitat") != "boat":
+            errors.append(f"{sc['id']}: {', '.join(f['char'] for f in figs)} stand on {ground}: people cannot stand on water (a bank or quay floor, the water as a band behind)")
+        if figs:
+            for l in st.get("layers") or []:
+                a = str(l.get("asset") or l.get("need") or "")
+                if any(w in a for w in ANIMALS) and l.get("depth") in ("bg", "mid"):
+                    warnings.append(f"{sc['id']}: {a} at {l.get('depth')} is far behind the people at fg: put an animal of the action at fg beside them")
+    return errors, warnings
+
 def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = DEFAULT_LIBRARY,
           min_total_s: float = MIN_TOTAL_S) -> tuple[list[str], list[str], dict]:
     errors: list[str] = []
@@ -472,6 +496,9 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             hit = match_asset(layer["need"], layer["depth"], library or [])
             if not hit and needed_key(bundle, layer["need"], layer["depth"], lesson["bundle"]) not in listed:
                 errors.append(f"{sc['id']}: need {layer['need']!r} ({layer['depth']}) neither in the library nor in needed_assets")
+    world_errors, world_warnings = check_world(scenes)
+    errors += world_errors
+    warnings += world_warnings
     return errors, warnings, stats
 
 
