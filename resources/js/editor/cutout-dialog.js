@@ -85,6 +85,8 @@ const preload = (url) => (url ? Object.assign(new Image(), { src: url }).decode(
 const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }))
 
 /** The biggest picture the server takes in one save, in bytes of its data URL (Cutouts::maxPictureBytes). */
+/** WebP quality a saved picture is tried at, best first. */
+const SAVE_QUALITIES = [0.85, 0.75, 0.6]
 const limitBytes = () => Number(document.querySelector('[data-cutout-limit]')?.dataset.cutoutLimit) || Infinity
 const MB = 1024 * 1024
 const megabytes = (bytes) => (Math.ceil((bytes / MB) * 10) / 10).toLocaleString(document.documentElement.lang || undefined)
@@ -420,7 +422,13 @@ export async function openCutout (target) {
 
     /** The picture as the stage loads it. A boned figure: its sheet, with the figure's edits written back. */
     const sheetNow = () => { const { opened, edited } = mask.pixels(); return writeBack(figure.sheet, opened, edited, target.puppet, figure.first) }
-    const pictureUrl = (back = figure ? sheetNow() : null) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height) : mask.resultDataURL())
+    // WebP, a little compressed; a picture the server would still refuse steps down until it fits (fits() says so if not)
+    const pictureUrl = (back = figure ? sheetNow() : null) => {
+      const at = (q) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height, q) : mask.resultDataURL(q))
+      let url = null
+      for (const q of SAVE_QUALITIES) if ((url = at(q)).length <= limitBytes()) break
+      return url
+    }
     /** What Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned. */
     const pictureNow = () => (mask && (pictureWork() || opensCleaned) ? pictureUrl() : null)
     /** The other tabs draw the picture as it is now, erased but not saved too. A short url: one tile each would repeat a data url. */

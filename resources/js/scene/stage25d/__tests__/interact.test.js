@@ -315,4 +315,22 @@ describe('figureInView', () => {
     expect(figureInView(boxes, 3)).toBe(2)
     expect(figureInView([{ index: 3, box: box(1.2, 1.5) }], null)).toBe(null)
   })
+
+  it('the selected picture shows whole at half strength, past the frame, inside the work area', () => {
+    const { api, host } = setup({ stage: { layerGhost: () => ({ url: '/a.webp', tl: [-0.25, 0], tr: [0.25, 0], bl: [-0.25, 1] }) } })
+    const area = document.createElement('div')
+    area.id = 'lesson-stage-letterbox'
+    area.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 })
+    document.body.appendChild(area)
+    api.select(2)
+    const wrap = host.querySelector('[data-stage25d-ghost]')
+    const img = wrap.querySelector('img')
+    expect(wrap.style.display).toBe('block')
+    expect(img.getAttribute('src')).toBe('/a.webp')
+    expect(img.style.opacity).toBe('0.5')
+    // canvas at (100, 50) 400 x 225: the left edge 0.25 of the canvas past its left side, 100 px wide on screen
+    expect(img.style.transform).toBe('matrix(2, 0, 0, 2.25, 0, 50)')
+    api.select(null)
+    expect(wrap.style.display).toBe('none')
+  })
 })

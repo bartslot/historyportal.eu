@@ -40,7 +40,7 @@ type Stain = ReturnType<typeof makeStain>
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -51,7 +51,7 @@ const OWN_SKY: Asset = { id: 'sky:own', layer: 'sky', tags: [], file: '', w: 16,
 /** The sun's disc, as a share of the house frame's height; the moon's a little smaller. */
 const SUN_R = 0.032
 /** How far the sun glows around its disc at each time (the moon only a little). */
-const SUN_GLOW = { dawn: 0.9, day: 0.6, dusk: 1, night: 0.35 }
+const SUN_GLOW = { dawn: 0.9, day: 0.6, dusk: 1, night: 0.2 }
 /** One cloud on stage: its picture and where it floats. */
 interface Cloud { handle: LayerHandle; spot: CloudSpot; layer: SceneLayer }
 
@@ -259,7 +259,7 @@ export class Stage {
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -532,6 +532,23 @@ export class Stage {
     const pts = b.handle.mesh.getBoundingInfo().boundingBox.vectorsWorld.map((v) => Vector3.Project(v, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view))
     const xs = pts.map((p) => p.x * kx), ys = pts.map((p) => p.y * ky)
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), z: b.handle.mesh.position.z }
+  }
+
+  /** The selected picture whole, also where it runs past the frame (Bart 11-12: "you cannot see the selected layer
+   *  completely"): its file and its top-left, top-right and bottom-left corners on screen, as shares of the canvas.
+   *  Null for a figure of parts or a tiled strip: one picture file does not draw those. */
+  layerGhost(index: number): { url: string; tl: [number, number]; tr: [number, number]; bl: [number, number] } | null {
+    const b = this.built.find((n) => n.index === index)
+    if (!b?.ghost) return null
+    const view = this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight())
+    const kx = 1 / this.engine.getRenderWidth(), ky = 1 / this.engine.getRenderHeight()
+    const { minimum: lo, maximum: hi } = b.handle.mesh.getBoundingInfo().boundingBox
+    const world = b.handle.mesh.getWorldMatrix()
+    const on = (x: number, y: number): [number, number] => {
+      const p = Vector3.Project(Vector3.TransformCoordinates(new Vector3(x, y, 0), world), Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), view)
+      return [p.x * kx, p.y * ky]
+    }
+    return { url: b.ghost, tl: on(lo.x, hi.y), tr: on(hi.x, hi.y), bl: on(lo.x, lo.y) }
   }
 
   /** A figure's joints on screen as shares of the canvas, in the pose drawn now; null for a layer that is no figure of parts.

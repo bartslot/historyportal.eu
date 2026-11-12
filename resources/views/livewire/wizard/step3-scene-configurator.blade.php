@@ -1517,7 +1517,14 @@
                 await window.__stage25d?.setDaylight?.(patch);
                 this.sky = window.__stage25d?.daylightInfo?.() ?? this.sky;
             },
-            setTime(time) { this.daylight({ time, sun: null }); },   // the new time's own sun: a moved one can sit under the land
+            // a time brings its own sky and sun (a moved sun can sit under the land): a painted sky of another time
+            // gives way to the period's painted sky of this one, else to the scene's own sky in this time's colours
+            async setTime(time) {
+                const own = this.sky?.own;
+                const pic = own ? null : window.__stage25d?.paintedSkyFor?.(time);
+                if (pic && pic !== this.sky?.asset) await this.pickSky(pic);
+                await this.daylight({ time, sun: null, colours: null, ...(!own && !pic ? { painted: false } : {}) });
+            },
             setColour(key, hex) { this.daylight({ colours: { ...(this.sky?.ownColours ?? {}), [key]: hex } }); },
             resetColours() { this.daylight({ colours: null }); },
             /** The cut-outs the sky draws its clouds from: all of them is no list; the last one stays on. */

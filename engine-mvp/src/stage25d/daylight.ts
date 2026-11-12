@@ -50,8 +50,10 @@ export const PRESETS: Record<TimeOfDay, Preset> = {
   },
   night: {
     sky: { top: '#0f1f4f', mid: '#1f4b98', horizon: '#4f78b8' },
-    ambient: [0.5, 0.57, 0.8], sun: [0.92, 0.96, 1.1], shade: [0.72, 0.76, 0.95],
-    shadow: [0.05, 0.08, 0.2], shadowK: 0.55,
+    // moonlight (Bart 11-12: "the sun is still shining when it's night... the moon doesn't shine too much"): faint and
+    // flat, no lit side worth the name and no shadows thrown
+    ambient: [0.5, 0.57, 0.8], sun: [0.97, 0.99, 1.03], shade: [0.92, 0.95, 1.0],
+    shadow: [0.05, 0.08, 0.2], shadowK: 0,
     cloud: { light: [0.6, 0.66, 0.84], shade: [0.2, 0.25, 0.44], under: [0.14, 0.17, 0.32], tone: 0.9 },
     sunAt: { x: 0.74, height: 0.18 }, stars: 1,
   },

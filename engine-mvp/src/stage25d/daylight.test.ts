@@ -108,4 +108,11 @@ describe('cloudPlan: the clouds of a scene', () => {
     expect(cloudArt({ assets: [own] })).toEqual([own])
     expect(cloudArt({ assets: [] })).toBe(BUILT_IN_CLOUDS)
   })
+
+  it('night: the moon throws no shadows and barely lights one side over the other', () => {
+    const night = daylightOf({ daylight: { time: 'night' } })
+    expect(night.shadowK).toBe(0)
+    const side = (p: typeof PRESETS.day) => p.sun.reduce((a, v, i) => a + Math.abs(v - p.shade[i]), 0)
+    expect(side(PRESETS.night)).toBeLessThan(side(PRESETS.day) / 2)
+  })
 })

@@ -131,6 +131,30 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     for (const side of handles.slice(4)) side.style.display = shown.size ? 'none' : ''
   }
 
+  // The selected picture where it runs past the frame, at half strength (Bart 11-12: "you cannot see the selected layer
+  // completely"). Behind the canvas, so inside the frame the stage shows as it is; kept to the work area, never over
+  // the panels. Its handles stay at full strength on the box above.
+  const GHOST_PX = 100
+  const ghostArea = document.createElement('div')
+  ghostArea.dataset.stage25dGhost = ''
+  ghostArea.style.cssText = 'position:absolute;display:none;overflow:hidden;pointer-events:none;z-index:-1;'
+  const ghost = document.createElement('img')
+  ghost.alt = ''
+  ghost.draggable = false
+  ghost.style.cssText = `position:absolute;left:0;top:0;width:${GHOST_PX}px;height:${GHOST_PX}px;max-width:none;transform-origin:0 0;opacity:0.5;`
+  ghostArea.appendChild(ghost)
+  host.insertBefore(ghostArea, host.firstChild)
+  const placeGhost = (r, h) => {
+    const g = selected === null || !r ? null : stage()?.layerGhost?.(selected)
+    const area = document.getElementById('lesson-stage-letterbox')?.getBoundingClientRect()
+    if (!g || !area) { ghostArea.style.display = 'none'; return }
+    if (ghost.dataset.src !== g.url) { ghost.src = g.url; ghost.dataset.src = g.url }
+    Object.assign(ghostArea.style, { display: 'block', left: `${area.left - h.left}px`, top: `${area.top - h.top}px`, width: `${area.width}px`, height: `${area.height}px` })
+    const px = ([x, y]) => [x * r.width + r.left - area.left, y * r.height + r.top - area.top]
+    const [o, a, b] = [px(g.tl), px(g.tr), px(g.bl)]
+    ghost.style.transform = `matrix(${(a[0] - o[0]) / GHOST_PX}, ${(a[1] - o[1]) / GHOST_PX}, ${(b[0] - o[0]) / GHOST_PX}, ${(b[1] - o[1]) / GHOST_PX}, ${o[0]}, ${o[1]})`
+  }
+
   // The ground grid while editing (never in the player: this file is the editor's), drawn by the stage on the ground
   // itself, under the pictures: a faint pencil line in the theme's neutral ink (amber vanishes into painted grass).
   stage()?.setGrid?.(gridPieces(), themeRgb(host, '--color-neutral'))
@@ -166,11 +190,12 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   const place = () => {
     const b = rectOf()
-    if (!b) { box.style.display = 'none'; placeBones(null); return }
+    if (!b) { box.style.display = 'none'; placeBones(null); placeGhost(null); return }
     const r = canvas.getBoundingClientRect()
     const h = host.getBoundingClientRect()
     Object.assign(box.style, { display: 'block', left: `${b.left + r.left - h.left}px`, top: `${b.top + r.top - h.top}px`, width: `${b.width}px`, height: `${b.height}px` })
     placeBones(r, h)
+    placeGhost(r, h)
   }
 
   const clampTo = (value, min, max) => Math.min(max, Math.max(min, value))
@@ -335,6 +360,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       window.removeEventListener('scene-object-selected', onOther)
       box.remove()
       bones.remove()
+      ghostArea.remove()
       stage()?.setGrid?.(null)
       chip.remove()
     },

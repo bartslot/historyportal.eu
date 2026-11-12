@@ -70,9 +70,10 @@ export function writeBack (sheet, opened, edited, puppet, first = sheet) {
   return { pixels: out, lost, touched }
 }
 
-/** A sheet's pixels as a picture to save. PNG: what was not edited comes back exactly as it was. */
-export function sheetDataUrl (pixels, width, height) {
+/** A sheet's pixels as a picture to save: WebP at `quality` (Bart 11-12: "save it as webp and compress it a bit"; a PNG
+ *  sheet was too big for the server). */
+export function sheetDataUrl (pixels, width, height, quality = 0.85) {
   const c = canvasOf(width, height)
   c.getContext('2d').putImageData(new ImageData(pixels, width, height), 0, 0)
-  return c.toDataURL('image/png')
+  return c.toDataURL('image/webp', quality)
 }

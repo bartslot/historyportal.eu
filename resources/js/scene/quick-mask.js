@@ -927,8 +927,8 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setEverywhere(on) { everywhere = !!on; },
         /** The clean-up's three strengths (white holes, white edges, soft bottom), live. */
         setClean(next) { clean = { ...clean, ...next }; paint(); },
-        /** The whole picture as it is on screen now (the item's new picture), as a data URL. */
-        resultDataURL: () => canvas.toDataURL('image/webp', 0.9),
+        /** The whole picture as it is on screen now (the item's new picture), as a WebP data URL. */
+        resultDataURL: (quality = 0.85) => canvas.toDataURL('image/webp', quality),
         /** The pixels it opened on and the pixels now: what a save onto a figure's sheet compares (puppet-sheet.js). */
         pixels: () => ({ opened: original, edited: shown.data }),
         cancelPress,

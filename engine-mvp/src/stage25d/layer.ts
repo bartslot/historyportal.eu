@@ -316,12 +316,11 @@ Effect.ShadersStore.stageCastVertexShader = `
   void main(void) {
     float h = clamp(position.y / max(height, 0.001), 0.0, 1.0);
     vec4 w = world * vec4(moved(position, h), 1.0);
-    // a painted card has no depth: laid down along a sideways light it would be a line. Like a sprite's shadow, its
-    // width lies across the light and its height along it, from its feet (with the light toward the camera this is
-    // exactly the card's own projection)
-    vec3 foot = (world * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-    vec2 across = vec2(-sunGround.y, sunGround.x);
-    vec2 g = foot.xz + across * (w.x - foot.x) + sunGround * max(w.y - groundY, 0.0) * reach;
+    // the card's own projection (daylight.ts castPoint): what touches the ground stays where it is, so the shadow
+    // starts at the feet (Bart 11-12: "the shadow should come from the feet"). Turning the card's width across a
+    // sideways light slid each foot's shadow toward the camera, off the foot. The sun always comes toward the
+    // viewer (SIDEWAYS_DEG < 90), so the card never lies edge-on to it and its shadow never thins to a line.
+    vec2 g = w.xz + sunGround * max(w.y - groundY, 0.0) * reach;
     vUV = uv; vUp = h; vG = g;
     gl_Position = viewProjection * vec4(g.x, groundY + 0.03, g.y, 1.0);
   }`

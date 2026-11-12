@@ -85,6 +85,22 @@ describe('double-click: the picture cleans itself', () => {
     $('[data-cut-back]').click()
   })
 
+  it('a picture too big at its first quality is saved as a smaller WebP that fits', async () => {
+    const limit = Object.assign(document.createElement('div'), { hidden: true })
+    limit.dataset.cutoutLimit = '90'
+    document.body.appendChild(limit)
+    const was = mask.resultDataURL
+    mask.resultDataURL = (q) => `data:image/webp;base64,${'A'.repeat(Math.round(q * 100))}`   // 23 + 85 or 75 chars: over 90; 23 + 60: fits
+    const { $ } = await open()
+    $('[data-cut-save]').click()
+    await flush()
+    const sent = wire.saveEditedImage.mock.calls[0][1]
+    expect(sent.startsWith('data:image/webp')).toBe(true)
+    expect(sent.length).toBeLessThanOrEqual(90)
+    mask.resultDataURL = was
+    limit.remove()
+  })
+
   it('Save as asset sends the cut-out and what it was cut from, and stays with the work', async () => {
     const { $ } = await open({ from: { bundle: 'nl-prehistory', asset: 'meadow-band-01' } })
     $('[data-cut-asset]').click()

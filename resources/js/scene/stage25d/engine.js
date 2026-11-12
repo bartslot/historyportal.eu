@@ -960,6 +960,14 @@ export async function createStage25d (host, opts = {}) {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       return newestOf(libData.assets.filter((a) => a.layer === 'sky'), [cfg?.set?.sky]).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: thumbOf(a) }))
     },
+    /** The painted sky a time asks for (Bart 11-12: "when selected night, it should auto select night sky"): the scene's
+     *  picture when it already shows that time, else the newest of the period's that does; null: none, paint its own. */
+    paintedSkyFor (time) {
+      if (!libData) return null
+      const now = skyAsset()
+      if (now && timeOfTags(now.tags) === time) return now.id
+      return newestOf(libData.assets.filter((a) => a.layer === 'sky' && timeOfTags(a.tags) === time)).at(-1)?.id ?? null
+    },
     /** The Sky panel (Bart 11-12): the scene's time of day as it lights the scene now, its colours, the cloud cut-outs it
      *  can show, the sun, and the four times' own gradients for their tiles. Null before a scene is shown. */
     daylightInfo () {
@@ -969,7 +977,7 @@ export async function createStage25d (host, opts = {}) {
       const light = daylightOf(set, skyAsset())
       const chosen = daylightNow?.clouds?.assets ?? null
       return {
-        time: light.time, own: isDynamic(set), painted: !!cfg.set?.sky, auto: light.auto, sun: light.sun,
+        time: light.time, own: isDynamic(set), painted: !!cfg.set?.sky, asset: cfg.set?.sky ?? null, auto: light.auto, sun: light.sun,
         colours: light.hex, ownColours: { ...(daylightNow?.colours ?? {}) }, custom: Object.keys(daylightNow?.colours ?? {}).length > 0,
         amount: daylightNow?.clouds?.amount ?? 0.4,
         clouds: cloudArt(libData).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: BUILT_IN_CLOUDS.includes(a) ? BUILT_IN_CLOUD_BASE + a.file : thumbOf(a), on: !chosen || chosen.includes(a.id) })),
