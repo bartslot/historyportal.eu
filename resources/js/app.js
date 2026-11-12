@@ -161,6 +161,8 @@ window.__pasteObjectsMark = OBJECTS_MARK;
 // The wizard step views await this before touching window.LessonScene.
 // Quick mask (Instant Alpha) for an image layer: only the wizard's Mask dialog loads it.
 window.loadQuickMask = () => import('./scene/quick-mask.js');
+// The editor's map scenes (MapLibre, ~1.1 MB): fetched with the first map scene. Sets window.renderLessonMap.
+window.loadLessonMap = () => import('./lesson-map.js');
 
 window.loadLessonScene = () => import('./scene/index.js').then((module) => {
     window.LessonScene = module;

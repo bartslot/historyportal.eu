@@ -1,5 +1,5 @@
 @push('head-scripts')
-    @vite('resources/js/lesson-map.js')
+    {{-- lesson-map.js (MapLibre, ~1.1 MB) is not here: the first map scene loads it (window.loadLessonMap, app.js). --}}
     {{-- The gallery renderer is dependency-free and ANY lesson can hold a gallery scene — including
          one the teacher adds without reloading the page — so it always loads. Gating it behind
          game_type === 'voyage' left window.renderGallery undefined in a normal lesson, and selecting
@@ -596,8 +596,17 @@
             }
         }
 
-        window.Livewire.on('scene:load', (e) => {
+        let latestLoad = null
+        window.Livewire.on('scene:load', function onSceneLoad (e) {
+            latestLoad = e
             const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+            // The map's code loads with the first map scene, not with the editor; then this load runs again,
+            // unless the teacher has moved on to another scene meanwhile.
+            if (p?.kind === 'map' && !window.renderLessonMap) {
+                window.loadLessonMap().then(() => { if (latestLoad === e) onSceneLoad(e) },
+                    (err) => console.error('[lesson-map] lesson-map.js did not load', err))
+                return
+            }
             // Globe layers only make sense over a map: a slide keeps its background settings alone.
             const view = window.Alpine?.store('view')
             if (view) view.mapScene = !!p && (p.kind === 'map' || p.kind === 'voyage')
