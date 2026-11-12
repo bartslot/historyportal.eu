@@ -480,7 +480,30 @@
             }
           }
         },
-        "camera": {},
+        "camera": {
+          "description": "null = the director picks the move. The writer may ask for one: { \"move\": ... } ('track' = truck; 'hold' = a still camera for a breath shot). The director fills in the poses.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "if": {
+                "not": {
+                  "required": ["from"]
+                }
+              },
+              "then": {
+                "required": ["move"],
+                "properties": {
+                  "move": {
+                    "enum": ["push", "pull", "truck", "track", "pan", "tilt", "rack", "hold"]
+                  }
+                }
+              }
+            }
+          ]
+        },
         "sound": {},
         "interaction": {
           "oneOf": [
@@ -544,6 +567,22 @@
         },
         "map": {
           "$ref": "#/$defs/map"
+        },
+        "caption": {
+          "type": "object",
+          "properties": {
+            "place": {
+              "type": "string"
+            },
+            "year": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "place"
+          ],
+          "additionalProperties": false,
+          "description": "place-and-year card shown over the scene (an introduction date card)"
         }
       },
       "if": {

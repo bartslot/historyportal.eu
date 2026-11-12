@@ -11,7 +11,8 @@ export type Depth = 'sky' | 'bg' | 'mid' | 'fg' | 'near'
 /** A camera pose in stage metres (see camera.ts for the frame). `target` is the look-at point,
  *  `focus_z` the depth in focus; both optional for a stage that only reads x/y/z/fov. */
 export type CamPose = { x: number; y: number; z: number; fov: number; roll?: number; target?: { x: number; y: number; z: number }; focus_z?: number }
-export type MoveKind = 'push' | 'pull' | 'truck' | 'pan' | 'tilt' | 'rack' | 'through'
+/** 'hold': a still camera (from == to) for a breath shot; only the writer asks for it. */
+export type MoveKind = 'push' | 'pull' | 'truck' | 'pan' | 'tilt' | 'rack' | 'through' | 'hold'
 export type Camera = {
   move: MoveKind; from: CamPose; to: CamPose
   /** The stage's ease (in | out | inOut); `curve` the finer easing.js name by intent. */
@@ -19,6 +20,8 @@ export type Camera = {
   /** wide | medium | close: how much the shot shows */
   scale?: 'wide' | 'medium' | 'close'
   at_s?: number; native?: boolean; why?: string
+  /** the writer asked for this move (lesson.json scene.camera.move); a re-run keeps it */
+  asked?: boolean
 }
 
 export type Key = { time: number; value: number; easing?: string }

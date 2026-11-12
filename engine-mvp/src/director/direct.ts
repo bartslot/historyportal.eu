@@ -35,8 +35,19 @@ type Marks = Partial<Record<Key, string>> & { layers?: (string | null)[]; dressi
 const marks = (s: Scene): Marks => (s.director as Marks | undefined) ?? {}
 /** True when the director may (re)write this field: empty, or untouched since it last wrote it. */
 const owns = (s: Scene, key: Key, v: unknown) => v == null || marks(s)[key] === fingerprint(v)
+/** The writer's ask, `camera: { move }` with no poses yet: a request for the director, not a hand-made camera. */
+const isRequest = (c: unknown): boolean => !!c && typeof c === 'object' && 'move' in c && !('from' in c)
 /** The teacher owns this scene's camera (it changed since the director wrote it, or was hand-made). */
-export const cameraLocked = (s: Scene): boolean => !owns(s, 'camera', s.camera)
+export const cameraLocked = (s: Scene): boolean => !isRequest(s.camera) && !owns(s, 'camera', s.camera)
+
+const ASKABLE: Record<string, MoveKind> = { push: 'push', pull: 'pull', truck: 'truck', track: 'truck', pan: 'pan', tilt: 'tilt', rack: 'rack', hold: 'hold' }
+/** The move the writer asked for (lesson.json scene.camera.move; 'track' = truck), also on a re-run of a camera the
+ *  director made from that ask and still owns. null = the director picks. */
+export function askedMove(s: Scene): MoveKind | null {
+  const c = s.camera as { move?: string; asked?: boolean } | null
+  const mine = isRequest(c) || (!!c?.asked && !cameraLocked(s))
+  return mine ? (ASKABLE[c?.move ?? ''] ?? null) : null
+}
 
 const shotsOf = (s: Scene): Camera[] => [s.camera, ...(s.camera_more ?? [])].filter(Boolean) as Camera[]
 
@@ -93,16 +104,18 @@ function timeScene(scene: Scene, silent: boolean): Plan {
 /** Every shot of a scene, in screen order after `seq` (the moves already on screen): a move differs
  *  from the shot before, never makes an A B A B, and the last avoids a locked next scene's move; a
  *  scale differs from the shot before. */
-function shootScene(p: Plan, seq: MoveKind[], prevScale: ShotScale | undefined, turn: number, nextLocked: MoveKind | null, native: boolean): Camera[] {
+function shootScene(p: Plan, seq: MoveKind[], prevScale: ShotScale | undefined, turn: number, nextLocked: MoveKind | null, native: boolean, asked: MoveKind | null): Camera[] {
   const beat = p.scene.beat
   const starts = shotStarts(p.dur, SHOT_MAX_BY_BEAT[beat] ?? 12)
   const shots: Camera[] = []
   starts.forEach((at, i) => {
     const on = [...seq, ...shots.map((c) => c.move)]
     const last = i === starts.length - 1
-    const move = i === 0 && native ? 'through' : pickMove(beat, [on.at(-1), pairRepeat(on), tripleRepeat(on), 'through', last ? nextLocked : null], turn + i)
+    // the writer's move wins for the scene's first shot; a hold keeps the whole scene still
+    const ask = asked && (i === 0 || asked === 'hold') ? asked : null
+    const move = ask ?? (i === 0 && native ? 'through' : pickMove(beat, [on.at(-1), pairRepeat(on), tripleRepeat(on), 'through', last ? nextLocked : null], turn + i))
     const scale = pickScale(beat, shots.at(-1)?.scale ?? prevScale, turn + i)
-    shots.push(makeCamera(p.scene, move, at, (starts[i + 1] ?? p.dur) - at, { hook: beat === 'hook' && i === 0 && !native, scale }))
+    shots.push(makeCamera(p.scene, move, at, (starts[i + 1] ?? p.dur) - at, { hook: beat === 'hook' && i === 0 && !native, scale, asked: !!ask }))
   })
   return shots
 }
@@ -143,7 +156,7 @@ function linkCuts(sounds: (SoundPlan | null)[], ours: boolean[], natives: boolea
 /** Shots for every scene, in order. A free scene's first move comes from its beat's pool rotated by
  *  how often the beat came before, never the move on screen before the cut (the previous scene's LAST
  *  shot) nor a locked next scene's first move. */
-function shootAll(plans: Plan[], locked: boolean[], peak: number): Camera[][] {
+function shootAll(plans: Plan[], locked: boolean[], peak: number, asks: (MoveKind | null)[]): Camera[][] {
   const seen: Partial<Record<Beat, number>> = {}
   const all: Camera[][] = []
   plans.forEach((p, i) => {
@@ -151,18 +164,18 @@ function shootAll(plans: Plan[], locked: boolean[], peak: number): Camera[][] {
     seen[p.scene.beat] = turn + 1
     if (locked[i]) { all.push(shotsOf(p.scene)); return }
     const seq = all.flat().map((c) => c.move)
-    const nextLocked = locked[i + 1] ? plans[i + 1].scene.camera!.move : null
-    all.push(shootScene(p, seq, all[i - 1]?.at(-1)?.scale, turn, nextLocked, i === peak))
+    const nextLocked = locked[i + 1] ? plans[i + 1].scene.camera!.move : (asks[i + 1] ?? null)
+    all.push(shootScene(p, seq, all[i - 1]?.at(-1)?.scale, turn, nextLocked, i === peak, asks[i]))
   })
   return all
 }
 
 /** Too few kinds of move: re-shoot calm scenes with a kind not used yet, where it repeats no neighbour. */
-function enforceVariety(all: Camera[][], plans: Plan[], locked: boolean[], min: number): Camera[][] {
+function enforceVariety(all: Camera[][], plans: Plan[], locked: boolean[], min: number, asks: (MoveKind | null)[]): Camera[][] {
   const out = all.map((s) => [...s])
   const kinds = () => new Set(out.flat().map((c) => c.move))
   for (let i = 0; i < out.length && kinds().size < min; i++) {
-    if (locked[i] || out[i][0]?.native || !['setup', 'cause', 'effect', 'recap', 'turn'].includes(plans[i].scene.beat)) continue
+    if (locked[i] || asks[i] || out[i][0]?.native || !['setup', 'cause', 'effect', 'recap', 'turn'].includes(plans[i].scene.beat)) continue
     const avoid = [out[i - 1]?.at(-1)?.move, out[i][1]?.move, out[i + 1]?.[0]?.move, pairRepeat(out.slice(0, i).flat().map((c) => c.move))]
     const used = kinds()
     const missing = PLAIN_MOVES.find((m) => !used.has(m) && !avoid.includes(m))
@@ -195,7 +208,9 @@ export function direct(lesson: Lesson, library: Library | null = null, opts: Dir
   const min = minimums(n)
   const beats = src.scenes.map((s) => s.beat)
   const locked = src.scenes.map(cameraLocked)
-  const peak = n > 1 ? peakIndex(beats, locked) : -1
+  const asks = src.scenes.map(askedMove)
+  // the native move goes to a climax whose camera nobody asked for
+  const peak = n > 1 ? peakIndex(beats, locked.map((l, i) => l || !!asks[i])) : -1
 
   // a rough clock first (no silences) to space the silences in time, then the real timing
   const rough = src.scenes.map((s) => timeScene(s, false).dur)
@@ -217,7 +232,7 @@ export function direct(lesson: Lesson, library: Library | null = null, opts: Dir
     return { owned, sceneLib, named, layers: [...named, ...dressed] }
   })
   const shotPlans = plans.map((p, i) => ({ ...p, scene: { ...p.scene, set: { ...p.scene.set, layers: housed[i].layers } } }))
-  const shots = enforceVariety(shootAll(shotPlans, locked, peak), shotPlans, locked, min.kinds)
+  const shots = enforceVariety(shootAll(shotPlans, locked, peak, asks), shotPlans, locked, min.kinds, asks)
   // then dressed again against the real shots: clear zones at every pose of every shot (parallax), edge
   // props at the edges of the view the scene opens on (a push then carries them out of frame, the way a
   // real foreground passes the lens); never nearer than the plane the camera was planned behind

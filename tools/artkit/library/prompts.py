@@ -25,6 +25,7 @@ ERA = {
     'nl-prehistory': 'Northwestern Europe, Funnelbeaker culture, c. 3400 BCE.',
     'near-east-neolithic': 'Ancient Near East, Neolithic to early Uruk period.',
     'babylonia-old-babylonian': 'Southern Mesopotamia, Old Babylonian period, Nippur and its agricultural hinterland, c. 1750 BCE; Sumerian scribal learning.',
+    'sumer-uruk': 'Southern Mesopotamia, the city of Uruk in the Late Uruk period, about 3000 BCE; Sumerian; mud-brick, reed and clay; the first writing on clay tablets.',
     'babylon-neo-babylonian': 'The city of Babylon under Nebuchadnezzar II, Neo-Babylonian Empire, c. 575 BCE, on the Euphrates; based on the German excavations of Robert Koldewey and the reconstructed Ishtar Gate in Berlin.',
     'egypt-old-kingdom': 'Egypt, Old Kingdom, Fourth Dynasty, Giza and adjacent Nile floodplain, c. 2550 BCE.',
     'rome-imperial-100': 'Roman Empire, city of Rome and immediate countryside, c. 100 CE, early reign of Trajan.',
@@ -147,6 +148,15 @@ PALETTE = {
         ('dark wet river mud', ['#7d6752', '#8e8474']),
         ('restrained olive reeds, barley and palms', ['#8d9a5b', '#6f7f45']),
         ('muted river water', ['#98c3d3', '#72a2b5']),
+        ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
+    ],
+    'sumer-uruk': [
+        ('sun-dried mudbrick and silty earth', ['#d0bba0', '#a08a6c']),
+        ('white lime plaster and dry clay tablets', ['#f5e6ce', '#f4d5a8']),
+        ('fired clay cones in red, black and cream', ['#b0754f', '#4a3b33']),
+        ('reed matting, barley straw and date palm wood', ['#e3cf9a', '#7d6752']),
+        ('restrained olive reeds, barley and date palms', ['#8d9a5b', '#6f7f45']),
+        ('muted canal water', ['#98c3d3', '#72a2b5']),
         ('pale transparent sky', ['#d2e6f2', '#a9d7f6']),
     ],
     'babylonia-old-babylonian': [

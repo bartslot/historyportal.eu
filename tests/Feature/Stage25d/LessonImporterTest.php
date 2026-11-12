@@ -377,6 +377,20 @@ class LessonImporterTest extends TestCase
         $this->assertSame(1, $row->quizQuestions()->count(), 'an open question is no multiple-choice row');
     }
 
+    public function test_a_caption_becomes_the_place_and_year_card(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['caption'] = ['place' => 'Mesopotamia', 'year' => 'about 3000 BCE'];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $scene = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->first();
+        $this->assertSame('Mesopotamia', $scene->location);
+        $this->assertSame('about 3000 BCE', $scene->year);
+        $this->assertTrue($scene->config['show_caption']);
+        $this->assertArrayNotHasKey('show_caption', Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get()[2]->config ?? []);
+    }
+
     public function test_a_class_action_question_becomes_an_untimed_discussion_card(): void
     {
         $lesson = $this->lesson();

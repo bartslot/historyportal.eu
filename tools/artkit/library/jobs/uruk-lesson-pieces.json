@@ -1,0 +1,243 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "sumer-uruk",
+  "era_label": "c. 3000 BCE",
+  "note": "Bart 11-12: Uruk about 3000 BCE (treatment-v5-uruk). Inks in Figma, colour by ChatGPT.",
+  "sheets": [
+    {
+      "id": "uk-skyline-bg",
+      "layer": "bg",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): the town of Uruk seen from across a canal: a dense spread of flat-roofed mud-brick houses and courtyards among date palms, and above them the White Temple: a white-plastered temple standing on a very high mud-brick platform with sloping plain sides (not a stepped ziggurat). No city wall. Low and wide.",
+      "assets": [
+        {
+          "id": "uk-uruk-skyline-01",
+          "tags": [
+            "uruk",
+            "town",
+            "white temple",
+            "skyline"
+          ],
+          "height_m": 24,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "uk-canal-bands",
+      "layer": "band",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): (1) an irrigation canal seen across from the side: calm water between raised earth banks, 1.2 m high; (2) the edge of a field of ripe barley with a few date palms behind it, 2 m high; (3) a muddy canal bank with a broken gap where water leaks out, 1 m high.",
+      "assets": [
+        {
+          "id": "uk-canal-strip-01",
+          "tags": [
+            "canal",
+            "water",
+            "bank"
+          ],
+          "height_m": 1.2,
+          "tileable_x": true
+        },
+        {
+          "id": "uk-barley-palms-strip-01",
+          "tags": [
+            "barley",
+            "palms",
+            "field"
+          ],
+          "height_m": 2,
+          "tileable_x": true
+        },
+        {
+          "id": "uk-broken-bank-strip-01",
+          "tags": [
+            "bank",
+            "leak",
+            "canal"
+          ],
+          "height_m": 1,
+          "tileable_x": false
+        }
+      ]
+    },
+    {
+      "id": "uk-temple-screens",
+      "layer": "band",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): the temple precinct (Eanna): (1) a thick temple courtyard wall of mud brick whose lower half is covered with a mosaic of clay cones pressed into the plaster in zigzag and diamond patterns (red, black and cream cone heads), with a plain doorway, 4 m high; (2) a row of round columns completely covered in the same clay-cone mosaic, 4 m high.",
+      "assets": [
+        {
+          "id": "uk-cone-wall-screen-01",
+          "tags": [
+            "temple",
+            "cone mosaic",
+            "wall",
+            "doorway"
+          ],
+          "height_m": 4,
+          "tileable_x": true
+        },
+        {
+          "id": "uk-cone-columns-screen-01",
+          "tags": [
+            "temple",
+            "cone mosaic",
+            "columns"
+          ],
+          "height_m": 4,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "uk-tablet-room",
+      "layer": "band",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): inside a temple storeroom office: (1) a plain mud-brick inner wall with a low bench along it, reed baskets full of small clay tablets on the bench, a small doorway with daylight, 3 m high; (2) a beaten-earth floor strip with a reed mat, 0.4 m high.",
+      "assets": [
+        {
+          "id": "uk-tablet-room-wall-01",
+          "tags": [
+            "tablet room",
+            "interior",
+            "wall",
+            "baskets"
+          ],
+          "height_m": 3,
+          "tileable_x": true
+        },
+        {
+          "id": "uk-reed-mat-floor-01",
+          "tags": [
+            "floor",
+            "reed mat",
+            "interior"
+          ],
+          "height_m": 0.4,
+          "tileable_x": true
+        }
+      ]
+    },
+    {
+      "id": "uk-storehouse",
+      "layer": "mid",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): a temple grain store, each a separate object: (1) a tall stack of plain, thick, rough clay bowls with sloping sides and a bevelled rim (bevelled-rim bowls), nested upside down, 0.8 m high; (2) a large heap of barley grain, 1 m high; (3) a row of three tied grain sacks, 0.9 m high; (4) a tall plain storage jar, 1.1 m high.",
+      "assets": [
+        {
+          "id": "uk-bowl-stack-01",
+          "tags": [
+            "bevelled-rim bowls",
+            "bowls",
+            "rations"
+          ],
+          "height_m": 0.8
+        },
+        {
+          "id": "uk-grain-heap-01",
+          "tags": [
+            "barley",
+            "grain",
+            "heap"
+          ],
+          "height_m": 1
+        },
+        {
+          "id": "uk-sacks-01",
+          "tags": [
+            "sacks",
+            "grain"
+          ],
+          "height_m": 0.9
+        },
+        {
+          "id": "uk-storage-jar-01",
+          "tags": [
+            "jar",
+            "storage"
+          ],
+          "height_m": 1.1
+        }
+      ]
+    },
+    {
+      "id": "uk-farm-animals",
+      "layer": "mid",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): each a separate object: (1) two oxen side by side under a wooden yoke pulling a simple wooden plough (an ard: a plain wooden plough with one handle, no seed funnel), 1.5 m high, 3.5 m long; (2) a reed boat with a high curved prow loaded with grain sacks, empty of people, 1.4 m high, 6 m long.",
+      "assets": [
+        {
+          "id": "uk-oxen-plough-01",
+          "tags": [
+            "oxen",
+            "plough",
+            "ard"
+          ],
+          "height_m": 1.5
+        },
+        {
+          "id": "uk-loaded-boat-01",
+          "tags": [
+            "boat",
+            "reed",
+            "sacks"
+          ],
+          "height_m": 1.4
+        }
+      ]
+    },
+    {
+      "id": "uk-props",
+      "layer": "prop",
+      "subject": "Uruk, Southern Mesopotamia, about 3000 BCE (Late Uruk period): small objects as a tidy specimen sheet, each separate: (1) a small flat clay tablet with rounded corners, with a few pressed picture signs on it (an ear of barley, a sheep's head, round number marks), 0.08 m; (2) a single plain rough clay bowl with sloping sides and a bevelled rim, 0.1 m high; (3) a stone cylinder seal beside a strip of clay with its rolled pattern of animals, 0.06 m; (4) a reed stylus, 0.2 m; (5) a curved sickle made of fired clay, 0.3 m; (6) a tall alabaster vase carved in bands: water at the bottom, barley and palms, sheep, people carrying baskets, 1 m high.",
+      "assets": [
+        {
+          "id": "uk-picture-tablet-01",
+          "tags": [
+            "tablet",
+            "proto-cuneiform",
+            "writing"
+          ],
+          "height_m": 0.08
+        },
+        {
+          "id": "uk-bevelled-bowl-01",
+          "tags": [
+            "bowl",
+            "bevelled-rim",
+            "ration"
+          ],
+          "height_m": 0.1
+        },
+        {
+          "id": "uk-cylinder-seal-01",
+          "tags": [
+            "seal",
+            "cylinder seal"
+          ],
+          "height_m": 0.06
+        },
+        {
+          "id": "uk-reed-stylus-01",
+          "tags": [
+            "stylus",
+            "reed"
+          ],
+          "height_m": 0.2
+        },
+        {
+          "id": "uk-clay-sickle-01",
+          "tags": [
+            "sickle",
+            "clay"
+          ],
+          "height_m": 0.3
+        },
+        {
+          "id": "uk-warka-vase-01",
+          "tags": [
+            "vase",
+            "warka vase",
+            "temple"
+          ],
+          "height_m": 1
+        }
+      ]
+    }
+  ]
+}

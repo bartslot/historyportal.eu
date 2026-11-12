@@ -1,0 +1,144 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "sumer-uruk",
+  "era_label": "c. 3000 BCE",
+  "note": "Bart 11-12: the Uruk city cast (treatment-v5-uruk); inks painted in Figma.",
+  "characters": [
+    {
+      "char": "dudu",
+      "height_m": 1.68,
+      "tags": [
+        "man",
+        "uruk",
+        "temple",
+        "counter"
+      ],
+      "look": "Dudu, a temple grain counter of Uruk in his forties, shaven head, clean-shaven, a plain wool wrap over one shoulder and a wool kilt with a cord belt, a small leather bag, barefoot",
+      "colours": "kilt and wrap undyed cream wool, cord belt dark brown, bag tan leather",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "read",
+          "standing, holding a small clay tablet, pointing at a mark on it, three-quarter view, focused"
+        ]
+      ]
+    },
+    {
+      "char": "bara",
+      "height_m": 1.6,
+      "tags": [
+        "woman",
+        "uruk",
+        "farmer"
+      ],
+      "look": "Bara, a farmer woman of Uruk in her thirties, long dark hair tied back, a plain wool wrap garment over one shoulder to the ankles, barefoot",
+      "colours": "wrap undyed oatmeal wool with a faded madder-red border, hair black-brown",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "sickle",
+          "standing, holding barley stalks and a curved sickle, three-quarter view, serious"
+        ]
+      ]
+    },
+    {
+      "char": "scribe",
+      "height_m": 1.66,
+      "tags": [
+        "man",
+        "uruk",
+        "scribe"
+      ],
+      "look": "a temple scribe of Uruk in his fifties, shaven head, clean-shaven, a plain kilt and a wrap over one shoulder, barefoot",
+      "colours": "kilt and wrap bleached linen-white wool, skin warm light-brown",
+      "poses": [
+        [
+          "stand",
+          "standing, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "front",
+          "standing, seen straight from the front, calm serious face"
+        ],
+        [
+          "side",
+          "standing, seen exactly from the right side, profile"
+        ],
+        [
+          "back34",
+          "standing, three-quarter view from behind, face turned away"
+        ],
+        [
+          "back",
+          "standing, seen straight from behind"
+        ],
+        [
+          "walk",
+          "walking in mid stride, three-quarter view from the front right, tired steady face"
+        ],
+        [
+          "walk-back",
+          "walking away in mid stride, three-quarter view from behind"
+        ],
+        [
+          "write",
+          "sitting cross-legged pressing a reed stylus into a small clay tablet, three-quarter view, concentrating"
+        ]
+      ]
+    }
+  ]
+}

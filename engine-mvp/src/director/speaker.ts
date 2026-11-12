@@ -34,14 +34,16 @@ const xRange = (p: { z: number; fov: number }, f: Spot, nx: number): [number, nu
 
 /** A camera pose moved into the window where the speaker (height h, at z/x) reads; the others are kept in frame when that
  *  costs the speaker nothing (the intersection of their x ranges with the speaker's). */
-export function holdPose(pose: CamPose, fig: Spot, others: Spot[] = []): CamPose {
+/** `lens`: a zoom (the lens changes, the camera does not travel) is free of the feet rule: the camera only backs off
+ *  when the narrower lens would make the speaker overfill the frame, it never moves nearer. */
+export function holdPose(pose: CamPose, fig: Spot, others: Spot[] = [], lens = false): CamPose {
   // the crane stays near eye height: a high camera needs the speaker far away to keep the feet in frame
   const p = { ...pose, y: Math.min(pose.y, MAX_EYE_Y), fov: Math.min(pose.fov, MAX_FOV) }
   const th = Math.tan((p.fov * Math.PI) / 360)
   const feet = p.y / Math.tan(((FEET_MARGIN * p.fov) / 2 - PITCH_UP_DEG) * (Math.PI / 180))
   const dzMin = Math.max(fig.h / (FILL_MAX * 2 * th), feet)
   const dzMax = Math.max(dzMin, fig.h / (MAIN_MIN * 2 * th))
-  const z = Math.min(fig.z - dzMin, Math.max(fig.z - dzMax, p.z))
+  const z = lens ? Math.min(p.z, fig.z - fig.h / (FILL_MAX * 2 * th)) : Math.min(fig.z - dzMin, Math.max(fig.z - dzMax, p.z))
   const mine = { z, fov: p.fov }
   let [lo, hi] = xRange(mine, fig, 2 * MID_FRAME)
   for (const o of others) {
@@ -58,12 +60,12 @@ const spotOf = (f: Figure): Spot => {
 }
 
 /** The shot's two poses held on the scene's speaker; unchanged when nobody speaks. */
-export function holdSpeaker(poses: { from: CamPose; to: CamPose }, scene: Scene): { from: CamPose; to: CamPose } {
+export function holdSpeaker(poses: { from: CamPose; to: CamPose }, scene: Scene, lens = false): { from: CamPose; to: CamPose } {
   if (hasBust(scene)) return holdBust(poses)
   const f = speakerFigure(scene)
   if (!f || !f.h_m) return poses
   const others = (scene.figures ?? []).filter((o) => o !== f && o.h_m).map(spotOf)
-  return { from: holdPose(poses.from, spotOf(f), others), to: holdPose(poses.to, spotOf(f), others) }
+  return { from: holdPose(poses.from, spotOf(f), others, lens), to: holdPose(poses.to, spotOf(f), others, lens) }
 }
 
 // Close-ups (comic busts): a figure whose pose starts with `bust` is a head-and-shoulders cutout cut off straight at the
@@ -82,7 +84,7 @@ export const BUST_FIT = {
 } satisfies Record<string, BustFit>
 const BUST_PUSH_M = 0.4 // a bust shot pushes in at most this far (nearer only raises the frame's bottom edge)
 const BUST_DRIFT_M = 0.2 // and trucks at most this far either side of the house x
-const BUST_FOV_MIN = 46 // a narrower lens would cut the head
+const BUST_FOV_MIN = 46 // a narrower lens would cut the head once the camera has pushed in (camera.ts may zoom to 42 at the house z)
 
 const deg = (d: number) => (d * Math.PI) / 180
 /** World heights of the frame's bottom and top edges on the plane at z, seen from cam (the house pitch included). */

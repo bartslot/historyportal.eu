@@ -8,7 +8,7 @@
 import { DEPTH_Z } from '../stage25d/layout'
 import type { Beat, CamPose, Camera, MoveKind, Scene } from './types'
 import { round } from './timing'
-import { hasBust, holdSpeaker, speakerFigure } from './speaker'
+import { BUST_CAM, hasBust, holdSpeaker, speakerFigure } from './speaker'
 
 export { DEPTH_Z }
 export const EYE_Y = 1.6
@@ -45,6 +45,7 @@ const CURVE: Record<MoveKind, string> = {
   tilt: 'easeInOutQuad',
   rack: 'easeInOutQuad',
   through: 'easeInOutQuint', // the native move: a held breath, then through the frame
+  hold: 'easeInOutQuad', // still: the ease does nothing
 }
 /** The hook arrives hard and settles: most of the move is done inside the first 3 s. */
 const HOOK_CURVE = 'easeOutQuart'
@@ -58,6 +59,7 @@ const WHY: Record<MoveKind, string> = {
   tilt: 'from the sky down to where we are',
   rack: 'focus moves from foreground to the subject',
   through: 'native move: the camera passes through the frame into the scene',
+  hold: 'a still frame: the class takes in what just happened',
 }
 
 export type Focus = { x: number; y: number; z: number; dir: 1 | -1 }
@@ -105,6 +107,7 @@ export function frame(move: MoveKind, f: Focus, k = 1, nearest: number = DEPTH_Z
     // from the sky down to where we are: a crane down plus the look coming down
     case 'tilt': return { from: pose(x0, EYE_Y + 2.4 * k, 0, BASE_FOV + 2, { ...look, y: 6 * k }), to: pose(x0, EYE_Y, 0, BASE_FOV, look) }
     case 'rack': return { from: pose(x0, EYE_Y, 0, BASE_FOV - 2, look, DEPTH_Z.fg), to: pose(x0, EYE_Y, push * 0.4, BASE_FOV - 5, look, f.z) }
+    case 'hold': { const p = pose(x0, EYE_Y, 0, BASE_FOV, look); return { from: p, to: p } }
     case 'through': return { from: pose(x0, EYE_Y, -2, BASE_FOV + 4, look, DEPTH_Z.fg), to: pose(f.x * 0.8, EYE_Y - 0.1, DEPTH_Z.fg + 1.5, BASE_FOV - 8, look, f.z) }
   }
 }
@@ -137,18 +140,56 @@ function scaled(p: { from: CamPose; to: CamPose }, scale: ShotScale, nearest: nu
 /** How strong a beat's move is: calm at the setup, strongest at the hook and the peak. */
 const STRENGTH: Record<Beat, number> = { hook: 1.3, setup: 0.7, cause: 1, effect: 1, turn: 1.1, climax: 1.4, recap: 0.8 }
 
-export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number, opts: { hook?: boolean; scale?: ShotScale } = {}): Camera {
+// Visible travel (Bart, 2026-11-12: "Why no camera work?"). The speaker window and the bust hold crushed most moves
+// to a few centimetres. Over its shot a move must read on a classroom board: at least MIN_TRAVEL_M of dolly (z) or
+// truck (x), or MIN_LENS_DEG of lens. Counted on what the stage plays (x, y, z, fov): it does not aim, so a look
+// target that travels shows nothing; a tilt whose crane the window lowered gets the lens too.
+export const MIN_TRAVEL_M = 1.0
+export const MIN_LENS_DEG = 7
+const LENS_DEG = 10 // a flattened move zooms this much: 50 -> 40 push, 40 -> 50 pull
+const LATERAL_M = 1.2 // a flattened truck or pan slides this far, the speaker kept in the frame's middle
+const BUST_LENS_FOV = 42 // a bust zooms 50 -> 42 at the house z: the frame bottom only rises, the head still clears the top
+
+type Poses = { from: CamPose; to: CamPose }
+export const travels = (p: Poses): boolean =>
+  Math.abs(p.to.z - p.from.z) >= MIN_TRAVEL_M || Math.abs(p.to.x - p.from.x) >= MIN_TRAVEL_M || Math.abs(p.to.fov - p.from.fov) >= MIN_LENS_DEG
+
+/** The subject framing kept, the travel put on the lens: a pull opens the lens, every other move closes it. */
+function zoomed(move: MoveKind, p: Poses, scene: Scene): Poses {
+  if (hasBust(scene)) {
+    const [a, b] = move === 'pull' ? [BUST_LENS_FOV, BUST_CAM.fov] : [BUST_CAM.fov, BUST_LENS_FOV]
+    return { from: { ...p.from, z: BUST_CAM.z, fov: a }, to: { ...p.to, z: BUST_CAM.z, fov: b } }
+  }
+  const wide = Math.min(BASE_FOV, Math.max(p.from.fov, p.to.fov, Math.min(p.from.fov, p.to.fov) + LENS_DEG))
+  const [a, b] = move === 'pull' ? [wide - LENS_DEG, wide] : [wide, wide - LENS_DEG]
+  return holdSpeaker({ from: { ...p.from, fov: a }, to: { ...p.to, fov: b } }, scene, true)
+}
+
+/** A move the holds flattened gets its travel back where it is allowed: a truck or pan slides sideways inside the
+ *  speaker window first; whatever still does not read zooms. Neither moves the camera nearer the foreground. */
+function withTravel(move: MoveKind, p: Poses, scene: Scene): Poses {
+  if (move === 'hold' || travels(p)) return p
+  if ((move === 'truck' || move === 'pan') && !hasBust(scene)) {
+    const c = (p.from.x + p.to.x) / 2, dir = Math.sign(p.to.x - p.from.x) || 1
+    const side = holdSpeaker({ from: { ...p.from, x: round(c - (dir * LATERAL_M) / 2) }, to: { ...p.to, x: round(c + (dir * LATERAL_M) / 2) } }, scene)
+    return travels(side) ? side : zoomed(move, side, scene)
+  }
+  return zoomed(move, p, scene)
+}
+
+export function makeCamera(scene: Scene, move: MoveKind, at: number, dur: number, opts: { hook?: boolean; scale?: ShotScale; asked?: boolean } = {}): Camera {
   const scale = move === 'through' ? 'medium' : (opts.scale ?? 'medium')
   const nearest = nearestZ(scene)
   const framed = scaled(frame(move, focusOf(scene), STRENGTH[scene.beat] ?? 1, nearest), scale, nearest)
-  // every shot keeps the speaker readable
-  const held = holdSpeaker(framed, scene)
+  // every shot keeps the speaker readable; a still bust shot is the pose the bust was sized from
+  const held = move === 'hold' && hasBust(scene) ? { from: BUST_CAM, to: BUST_CAM } : holdSpeaker(framed, scene)
   // 'through' starts far and ends in front of the speaker (it never flies through them); a bust shot is held throughout
-  const { from, to } = move === 'through' && !hasBust(scene) ? { from: framed.from, to: held.to } : held
+  const { from, to } = withTravel(move, move === 'through' && !hasBust(scene) ? { from: framed.from, to: held.to } : held, scene)
   return {
     move, scale, from, to, at_s: round(at), dur_s: round(dur),
     ease: stageEase(opts.hook ? HOOK_CURVE : CURVE[move]), curve: opts.hook ? HOOK_CURVE : CURVE[move],
     ...(move === 'through' ? { native: true } : {}),
+    ...(opts.asked ? { asked: true } : {}),
     why: WHY[move],
   }
 }

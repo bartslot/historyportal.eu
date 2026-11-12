@@ -285,7 +285,7 @@ final class LessonImporter
 
         $effects = $branch['branch_effects'] ?? null;
         unset($branch['branch_effects']);
-        $scene = new Scene($branch + [
+        $scene = new Scene($this->caption($s) + $branch + [
             'lesson_id' => $lesson->id,
             'order' => $order,
             'kind' => 'stage25d',
@@ -294,7 +294,8 @@ final class LessonImporter
             'chapter_name' => $s['chapter'] ?? null,
             'duration_seconds' => (int) ceil(max((float) ($s['dur_s'] ?? 0), (float) ($s['tts_s'] ?? 0), 3.0)),
             'status' => 'ready',
-            'config' => ['stage25d' => $stage] + ($lines ? ['lines' => $lines] : []) + ($effects ? ['branch_effects' => $effects] : []),
+            'config' => ['stage25d' => $stage] + ($lines ? ['lines' => $lines] : []) + ($effects ? ['branch_effects' => $effects] : [])
+                + ($this->caption($s) ? ['show_caption' => true] : []),
         ]);
 
         return $this->save($lesson, $scene, $s, $lang, $audioRoot, $dryRun, $report, $narration);
@@ -337,7 +338,7 @@ final class LessonImporter
 
         $effects = $branch['branch_effects'] ?? null;
         unset($branch['branch_effects']);
-        $scene = new Scene($branch + [
+        $scene = new Scene($this->caption($s) + $branch + [
             'lesson_id' => $lesson->id,
             'order' => $order,
             'kind' => 'map',
@@ -347,6 +348,7 @@ final class LessonImporter
             'duration_seconds' => $duration,
             'status' => 'ready',
             'config' => array_filter([
+                'show_caption' => $this->caption($s) ? true : null,
                 'projection' => 'mercator',
                 // the story goes on by itself: the map holds for the narration, no Continue button
                 'playback_mode' => 'timed',
@@ -579,5 +581,19 @@ final class LessonImporter
             'status' => 'ready',
             'config' => ['team' => $team, 'team_default' => $team],
         ]);
+    }
+
+    /**
+     * A scene's caption (lesson.json `caption: {place, year}`): the player's place-and-year card, e.g. the date card
+     * "Mesopotamia, about 3000 BCE" of an introduction. Location and year columns, shown because config.show_caption.
+     *
+     * @return array{location?: string, year?: string}
+     */
+    private function caption(array $s): array
+    {
+        $c = (array) ($s['caption'] ?? []);
+        $place = trim((string) ($c['place'] ?? ''));
+
+        return $place === '' ? [] : ['location' => mb_substr($place, 0, 120), 'year' => mb_substr(trim((string) ($c['year'] ?? '')), 0, 60)];
     }
 }

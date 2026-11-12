@@ -1,0 +1,149 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "framing": "large head-and-shoulders close-ups cut off at the chest, like comic book close-up panels, the chest edge cut straight",
+  "work_suffix": "-closeup",
+  "era": "sumer-uruk",
+  "era_label": "c. 3000 BCE",
+  "note": "Uruk city cast close-ups.",
+  "characters": [
+    {
+      "char": "dudu",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "uruk",
+        "temple",
+        "counter",
+        "closeup"
+      ],
+      "look": "Dudu, a temple grain counter of Uruk in his forties, shaven head, clean-shaven, a plain wool wrap over one shoulder and a wool kilt with a cord belt, a small leather bag, barefoot",
+      "colours": "kilt and wrap undyed cream wool, cord belt dark brown, bag tan leather",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "bara",
+      "height_m": 0.53,
+      "tags": [
+        "woman",
+        "uruk",
+        "farmer",
+        "closeup"
+      ],
+      "look": "Bara, a farmer woman of Uruk in her thirties, long dark hair tied back, a plain wool wrap garment over one shoulder to the ankles, barefoot",
+      "colours": "wrap undyed oatmeal wool with a faded madder-red border, hair black-brown",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "scribe",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "uruk",
+        "scribe",
+        "closeup"
+      ],
+      "look": "a temple scribe of Uruk in his fifties, shaven head, clean-shaven, a plain kilt and a wrap over one shoulder, barefoot",
+      "colours": "kilt and wrap bleached linen-white wool, skin warm light-brown",
+      "poses": [
+        [
+          "bust",
+          "head and shoulders, three-quarter view from the front right, calm serious face"
+        ],
+        [
+          "bust-front",
+          "head and shoulders, seen straight from the front, looking at the viewer, serious face"
+        ],
+        [
+          "bust-side",
+          "head and shoulders, exact right profile, serious face"
+        ],
+        [
+          "bust-back",
+          "head and shoulders seen from behind and a little to the side, the back of the head, cheek just visible (for an over-the-shoulder shot)"
+        ],
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    }
+  ]
+}
