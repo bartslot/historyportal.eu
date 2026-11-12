@@ -90,7 +90,7 @@ describe('a route', () => {
 describe('the writer\'s camera', () => {
     it('opens the map there and holds it: no fit, no itinerary', () => {
         expect(MAP).toContain('const opening = fixedCamera || labelsFit || openingView(');
-        expect(MAP).toContain("const labelsFit = opts.fit === 'labels' && !fixedCamera");
+        expect(MAP).toContain("const labelsFitFor = (fit) => (fit === 'labels' && !fixedCamera");
         expect(MAP).toMatch(/if \(fixedCamera\) return null/);
     });
 });

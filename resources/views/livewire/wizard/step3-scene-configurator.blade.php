@@ -785,6 +785,7 @@
             // already draws them. Called before the in-place early-returns below so a poll or a
             // year/style tweak keeps them on screen; the re-mount path calls it again after
             // destroy(), which clears the overlay.
+            currentSceneId = p.sceneId   // the map's callbacks save against the scene now on screen
             showMapArt(p)
             const cfg = p.config || {}
             const year = cfg.year ?? p.year ?? 1600
@@ -811,6 +812,24 @@
                 try { inst.setAnnotations(cfg.annotations || []) } catch (_) {}
                 return
             }
+            // ANOTHER map scene while a map is up: every map scene draws the same chart, so put the new
+            // scene on the live map (its year, territory, pins, switches, framing) and keep the chart,
+            // its images and its tiles. Rebuilding here refetched all of them on every scene click.
+            // Only a lesson map has showScene: a voyage or gallery on stage still falls through and swaps.
+            if (inst && typeof inst.showScene === 'function') {
+                lastKey = key
+                try {
+                    inst.showScene({
+                        qid: cfg.qid || null,
+                        fit: cfg.fit || null,
+                        year,
+                        annotations: cfg.annotations || [],
+                        showCities: cfg.show_cities === true,
+                        showBorders: cfg.show_borders === true,
+                    })
+                } catch (err) { console.error('[lesson-map] showScene failed', err) }
+                return
+            }
             destroy()                 // clears lastKey…
             lastKey = key             // …so set it after
             showMapArt(p)             // …and re-mounts the layers destroy() just cleared
@@ -832,9 +851,10 @@
                     interactive: true,
                     annotations: cfg.annotations || [],
                     editable: true,
-                    onAnnotationsChange: (a) => window.Livewire.dispatch('annotationsChanged', { sceneId: p.sceneId, annotations: a }),
+                    // currentSceneId, not p.sceneId: the same map stays up across map scenes (showScene).
+                    onAnnotationsChange: (a) => window.Livewire.dispatch('annotationsChanged', { sceneId: currentSceneId, annotations: a }),
                     // Click a polity on the map → link it as this block's territory (hover shows its name).
-                    onPolityClick: (t) => window.Livewire.dispatch('mapTerritoryClicked', { sceneId: p.sceneId, qid: t.qid, name: t.name }),
+                    onPolityClick: (t) => window.Livewire.dispatch('mapTerritoryClicked', { sceneId: currentSceneId, qid: t.qid, name: t.name }),
                 })
                 wireMapProjectors()
             } else {
