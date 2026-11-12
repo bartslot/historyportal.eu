@@ -204,7 +204,7 @@ export function renderLessonMap (el, opts = {}) {
           // are just faint 30%-opacity borders so the terrain reads through.
           id: 'boundaries-line', type: 'line', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
-          layout: { 'line-join': 'round' },
+          layout: { 'line-join': 'round', visibility: layerToggles.borders ? 'visible' : 'none' },
           paint: {
             'line-color': ['case', ['boolean', ['feature-state', 'highlight'], false], PALETTE.highlight, GROUND.line],
             'line-width': ['case', ['boolean', ['feature-state', 'highlight'], false], 2.6, 0.6],
@@ -217,6 +217,9 @@ export function renderLessonMap (el, opts = {}) {
         {
           id: 'city-dots', type: 'circle', source: 'cities', 'source-layer': 'cities',
           filter: cityFilter(year),
+          // hidden from the first frame when the scene says so: applyLayerToggles only runs on 'load', which waits for
+          // every tile, and a short map shot showed Istanbul and Aleppo on a map of 1750 BCE until then (11-12)
+          layout: { visibility: layerToggles.cities ? 'visible' : 'none' },
           paint: {
             'circle-radius': cityDotRadius(),
             'circle-color': GROUND.text,
@@ -229,6 +232,7 @@ export function renderLessonMap (el, opts = {}) {
           id: 'city-labels', type: 'symbol', source: 'cities', 'source-layer': 'cities',
           filter: cityFilter(year),
           layout: {
+            visibility: layerToggles.cities ? 'visible' : 'none',
             'text-field': ['get', 'name'],
             // Size AND collision priority both come from the city's importance — see map-city-scale.
             'text-size': cityTextSize(),

@@ -249,13 +249,14 @@ export function riverPaint (cfg = CHART) {
  * instead of stopping at a line, and pools a little at the rim the way a watercolour wash dries. No outline.
  * Under the rivers, so the Tigris and Euphrates read through the green.
  */
-export const REGION_GREEN = '#7d9b4e'
+// fresher and stronger than the land under it: the earth-coloured map is already green along the rivers (11-12)
+export const REGION_GREEN = '#5f9e2f'
 export function regionLayers (source) {
   const edge = ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 22, 6, 40]
   return [
-    { id: `${source}-wash`, type: 'fill', source, paint: { 'fill-color': REGION_GREEN, 'fill-opacity': 0.26 } },
+    { id: `${source}-wash`, type: 'fill', source, paint: { 'fill-color': REGION_GREEN, 'fill-opacity': 0.38 } },
     { id: `${source}-edge`, type: 'line', source, layout: { 'line-join': 'round' },
-      paint: { 'line-color': REGION_GREEN, 'line-opacity': 0.3, 'line-width': edge, 'line-blur': edge } },
+      paint: { 'line-color': REGION_GREEN, 'line-opacity': 0.48, 'line-width': edge, 'line-blur': edge } },
   ]
 }
 

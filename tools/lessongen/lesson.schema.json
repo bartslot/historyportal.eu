@@ -405,7 +405,25 @@
                   "row",
                   "climb",
                   "lie",
-                  "dig"
+                  "dig",
+                  "front",
+                  "side",
+                  "back34",
+                  "back",
+                  "walk-back",
+                  "bust",
+                  "bust-front",
+                  "bust-side",
+                  "bust-back",
+                  "bust-low",
+                  "bust-high",
+                  "bust-afraid",
+                  "bust-amazed",
+                  "sling",
+                  "forbid",
+                  "guard",
+                  "read",
+                  "sickle"
                 ]
               },
               "x": {

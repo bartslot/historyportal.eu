@@ -102,11 +102,14 @@ export function placeFigures(scene: Scene, lib: Library | null): Scene {
     const isMain = f.char === main
     const h = a.height_m ?? 1.7
     if (isBust(pose)) {
-      // a close-up: near plane (fg when it is the face seen over a bust-back), sized from the house camera
+      // a close-up: always the near plane, sized from the house camera (on fg the chest edge showed above the frame's
+      // bottom in the browser, 11-12). A face is pulled toward the middle of the frame; over the shoulder it sits on
+      // the side away from the back of the head.
       const back = pose === 'bust-back'
-      const depth: Depth = back || !overShoulder ? 'near' : 'fg'
-      const { scale, y } = bustFit(h, DEPTH_Z[depth], back ? BUST_FIT.back : overShoulder ? BUST_FIT.far : BUST_FIT.close)
-      const x = back ? ((f.x ?? 0.5) < 0.5 ? 0.12 : 0.88) : (f.x ?? 0.5)
+      const depth: Depth = 'near'
+      const { scale, y } = bustFit(h, DEPTH_Z[depth], back ? BUST_FIT.back : BUST_FIT.close)
+      const backX = resolved.find((r) => r.pose === 'bust-back')?.f.x ?? 0.5
+      const x = back ? ((f.x ?? 0.5) < 0.5 ? 0.12 : 0.88) : overShoulder ? (backX < 0.5 ? 0.62 : 0.38) : 0.5 + ((f.x ?? 0.5) - 0.5) * 0.3
       return { f, a, pose, depth, scale, y, h, x, main: isMain, shadow: 0 }
     }
     const { depth, scale } = isMain ? mainStand(h) : otherStand(h, f.depth)

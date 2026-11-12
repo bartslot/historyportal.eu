@@ -137,7 +137,8 @@ describe('close-ups (bust poses)', () => {
   it('a bust stands on the near plane, the frame bottom cuts its chest and the head sits in the upper part', () => {
     const out = placeFigures(scene([{ char: 'opa', pose: 'bust', x: 0.4 }]), BUSTS)
     const l = figLayer(out, 'opa')
-    expect(l).toMatchObject({ asset: 'fig-opa-bust-01', depth: 'near', x: 0.4, shadow: 0 })
+    expect(l).toMatchObject({ asset: 'fig-opa-bust-01', depth: 'near', shadow: 0 })
+    expect(l.x).toBeCloseTo(0.47)   // pulled toward the middle of the frame
     const { bottom, top } = frameEdges(3.5, HOUSE_CAM)
     const headTop = (l.y ?? 0) + 0.53 * (l.scale ?? 1)
     expect(l.y!).toBeLessThan(bottom) // the bust's own bottom edge is below the frame
@@ -158,11 +159,11 @@ describe('close-ups (bust poses)', () => {
     }
     expect(hasBust(out)).toBe(true)
   })
-  it('bust-back frames the shot from the near edge it is closer to; the face seen over it is a bust at fg', () => {
+  it('bust-back frames the shot from the near edge it is closer to; the face seen over it is a near bust on the other side', () => {
     const out = placeFigures(scene([{ char: 'meisje', pose: 'bust', x: 0.6 }, { char: 'opa', pose: 'bust-back', x: 0.3 }]), BUSTS)
     const back = figLayer(out, 'opa')
     expect(back).toMatchObject({ asset: 'fig-opa-bust-back-01', depth: 'near', x: 0.12 })
-    expect(figLayer(out, 'meisje')).toMatchObject({ asset: 'fig-meisje-bust-01', depth: 'fg' })
+    expect(figLayer(out, 'meisje')).toMatchObject({ asset: 'fig-meisje-bust-01', depth: 'near', x: 0.62 })
     const right = placeFigures(scene([{ char: 'opa', pose: 'bust-back', x: 0.7 }, { char: 'meisje', pose: 'stand' }]), BUSTS)
     expect(figLayer(right, 'opa').x).toBe(0.88)
     expect(figLayer(right, 'meisje').asset).toBe('fig-meisje-stand-01')
