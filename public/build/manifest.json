@@ -217,7 +217,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Doe4iSBM.js",
+    "file": "assets/app-FFbBO8RQ.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -267,7 +267,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-C6jsVOfW.js",
+    "file": "assets/cutout-dialog-ozGm98x-.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -304,7 +304,7 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-CZnCAgEz.js",
+    "file": "assets/lesson-map-BCR6bJP0.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
@@ -316,7 +316,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-zQ8cyJxQ.js",
+    "file": "assets/lesson-player-CvafPV-C.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -477,7 +477,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DUfMnB55.js",
+    "file": "assets/index-C4SG-aZD.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -602,7 +602,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BAsddARE.js",
+    "file": "assets/recorder-CyC_e6h4.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -649,7 +649,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-Co5BZSaP.js",
+    "file": "assets/voyage-tour-7Bit2zFy.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
