@@ -39,7 +39,7 @@ type Stain = ReturnType<typeof makeStain>
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; cast?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -211,7 +211,9 @@ export class Stage {
       // a figure of parts reads its ink off the drawing put back together, so a cut between parts draws no line
       const rest = puppet ? await restDrawing(layer.src ? { ...puppet, atlas: layer.src } : puppet, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest)
+      // what stands on the floor throws its own shadow (layer.ts makeCast): not far strips, ground strips, decals or sky props
+      const casts = STANDING.includes(layer.depth) && !asset.tileable_x && !liesFlat(layer, asset) && !isGroundStrip(asset) && asset.layer !== 'bg'
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, { cast: casts })
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -220,18 +222,16 @@ export class Stage {
       handle.mesh.alphaIndex = flat ? DECAL_SLOT : p.alphaIndex
       if (flat) handle.mesh.rotation.x = Math.PI / 2   // its top edge points away from the camera, along the floor
       handle.mesh.isVisible = false
-      // a contact stain on the ground under standing things (not under far strips or floating sky props)
-      let stain: Stain | undefined, cast: Stain | undefined, stainDepth: ((z: number) => number) | undefined
+      // a contact stain on the ground under standing things (not under far strips or floating sky props): the dark
+      // under the soles (Bart 11-04). The shadow along the sun is the picture's own (setCast in pose).
+      let stain: Stain | undefined, stainDepth: ((z: number) => number) | undefined
       if (STANDING.includes(layer.depth) && !asset.tileable_x && !flat && !isGroundStrip(asset)) {
         const sz = stainSize(asset, p.w, p.h, p.z)
         stainDepth = (z) => stainSize(asset, p.w, p.h, z).d / sz.d   // the stain's depth at another distance, as a share of this one
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
-        // and its shadow, cast along the one sun (S3's makeStain cast: puppets and props share the light)
-        cast = makeStain(handle.mesh, sz.w, sz.d, this.scene, { dir: [this.sunDir.x, this.sunDir.z], length: p.h * castLength(this.sunDir) })
-        cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, cast, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -275,7 +275,7 @@ export class Stage {
       const t = await loadPremultiplied(url, this.scene).catch(() => { misses.push({ need: a.id, reason: `file did not load: ${url}` }); return null })
       if (t) cloudTex.set(a.id, t)
     }))
-    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.cast?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
+    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
       bandsNext.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
@@ -678,6 +678,8 @@ export class Stage {
     const paper = paperOf(this.look)
     this.relight(s)
     const lit = this.light.preset
+    const run = Math.hypot(this.sunDir.x, this.sunDir.z) || 1
+    const sunGround = [this.sunDir.x / run, this.sunDir.z / run] as const   // the light's direction along the ground
     this.poseSky(s, c, clock, renderH, paper)
     const bandK = lookNum(this.look, 'bandHeight')
     const horizon = this.horizonOf(s)
@@ -719,7 +721,6 @@ export class Stage {
         if (!b.flat) b.handle.mesh.alphaIndex = p.alphaIndex
         if (b.stain) b.stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
         if (b.stain && b.stainDepth) b.stain.mesh.scaling.y = b.stainDepth(p.z)   // a stain is as deep as it looks from here
-        if (b.cast) b.cast.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
@@ -735,11 +736,13 @@ export class Stage {
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
       b.stain?.setEtch(b.layer.etch ?? 0)
-      b.cast?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
-      b.cast?.setOpacity(lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK)
       b.stain?.setTint(lit.shadow)
-      b.cast?.setTint(lit.shadow)
+      // its shadow away from the sun, on the ground under it (a lifted picture's falls further off; layer.shadow 0 = none)
+      b.handle.setCast({
+        dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow, slot: stainIndex(b.handle.mesh.alphaIndex),
+        opacity: lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK, time: clock, etch: b.layer.etch ?? 0,
+      })
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
       // the light runs across the picture's u: on an atlas that is not across the figure, so a puppet takes none yet
       b.handle.setAlive({ ...aliveOf(this.look, kind, this.sunDir.x, mul3(this.footTint, lit.ambient)), ...(puppetOf(b.asset, b.layer) ? { light: 0 } : {}) })
@@ -785,7 +788,6 @@ const GRID_FADE_END_M = 120
 /** The own sky's clouds draw after the sky (slot 1) and before the first cloud placed by hand (slot 3). */
 const CLOUD_SLOT = 1.1
 const CLOUD_SLOT_STEP = 0.1
-const castLength = (d: Vector3) => Math.min(1.5, Math.hypot(d.x, d.z) / Math.max(-d.y, 0.2))
 const mean3 = (cs: [number, number, number][]): [number, number, number] => [0, 1, 2].map((i) => cs.reduce((s, c) => s + c[i], 0) / cs.length) as [number, number, number]
 
 /** Depths where things stand on the floor (and get a contact stain). */

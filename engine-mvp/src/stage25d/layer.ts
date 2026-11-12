@@ -40,24 +40,10 @@ export const PAPER_GLSL = `
     return c;
   }`
 
-Effect.ShadersStore.stageLayerVertexShader = `
-  precision highp float;
-  attribute vec3 position;
-  attribute vec2 uv;
-  uniform mat4 worldViewProjection;
-  uniform float time, kind, amount, speed, phase, height, width;
-  varying vec2 vUV;
-  varying float vH;
-  #ifdef REST
-  attribute vec2 uv2;     // where this corner sits in the drawing at rest (a figure of parts: restDrawing)
-  varying vec2 vRest;
-  #endif
-  void main(void) {
-    #ifdef REST
-    vRest = uv2;
-    #endif
-    vec3 p = position;
-    float h = clamp(p.y / max(height, 0.001), 0.0, 1.0);   // 0 at the ground point, 1 at the top
+/** A layer's motion in its vertex shader (layout.ts MOTION_CODE), shared with its cast shadow so the shadow sways,
+ *  breathes and drifts with it. h: 0 at the ground point, 1 at the top. Needs the motion uniforms. */
+const MOTION_GLSL = `
+  vec3 moved(vec3 p, float h) {
     if (kind == 1.0) {          // sway: bends from the base, top moves most, two beats so it never ticks like a metronome
       float s = sin(time * speed * 1.1 + phase) + 0.35 * sin(time * speed * 2.7 + phase * 1.7);
       p.x += amount * 0.035 * height * h * h * s;
@@ -71,6 +57,28 @@ Effect.ShadersStore.stageLayerVertexShader = `
       p.y += amount * 0.008 * height * chest * sin(time * speed * 1.6 + phase);
       p.x += amount * 0.005 * height * h * h * sin(time * speed * 0.45 + phase * 1.3);
     }
+    return p;
+  }`
+
+Effect.ShadersStore.stageLayerVertexShader = `
+  precision highp float;
+  attribute vec3 position;
+  attribute vec2 uv;
+  uniform mat4 worldViewProjection;
+  uniform float time, kind, amount, speed, phase, height, width;
+  ${MOTION_GLSL}
+  varying vec2 vUV;
+  varying float vH;
+  #ifdef REST
+  attribute vec2 uv2;     // where this corner sits in the drawing at rest (a figure of parts: restDrawing)
+  varying vec2 vRest;
+  #endif
+  void main(void) {
+    #ifdef REST
+    vRest = uv2;
+    #endif
+    float h = clamp(position.y / max(height, 0.001), 0.0, 1.0);   // 0 at the ground point, 1 at the top
+    vec3 p = moved(position, h);
     vUV = uv;
     vH = h;
     gl_Position = worldViewProjection * vec4(p, 1.0);
@@ -267,6 +275,61 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     gl_FragColor = c * opacity;
   }`
 
+// The picture's own shadow on the ground (Bart 11-12: "the position of the sun... casts shadows"): the picture's mesh
+// laid down along the light, each point moved away from the sun by its height times the sun's reach, on the ground
+// under the picture's foot. One flat wash with a drawn edge (docs/lesson-rules.md: hard shadows, never blurred),
+// multiplied over the ground so its paint shows through, darkening a pixel once however many shadows cover it.
+Effect.ShadersStore.stageCastVertexShader = `
+  precision highp float;
+  attribute vec3 position;
+  attribute vec2 uv;
+  uniform mat4 world, viewProjection;
+  uniform float time, kind, amount, speed, phase, height, width;
+  uniform vec2 sunGround;                     // the light's direction along the ground, unit length
+  uniform float reach, groundY;               // metres of shadow per metre of height, the ground under the foot
+  varying vec2 vUV, vG;
+  varying float vUp;
+  ${MOTION_GLSL}
+  void main(void) {
+    float h = clamp(position.y / max(height, 0.001), 0.0, 1.0);
+    vec4 w = world * vec4(moved(position, h), 1.0);
+    w.xz += sunGround * max(w.y - groundY, 0.0) * reach;
+    w.y = groundY + 0.03;
+    vUV = uv; vUp = h; vG = w.xz;
+    gl_Position = viewProjection * w;
+  }`
+
+Effect.ShadersStore.stageCastFragmentShader = `
+  #extension GL_OES_standard_derivatives : enable
+  precision highp float;
+  varying vec2 vUV, vG;
+  varying float vUp;
+  uniform sampler2D tex;
+  uniform vec4 cell;
+  uniform float uRepeat, opacity, seed, etch;
+  uniform vec3 tint;
+  ${GL_NOISE}
+  ${HATCH_GLSL}
+  vec4 tap(vec2 p) {
+    if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
+    return texture2D(tex, p);
+  }
+  void main(void) {
+    float a = tap(vec2(vUV.x * uRepeat, vUV.y)).a;
+    // a drawn edge: the silhouette cut where its alpha passes a line that wanders a little, never a blur
+    if (a < 0.5 + 0.25 * (fbm(vG * 2.5 + seed) - 0.5)) discard;
+    // one wash, laid unevenly by hand, a touch lighter toward its far end
+    float k = opacity * (1.0 - 0.3 * vUp) * (0.85 + 0.3 * fbm(vG * 0.45 + seed));
+    vec3 c = mix(vec3(1.0), tint, clamp(k, 0.0, 1.0));
+    if (etch > 0.0) {   // etched: the same shadow in ink strokes across the ground
+      vec2 q = vG * 9.0;
+      float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
+      float ink = hatched(t, 0.22, smoothstep(0.3, 0.45, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed))), 0.5);
+      c = mix(c, vec3(0.05, 0.045, 0.04), etch * ink * clamp(opacity * 1.6, 0.0, 1.0));
+    }
+    gl_FragColor = vec4(c, 1.0);
+  }`
+
 /** per Babylon scene (a texture belongs to one engine: the editor and an off-screen thumbnail stage each load their own) */
 const textures = new WeakMap<Scene, Map<string, Promise<RawTexture>>>()
 /** url -> the colour an image's bottom rows end in (0..1), read while loading: the ground fades into it */
@@ -389,6 +452,9 @@ export interface LayerHandle {
   setLight(ambient: readonly number[], sun: readonly number[], shade: readonly number[]): void
   /** a cloud: how far it takes the time's cloud colours (0 = as painted) */
   setTone(k: number, t?: { light: readonly number[]; shade: readonly number[]; under: readonly number[] }): void
+  /** its shadow on the ground (made with `cast`): the light's direction along the ground (unit), metres of shadow per
+   *  metre of height, the ground's height under it, the shadow's colour and strength, its draw slot; null hides it */
+  setCast(c: { dir: readonly [number, number]; reach: number; groundY: number; tint: readonly number[]; opacity: number; slot: number; time: number; etch: number } | null): void
   /** an animation: the frame's cell of the sheet, [u0, v0, du, dv] (sprite.ts cellOf) */
   setCell(c: readonly [number, number, number, number]): void
 }
@@ -428,7 +494,7 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
   return p
 }
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture): LayerHandle {
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, opts: { cast?: boolean } = {}): LayerHandle {
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
@@ -457,9 +523,12 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
+  const cast = opts.cast ? makeCast(mesh, tex, scene, { phase, height: h * top, width: w, uRepeat }) : null
   return {
     mesh, material: mat,
-    setMotion: (m) => { mat.setFloat('kind', MOTION_CODE[m.kind] ?? 0).setFloat('amount', m.amount).setFloat('speed', m.speed) },
+    setMotion: (m) => {
+      for (const x of cast ? [mat, cast.mat] : [mat]) x.setFloat('kind', MOTION_CODE[m.kind] ?? 0).setFloat('amount', m.amount).setFloat('speed', m.speed)
+    },
     setOpacity: (o) => { mat.setFloat('opacity', o); mesh.isVisible = o > 0.001 },
     setLine: (l, inkMul, uvPerPx, tint) => {
       mat.setFloat('inkMul', inkMul).setFloat('lineFade', l.fade).setFloat('lineThin', l.thin).setFloat('haze', l.haze).setFloat('lineBrown', l.brown)
@@ -494,7 +563,15 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     },
     setInk: (outline, etch) => { mat.setFloat('outlineW', outline).setFloat('etch', etch) },
     setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
-    setCell: (c) => { mat.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
+    setCell: (c) => { for (const x of cast ? [mat, cast.mat] : [mat]) x.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
+    setCast: (c) => {
+      if (!cast) return
+      cast.mesh.isVisible = !!c && c.opacity > 0.001 && mesh.isVisible
+      if (!c) return
+      cast.mesh.alphaIndex = c.slot
+      cast.mat.setVector2('sunGround', new Vector2(c.dir[0], c.dir[1])).setFloat('reach', c.reach).setFloat('groundY', c.groundY)
+        .setVector3('tint', Vector3.FromArray(c.tint)).setFloat('opacity', c.opacity).setFloat('time', c.time).setFloat('etch', c.etch)
+    },
     setAlive: (a) => {
       mat.setFloat('edgeSoft', a.edgeSoft).setFloat('footM', a.footM).setFloat('grounding', a.grounding).setFloat('grass', a.grass)
         .setFloat('light', a.light).setFloat('sunSide', a.sunSide).setFloat('drift', a.drift)
@@ -514,3 +591,41 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     },
   }
 }
+
+/** A picture's shadow: a mesh on the picture's own geometry (bones bend it too), a child of the picture so it takes the
+ *  picture's place, size and turn, drawn by stageCast. All shadows share one stencil mark, so where two overlap (a
+ *  crowd, the parts of one figure) the ground darkens once. */
+function makeCast(picture: Mesh, tex: RawTexture, scene: Scene, o: { phase: number; height: number; width: number; uRepeat: number }): { mesh: Mesh; mat: ShaderMaterial } {
+  const mesh = new Mesh(`cast:${picture.name}`, scene)
+  picture.geometry?.applyToMesh(mesh)
+  mesh.parent = picture
+  const mat = new ShaderMaterial(mesh.name, scene, 'stageCast', {
+    attributes: ['position', 'uv'],
+    uniforms: ['world', 'viewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'sunGround', 'reach', 'groundY', 'cell', 'uRepeat', 'opacity', 'seed', 'etch', 'tint'],
+    samplers: ['tex'],
+    needAlphaBlending: true,
+  })
+  mat.setTexture('tex', tex)
+  mat.alphaMode = Constants.ALPHA_MULTIPLY
+  mat.disableDepthWrite = true
+  mat.depthFunction = Constants.ALWAYS   // lies on the floor, which writes its depth: the floor never cuts it
+  mat.backFaceCulling = false
+  mat.stencil.enabled = true
+  mat.stencil.func = Constants.NOTEQUAL
+  mat.stencil.funcRef = CAST_STENCIL
+  mat.stencil.opStencilDepthPass = Constants.REPLACE
+  mat.setFloat('phase', o.phase).setFloat('height', o.height).setFloat('width', o.width).setFloat('uRepeat', o.uRepeat)
+    .setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('seed', (o.phase * 13.7) % 31)
+    .setFloat('opacity', 0).setFloat('etch', 0).setFloat('reach', 1).setFloat('groundY', 0)
+  mat.setVector4('cell', new Vector4(0, 0, 1, 1)).setVector2('sunGround', new Vector2(1, 0)).setVector3('tint', new Vector3(0.27, 0.23, 0.18))
+  mesh.material = mat
+  mesh.metadata = { noGBuffer: true }   // the look draws no ink line around a shadow
+  mesh.isPickable = false
+  mesh.isVisible = false
+  mesh.alwaysSelectAsActiveMesh = true   // laid down in the shader: the upright picture's box is not where it shows
+  picture.onDisposeObservable.add(() => mat.dispose())
+  return { mesh, mat }
+}
+
+/** The stencil value every cast shadow marks the pixels it darkened with. */
+const CAST_STENCIL = 1
