@@ -1,0 +1,225 @@
+{
+  "bundle": "babylonia-old-babylonian",
+  "era": "sumer-uruk",
+  "era_label": "c. 3000 BCE",
+  "framing": "large head-and-shoulders close-ups from mid-chest up, like comic book close-up panels: the whole head and BOTH shoulders fully drawn with wide empty space on every side, never cut off at the left or right side; only the bottom edge is a straight horizontal cut at mid-chest",
+  "work_suffix": "-cu-b",
+  "note": "Bart 11-12: close-ups need their shoulders (half were cut off in the 4x2 sheets): 2x2 sheets, wide cells.",
+  "characters": [
+    {
+      "char": "ana",
+      "height_m": 0.47,
+      "tags": [
+        "girl",
+        "child",
+        "herder",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Ana, an 11-year-old girl of a semi-nomadic herding family of the steppe, alert, curious, serious face, a long dark braid, a knee-length plain wool tunic with a fringed wool shawl over one shoulder, a cord belt, bare feet",
+      "colours": "tunic undyed oatmeal wool, shawl warm madder red-brown with a darker fringe, cord belt dark brown, hair black-brown",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "hazi",
+      "height_m": 0.51,
+      "tags": [
+        "boy",
+        "child",
+        "herder",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Hazi, a 13-year-old boy of the same herding family, proud and impatient face, short dark curly hair, a short wool kilt to the knee and a wool cloak tied on one shoulder, a sling tucked in his belt, leather sandals",
+      "colours": "kilt light brown wool, cloak dark ochre-brown, sling and sandals dark leather brown, hair black",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "nunu",
+      "height_m": 0.49,
+      "tags": [
+        "woman",
+        "elder",
+        "grandmother",
+        "nomad",
+        "closeup"
+      ],
+      "look": "Nunu, the grandmother of the family, a stern weathered old woman with deep lines, slightly bent, a long dark wool dress and a heavy shawl over her head and shoulders, a tall wooden staff",
+      "colours": "dress dark indigo-grey wool, shawl deep brown with a thin red border, staff weathered wood brown, grey hair under the shawl",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "abu",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "father",
+        "hunter",
+        "nomad",
+        "closeup"
+      ],
+      "look": "the father, a lean tired hunter in his thirties, short black beard, hair tied back, a knee-length wool tunic, a cloak, a short wooden spear with a stone point, sandals",
+      "colours": "tunic sand-brown wool, cloak dark olive-brown, spear shaft weathered wood, sandals leather brown, hair and beard black",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "dudu",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "uruk",
+        "temple",
+        "counter",
+        "closeup"
+      ],
+      "look": "Dudu, a temple grain counter of Uruk in his forties, shaven head, clean-shaven, a plain wool wrap over one shoulder and a wool kilt with a cord belt, a small leather bag, barefoot",
+      "colours": "kilt and wrap undyed cream wool, cord belt dark brown, bag tan leather",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "bara",
+      "height_m": 0.53,
+      "tags": [
+        "woman",
+        "uruk",
+        "farmer",
+        "closeup"
+      ],
+      "look": "Bara, a farmer woman of Uruk in her thirties, long dark hair tied back, a plain wool wrap garment over one shoulder to the ankles, barefoot",
+      "colours": "wrap undyed oatmeal wool with a faded madder-red border, hair black-brown",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    },
+    {
+      "char": "scribe",
+      "height_m": 0.55,
+      "tags": [
+        "man",
+        "uruk",
+        "scribe",
+        "closeup"
+      ],
+      "look": "a temple scribe of Uruk in his fifties, shaven head, clean-shaven, a plain kilt and a wrap over one shoulder, barefoot",
+      "colours": "kilt and wrap bleached linen-white wool, skin warm light-brown",
+      "poses": [
+        [
+          "bust-low",
+          "head and shoulders seen from below (the viewer looks up at the person), three-quarter, determined face"
+        ],
+        [
+          "bust-high",
+          "head and shoulders seen from above (the viewer looks down at the person), three-quarter, looking up, worried face"
+        ],
+        [
+          "bust-afraid",
+          "head and shoulders, three-quarter, afraid: eyes wide, brows up, mouth slightly open, no teeth"
+        ],
+        [
+          "bust-amazed",
+          "head and shoulders, three-quarter, amazed and curious: eyes wide, lips parted in wonder, no teeth"
+        ]
+      ]
+    }
+  ]
+}

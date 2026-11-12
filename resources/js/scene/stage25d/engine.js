@@ -141,6 +141,7 @@ export async function createStage25d (host, opts = {}) {
   let framesAhead = 0       // how far animations ran on while that time stood still
   let last = performance.now()
   let destroyed = false
+  let parked = false        // off screen between two stage scenes: no frames drawn, the WebGL context kept
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
   let bands = []            // the ground bands (set.groundBands), live like the layers
   let skyNow = {}           // the sky picture's own values (set.skyLayer), live like the layers
@@ -376,13 +377,17 @@ export async function createStage25d (host, opts = {}) {
       if (!stage) {
         stage = new Stage(canvas, lib)
         startLoop()
+      } else if (parked) {
+        parked = false
+        last = performance.now()
+        startLoop()
       }
       lookNow = { ...(cfgNow.look ?? {}) }
       stage.setLook(lookNow)
       const next = stageScene(cfgNow)
       await stage.build(next, lib)
       syncWorld(cfgNow.world)   // not awaited: the set shows now, the world builds in when it has downloaded
-      canvas.style.visibility = ''   // the first pictures are ready: until then the host's colour, never the empty stage's paper
+      if (!parked) canvas.style.visibility = ''   // the first pictures are ready: until then the host's colour, never the empty stage's paper
       scene = next
       layers = next.set.layers
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
@@ -454,6 +459,13 @@ export async function createStage25d (host, opts = {}) {
       lead = Number(cfgNow.narration_at_s) || 0
       cfgSig = structureSig(cfgNow)
       host.dataset.stage25dReady = '1'
+    },
+    /** A picture panel between two stage scenes: hide the canvas and stop drawing; show() brings it back. */
+    park () {
+      if (!stage || parked || destroyed) return
+      parked = true
+      stage.engine.stopRenderLoop()
+      canvas.style.visibility = 'hidden'
     },
     /** Load the next scene's pictures into the cache show() reads, drawing nothing (the player, while a scene plays). */
     async preload (cfgNext) {

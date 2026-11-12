@@ -1,4 +1,4 @@
-import{e as n}from"./dom-1akfPxNw.js";import{t as d}from"./i18n-DoByrmTl.js";const y=4e3,b=1400,x=["option_a","option_b"],v=m=>m==="option_b"?d("Option B"):d("Option A");let _=!1;function g(){if(_)return;_=!0;const m=document.createElement("style");m.textContent=`
+import{e as n}from"./dom-DXxEHj4M.js";import{t as d}from"./i18n-DoByrmTl.js";const y=4e3,b=1400,x=["option_a","option_b"],v=m=>m==="option_b"?d("Option B"):d("Option A");let _=!1;function g(){if(_)return;_=!0;const m=document.createElement("style");m.textContent=`
     @keyframes sg-slide-in { 0% { transform: translateY(14px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
     @keyframes sg-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
     @keyframes sg-chip-up { 0% { transform: translateY(0) scale(0.8); opacity: 0; } 20% { opacity: 1; transform: translateY(-6px) scale(1.1); } 100% { transform: translateY(-34px) scale(1); opacity: 0; } }

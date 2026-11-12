@@ -34,11 +34,11 @@ POSE_WORDS = ('(1) standing still, quiet watchful face, mouth closed, (2) walkin
 
 # the History Lines notes (vault topics/history-lines/notes.md), verbatim where they are Bart's words
 INK = ('Draw a character pose sheet as a clean black-and-white educational comic illustration: {era} The same person '
-       'eight times, {look}, in a grid of 4 columns and 2 rows, {framing}, each pose separate with wide '
+       '{count} times, {look}, in a grid of {cols} columns and 2 rows, {framing}, each pose separate with wide '
        'space around it, nothing touching: {poses}. Each figure turned exactly as its number says (a character turnaround: '
        'front, three-quarter, side, three-quarter back, back); three-quarter means body AND face turned about 45 degrees, '
        'both eyes visible; same '
-       'face, same hair, same clothes, same proportions in all eight. Use crisp black contours, controlled hatching and '
+       'face, same hair, same clothes, same proportions in all of them. Use crisp black contours, controlled hatching and '
        'cross-hatching only in the deepest shadows. Keep broad areas of white inside the clothes. Background: solid flat '
        'pure green #00FF00 everywhere around and between the figures, no ground, no shadows, no props except what a pose '
        'holds. No color on the figures, no grey washes, no text, labels or watermarks. Very low texture; no dots, '
@@ -75,7 +75,8 @@ def work_dir(job: dict, char: dict) -> Path:
 def ink(job: dict, char: dict, refs: list[str]) -> None:
     era = prompts.ERA.get(job['era'], job['era'])
     make_image(INK.format(era=era, look=char['look'], poses=pose_words(char),
-                          framing=job.get('framing', 'full body from head to feet')), str(work_dir(job, char) / 'ink.png'),
+                          framing=job.get('framing', 'full body from head to feet'),
+                          count={4: 'four', 8: 'eight'}[len(pose_keys(char))], cols=len(pose_keys(char)) // 2), str(work_dir(job, char) / 'ink.png'),
                [str(prompts.INK_ANCHOR), *refs], False, TIMEOUT_S)
 
 

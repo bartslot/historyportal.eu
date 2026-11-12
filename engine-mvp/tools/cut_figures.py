@@ -150,8 +150,9 @@ def trim_box(im: Image.Image) -> tuple:
 
 
 def main(sheet: str, char: str, height_m: float, out_dir: str, poses: list[str] = POSES) -> None:
-    if len(poses) != 8:
-        sys.exit(f'{sheet}: need 8 pose names, got {len(poses)}')
+    if len(poses) not in (4, 8):
+        sys.exit(f'{sheet}: need 4 (a 2x2 sheet) or 8 (a 4x2 sheet) pose names, got {len(poses)}')
+    count, half = len(poses), len(poses) // 2
     rgb = np.array(Image.open(sheet).convert('RGB'))
     ink = green_key.key(rgb)[1] > 0.5 if green_key.is_green_sheet(rgb) else rgb.min(axis=2) <= WHITE
     blobs, n = ndi.label(ndi.binary_dilation(ink, iterations=MERGE_PX))
@@ -159,11 +160,11 @@ def main(sheet: str, char: str, height_m: float, out_dir: str, poses: list[str] 
     order = np.argsort(areas)[::-1] + 1
     objs = ndi.find_objects(blobs)
     box = lambda k: (objs[k - 1][0].start, objs[k - 1][0].stop, objs[k - 1][1].start, objs[k - 1][1].stop)
-    if n < 8:
+    if n < count:
         sys.exit(f'{sheet}: only {n} figures found')
-    seeds = {int(k): list(box(int(k))) for k in order[:8]}
+    seeds = {int(k): list(box(int(k))) for k in order[:count]}
     members = {k: [k] for k in seeds}
-    for k in order[8:]:   # a loose piece (a raised hand, a tool tip) joins the nearest figure
+    for k in order[count:]:   # a loose piece (a raised hand, a tool tip) joins the nearest figure
         b = box(int(k))
         cx, cy = (b[2] + b[3]) / 2, (b[0] + b[1]) / 2
         near = min(seeds, key=lambda s: (max(seeds[s][2] - cx, 0, cx - seeds[s][3])) ** 2 + (max(seeds[s][0] - cy, 0, cy - seeds[s][1])) ** 2)
@@ -172,7 +173,7 @@ def main(sheet: str, char: str, height_m: float, out_dir: str, poses: list[str] 
     boxes = [tuple(v) for v in seeds.values()]
     masks = [np.isin(blobs, members[k]) for k in seeds]
     paired = sorted(zip(boxes, masks), key=lambda p: (p[0][0] + p[0][1]) / 2)
-    ordered_p = sorted(paired[:4], key=lambda p: p[0][2]) + sorted(paired[4:], key=lambda p: p[0][2])
+    ordered_p = sorted(paired[:half], key=lambda p: p[0][2]) + sorted(paired[half:], key=lambda p: p[0][2])
     ordered = [p[0] for p in ordered_p]
     pad = 6
     imgs = [cutout(rgb, (max(0, b[0] - pad), min(rgb.shape[0], b[1] + pad), max(0, b[2] - pad), min(rgb.shape[1], b[3] + pad)), m) for b, m in ordered_p]

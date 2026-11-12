@@ -1157,13 +1157,13 @@ Alpine.data('lessonGame', (lesson) => ({
       try {
         const host = document.getElementById('background-layer')
         if (!host) return
-        this._destroyParallax()
         if (_diorama) { try { _diorama.destroy() } catch (_) { /* already detached */ } _diorama = null }
         _stage25d ??= mountStage25d(host)   // a promise: two quick scenes share one mount
         const stage = await _stage25d
         if (req !== this._parallaxReq) return
         await stage.show(scene.config.stage25d)
         if (req !== this._parallaxReq) return
+        this._destroyParallax()   // a picture panel before stays up until the set is drawn: no black between them
         if (_bgCanvas) _bgCanvas.style.opacity = '0'
         host.style.opacity = '1'
         if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
@@ -1175,6 +1175,16 @@ Alpine.data('lessonGame', (lesson) => ({
         this._destroyStage25d()
         this._showFlatColor(scene.background_color, scene.background_gradient)
       }
+    },
+
+    // A picture panel between two stage scenes parks the stage instead of tearing it down: a remount plus a set
+    // rebuild left ~2 s of black after the panel (the Uruk lion panels). It loads the next stage scene meanwhile.
+    _leaveStage25d (scene) {
+      const index = _sceneQueue.indexOf(scene)
+      const ahead = index >= 0 && _sceneQueue.slice(index + 1).some(isStage25d)
+      if (!_stage25d || !ahead) return this._destroyStage25d()
+      window.__stage25d = null
+      _stage25d.then(stage => { stage.park?.(); this._preloadNextStage(stage, scene) }).catch(() => { /* never mounted */ })
     },
 
     _destroyStage25d () {
@@ -1687,7 +1697,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // persistent map survives it (see _teardownStageScene).
       this._teardownStageScene()
       this._destroyDiorama()
-      if (!isStage25d(scene)) this._destroyStage25d()   // consecutive stage scenes keep one WebGL context
+      if (!isStage25d(scene)) this._leaveStage25d(scene)   // consecutive stage scenes keep one WebGL context
 
       // Teacher text annotations for this scene (URLs render as link chips → iframe modal).
       // Before the map early-return, so a map scene clears the previous scene's texts too.
