@@ -32,7 +32,7 @@ Effect.ShadersStore.stageGroundVertexShader = `
 
 /** Slots 1..5 of the floor (slot 0 is `tex`): each one's own sampler, blended in over a noise-broken border. */
 const SLOT_GLSL = [1, 2, 3, 4, 5].map((i) => `
-    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}], slotPersp[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); pp = mix(pp, slotPersp[${i}], k${i}); }`).join('')
+    if (slotCount > ${i}.5) { float k${i} = smoothstep(slotFrom[${i}] * 0.85, slotFrom[${i}] * 1.15 + 0.5, dn); c = mix(c, slotTile(tex${i}, slotTiles[${i}], slotPersp[${i}]), k${i}); own = mix(own, slotColour[${i}], k${i}); rec = mix(rec, slotRecolour[${i}], k${i}); pp = mix(pp, slotPersp[${i}], k${i}); }`).join('')
 
 Effect.ShadersStore.stageGroundFragmentShader = `
   precision highp float;
@@ -43,6 +43,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   uniform mat4 houseVP;         // the house camera: a perspective terrain is laid from where it was painted
   uniform float houseTop;       // where the horizon is in that view (ndc y)
   uniform vec3 slotColour[6];   // each slot's own median colour: its far floor fades into it, not into one tint
+  uniform vec3 slotRecolour[6]; // each slot times this per channel: its soil onto the world's (soil.ts), else 1 1 1
   uniform vec3 base, horizonTint, camPos;
   uniform vec3 ambient;         // the time of day's light (daylight.ts) on the painted ground
   uniform float useNear, nearTop, nearSpan;
@@ -79,12 +80,13 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   }
   void main(void) {
     float d = distance(vW.xz, camPos.xz);
-    vec3 c = base, own = base;
+    vec3 c = base, own = base, rec = vec3(1.0);
     float pp = 0.0;   // how much of this pixel is a perspective painting (it does its own distance)
     if (useTex > 0.5) {
       // near to far, each ground picture from its distance on (set.groundSlots), the borders broken by a world noise
       float dn = d * (1.0 + 0.35 * (fbm(vW.xz * 0.05 + 3.0) - 0.5));
-      c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0]; pp = slotPersp[0];${SLOT_GLSL}
+      c = slotTile(tex, slotTiles[0], slotPersp[0]); own = slotColour[0]; rec = slotRecolour[0]; pp = slotPersp[0];${SLOT_GLSL}
+      c *= rec; own *= rec;
     }
     // the time of day lights the ground; the horizon it fades into is lit already where it is ground (stage.ts)
     c *= ambient; own *= ambient;
@@ -170,7 +172,7 @@ Effect.ShadersStore.stageStainFragmentShader = `
 /** One ground picture of the floor: its texture, the metres one tile covers, from how far out it lies. */
 /** persp: painted from eye height to the horizon (library `perspective`), laid through the house camera; its `tile` is
  *  then how often it repeats across one frame. */
-export interface FloorSlot { tex: RawTexture; tile: number; from: number; colour: [number, number, number]; persp?: boolean }
+export interface FloorSlot { tex: RawTexture; tile: number; from: number; colour: [number, number, number]; persp?: boolean; recolour?: readonly number[] }
 export interface GroundLook { slots: FloorSlot[]; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; grain: number }
 /** The near band (set.near): its texture and the house camera's view-projection it is projected from. */
 export interface NearBand { tex: RawTexture; vp: Matrix; top: number; span: number; tileable: boolean }
@@ -184,7 +186,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
   const mesh = MeshBuilder.CreateGround('ground', { width: 2400, height: 2400 }, scene)
   const mat = new ShaderMaterial('ground', scene, 'stageGround', {
     attributes: ['position'],
-    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotPersp', 'houseVP', 'houseTop', 'slotColour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos', 'ambient'],
+    uniforms: ['world', 'viewProjection', 'useTex', 'tileScale', 'wash', 'grainSize', 'slotCount', 'slotFrom', 'slotTiles', 'slotPersp', 'houseVP', 'houseTop', 'slotColour', 'slotRecolour', 'grain', 'fadeNear', 'fadeFar', 'detail', 'vary', 'mixTile', 'useNear', 'nearTop', 'nearSpan', 'nearVP', 'base', 'horizonTint', 'camPos', 'ambient'],
     samplers: ['tex', 'tex1', 'tex2', 'tex3', 'tex4', 'tex5', 'nearTex'],
     needAlphaBlending: true,   // sorted with the layers (it outputs alpha 1): see GROUND_SLOT
   })
@@ -210,6 +212,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
       mat.setFloat('useTex', slots.length ? 1 : 0).setFloat('slotCount', slots.length)
         .setFloats('slotFrom', pad((sl) => sl.from, 1e6)).setFloats('slotTiles', pad((sl) => sl.tile || GROUND_TILE_M, GROUND_TILE_M)).setFloats('slotPersp', pad((sl) => (sl.persp ? 1 : 0), 0))
         .setArray3('slotColour', SLOT_SAMPLERS.flatMap((_, i) => slots[i]?.colour ?? l.base))
+        .setArray3('slotRecolour', SLOT_SAMPLERS.flatMap((_, i) => [...(slots[i]?.recolour ?? [1, 1, 1])]))
         .setFloat('grain', l.grain).setFloat('fadeNear', l.fadeNear).setFloat('fadeFar', l.fadeFar)
         .setVector3('base', Vector3.FromArray(l.base)).setVector3('horizonTint', Vector3.FromArray(l.tint))
     },

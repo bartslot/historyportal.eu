@@ -106,6 +106,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform vec3 hazeTint;
   uniform float paper, grain, patches, wash;   // the paper (look.ts sheet*), anchored to this picture
   uniform vec3 washColour;
+  uniform vec3 recolour;                       // a terrain strip: times this per channel, its own soil to the world's (stage.ts soil)
   uniform vec2 grainUV;                        // texture uv per 1080p px at the house pose (fixed: grain never swims)
   // no sticker look (look.ts): a painted edge instead of a scissor cut, a foot that sinks into the floor, one light
   uniform float edgeSoft, footM, grounding, grass, light, sunSide, drift, height;
@@ -180,6 +181,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       uv.y += k * 0.002 * sin(uv.x * 45.0 / uRepeat + time * speed * 1.6);
     }
     vec4 c = tap(uv);                       // premultiplied
+    c.rgb *= recolour;
     #ifdef BLINK
     if (blinkT > 0.0) c = lidOver(lidOver(c, uv, eyeBox0, eyeLash0), uv, eyeBox1, eyeLash1);
     #endif
@@ -466,6 +468,8 @@ export interface LayerHandle {
   setPaper(p: Paper, grainUV: readonly [number, number]): void
   /** ground bands: the share of the height (from the bottom) whose alpha ramps to 0 */
   setBottomFade(f: number): void
+  /** a terrain strip: multiply its colours per channel (1 1 1 = as painted) */
+  setRecolour(k: readonly number[]): void
   /** no sticker look: painted edge, grounding (footM 0 = none: not standing), shared light (look.ts aliveOf) */
   setAlive(a: Alive): void
   /** sky only: share of the plane's height, from the bottom, below the eye line (painted as the far floor) */
@@ -535,7 +539,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : [])],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : [])],
     samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : [])],
     needAlphaBlending: true,
@@ -558,6 +562,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   let bentOf: BentPicture | null = null, bentSig = ''
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
+  mat.setVector3('recolour', new Vector3(1, 1, 1))
   mat.setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('feather', 0)
   mat.setFloat('groundLine', -1).setFloat('lineFade', 0).setFloat('lineThin', 0).setFloat('haze', 0).setFloat('lineBrown', 0).setFloat('inkMul', 1).setFloat('paper', 0).setFloat('grain', 0).setFloat('patches', 0)
   mat.setFloat('edgeSoft', 0).setFloat('bottomFade', 0).setFloat('footM', 0).setFloat('grounding', 0).setFloat('grass', 0).setFloat('light', 0).setFloat('sunSide', 1).setFloat('drift', 0)
@@ -631,6 +636,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       if (t) mat.setVector3('toneLight', Vector3.FromArray(t.light)).setVector3('toneShade', Vector3.FromArray(t.shade)).setVector3('toneUnder', Vector3.FromArray(t.under))
     },
     setGroundLine: (f) => { mat.setFloat('groundLine', f) },
+    setRecolour: (k) => { mat.setVector3('recolour', Vector3.FromArray(k)) },
     setFeather: (f, tint) => {
       mat.setFloat('feather', Math.max(0, Math.min(1, f)))
       if (tint) mat.setVector3('featherTint', Vector3.FromArray(tint))

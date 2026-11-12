@@ -291,6 +291,27 @@
             @endforeach
         </div>
 
+        {{-- The world's soil colour (Bart 11-12: one per world, and the teacher can change it): the floor's earth and every
+             earth strip take it, live on the canvas; the reset gives back the terrain's own colours. --}}
+        <template x-if="info?.role === 'terrain'">
+            <x-ui.panel-row :label="__('Soil')" data-stage25d-soil>
+                <div class="flex w-full items-center gap-2">
+                    <label class="relative grid h-8 w-8 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md border border-panel-hairline"
+                           :style="`background: ${info.soil ?? 'transparent'}`" data-tooltip="{{ __('Soil') }}">
+                        <input type="color" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="{{ __('Soil') }}"
+                               data-stage25d-soil-colour :value="info.soil ?? '#8a7356'"
+                               x-on:input="info = { ...info, soil: $event.target.value }; window.__stage25d?.setSoil($event.target.value)" />
+                    </label>
+                    <span class="min-w-0 flex-1"></span>
+                    <button type="button" class="btn btn-ghost btn-square btn-sm" data-stage25d-soil-reset x-show="info.soil" x-cloak
+                            aria-label="{{ __('Terrain colours') }}" data-tooltip="{{ __('Terrain colours') }}"
+                            x-on:click="info = { ...info, soil: null }; window.__stage25d?.setSoil(null)">
+                        <x-icons.arrow-uturn-left class="h-4 w-4" />
+                    </button>
+                </div>
+            </x-ui.panel-row>
+        </template>
+
         {{-- The terrain's strips (Bart 11-12: the ground bands live in the Terrain, not as rows of the World): a click opens
              one; on the canvas a strip drags up and down for its distance. --}}
         <template x-if="info?.role === 'terrain' && info?.strips?.length">

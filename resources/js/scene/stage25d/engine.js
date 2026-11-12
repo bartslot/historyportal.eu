@@ -224,7 +224,7 @@ export async function createStage25d (host, opts = {}) {
     if (!scene || !stage) return
     const off = (l, id) => (hidden.has(id) ? { ...l, opacity: 0, keys: [] } : l)
     const daylight = (cfg?.world?.src ? worldDaylight(daylightNow) : daylightNow) ?? undefined
-    scene = { ...scene, set: { ...scene.set, daylight, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
+    scene = { ...scene, set: { ...scene.set, daylight, soil: cfg?.set?.soil, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
     stage.rebind(scene)
   }
   /** 'band-2' -> 2 when that ground band exists, else -1. */
@@ -254,7 +254,7 @@ export async function createStage25d (host, opts = {}) {
     redraw()
     return saved
   }
-  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined }, look: lookNow, camera: camNow, camera_more: camMore, camera_motion: camMotion })
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined, soil: cfg?.set?.soil }, look: lookNow, camera: camNow, camera_more: camMore, camera_motion: camMotion })
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
@@ -754,7 +754,7 @@ export async function createStage25d (host, opts = {}) {
           return { id: `band-${n}`, label: labels.find((row) => row.id === `band-${n}`)?.label ?? '', file: g.src ?? (a ? `${libData.base}${a.file}` : null) }
         })
         if (!t && !strips.length) return null
-        return { id, asset: t?.asset.id ?? null, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t?.flip, label: t ? layerLabel({}, t.asset, lang) : (TERRAIN_NAME[lang] ?? 'Terrain'), file: t ? `${libData.base}${t.asset.file}` : null, motion: null, strips }
+        return { id, asset: t?.asset.id ?? null, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t?.flip, label: t ? layerLabel({}, t.asset, lang) : (TERRAIN_NAME[lang] ?? 'Terrain'), file: t ? `${libData.base}${t.asset.file}` : null, motion: null, strips, soil: cfg.set?.soil ?? null }
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
@@ -1031,6 +1031,17 @@ export async function createStage25d (host, opts = {}) {
       }
       redraw()
       if (api.sceneId != null) opts.onDaylight?.(next, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-edited'))
+    },
+    /** The world's soil colour (set.soil, '#rrggbb'; null: the terrain's own): live on the stage, saved (onSoil). */
+    setSoil (hex) {
+      if (!cfg) return
+      const soil = typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : null
+      const { soil: _old, ...set } = cfg.set ?? {}
+      cfg = { ...cfg, set: soil ? { ...set, soil } : set }
+      seenEdit = liveSig()
+      redraw()
+      if (api.sceneId != null) opts.onSoil?.(soil, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
     /** New ground pictures for the floor: rebuilt on stage, saved (onGroundSlots). The nearest always starts at 0 m. */

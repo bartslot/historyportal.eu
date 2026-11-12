@@ -39,6 +39,7 @@ import { LessonDoc } from './edits'
 import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
 import { makeSky } from './sky-gl'
+import { isSoil, NO_RECOLOUR, soilRecolour } from './soil'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
@@ -50,7 +51,7 @@ type Stain = ReturnType<typeof makeStain>
  *  standing on the floor (a band's Size would shrink it both ways and lift it off the floor) */
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
-interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand }   // index: in set.groundBands; z: where it stands now
+interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
 interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
@@ -95,10 +96,12 @@ export class Stage {
   cloudBase = BUILT_IN_CLOUD_BASE
   /** the time of day the scene is lit by (daylight.ts), and what it was made from: relit when that changes */
   light: Light = daylightOf(undefined)
+  private soilKey: string | null = null
   private lightKey: unknown = null
+  private soilKey: string | null = null
   private skyAsset: Asset | null = null
   /** what the floor's look is made from, kept so a new time of day relights it without a rebuild */
-  private groundIn: { slots: FloorSlot[]; far: RGB | null | undefined; banded: boolean; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
+  private groundIn: { slots: (FloorSlot & { asset: Asset })[]; far: RGB | null | undefined; banded: boolean; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
   private hemi: HemisphericLight
   private sunLamp: DirectionalLight
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -342,6 +345,8 @@ export class Stage {
     this.cloudKey = '\0'   // never a real key: makeClouds below always runs (a painted sky: the last scene's clouds go)
     this.lightKey = null
     this.relight(s)
+    this.soilKey = null
+    this.resoil(s)
     this.makeClouds()
     this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
@@ -391,6 +396,25 @@ export class Stage {
     this.ground.set(look)
     this.ground.light(amb)
     this.strewKey = ''   // the grass fades into the air's colour, set when it is strewn
+  }
+
+  /** One soil colour per world (set.soil, Bart 11-12): the floor's earth and every earth strip take it, each keeping its
+   *  own light and dark. With no soil set the strips take the nearest terrain's colour, so they still match the floor;
+   *  water, built floors and snow keep their paint (soil.ts). Only when set.soil changed. */
+  private resoil(s: Scene) {
+    const key = s.set.soil ?? ''
+    if (key === this.soilKey) return
+    this.soilKey = key
+    const soil = s.set.soil ? hexRgb(s.set.soil) : null
+    const g = this.groundIn
+    const first = g?.slots[0]
+    const target = soil ?? (first && isSoil(first.asset) ? first.colour : null)
+    if (g) {
+      this.groundIn = { ...g, slots: g.slots.map((sl) => ({ ...sl, recolour: soil && isSoil(sl.asset) ? soilRecolour(sl.colour, soil) : NO_RECOLOUR })) }
+      this.lightKey = null
+      this.relight(s)
+    }
+    for (const b of this.bands) b.handle.setRecolour(target && b.colour && isSoil(b.asset) ? soilRecolour(b.colour, target) : NO_RECOLOUR)
   }
 
   /** The own sky's clouds (clouds.ts): made again when the scene, the chosen cut-outs or the Amount changed. */
@@ -696,7 +720,8 @@ export class Stage {
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
       handle.mesh.isPickable = index >= 0
-      out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g })
+      const rows = (bandColours.get(urlOf(lib, found, g)) ?? []).filter((c): c is RGB => !!c)
+      out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g, colour: rows.length ? mean3(rows) : null })
     }
     for (const [index, g] of (s.set.groundBands ?? []).entries()) {
       const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
@@ -741,6 +766,7 @@ export class Stage {
     const renderH = this.engine.getRenderHeight()
     const paper = paperOf(this.look)
     this.relight(s)
+    this.resoil(s)
     const lit = this.light.preset
     const run = Math.hypot(this.sunDir.x, this.sunDir.z) || 1
     const sunGround = [this.sunDir.x / run, this.sunDir.z / run] as const   // the light's direction along the ground

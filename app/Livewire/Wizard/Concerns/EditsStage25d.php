@@ -298,9 +298,10 @@ trait EditsStage25d
             $parts = $preset['set'];
             $stage['bundle'] = $preset['bundle'];
             $stage['world_id'] = $world;
-            unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight']);   // the world's sky, not the scene's own
+            unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight'], $set['soil']);   // the world's sky and soil, not the scene's own
             $set = ['sky' => $parts['sky'] ?? null, 'groundSlots' => $parts['groundSlots']]
                 + (is_array($parts['daylight'] ?? null) ? ['daylight' => $parts['daylight']] : [])
+                + (is_string($parts['soil'] ?? null) ? ['soil' => $parts['soil']] : [])
                 + (empty($parts['groundBands']) ? [] : ['groundBands' => $parts['groundBands']]) + $set;
             $set['layers'] = [...array_map(fn ($l) => $l + ['world' => true], $parts['layers'] ?? []), ...$own];
             // a world may set a look value it needs (calm water strews no foam): only keys the panel offers, in range
@@ -362,6 +363,7 @@ trait EditsStage25d
             'parts' => [
                 'set' => ['sky' => $set['sky'] ?? null, 'groundSlots' => $set['groundSlots']]
                     + (is_array($set['daylight'] ?? null) ? ['daylight' => $set['daylight']] : [])
+                    + (is_string($set['soil'] ?? null) ? ['soil' => $set['soil']] : [])
                     + (empty($set['groundBands']) ? [] : ['groundBands' => $set['groundBands']]) + ['layers' => $layers],
                 'look' => array_intersect_key((array) ($stage['look'] ?? []), self::LOOK_RANGES),
             ],
@@ -492,6 +494,36 @@ trait EditsStage25d
         if ($clean !== null) {
             $this->storeStage25dSetPart($scene, ['daylight'], $clean);
         }
+    }
+
+    /**
+     * The world's soil colour (config.stage25d.set.soil, Bart 11-12: one soil colour per world, and the teacher can
+     * change it): the floor's earth and every earth strip take it. It goes on this scene and on every other scene of
+     * the lesson standing in the same world. Null takes it away: the terrain's own colours again.
+     */
+    #[On('stage25d:soil')]
+    public function saveStage25dSoil(?string $soil, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId || ($soil !== null && ! preg_match('/^#[0-9a-f]{6}$/i', $soil))) {
+            return;
+        }
+        $world = $scene->config['stage25d']['world_id'] ?? null;
+        $scenes = $world === null ? collect([$scene]) : $scene->lesson->scenes()->get()
+            ->filter(fn (Scene $s) => $s->id === $scene->id || ($s->config['stage25d']['world_id'] ?? null) === $world);
+        foreach ($scenes as $each) {
+            $config = $each->config;
+            if ($soil === null) {
+                unset($config['stage25d']['set']['soil']);
+            } else {
+                $config['stage25d']['set']['soil'] = strtolower($soil);
+            }
+            if ($config !== $each->config) {
+                $this->storeStage25dConfig($each, $config);
+            }
+        }
+        $this->skipQuietRender();   // the stage shows it already (Step3SceneConfigurator::isQuietCall)
+        $this->renderedFingerprint = $this->lessonFingerprint();
     }
 
     /** One scene look value (config.stage25d.look.<key>). */

@@ -28,7 +28,7 @@ const ownSky = (daylight) => !!daylight && !daylight.painted
  *  sliders and the time of day: equal signatures = the same set, nothing to rebuild. Only whether the scene paints its
  *  own sky is structure (a painted sky has a picture to load). */
 export const structureSig = (cfg) => {
-  const { layers = [], groundBands = [], skyLayer = {}, daylight, ...rest } = cfg?.set ?? {}
+  const { layers = [], groundBands = [], skyLayer = {}, daylight, soil, ...rest } = cfg?.set ?? {}   // the soil colour is live (stage.ts resoil), never a rebuild
   const { camera, camera_more, camera_motion, look, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
   return JSON.stringify({ ...unframed, set: { ...rest, ownSky: ownSky(daylight), layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
 }
@@ -39,5 +39,5 @@ const edits = (l) => [...EDITABLE.map((f) => l?.[f] ?? null), boneFields(l)]
  *  changes (undo, redo, import). */
 export const editSig = (cfg) => JSON.stringify([
   (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [], cfg?.camera_motion ?? null,
-  cfg?.set?.daylight ?? null, cfg?.look ?? {},
+  cfg?.set?.daylight ?? null, cfg?.look ?? {}, cfg?.set?.soil ?? null,
 ])

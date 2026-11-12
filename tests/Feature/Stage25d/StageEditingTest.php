@@ -502,7 +502,7 @@ class StageEditingTest extends TestCase
     {
         $scene = $this->scene();
         $config = $scene->config;
-        $config['stage25d']['set'] += ['daylight' => ['time' => 'night'], 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]]];
+        $config['stage25d']['set'] += ['daylight' => ['time' => 'night'], 'soil' => '#7a5c3e', 'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0]]];
         $scene->update(['config' => $config]);
 
         $this->editor($scene)->call('saveStage25dWorldAs', 'Night heath');
@@ -516,9 +516,38 @@ class StageEditingTest extends TestCase
         $set = $scene->fresh()->config['stage25d']['set'];
         $this->assertSame('sky-summer-01', $set['sky']);
         $this->assertArrayNotHasKey('daylight', $set, 'the world\'s painted sky shows');
+        $this->assertArrayNotHasKey('soil', $set, 'the world\'s own soil, not the last one');
 
         $editor->call('pickStage25dWorld', $world->key(), $scene->id);
         $this->assertSame(['time' => 'night'], $scene->fresh()->config['stage25d']['set']['daylight']);
+        $this->assertSame('#7a5c3e', $scene->fresh()->config['stage25d']['set']['soil'], 'a saved world keeps its soil');
+    }
+
+    public function test_the_soil_colour_goes_on_every_scene_of_the_same_world_and_back_off(): void
+    {
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['world_id'] = 'meadow';
+        $scene->update(['config' => $config]);
+        $sibling = $scene->replicate();
+        $sibling->order = 2;
+        $sibling->save();
+        $other = $scene->replicate();
+        $other->order = 3;
+        $other->config = ['stage25d' => ['bundle' => 'nl-prehistory', 'world_id' => 'dunes', 'set' => ['layers' => []]]];
+        $other->save();
+
+        $editor = $this->editor($scene)->call('saveStage25dSoil', '#8A6B4E', $scene->id);
+        $this->assertSame('#8a6b4e', $scene->fresh()->config['stage25d']['set']['soil']);
+        $this->assertSame('#8a6b4e', $sibling->fresh()->config['stage25d']['set']['soil'], 'one soil colour per world');
+        $this->assertArrayNotHasKey('soil', $other->fresh()->config['stage25d']['set'], 'another world keeps its own');
+
+        $editor->call('saveStage25dSoil', 'brown', $scene->id)->call('saveStage25dSoil', '#000000', $scene->id + 99);
+        $this->assertSame('#8a6b4e', $scene->fresh()->config['stage25d']['set']['soil'], 'no colour, or another scene: nothing saved');
+
+        $editor->call('saveStage25dSoil', null, $scene->id);
+        $this->assertArrayNotHasKey('soil', $scene->fresh()->config['stage25d']['set']);
+        $this->assertArrayNotHasKey('soil', $sibling->fresh()->config['stage25d']['set']);
     }
 
     public function test_the_ground_sliders_save_like_every_look_slider(): void
