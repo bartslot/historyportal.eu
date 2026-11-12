@@ -452,6 +452,12 @@ export async function createStage25d (host, opts = {}) {
       cfgSig = structureSig(cfgNow)
       host.dataset.stage25dReady = '1'
     },
+    /** Load the next scene's pictures into the cache show() reads, drawing nothing (the player, while a scene plays). */
+    async preload (cfgNext) {
+      if (!stage || destroyed || !cfgNext) return
+      const lib = withCutouts(await libraryOf(cfgNext.bundle))
+      if (!destroyed) await stage.preload(stageScene(cfgNext), lib)
+    },
     /** What Uitknippen (editor/cutout-dialog.js) opens for one row ('layer-3', 'band-0', 'sky'): the picture as it is
      *  drawn now, and what it was cut from, so a cut-out keeps its real size in metres (Cutouts::heightM). */
     editTarget (id) {

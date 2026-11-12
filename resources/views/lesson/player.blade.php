@@ -156,6 +156,9 @@
                     ? ['predict' => \App\Services\Lessons\PredictSpec::forPlayer($s->config['predict'])] + $s->config
                     : $s->config,
                 'diorama_assets' => \App\Services\Diorama\LibraryAssets::forScene($s),
+                // chapter: the name the lesson gave (null = none), which groups scenes on the bar;
+                // chapter_name: what the bar shows when a lesson has no chapters (never empty)
+                'chapter'      => trim((string) $s->chapter_name) ?: null,
                 'chapter_name' => $s->chapterName(),
                 'year'        => $s->year,
                 'location'    => $s->location,
@@ -416,6 +419,39 @@
     {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
     <div class="lp-grain pointer-events-none absolute inset-0 z-11"></div>
 
+    {{-- Where the lesson's title sits (TitlePosition presets; bottom left by default): the title screen's
+         plain title and the chapter card below share it. --}}
+    @php
+        $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
+        $titleBar = match ($titlePos) {
+            \App\Enums\TitlePosition::TopLeft => 'inset-x-0 top-0 items-start justify-start title-pad-top',
+            \App\Enums\TitlePosition::TopCenter => 'inset-x-0 top-0 items-start justify-center title-pad-top text-center',
+            \App\Enums\TitlePosition::TopRight => 'inset-x-0 top-0 items-start justify-end title-pad-top text-right',
+            \App\Enums\TitlePosition::Center => 'inset-0 items-center justify-center text-center',
+            \App\Enums\TitlePosition::BottomLeft => 'inset-x-0 bottom-0 items-end justify-start title-pad-bottom',
+            \App\Enums\TitlePosition::BottomCenter => 'inset-x-0 bottom-0 items-end justify-center title-pad-bottom text-center',
+        };
+    @endphp
+
+    {{-- ── Chapter card ─────────────────────────────────────────────────────
+         As playback enters a new chapter: its name and year over the stage, a smaller copy of the plain
+         lesson title (same History font, same place, same cinematic shade; no QR, code or Start). It holds
+         for its reading time and fades; the narration starts as it fades (lesson-player.js _showChapterCard).
+         A CSS fade, not an Alpine leave transition: a hidden document never finishes those (see the title screen). --}}
+    <div class="lp-chapter-card pointer-events-none absolute inset-0 z-12 transition-opacity duration-500 ease-out"
+         :class="chapterCardOn && phase === 'INTRO' ? 'opacity-100' : 'opacity-0'" aria-live="polite">
+        <div class="absolute inset-0"
+             style="background:
+                 linear-gradient(to top,  rgba(2,6,23,0.85) 0%, rgba(2,6,23,0.45) 30%, transparent 60%),
+                 linear-gradient(to right, rgba(2,6,23,0.55) 0%, transparent 40%)"></div>
+        <div @class(['title-gutter-x absolute flex', $titleBar])>
+            <h2 lang="{{ $contentLang }}" class="min-w-0 max-w-4xl" x-show="chapterCard">
+                <span class="lp-chapter-card-title block font-history font-bold leading-history tracking-tight text-white" x-text="chapterCard?.name"></span>
+                <span x-show="chapterCard?.year" x-text="chapterCard?.year" class="title-episode mt-2 block font-light text-white/80"></span>
+            </h2>
+        </div>
+    </div>
+
     {{-- ── LAYER 2: Three.js canvas (avatar) ───────────────────────────── --}}
     <canvas id="lesson-avatar-canvas" class="absolute inset-0 z-20 w-full h-full pointer-events-none"></canvas>
     {{-- The narrator's face belongs to the title screen, which already has a framed card for it
@@ -615,9 +651,9 @@
                         <template x-for="(c, i) in chapters" :key="c.index">
                             <button type="button" @click="goToChapter(c.index)" :disabled="!mayEnter(c.index)"
                                     class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition enabled:hover:bg-white/10 disabled:cursor-not-allowed"
-                                    :class="c.index === _sceneIndex ? 'text-primary' : (mayEnter(c.index) ? 'text-white/70' : 'text-white/35')">
+                                    :class="isCurrentChapter(c) ? 'text-primary' : (mayEnter(c.index) ? 'text-white/70' : 'text-white/35')">
                                 <span class="w-6 shrink-0 font-mono text-xs tabular-nums opacity-70" x-text="String(i + 1).padStart(2, '0')"></span>
-                                <span class="min-w-0 flex-1 truncate text-sm" :class="c.index === _sceneIndex ? 'font-bold' : 'font-medium'" x-text="c.name"></span>
+                                <span class="min-w-0 flex-1 truncate text-sm" :class="isCurrentChapter(c) ? 'font-bold' : 'font-medium'" x-text="c.name"></span>
                                 <span class="shrink-0 text-xs tabular-nums opacity-60" x-text="chapterMeta(c)"></span>
                             </button>
                         </template>
@@ -661,7 +697,7 @@
                          or the list: backdrop-filter would become the containing block of the line's
                          corner float, and the list has its own plate. --}}
                     <div data-tooltip-clear :class="!backdropShade && 'rounded-xl border border-white/10 bg-black/70 px-2 backdrop-blur-md'">
-                    {{-- Segmented progress (Spotify-style) — one segment per scene, width ∝ its time.
+                    {{-- Segmented progress (Spotify-style) — one segment per chapter, width ∝ its time.
                          Played fills white, reached-but-not-played a lighter grey, the rest is to come:
                          dimmed and not clickable (a student never jumps past the furthest point).
                          A block the student paces (quiz, map, film) is an estimate, drawn hatched.
@@ -876,17 +912,6 @@
                  default): the series big on the first line, the episode small on the second. Lettered
                  (TitlePoster::LETTERS): the series in ComicRoma, at most two balanced lines, the episode in
                  ComicRoma Lettering; a series with a character ComicRoma lacks stays plain (title-letters.js). --}}
-            @php
-                $titlePos = $lesson->title_position ?? \App\Enums\TitlePosition::BottomLeft;
-                $titleBar = match ($titlePos) {
-                    \App\Enums\TitlePosition::TopLeft => 'inset-x-0 top-0 items-start justify-start title-pad-top',
-                    \App\Enums\TitlePosition::TopCenter => 'inset-x-0 top-0 items-start justify-center title-pad-top text-center',
-                    \App\Enums\TitlePosition::TopRight => 'inset-x-0 top-0 items-start justify-end title-pad-top text-right',
-                    \App\Enums\TitlePosition::Center => 'inset-0 items-center justify-center text-center',
-                    \App\Enums\TitlePosition::BottomLeft => 'inset-x-0 bottom-0 items-end justify-start title-pad-bottom',
-                    \App\Enums\TitlePosition::BottomCenter => 'inset-x-0 bottom-0 items-end justify-center title-pad-bottom text-center',
-                };
-            @endphp
             <div x-show="!lesson.title_logo_url && !lesson.title_poster" @class(['title-gutter-x pointer-events-none absolute flex', $titleBar])
                  data-title-position="{{ $titlePos->value }}" style="z-index: 10;">
                 <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>

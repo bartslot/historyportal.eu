@@ -71,9 +71,10 @@ def test_bloom_mix_rejects_all_recall(lesson):
     assert any(e.startswith("Bloom mix") for e in errors_of(lesson))
 
 
-def test_needs_a_power_meter(lesson):
+def test_a_story_needs_no_power_meter(lesson):
+    # Bart 11-12: stories stay stories; a timed game is allowed, never required
     lesson["scenes"][1]["interaction"] = None
-    assert any("power-meter moments" in e for e in errors_of(lesson))
+    assert not any("power-meter moments" in e for e in errors_of(lesson))
 
 
 def test_quiz_correct_index_in_range(lesson):
@@ -551,3 +552,13 @@ def test_world_logic_people_never_stand_on_water_and_animals_stay_near():
     assert check_world([ok]) == ([], [])
     bust = {'id': 'sc03', 'set': {'ground': 'terrain-river-water-01'}, 'figures': [{'char': 'ana', 'pose': 'bust'}]}
     assert check_world([bust])[0] == []
+
+
+def test_a_painted_panel_needs_no_stage_but_its_picture(lesson, tmp_path):
+    sc = lesson["scenes"][1]
+    for k in ("set", "figures", "balloons", "camera", "sound"):
+        sc.pop(k, None)
+    sc["panel"] = {"image": str(tmp_path / "sc02.webp")}
+    assert any("panel picture" in e for e in errors_of(lesson))
+    (tmp_path / "sc02.webp").write_bytes(b"RIFF")
+    assert errors_of(lesson) == []

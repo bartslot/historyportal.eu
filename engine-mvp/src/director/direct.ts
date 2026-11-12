@@ -190,14 +190,24 @@ export type DirectOptions = { libraries?: Record<string, Library> }
 
 /** A map scene (kind 'map') is the lesson map, not the stage: nothing here directs it. */
 export const isMapScene = (s: Scene): boolean => s.kind === 'map'
+/** A painted panel (`panel: {image}`) is a picture scene, not the stage: passed through like a map. */
+export const isPanelScene = (s: Scene): boolean => !!s.panel
+/** Not on the stage: the director leaves it as it is, timing, chapter and all. */
+export const isOffStage = (s: Scene): boolean => isMapScene(s) || isPanelScene(s)
+
+/** True when scene i opens a new chapter after another one: the player shows the chapter card there, and that
+ *  card is the breath before it. A lesson with chapters gets no other lead before its narration (Bart 11-12:
+ *  "only new scenes get more time"). */
+export const opensChapter = (scenes: Scene[], i: number): boolean =>
+  i > 0 && !!scenes[i].chapter && scenes[i].chapter !== scenes[i - 1].chapter
 
 export function direct(lesson: Lesson, library: Library | null = null, opts: DirectOptions = {}): Lesson {
   // Map scenes leave the run and come back at their own place, untouched: the stage scenes around them are
   // directed as if they were neighbours (a map is a cut to another medium, not a shot on the stage).
-  if (lesson.scenes.some(isMapScene)) {
-    const staged = direct({ ...lesson, scenes: lesson.scenes.filter((s) => !isMapScene(s)) }, library, opts)
+  if (lesson.scenes.some(isOffStage)) {
+    const staged = direct({ ...lesson, scenes: lesson.scenes.filter((s) => !isOffStage(s)) }, library, opts)
     let k = 0
-    return { ...staged, scenes: lesson.scenes.map((s) => (isMapScene(s) ? structuredClone(s) : staged.scenes[k++])) }
+    return { ...staged, scenes: lesson.scenes.map((s) => (isOffStage(s) ? structuredClone(s) : staged.scenes[k++])) }
   }
   const src = structuredClone(lesson)
   src.scenes = src.scenes.map((s) => {
@@ -215,7 +225,9 @@ export function direct(lesson: Lesson, library: Library | null = null, opts: Dir
   // a rough clock first (no silences) to space the silences in time, then the real timing
   const rough = src.scenes.map((s) => timeScene(s, false).dur)
   const roughStarts = rough.map((_, i) => rough.slice(0, i).reduce((a, b) => a + b, 0))
-  const silences = new Set(n >= 4 ? silenceIndices(beats, roughStarts, rough.reduce((a, b) => a + b, 0)) : [])
+  // chapters: the chapter card is the silence, so no shot gets a narration lead of its own
+  const chaptered = src.scenes.some((s) => !!s.chapter)
+  const silences = new Set(n >= 4 && !chaptered ? silenceIndices(beats, roughStarts, rough.reduce((a, b) => a + b, 0)) : [])
   const plans = src.scenes.map((s, i) => timeScene(s, silences.has(i)))
 
   // the set dresser first, so the camera knows the nearest plane it must stay behind (near props at 3.5 m):

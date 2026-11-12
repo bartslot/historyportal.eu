@@ -9,8 +9,11 @@ use App\Models\Lesson;
 use App\Models\Narrator;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\Lessons\LibraryLayers;
 use App\Services\Lessons\MomentSpec;
 use App\Services\Lessons\TeamGameSpec;
+use App\Services\SceneLayers;
+use App\Services\Support\ShotCamera;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -37,6 +40,10 @@ use InvalidArgumentException;
  * A map scene (`kind: map`, lesson.schema.json $defs/map) becomes a scene of kind `map`: the painted lesson map
  * (lesson-map.js) with the scene's labels, region, route and camera, narrated like a story scene and held for its
  * length (timed), so a story plays on through it. It can be a shot of a branch run like any other scene.
+ *
+ * A painted panel (`panel: {image}`, a dramatic moment drawn as a whole comic panel) becomes a classic picture scene
+ * (kind `narration`): the image copied to lessons/{id}/panels/, shown whole-bleed without the dark shade, with a
+ * slow push-in (the shot camera the player plays), narrated like a story scene.
  *
  * Re-running with the same lesson id finds the lesson by topic `25d:<id>`; without $force it refuses,
  * because a rebuild throws away what a teacher changed.
@@ -105,9 +112,13 @@ final class LessonImporter
             foreach ($lesson['scenes'] as $s) {
                 $branch = $game ? $this->branch($s, $previous, $labels, array_column($game['meters'], 'key')) : [];
                 $previous = $s;
-                $scene = ($s['kind'] ?? 'story') === 'map'
-                    ? $this->mapScene($row, $s, $order++, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch)
-                    : $this->storyScene($row, $s, $order++, $bundle, (string) ($lesson['lang'] ?? 'en'), $audioRoot, $dryRun, $report, (array) ($lesson['narration'] ?? []), $branch);
+                $lang = (string) ($lesson['lang'] ?? 'en');
+                $narration = (array) ($lesson['narration'] ?? []);
+                $scene = match (true) {
+                    ($s['kind'] ?? 'story') === 'map' => $this->mapScene($row, $s, $order++, $lang, $audioRoot, $dryRun, $report, $narration, $branch),
+                    is_array($s['panel'] ?? null) => $this->panelScene($row, $s, $order++, $lang, $audioRoot, $dryRun, $report, $narration, $branch),
+                    default => $this->storyScene($row, $s, $order++, $bundle, $lang, $audioRoot, $dryRun, $report, $narration, $branch),
+                };
                 $report['scenes']++;
                 $report['branches'] += ($branch['branch_role'] ?? null) === 'question' ? 1 : 0;
                 if (($s['class_action_s'] ?? 0) > 0 && ! is_array($s['interaction'] ?? null)) {
@@ -285,7 +296,7 @@ final class LessonImporter
 
         $effects = $branch['branch_effects'] ?? null;
         unset($branch['branch_effects']);
-        $scene = new Scene($this->caption($s) + $branch + [
+        $scene = new Scene($this->caption($s) + $this->chapterYear($s) + $branch + [
             'lesson_id' => $lesson->id,
             'order' => $order,
             'kind' => 'stage25d',
@@ -296,6 +307,63 @@ final class LessonImporter
             'status' => 'ready',
             'config' => ['stage25d' => $stage] + ($lines ? ['lines' => $lines] : []) + ($effects ? ['branch_effects' => $effects] : [])
                 + ($this->caption($s) ? ['show_caption' => true] : []),
+        ]);
+
+        return $this->save($lesson, $scene, $s, $lang, $audioRoot, $dryRun, $report, $narration);
+    }
+
+    /** Picture files a panel may be (the player draws them as they are). */
+    private const PANEL_TYPES = ['png', 'webp', 'jpg', 'jpeg', 'avif'];
+
+    /** A panel's push-in: slow, over the whole shot (ShotCamera clamps the length to 30 s). */
+    private const PANEL_PUSH = 0.5;
+
+    /**
+     * A painted panel: the picture scene the player plays (image_path + one shot with a push-in), narrated like a
+     * story scene. A missing or unreadable picture is reported and the scene stays on its flat colour.
+     *
+     * @param  array<string,mixed>  $s
+     * @param  array<string,mixed>  $report
+     * @param  array<string,mixed>  $narration
+     * @param  array<string,mixed>  $branch
+     */
+    private function panelScene(Lesson $lesson, array $s, int $order, string $lang, ?string $audioRoot, bool $dryRun, array &$report, array $narration = [], array $branch = []): Scene
+    {
+        $id = (string) ($s['id'] ?? "s{$order}");
+        $src = (string) ($s['panel']['image'] ?? '');
+        $ext = strtolower(pathinfo($src, PATHINFO_EXTENSION));
+        $readable = $src !== '' && in_array($ext, self::PANEL_TYPES, true) && is_file($src);
+        if (! $readable) {
+            $report['warnings'][] = "{$id}: panel picture not found or not a picture: {$src}";
+        }
+        $path = $readable ? "lessons/{$lesson->id}/panels/{$id}.{$ext}" : null;
+        if ($path !== null && ! $dryRun) {
+            Storage::disk('public')->put($path, (string) file_get_contents($src));
+        }
+        $duration = (int) ceil(max((float) ($s['dur_s'] ?? 0), (float) ($s['tts_s'] ?? 0), 3.0));
+        $camera = ShotCamera::payload(['move' => 'push', 'amount' => self::PANEL_PUSH, 'duration' => $duration]);
+
+        $effects = $branch['branch_effects'] ?? null;
+        unset($branch['branch_effects']);
+        $scene = new Scene($this->caption($s) + $this->chapterYear($s) + $branch + [
+            'lesson_id' => $lesson->id,
+            'order' => $order,
+            'kind' => 'narration',
+            'scene_view' => 'slideshow',
+            'script_segment' => trim((string) ($s['narration'] ?? '')),
+            'location' => $s['where_when'] ?? null,
+            'chapter_name' => $s['chapter'] ?? null,
+            'duration_seconds' => $duration,
+            'status' => 'ready',
+            'image_path' => $path,
+            'shots' => $path !== null ? [SceneLayers::shot($path, [], LibraryLayers::COVER_DEPTH) + ['camera' => $camera]] : null,
+            'config' => array_filter([
+                'background_fit' => 'cover',
+                // a painted panel carries its own light: the dark shade would halve it
+                'backdrop_shade' => false,
+                'show_caption' => $this->caption($s) ? true : null,
+                'branch_effects' => $effects,
+            ], fn ($v) => $v !== null),
         ]);
 
         return $this->save($lesson, $scene, $s, $lang, $audioRoot, $dryRun, $report, $narration);
@@ -338,7 +406,7 @@ final class LessonImporter
 
         $effects = $branch['branch_effects'] ?? null;
         unset($branch['branch_effects']);
-        $scene = new Scene($this->caption($s) + $branch + [
+        $scene = new Scene($this->caption($s) + $this->chapterYear($s) + $branch + [
             'lesson_id' => $lesson->id,
             'order' => $order,
             'kind' => 'map',
@@ -595,5 +663,18 @@ final class LessonImporter
         $place = trim((string) ($c['place'] ?? ''));
 
         return $place === '' ? [] : ['location' => mb_substr($place, 0, 120), 'year' => mb_substr(trim((string) ($c['year'] ?? '')), 0, 60)];
+    }
+
+    /**
+     * The year on a chapter's first shot (lesson.json `chapter_year`), shown on the player's chapter card. A caption's
+     * own year wins when the shot has one.
+     *
+     * @return array{year?: string}
+     */
+    private function chapterYear(array $s): array
+    {
+        $year = trim((string) ($s['chapter_year'] ?? ''));
+
+        return $year === '' ? [] : ['year' => mb_substr($year, 0, 60)];
     }
 }

@@ -86,6 +86,12 @@ export type Scene = {
   sound: SoundPlan | null
   narration_at_s?: number
   dur_s?: number
+  /** a dramatic moment as a whole painted comic panel: a picture scene, no set; the director passes it through */
+  panel?: { image: string }
+  /** the chapter this shot belongs to (a group of script scenes); the player's bar and chapter card */
+  chapter?: string
+  /** on the first shot of a chapter: the year its chapter card shows, e.g. "about 3000 BCE" */
+  chapter_year?: string
   interaction?: Interaction
   branch?: Branch
   /** a scene in another era's library and sound (overrides lesson.bundle) */

@@ -150,6 +150,27 @@ export class Stage {
     return new Vector3((x - 0.5) * viewWidthAt(z), 0, z)
   }
 
+  /** Load and decode a scene's pictures into the texture cache build() reads (loadPremultiplied), without showing
+   *  anything: the player calls it for the NEXT scene while this one plays, so a change of set does not stall. */
+  async preload(s: Scene, lib: Library & { base: string } = this.lib): Promise<void> {
+    const urls = new Set<string>()
+    const layers = [...(s.set.sky ? [skyLayerOf(s)] : []), ...s.set.layers]
+    for (const layer of layers) {
+      const asset = resolveAsset(lib, layer, layer.depth)
+      if (asset) urls.add(layer.src ?? puppetOf(asset, layer, lib.base)?.atlas ?? urlOf(lib, asset, layer))
+    }
+    for (const sl of groundSlots(s.set, lib)) urls.add(lib.base + sl.asset.file)
+    for (const g of s.set.groundBands ?? []) {
+      const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
+      if (found) urls.add(urlOf(lib, found, g))
+    }
+    const nearId = defaultNear(s.set.near, lib)
+    const near = nearId ? resolveAsset(lib, { asset: nearId }) : null
+    if (near) urls.add(lib.base + near.file)
+    // one at a time: the decode runs on the main thread, under the scene that is playing now
+    for (const url of urls) await loadPremultiplied(url, this.scene).catch(() => null)
+  }
+
   /** Build a scene's set hidden, then swap it in whole: the old set stays on screen until every texture is ready. */
   async build(s: Scene, lib: Library & { base: string } = this.lib): Promise<void> {
     const token = ++this.buildToken

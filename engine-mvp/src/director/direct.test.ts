@@ -57,6 +57,23 @@ describe('direct()', () => {
     silent.forEach((s) => expect(s.narration_at_s).toBe(s.sound!.silence!.dur_s))
   })
 
+  it('gives no shot a narration lead in a lesson with chapters: the chapter card is the breath', () => {
+    const half = Math.ceil(LESSON.scenes.length / 2)
+    const l = { ...LESSON, scenes: LESSON.scenes.map((s, i) => ({ ...s, chapter: i < half ? 'The river' : 'The city' })) }
+    const out = direct(l, LIBRARY)
+    out.scenes.forEach((s) => expect(s.narration_at_s).toBe(0))
+    expect(out.scenes.filter((s) => s.sound?.silence)).toEqual([])
+    expect(out.scenes.map((s) => s.chapter)).toEqual(l.scenes.map((s) => s.chapter))
+  })
+
+  it('passes a painted panel through untouched, like a map', () => {
+    const panel = { id: 'sc99', beat: 'turn' as const, narration: 'The lion jumps.', est_s: 4, chapter: 'The lion', chapter_year: 'about 3000 BCE', narration_at_s: 0.4, panel: { image: '/tmp/sc99.webp' } }
+    const l = { ...LESSON, scenes: [...LESSON.scenes.slice(0, 2), panel as unknown as Lesson['scenes'][number], ...LESSON.scenes.slice(2)] }
+    const out = direct(l, LIBRARY)
+    expect(out.scenes[2]).toEqual(panel)
+    expect(out.scenes.length).toBe(l.scenes.length)
+  })
+
   it('carries sound over at least two cuts (J/L)', () => {
     const cuts = directed.scenes.slice(1).filter((s) => s.sound!.lead_in_s > 0 || s.sound!.tail_s > 0)
     expect(cuts.length).toBeGreaterThanOrEqual(2)

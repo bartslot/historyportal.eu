@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildChapters, canSeek, reachedFurther, formatClock, chapterTooltip } from '../scene/chapter-timeline.js'
+import { buildChapters, canSeek, reachedFurther, formatClock, chapterTooltip, chapterOf, pointInChapter, chapterProgress, chapterCardFor, chapterCardHoldMs } from '../scene/chapter-timeline.js'
 
 const queue = [
   { kind: 'narration', chapter_name: 'De haven', timeline: { seconds: 200, estimated: false, type: 'narration' } },
@@ -80,5 +80,63 @@ describe('the tooltip', () => {
   it('formats clock times past an hour', () => {
     expect(formatClock(3725)).toBe('1:02:05')
     expect(formatClock(9)).toBe('0:09')
+  })
+})
+
+// `chapter`: the name the lesson gave; `chapter_name`: the server's display name (Scene::chapterName, never empty)
+const shot = (chapter, seconds, type = 'narration', estimated = false) => ({ chapter, chapter_name: chapter ?? 'Uruk, about 3000 BCE', timeline: { seconds, estimated, type } })
+// two chapters of shots; a quiz card (no chapter) joins the one before it
+const chaptered = [
+  shot('Between two rivers', 5), shot('Between two rivers', 7), shot(null, 120, 'quiz', true),
+  shot('The lion', 4), shot('The lion', 6),
+]
+
+describe('chapters of scenes', () => {
+  const chapters = buildChapters(chaptered, n => `Chapter ${n + 1}`)
+
+  it('groups the shots of one chapter, a card joining the chapter before it', () => {
+    expect(chapters.map(c => [c.name, c.index, c.last, c.seconds])).toEqual([
+      ['Between two rivers', 0, 2, 132],
+      ['The lion', 3, 4, 10],
+    ])
+    expect(chapters[1]).toMatchObject({ start: 132, afterEstimate: true, estimated: false })
+  })
+
+  it('keeps one chapter per scene in a lesson without chapter names', () => {
+    const old = buildChapters([shot(null, 5), { timeline: { seconds: 6, estimated: false, type: 'narration' } }], n => `Chapter ${n + 1}`)
+    expect(old.map(c => [c.name, c.index, c.last])).toEqual([['Uruk, about 3000 BCE', 0, 0], ['Chapter 2', 1, 1]])
+  })
+
+  it('finds the chapter of a scene, the scene under a click and the fill', () => {
+    expect(chapterOf(chapters, 2).name).toBe('Between two rivers')
+    expect(pointInChapter(chapters[0], 0)).toEqual({ index: 0, time: 0 })
+    expect(pointInChapter(chapters[0], 6)).toEqual({ index: 1, time: 1 })
+    expect(chapterProgress(chapters[0], { index: 1, time: 1 })).toBeCloseTo(6 / 132)
+    expect(chapterProgress(chapters[0], { index: 3, time: 0 })).toBe(1)
+    expect(chapterProgress(chapters[1], { index: 2, time: 50 })).toBe(0)
+  })
+})
+
+describe('the chapter card', () => {
+  const chapters = buildChapters(chaptered, n => `Chapter ${n + 1}`)
+
+  it('shows when playback enters a chapter from the one before', () => {
+    expect(chapterCardFor(chapters, 3, { from: 2 })?.name).toBe('The lion')
+    expect(chapterCardFor(chapters, 0, { from: 4 })?.name).toBe('Between two rivers')
+  })
+
+  it('does not show after the title screen, inside a chapter, on a seek, or in a lesson without names', () => {
+    expect(chapterCardFor(chapters, 0, { from: null })).toBeNull()
+    expect(chapterCardFor(chapters, 4, { from: 3 })).toBeNull()
+    expect(chapterCardFor(chapters, 3, { from: 4 })).toBeNull()
+    expect(chapterCardFor(chapters, 3, { from: 2, at: 2 })).toBeNull()
+    const old = buildChapters([shot(null, 5), shot(null, 6)], n => `Chapter ${n + 1}`)
+    expect(chapterCardFor(old, 1, { from: 0 })).toBeNull()
+  })
+
+  it('holds for its reading time, at least 2.5 s and at most 4.5 s', () => {
+    expect(chapterCardHoldMs('Uruk')).toBe(2500)
+    expect(chapterCardHoldMs('x'.repeat(30))).toBe(3500)
+    expect(chapterCardHoldMs('x'.repeat(90))).toBe(4500)
   })
 })

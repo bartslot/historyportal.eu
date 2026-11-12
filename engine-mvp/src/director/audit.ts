@@ -3,7 +3,7 @@
 // Moves are measured with the ease the STAGE plays (stage25d/layout.ts `ease`), not the finer curve.
 import { ease as stageEase } from '../stage25d/layout'
 import type { Ease } from '../stage25d/types'
-import { cameraLocked, isMapScene, minimums } from './direct'
+import { cameraLocked, isOffStage, minimums, opensChapter } from './direct'
 import { pairRepeat, peakIndex } from './camera'
 import { BALLOON_GAP_S, SHOT_MAX_S, readTime } from './timing'
 import type { Camera, Lesson, Scene } from './types'
@@ -22,7 +22,7 @@ export function progressAt(c: Camera, t: number): number {
 
 export function audit(lesson: Lesson): string[] {
   const problems: string[] = []
-  const scenes = lesson.scenes.filter((s) => !isMapScene(s)) // the lesson map has no camera or sound to audit
+  const scenes = lesson.scenes.filter((s) => !isOffStage(s)) // the lesson map and a painted panel have no camera or sound to audit
   const first = scenes[0]
   if (!first) return ['no scenes']
   const min = minimums(scenes.length)
@@ -63,7 +63,8 @@ export function audit(lesson: Lesson): string[] {
     }
   })
 
-  const silences = scenes.filter((s) => (s.sound?.silence?.dur_s ?? 0) >= 1).length
+  // a chapter card (lesson-player.js) is a breath like a silence
+  const silences = scenes.filter((s, i) => (s.sound?.silence?.dur_s ?? 0) >= 1 || opensChapter(scenes, i)).length
   const total = scenes.reduce((a, s) => a + (s.dur_s ?? 0), 0)
   const wantSilences = Math.max(min.silences, Math.floor(total / SILENCE_PER_S)) // at least one per ~3 min (PM)
   if (silences < wantSilences) problems.push(`sound: ${silences} silences in ${Math.round(total / 60)} min, need ${wantSilences}`)

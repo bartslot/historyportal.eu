@@ -391,6 +391,47 @@ class LessonImporterTest extends TestCase
         $this->assertArrayNotHasKey('show_caption', Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get()[2]->config ?? []);
     }
 
+    public function test_a_chapter_year_becomes_the_year_of_the_chapters_first_shot(): void
+    {
+        $lesson = $this->lesson();
+        $lesson['scenes'][0]['chapter'] = 'Between two rivers';
+        $lesson['scenes'][0]['chapter_year'] = 'about 3000 BCE';
+        $lesson['scenes'][1]['chapter'] = 'Between two rivers';
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        [$first, $second] = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->get()->all();
+        $this->assertSame('Between two rivers', $first->chapter_name);
+        $this->assertSame('about 3000 BCE', $first->year);
+        $this->assertArrayNotHasKey('show_caption', $first->config ?? [], 'a chapter year is no place-and-year caption');
+        $this->assertSame('Between two rivers', $second->chapter_name);
+        $this->assertNull($second->year);
+    }
+
+    public function test_a_painted_panel_imports_as_a_picture_scene_with_its_image_and_audio(): void
+    {
+        $lesson = $this->lesson();
+        $picture = $this->audio.'/mini/panel.webp';
+        file_put_contents($picture, 'RIFFfake');
+        $panel = array_diff_key($lesson['scenes'][0], array_flip(['set', 'figures', 'balloons', 'camera', 'sound']));
+        $lesson['scenes'][0] = $panel + ['panel' => ['image' => $picture], 'chapter' => 'The lion', 'chapter_year' => 'about 3000 BCE'];
+
+        $r = app(LessonImporter::class)->import($lesson, User::factory()->create(), $this->audio);
+
+        $scene = Lesson::findOrFail($r['lesson_id'])->scenes()->orderBy('order')->first();
+        $id = $lesson['scenes'][0]['id'];
+        $this->assertSame('narration', $scene->kind);
+        $this->assertSame("lessons/{$r['lesson_id']}/panels/{$id}.webp", $scene->image_path);
+        Storage::disk('public')->assertExists($scene->image_path);
+        $this->assertNotNull($scene->audio_path, 'narrated like a stage scene');
+        Storage::disk('public')->assertExists($scene->audio_path);
+        $this->assertFalse($scene->config['backdrop_shade']);
+        $this->assertSame('push', $scene->shots[0]['camera']['move'], 'a slow push-in over the panel');
+        $this->assertSame($scene->image_path, $scene->shots[0]['image_path']);
+        $this->assertSame(['The lion', 'about 3000 BCE'], [$scene->chapter_name, $scene->year]);
+        $this->assertSame([], array_filter($r['warnings'], fn ($w) => str_contains($w, 'panel')));
+    }
+
     public function test_a_class_action_question_becomes_an_untimed_discussion_card(): void
     {
         $lesson = $this->lesson();

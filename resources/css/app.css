@@ -2216,6 +2216,8 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .title-lang { width: var(--title-lang-w); }
 .title-episode { font-size: clamp(1rem, 1.7vw, 1.75rem); line-height: 1.25; }
 .title-plain { font-size: clamp(2.2rem, 6vw, 6.5rem); }
+/* The chapter card (player): the plain title, smaller. */
+.lp-chapter-card-title { font-size: clamp(1.6rem, 3.6vw, 3.75rem); }
 /* The lettered title (TitlePoster::LETTERS): ComicRoma's wide capitals, well under half the width
    on a desktop or projector; lesson-player.js _fitLetters steps the size down past two lines. */
 .title-letters {

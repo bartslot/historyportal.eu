@@ -42,7 +42,9 @@ MIN_TOTAL_S = 600  # a lesson plays at least 10 minutes, on its shortest branch 
 OPTION_SHOTS_MAX = 3
 NGRAM = 6
 RECALL_SHARE_MAX = 0.5
-POWER_METERS_MIN, POWER_METERS_MAX = 1, 4
+# Bart 11-12: "keep the stories as stories with the occasional choices and quizzes just 1 tap. not time bound games."
+# A power meter is allowed, never required.
+POWER_METERS_MIN, POWER_METERS_MAX = 0, 4
 BALLOON_WORDS_MAX = 8
 # Region tags (agreed with the art session). An asset carrying one only serves a need that asks for it.
 REGIONS = {"mideast", "egypt", "mesopotamia", "batavia", "banda", "ocean", "newzealand", "tasmania", "mauritius"}
@@ -94,6 +96,11 @@ def total_s(lesson: dict) -> float:
 
 def is_map(sc: dict) -> bool:
     return sc.get("kind") == "map"
+
+
+def is_panel(sc: dict) -> bool:
+    """A painted comic panel (`panel: {image}`): a picture, no stage set to resolve or check."""
+    return isinstance(sc.get("panel"), dict)
 
 
 def region_file(highlight: str) -> Path:
@@ -301,7 +308,7 @@ def resolve(lesson: dict, library_root: Path) -> dict:
     libs = libraries(lesson, library_root)
     needed: dict[tuple[str, str, str], list[str]] = {}
     for sc in lesson["scenes"]:
-        if is_map(sc):
+        if is_map(sc) or is_panel(sc):
             continue
         bundle = scene_bundle(lesson, sc)
         wants = [(layer, layer["depth"]) for layer in sc["set"]["layers"]] + [({"need": sc["set"]["sky"]}, "sky")]
@@ -335,6 +342,8 @@ def check_world(scenes: list[dict]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     for sc in scenes:
+        if is_panel(sc):
+            continue
         st = sc.get("set") or {}
         figs = [f for f in sc.get("figures") or [] if not str(f.get("pose", "")).startswith("bust")]
         ground = str(st.get("ground") or "")
@@ -481,6 +490,10 @@ def check(lesson: dict, corpus_dir: Path = DEFAULT_CORPUS, library_root: Path = 
             region = sc["map"].get("region")
             if region and not region_file(region["highlight"]).is_file():
                 errors.append(f"{sc['id']}: map region {region['highlight']!r} has no polygon at {region_file(region['highlight'])}")
+            continue
+        if is_panel(sc):
+            if not Path(sc["panel"]["image"]).is_file():
+                errors.append(f"{sc['id']}: panel picture {sc['panel']['image']!r} does not exist")
             continue
         bundle = scene_bundle(lesson, sc)
         library = libs[bundle]

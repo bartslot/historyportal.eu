@@ -314,6 +314,14 @@
         "where_when": {
           "type": "string"
         },
+        "chapter": {
+          "type": "string",
+          "description": "the chapter this shot belongs to (a group of script scenes): one segment on the player's bar"
+        },
+        "chapter_year": {
+          "type": "string",
+          "description": "on the first shot of a chapter: the year its chapter card shows, e.g. about 3000 BCE"
+        },
         "on_screen": {
           "type": "string"
         },
@@ -568,6 +576,20 @@
         "map": {
           "$ref": "#/$defs/map"
         },
+        "panel": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "description": "absolute local path to the painted panel (.png, .webp, .jpg)"
+            }
+          },
+          "required": [
+            "image"
+          ],
+          "additionalProperties": false,
+          "description": "a dramatic moment as a whole painted comic panel: a picture scene with a slow push-in, no stage set"
+        },
         "caption": {
           "type": "object",
           "properties": {
@@ -604,19 +626,28 @@
           "figures": false,
           "balloons": false,
           "camera": false,
-          "sound": false
+          "sound": false,
+          "panel": false
         }
       },
       "else": {
-        "required": [
-          "set",
-          "figures",
-          "balloons",
-          "camera",
-          "sound"
-        ],
         "properties": {
           "map": false
+        },
+        "if": {
+          "required": [
+            "panel"
+          ]
+        },
+        "then": {},
+        "else": {
+          "required": [
+            "set",
+            "figures",
+            "balloons",
+            "camera",
+            "sound"
+          ]
         }
       }
     },
