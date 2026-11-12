@@ -1021,6 +1021,7 @@ export async function createStage25d (host, opts = {}) {
       if (!LOOK_KEYS.includes(key) || !Number.isFinite(value) || !stage) return
       lookNow = { ...lookNow, [key]: value }
       stage.setLook(lookNow)
+      seenEdit = liveSig()   // what the server will hold once saved: an undo then differs from it
       opts.onLook?.(key, value, api.sceneId)
     },
     /** The first frame as a small JPEG data URL (rail thumbnail, player fallback); resolves null before anything is shown. */

@@ -300,10 +300,10 @@ export class Stage {
     this.dynamicSky = dynamic
     this.ownSky.mesh.setEnabled(dynamic)
     this.cloudSrc = dynamic ? { sceneId: s.id, art, tex: cloudTex } : null
-    this.cloudKey = ''   // made on the next pose, with the scene's cloud choice and Amount
+    this.cloudKey = '\0'   // never a real key: makeClouds below always runs (a painted sky: the last scene's clouds go)
     this.lightKey = null
     this.relight(s)
-    this.makeClouds()   // a painted sky: the last scene's clouds go
+    this.makeClouds()
     this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
@@ -330,7 +330,8 @@ export class Stage {
   /** Light the scene by its time of day (daylight.ts): the 3D figures' lamps, the sun's direction, the floor's horizon
    *  and the air's colour. Only when set.daylight or the sky picture changed (the editor's edits arrive as a new object). */
   private relight(s: Scene) {
-    const key = s.set.daylight ?? s.set.sky ?? null
+    // by value: under a splat world the editor hands a fresh copy of the same daylight on every redraw
+    const key = JSON.stringify([s.set.daylight ?? null, s.set.sky ?? null])
     if (key === this.lightKey) return
     this.lightKey = key
     const l = (this.light = daylightOf(s.set, this.skyAsset))

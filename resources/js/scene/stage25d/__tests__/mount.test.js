@@ -80,6 +80,16 @@ describe('stage25d live edits', () => {
     expect(stage.items().some((i) => i.id === 'sky')).toBe(true)
   })
 
+  it('an undone look slider is taken from the server copy without a rebuild', async () => {
+    const stage = await mountStage25d(document.getElementById('h'))
+    await stage.show(cfg({ look: { sunLight: 0.6 } }))
+    stage.setLook('sunLight', 0.2)
+    expect(stage.matches(cfg({ look: { sunLight: 0.6 } }))).toBe(true)
+    expect(stage.adopt(cfg({ look: { sunLight: 0.6 } }))).toBe(true)   // the undo
+    expect(calls.looks.at(-1)).toEqual({ sunLight: 0.6 })
+    expect(calls.built).toHaveLength(1)
+  })
+
   it('an undone time of day is taken from the server copy without a rebuild', async () => {
     const stage = await mountStage25d(document.getElementById('h'))
     const own = (time) => cfg({ set: { sky: 'sky-hot-01', daylight: { time }, layers: [] } })
