@@ -2,7 +2,8 @@
 
 Every picture a person opens or the app loads is written as .webp with alpha. Two settings:
 - WEBP (q90, alpha lossless): the rig atlas and renders. Measured on Ana's atlas: 169 KB against 1,029 KB as PNG, alpha
-  identical, edges and ink the same by eye at 3x; only the watercolour grain is a touch smoother.
+  identical, edges and ink the same by eye at 4x. The fine paper grain in the washes is mostly smoothed away up close
+  (q95 keeps hardly more, at 230 KB; only lossless keeps it, at 594 KB); at stage size it is hard to see.
 - LOSSLESS: sheets, maps, masks and parts that a tool reads again (keying, colour names and ink thresholds want the
   exact pixels). Still about 40% smaller than PNG.
 `exact` keeps the colour under transparent pixels, so a texture filtered at its edge never darkens.

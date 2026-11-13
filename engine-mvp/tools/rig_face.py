@@ -6,7 +6,7 @@ lighter or darker: a pale patch round a new mouth. So a switch takes from its ed
 lids: more than STRONG levels), grown a little and feathered onto the base head. Tone drift inside the box stays the base's.
 
 In:  SHEET_DIR/head-base.png, SHEET_DIR/face/<group>-<option>.png, SHEET_DIR/face/boxes.json ({group: [y0, y1, x0, x1]}).
-Out: SHEET_DIR/face/clean/<group>-<option>.png, the base with only that change on it.
+Out: SHEET_DIR/face/clean/<group>-<option>.webp (lossless), the base with only that change on it.
 
 usage: rig_face.py SHEET_DIR
 """

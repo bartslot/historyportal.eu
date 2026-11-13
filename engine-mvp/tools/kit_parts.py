@@ -66,9 +66,10 @@ def cut(sheet, base, how):
 
 # A shoulder sits beside the neck, a little lower, and the hip well below it, all as shares of the body's head box. The
 # girl's joints measured off her map landed mid-arm and inside the skirt (her shawl covers the far shoulder and the waist).
+# The real bodies sit well inside these (tester, 11-13): drop at most 0.16, reach 0.30 to 0.48, hip 0.84 to 1.14.
 SHOULDER_DROP = 0.25      # of the head box's height: a shoulder no lower than this under the neck
-SHOULDER_REACH = 0.6      # of the head box's width: a shoulder no further than this from the neck
-HIP_DROP = (0.5, 1.5)     # of the head box's height: the hip this far under the neck
+SHOULDER_REACH = (0.2, 0.6)   # of the head box's width: a shoulder this far from the neck (not inside the chest)
+HIP_DROP = (0.7, 1.3)     # of the head box's height: the hip this far under the neck (not at the armpit)
 
 
 def joint_problems(joints, box):
@@ -79,8 +80,12 @@ def joint_problems(joints, box):
     for side, (sx, sy) in joints['SHOULDER'].items():
         if not -0.1 * bh <= sy - ny <= SHOULDER_DROP * bh:
             out.append(f'shoulder {side} is {sy - ny:.0f} px under the neck')
-        if ((sx - nx) ** 2 + (sy - ny) ** 2) ** 0.5 > SHOULDER_REACH * bw:
-            out.append(f'shoulder {side} is {((sx - nx) ** 2 + (sy - ny) ** 2) ** 0.5:.0f} px from the neck')
+        reach = ((sx - nx) ** 2 + (sy - ny) ** 2) ** 0.5
+        if not SHOULDER_REACH[0] * bw <= reach <= SHOULDER_REACH[1] * bw:
+            out.append(f'shoulder {side} is {reach:.0f} px from the neck')
+    (snx, _), (sfx, _) = joints['SHOULDER']['n'], joints['SHOULDER']['f']
+    if (snx - nx) * (sfx - nx) >= 0:
+        out.append('the shoulders are not on either side of the neck')
     drop = joints['HIP'][1] - ny
     if not HIP_DROP[0] * bh <= drop <= HIP_DROP[1] * bh:
         out.append(f'hip is {drop:.0f} px under the neck')

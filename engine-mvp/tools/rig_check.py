@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Does a ChatGPT part sheet line up with its rest drawing? (vault topics/character-bones/plan.md, 2.4)
 
-A sheet is a folder: rest.png (on #00FF00) and pictures made by editing it on the same canvas: map.png (flat colours on
+A sheet is a folder (each picture .webp or .png): rest.png (on #00FF00) and pictures made by editing it on the same canvas: map.png (flat colours on
 black), under-a.png / under-b.png / under-c.png (what the arms, the outer clothes or the shawl hide), map-b.png (the thighs), face/*.png (edits of
 head-base.png, boxes in face/boxes.json). Parts drawn apart never fit (Pieter, 11-05), so every edit is measured against
 the rest drawing before anything is cut. A missing file is a failed line, never a skipped one. Writes check.json and
-check.png in the folder and prints one line per check.
+check.webp in the folder and prints one line per check.
 
 usage: rig_check.py SHEET_DIR
 """

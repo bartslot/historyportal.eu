@@ -18,6 +18,15 @@ def test_a_shoulder_measured_mid_arm_is_caught():
     assert any('shoulder f' in p for p in kp.joint_problems(bad, GIRL_BOX))
 
 
+def test_shoulders_swapped_onto_one_side_or_inside_the_chest_are_caught():
+    assert any('either side' in p for p in kp.joint_problems(dict(GIRL, SHOULDER={'n': [400, 360], 'f': [420, 362]}), GIRL_BOX))
+    assert any('shoulder n' in p for p in kp.joint_problems(dict(GIRL, SHOULDER={'n': [490, 330], 'f': [650, 380]}), GIRL_BOX))
+
+
+def test_a_hip_at_the_armpit_is_caught():
+    assert any('hip' in p for p in kp.joint_problems(dict(GIRL, HIP=[440, 322 + 0.52 * 369]), GIRL_BOX))
+
+
 def test_a_hip_at_the_neck_is_caught():
     assert any('hip' in p for p in kp.joint_problems(dict(GIRL, HIP=[440, 340]), GIRL_BOX))
 

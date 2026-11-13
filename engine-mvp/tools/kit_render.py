@@ -27,11 +27,12 @@ from PIL import Image
 from scipy import ndimage
 from scipy.spatial import cKDTree
 
-SRC, MAP, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+SRC, OUT = Path(sys.argv[1]), Path(sys.argv[3])
 REPO = Path(__file__).resolve().parents[2]   # this repo: aquarel.py and the wash texture (a 4th argument is ignored)
 sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
 from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
+MAP = find(Path(sys.argv[2]))                     # a part map written as .webp, or an older .png
 
 OUT.mkdir(parents=True, exist_ok=True)
 INK = (0x19, 0x14, 0x10)
