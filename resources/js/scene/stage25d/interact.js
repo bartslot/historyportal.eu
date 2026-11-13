@@ -17,7 +17,7 @@
 import { BONE_PREFIX, viewWidthAt } from '@stage25d/stage25d/layout'
 import { turnBetween } from '../../editor/puppet-pose.js'
 import { handleCss } from '../ArtworkOverlay.js'
-import { settle, pointForSizeRatio, alongSight, gridPieces, groundOf, layerOf } from './floor.js'
+import { settle, sizeByDistance, alongSight, gridPieces, groundOf, layerOf } from './floor.js'
 
 const X_MIN = -1
 const X_MAX = 2
@@ -306,12 +306,13 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       return
     }
     if (drag?.mode === 'scale' && drag.byDistance) {
-      // Resize = distance: a bigger picture is a nearer one. The scale folds into the distance (it ends at 1).
+      // Resize = distance: a bigger picture is a nearer one. The scale folds into the distance (it ends at 1), unless the
+      // distance stops at the grid's edge: then the rest stays in the scale (floor.js sizeByDistance)
       const ratio = (Math.hypot(x - drag.cx, y - drag.cy) / drag.d0) * drag.scale0
       // the distance snaps to the grid too; x follows along the line of sight, so it keeps its column on screen
-      const z = settle(pointForSizeRatio(drag.p0, ratio, drag.eye))[1]
-      const to = layerOf(alongSight(drag.p0, z, drag.eye))
-      if (drag.scale0 !== 1) onChange(drag.index, 'scale', 1)
+      const { point, scale } = sizeByDistance(drag.p0, ratio, drag.eye)
+      const to = layerOf(alongSight(drag.p0, point[1], drag.eye))
+      if (scale !== 1 || drag.scale0 !== 1) onChange(drag.index, 'scale', scale)
       onChange(drag.index, 'x', to.x)
       onChange(drag.index, 'z', to.z)
       showChip(drag.index)

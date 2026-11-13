@@ -87,6 +87,24 @@ export function pointForSizeRatio ([gx, gz], ratio, eye = [0, 0]) {
   return clampCell(GROUND, alongSight([gx, gz], z, eye))
 }
 
+/**
+ * A corner resize on the ground (ratio: the size asked for, as a multiple of the picture at scale 1 where it stands):
+ * the snapped point that gives it by distance, and the scale left over when the distance stops at the grid's near or far
+ * edge. Folding everything into distance threw that rest away: a portrait at 7x went back to its real size at the near
+ * edge and sank under the floor (Bart 11-13).
+ */
+export function sizeByDistance (p0, ratio, eye = [0, 0]) {
+  const point = settle(pointForSizeRatio(p0, ratio, eye))
+  const [[, near], [, far]] = GROUND.cells
+  const d0 = Math.max(0.1, p0[1] - eye[1])
+  const free = eye[1] + d0 / Math.max(0.01, ratio)
+  if (free >= near && free <= far) return { point, scale: 1 }
+  const d = Math.max(0.1, point[1] - eye[1])
+  return { point, scale: Math.round(Math.min(MAX_SCALE, Math.max(MIN_SCALE, (ratio * d) / d0)) * 1000) / 1000 }
+}
+const MIN_SCALE = 0.05
+const MAX_SCALE = 20
+
 /** The grid drawn while editing: [from, to, every] metres. Few lines: a guide, not a pattern over the picture. */
 const GRID_ROWS = [[GROUND_NEAR_M, 12, 2], [12, 40, 10], [40, GROUND_FAR_M, 40]]
 /** Lines run this many grid steps out to each side (far past the frame: a camera move never finds the edge). */

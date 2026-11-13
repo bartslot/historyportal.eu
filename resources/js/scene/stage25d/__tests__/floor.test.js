@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 // the house view: 2 m wide per metre of distance, to keep the numbers readable
 vi.mock('@stage25d/stage25d/layout', () => ({ GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
 
-const { groundUnderRay, settle, pointForSizeRatio, gridStep, gridPieces, groundOf, layerOf } = await import('../floor.js')
+const { groundUnderRay, settle, pointForSizeRatio, sizeByDistance, gridStep, gridPieces, groundOf, layerOf } = await import('../floor.js')
 
 describe('stage25d ground grid', () => {
   it('a ray down from eye height meets the ground at the right point', () => {
@@ -51,6 +51,15 @@ describe('stage25d ground grid', () => {
     expect(mz).toBeCloseTo(12)                               // 16 m away -> 8 m away
     expect((mx - 1) / (mz - 4)).toBeCloseTo(3 / 16)
     expect(pointForSizeRatio([4, 20], 1000)[1]).toBe(2)      // stops at the near edge
+  })
+
+  it('a resize past the near edge keeps the rest of the size as scale, so a big portrait never shrinks away', () => {
+    // a bust at 3.5 m drawn 7x, made a little smaller: it would need 0.6 m, the grid stops at 2 m
+    const { point, scale } = sizeByDistance([0, 3.5], 5.6)
+    expect(point[1]).toBe(2)
+    expect(scale).toBeCloseTo(5.6 * 2 / 3.5, 2)
+    // inside the grid the size is all distance, as before
+    expect(sizeByDistance([4, 20], 2).scale).toBe(1)
   })
 
   it('draws a few grid lines on the ground, coarser the further away, in pieces by distance', () => {
