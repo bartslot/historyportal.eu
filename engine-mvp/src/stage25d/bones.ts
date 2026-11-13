@@ -406,12 +406,14 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
         const [[x0, y0], , [x1, y1]] = quad
         const mid: [number, number] = [(x0 + x1) / 2, (y0 + y1) / 2]
         // one bone hanging off it: the handle at that joint (an elbow); several (the upper body): the middle of its part;
-        // none (a head, a forearm without a hand): out toward its far end, so it stays clear of the joint's other handles
+        // none (a head, a forearm without a hand): out toward its far end, or at its `to`, so it stays clear of the joint's
+        // other handles
         const reach: [number, number] = [
           Math.min(x1, Math.max(x0, b.from[0] + (mid[0] - b.from[0]) * TIP_REACH)),
           Math.min(y1, Math.max(y0, b.from[1] + (mid[1] - b.from[1]) * TIP_REACH)),
         ]
-        const tip = children.length === 1 ? children[0].from : children.length ? mid : reach
+        // a figure cut by rig_parts.py says where each bone points: a foot's handle at its toes, clear of the knee's at the ankle
+        const tip = children.length === 1 ? children[0].from : children.length ? mid : (b.to ?? reach)
         return [{ name: b.name, at: carried(quad, v, b.from), tip: carried(quad, v, tip) }]
       })
     },

@@ -78,3 +78,12 @@ describe('a boned leg never bends its knee backwards', () => {
     expect(limitBone('shin_n', -40, 1, [0, 120])).toBe(0)
   })
 })
+
+describe('handles on a boned leg', () => {
+  it('a foot is grabbed at its toes, apart from the knee at the ankle', () => {
+    const joints = bindPuppet(leg(1)).joints()
+    const shin = joints.find((j) => j.name === 'shin_n')!, foot = joints.find((j) => j.name === 'foot_n')!
+    expect(shin.tip[0]).toBeCloseTo(50, 5); expect(shin.tip[1]).toBeCloseTo(160, 5)
+    expect(foot.tip[0]).toBeCloseTo(80, 0)
+  })
+})
