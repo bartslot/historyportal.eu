@@ -67,8 +67,10 @@ export const figureInView = (boxes, selected) => {
  * @param {(x: number, y: number) => boolean | { move: (dx: number, dy: number) => void, end: () => void }} [c.onEmpty]
  *        a press on no standing picture; true when it selected a backdrop, its drag when that backdrop moves
  * @param {(bone: string) => string} [c.boneLabel]             a bone's name for its handle, in the teacher's language
+ * @param {(index: number) => boolean} [c.inPlace]             its corners resize it about its middle (a close-up, live.js isSunk)
+ * @param {(index: number, scale: number, opts: { hold?: boolean, done?: boolean }) => void} [c.onResize]   such a resize
  */
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {} }) {
   let selected = null
   let drag = null
   let hoverQueued = false
@@ -251,6 +253,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       d0: Math.max(8, Math.hypot(x - cx, y - cy)), a0: Math.atan2(y - cy, x - cx),
       scale0: valueOf(selected, 'scale'), rotation0: valueOf(selected, 'rotation'),
       byDistance: mode === 'scale' && byDistance(selected),
+      inPlace: mode === 'scale' && !byDistance(selected) && inPlace(selected),
       p0: groundOf(valueOf(selected, 'x'), valueOf(selected, 'z')), eye: eye(),
     }
     e.currentTarget.setPointerCapture?.(e.pointerId)
@@ -320,7 +323,9 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     }
     if (drag?.mode === 'scale') {
       const d = Math.hypot(x - drag.cx, y - drag.cy)
-      onChange(drag.index, 'scale', Math.round(clampTo(drag.scale0 * (d / drag.d0), 0.05, 20) * 1000) / 1000)
+      const scale = Math.round(clampTo(drag.scale0 * (d / drag.d0), 0.05, 20) * 1000) / 1000
+      if (drag.inPlace) { drag.sent = scale; onResize(drag.index, scale, { hold: true }); return }   // saved when let go
+      onChange(drag.index, 'scale', scale)
       return
     }
     if (drag?.mode === 'rotate') {
@@ -339,6 +344,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     drag.el.releasePointerCapture?.(drag.id)
     if (drag.mode === 'backdrop') { drag.held.end(); drag = null; return }
     if (drag.mode === 'bone' && drag.sent !== undefined) onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { done: true })   // one save
+    if (drag.inPlace && drag.sent !== undefined) onResize(drag.index, drag.sent, { done: true })
     const index = drag.index
     const moved = (drag.mode === 'move' && drag.ground) || drag.byDistance
     const next = drag.next != null && Math.hypot(e.clientX - drag.pressed[0], e.clientY - drag.pressed[1]) < CLICK_PX ? drag.next : null

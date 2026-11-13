@@ -41,3 +41,19 @@ export const editSig = (cfg) => JSON.stringify([
   (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [], cfg?.camera_motion ?? null,
   cfg?.set?.daylight ?? null, cfg?.look ?? {}, cfg?.set?.soil ?? null,
 ])
+
+/** A picture set below the floor (its y, or any key's, under 0): a close-up framed by the teacher, a portrait or a bust,
+ *  not a figure standing in the world. Its corners resize it where it is (resizedInPlace), never by distance. */
+export const isSunk = (layer) => (layer?.y ?? 0) < 0 || (layer?.keys ?? []).some((k) => (k.y ?? 0) < 0)
+
+/**
+ * A sunk picture made `scale` big about its middle, so its framing stays (Bart 11-13: "resize in place"): its height
+ * (y, and every key's y with it, so a breathing bob keeps its shape) moves by half of what the size grew.
+ * `heightM`: the picture's height in metres at scale 1.
+ */
+export function resizedInPlace (layer, scale, heightM) {
+  const dy = (heightM * ((layer.scale ?? 1) - scale)) / 2
+  const shift = (y) => Math.round((y + dy) * 1000) / 1000
+  const keys = layer.keys?.some((k) => k.y !== undefined) ? layer.keys.map((k) => (k.y === undefined ? k : { ...k, y: shift(k.y) })) : undefined
+  return { scale, y: shift(layer.y ?? 0), ...(keys ? { keys } : {}) }
+}

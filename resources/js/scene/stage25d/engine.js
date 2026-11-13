@@ -27,7 +27,7 @@ import { createAlphaMaps } from './alpha.js'
 import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
-import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields } from './live.js'
+import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields, isSunk, resizedInPlace } from './live.js'
 import { cameraKeys, cameraOverview, cameraPoseAt, clampPose, frameIn, frameSize, withFrameSize, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The scene's backdrop: a far strip that does not tile. One per scene, grouped with the ground and sky under "Scene",
@@ -386,8 +386,19 @@ export async function createStage25d (host, opts = {}) {
   const onFloor = (i) => { const a = assets.get(layers[i]?.asset); return !!a && floorOnly(layers[i], a) }
   /** A layer's distance in metres at the playhead: its z (keyed or not), else its band's (scenes from before z). */
   const zNow = (i) => layerAt(layers[i], nowT()).z ?? DEPTH_Z[layers[i].depth]
-  /** Resizing moves a picture in distance (its real height never changes); a keyed scale still scales. */
-  const byDistance = (i) => onGround(i) && !(layers[i].keys ?? []).some((k) => k.scale !== undefined)
+  /** Resizing moves a picture in distance (its real height never changes); a keyed scale still scales, and a close-up
+   *  set below the floor resizes where it is (resizeInPlace). */
+  const scaleKeyed = (i) => (layers[i].keys ?? []).some((k) => k.scale !== undefined)
+  /** A close-up: a bust or portrait from the library (tag `closeup`), or any picture set below the floor. */
+  const closeUp = (i) => !!assets.get(layers[i]?.asset)?.tags?.includes('closeup') || isSunk(layers[i])
+  const byDistance = (i) => onGround(i) && !scaleKeyed(i) && !closeUp(i)
+  /** A close-up made bigger or smaller about its middle: shown at once while held, saved with its keys when let go. */
+  const resizeInPlace = (i, scale, { hold = false } = {}) => {
+    const patch = resizedInPlace(layers[i], scale, heights.get(layers[i].asset) ?? 1.7)
+    if (hold) { edit(`layer-${i}`, patch); return }
+    commit(`layer-${i}`, patch)
+    window.dispatchEvent(new CustomEvent('stage25d-synced'))   // the timeline takes the moved keys
+  }
   const round3 = (n) => Math.round(n * 1000) / 1000
   /** Where the camera stands now on the ground, [x, z]: sizes and screen columns count from there. */
   const eye = () => (stage?.camera?.position ? [stage.camera.position.x, stage.camera.position.z] : [0, 0])
@@ -479,6 +490,8 @@ export async function createStage25d (host, opts = {}) {
           // a press on no standing picture selects the backdrop painted there: a ground band, a far strip, the sky
           onEmpty: (x, y) => backdropAt(x, y),
           onChange: (i, prop, v, opts) => api.moveLayer(`layer-${i}`, prop, v, opts),
+          inPlace: (i) => closeUp(i) && !scaleKeyed(i),
+          onResize: resizeInPlace,
         })
       }
       if ((pointer?.selected ?? -1) >= layers.length) pointer.select(null)   // its layer is gone (a delete, an undo)
