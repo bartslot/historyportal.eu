@@ -791,6 +791,7 @@ export async function createStage25d (host, opts = {}) {
         motion: motionOf(l, asset),
         anim: animOf(asset),
         puppet: !!puppetOf(asset ?? {}, l),
+        bones: puppetOf(asset ?? {}, l)?.bones.map((b) => b.name) ?? [],
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
       }

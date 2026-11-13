@@ -41,8 +41,9 @@ const rgb = (hex) => (/^#[0-9a-f]{6}$/i.test(String(hex ?? ''))
   ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
   : null)
 
-/** The bones the timeline has rows for. ponytail: fixed to the upper body rest_puppet.py cuts; legs get rows when a puppet has them. */
-const BONE_NAMES = [['bone:head', 'Neck'], ['bone:chest', 'Upper body'], ['bone:upperarm_n', 'Near upper arm'], ['bone:forearm_n', 'Near forearm'], ['bone:upperarm_f', 'Far upper arm'], ['bone:forearm_f', 'Far forearm']]
+/** The bones the timeline has rows for: a layer shows only the rows of the bones its puppet has (timeline-panel propertiesOf). */
+const BONE_NAMES = [['bone:head', 'Neck'], ['bone:chest', 'Upper body'], ['bone:braid', 'Braid'], ['bone:upperarm_n', 'Near upper arm'], ['bone:forearm_n', 'Near forearm'], ['bone:upperarm_f', 'Far upper arm'], ['bone:forearm_f', 'Far forearm'],
+  ['bone:thigh_n', 'Near thigh'], ['bone:shin_n', 'Near knee'], ['bone:foot_n', 'Near foot'], ['bone:thigh_f', 'Far thigh'], ['bone:shin_f', 'Far knee'], ['bone:foot_f', 'Far foot']]
 export const BONE_ROWS = BONE_NAMES.map(([key]) => key)
 
 const P = (key, label, interpolate, unit = '', group = null) => ({ key, label, interpolate, unit, group, type: interpolate === 'color' ? 'color' : 'number' })

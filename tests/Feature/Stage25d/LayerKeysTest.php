@@ -165,6 +165,17 @@ class LayerKeysTest extends TestCase
         $this->assertEquals(5.0, $scene->fresh()->config['stage25d']['set']['layers'][0]['play']['speed'], 'a non-number changes nothing');
     }
 
+    public function test_a_figure_with_legs_keeps_its_leg_and_braid_bones(): void
+    {
+        $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid']]]]);
+        Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveStage25dLayer', 0, ['bone:braid' => 10, 'keys' => [['t' => 1, 'bone:thigh_n' => -30, 'bone:shin_n' => 60, 'bone:foot_f' => 400]]], $scene->id);
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertEquals(10.0, $layer['bone:braid']);
+        $this->assertEquals([['t' => 1.0, 'bone:thigh_n' => -30.0, 'bone:shin_n' => 60.0, 'bone:foot_f' => 180.0]], $layer['keys']);
+    }
+
     public function test_a_bone_is_a_field_of_a_layer_and_of_its_keys(): void
     {
         $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid', 'keys' => [['t' => 1, 'x' => 0.2]]]]]]);

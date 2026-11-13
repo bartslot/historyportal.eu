@@ -70,6 +70,19 @@ export const figureInView = (boxes, selected) => {
  * @param {(index: number) => boolean} [c.inPlace]             its corners resize it about its middle (a close-up, live.js isSunk)
  * @param {(index: number, scale: number, opts: { hold?: boolean, done?: boolean }) => void} [c.onResize]   such a resize
  */
+/**
+ * The bone whose handle dot is nearest to a press. Points are shares of the canvas (jointsOnScreen tips); `w` and `h`
+ * make the distance a screen distance. Null when there are no joints.
+ */
+export function nearestJoint (joints, x, y, w, h) {
+  let best = null, bestD = Infinity
+  for (const j of joints) {
+    const d = Math.hypot((j.tip[0] - x) * w, (j.tip[1] - y) * h)
+    if (d < bestD) { best = j; bestD = d }
+  }
+  return best
+}
+
 export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {} }) {
   let selected = null
   let drag = null
@@ -260,16 +273,18 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   }
 
   /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. */
-  function onBoneDown (name) {
+  function onBoneDown (pressed) {
     return (e) => {
       if (e.button !== 0 || selected === null) return
       const seen = stage()?.jointsOnScreen?.(selected)
-      const joint = seen?.joints.find((j) => j.name === name)
-      if (!joint) return
-      e.stopPropagation()
-      e.preventDefault()
       const r = canvas.getBoundingClientRect()
       const { x, y } = local(e)
+      // handles overlap on a small figure: the press goes to the handle whose dot is nearest, not to the one on top
+      const joint = nearestJoint(seen?.joints ?? [], x / r.width, y / r.height, r.width, r.height) ?? seen?.joints.find((j) => j.name === pressed)
+      if (!joint) return
+      const name = joint.name
+      e.stopPropagation()
+      e.preventDefault()
       drag = {
         mode: 'bone', name, index: selected, id: e.pointerId, el: e.currentTarget,
         at: [joint.at[0] * r.width, joint.at[1] * r.height], last: [x, y],

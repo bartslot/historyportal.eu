@@ -15,7 +15,8 @@ final class LayerKeys
     public const FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation', ...self::BONES];
 
     /** A figure's bones (engine-mvp stage25d/bones.ts): a turn in degrees, a field like any other. The body's limits are the stage's (limitBone). */
-    public const BONES = ['bone:head', 'bone:chest', 'bone:upperarm_n', 'bone:forearm_n', 'bone:upperarm_f', 'bone:forearm_f'];
+    public const BONES = ['bone:head', 'bone:chest', 'bone:braid', 'bone:upperarm_n', 'bone:forearm_n', 'bone:upperarm_f', 'bone:forearm_f',
+        'bone:thigh_n', 'bone:shin_n', 'bone:foot_n', 'bone:thigh_f', 'bone:shin_f', 'bone:foot_f'];
 
     /** What a field may hold: a typo or a runaway drag never leaves the picture off the planet. */
     private const RANGE = ['x' => [-2.0, 3.0], 'z' => [2.0, 120.0], 'y' => [-50.0, 50.0], 'scale' => [0.01, 20.0], 'opacity' => [0.0, 1.0], 'rotation' => [-3600.0, 3600.0]];
