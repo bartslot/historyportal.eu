@@ -40,7 +40,7 @@ import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './dayl
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
 import { makeSky } from './sky-gl'
 import { isSoil, NO_RECOLOUR, soilRecolour } from './soil'
-import { farEdgeOf } from './far-edge'
+import { farEdgeOf, farPieceScale } from './far-edge'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
@@ -54,7 +54,8 @@ const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
 /** The band index of the world's far piece on an empty horizon (far-edge.ts), and how much of its painted height it keeps. */
 const FAR_PIECE = -2
-const FAR_PIECE_SQUASH = 0.5
+const FAR_PIECE_SQUASH = 1
+const FAR_PIECE_Z = 1000
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
 interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
@@ -745,9 +746,11 @@ export class Stage {
     if (edgeAsset) await build(edgeAsset, { asset: edgeAsset.id, ...HORIZON_BAND }, -1)
     // a scene with nothing on its horizon gets its world's far piece there (far-edge.ts): a tree line, hills, palms
     // (index FAR_PIECE: no row, never picked; its own shape, not squashed like a terrain's edge)
-    const piece = farEdgeOf(s.set, lib, edge)
+    // It stands just behind a terrain's own far edge (that hazy ground strip covers its foot), sized by how tall it looks
+    // from far off (farPieceScale), repeated sideways: low and sharp, never a picture blown up past the view (Bart 11-13)
+    const piece = farEdgeOf(s.set, lib)
     const pieceAsset = piece ? lib.assets.find((a) => a.id === piece) : undefined
-    if (pieceAsset) await build(pieceAsset, { asset: pieceAsset.id, ...HORIZON_BAND }, FAR_PIECE)
+    if (pieceAsset) await build(pieceAsset, { asset: pieceAsset.id, z: FAR_PIECE_Z, scale: farPieceScale(pieceAsset) }, FAR_PIECE)
     return out
   }
 

@@ -784,8 +784,8 @@ trait EditsStage25d
     {
         $scene = $this->stage25dScene();
         $layers = $scene?->config['stage25d']['set']['layers'] ?? null;
-        if (! $scene || ! is_array($layers) || ! isset($layers[$index]) || $this->isStage25dBackdrop($scene, $layers[$index])) {
-            return;   // the backdrop is swapped, not deleted. The last layer may go: the scene keeps its sky and terrain (Bart 11-11)
+        if (! $scene || ! is_array($layers) || ! isset($layers[$index])) {
+            return;   // a backdrop picture may go too (Bart 11-13): the scene keeps its sky and terrain, the floor carries the land
         }
         $handle = $layers[$index]['figure'] ?? null;
         unset($layers[$index]);

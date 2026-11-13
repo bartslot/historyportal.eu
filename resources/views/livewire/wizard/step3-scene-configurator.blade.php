@@ -1770,7 +1770,7 @@
                 // The World row itself is selectable: it opens the world's own settings (picker and look).
                 // The strips (ground bands) live inside Terrain (Bart 11-12: "only 1 layer which is terrain"): its panel lists them.
                 const s25Backdrop = (window.__stage25d?.items?.() ?? []).filter((i) => (i.backdrop || i.scenery) && !String(i.id).startsWith('band-'))
-                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.id === 'terrain' ? @js(__('Terrain')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true }));
+                    .map((i) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.id === 'sky' ? @js(__('Sky')) : i.id === 'terrain' ? @js(__('Terrain')) : i.label, bg: false, s25: true, s25sky: true, inGroup: true, removable: !!i.scenery }));
                 const s25Sky = s25Backdrop.length ? [{ id: 's25_world', icon: 'group', label: @js(__('World')), bg: false, s25: true, s25sky: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
@@ -2592,7 +2592,7 @@
                         </svg>
                     </button>
                     {{-- Delete THIS object (Backspace does the same; Cmd-Z brings it back). --}}
-                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && !obj.s25sky"
+                    <button type="button" data-nodrag data-obj-adjust x-show="!obj.bg && (!obj.s25sky || obj.removable)"
                             @click.stop="deleteObject(obj)"
                             class="btn btn-ghost btn-xs btn-square hidden shrink-0 text-base-content/50 hover:text-error group-hover:inline-flex group-focus-within:inline-flex"
                             aria-label="{{ __('Delete object') }}" :data-tooltip="@js(__('Delete') . ' (⌫)')">

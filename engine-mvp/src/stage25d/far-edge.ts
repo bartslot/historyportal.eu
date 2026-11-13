@@ -1,3 +1,4 @@
+import { ASPECT, BAND_VIEWS } from './layout'
 import type { Asset, Library, Scene } from './types'
 
 /** One word for a tag, singular: 'trees' matches 'tree'. */
@@ -17,13 +18,14 @@ const farPieces = (lib: Library): Asset[] => {
  * has to be context agnostic"): the far piece of the scene's own library that shares most tags with the pictures in
  * the scene, ties to the first by id, so every world gets its own (palms by a Babylonian field, a tree line by a
  * hunebed) without a list per period. `set.farEdge` names another piece, or 'none'. A scene whose far landscape is
- * already there (a far strip, a terrain with its own edge) gets nothing.
+ * already there (a far strip) gets nothing; a terrain's own far edge is only the ground meeting the sky, so the piece
+ * stands behind it.
  */
-export function farEdgeOf(set: Scene['set'], lib: Library, terrainEdge?: string): string | null {
+export function farEdgeOf(set: Scene['set'], lib: Library): string | null {
   if (set.farEdge === 'none') return null
   if (set.farEdge) return lib.assets.some((a) => a.id === set.farEdge) ? set.farEdge : null
   const byId = new Map(lib.assets.map((a) => [a.id, a]))
-  if (terrainEdge || set.layers.some((l) => byId.get(l.asset ?? '')?.layer === 'bg')) return null
+  if (set.layers.some((l) => byId.get(l.asset ?? '')?.layer === 'bg')) return null
   const used = [...set.layers.map((l) => l.asset ?? ''), ...(set.groundBands ?? []).map((g) => g.asset), ...(set.groundSlots ?? []).map((g) => g.asset), set.sky ?? '']
   const seen = new Set(used.flatMap((id) => byId.get(id)?.tags ?? []).filter((t) => !FAR_TAGS.includes(t)).map(stem))
   const ranked = farPieces(lib)
@@ -31,6 +33,14 @@ export function farEdgeOf(set: Scene['set'], lib: Library, terrainEdge?: string)
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
   return ranked[0]?.id ?? null
 }
+
+/** How much of the frame's height a far piece takes: its real height (a 35 m hill, 5 m of scrub) seen from far off,
+ *  never more than an eighth of the frame, never a hairline. */
+export const farPieceShare = (heightM: number): number => Math.min(0.12, Math.max(0.02, heightM / 300))
+
+/** The band scale (layout.ts bandPose: a share of BAND_VIEWS views wide) that gives a far piece that height on screen. */
+export const farPieceScale = (a: Pick<Asset, 'w' | 'h' | 'height_m'>): number =>
+  (farPieceShare(a.height_m || 10) * a.w) / (a.h * ASPECT * BAND_VIEWS)
 
 /** The far pieces a teacher can choose from for this scene's horizon. */
 export const farEdgeOptions = (lib: Library): string[] => farPieces(lib).map((a) => a.id).sort()

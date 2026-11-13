@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { farEdgeOf, farEdgeOptions } from './far-edge'
+import { farEdgeOf, farEdgeOptions, farPieceScale, farPieceShare } from './far-edge'
+import { ASPECT, BAND_VIEWS } from './layout'
 import type { Asset, Library } from './types'
 
 const asset = (id: string, layer: Asset['layer'], tags: string[], extra: Partial<Asset> = {}): Asset =>
@@ -31,13 +32,27 @@ describe('the far edge of a scene with nothing on its horizon', () => {
 
   it('leaves a scene alone whose far landscape is already there', () => {
     expect(farEdgeOf({ layers: [{ asset: 'bg-farmland-01', depth: 'bg' }] }, lib)).toBeNull()
-    expect(farEdgeOf({ layers: [] }, lib, 'horizon-meadow-01')).toBeNull()
+  })
+
+  it('stands behind a terrain\'s own far edge too: that edge is only the ground meeting the sky', () => {
+    expect(farEdgeOf({ layers: [], groundSlots: [{ asset: 'terrain-meadow-02', from_m: 0 }] }, lib)).toBe('far-palms-01')
   })
 
   it('the teacher can name another piece or none', () => {
     expect(farEdgeOf({ layers: [], farEdge: 'far-treeline-01' }, lib)).toBe('far-treeline-01')
     expect(farEdgeOf({ layers: [], farEdge: 'none' }, lib)).toBeNull()
     expect(farEdgeOf({ layers: [], farEdge: 'gone-01' }, lib)).toBeNull()
+  })
+
+  it('a far piece looks far: a hill an eighth of the frame at most, scrub a sliver, never blown up past the view', () => {
+    expect(farPieceShare(35)).toBeCloseTo(0.117, 2)
+    expect(farPieceShare(5)).toBe(0.02)
+    expect(farPieceShare(400)).toBe(0.12)
+    const hills = { w: 4096, h: 495, height_m: 35 }
+    const k = farPieceScale(hills)
+    const copyViews = k * BAND_VIEWS                       // one copy's width, in views
+    expect((copyViews * hills.h / hills.w) * ASPECT).toBeCloseTo(farPieceShare(35), 3)   // its height, in frames
+    expect(copyViews * 1920).toBeLessThan(hills.w)          // drawn smaller than its pixels: sharp
   })
 
   it('offers only free far pieces, never a terrain\'s own edge', () => {

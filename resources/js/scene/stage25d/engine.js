@@ -1078,7 +1078,7 @@ export async function createStage25d (host, opts = {}) {
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       const { farEdge, ...rest } = cfg.set ?? { layers: [] }
       const label = (id) => { const a = assets.get(id); return a ? layerLabel({}, a, lang) : id }
-      const auto = farEdgeOf({ layers: [], ...rest }, libData, terrainSlot()?.asset.horizon)
+      const auto = farEdgeOf({ layers: [], ...rest }, libData)
       return { value: farEdge ?? '', auto: auto ? label(auto) : null, options: farEdgeOptions(libData).map((id) => ({ id, label: label(id) })) }
     },
     /** Choose what stands on the horizon ('' automatic, 'none', a piece): rebuilt on stage, saved (onFarEdge). */

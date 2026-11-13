@@ -718,9 +718,10 @@ class StageEditingTest extends TestCase
         $this->assertCount(2, $scene->fresh()->config['stage25d']['set']['layers'], 'a picture on the set still copies');
 
         $editor->call('saveStage25dLayer', 2, ['add' => ['asset' => 'bg-farmland-01', 'x' => 0.5]], $scene->id);
-        $editor->call('duplicateObjects', ['s25_layer-2'])
-            ->call('deleteObject', 's25_layer-2');
-        $this->assertSame(['stone-chamber-01', 'stone-chamber-01', 'bg-farmland-01'], array_column($scene->fresh()->config['stage25d']['set']['layers'], 'asset'), 'the backdrop: one, never copied or deleted');
+        $editor->call('duplicateObjects', ['s25_layer-2']);
+        $this->assertSame(['stone-chamber-01', 'stone-chamber-01', 'bg-farmland-01'], array_column($scene->fresh()->config['stage25d']['set']['layers'], 'asset'), 'the backdrop: one, never copied');
+        $editor->call('deleteObject', 's25_layer-2');
+        $this->assertSame(['stone-chamber-01', 'stone-chamber-01'], array_column($scene->fresh()->config['stage25d']['set']['layers'], 'asset'), 'a backdrop picture may go: the floor carries the land (Bart 11-13)');
     }
 
     public function test_the_floor_ground_pictures_save_near_to_far_at_most_six_and_an_empty_list_puts_the_one_ground_back(): void

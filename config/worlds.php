@@ -121,4 +121,21 @@ return [
             'layers' => [['asset' => 'hills-dry-01', 'depth' => 'bg', 'x' => 0.5]],
         ],
     ],
+    // Bart 11-13: the herders' camp as a real 3D place. No painted backdrop card (its painted ground slid against the
+    // floor on every camera move): the steppe floor carries the land, its far edge and the dry hills stand on the
+    // horizon on their own (far-edge.ts), the trampled verge and the tents stand on the ground at their distances.
+    'mesopotamian-tent-camp' => [
+        'label' => 'Mesopotamian tent camp', 'bundle' => 'babylonia-old-babylonian', 'thumb' => 'worlds/mesopotamian-tent-camp.webp',
+        'set' => [
+            'sky' => 'sky-hot-01',
+            'groundSlots' => [['asset' => 'terrain-dry-steppe-01', 'from_m' => 0]],
+            'groundBands' => [['asset' => 'bb-trampled-verge-strip-01', 'z' => 30]],
+            'layers' => [
+                ['asset' => 'bb-herder-tent-01', 'depth' => 'mid', 'x' => 0.75, 'z' => 22],
+                ['asset' => 'bb-herder-tent-02', 'depth' => 'mid', 'x' => 0.86, 'z' => 24],
+                ['asset' => 'bb-campfire-01', 'depth' => 'mid', 'x' => 0.55, 'z' => 22],
+                ['asset' => 'bb-thorn-pen-01', 'depth' => 'mid', 'x' => 0.94, 'z' => 22],
+            ],
+        ],
+    ],
 ];
