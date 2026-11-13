@@ -51,7 +51,7 @@ def line(report, starts):
 
 def sheet(d, **over):
     """A toy sheet in d; `over` replaces a picture by name (None leaves it out)."""
-    pictures = {'rest.png': rest(), 'map.png': part_map(), 'under-a.png': rest(), 'under-b.png': rest()}
+    pictures = {'rest.png': rest(), 'map.png': part_map(), 'under-a.png': rest(), 'under-b.png': rest(), 'under-c.png': rest()}
     pictures.update({k.replace('_', '-') + '.png': v for k, v in over.items()})
     for name, arr in pictures.items():
         if arr is not None:
@@ -232,6 +232,17 @@ def test_a_part_in_two_pieces_needs_a_sign_off():
         with open(os.path.join(d, 'map-pieces.json'), 'w') as f:
             json.dump({'map': {'shin_n': 2}}, f)
         assert line(rc.run(d), 'map parts in several big pieces')
+
+
+def test_a_green_pocket_inside_a_hand_is_keyed_out():
+    img = np.full((60, 60, 3), GREEN, np.uint8)
+    img[10:50, 10:50] = SKIN                   # a hand
+    img[25:35, 25:35] = GREEN                  # the background seen between thumb and fingers
+    img[24, 25:35] = (5, 24, 1)                # its dark green shadowed edge
+    img[10, 10:50] = (20, 20, 20)              # an outline on the hand's edge
+    _, a = rc.keyed(img)
+    assert a[25:35, 25:35].max() == 0 and a[24, 30] == 0
+    assert a[10, 30] > 0.5 and a[40, 40] > 0.5
 
 
 if __name__ == '__main__':

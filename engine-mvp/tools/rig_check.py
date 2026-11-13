@@ -2,7 +2,7 @@
 """Does a ChatGPT part sheet line up with its rest drawing? (vault topics/character-bones/plan.md, 2.4)
 
 A sheet is a folder: rest.png (on #00FF00) and pictures made by editing it on the same canvas: map.png (flat colours on
-black), under-a.png / under-b.png (what the arms or the outer clothes hide), map-b.png (the thighs), face/*.png (edits of
+black), under-a.png / under-b.png / under-c.png (what the arms, the outer clothes or the shawl hide), map-b.png (the thighs), face/*.png (edits of
 head-base.png, boxes in face/boxes.json). Parts drawn apart never fit (Pieter, 11-05), so every edit is measured against
 the rest drawing before anything is cut. A missing file is a failed line, never a skipped one. Writes check.json and
 check.png in the folder and prints one line per check.
@@ -34,6 +34,8 @@ MAP_B_PARTS = ['thigh_n', 'thigh_f', 'shin_n', 'shin_f', 'foot_n', 'foot_f', 'ot
 AIR = (0, 0, 0)
 OFF_COLOUR = 60          # RGB distance: further than this from every palette colour is a smeared pixel
 SOLID = 0.5              # keyed alpha this high is the figure
+GREEN_LEAN = 2.0         # green this many times red and blue: green-leaning, for a pocket's dark edge
+PURE_GREEN = 110         # RGB distance from #00FF00: background, even in a pocket the figure encloses
 INK = 90                 # luminance below this is a drawn line
 LINE_REACH = 2           # px a line may sit off and still count as the same line
 MAX_SHIFT = 6            # px of pure translation searched for and corrected (and logged); at the limit it is a failed edit
@@ -59,6 +61,9 @@ PASS = {'far': 0.002, 'off_colour': 0.005, 'speck': 0.002, 'shift': 2.0, 'region
 KEEP = {
     'under-a.png': (['head', 'shin_n', 'shin_f', 'foot_n', 'foot_f'], ['head', 'shin_n', 'shin_f', 'foot_n', 'foot_f']),
     'under-b.png': (['head', 'shin_n', 'shin_f', 'foot_n', 'foot_f'], ['head']),
+    # under-c takes the shawl off (what the chest and skirt show when the shawl swings with a turned chest)
+    'under-c.png': (['head', 'upperarm_n', 'forearm_n', 'shin_n', 'shin_f', 'foot_n', 'foot_f'],
+                    ['head', 'upperarm_n', 'forearm_n', 'shin_n', 'shin_f', 'foot_n', 'foot_f']),
 }
 
 
@@ -66,9 +71,35 @@ def rgb_of(path):
     return np.asarray(Image.open(path).convert('RGB'))
 
 
+def keyed(rgb):
+    """(clean rgb, alpha 0..1) of a picture on #00FF00. green_key keeps an enclosed green pocket as paint (a leaf, for
+    a scene); a character sheet has no pure green in it, so a pocket of the background caught inside a hand (Ana's near
+    palm, 11-13) goes too."""
+    c, a = key(rgb)
+    f = rgb.astype(float)
+    pure = np.linalg.norm(f - (0, 255, 0), axis=-1) < PURE_GREEN
+    # the pocket's shadowed edge is dark green, (5, 24, 1): kept as ink by the key. A green-leaning region the figure
+    # encloses (it never reaches the background round the figure) that holds some pure green is background as a whole;
+    # the anti-aliased edge of an outline touches the outer background, so outlines keep their weight.
+    leaning = (f[..., 1] > GREEN_LEAN * np.maximum(f[..., 0], f[..., 2])) & (f[..., 1] > 15)
+    outside, _ = ndi.label(a <= 0)
+    border_ids = np.unique(np.concatenate([outside[0], outside[-1], outside[:, 0], outside[:, -1]]))
+    outer = np.isin(outside, border_ids[border_ids > 0])
+    found, k = ndi.label(leaning)
+    if k:
+        touches_outer = np.zeros(k + 1, bool)
+        touches_outer[np.unique(found[ndi.binary_dilation(outer) & leaning])] = True
+        has_pure = np.zeros(k + 1, bool)
+        has_pure[np.unique(found[pure & leaning])] = True
+        pocket = (found > 0) & has_pure[found] & ~touches_outer[found]
+    else:
+        pocket = np.zeros_like(pure)
+    return c, np.where(pure | pocket, 0.0, a)
+
+
 def figure_of(path):
     """A picture on green as (clean rgb, solid mask)."""
-    c, a = key(rgb_of(path))
+    c, a = keyed(rgb_of(path))
     return c, a > SOLID
 
 
@@ -96,14 +127,16 @@ def clean_labels(labels, solid):
     return np.where(solid, labels[iy, ix], -1)
 
 
-def absorb_islands(labels):
+def absorb_islands(labels, islands=True):
     """Small pieces of a part (under SPECK_PX) that touch other parts join the part around them: cloth showing between a
     shawl's fringe strands moves with the shawl, and a 1-3 px dot where three parts meet (an anti-aliased blend that reads
     as a fourth colour: cyan + yellow = lime) joins its most common neighbour. A piece needs ISLAND_RING of its border
     (air not counted) on one part and must be under ISLAND_PX, unless it is a dot under DOT_PX: a bigger patch of the wrong
     colour is a smear for specks() to count, never repaired quietly. Wisps floating in the air stay with their part.
     The phase 2 cutter must import clean_labels and absorb_islands from here, so it cuts by what was checked.
-    Dots go first, then pieces, again until nothing moves: a dot joining a piece changes that piece's border."""
+    Dots go first, then pieces, again until nothing moves: a dot joining a piece changes that piece's border.
+    islands=False joins dots only: the cutter keeps cloth between fringe strands with the cloth behind (the map was
+    right), or it would swing with the shawl as pale streaks (Ana, chest turned, 11-13)."""
     out = labels.copy()
     for _ in range(ABSORB_ROUNDS):
         changed = False
@@ -111,6 +144,8 @@ def absorb_islands(labels):
             for part in np.unique(out[out >= 0]):
                 found, k = ndi.label(out == part)
                 sizes = ndi.sum(out == part, found, range(1, k + 1))
+                if not dots_only and not islands:
+                    continue
                 for i in np.flatnonzero(sizes < (DOT_PX if dots_only else SPECK_PX)) + 1:
                     piece = found == i
                     ring = out[ndi.binary_dilation(piece) & ~piece]
@@ -350,7 +385,7 @@ def tinted(rgb, solid, colour):
 
 def run(folder):
     at = lambda name: os.path.join(folder, name)
-    needed = ['rest.png', 'map.png', 'under-a.png', 'under-b.png', 'map-b.png', 'head-base.png', 'face/boxes.json']
+    needed = ['rest.png', 'map.png', 'under-a.png', 'under-b.png', 'under-c.png', 'map-b.png', 'head-base.png', 'face/boxes.json']
     report, tiles = {'absent': [n for n in needed if not os.path.exists(at(n))], 'edits': {}}, []
     if 'rest.png' in report['absent']:
         return finish(folder, report, tiles)
