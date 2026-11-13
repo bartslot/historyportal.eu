@@ -365,10 +365,10 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     return [far, (far + 1) % 4]
   })()
   const side = bodyAt.length ? Math.sign(from('forearm_n')[0] - (puppet.parts[bodyAt[0]].quad[0][0] + puppet.parts[bodyAt[0]].quad[1][0]) / 2) || 1 : 1
-  /** How far the forearm stands outside each part of the body, along the side it hangs on; null where no point of it is level with that part. */
   /** A part's four corners where its bone carries them now, flat. Read through the bone, not from the mesh: a part that
    *  bends (smart-bones.ts) is a grid, whose first four points are not its corners (fresh tester, 11-13). */
   const cornersOf = (i: number): number[] => puppet.parts[i].quad.flatMap((c) => carriedBy(puppet.parts[i].bone, c))
+  /** How far the forearm stands outside each part of the body, along the side it hangs on; null where no point of it is level with that part. */
   const gaps = (): (number | null)[] => {
     const fore = cornersOf(foreAt)
     const mid = (a: number, b: number) => [(fore[a * 2] + fore[b * 2]) / 2, (fore[a * 2 + 1] + fore[b * 2 + 1]) / 2]
