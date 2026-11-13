@@ -186,6 +186,11 @@ export const stainIndex = (layerAlphaIndex: number) => layerAlphaIndex - STAIN_S
 /** How far below its layer a stain draws: less than one layer step (placeLayer's SAME_DEPTH_STEP_M), so it lands between. */
 export const STAIN_SLOT_GAP = 0.002
 
+/** Draw slot of a picture's cast shadow: before its caster and before anything standing at the farthest point the
+ *  shadow reaches on the ground (z + run when it falls away from the camera), so whatever stands on it covers it. */
+export const castSlot = (casterSlot: number, z: number, run: number): number =>
+  Math.min(stainIndex(casterSlot), bandSlot(Math.max(z + Math.max(0, run), 1)) - 2 * STAIN_SLOT_GAP)
+
 /** Named eases (camera moves, layer keys). Exported: the director adds its named ease here, not a copy. */
 export const EASES: Record<Ease, (k: number) => number> = {
   linear: (k) => k,

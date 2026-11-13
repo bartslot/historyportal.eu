@@ -24,7 +24,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { STAIN_SLOT_GAP, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
@@ -98,10 +98,9 @@ export class Stage {
   light: Light = daylightOf(undefined)
   private soilKey: string | null = null
   private lightKey: unknown = null
-  private soilKey: string | null = null
   private skyAsset: Asset | null = null
   /** what the floor's look is made from, kept so a new time of day relights it without a rebuild */
-  private groundIn: { slots: (FloorSlot & { asset: Asset })[]; far: RGB | null | undefined; banded: boolean; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
+  private groundIn: { slots: (FloorSlot & { asset: Asset })[]; far: RGB | null | undefined; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
   private hemi: HemisphericLight
   private sunLamp: DirectionalLight
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -300,7 +299,6 @@ export class Stage {
     const sky = next.find((b) => b.index === -1)
     const skyP = sky && placeLayer(sky.asset, sky.layer, sky.order, 0, 0, skyCover(s))
     const skyHaze = sky && skyP ? bandAt(bandColours.get(urlOf(lib, sky.asset, sky.layer)) ?? [], (HOUSE.y - skyP.y) / skyP.h) : null
-    // with ground bands the floor fades into paper, never into the sky: the bands carry the horizon
     const bandsNext = await this.loadBands(s, lib)
     // the sprites the ground can be strewn with, loaded now so a Gras slider move never waits on a file
     const bandTags = s.set.groundBands?.length ? [...new Set(s.set.groundBands.flatMap((g) => resolveAsset(lib, { asset: g.asset }, 'ground_band')?.tags ?? []))] : null
@@ -337,7 +335,7 @@ export class Stage {
     this.nearAsset = nearAsset
     // the floor's look, lit by the scene's time of day (relight): with ground bands the floor is only the paper behind
     // them, no tile can show between the painted strips
-    this.groundIn = { slots: slotsNext, far: far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : undefined, banded: !!s.set.groundBands?.length, wash: choice.kind === 'paper' ? choice.colour : undefined, lib, measuredHaze: skyHaze, tileFoot: tileBands.length ? mean3(tileBands) : null }
+    this.groundIn = { slots: slotsNext, far: far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : undefined, wash: choice.kind === 'paper' ? choice.colour : undefined, lib, measuredHaze: skyHaze, tileFoot: tileBands.length ? mean3(tileBands) : null }
     this.skyAsset = s.set.sky ? resolveAsset(lib, { asset: s.set.sky }, 'sky') : null
     this.dynamicSky = dynamic
     this.ownSky.mesh.setEnabled(dynamic)
@@ -388,8 +386,10 @@ export class Stage {
     if (!g) return
     // the air: the own sky's horizon colour, else the painted sky's where it meets the floor
     const skyHaze = l.dynamic ? l.sky.horizon : g.measuredHaze
-    const tint = g.far !== undefined ? g.far : g.banded ? null : skyHaze
-    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !g.banded && !!skyHaze)
+    // with no far strip the floor fades into the sky where they meet, ground strips or not: a faint strip near by
+    // carries no horizon, and fading into paper left a pale band with a hard edge (Bart 11-13, lesson 94)
+    const tint = g.far !== undefined ? g.far : skyHaze
+    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !!skyHaze)
     this.horizonTint = look.tint
     this.footTint = g.tileFoot ?? look.base
     this.hazeTint = skyHaze ?? look.tint
@@ -833,11 +833,11 @@ export class Stage {
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.stain?.setTint(lit.shadow)
       // its shadow away from the sun, on the ground under it (a lifted picture's falls further off; layer.shadow 0 = none)
-      // drawn in the slot of its nearest point: over the ground strips it falls across, before what stands there
-      const castNear = p.z + sunGround[1] * p.h * k.scale * this.light.reach
+      // drawn in castSlot: before everything standing on the ground it reaches, so a stone behind a bush hides the
+      // bush's shadow falling under it instead of wearing it as streaks (Bart 11-13, lesson 94)
       b.handle.setCast({
         dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow,
-        slot: Math.max(stainIndex(b.handle.mesh.alphaIndex), bandSlot(Math.max(castNear, 1)) - 2 * STAIN_SLOT_GAP),
+        slot: castSlot(b.handle.mesh.alphaIndex, p.z, sunGround[1] * p.h * k.scale * this.light.reach),
         opacity: lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK, time: clock, etch: b.layer.etch ?? 0,
       })
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
