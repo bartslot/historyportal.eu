@@ -342,7 +342,7 @@ Effect.ShadersStore.stageCastFragmentShader = `
   uniform sampler2D tex;
   uniform vec4 cell;
   uniform vec2 softUV;                        // how far the silhouette melts, in uv of the picture
-  uniform float uRepeat, opacity, seed, etch;
+  uniform float uRepeat, opacity, seed, etch, reach;
   uniform vec3 tint;
   ${GL_NOISE}
   ${HATCH_GLSL}
@@ -355,11 +355,16 @@ Effect.ShadersStore.stageCastFragmentShader = `
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
     // a soft silhouette: the alpha here and around it, so the edge melts instead of a cut, and a lone stem
     // leaves a pale stroke instead of a black bar
+    // a short shadow (a high sun) squeezes the picture's height into a few cm: melt it more along its length, or its
+    // rows of leaves lie on the ground as streaks
+    vec2 soft = vec2(softUV.x, min(0.12, softUV.y / max(reach, 0.35)));
     float a = 0.28 * alphaAt(uv);
     for (int k = 0; k < 6; k++) {
       float t = float(k) * 1.0472 + seed;
-      a += 0.12 * alphaAt(uv + vec2(cos(t), sin(t)) * softUV);
+      a += 0.12 * alphaAt(uv + vec2(cos(t), sin(t)) * soft);
     }
+    // ...and it holds on at the foot, where the melted edge would leave a gap of bare ground under the picture
+    a += 0.25 * (1.0 - smoothstep(0.0, 0.12, vUp)) * alphaAt(uv);
     // the wet edge wanders with the paper and fades over a few px on screen (fwidth): no hard step, no stair
     float wander = 0.18 * (fbm(vG * 1.3 + seed) - 0.5);
     float aa = fwidth(a) + 0.04;
@@ -375,10 +380,11 @@ Effect.ShadersStore.stageCastFragmentShader = `
     if (etch > 0.0) {
       // etched: a few light pencil strokes in the shade, the shadow's own colour a step darker, never black bars.
       // hatched() fades a stroke to its even tone once it gets too fine to draw, so it never shimmers
-      vec2 q = vG * 7.0;
+      // Seen across the ground at a low angle, close strokes stand up into a comb: few, fine and faint
+      vec2 q = vG * 4.0;
       float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
-      float ink = hatched(t, 0.12, smoothstep(0.3, 0.45, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed))), 0.5);
-      c = mix(c, c * tint * 1.1, etch * ink * clamp(k * 1.4, 0.0, 1.0) * 0.6);
+      float ink = hatched(t, 0.08, smoothstep(0.3, 0.45, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed))), 0.5);
+      c = mix(c, c * tint * 1.2, etch * ink * clamp(k * 1.4, 0.0, 1.0) * 0.35);
     }
     gl_FragColor = vec4(c, 1.0);
   }`
