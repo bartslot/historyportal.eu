@@ -130,7 +130,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     const dot = document.createElement('span')
     dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid ${SKY};box-sizing:border-box;`
     d.appendChild(dot)
-    d.addEventListener('pointerdown', onBoneDown(name))
+    d.addEventListener('pointerdown', onBoneDown)
     follow(d)
     bones.appendChild(d)
     boneDots.set(name, d)
@@ -272,26 +272,24 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
-  /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. */
-  function onBoneDown (pressed) {
-    return (e) => {
-      if (e.button !== 0 || selected === null) return
-      const seen = stage()?.jointsOnScreen?.(selected)
-      const r = canvas.getBoundingClientRect()
-      const { x, y } = local(e)
-      // handles overlap on a small figure: the press goes to the handle whose dot is nearest, not to the one on top
-      const joint = nearestJoint(seen?.joints ?? [], x / r.width, y / r.height, r.width, r.height) ?? seen?.joints.find((j) => j.name === pressed)
-      if (!joint) return
-      const name = joint.name
-      e.stopPropagation()
-      e.preventDefault()
-      drag = {
-        mode: 'bone', name, index: selected, id: e.pointerId, el: e.currentTarget,
-        at: [joint.at[0] * r.width, joint.at[1] * r.height], last: [x, y],
-        deg: valueOf(selected, `${BONE_PREFIX}${name}`) ?? 0, sense: seen.mirrored ? -1 : 1,
-      }
-      e.currentTarget.setPointerCapture?.(e.pointerId)
+  /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. Handles
+   *  overlap on a small figure, so the press goes to the handle whose dot is nearest, not to the one on top. */
+  function onBoneDown (e) {
+    if (e.button !== 0 || selected === null) return
+    const seen = stage()?.jointsOnScreen?.(selected)
+    const r = canvas.getBoundingClientRect()
+    const { x, y } = local(e)
+    const joint = nearestJoint(seen?.joints ?? [], x / r.width, y / r.height, r.width, r.height)
+    if (!joint) return
+    const name = joint.name
+    e.stopPropagation()
+    e.preventDefault()
+    drag = {
+      mode: 'bone', name, index: selected, id: e.pointerId, el: e.currentTarget,
+      at: [joint.at[0] * r.width, joint.at[1] * r.height], last: [x, y],
+      deg: valueOf(selected, `${BONE_PREFIX}${name}`) ?? 0, sense: seen.mirrored ? -1 : 1,
     }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
   function onMoveEvent (e) {
