@@ -6,7 +6,7 @@ declare(strict_types=1);
  * A throwaway lesson with Ana's full-body rig on a Mesopotamian scene, for checking bones in the real browser
  * (vault topics/character-bones/plan.md, phase 2). Made fresh on every run.
  *
- *   RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/v1/rig \
+ *   RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/v1/rig [RIG_NAME=fig-ana-flat-rig-01] \
  *     php artisan tinker --execute='require "tests/playwright/ana-rig-lesson.php";'
  *
  * Prints ANA_RIG=<lesson>/<scene>/<layer index> (and PIETER_LAYER=<index> with PIETER_DIR set). Local database only. The rig rides on the layer (layer.puppet) over
@@ -22,11 +22,11 @@ use Illuminate\Support\Str;
 const ANA_TITLE = 'Ana rig (throwaway)';
 const ANA_FROM_SCENE = 15926;   // a draft Mesopotamian steppe scene on the babylonia-old-babylonian bundle; its camera is panned
 // right, so Ana stands at x 1.12, 5 m away: in front of the near field strip (5.5 m)
-const ANA_RIG_NAME = 'fig-ana-rig-01';
 
 throw_unless(in_array(DB::connection()->getConfig('host'), ['127.0.0.1', 'localhost'], true), RuntimeException::class, 'Local database only.');
 $rigDir = (string) getenv('RIG_DIR');
-throw_unless(is_file("{$rigDir}/".ANA_RIG_NAME.'.json'), RuntimeException::class, 'Set RIG_DIR to the folder rig_parts.py wrote.');
+$rigName = (string) (getenv('RIG_NAME') ?: 'fig-ana-rig-01');   // fig-ana-flat-rig-01: the flat-sheet Ana (plan 10)
+throw_unless(is_file("{$rigDir}/".$rigName.'.json'), RuntimeException::class, 'Set RIG_DIR to the folder rig_parts.py wrote.');
 
 $disk = Storage::disk('public');
 foreach (Lesson::withTrashed()->where('title', ANA_TITLE)->get() as $old) {
@@ -42,9 +42,9 @@ $lesson->save();
 
 $edits = "lessons/{$lesson->id}/edits";
 $disk->makeDirectory($edits);
-$disk->put("{$edits}/".ANA_RIG_NAME.'.png', (string) file_get_contents("{$rigDir}/".ANA_RIG_NAME.'.png'));
-$puppet = json_decode((string) file_get_contents("{$rigDir}/".ANA_RIG_NAME.'.json'), true, flags: JSON_THROW_ON_ERROR);
-$puppet['atlas'] = "/storage/{$edits}/".ANA_RIG_NAME.'.png';
+$disk->put("{$edits}/".$rigName.'.png', (string) file_get_contents("{$rigDir}/".$rigName.'.png'));
+$puppet = json_decode((string) file_get_contents("{$rigDir}/".$rigName.'.json'), true, flags: JSON_THROW_ON_ERROR);
+$puppet['atlas'] = "/storage/{$edits}/".$rigName.'.png';
 
 $config = $fromScene->config;
 $layers = $config['stage25d']['set']['layers'];
