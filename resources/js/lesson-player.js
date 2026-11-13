@@ -160,6 +160,12 @@ let _bgCanvas       = null   // module-level ref so both Alpine instances share 
 let _sceneQueue     = []   // [{kind, config, audio_url, script, image_url, alignment}] for scene-based playback
 let _mapInstance    = null   // MapLibre map block instance (lives outside Alpine's proxy)
 let _mapTimer       = null   // timed-mode auto-advance timer
+let _mapKey         = null   // what the live map was built with that showScene cannot change (see mapKeyOf)
+const MAP_NARRATION_BEAT_MS = 600  // a narrated map moves on this long after its narrator stops
+// The parts of a map scene that only a fresh mount can draw. Two map scenes in a row that agree on all of
+// them share one live map: the next one goes on with showScene instead of reloading the whole chart.
+const mapKeyOf = (cfg = {}) => JSON.stringify([cfg.projection || 'mercator', cfg.playback_mode === 'timed',
+  cfg.labels || null, cfg.region || null, cfg.route || null, cfg.camera || null])
 let _voyageInstance = null   // voyage tour instance (kind 'voyage'; outside Alpine's proxy)
 let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outside Alpine's proxy)
 const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
@@ -1704,7 +1710,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // out, but a chapter jump comes straight here, so a map left open covered the narration scene
       // after it and kept its "waiting on the student" state. Idempotent, and a voyage lesson's
       // persistent map survives it (see _teardownStageScene).
-      this._teardownStageScene()
+      this._teardownStageScene(false, scene)
       this._destroyDiorama()
       if (!isStage25d(scene)) this._leaveStage25d(scene)   // consecutive stage scenes keep one WebGL context
 
@@ -1920,7 +1926,21 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       const stage = document.getElementById('lesson-map-stage')
-      if (stage && window.renderLessonMap) {
+      if (_mapInstance && _mapKey === mapKeyOf(cfg)) {
+        // The map before this one is still up (the teardown kept it): put this scene on it.
+        _mapInstance.showScene({
+          qid: cfg.qid || null,
+          fit: cfg.fit || null,
+          year: cfg.year ?? 1600,
+          annotations: cfg.annotations || [],
+          showCities: cfg.show_cities === true,
+          showBorders: cfg.show_borders === true,
+        })
+        const textHost = document.getElementById('lesson-text-overlay')
+        if (this._textLayer && textHost) this._textLayer.setProjector(_mapInstance.textProjector(textHost))
+      } else if (stage && window.renderLessonMap) {
+        if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} }
+        _mapKey = mapKeyOf(cfg)
         stage.style.display = 'block'
         stage.innerHTML = ''
         // Inner child: MapLibre stamps position:relative on its container, which would collapse
@@ -1960,21 +1980,28 @@ Alpine.data('lessonGame', (lesson) => ({
       // map itself (interactive Continue, or the timed hold below), never by the length of the
       // audio, so this must not be wired to _afterSceneAudio or it would advance the queue twice.
       // Without this the script authored for a map scene was generated and stored but never heard.
+      // A timed map with a narrator moves on when the narrator is done, like every other scene: holding it for
+      // its full Hold left seconds of silence and then a new map between two sentences (Bart 11-13). The Hold
+      // times a map without narration. (Wired to the map's own advance, never _afterSceneAudio, see above.)
+      const timed = mode === 'timed'
+      const advanceIn = (ms) => {
+        _mapTimer?.cancel()
+        _mapTimer = createPausableTimeout(() => this._advanceFromMap(index), ms, { paused: this.playbackPaused })
+      }
       if (scene.audio_url) {
         // Walk the camera through the focus cities in the order the script names them, paced to
         // this narration. Started once the duration is known rather than at mount because the
         // pacing needs it, and MapLibre needs the style up before it will ease anywhere.
-        this._startNarration(scene, { onDuration: (sec) => this._startMapItinerary(sec * 1000) })
+        this._startNarration(scene, {
+          onDuration: (sec) => this._startMapItinerary(sec * 1000),
+          onEnded: timed ? () => advanceIn(MAP_NARRATION_BEAT_MS) : null,
+        })
       } else {
         this._startMapItinerary(null)   // no narration — the itinerary's own natural pace
+        if (timed) advanceIn(Math.max(2, Number(cfg.hold_seconds) || 7) * 1000)
       }
 
       this.showMapContinue = (mode === 'interactive')
-      if (mode === 'timed') {
-        const hold = Math.max(2, Number(cfg.hold_seconds) || 7) * 1000
-        _mapTimer?.cancel()
-        _mapTimer = createPausableTimeout(() => this._advanceFromMap(index), hold, { paused: this.playbackPaused })
-      }
     },
 
     /**
@@ -2185,22 +2212,27 @@ Alpine.data('lessonGame', (lesson) => ({
       let i = this._sceneIndex - 1
       while (i >= 0 && !this.mayEnter(i)) i--
       if (i < 0) return
-      this._teardownStageScene()
+      this._teardownStageScene(false, _sceneQueue[i])
       this._sceneIndex = i
       this._playScene(i)
     },
 
-    _teardownStageScene (full = false) {
+    // `next`: the scene about to play. A map scene the live map can show keeps that map (see mapKeyOf).
+    _teardownStageScene (full = false, next = null) {
       _mapTimer?.cancel()
       _mapTimer = null
       this._cancelVoyageAuto()
+      if (!full && _mapInstance && next?.kind === 'map' && mapKeyOf(next.config || {}) === _mapKey) {
+        this.showMapContinue = false
+        return
+      }
       // Voyage lessons keep ONE persistent map across all legs — between scenes we only stop the
       // sail (playLeg re-drives it) and keep the map alive. Full teardown runs at lesson end /
       // player unmount (below), or when leaving voyage for a different scene kind.
       if (_voyageInstance && lesson.game_type === 'voyage' && !full) { this.showMapContinue = false; return }
       if (_galleryInstance) { try { _galleryInstance.destroy() } catch (_) {} _galleryInstance = null }
       this._textLayer?.setProjector(null)   // map gone — pinned labels fall back to screen spots
-      if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} _mapInstance = null }
+      if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} _mapInstance = null; _mapKey = null }
       if (_voyageInstance) { try { _voyageInstance.destroy() } catch (_) {} _voyageInstance = null }
       const stage = document.getElementById('lesson-map-stage')
       if (stage) { stage.style.display = 'none'; stage.innerHTML = '' }
@@ -2214,7 +2246,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Exits BEFORE the teardown: tearing the stage down first removes the very layers that are
       // supposed to be leaving, so the teacher's Build Out would never be seen on a map scene.
       this._afterExits(() => {
-        this._teardownStageScene()
+        this._teardownStageScene(false, _sceneQueue[index + 1])
         this._advanceSceneNow(index)
       })
     },
@@ -3660,7 +3692,7 @@ Alpine.data('lessonGame', (lesson) => ({
       try { _mapInstance?.destroy?.() } catch (_) {}
       try { _voyageInstance?.destroy?.() } catch (_) {}
       _bgInstance = null
-      _mapInstance = null
+      _mapInstance = null; _mapKey = null
       _voyageInstance = null
       _initDone = false  // allow a later mount (e.g. opening another lesson) to re-init
     },
