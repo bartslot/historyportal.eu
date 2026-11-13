@@ -11,7 +11,7 @@ go on under the waistcoat, so a near hand stops at its edge (bones.ts safe).
 Hidden parts come from the waistcoat-off picture: the sleeves up to the shoulder, the waistband, the neck. A forearm has
 nothing painted under its cuff, so a round cap of its own mirror image fills the outside of a bent elbow.
 
-usage: rest_puppet.py REST.png MAP.png UNDER.png OUT_DIR --atlas-url /storage/.../pieter-rigid.png
+usage: rest_puppet.py REST.png MAP.png UNDER.png OUT_DIR --atlas-url /storage/.../pieter-rigid.webp
 """
 import argparse
 import json
@@ -20,6 +20,8 @@ import os
 import numpy as np
 from PIL import Image
 from scipy import ndimage
+
+from img_io import save as save_image
 
 SOLID = 10
 ATLAS_MARGIN = 16        # px of air around a part on the atlas, so its edge never samples a neighbour
@@ -303,7 +305,7 @@ def main():
     changed = (np.abs(drawn.astype(int) - rest).sum(axis=-1) > 0) & visible
     print(f'at rest {int(changed.sum())} of {int(visible.sum())} visible px differ from the drawing')
     os.makedirs(args.out_dir, exist_ok=True)
-    Image.fromarray(atlas).save(os.path.join(args.out_dir, f'{args.name}.png'))
+    save_image(atlas, os.path.join(args.out_dir, f'{args.name}.webp'))
     with open(os.path.join(args.out_dir, f'{args.name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)
     print(f'{args.name}: atlas {atlas.shape[1]}x{atlas.shape[0]}, {len(puppet["parts"])} parts, facing {facing}')

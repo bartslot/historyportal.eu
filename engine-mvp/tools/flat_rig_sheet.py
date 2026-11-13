@@ -4,7 +4,7 @@
 In:  RIG_DIR   the checked painted rig sheet (rest, under-a/b/c, map, map-b, map-pieces.json; rig_check.py passed it)
      FLAT_DIR  the figure's clean flat-colour sheets on the same canvas: flat.png, head-flat.png (the head at close-up
                size) and under-a/b/c-flat.png, each an edit_image of the painted under sheet with flat.png as its style
-Out: OUT_DIR   rest.png and under-a/b/c.png painted by kit_render.py (shading wash, aquarel, pen) on #00FF00, and the
+Out: OUT_DIR   rest.webp and under-a/b/c.webp (lossless) painted by kit_render.py (shading wash, aquarel, pen) on #00FF00, and the
                maps copied, so rig_parts.py cuts the flat figure with the joints, bands and limits it found before.
 
 An under sheet only counts where it shows something the flat sheet hides (the tunic under the shawl, the thighs under
@@ -29,6 +29,8 @@ import cv2
 import numpy as np
 from PIL import Image
 from scipy import ndimage
+
+from img_io import find, save as save_image
 
 HERE = Path(__file__).resolve().parent
 UNDERS = ('under-a', 'under-b', 'under-c')
@@ -124,35 +126,37 @@ def paint(sheet: Path, part_map: Path, head: Path, size: tuple[int, int]) -> np.
                              env=env, capture_output=True, text=True)
         if run.returncode:
             raise SystemExit(f'kit_render.py failed on {sheet}:\n{run.stderr[-2000:]}')
-        rgba = np.asarray(Image.open(Path(out) / 'sheet-canvas.png').convert('RGBA')).astype(np.float32)
+        rgba = np.asarray(Image.open(Path(out) / 'sheet-canvas.webp').convert('RGBA')).astype(np.float32)
     return on_green(rgba, size)
 
 
 def build(rig_dir: Path, flat_dir: Path, out_dir: Path) -> dict:
-    need = [rig_dir / n for n in ('rest.png', 'map.png')] + [flat_dir / n for n in ('flat.png', 'head-flat.png')]
-    need += [flat_dir / f'{name}-flat.png' for name in UNDERS]
+    need = [find(rig_dir / n) for n in ('rest.png', 'map.png')] + [find(flat_dir / n) for n in ('flat.png', 'head-flat.png')]
+    need += [find(flat_dir / f'{name}-flat.png') for name in UNDERS]
     missing = [str(p) for p in need if not p.is_file()]
     if missing:
         raise SystemExit('missing: ' + ', '.join(missing))
     out_dir.mkdir(parents=True, exist_ok=True)
-    for name in ('map.png', 'map-b.png', 'map-pieces.json'):
-        if (rig_dir / name).exists():
-            shutil.copy(rig_dir / name, out_dir / name)
-    head = flat_dir / 'head-flat.png'
-    rest = Image.open(rig_dir / 'rest.png')
-    Image.fromarray(paint(flat_dir / 'flat.png', rig_dir / 'map.png', head, rest.size)).save(out_dir / 'rest.png')
-    map_rgb = np.asarray(Image.open(rig_dir / 'map.png').convert('RGB'))
+    for name in ('map.png', 'map-b.png'):           # the maps as lossless .webp: a part's colour must stay exact
+        save_image(Image.open(find(rig_dir / name)).convert('RGB'), out_dir / name, lossless=True)
+    if (rig_dir / 'map-pieces.json').exists():
+        shutil.copy(rig_dir / 'map-pieces.json', out_dir / 'map-pieces.json')
+    head = find(flat_dir / 'head-flat.png')
+    flat_path, map_path = find(flat_dir / 'flat.png'), find(rig_dir / 'map.png')
+    rest = Image.open(find(rig_dir / 'rest.png'))
+    save_image(paint(flat_path, map_path, head, rest.size), out_dir / 'rest.webp', lossless=True)   # re-read by rig_parts
+    map_rgb = np.asarray(Image.open(map_path).convert('RGB'))
     head_rgb = rgb_of(head)
     report = {}
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp = Path(tmp_name)
         for name in UNDERS:
-            sheet, region = under_sheet(flat_dir / f'{name}-flat.png', flat_dir / 'flat.png')
+            sheet, region = under_sheet(find(flat_dir / f'{name}-flat.png'), flat_path)
             Image.fromarray(sheet).save(tmp / f'{name}.png')
             Image.fromarray(regions_map(map_rgb, region)).save(tmp / f'{name}-map.png')
             Image.fromarray(under_head(head_rgb, sheet.astype(np.float32), region)).save(tmp / f'{name}-head.png')
             painted = paint(tmp / f'{name}.png', tmp / f'{name}-map.png', tmp / f'{name}-head.png', rest.size)
-            Image.fromarray(painted).save(out_dir / f'{name}.png')
+            save_image(painted, out_dir / f'{name}.webp', lossless=True)
             report[name] = int(region.sum())
             print(f'{name}: {region.sum()} px from its own flat sheet')
     (out_dir / 'flat-sheet.json').write_text(json.dumps({'flat': str(flat_dir), 'rig': str(rig_dir), 'shown_px': report}, indent=1))

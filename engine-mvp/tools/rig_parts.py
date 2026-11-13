@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Cut a checked part sheet into a full-body puppet: legs and feet too (vault topics/character-bones/plan.md, 3.1).
 
-In:  a sheet folder that rig_check.py passed: rest.png, map.png, under-a.png, under-b.png, map-b.png (all on one canvas).
-Out: <name>.png (atlas) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
+In:  a sheet folder that rig_check.py passed: rest, map, under-a, under-b, map-b (all on one canvas; .webp or .png).
+Out: <name>.webp (atlas: q90, alpha lossless) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
 
 Every visible pixel is the rest drawing's own, so at rest the puppet IS the drawing. The joints are found, not drawn: each
 is the middle of the border two parts share on the map; a hip, hidden under the tunic, sits one shin's length up the thigh
@@ -12,7 +12,7 @@ Moho's cut-out overlap: a part that turns UNDER its neighbour gets a round end a
 passes show there (or, for an elbow with nothing under the sleeve, its own mirror image), so a bend never opens a hole.
 Hidden paint only goes where a part drawn above covers it at rest, so it can never change the drawing at rest.
 
-usage: rig_parts.py SHEET_DIR OUT_DIR --name fig-ana-rig-01 --atlas-url fig-ana-rig-01.png
+usage: rig_parts.py SHEET_DIR OUT_DIR --name fig-ana-rig-01 --atlas-url fig-ana-rig-01.webp
 """
 import argparse
 import json
@@ -24,6 +24,7 @@ from PIL import Image
 from scipy import ndimage as ndi
 
 import rig_check as rc
+from img_io import find, save as save_image
 from rest_puppet import capsule, pack
 
 # Back to front. A child that turns under its parent comes first (forearm under the sleeve, foot under the shin, shin
@@ -93,7 +94,7 @@ def rgba_of(rgb, alpha):
 
 def load(folder):
     """The sheet's pictures on its one canvas, keyed, and its parts labelled as rig_check.py checked them."""
-    at = lambda n: os.path.join(folder, n)
+    at = lambda n: str(find(os.path.join(folder, n)))   # .webp (ours) or .png (ChatGPT's)
     keyed = {}
     for name in ('rest', 'under-a', 'under-b', 'under-c'):
         c, a = rc.keyed(rc.rgb_of(at(f'{name}.png')))
@@ -700,7 +701,7 @@ def run(folder, out_dir, name, atlas_url):
     holes = {bone: holes_bending(layers, joints, bone, facing) for bone in LIMIT}
     atlas, puppet = puppet_json(layers, joints, facing, own, rest.shape[:2], atlas_url)
     os.makedirs(out_dir, exist_ok=True)
-    Image.fromarray(atlas).save(os.path.join(out_dir, f'{name}.png'))
+    save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # q90, alpha lossless: 1/6 of the PNG
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)
     report = {'facing': facing, 'differ_at_rest': differ, 'visible': int(visible.sum()), 'holes': holes,

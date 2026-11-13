@@ -4,7 +4,7 @@ PAL (json kind -> [r,g,b]), RENDERS (full,closeup,eyes).
   python3 engine-mvp/tools/kit_render.py <dir with flat.png + head-flat.png> <map.png> <out dir>
 
 The one copy (vault topics/character-creator, topics/character-bones/plan.md 10); the bone rig paints flat-sheet
-figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.png).
+figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.webp). Every output is .webp (q90, alpha lossless); inputs may be .webp or .png.
 
 flat.png       the whole figure, clean flat colour, 1024x1536 (an edit of her rest drawing)
 head-flat.png  her head redrawn at 1024x1024 from the crop HEAD_BOX of flat.png (same canvas, so it fits back)
@@ -31,6 +31,7 @@ SRC, MAP, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 REPO = Path(__file__).resolve().parents[2]   # this repo: aquarel.py and the wash texture (a 4th argument is ignored)
 sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
+from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
 
 OUT.mkdir(parents=True, exist_ok=True)
 INK = (0x19, 0x14, 0x10)
@@ -225,7 +226,7 @@ def cut_lines(lines, keep):
     return out
 
 
-F = read_sheet(Path(os.environ.get('FLAT', SRC / 'flat.png')), 3.6)
+F = read_sheet(Path(os.environ.get('FLAT', find(SRC / 'flat.png'))), 3.6)
 NAME = os.environ.get('NAME', 'ana')
 W, H = F['w'], F['h']
 m = np.asarray(Image.open(MAP).convert('RGB')).astype(np.float32)
@@ -259,7 +260,7 @@ if DROP_BRAID:
 part = part_all.copy()
 part[~F['fill_area']] = 255
 
-Hd = read_sheet(Path(os.environ.get('HEAD_SHEET', SRC / 'head-flat.png')), 6.0, rim=4)
+Hd = read_sheet(Path(os.environ.get('HEAD_SHEET', find(SRC / 'head-flat.png'))), 6.0, rim=4)
 IM_ = names.index('mouth')
 MOUTH_MASK = np.asarray(Image.open(os.environ['MOUTH_MASK']).convert('L')) > 127 if os.environ.get('MOUTH_MASK') else np.zeros((1024, 1024), bool)
 Hd['kind'] = np.where((Hd['kind'] == IM_) & ~MOUTH_MASK, names.index('hair'), Hd['kind']).astype(np.uint8)
@@ -280,16 +281,32 @@ if os.environ.get('KIT') == '1':
     below = np.zeros_like(cloth); below[560:] = True                      # only under the chin
     cloth = ndimage.binary_dilation(cloth & below, iterations=5) & below & ~added & ~np.isin(Hd['kind'], [names.index('skin')])
     head_lab &= ~cloth
+    unpainted = ~Hd['alpha']; unpainted[:560] = False                     # below the chin the head is only where its sheet has paint:
+    head_lab &= ~(unpainted & ~added)                                     # an adult's longer neck comes from the body sheet
     fig_head = np.zeros((H, W), bool)
     fig_head[y0b:y1b, x0b:x1b] = cv2.resize(head_lab.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
     lost = (part_all == HEAD) & ~fig_head                                 # body pixels the head no longer covers: nearest body part
-    lost[:int(y0b + 560 * HK)] = False                                     # only under the chin; above it the body's own skull stays hidden
+    # only from the top of the neck down (where the map's head part narrows): above it the body's own skull and jaw stay
+    # hidden, even where an adult body's jaw reaches past the head sheet's
+    hw = (part_all == HEAD).sum(1)
+    low = np.arange(H) > y0b + 0.5 * (y1b - y0b)
+    wide = low & (hw > 0.25 * hw.max())                                   # not the last few rows of a V neckline
+    neck_w = hw[wide].min() if wide.any() else 0
+    neck_top = int(np.flatnonzero(wide & (hw <= 1.15 * neck_w))[0]) if neck_w else 0
+    lost[:max(int(y0b + 560 * HK), neck_top)] = False
     jb = ndimage.distance_transform_edt(lost | (part_all == HEAD), return_distances=False, return_indices=True)
     part_all = np.where(lost, part_all[jb[0], jb[1]], part_all).astype(np.uint8)
     # where neither the head (its collar cut away) nor the body draws, inside the figure: the body paint next to it
     drawn_fig = (F['fill_area'] & (part_all != HEAD)) | fig_head
     hb = np.zeros((H, W), bool); hb[y0b:y1b, x0b:x1b] = True
     gap = ndimage.binary_fill_holes(ndimage.binary_closing(drawn_fig, iterations=8)) & ~drawn_fig & hb
+    # only a gap that lies between the head and the body; a pocket the closing sealed beside a beard or a bun stays empty
+    near_h = ndimage.binary_dilation(fig_head, iterations=3)
+    near_b = ndimage.binary_dilation(F['fill_area'] & (part_all != HEAD), iterations=3)
+    gl, gn = ndimage.label(gap)
+    if gn:
+        both = ndimage.maximum(near_h, gl, range(1, gn + 1)).astype(bool) & ndimage.maximum(near_b, gl, range(1, gn + 1)).astype(bool)
+        gap = np.isin(gl, 1 + np.flatnonzero(both))
     if gap.any():
         src = F['fill_area'] & (part_all != HEAD) & (F['kind'] != 255)
         jg = ndimage.distance_transform_edt(~src, return_distances=False, return_indices=True)
@@ -389,7 +406,7 @@ print('ana-parts.svg', (OUT / f'{NAME}-parts.svg').stat().st_size // 1024, 'KB')
 
 
 # ── render a window of the figure at a scale ────────────────────────────────────────────────────────────────────
-def render(box, scale, palette, seed=7, name=None):
+def render(box, scale, palette, seed=7, name=None, lossless=False):
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
     RW, RH = int(round(w * scale)), int(round(h * scale))
@@ -535,21 +552,22 @@ def render(box, scale, palette, seed=7, name=None):
     a = np.clip(np.maximum(sil, cover), 0, 1)
     on_paper = lambda im, al: (im * al[..., None] + np.array(PAPER, np.float32) * (1 - al[..., None])).clip(0, 255).astype(np.uint8)
     if name:
-        Image.fromarray(np.dstack([img, a * 255]).clip(0, 255).astype(np.uint8)).save(OUT / f'{name}.png')
-        Image.fromarray(on_paper(img, a)).save(OUT / f'{name}-on-paper.png')
+        save_image(np.dstack([img, a * 255]).clip(0, 255).astype(np.uint8), OUT / f'{name}.webp', lossless=lossless)
+        if not lossless:   # a lossless render is a tool's input (the rig's canvas), not a picture to look at
+            save_image(on_paper(img, a), OUT / f'{name}-on-paper.webp')
     return on_paper(img, a)
 
 
 RENDERS = os.environ.get('RENDERS', 'full,closeup').split(',')
 if 'full' in RENDERS:
     full = render((200, 0, 830, 1536), 2, colour_of, name=f'{NAME}-full')
-    Image.fromarray(full).resize((full.shape[1] * 900 // full.shape[0], 900), Image.LANCZOS).save(OUT / f'{NAME}-full-stage-size.png')
+    save_image(Image.fromarray(full).resize((full.shape[1] * 900 // full.shape[0], 900), Image.LANCZOS), OUT / f'{NAME}-full-stage-size.webp')
 if 'closeup' in RENDERS:
     render((300, 15, 700, 400), 4, colour_of, name=f'{NAME}-closeup')
 if 'eyes' in RENDERS:
     render((470, 120, 640, 215), 8, colour_of, name=f'{NAME}-eyes')
 if 'canvas' in RENDERS:                                                    # the whole sheet, on its own canvas
-    render((0, 0, W, H), float(os.environ.get('CANVAS_SCALE', '2')), colour_of, name=f'{NAME}-canvas')
+    render((0, 0, W, H), float(os.environ.get('CANVAS_SCALE', '2')), colour_of, name=f'{NAME}-canvas', lossless=True)
 for f in OUT.glob('_*'):
     f.unlink()
 print('done', OUT)

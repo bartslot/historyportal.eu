@@ -18,6 +18,8 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
 
+from img_io import find, save as save_image
+
 STRONG = 40      # levels (largest channel): a change this big is drawing; smaller is the pasted box's tone
 BOX_REACH = 12   # px a change may reach past its group's box (a raised brow, an open jaw)
 SPECK = 1        # opening iterations: lone changed pixels are noise, not drawing
@@ -46,17 +48,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument('folder')
     folder = ap.parse_args().folder
-    base = np.asarray(Image.open(os.path.join(folder, 'head-base.png')).convert('RGB'))
+    base = np.asarray(Image.open(find(os.path.join(folder, 'head-base.png'))).convert('RGB'))
     with open(os.path.join(folder, 'face', 'boxes.json')) as f:
         boxes = {k: tuple(v) for k, v in json.load(f).items()}
     out_dir = os.path.join(folder, 'face', 'clean')
     os.makedirs(out_dir, exist_ok=True)
     for file in sorted(os.listdir(os.path.join(folder, 'face'))):
         group = file.split('-')[0]
-        if not file.endswith('.png') or group not in boxes:
+        if not file.endswith(('.png', '.webp')) or group not in boxes:
             continue
         edit = np.asarray(Image.open(os.path.join(folder, 'face', file)).convert('RGB').resize(base.shape[1::-1], Image.LANCZOS))
-        Image.fromarray(switch_drawing(base, edit, boxes[group])).save(os.path.join(out_dir, file))
+        save_image(switch_drawing(base, edit, boxes[group]), os.path.join(out_dir, file), lossless=True)
         print(f'{file}: clean switch written')
 
 

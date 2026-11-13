@@ -28,6 +28,10 @@ $rigDir = (string) getenv('RIG_DIR');
 $rigName = (string) (getenv('RIG_NAME') ?: 'fig-ana-rig-01');   // fig-ana-flat-rig-01: the flat-sheet Ana (plan 10)
 throw_unless(is_file("{$rigDir}/".$rigName.'.json'), RuntimeException::class, 'Set RIG_DIR to the folder rig_parts.py wrote.');
 
+// a rig's atlas is .webp (rig_parts.py, Bart 11-13: "use webp and not the very big .png files"); an older rig folder may
+// still hold a .png
+$atlasOf = fn (string $dir, string $name): string => is_file("{$dir}/{$name}.webp") ? "{$name}.webp" : "{$name}.png";
+
 $disk = Storage::disk('public');
 foreach (Lesson::withTrashed()->where('title', ANA_TITLE)->get() as $old) {
     $disk->deleteDirectory("lessons/{$old->id}");
@@ -42,9 +46,10 @@ $lesson->save();
 
 $edits = "lessons/{$lesson->id}/edits";
 $disk->makeDirectory($edits);
-$disk->put("{$edits}/".$rigName.'.png', (string) file_get_contents("{$rigDir}/".$rigName.'.png'));
+$atlas = $atlasOf($rigDir, $rigName);
+$disk->put("{$edits}/{$atlas}", (string) file_get_contents("{$rigDir}/{$atlas}"));
 $puppet = json_decode((string) file_get_contents("{$rigDir}/".$rigName.'.json'), true, flags: JSON_THROW_ON_ERROR);
-$puppet['atlas'] = "/storage/{$edits}/".$rigName.'.png';
+$puppet['atlas'] = "/storage/{$edits}/{$atlas}";
 
 $config = $fromScene->config;
 $layers = $config['stage25d']['set']['layers'];
@@ -55,9 +60,10 @@ $anaLayer = count($layers) - 1;
 // It rides on Ana's library drawing too, only for a height and an anchor on this Mesopotamian bundle.
 $pieterDir = (string) getenv('PIETER_DIR');
 if (is_file("{$pieterDir}/pieter-rigid.json")) {
-    $disk->put("{$edits}/pieter-rigid.png", (string) file_get_contents("{$pieterDir}/pieter-rigid.png"));
+    $pieterAtlas = $atlasOf($pieterDir, 'pieter-rigid');
+    $disk->put("{$edits}/{$pieterAtlas}", (string) file_get_contents("{$pieterDir}/{$pieterAtlas}"));
     $pieter = json_decode((string) file_get_contents("{$pieterDir}/pieter-rigid.json"), true, flags: JSON_THROW_ON_ERROR);
-    $pieter['atlas'] = "/storage/{$edits}/pieter-rigid.png";
+    $pieter['atlas'] = "/storage/{$edits}/{$pieterAtlas}";
     $layers[] = ['need' => 'fig-ana-stand-01', 'asset' => 'fig-ana-stand-01', 'depth' => 'mid', 'x' => 1.3, 'z' => 5, 'scale' => 1, 'puppet' => $pieter];
 }
 $config['stage25d']['set']['layers'] = $layers;
