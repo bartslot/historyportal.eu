@@ -44,7 +44,7 @@ PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'braid': 'head', 'uppe
 # multiplies by facing). Clockwise swings a hanging limb to the left, which is BACK for a figure facing right: a knee
 # folds positive, a thigh, an upper arm and an elbow swing forward negative, toes come up negative.
 LIMIT = {'head': [-25, 25], 'chest': [-12, 12], 'braid': [-25, 25],
-         'upperarm_n': [-150, 40], 'upperarm_f': [-150, 40], 'forearm_n': [-140, 5], 'forearm_f': [-140, 5],
+         'upperarm_n': [-150, 25], 'upperarm_f': [-150, 25], 'forearm_n': [-140, 5], 'forearm_f': [-140, 5],
          'thigh_n': [-80, 30], 'thigh_f': [-80, 30], 'shin_n': [0, 120], 'shin_f': [0, 120],
          'foot_n': [-30, 20], 'foot_f': [-30, 20]}
 
@@ -83,6 +83,13 @@ def load(folder):
     solid_b = keyed['under-b'][..., 3] > rc.SOLID * 255
     labels_b, _ = rc.labels_of(rc.rgb_of(at('map-b.png')), rc.MAP_B_PARTS)
     labels_b = rc.absorb_islands(rc.clean_labels(labels_b, solid_b), islands=False)
+    for i, name in enumerate(rc.MAP_B_PARTS):   # a leg on map-b is one piece: a loose dot of its colour is not leg
+        if name == 'other':
+            continue
+        found, k = ndi.label(labels_b == i)
+        if k > 1:
+            main = 1 + int(np.argmax(ndi.sum(labels_b == i, found, range(1, k + 1))))
+            labels_b[(labels_b == i) & (found != main)] = rc.MAP_B_PARTS.index('other')
     return keyed, labels, labels_b
 
 
@@ -106,6 +113,40 @@ def fringe_slivers(own, keyed):
     cloth = is_part(own, 'skirt', 'chest') & ~solid_c
     near_shawl = ndi.binary_dilation(is_part(own, 'shawl'), iterations=FRINGE_REACH)
     out[cloth & near_shawl] = PARTS.index('shawl')
+    return out
+
+
+CLOTH = ('skirt', 'chest', 'belt', 'shawl')
+
+
+def stray_pieces(own):
+    """A small loose piece of a part (under SPECK_PX, not its main piece) joins the part it mostly touches: a blend dot of
+    a foot's colour on the chest would turn with the foot and stretch the foot's box so its handle stands at the chest.
+    It stays where it is when it touches nothing (a wisp of hair in the air) and, for cloth, when what it touches is
+    cloth (tunic showing between the shawl's fringe strands is tunic)."""
+    out = own.copy()
+    for i, name in enumerate(PARTS):
+        mask = own == i
+        if not mask.any():
+            continue
+        found, k = ndi.label(mask)
+        if k < 2:
+            continue
+        sizes = ndi.sum(mask, found, range(1, k + 1))
+        main = 1 + int(np.argmax(sizes))
+        for piece_id in np.flatnonzero(sizes < rc.SPECK_PX) + 1:
+            if piece_id == main:
+                continue
+            piece = found == piece_id
+            ring = own[ndi.binary_dilation(piece) & ~piece]
+            ring = ring[(ring >= 0) & (ring != i)]
+            if not ring.size:
+                continue
+            values, counts = np.unique(ring, return_counts=True)
+            neighbour = int(values[counts.argmax()])
+            if name in CLOTH and PARTS[neighbour] in CLOTH:
+                continue
+            out[piece] = neighbour
     return out
 
 
@@ -475,7 +516,7 @@ def puppet_json(layers, joints, facing, own, size, atlas_url):
 
 def run(folder, out_dir, name, atlas_url):
     keyed, labels, labels_b = load(folder)
-    own = split_belt(fringe_slivers(owners(labels, labels_b), keyed))
+    own = stray_pieces(split_belt(fringe_slivers(owners(labels, labels_b), keyed)))
     joints = auto_joints(own, labels_b)
     own = split_neck(own, joints)
     facing = facing_of_feet(own, joints)

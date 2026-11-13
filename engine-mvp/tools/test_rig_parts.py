@@ -86,6 +86,31 @@ def test_a_posed_shin_folds_round_its_knee():
     assert img[90:110, 10:40, 3].max() > 0 and img[130:170, 70:90, 3].max() == 0
 
 
+def test_a_stray_dot_of_a_foot_on_the_chest_joins_the_chest():
+    own = own_with(chest=(20, 80, 40, 120), foot_f=(160, 172, 90, 120))
+    own[40:44, 60:64] = rp.PARTS.index('foot_f')               # a blend dot of the foot's colour on the chest
+    out = rp.stray_pieces(own)
+    assert (out[40:44, 60:64] == rp.PARTS.index('chest')).all() and (out[160:172, 90:120] == rp.PARTS.index('foot_f')).all()
+
+
+def test_cloth_keeps_its_pieces():
+    own = own_with(skirt=(100, 160, 40, 120), shawl=(60, 100, 40, 120))
+    own[70:74, 60:64] = rp.PARTS.index('skirt')                # tunic showing between fringe strands
+    assert (rp.stray_pieces(own)[70:74, 60:64] == rp.PARTS.index('skirt')).all()
+
+
+def test_a_wisp_of_hair_in_the_air_stays_with_the_head():
+    own = own_with(head=(20, 60, 60, 100), chest=(60, 120, 40, 120))
+    own[10:13, 110:114] = rp.PARTS.index('head')               # a loose wisp, touching nothing
+    assert (rp.stray_pieces(own)[10:13, 110:114] == rp.PARTS.index('head')).all()
+
+
+def test_a_dot_of_skirt_colour_on_the_head_joins_the_head():
+    own = own_with(head=(20, 60, 60, 100), skirt=(120, 180, 40, 120))
+    own[30:33, 70:73] = rp.PARTS.index('skirt')
+    assert (rp.stray_pieces(own)[30:33, 70:73] == rp.PARTS.index('head')).all()
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-q']))
