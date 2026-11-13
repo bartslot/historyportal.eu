@@ -20,8 +20,14 @@ final class SceneHistory
     /** Steps kept per scene. */
     public const DEPTH = 30;
 
-    /** Saves this close together are one step: a drag or a burst of typing undoes in one go. */
+    /**
+     * Saves this close together AND inside one gesture are one step: a drag or a burst of typing undoes in one go.
+     * The gesture is what keeps quick separate edits apart (three bone drags a second apart were one undo, 11-13).
+     */
     public const MERGE_SECONDS = 1.5;
+
+    /** The teacher's current gesture, a counter in the session that startStep() moves on. */
+    private const STEP_KEY = 'scene_history_step';
 
     /**
      * The columns an edit changes. The background columns too: an uploaded, dropped or pasted
@@ -38,6 +44,16 @@ final class SceneHistory
         app()->instance(self::class.'.on', true);
     }
 
+    /**
+     * A new gesture started in the editor (a press, typing after a pause): the next save is its own step. The editor
+     * sends it as a call in the same queue as its saves, so it lands between the last gesture's saves and the next's
+     * however the requests are batched.
+     */
+    public static function startStep(): void
+    {
+        session()->put(self::STEP_KEY, (int) session()->get(self::STEP_KEY, 0) + 1);
+    }
+
     /** Called from Scene::updating: remember the state before this save. */
     public static function remember(Scene $scene): void
     {
@@ -46,12 +62,15 @@ final class SceneHistory
         }
         $history = self::load($scene->id);
         $now = now()->getTimestampMs() / 1000;
-        if ($history['undo'] === [] || $now - $history['at'] > self::MERGE_SECONDS) {
+        $step = (int) session()->get(self::STEP_KEY, 0);
+        $merges = $history['undo'] !== [] && ($history['step'] ?? null) === $step && $now - $history['at'] <= self::MERGE_SECONDS;
+        if (! $merges) {
             $history['undo'][] = self::stateOf($scene, original: true);
             $history['undo'] = array_slice($history['undo'], -self::DEPTH);
         }
         $history['redo'] = [];                                  // a new edit ends the redo trail
         $history['at'] = $now;
+        $history['step'] = $step;
         self::store($scene->id, $history);
     }
 
@@ -96,13 +115,13 @@ final class SceneHistory
             ->all();
     }
 
-    /** @return array{undo: list<array<string, mixed>>, redo: list<array<string, mixed>>, at: float} */
+    /** @return array{undo: list<array<string, mixed>>, redo: list<array<string, mixed>>, at: float, step?: int} */
     private static function load(int $sceneId): array
     {
         return session()->get(self::key($sceneId), ['undo' => [], 'redo' => [], 'at' => 0.0]);
     }
 
-    /** @param array{undo: list<array<string, mixed>>, redo: list<array<string, mixed>>, at: float} $history */
+    /** @param array{undo: list<array<string, mixed>>, redo: list<array<string, mixed>>, at: float, step?: int} $history */
     private static function store(int $sceneId, array $history): void
     {
         session()->put(self::key($sceneId), $history);

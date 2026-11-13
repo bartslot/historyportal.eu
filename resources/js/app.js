@@ -27,6 +27,7 @@ import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
 import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 import { isTypingTarget } from './ui/keyboard.js';
+import { installEditSteps } from './editor/edit-steps.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
@@ -152,6 +153,8 @@ window.animationTimeline = animationTimeline;
 // <script> that cannot import a module, and they used to carry their own copy of the same test.
 // See resources/js/ui/keyboard.js.
 window.__isTypingTarget = isTypingTarget;
+// The scene editor's undo: every press or typing burst is its own step. See resources/js/editor/edit-steps.js.
+installEditSteps();
 // Cmd/Ctrl-V in the scene editor: image, object copy or plain text. See resources/js/ui/paste-router.js.
 window.__routePaste = routePaste;
 window.__pasteObjectsMark = OBJECTS_MARK;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Services\Editor\SceneHistory;
+use Livewire\Attributes\Renderless;
 
 /**
  * Cmd-Z / Cmd-Shift-Z for the selected scene's own edits (SceneHistory). The editor switches
@@ -15,6 +16,13 @@ trait UndoesSceneEdits
     public function bootUndoesSceneEdits(): void
     {
         SceneHistory::enable();
+    }
+
+    /** The editor's client: a new gesture started, so the next save is its own undo step (resources/js/editor/edit-steps.js). */
+    #[Renderless]
+    public function startEditStep(): void
+    {
+        SceneHistory::startStep();
     }
 
     /** Undo the selected scene's last edit; the stage redraws from the restored scene. */

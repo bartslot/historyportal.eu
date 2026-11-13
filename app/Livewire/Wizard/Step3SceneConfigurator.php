@@ -2232,7 +2232,47 @@ class Step3SceneConfigurator extends Component
         if (! $this->selectedScene || ! $this->selectedSceneId) {
             return;
         }
+        $before = $this->timelineAtStart();
+        $stored = $this->storedTimeline($timeline);
 
+        // A stage25d layer's keys live on the layer, not in the timeline (resources/js/anim/stage25d-keys.js).
+        if (is_array($timeline['stage25dKeys'] ?? null)) {
+            $this->saveStage25dKeys($timeline['stage25dKeys'], $stored['duration'], (int) ($timeline['sceneId'] ?? 0));
+        }
+
+        $this->selectedScene['config']['timeline'] = $stored;
+        $this->saveSelected();
+        // Only a stage layer's keys changed (a bone posed, a figure moved at the playhead): the stage and the panel show
+        // them already, like a plain move on the stage (isQuietCall). A render here made the next Cmd-Z wait behind it.
+        if ($stored == $before) {
+            $this->skipQuietRender();
+            $this->renderedFingerprint = $this->lessonFingerprint();
+        }
+    }
+
+    /** The selected scene's timeline as this request found it, before any setTimeline in it changed it. */
+    private function timelineAtStart(): ?array
+    {
+        if (! $this->timelineAtStartRead) {
+            $this->timelineAtStartRead = true;
+            $this->timelineAtStart = $this->selectedScene['config']['timeline'] ?? null;
+        }
+
+        return $this->timelineAtStart;
+    }
+
+    private bool $timelineAtStartRead = false;
+
+    private ?array $timelineAtStart = null;
+
+    /**
+     * A timeline from the browser as it is stored, rebuilt field by field.
+     *
+     * @param  array<string, mixed>  $timeline
+     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>}
+     */
+    private function storedTimeline(array $timeline): array
+    {
         $duration = max(0.0, min(3600.0, (float) ($timeline['duration'] ?? 0)));
 
         // The objects on this scene. A camera EXISTS whether or not anything is keyed on it, so it
@@ -2309,17 +2349,7 @@ class Step3SceneConfigurator extends Component
             $tracks[] = $stored;
         }
 
-        // A stage25d layer's keys live on the layer, not in the timeline (resources/js/anim/stage25d-keys.js).
-        if (is_array($timeline['stage25dKeys'] ?? null)) {
-            $this->saveStage25dKeys($timeline['stage25dKeys'], $duration, (int) ($timeline['sceneId'] ?? 0));
-        }
-
-        $this->selectedScene['config']['timeline'] = [
-            'duration' => $duration,
-            'targets' => array_values(array_unique($targets)),
-            'tracks' => $tracks,
-        ];
-        $this->saveSelected();
+        return ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
     }
 
     /**
@@ -4592,7 +4622,7 @@ class Step3SceneConfigurator extends Component
     }
 
     /** Calls that may go out without a render (they change nothing the editor draws, or draw it later). */
-    private const QUIET_CALLS = ['poll', 'saveStage25dStill'];
+    private const QUIET_CALLS = ['poll', 'saveStage25dStill', 'startEditStep'];   // startEditStep: the undo's gesture marker rides along with saves (editor/edit-steps.js)
 
     /**
      * A call that changes nothing the server draws: a quiet one, or a stage25d layer moved, sized, turned, faded or
@@ -4601,10 +4631,14 @@ class Step3SceneConfigurator extends Component
      *
      * @param  array<string,mixed>  $call
      */
-    private static function isQuietCall(array $call): bool
+    private function isQuietCall(array $call): bool
     {
         if (in_array($call['method'] ?? null, self::QUIET_CALLS, true)) {
             return true;
+        }
+        if (($call['method'] ?? null) === 'setTimeline') {   // keys on stage layers only: its own tracks are what the request found
+            return is_array($call['params'][0] ?? null) && $this->selectedScene !== null
+                && $this->storedTimeline($call['params'][0]) == $this->timelineAtStart();
         }
         if (($call['method'] ?? null) === '__dispatch' && ($call['params'][0] ?? null) === 'stage25d:soil') {
             return true;   // the soil colour: the stage shows it already
@@ -4633,7 +4667,7 @@ class Step3SceneConfigurator extends Component
             if (($memo['id'] ?? null) !== $this->getId()) {
                 continue;
             }
-            $loud = array_filter((array) ($component['calls'] ?? []), fn ($call) => ! self::isQuietCall((array) $call));
+            $loud = array_filter((array) ($component['calls'] ?? []), fn ($call) => ! $this->isQuietCall((array) $call));
             if (! empty($component['updates']) || $loud !== []) {
                 return;
             }
