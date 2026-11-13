@@ -28,13 +28,14 @@ from rest_puppet import capsule, pack
 
 # Back to front. A child that turns under its parent comes first (forearm under the sleeve, foot under the shin, shin
 # under the thigh); the skirt covers both thighs; the belt (with its tassels) stays with the hips, over the tunic, so a
-# turned chest slides under it; the near arm hangs in front of the body, the far one behind it.
+# turned chest slides under it; the near arm hangs in front of the body, the far one behind it, and in front of the neck
+# and head too: drawn under the collar, a raised near arm seemed to grow out of her throat (fresh tester, 11-13).
 ORDER = [
     ('forearm_f', 'forearm_f'), ('upperarm_f', 'upperarm_f'), ('braid', 'braid'),
     ('foot_f', 'foot_f'), ('shin_f', 'shin_f'), ('thigh_f', 'thigh_f'),
     ('foot_n', 'foot_n'), ('shin_n', 'shin_n'), ('thigh_n', 'thigh_n'),
     ('skirt', 'hips'), ('chest', 'chest'), ('belt', 'hips'), ('shawl', 'chest'),
-    ('forearm_n', 'forearm_n'), ('upperarm_n', 'upperarm_n'), ('neck', 'chest'), ('head', 'head'),
+    ('neck', 'chest'), ('head', 'head'), ('forearm_n', 'forearm_n'), ('upperarm_n', 'upperarm_n'),
 ]
 PARTS = [p for p, _ in ORDER]
 PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'braid': 'head', 'upperarm_n': 'chest', 'upperarm_f': 'chest',
@@ -55,7 +56,8 @@ BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f
               'shin_n': 0.5, 'shin_f': 0.5, 'braid': 0.5}   # of the joint's width
 ANKLE_BAND = 0.35        # an ankle's band, as a share of the knee's width
 ANKLE_WIDTH = 0.75       # an ankle's thickness, as a share of the knee's width
-WAIST_REACH = 300        # px round the waist that its band bends: the whole hanging end of the shawl
+WAIST_REACH = 2000       # px round the waist that its band bends: everything, so the whole hanging end of the shawl
+                         # moves as one with the hips (at 300 its tip went with the chest and sheared it: tester)
 SHOULDER_REACH = 0.55    # a shoulder's band reaches this share of the arm's width round the joint
 REACH_MARGIN = 6         # px past a band's corners that its reach goes
 WAIST_BAND = 40          # px of tunic above the waist the skirt keeps under the chest
