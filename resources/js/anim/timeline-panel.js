@@ -561,7 +561,8 @@ export const animationTimeline = (config = {}) => ({
 
   /** A puppet's rows are its own bones: Pieter has no legs, Ana has (stage25d engine layerInfo bones). */
   propertiesOf (target) {
-    const bones = this.hasBones(target) ? window.__stage25d.layerInfo(String(target).slice(4)).bones ?? [] : []
+    const info = window.__stage25d?.layerInfo?.(String(target).slice(4))
+    const bones = info?.puppet ? info.bones ?? [] : []
     return propertiesFor(kindOfTarget(target)).filter((p) => p.group !== 'bones' || bones.includes(p.key.slice('bone:'.length)))
   },
 

@@ -781,17 +781,18 @@ export async function createStage25d (host, opts = {}) {
       const ground = onGround(layerIndex(id))
       const showScale = !ground || (l.scale ?? 1) !== 1 || (l.keys ?? []).some((k) => k.scale !== undefined)
       const strip = isBackdropAsset(asset)
+      const puppet = puppetOf(asset ?? {}, l)
       return {
         id, asset: l.asset ?? null, depth: l.depth, figure: l.figure ?? null, role: asset?.layer ?? null,
         ground, showScale,
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         // the edited copy, when there is one; a figure of parts is shown whole, never its atlas
-        file: asset?.file && puppetOf(asset, l) ? figureUrl(l) ?? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
+        file: asset?.file && puppet ? figureUrl(l) ?? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
         motion: motionOf(l, asset),
         anim: animOf(asset),
-        puppet: !!puppetOf(asset ?? {}, l),
-        bones: puppetOf(asset ?? {}, l)?.bones.map((b) => b.name) ?? [],
+        puppet: !!puppet,
+        bones: puppet?.bones.map((b) => b.name) ?? [],
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
       }
