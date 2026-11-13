@@ -308,8 +308,9 @@ Effect.ShadersStore.stageLayerFragmentShader = `
 
 // The picture's own shadow on the ground (Bart 11-12: "the position of the sun... casts shadows"): the picture's mesh
 // laid down along the light, each point moved away from the sun by its height times the sun's reach, on the ground
-// under the picture's foot. One flat wash with a drawn edge (docs/lesson-rules.md: hard shadows, never blurred),
-// multiplied over the ground so its paint shows through, darkening a pixel once however many shadows cover it.
+// under the picture's foot. A watercolour wash (Bart 11-13: "the shadow needs to look like watercolor... the edges
+// are way too sharp"): a soft, blended edge, pigment pooling and granulating, multiplied over the ground so its paint
+// shows through. Where two shadows overlap they glaze darker, like two washes laid over each other.
 Effect.ShadersStore.stageCastVertexShader = `
   precision highp float;
   attribute vec3 position;
@@ -340,26 +341,50 @@ Effect.ShadersStore.stageCastFragmentShader = `
   varying float vUp;
   uniform sampler2D tex;
   uniform vec4 cell;
-  uniform float uRepeat, opacity, seed, etch;
+  uniform vec2 softUV;                        // how far the silhouette melts, in uv of the picture
+  uniform float uRepeat, opacity, seed, etch, reach;
   uniform vec3 tint;
   ${GL_NOISE}
   ${HATCH_GLSL}
-  vec4 tap(vec2 p) {
-    if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
-    return texture2D(tex, p);
+  // the picture's alpha a little out of focus (a blurrier mip): thin stems and twigs merge into one wash
+  float alphaAt(vec2 p) {
+    if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw, 2.0).a;
+    return texture2D(tex, p, 2.0).a;
   }
   void main(void) {
-    float a = tap(vec2(vUV.x * uRepeat, vUV.y)).a;
-    // a drawn edge: the silhouette cut where its alpha passes a line that wanders a little, never a blur
-    if (a < 0.5 + 0.25 * (fbm(vG * 1.4 + seed) - 0.5)) discard;
-    // one wash, laid unevenly by hand, a touch lighter toward its far end
-    float k = opacity * (1.0 - 0.3 * vUp) * (0.85 + 0.3 * fbm(vG * 0.45 + seed));
+    vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
+    // a soft silhouette: the alpha here and around it, so the edge melts instead of a cut, and a lone stem
+    // leaves a pale stroke instead of a black bar
+    // a short shadow (a high sun) squeezes the picture's height into a few cm: melt it more along its length, or its
+    // rows of leaves lie on the ground as streaks
+    vec2 soft = vec2(softUV.x, min(0.12, softUV.y / max(reach, 0.35)));
+    float a = 0.28 * alphaAt(uv);
+    for (int k = 0; k < 6; k++) {
+      float t = float(k) * 1.0472 + seed;
+      a += 0.12 * alphaAt(uv + vec2(cos(t), sin(t)) * soft);
+    }
+    // ...and it holds on at the foot, where the melted edge would leave a gap of bare ground under the picture
+    a += 0.25 * (1.0 - smoothstep(0.0, 0.12, vUp)) * alphaAt(uv);
+    // the wet edge wanders with the paper and fades over a few px on screen (fwidth): no hard step, no stair
+    float wander = 0.18 * (fbm(vG * 1.3 + seed) - 0.5);
+    float aa = fwidth(a) + 0.04;
+    float wash = smoothstep(0.16 - aa, 0.52 + aa, a + wander);
+    if (wash < 0.003) discard;
+    // watercolour: pigment pools in big soft patches, gathers in a darker rim where the wash dried, granulates
+    // in the paper's tooth (the floor's own wash and grain, ground-gl.ts), and thins toward the far end
+    float pool = 0.8 + 0.4 * fbm(vG * 0.35 + seed);
+    float rim = wash * (1.0 - wash) * 4.0;
+    float gran = smoothstep(0.35, 0.8, fbm(vG * 9.0 + seed * 3.0));
+    float k = opacity * wash * pool * (1.0 + 0.3 * rim) * (1.0 - 0.35 * vUp) * (0.9 + 0.2 * gran);
     vec3 c = mix(vec3(1.0), tint, clamp(k, 0.0, 1.0));
-    if (etch > 0.0) {   // etched: the same shadow in ink strokes across the ground
-      vec2 q = vG * 9.0;
+    if (etch > 0.0) {
+      // etched: a few light pencil strokes in the shade, the shadow's own colour a step darker, never black bars.
+      // hatched() fades a stroke to its even tone once it gets too fine to draw, so it never shimmers
+      // Seen across the ground at a low angle, close strokes stand up into a comb: few, fine and faint
+      vec2 q = vG * 4.0;
       float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
-      float ink = hatched(t, 0.22, smoothstep(0.3, 0.45, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed))), 0.5);
-      c = mix(c, vec3(0.05, 0.045, 0.04), etch * ink * clamp(opacity * 1.6, 0.0, 1.0));
+      float ink = hatched(t, 0.08, smoothstep(0.3, 0.45, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed))), 0.5);
+      c = mix(c, c * tint * 1.2, etch * ink * clamp(k * 1.4, 0.0, 1.0) * 0.35);
     }
     gl_FragColor = vec4(c, 1.0);
   }`
@@ -645,15 +670,14 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
 }
 
 /** A picture's shadow: a mesh on the picture's own geometry (bones bend it too), a child of the picture so it takes the
- *  picture's place, size and turn, drawn by stageCast. All shadows share one stencil mark, so where two overlap (a
- *  crowd, the parts of one figure) the ground darkens once. */
+ *  picture's place, size and turn, drawn by stageCast. Its edge is soft, so no stencil: overlapping shadows glaze. */
 function makeCast(picture: Mesh, tex: RawTexture, scene: Scene, o: { phase: number; height: number; width: number; uRepeat: number }): { mesh: Mesh; mat: ShaderMaterial } {
   const mesh = new Mesh(`cast:${picture.name}`, scene)
   picture.geometry?.applyToMesh(mesh)
   mesh.parent = picture
   const mat = new ShaderMaterial(mesh.name, scene, 'stageCast', {
     attributes: ['position', 'uv'],
-    uniforms: ['world', 'viewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'sunGround', 'reach', 'groundY', 'cell', 'uRepeat', 'opacity', 'seed', 'etch', 'tint'],
+    uniforms: ['world', 'viewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'sunGround', 'reach', 'groundY', 'cell', 'uRepeat', 'opacity', 'seed', 'etch', 'tint', 'softUV'],
     samplers: ['tex'],
     needAlphaBlending: true,
   })
@@ -662,13 +686,11 @@ function makeCast(picture: Mesh, tex: RawTexture, scene: Scene, o: { phase: numb
   mat.disableDepthWrite = true
   mat.depthFunction = Constants.ALWAYS   // lies on the floor, which writes its depth: the floor never cuts it
   mat.backFaceCulling = false
-  mat.stencil.enabled = true
-  mat.stencil.func = Constants.NOTEQUAL
-  mat.stencil.funcRef = CAST_STENCIL
-  mat.stencil.opStencilDepthPass = Constants.REPLACE
   mat.setFloat('phase', o.phase).setFloat('height', o.height).setFloat('width', o.width).setFloat('uRepeat', o.uRepeat)
     .setFloat('kind', 0).setFloat('amount', 1).setFloat('speed', 1).setFloat('time', 0).setFloat('seed', (o.phase * 13.7) % 31)
     .setFloat('opacity', 0).setFloat('etch', 0).setFloat('reach', 1).setFloat('groundY', 0)
+  // the silhouette melts over about CAST_SOFT_M on the ground, at most a twentieth of the picture
+  mat.setVector2('softUV', new Vector2(Math.min(0.05, CAST_SOFT_M / Math.max(o.width, 0.01)), Math.min(0.05, CAST_SOFT_M / Math.max(o.height, 0.01))))
   mat.setVector4('cell', new Vector4(0, 0, 1, 1)).setVector2('sunGround', new Vector2(1, 0)).setVector3('tint', new Vector3(0.27, 0.23, 0.18))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true }   // the look draws no ink line around a shadow
@@ -679,5 +701,5 @@ function makeCast(picture: Mesh, tex: RawTexture, scene: Scene, o: { phase: numb
   return { mesh, mat }
 }
 
-/** The stencil value every cast shadow marks the pixels it darkened with. */
-const CAST_STENCIL = 1
+/** How far a cast shadow's edge melts on the ground, metres (Bart 11-13: "the edges are way too sharp"). */
+const CAST_SOFT_M = 0.18

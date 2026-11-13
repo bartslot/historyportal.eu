@@ -156,16 +156,8 @@ Effect.ShadersStore.stageStainFragmentShader = `
     float r = length(p) / rim;
     float a = (1.0 - smoothstep(0.25, 1.0, r)) * (0.7 + 0.3 * fbm(vUV * 6.0 + seed)) * opacity;
     vec3 colour = tint;
-    // etched: the same shape in ink strokes, as many across whatever the size, denser toward the foot
-    if (etch > 0.0) {
-      vec2 q = vec2(vUV.x, vUV.y * aspect) * 16.0;
-      float t = q.x + q.y + 0.9 * fbm(q * 0.35 + seed);
-      float body = 1.0 - smoothstep(0.25, 1.0, r);
-      float wid = 0.08 + 0.32 * body;
-      float gap = smoothstep(0.25, 0.4, fbm(vec2((q.x - q.y) * 0.5, floor(t) * 3.1 + seed)) + 0.4 * body);
-      a = mix(a, hatched(t, wid, gap, 0.8) * step(0.02, body) * min(1.0, opacity * 1.6), etch);
-      colour = mix(colour, vec3(0.05, 0.045, 0.04), etch);
-    }
+    // no hatching here, even on an etched picture (Bart 11-13): the stain is the dark under the soles, and seen almost
+    // edge-on its strokes stood up into a comb of bars. The picture's etching is in its cast shadow (layer.ts)
     gl_FragColor = vec4(colour * a, a);
   }`
 
