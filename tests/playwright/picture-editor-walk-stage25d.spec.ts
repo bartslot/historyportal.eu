@@ -643,7 +643,6 @@ test('sizes: every control of every tool is 32 or 44 tall, no text under 12 px, 
 
 // ---- a boned figure: layer-1 is Pieter of parts. The editor shows him whole, a save goes onto his sheet.
 const BONED = 'layer-1', BONED_INDEX = 1
-const SHEET = '/storage/library/tasman-1642/puppets/pieter-rigid.png'
 const HOLE_AT = [358, 880]      // chest over hips: two parts deep
 const PAINT_AT = [358, 460]     // the vest over the collar: two parts deep, well away from the hole
 const puppetOfLayer = (page: Page) => page.evaluate((i) => (window as any).__stage25d.config.set.layers[i].puppet, BONED_INDEX)
@@ -687,7 +686,7 @@ test('a boned figure opens whole, at rest, not cleaned, and leaving or saving wi
     let n = 0
     for (let i = 0; i < got.length; i += 4) if (Math.abs(want[i + 3] - got[i + 3]) > 2 || (want[i + 3] > 8 && Math.hypot(want[i] - got[i], want[i + 1] - got[i + 1], want[i + 2] - got[i + 2]) > 6)) n++
     return n
-  }, [SHEET, puppet])
+  }, [puppet.atlas, puppet])   // his sheet, whatever it is saved as (a .webp since 11-14, Bart: "use webp")
   expect(differing, 'parts in the stage order, as the stage puts them together').toBe(0)
 
   await page.keyboard.press('Escape')
@@ -744,7 +743,7 @@ test('a boned figure: edits land on its sheet, bones still bend, erased paint no
       size: [a.w, a.h], firstSize: [b.w, b.h], changed, opaqueChanged,
       hole: cells(hole).map((i: number) => at(a.d, i)), paintNow: cells(paint).map((i: number) => at(a.d, i)), paintBefore: cells(paint).map((i: number) => at(b.d, i)),
     }
-  }, [src, SHEET, puppet, HOLE_AT, PAINT_AT])
+  }, [src, puppet.atlas, puppet, HOLE_AT, PAINT_AT])
   expect(report.size, 'the sheet keeps its size').toEqual(report.firstSize)
   expect(report.hole.length, 'the hole is two parts deep').toBeGreaterThan(1)
   for (const cell of report.hole) expect(cell[3], 'erased on every part there').toBeLessThan(16)
