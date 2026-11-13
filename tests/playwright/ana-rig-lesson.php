@@ -9,7 +9,7 @@ declare(strict_types=1);
  *   RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/v1/rig \
  *     php artisan tinker --execute='require "tests/playwright/ana-rig-lesson.php";'
  *
- * Prints ANA_RIG=<lesson>/<scene>/<layer index>. Local database only. The rig rides on the layer (layer.puppet) over
+ * Prints ANA_RIG=<lesson>/<scene>/<layer index> (and PIETER_LAYER=<index> with PIETER_DIR set). Local database only. The rig rides on the layer (layer.puppet) over
  * Ana's own library drawing, so the library is not touched; its atlas is copied into the lesson's edits.
  */
 
@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
 
 const ANA_TITLE = 'Ana rig (throwaway)';
 const ANA_FROM_SCENE = 15926;   // a draft Mesopotamian steppe scene on the babylonia-old-babylonian bundle; its camera is panned
-                                // right, so Ana stands at x 1.12, 5 m away: in front of the near field strip (5.5 m)
+// right, so Ana stands at x 1.12, 5 m away: in front of the near field strip (5.5 m)
 const ANA_RIG_NAME = 'fig-ana-rig-01';
 
 throw_unless(in_array(DB::connection()->getConfig('host'), ['127.0.0.1', 'localhost'], true), RuntimeException::class, 'Local database only.');
@@ -49,6 +49,17 @@ $puppet['atlas'] = "/storage/{$edits}/".ANA_RIG_NAME.'.png';
 $config = $fromScene->config;
 $layers = $config['stage25d']['set']['layers'];
 $layers[] = ['need' => 'fig-ana-stand-01', 'asset' => 'fig-ana-stand-01', 'depth' => 'mid', 'x' => 1.12, 'z' => 5, 'scale' => 1, 'puppet' => $puppet];
+$anaLayer = count($layers) - 1;
+
+// PIETER_DIR: Pieter's older rigid upper-body puppet (no smart bones) beside her, to see that he is drawn as before.
+// It rides on Ana's library drawing too, only for a height and an anchor on this Mesopotamian bundle.
+$pieterDir = (string) getenv('PIETER_DIR');
+if (is_file("{$pieterDir}/pieter-rigid.json")) {
+    $disk->put("{$edits}/pieter-rigid.png", (string) file_get_contents("{$pieterDir}/pieter-rigid.png"));
+    $pieter = json_decode((string) file_get_contents("{$pieterDir}/pieter-rigid.json"), true, flags: JSON_THROW_ON_ERROR);
+    $pieter['atlas'] = "/storage/{$edits}/pieter-rigid.png";
+    $layers[] = ['need' => 'fig-ana-stand-01', 'asset' => 'fig-ana-stand-01', 'depth' => 'mid', 'x' => 1.3, 'z' => 5, 'scale' => 1, 'puppet' => $pieter];
+}
 $config['stage25d']['set']['layers'] = $layers;
 
 $scene = $fromScene->replicate();
@@ -57,4 +68,4 @@ $scene->order = 1;
 $scene->config = $config;
 $scene->save();
 
-echo 'ANA_RIG='.$lesson->id.'/'.$scene->id.'/'.(count($layers) - 1).PHP_EOL;
+echo 'ANA_RIG='.$lesson->id.'/'.$scene->id.'/'.$anaLayer.(count($layers) - 1 > $anaLayer ? ' PIETER_LAYER='.(count($layers) - 1) : '').PHP_EOL;
