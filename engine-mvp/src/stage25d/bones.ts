@@ -262,7 +262,8 @@ const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow t
 export function bindPuppet(puppet: Puppet): BentPuppet {
   const sk = new Skeleton()
   const indexOf = new Map(puppet.bones.map((b, i) => [b.name, i + 1]))
-  const from = (name: string | null) => puppet.bones.find((b) => b.name === name)?.from ?? [0, 0]
+  const boneOf = new Map(puppet.bones.map((b) => [b.name, b]))
+  const from = (name: string | null) => (name !== null && boneOf.get(name)?.from) || [0, 0]
   for (const b of puppet.bones) {
     const base = from(b.parent)
     sk.bones.push(makeBone(b.name, b.parent ? indexOf.get(b.parent) ?? 0 : 0, transform(b.from[0] - base[0], b.from[1] - base[1], 0), 0))
@@ -282,6 +283,25 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     return att
   })
   const pose = new Pose(sk)
+  // every mesh point's shares flat, [bone, x, y, weight], so bend() skins ~4,000 points without reading objects
+  const shares = atts.flatMap((a) => a.weights)
+  const skin = Float64Array.from(shares.flatMap((p) => p.flatMap((s) => [s.bone, s.x, s.y, s.weight])))
+  const sharesPer = Uint8Array.from(shares, (p) => p.length)
+  /** Each mesh point where its bones carry it now: Pose.worldVertices, same sums, minus its per-part arrays (no deform here). */
+  const skinned = (): number[] => {
+    const out: number[] = new Array(sharesPer.length * 2)
+    for (let v = 0, k = 0; v < sharesPer.length; v++) {
+      let x = 0, y = 0
+      for (const end = k + sharesPer[v] * 4; k < end; k += 4) {
+        const m = pose.world[skin[k]], bx = skin[k + 1], by = skin[k + 2], w = skin[k + 3]
+        x += (m.a * bx + m.c * by + m.tx) * w
+        y += (m.b * bx + m.d * by + m.ty) * w
+      }
+      out[v * 2] = x
+      out[v * 2 + 1] = y
+    }
+    return out
+  }
   const limits = new Map(puppet.bones.flatMap((b) => (b.limit ? [[b.name, b.limit] as const] : [])))
   const place = (bones: Record<string, number>) => {
     pose.reset(sk)
@@ -297,7 +317,7 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     const at = from(name)
     return pose.world[indexOf.get(name)!].apply([x - at[0], y - at[1]]) as [number, number]
   }
-  const toOf = (name: string) => puppet.bones.find((b) => b.name === name)?.to
+  const toOf = (name: string) => boneOf.get(name)?.to
   /** A turn that breaks a posing rule (pose-guard.ts) is mirrored; still wrong, it is held at the drawing's own angle. */
   const fix = (bone: string, ok: () => boolean) => {
     const i = indexOf.get(bone)!
@@ -373,8 +393,12 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   })()
   let last: number[] = []   // the vertices bend() placed last: the pose on screen, for joints()
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
+  /** Also leaves the pose placed for what it returns, so bend() needs no second place(). */
   const safe = (bones: Record<string, number>): Record<string, number> => {
-    if (!handOf || !bodyAt.length || !puppet.facing) return bones
+    if (!handOf || !bodyAt.length || !puppet.facing) {
+      place(bones)
+      return bones
+    }
     let deg = limitBone('forearm_n', bones.forearm_n ?? 0, puppet.facing, limits.get('forearm_n'))
     place({ ...bones, forearm_n: deg })
     while (!handClear() && deg !== 0) {
@@ -394,8 +418,8 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     safe,
     limit: (name, deg) => limitBone(name, deg, puppet.facing, limits.get(name)),
     bend(bones) {
-      place(safe(bones))
-      last = atts.flatMap((a, i) => pose.worldVertices(sk, i, a))
+      safe(bones)
+      last = skinned()
       return last
     },
     joints() {
