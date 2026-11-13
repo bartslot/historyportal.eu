@@ -23,6 +23,8 @@ const POSES: Record<string, Record<string, number>> = {
   reach: { upperarm_n: -90, forearm_n: -20, upperarm_f: -40 },
   step: { thigh_n: -18, shin_n: 20, thigh_f: 15, shin_f: 35, foot_f: 10, upperarm_n: 20, upperarm_f: -20, forearm_n: -15, forearm_f: -20 },
   'knee up': { thigh_n: -25, shin_n: 95 },
+  // both feet to their limits: an ankle too narrow to bend folded its mesh into a wedge cut in the shin (tester, 11-13)
+  toes: { foot_n: 20, foot_f: -30 },
 }
 
 test('Ana bends on the stage', async ({ page }) => {
