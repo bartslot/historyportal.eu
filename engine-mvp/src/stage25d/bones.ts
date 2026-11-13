@@ -8,6 +8,7 @@ import { Pose } from '../vendor/rigby2d/core/pose.js'
 import { transform } from '../vendor/rigby2d/core/math.js'
 import type { Joint, PartMap, Puppet } from './types'
 import { elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
+import { partMesh } from './smart-bones'
 
 // fine enough to follow the gap between a hanging hand and the body: a coarse outline bridges it and they bend as one
 const MESH = { points: 500, threshold: 24, expand: 1, smoothing: 1, interior: 'high' }
@@ -253,14 +254,6 @@ export interface BentPuppet extends BentPicture {
   joints(): { name: string; at: [number, number]; tip: [number, number] }[]
 }
 
-/** Where a rigid part stands now: the point p of the drawing carried by the turn and shift from its rest corners to these. */
-function carried(quad: [number, number][], v: number[], [x, y]: [number, number]): [number, number] {
-  const angle = Math.atan2(v[3] - v[1], v[2] - v[0]) - Math.atan2(quad[1][1] - quad[0][1], quad[1][0] - quad[0][0])
-  const cos = Math.cos(angle), sin = Math.sin(angle)
-  const dx = x - quad[0][0], dy = y - quad[0][1]
-  return [v[0] + cos * dx - sin * dy, v[1] + sin * dx + cos * dy]
-}
-
 const TIP_REACH = 1.6   // a last bone's handle: this far from its joint, in steps of joint-to-middle-of-its-part
 const GUARD_STEP = 3      // degrees a forearm is taken back at a time until it is clear of the body
 const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow to hand, that have to stay out of it
@@ -274,12 +267,16 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     const base = from(b.parent)
     sk.bones.push(makeBone(b.name, b.parent ? indexOf.get(b.parent) ?? 0 : 0, transform(b.from[0] - base[0], b.from[1] - base[1], 0), 0))
   }
+  // each part a mesh (smart-bones.ts): its four corners, or a grid that bends across a joint's band
+  const meshes = puppet.parts.map((p) => partMesh(puppet, p))
   const atts = puppet.parts.map((p, i) => {
-    const origin = from(p.bone)
-    const [u0, v0, u1, v1] = p.uv
+    const m = meshes[i]
     const att = {
-      name: `part${i}`, type: 'mesh', image: 'atlas', uvs: [u0, v0, u1, v0, u1, v1, u0, v1], triangles: [0, 1, 2, 0, 2, 3], hull: 4, color: [1, 1, 1, 1],
-      weights: p.quad.map(([x, y]) => [{ bone: indexOf.get(p.bone) ?? 0, weight: 1, x: x - origin[0], y: y - origin[1] }]),
+      name: `part${i}`, type: 'mesh', image: 'atlas', uvs: m.uvs, triangles: m.triangles, hull: m.points.length, color: [1, 1, 1, 1],
+      weights: m.points.map(([x, y], v) => m.weights[v].map((s) => {
+        const origin = from(s.bone)
+        return { bone: indexOf.get(s.bone) ?? 0, weight: s.weight, x: x - origin[0], y: y - origin[1] }
+      })),
     }
     sk.slots.push(makeSlot(att.name, 0, att))
     return att
@@ -386,8 +383,11 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   return {
     width: puppet.width, height: puppet.height,
     uvs: atts.flatMap((a) => a.uvs),
-    restUvs: puppet.parts.flatMap((p) => p.quad.flatMap(([x, y]) => [x / puppet.width, y / puppet.height])),
-    triangles: atts.flatMap((a, i) => a.triangles.map((t) => t + i * 4)),   // in order: the first part is at the back
+    restUvs: meshes.flatMap((m) => m.points.flatMap(([x, y]) => [x / puppet.width, y / puppet.height])),
+    triangles: (() => {   // in order: the first part is at the back
+      let offset = 0
+      return meshes.flatMap((m) => { const t = m.triangles.map((i) => i + offset); offset += m.points.length; return t })
+    })(),
     safe,
     limit: (name, deg) => limitBone(name, deg, puppet.facing, limits.get(name)),
     bend(bones) {
@@ -401,7 +401,7 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
       return puppet.bones.flatMap((b) => {
         const at = partOf(b.name)
         if (at < 0 || b.name === 'hips') return []   // the hips stay where they stand (puppet-pose movableBones)
-        const quad = puppet.parts[at].quad, v = last.slice(at * 8, at * 8 + 8)
+        const quad = puppet.parts[at].quad
         const children = puppet.bones.filter((c) => c.parent === b.name && partOf(c.name) >= 0)
         const [[x0, y0], , [x1, y1]] = quad
         const mid: [number, number] = [(x0 + x1) / 2, (y0 + y1) / 2]
@@ -414,7 +414,8 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
         ]
         // a figure cut by rig_parts.py says where each bone points: a foot's handle at its toes, clear of the knee's at the ankle
         const tip = children.length === 1 ? children[0].from : children.length ? mid : (b.to ?? reach)
-        return [{ name: b.name, at: carried(quad, v, b.from), tip: carried(quad, v, tip) }]
+        // where the bone has carried them now (a part that bends has no four corners to read this from)
+        return [{ name: b.name, at: carriedBy(b.name, b.from), tip: carriedBy(b.name, tip) }]
       })
     },
   }

@@ -24,7 +24,7 @@ from PIL import Image
 from scipy import ndimage as ndi
 
 import rig_check as rc
-from rest_puppet import capsule, elbow_cap, elbow_of, pack
+from rest_puppet import capsule, pack
 
 # Back to front. A child that turns under its parent comes first (forearm under the sleeve, foot under the shin, shin
 # under the thigh); the skirt covers both thighs; the belt (with its tassels) stays with the hips, over the tunic, so a
@@ -44,20 +44,29 @@ PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'braid': 'head', 'uppe
 # multiplies by facing). Clockwise swings a hanging limb to the left, which is BACK for a figure facing right: a knee
 # folds positive, a thigh, an upper arm and an elbow swing forward negative, toes come up negative.
 LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'braid': [-20, 20],
-         'upperarm_n': [-150, 25], 'upperarm_f': [-45, 25], 'forearm_n': [-140, 0], 'forearm_f': [-140, 0],
+         'upperarm_n': [-150, 25], 'upperarm_f': [-45, 25], 'forearm_n': [-120, 0], 'forearm_f': [-120, 0],
          # a thigh swung further shows the under-tunic's straight hem from under the rigid skirt: the skirt that follows
          # the thigh is phase 3 (smart bones); a walk swings about 18
          'thigh_n': [-25, 20], 'thigh_f': [-25, 20], 'shin_n': [0, 120], 'shin_f': [0, 120],
          'foot_n': [-30, 20], 'foot_f': [-30, 20]}
 
+WAIST_BEND = 30          # px either side of the waist across which the tunic bends with a leaning chest
+BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f': 0.5, 'thigh_n': 0.5, 'thigh_f': 0.5,
+              'shin_n': 0.5, 'shin_f': 0.5, 'braid': 0.5}   # of the joint's width
+ANKLE_BAND = 0.35        # an ankle's band, as a share of the knee's width
+ANKLE_WIDTH = 0.75       # an ankle's thickness, as a share of the knee's width
+SHOULDER_REACH = 0.55    # a shoulder's band reaches this share of the arm's width round the joint
+REACH_MARGIN = 6         # px past a band's corners that its reach goes
 WAIST_BAND = 40          # px of tunic above the waist the skirt keeps under the chest
 WAIST_ROWS = 12          # px: the top of the skirt that says where the waist is
 THIGH_TO_SHIN = 1.2      # a thigh, hip to knee, is this many shins long (femur to tibia; joint to joint about the same)
-HEAD_PIVOT = 0.2         # the head turns this share of its height above the collar: halfway up the neck
+JAW_STEP = 3             # px either side of a row over which the head part's narrowing is measured
+JAW_MARGIN = 4           # px under the jaw where the head and neck are cut
 BRAID_CAP = 0.6          # the braid's round end on the head, as a share of a full one: deep in the hair, so swung it leaves no mark
 PARENT_CAP = 0.8         # a parent's round end of the rest drawing's own pixels: this share of half the joint's width,
                          # inside the limb, so no outline of the child is copied into it
 EDGE_LUM = 140           # a line under-a draws in the tunic behind an arm: brown ink, lighter than the outline's black
+BLEED_PX = 2             # px of the drawing a part carries past its edge, hidden under the part above
 TONE_MIN_PX = 500        # a part needs this many of its own pixels in an under pass too, to tone that pass to it
 TONE_GAIN_MAX = 1.5      # how far a channel's spread may be stretched or squeezed to match
 CAP_MARGIN = 1.15        # a round end's radius, in half joint widths: a little past the edge, so its outline is under the parent
@@ -232,10 +241,7 @@ def auto_joints(own, labels_b):
             raise SystemExit(f'no joint for {bone}: {child} does not touch {"/".join(parents)} on the map')
         joints[bone] = found
     for side in 'nf':
-        fore = m(f'forearm_{side}')
-        start = joints[f'forearm_{side}'][0]
-        pivot, half, _, _ = elbow_of(fore, start, far_end(fore, start))
-        joints[f'forearm_{side}'] = (pivot, 2 * half)
+        pivot = joints[f'forearm_{side}'][0]   # the elbow, where the map splits the arm (Ana's sleeve ends above it)
         upper = m(f'upperarm_{side}')
         down = axis_of(upper, far_end(upper, pivot))       # from the top of the arm towards the elbow
         top = far_end(upper, pivot)
@@ -261,10 +267,10 @@ def auto_joints(own, labels_b):
             up = (pivot - elbow) / np.linalg.norm(pivot - elbow)
             joints[f'upperarm_{side}'] = (elbow + up * (elbow[1] - high) / -up[1], width)
     collar, nw = joints['head']
-    head = m('head')
-    up = axis_of(head, collar)
-    reach = float(((np.stack(np.where(head)[::-1], 1) - collar) @ up).max())
-    joints['head'] = (collar + up * reach * HEAD_PIVOT, nw)
+    pivot, jaw, split, cols = neck_band(m('head'), collar)
+    joints['head'] = (pivot, nw)
+    joints['neck_split'] = (np.array([float(cols[0]), float(split)]), float(cols[1] - cols[0] + 1))   # x: first neck column
+    joints['jaw'] = (np.array([float(cols[1]), float(jaw)]), 0.0)                                     # x: last neck column
     hips = (joints['thigh_n'][0] + joints['thigh_f'][0]) / 2
     joints['hips'] = (hips, float(np.linalg.norm(joints['thigh_n'][0] - joints['thigh_f'][0])) + joints['thigh_n'][1])
     return joints
@@ -282,9 +288,29 @@ def facing_of_feet(own, joints):
     return signs[0]
 
 
+def neck_band(head, collar):
+    """(pivot, jaw row, split row, (first, last) neck column) from the head part's row widths. The jaw is where the
+    rows narrow most sharply, from the face to the neck (Ana: 123 to 98 px across rows 266-272); looked for between the
+    middle of the head and the collar, whose V-neck tapers the part too. The head turns halfway down the neck, and the
+    head and neck are cut just under the jaw: cut at the pivot, the bottom of the chin stayed with the neck and a turned
+    head showed two chins (Bart, 11-13)."""
+    widths = head.sum(axis=1).astype(float)
+    rows = np.where(widths > 0)[0]
+    top, bottom = int(rows.min()), min(int(rows.max()), int(collar[1]))
+    span = np.arange((top + bottom) // 2, bottom - JAW_STEP * 3)
+    drop = widths[span - JAW_STEP] - widths[span + JAW_STEP]
+    jaw = int(span[np.argmax(drop)]) + JAW_STEP
+    split = jaw + JAW_MARGIN
+    neck_rows = np.arange(split, max(split + 1, bottom - JAW_STEP * 2))
+    narrowest = int(neck_rows[np.argmin(widths[neck_rows])])
+    xs = np.where(head[narrowest])[0]
+    pivot = np.array([(xs.min() + xs.max()) / 2, (split + bottom) / 2])
+    return pivot, jaw, split, (int(xs.min()), int(xs.max()))
+
+
 def split_neck(own, joints):
-    """The head's pixels below its pivot row turn with the chest: the throat and collar never swing out with the jaw."""
-    row = int(round(joints['head'][0][1]))
+    """The head's pixels under the jaw turn with the chest: the throat and collar never swing out with the head."""
+    row = int(round(joints['neck_split'][0][1]))
     neck = is_part(own, 'head')
     neck[:row] = False
     out = own.copy()
@@ -302,6 +328,24 @@ def tip_of(bone, joints, own):
         return joints['head'][0]
     part = 'skirt' if bone == 'hips' else bone
     return far_end(is_part(own, part), joints[bone][0])
+
+
+def mirror_cap(rgba, part, pivot, width):
+    """A round end for a part with nothing painted under its joint (an elbow under a short sleeve, the braid's root):
+    the part mirrored back across its joint, kept within a disc of the joint's width round the pivot. It turns under
+    the parent with the part, so a bend shows skin, not a hole."""
+    out = np.zeros_like(rgba)
+    if not part.any():
+        return out
+    into = axis_of(part, pivot)   # from the joint into the part
+    ys, xs = np.mgrid[:part.shape[0], :part.shape[1]]
+    s = (xs - pivot[0]) * into[0] + (ys - pivot[1]) * into[1]
+    behind = (s < 0) & (np.hypot(xs - pivot[0], ys - pivot[1]) <= width / 2 * CAP_MARGIN)
+    mx = np.rint(xs - 2 * s * into[0]).astype(int).clip(0, part.shape[1] - 1)
+    my = np.rint(ys - 2 * s * into[1]).astype(int).clip(0, part.shape[0] - 1)
+    take = behind & part[my, mx]
+    out[take] = rgba[my[take], mx[take]]
+    return out
 
 
 def belt_band(own):
@@ -334,8 +378,10 @@ def hidden_paint(name, own, keyed, labels_b, joints):
         sh, w = joints[name]
         region = capsule(shape, sh, joints[f'forearm_{side}'][0], w / 2 + SLEEVE_MARGIN) | disc(shape, sh, w / 2 * CAP_MARGIN)
         return b, region & solid_b
+    if (name.startswith(('forearm_', 'shin_', 'foot_')) or name == 'braid') and band_of(name, joints):
+        return None, None   # a joint that bends (smart bones) needs no rigid round end: it showed through as a ring
     if name.startswith('forearm_') or name == 'braid':
-        cap = elbow_cap(keyed['rest'], m(name), joints[name][0], tip_of(name, joints, own))
+        cap = mirror_cap(keyed['rest'], m(name), *joints[name])
         if name == 'braid':   # and the braid the near arm hides, as under-a shows it
             hidden = near_arm & (a[..., 3] > 127) & capsule(shape, joints['braid'][0], tip_of('braid', joints, own), thickness(m('braid')) / 2 + NEAR_BRAID)
             cap = np.where(hidden[..., None], a, cap)
@@ -362,12 +408,11 @@ def hidden_paint(name, own, keyed, labels_b, joints):
         joint, w = joints[name]
         legs = np.isin(labels_b, [rc.MAP_B_PARTS.index(f'{p}_{side}') for p in ('thigh', 'shin', 'foot')])
         return b, disc(shape, joint, w / 2 * CAP_MARGIN) & legs & solid_b
-    if name == 'neck':
+    if name == 'neck':   # the throat under-b shows, under the jaw only: under-b's chin would stay as a second chin
         pivot, w = joints['head']
-        cols = np.where(m('neck').any(axis=0))[0]
+        jaw = int(joints['jaw'][0][1])
         within = np.zeros(shape, bool)
-        if cols.size:
-            within[:, cols.min():cols.max() + 1] = True
+        within[jaw + JAW_MARGIN // 2:, int(joints['neck_split'][0][0]):int(joints['jaw'][0][0]) + 1] = True
         return b, disc(shape, pivot, w * NECK_R) & solid_b & within
     return None, None
 
@@ -388,6 +433,11 @@ def cut(keyed, own, labels_b, joints):
             layer[take] = tone_matched(src, keyed['rest'], mine, take)
             if name in ('chest', 'skirt'):
                 layer = without_drawn_edges(layer, take & is_part(own, 'upperarm_n', 'forearm_n'))
+        # a 2 px bleed of the drawing past the part's edge, under the parts above: at a part's edge the stage samples
+        # the atlas half a pixel into its empty margin, and a hairline showed along every join of a bending joint
+        above = solid & np.isin(own, list(range(i + 1, len(ORDER))))
+        bleed = ndi.binary_dilation(mine, iterations=BLEED_PX) & ~mine & above & (layer[..., 3] == 0)
+        layer[bleed] = rest[bleed]
         out.append((name, bone, layer))
     return parent_caps(out, own, joints)
 
@@ -396,8 +446,9 @@ def cut(keyed, own, labels_b, joints):
 # None at a shoulder: an upper arm turns at the body's edge, and what it uncovers is the tunic (hidden paint) or air.
 # The braid's is half size, deep in the hair: full size, its root's pixels stayed on the shoulder as a dark mark when it
 # swung (fresh tester, 11-13).
-PARENT_LAYER = {'chest': 'skirt', 'head': 'neck', 'braid': 'head',
-                'forearm_n': 'upperarm_n', 'forearm_f': 'upperarm_f', 'thigh_n': 'skirt', 'thigh_f': 'skirt',
+# None at an elbow or the neck: the copied disc lies above the child, and stayed as a pale bump under a folded elbow
+# and as a second chin under a turned head (Bart, 11-13); the child's own round end, under the parent, covers those.
+PARENT_LAYER = {'chest': 'skirt', 'braid': 'head', 'thigh_n': 'skirt', 'thigh_f': 'skirt',
                 'shin_n': 'thigh_n', 'shin_f': 'thigh_f', 'foot_n': 'shin_n', 'foot_f': 'shin_f'}
 
 
@@ -558,6 +609,31 @@ def posed(layers, joints, pose, facing):
     return np.asarray(canvas)
 
 
+def band_of(bone, joints):
+    """px either side of a joint across which the parts bend (engine smart-bones.ts), or None for rigid parts. The neck
+    bends from the cut under the jaw down past the pivot, so the face stays rigid; a limb's joint over half its width."""
+    if bone == 'head':
+        return float(joints['head'][0][1] - joints['neck_split'][0][1])
+    if bone == 'chest':
+        return WAIST_BEND
+    if bone.startswith('foot_'):   # the map's foot/shin border is short; the ankle is about as thick as a third of the knee
+        return joints[f'shin_{bone[-1]}'][1] * ANKLE_BAND
+    if bone in BAND_SHARE:
+        return joints[bone][1] * BAND_SHARE[bone]
+    return None
+
+
+def reach_of(bone, joints, band):
+    """px round a joint that its band bends: the joint's cross-section and the band's corners. A shoulder keeps to
+    about half the arm's width, so the tunic round the armhole bends with a raised arm and the shawl does not."""
+    width = float(joints['neck_split'][1]) if bone == 'head' else joints[bone][1]
+    if bone.startswith('foot_'):
+        width = joints[f'shin_{bone[-1]}'][1] * ANKLE_WIDTH
+    if bone.startswith('upperarm_'):
+        return width * SHOULDER_REACH
+    return float(np.hypot(width / 2, band)) + REACH_MARGIN
+
+
 def puppet_json(layers, joints, facing, own, size, atlas_url):
     atlas, boxes, placed = pack([(bone, rgba) for _, bone, rgba in layers])
     aw, ah = atlas.shape[1], atlas.shape[0]
@@ -567,6 +643,10 @@ def puppet_json(layers, joints, facing, own, size, atlas_url):
                  'to': [round(float(v), 2) for v in tip_of(bone, joints, own)]}
         if bone in LIMIT:
             entry['limit'] = LIMIT[bone]
+        band = band_of(bone, joints)
+        if band:
+            entry['band'] = round(band, 1)
+            entry['reach'] = round(reach_of(bone, joints, band), 1)
         bones.append(entry)
     quads = [{'bone': bone, 'quad': [[int(x0), int(y0)], [int(x1), int(y0)], [int(x1), int(y1)], [int(x0), int(y1)]],
               'uv': [ax / aw, ay / ah, (ax + x1 - x0) / aw, (ay + y1 - y0) / ah]}
@@ -592,13 +672,17 @@ def run(folder, out_dir, name, atlas_url):
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)
     report = {'facing': facing, 'differ_at_rest': differ, 'visible': int(visible.sum()), 'holes': holes,
+              'bands': {b: band_of(b, joints) for b in LIMIT},
               'atlas': list(atlas.shape[:2]), 'parts': len(puppet['parts'])}
     with open(os.path.join(out_dir, f'{name}.check.json'), 'w') as f:
         json.dump(report, f, indent=1)
     print(f'{name}: facing {facing}, {len(puppet["parts"])} parts, atlas {atlas.shape[1]}x{atlas.shape[0]}')
     print(f'{"PASS" if differ == 0 else "FAIL"}  at rest {differ} of {int(visible.sum())} visible px differ from the drawing')
     for bone, px in holes.items():
-        print(f'{"PASS" if px <= HOLE_PX else "FAIL"}  {bone} bent through {LIMIT[bone]}: biggest gap {px} px')
+        if band_of(bone, joints):   # the engine bends these parts across the joint (smart bones): a rigid sweep says little
+            print(f'INFO  {bone} bends across a {band_of(bone, joints):.0f} px band; turned rigidly its gap would be {px} px')
+        else:
+            print(f'{"PASS" if px <= HOLE_PX else "FAIL"}  {bone} bent through {LIMIT[bone]}: biggest gap {px} px')
     return report
 
 
@@ -610,7 +694,8 @@ def main():
     ap.add_argument('--atlas-url', required=True)
     args = ap.parse_args()
     report = run(args.folder, args.out_dir, args.name, args.atlas_url)
-    sys.exit(0 if report['differ_at_rest'] == 0 and all(v <= HOLE_PX for v in report['holes'].values()) else 1)
+    rigid = {b: v for b, v in report['holes'].items() if not report['bands'].get(b)}
+    sys.exit(0 if report['differ_at_rest'] == 0 and all(v <= HOLE_PX for v in rigid.values()) else 1)
 
 
 if __name__ == '__main__':
