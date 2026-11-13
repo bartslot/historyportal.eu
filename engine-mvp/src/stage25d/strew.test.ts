@@ -16,9 +16,13 @@ describe('strewPlan: the clumps follow the scene\'s ground', () => {
     for (const c of plan[0].clumps) { expect(c.z).toBeGreaterThanOrEqual(GRASS_RANGE[0]); expect(c.z).toBeLessThanOrEqual(GRASS_RANGE[1]) }
     for (const c of plan[1].clumps) expect(c.z).toBeGreaterThanOrEqual(HORIZON_RANGE[0])
   })
-  it('an ice floor gets nothing; a meadow band picks the meadow grass only', () => {
+  it('an ice floor gets nothing; a band adds its own plants to the floor\'s', () => {
     expect(strewPlan({ ...base, slots: [ice] })).toEqual([])
-    expect(strewPlan({ ...base, bandTags: ['meadow', 'field', 'hedge', 'ground'] }).flatMap((p) => p.picks.map((s) => s.asset))).toEqual(['grass-tall-01'])
+    expect(strewPlan({ ...base, slots: [ice], bandTags: ['meadow', 'field', 'hedge', 'ground'] }).flatMap((p) => p.picks.map((s) => s.asset))).toEqual(['grass-tall-01'])
+    // a steppe floor under a bare verge strip still grows its own steppe plants (Bart 11-13)
+    const steppe = { asset: a('terrain-dry-steppe-01', ['steppe', 'dry', 'earth'], 4, 'ground'), from: 0 }
+    const dry = spritesOf({ version: 1, bundle: 't', assets: [a('dry-tuft-01', ['steppe', 'dry', 'grass'], 0.5)] })
+    expect(strewPlan({ ...base, slots: [steppe], sprites: dry, bandTags: ['ground', 'field', 'verge'] }).flatMap((p) => p.picks.map((s) => s.asset))).toEqual(['dry-tuft-01'])
   })
   it('Grass 0 and Horizon 0 strew nothing; more Grass, more clumps; the same scene is the same', () => {
     expect(strewPlan({ ...base, grass: 0, bushes: 0 })).toEqual([])

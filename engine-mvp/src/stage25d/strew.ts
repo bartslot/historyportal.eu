@@ -14,9 +14,9 @@ export const HORIZON_SIZE = 0.8
 
 export interface StrewPlan { picks: Sprite[]; clumps: Clump[]; horizon?: boolean }
 
-/** The tags of the ground a slot shows: the bands' own when the scene has ground bands (they carry the land you see),
- *  else the slot picture's. */
-const tagsOf = (slot: GroundSlot, bandTags: string[] | null) => bandTags ?? slot.asset.tags
+/** The tags of the ground a slot shows: the slot picture's, and the ground bands' with them. Strips are bare soil standing
+ *  on the floor (Bart 11-12), so the floor still shows between them: its plants grow there too (Bart 11-13). */
+const tagsOf = (slot: GroundSlot, bandTags: string[] | null) => [...slot.asset.tags, ...(bandTags ?? [])]
 
 /** grass, bushes: the look's Gras and Horizon (0..1). front: the scene's cameraFront. With ground bands there is no
  *  horizon row: the farthest band's painted crest is the horizon, and bushes behind it would never show. */
