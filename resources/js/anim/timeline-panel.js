@@ -180,6 +180,7 @@ export const animationTimeline = (config = {}) => ({
     // page closing gets the same flush, best effort.
     const flushBeforeRequest = () => this.flushSave()
     window.addEventListener('scene:before-undo', flushBeforeRequest)
+    window.addEventListener('scene:edit-step', flushBeforeRequest)   // a new gesture: the last one's edit is saved as its own undo step
     document.addEventListener('click', (event) => {
       if (event.target.closest?.('[wire\\:click*="selectScene("]')) flushBeforeRequest()
     }, true)

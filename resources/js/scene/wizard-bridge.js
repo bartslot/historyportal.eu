@@ -991,10 +991,13 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     const dioMoves = createKeyedSaveQueue((move) => window.Livewire?.dispatch('diorama:move', move), DIO_MOVE_PAUSE_MS)
     // An undo restores what the server holds: every edit still waiting in a queue goes out first, or a Cmd-Z right after a
     // slider move undoes the edit before it and the waiting save then puts the slider's value back.
-    window.addEventListener('scene:before-undo', () => {
+    const flushWaitingSaves = () => {
         dioMoves.flush()
-        for (const q of [stage25dLayerSaves, stage25dLookSaves, stage25dWorldSaves, stage25dDaylightSaves]) q.flush()
-    })
+        for (const q of [stage25dLayerSaves, stage25dLookSaves, stage25dWorldSaves, stage25dDaylightSaves, stage25dSoilSaves]) q.flush()
+    }
+    window.addEventListener('scene:before-undo', flushWaitingSaves)
+    // A new gesture starts (editor/edit-steps.js): the last one's waiting edits are saved first, as their own undo step.
+    window.addEventListener('scene:edit-step', flushWaitingSaves)
     document.addEventListener('click', (event) => {
         if (event.target.closest?.('[wire\\:click*="selectScene("]')) dioMoves.flush()
     }, true)
