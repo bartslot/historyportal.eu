@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // the house view: 2 m wide per metre of distance, to keep the numbers readable
 vi.mock('@stage25d/stage25d/layout', async (importOriginal) => ({ ...(await importOriginal()), GROUND_NEAR_M: 2, GROUND_FAR_M: 120, viewWidthAt: (z) => 2 * z }))
 
-const { attachInteraction, figureInView, inFrontOf, pickOf } = await import('../interact.js')
+const { attachInteraction, figureInView, inFrontOf, nearestJoint, pickOf } = await import('../interact.js')
 
 const rect = { left: 100, top: 50, width: 400, height: 225, right: 500, bottom: 275, x: 100, y: 50 }
 
@@ -332,5 +332,17 @@ describe('figureInView', () => {
     expect(img.style.transform).toBe('matrix(2, 0, 0, 2.25, 0, 50)')
     api.select(null)
     expect(wrap.style.display).toBe('none')
+  })
+})
+
+describe('overlapping bone handles', () => {
+  // a knee and a foot 10 px apart on a small figure: their 32 px handles overlap
+  const joints = [{ name: 'shin_n', tip: [0.5, 0.5] }, { name: 'foot_n', tip: [0.51, 0.5] }]
+  it('a press goes to the handle whose dot is nearest, whichever handle is on top', () => {
+    expect(nearestJoint(joints, 0.502, 0.5, 1000, 600).name).toBe('shin_n')
+    expect(nearestJoint(joints, 0.509, 0.5, 1000, 600).name).toBe('foot_n')
+  })
+  it('no joints: nothing', () => {
+    expect(nearestJoint([], 0.5, 0.5, 100, 100)).toBe(null)
   })
 })

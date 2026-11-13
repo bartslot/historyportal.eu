@@ -43,17 +43,23 @@ PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'braid': 'head', 'uppe
 # How far each bone turns from the drawing: degrees clockwise on screen for a figure facing right (bones.ts limitBone
 # multiplies by facing). Clockwise swings a hanging limb to the left, which is BACK for a figure facing right: a knee
 # folds positive, a thigh, an upper arm and an elbow swing forward negative, toes come up negative.
-LIMIT = {'head': [-25, 25], 'chest': [-12, 12], 'braid': [-25, 25],
-         'upperarm_n': [-150, 25], 'upperarm_f': [-150, 25], 'forearm_n': [-140, 5], 'forearm_f': [-140, 5],
-         'thigh_n': [-80, 30], 'thigh_f': [-80, 30], 'shin_n': [0, 120], 'shin_f': [0, 120],
+LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'braid': [-20, 20],
+         'upperarm_n': [-150, 25], 'upperarm_f': [-45, 25], 'forearm_n': [-140, 0], 'forearm_f': [-140, 0],
+         # a thigh swung further shows the under-tunic's straight hem from under the rigid skirt: the skirt that follows
+         # the thigh is phase 3 (smart bones); a walk swings about 18
+         'thigh_n': [-25, 20], 'thigh_f': [-25, 20], 'shin_n': [0, 120], 'shin_f': [0, 120],
          'foot_n': [-30, 20], 'foot_f': [-30, 20]}
 
 WAIST_BAND = 40          # px of tunic above the waist the skirt keeps under the chest
 WAIST_ROWS = 12          # px: the top of the skirt that says where the waist is
 THIGH_TO_SHIN = 1.2      # a thigh, hip to knee, is this many shins long (femur to tibia; joint to joint about the same)
 HEAD_PIVOT = 0.2         # the head turns this share of its height above the collar: halfway up the neck
+BRAID_CAP = 0.6          # the braid's round end on the head, as a share of a full one: deep in the hair, so swung it leaves no mark
 PARENT_CAP = 0.8         # a parent's round end of the rest drawing's own pixels: this share of half the joint's width,
                          # inside the limb, so no outline of the child is copied into it
+EDGE_LUM = 140           # a line under-a draws in the tunic behind an arm: brown ink, lighter than the outline's black
+TONE_MIN_PX = 500        # a part needs this many of its own pixels in an under pass too, to tone that pass to it
+TONE_GAIN_MAX = 1.5      # how far a channel's spread may be stretched or squeezed to match
 CAP_MARGIN = 1.15        # a round end's radius, in half joint widths: a little past the edge, so its outline is under the parent
 SLEEVE_MARGIN = 12       # px a hidden upper arm reaches past the sleeve's own half width
 NECK_R = 0.9             # radius of the neck's hidden paint, in neck widths
@@ -123,7 +129,8 @@ def stray_pieces(own):
     """A small loose piece of a part (under SPECK_PX, not its main piece) joins the part it mostly touches: a blend dot of
     a foot's colour on the chest would turn with the foot and stretch the foot's box so its handle stands at the chest.
     It stays where it is when it touches nothing (a wisp of hair in the air) and, for cloth, when what it touches is
-    cloth (tunic showing between the shawl's fringe strands is tunic)."""
+    cloth: tunic showing between the shawl's fringe strands is tunic. (Moved with the shawl it swung as pale strands;
+    left on the skirt it showed as cream patches until the hidden tunic around it was toned to the drawing.)"""
     out = own.copy()
     for i, name in enumerate(PARTS):
         mask = own == i
@@ -145,6 +152,8 @@ def stray_pieces(own):
             values, counts = np.unique(ring, return_counts=True)
             neighbour = int(values[counts.argmax()])
             if name in CLOTH and PARTS[neighbour] in CLOTH:
+                continue
+            if PARTS[neighbour] == 'shawl':   # a sleeve showing between fringe strands is sleeve: it goes with the arm
                 continue
             out[piece] = neighbour
     return out
@@ -376,13 +385,17 @@ def cut(keyed, own, labels_b, joints):
         if src is not None:
             covered = solid & np.isin(own, list(range(i + 1, len(ORDER))))   # only under what is drawn above it
             take = region & covered & ~mine
-            layer[take] = src[take]
+            layer[take] = tone_matched(src, keyed['rest'], mine, take)
+            if name in ('chest', 'skirt'):
+                layer = without_drawn_edges(layer, take & is_part(own, 'upperarm_n', 'forearm_n'))
         out.append((name, bone, layer))
     return parent_caps(out, own, joints)
 
 
 # The layer that holds a parent's round end at each joint.
 # None at a shoulder: an upper arm turns at the body's edge, and what it uncovers is the tunic (hidden paint) or air.
+# The braid's is half size, deep in the hair: full size, its root's pixels stayed on the shoulder as a dark mark when it
+# swung (fresh tester, 11-13).
 PARENT_LAYER = {'chest': 'skirt', 'head': 'neck', 'braid': 'head',
                 'forearm_n': 'upperarm_n', 'forearm_f': 'upperarm_f', 'thigh_n': 'skirt', 'thigh_f': 'skirt',
                 'shin_n': 'thigh_n', 'shin_f': 'thigh_f', 'foot_n': 'shin_n', 'foot_f': 'shin_f'}
@@ -400,7 +413,7 @@ def parent_caps(layers, own, joints):
             continue
         pivot, width = joints[bone]
         moving = [p for p, b in ORDER if b in set(children_of(bone))]
-        region = disc(own.shape, pivot, width / 2 * PARENT_CAP) & is_part(own, *moving)
+        region = disc(own.shape, pivot, width / 2 * PARENT_CAP * (BRAID_CAP if bone == 'braid' else 1)) & is_part(own, *moving)
         rgba = out[by_name[holder]][2]
         take = region & (rgba[..., 3] == 0)
         rgba[take] = rest_px[take]
@@ -414,6 +427,53 @@ def parent_caps(layers, own, joints):
     skirt = out[by_name['skirt']][2]
     take = band & is_part(own, 'chest') & (skirt[..., 3] == 0)
     skirt[take] = rest_px[take]
+    return out
+
+
+def tone_matched(src, rest, mine, take):
+    """The hidden paint for `take`, toned to the part's own drawing. ChatGPT paints its under passes a shade lighter
+    (Ana's under-b re-inked the sleeves lighter), and where hidden paint meets the drawing that shows as pale patches in
+    the shape of the fringe (fresh tester, 11-13). Each channel's mean and spread on the part's own pixels, where the
+    under pass has paint too, are matched to the drawing's."""
+    out = src[take].astype(float)
+    both = mine & (src[..., 3] > 127)
+    if both.sum() >= TONE_MIN_PX:
+        a, b = src[both][:, :3].astype(float), rest[both][:, :3].astype(float)
+        gain = np.clip(b.std(0) / np.maximum(a.std(0), 1e-3), 1 / TONE_GAIN_MAX, TONE_GAIN_MAX)
+        out[:, :3] = (out[:, :3] - a.mean(0)) * gain + b.mean(0)
+    return out.clip(0, 255).astype(np.uint8)
+
+
+def without_drawn_edges(layer, area):
+    """The tunic under-a paints behind an arm, without the armhole edge it draws there: that line stood as a strip
+    under a raised arm (fresh tester, 11-13). Each ink pixel takes the colour of the nearest unlined pixel of the area."""
+    ink = area & (layer[..., :3].astype(float) @ np.array([0.299, 0.587, 0.114]) < EDGE_LUM)
+    plain = area & ~ink
+    if not ink.any() or not plain.any():
+        return layer
+    out = layer.copy()
+    iy, ix = ndi.distance_transform_edt(~plain, return_distances=False, return_indices=True)
+    out[ink] = layer[iy[ink], ix[ink]]
+    return out
+
+
+def round_ends(own, joints):
+    """A thigh ends round at the knee and a shin at the ankle, as Moho's cut-outs do: the parent's pixels near the joint
+    outside a disc of the joint's width go to the child, which is drawn under it, so at rest nothing changes. A square
+    end showed as a cut corner behind a bent knee (fresh tester, 11-13)."""
+    out = own.copy()
+    ys, xs = np.mgrid[:own.shape[0], :own.shape[1]]
+    for parent, child in (('thigh_n', 'shin_n'), ('thigh_f', 'shin_f'), ('shin_n', 'foot_n'), ('shin_f', 'foot_f')):
+        if child not in joints:
+            continue
+        pivot, width = joints[child]
+        child_mask = is_part(own, child)
+        if not child_mask.any():
+            continue
+        towards = axis_of(child_mask, pivot)   # from the joint into the child
+        along = (xs - pivot[0]) * towards[0] + (ys - pivot[1]) * towards[1]
+        far = np.hypot(xs - pivot[0], ys - pivot[1]) > width / 2
+        out[is_part(own, parent) & (along > -width / 2) & far] = PARTS.index(child)
     return out
 
 
@@ -518,7 +578,7 @@ def run(folder, out_dir, name, atlas_url):
     keyed, labels, labels_b = load(folder)
     own = stray_pieces(split_belt(fringe_slivers(owners(labels, labels_b), keyed)))
     joints = auto_joints(own, labels_b)
-    own = split_neck(own, joints)
+    own = split_neck(round_ends(own, joints), joints)
     facing = facing_of_feet(own, joints)
     layers = cut(keyed, own, labels_b, joints)
     rest = keyed['rest']
