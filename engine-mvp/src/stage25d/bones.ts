@@ -7,6 +7,7 @@ import { makeBone, makeSlot, Skeleton } from '../vendor/rigby2d/core/model.js'
 import { Pose } from '../vendor/rigby2d/core/pose.js'
 import { transform } from '../vendor/rigby2d/core/math.js'
 import type { Joint, PartMap, Puppet } from './types'
+import { elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
 
 // fine enough to follow the gap between a hanging hand and the body: a coarse outline bridges it and they bend as one
 const MESH = { points: 500, threshold: 24, expand: 1, smoothing: 1, interior: 'high' }
@@ -215,17 +216,24 @@ const JOINT_RANGE: [RegExp, number, number][] = [
   [/^forearm_/, -140, 5],
   [/^upperarm_n/, -10, 150],
   [/^upperarm_f/, -150, 10],
+  // legs (a figure cut by rig_parts.py carries its own limits; these hold for one that does not): clockwise carries a
+  // hanging limb back, so a knee folds positive and a thigh swings forward negative; toes come up negative
+  [/^thigh_/, -80, 30],
+  [/^shin_/, 0, 120],
+  [/^foot_/, -30, 20],
 ]
-const TURN_RANGE: Record<string, number> = { head: 25, chest: 12 }
+const TURN_RANGE: Record<string, number> = { head: 25, chest: 12, braid: 25 }
 
-/** A bone's turn inside what the body can do; a bone not listed turns freely, a figure with no `facing` keeps its arms free. */
-export function limitBone(name: string, deg: number, facing?: 1 | -1): number {
+/**
+ * A bone's turn inside what the body can do. `range` is the puppet's own limit for it (Puppet.bones[].limit), in the same
+ * terms as JOINT_RANGE. A bone not listed turns freely; a figure with no `facing` keeps its limbs free.
+ */
+export function limitBone(name: string, deg: number, facing?: 1 | -1, range?: readonly [number, number]): number {
   const turn = TURN_RANGE[name]
-  if (turn !== undefined) return Math.max(-turn, Math.min(turn, deg))
-  const range = facing ? JOINT_RANGE.find(([re]) => re.test(name)) : undefined
-  if (!range) return deg
-  const limited = Math.max(range[1], Math.min(range[2], deg * facing!))
-  return limited * facing!
+  if (!range && turn !== undefined) return Math.max(-turn, Math.min(turn, deg))
+  if (!facing) return deg
+  const [lo, hi] = range ?? JOINT_RANGE.find(([re]) => re.test(name))?.slice(1) as [number, number] ?? [-Infinity, Infinity]
+  return Math.max(lo, Math.min(hi, deg * facing)) * facing
 }
 
 /** The figure a layer draws: its own, or its library asset's (an atlas named without a path lies beside the asset's file). */
@@ -277,13 +285,56 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     return att
   })
   const pose = new Pose(sk)
+  const limits = new Map(puppet.bones.flatMap((b) => (b.limit ? [[b.name, b.limit] as const] : [])))
   const place = (bones: Record<string, number>) => {
     pose.reset(sk)
     for (const [name, deg] of Object.entries(bones)) {
       const i = indexOf.get(name)
-      if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = limitBone(name, deg, puppet.facing)
+      if (i !== undefined && Number.isFinite(deg)) pose.local[i].rotation = limitBone(name, deg, puppet.facing, limits.get(name))
     }
     pose.updateWorld(sk)
+    guard()
+  }
+  /** Where a point of the drawing stands now, carried by the bone it belongs to. */
+  const carriedBy = (name: string, [x, y]: readonly [number, number]): [number, number] => {
+    const at = from(name)
+    return pose.world[indexOf.get(name)!].apply([x - at[0], y - at[1]]) as [number, number]
+  }
+  const toOf = (name: string) => puppet.bones.find((b) => b.name === name)?.to
+  /** A turn that breaks a posing rule (pose-guard.ts) is mirrored; still wrong, it is held at the drawing's own angle. */
+  const fix = (bone: string, ok: () => boolean) => {
+    const i = indexOf.get(bone)!
+    if (ok()) return
+    pose.local[i].rotation = -pose.local[i].rotation
+    pose.updateWorld(sk)
+    if (ok()) return
+    pose.local[i].rotation = 0
+    pose.updateWorld(sk)
+  }
+  // Which way the character faces, from its feet as drawn (a foot in a deep knee fold points back: it cannot say).
+  // The hips never turn (puppet-pose movableBones), so this holds in every pose.
+  const forward = (() => {
+    const votes = ['foot_n', 'foot_f'].flatMap((foot) => {
+      const toe = toOf(foot)
+      return indexOf.has(foot) && toe ? [forwardOf(from(foot) as [number, number], toe)] : []
+    }).filter((v) => v !== 0)
+    return votes.length && votes.every((v) => v === votes[0]) ? votes[0] : puppet.facing ?? 0
+  })()
+  const guard = () => {
+    if (!forward) return
+    for (const side of ['n', 'f']) {
+      const [thigh, shin, foot] = [`thigh_${side}`, `shin_${side}`, `foot_${side}`]
+      if (indexOf.has(thigh) && indexOf.has(shin) && indexOf.has(foot)) {
+        const hip = () => carriedBy(thigh, from(thigh)), knee = () => carriedBy(shin, from(shin)), ankle = () => carriedBy(foot, from(foot))
+        fix(thigh, () => kneeInFront(hip(), knee(), forward))
+        fix(shin, () => kneeIsRight(hip(), knee(), ankle(), forward))
+      }
+      const [upper, fore] = [`upperarm_${side}`, `forearm_${side}`]
+      const hand = toOf(fore)
+      if (indexOf.has(upper) && indexOf.has(fore) && hand) {
+        fix(fore, () => elbowIsRight(carriedBy(upper, from(upper)), carriedBy(fore, from(fore)), carriedBy(fore, hand), forward))
+      }
+    }
   }
   // The near arm is drawn behind the chest (at rest its sleeve goes under the waistcoat), so a hand swung across the body
   // would vanish into it and come out on the other side. It stops at the chest's edge instead; over the legs it is in front.
@@ -324,7 +375,7 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
   const safe = (bones: Record<string, number>): Record<string, number> => {
     if (!handOf || !bodyAt.length || !puppet.facing) return bones
-    let deg = limitBone('forearm_n', bones.forearm_n ?? 0, puppet.facing)
+    let deg = limitBone('forearm_n', bones.forearm_n ?? 0, puppet.facing, limits.get('forearm_n'))
     place({ ...bones, forearm_n: deg })
     while (!handClear() && deg !== 0) {
       deg = deg > 0 ? Math.max(0, deg - GUARD_STEP) : Math.min(0, deg + GUARD_STEP)
@@ -338,7 +389,7 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     restUvs: puppet.parts.flatMap((p) => p.quad.flatMap(([x, y]) => [x / puppet.width, y / puppet.height])),
     triangles: atts.flatMap((a, i) => a.triangles.map((t) => t + i * 4)),   // in order: the first part is at the back
     safe,
-    limit: (name, deg) => limitBone(name, deg, puppet.facing),
+    limit: (name, deg) => limitBone(name, deg, puppet.facing, limits.get(name)),
     bend(bones) {
       place(safe(bones))
       last = atts.flatMap((a, i) => pose.worldVertices(sk, i, a))

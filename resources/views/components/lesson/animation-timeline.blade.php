@@ -58,7 +58,9 @@
         'objectLabels' => ['background' => __('Background')],
         'propertyLabels' => [
             'bone:head' => __('Neck'), 'bone:chest' => __('Upper body'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
-            'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'),
+            'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),
+            'bone:thigh_n' => __('Near thigh'), 'bone:shin_n' => __('Near knee'), 'bone:foot_n' => __('Near foot'),
+            'bone:thigh_f' => __('Far thigh'), 'bone:shin_f' => __('Far knee'), 'bone:foot_f' => __('Far foot'),
             'x' => __('Position').' X', 'y' => __('Position').' Y', 'z' => 'Z',
             'w' => __('Width'), 'width' => __('Width'), 'height' => __('Height'),
             'scale' => __('Scale'), 'rotation' => __('Rotate'), 'blur' => __('Blur'),
