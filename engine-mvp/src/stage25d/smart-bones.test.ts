@@ -88,3 +88,28 @@ describe('a band holds only near its joint', () => {
     expect(farSide).toEqual([{ bone: 'upperarm_n', weight: 1 }])
   })
 })
+
+describe('the near hand guard on a figure that bends', () => {
+  it('still keeps a hand drawn behind the chest out of it when its parts are meshes', () => {
+    // a forearm hanging beside a chest drawn over it; the elbow bends (band), so the forearm is a grid
+    const p: Puppet = {
+      atlas: 'a.png', width: 200, height: 200, facing: 1,
+      bones: [
+        { name: 'chest', parent: null, from: [100, 20], to: [100, 120] },
+        { name: 'upperarm_n', parent: 'chest', from: [60, 30], to: [60, 90] },
+        { name: 'forearm_n', parent: 'upperarm_n', from: [60, 90], to: [60, 160], band: 12 },
+      ],
+      parts: [
+        { bone: 'forearm_n', quad: q(50, 90, 70, 160), uv: [0, 0, 0.3, 1] },
+        { bone: 'upperarm_n', quad: q(50, 30, 70, 90), uv: [0.3, 0, 0.6, 1] },
+        { bone: 'chest', quad: q(75, 20, 125, 140), uv: [0.6, 0, 1, 1] },
+      ],
+    }
+    const rigid: Puppet = { ...p, bones: p.bones.map(({ band, ...b }) => b) }
+    // the guard holds a forearm folded across the chest drawn over it back the same, whether its parts bend or not
+    for (const deg of [-60, -90, -120]) {
+      expect(bindPuppet(p).safe({ forearm_n: deg }).forearm_n).toBeCloseTo(bindPuppet(rigid).safe({ forearm_n: deg }).forearm_n ?? deg, 6)
+    }
+    expect(bindPuppet(rigid).safe({ forearm_n: -120 }).forearm_n).toBeGreaterThan(-120)   // and it does hold it back
+  })
+})

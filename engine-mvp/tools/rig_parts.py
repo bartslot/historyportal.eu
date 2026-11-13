@@ -44,7 +44,7 @@ PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'braid': 'head', 'uppe
 # multiplies by facing). Clockwise swings a hanging limb to the left, which is BACK for a figure facing right: a knee
 # folds positive, a thigh, an upper arm and an elbow swing forward negative, toes come up negative.
 LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'braid': [-20, 20],
-         'upperarm_n': [-150, 25], 'upperarm_f': [-45, 25], 'forearm_n': [-120, 0], 'forearm_f': [-120, 0],
+         'upperarm_n': [-120, 25], 'upperarm_f': [-20, 20], 'forearm_n': [-120, 0], 'forearm_f': [-120, 0],
          # a thigh swung further shows the under-tunic's straight hem from under the rigid skirt: the skirt that follows
          # the thigh is phase 3 (smart bones); a walk swings about 18
          'thigh_n': [-25, 20], 'thigh_f': [-25, 20], 'shin_n': [0, 120], 'shin_f': [0, 120],
@@ -55,6 +55,7 @@ BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f
               'shin_n': 0.5, 'shin_f': 0.5, 'braid': 0.5}   # of the joint's width
 ANKLE_BAND = 0.35        # an ankle's band, as a share of the knee's width
 ANKLE_WIDTH = 0.75       # an ankle's thickness, as a share of the knee's width
+WAIST_REACH = 300        # px round the waist that its band bends: the whole hanging end of the shawl
 SHOULDER_REACH = 0.55    # a shoulder's band reaches this share of the arm's width round the joint
 REACH_MARGIN = 6         # px past a band's corners that its reach goes
 WAIST_BAND = 40          # px of tunic above the waist the skirt keeps under the chest
@@ -66,6 +67,7 @@ BRAID_CAP = 0.6          # the braid's round end on the head, as a share of a fu
 PARENT_CAP = 0.8         # a parent's round end of the rest drawing's own pixels: this share of half the joint's width,
                          # inside the limb, so no outline of the child is copied into it
 EDGE_LUM = 140           # a line under-a draws in the tunic behind an arm: brown ink, lighter than the outline's black
+FRINGE_SOFTEN = 3.0      # px of blur on a sleeve's own colour carried in under the shawl
 BLEED_PX = 2             # px of the drawing a part carries past its edge, hidden under the part above
 TONE_MIN_PX = 500        # a part needs this many of its own pixels in an under pass too, to tone that pass to it
 TONE_GAIN_MAX = 1.5      # how far a channel's spread may be stretched or squeezed to match
@@ -431,13 +433,19 @@ def cut(keyed, own, labels_b, joints):
             covered = solid & np.isin(own, list(range(i + 1, len(ORDER))))   # only under what is drawn above it
             take = region & covered & ~mine
             layer[take] = tone_matched(src, keyed['rest'], mine, take)
+            if name.startswith('upperarm_'):
+                layer = own_colour_under_fringe(layer, take & is_part(own, 'shawl'), mine)
             if name in ('chest', 'skirt'):
                 layer = without_drawn_edges(layer, take & is_part(own, 'upperarm_n', 'forearm_n'))
         # a 2 px bleed of the drawing past the part's edge, under the parts above: at a part's edge the stage samples
         # the atlas half a pixel into its empty margin, and a hairline showed along every join of a bending joint
+        # (the part's OWN edge colour carried outward: copying the drawing there put the shawl's fringe into the sleeve
+        # and the dress, which showed as a pale band of tassels when they moved apart: fresh tester, 11-13)
         above = solid & np.isin(own, list(range(i + 1, len(ORDER))))
         bleed = ndi.binary_dilation(mine, iterations=BLEED_PX) & ~mine & above & (layer[..., 3] == 0)
-        layer[bleed] = rest[bleed]
+        if bleed.any() and mine.any():
+            iy, ix = ndi.distance_transform_edt(~mine, return_distances=False, return_indices=True)
+            layer[bleed] = rest[iy[bleed], ix[bleed]]
         out.append((name, bone, layer))
     return parent_caps(out, own, joints)
 
@@ -478,6 +486,22 @@ def parent_caps(layers, own, joints):
     skirt = out[by_name['skirt']][2]
     take = band & is_part(own, 'chest') & (skirt[..., 3] == 0)
     skirt[take] = rest_px[take]
+    return out
+
+
+def own_colour_under_fringe(layer, area, mine):
+    """A sleeve's hidden paint under the shawl, made of the sleeve's own colour: each pixel the nearest of the
+    sleeve's own plain cloth (never its outline's ink, which made a brown smear), softened. Under-b's sleeve there, next to the sleeve's own pieces between the strands, made a pattern
+    of the fringe that went up with a raised arm (fresh tester, 11-13)."""
+    plain = mine & (layer[..., :3].astype(float) @ np.array([0.299, 0.587, 0.114]) > EDGE_LUM)   # cloth, not its ink
+    if not area.any() or not plain.any():
+        return layer
+    out = layer.copy()
+    iy, ix = ndi.distance_transform_edt(~plain, return_distances=False, return_indices=True)
+    filled = layer[iy, ix].astype(float)
+    soft = np.dstack([ndi.gaussian_filter(filled[..., c], FRINGE_SOFTEN) for c in range(3)])
+    out[area, :3] = soft[area].clip(0, 255).astype(np.uint8)
+    out[area, 3] = 255
     return out
 
 
@@ -626,10 +650,14 @@ def band_of(bone, joints):
 def reach_of(bone, joints, band):
     """px round a joint that its band bends: the joint's cross-section and the band's corners. A shoulder keeps to
     about half the arm's width, so the tunic round the armhole bends with a raised arm and the shawl does not."""
+    if bone == 'chest':   # the shawl hangs far below the waist: it bends there with a lean instead of swinging rigidly
+        return WAIST_REACH
     width = float(joints['neck_split'][1]) if bone == 'head' else joints[bone][1]
     if bone.startswith('foot_'):
         width = joints[f'shin_{bone[-1]}'][1] * ANKLE_WIDTH
     if bone.startswith('upperarm_'):
+        # (the shawl blended with the far arm kinked into a zigzag: its band keeps to the arm too. The shawl that drapes
+        # over a raised far arm needs a drawing of it there; until then that arm swings 20 degrees, a walk's swing)
         return width * SHOULDER_REACH
     return float(np.hypot(width / 2, band)) + REACH_MARGIN
 

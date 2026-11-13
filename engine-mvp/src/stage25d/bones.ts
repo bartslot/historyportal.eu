@@ -346,14 +346,17 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   })()
   const side = bodyAt.length ? Math.sign(from('forearm_n')[0] - (puppet.parts[bodyAt[0]].quad[0][0] + puppet.parts[bodyAt[0]].quad[1][0]) / 2) || 1 : 1
   /** How far the forearm stands outside each part of the body, along the side it hangs on; null where no point of it is level with that part. */
+  /** A part's four corners where its bone carries them now, flat. Read through the bone, not from the mesh: a part that
+   *  bends (smart-bones.ts) is a grid, whose first four points are not its corners (fresh tester, 11-13). */
+  const cornersOf = (i: number): number[] => puppet.parts[i].quad.flatMap((c) => carriedBy(puppet.parts[i].bone, c))
   const gaps = (): (number | null)[] => {
-    const fore = pose.worldVertices(sk, foreAt, atts[foreAt]) as number[]
+    const fore = cornersOf(foreAt)
     const mid = (a: number, b: number) => [(fore[a * 2] + fore[b * 2]) / 2, (fore[a * 2 + 1] + fore[b * 2 + 1]) / 2]
     const hand = mid(handOf![0], handOf![1])
     const elbow = mid((handOf![0] + 2) % 4, (handOf![1] + 2) % 4)
     const along = ALONG_FOREARM.map((t) => [elbow[0] + (hand[0] - elbow[0]) * t, elbow[1] + (hand[1] - elbow[1]) * t])
     return bodyAt.map((i) => {
-      const v = pose.worldVertices(sk, i, atts[i]) as number[]
+      const v = cornersOf(i)
       const xs = [v[0], v[2], v[4], v[6]], ys = [v[1], v[3], v[5], v[7]]
       const edge = side > 0 ? Math.max(...xs) : Math.min(...xs)
       const level = along.filter((p) => p[1] >= Math.min(...ys) && p[1] <= Math.max(...ys)).map((p) => (p[0] - edge) * side)
