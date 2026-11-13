@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Does a ChatGPT part sheet line up with its rest drawing? (vault topics/character-bones/plan.md, 2.4)
 
-A sheet is a folder: rest.png (on #00FF00) and pictures made by editing it on the same canvas: map.png (flat colours on
+A sheet is a folder (each picture .webp or .png): rest.png (on #00FF00) and pictures made by editing it on the same canvas: map.png (flat colours on
 black), under-a.png / under-b.png / under-c.png (what the arms, the outer clothes or the shawl hide), map-b.png (the thighs), face/*.png (edits of
 head-base.png, boxes in face/boxes.json). Parts drawn apart never fit (Pieter, 11-05), so every edit is measured against
 the rest drawing before anything is cut. A missing file is a failed line, never a skipped one. Writes check.json and
-check.png in the folder and prints one line per check.
+check.webp in the folder and prints one line per check.
 
 usage: rig_check.py SHEET_DIR
 """
@@ -16,6 +16,8 @@ import sys
 
 import numpy as np
 from PIL import Image
+
+from img_io import find, save as save_image
 from scipy import ndimage as ndi
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools', 'artkit'))
@@ -315,12 +317,12 @@ def face_boxes(folder):
 
 def check_faces(folder):
     """Every face edit against head-base.png: {file: result}, or {file: {'no_box': group}}."""
-    base_rgb = rgb_of(os.path.join(folder, 'head-base.png'))
+    base_rgb = rgb_of(find(os.path.join(folder, 'head-base.png')))
     boxes = face_boxes(folder) or {}
     out = {}
     face_dir = os.path.join(folder, 'face')
     for file in sorted(os.listdir(face_dir)) if os.path.isdir(face_dir) else []:
-        if not file.endswith('.png'):
+        if not file.endswith(('.png', '.webp')):
             continue
         group = file.split('-')[0]
         out[file] = check_face(base_rgb, os.path.join(face_dir, file), boxes[group]) if group in boxes else {'no_box': group}
@@ -384,7 +386,7 @@ def tinted(rgb, solid, colour):
 
 
 def run(folder):
-    at = lambda name: os.path.join(folder, name)
+    at = lambda name: str(find(os.path.join(folder, name)))   # a sheet may be .webp (ours) or .png (ChatGPT's)
     needed = ['rest.png', 'map.png', 'under-a.png', 'under-b.png', 'under-c.png', 'map-b.png', 'head-base.png', 'face/boxes.json']
     report, tiles = {'absent': [n for n in needed if not os.path.exists(at(n))], 'edits': {}}, []
     if 'rest.png' in report['absent']:
@@ -413,7 +415,7 @@ def finish(folder, report, tiles):
         json.dump(report, f, indent=1, default=float)
     if tiles:
         h = max(t.shape[0] for t in tiles)
-        Image.fromarray(np.hstack([np.pad(t, ((0, h - t.shape[0]), (0, 0), (0, 0))) for t in tiles])).save(os.path.join(folder, 'check.png'))
+        save_image(np.hstack([np.pad(t, ((0, h - t.shape[0]), (0, 0), (0, 0))) for t in tiles]), os.path.join(folder, 'check.webp'))
     for c, v, p in lines:
         print(f'{"PASS" if p else "FAIL"}  {c}: {v:.4f}' if isinstance(v, float) else f'{"PASS" if p else "FAIL"}  {c}: {v}')
     return report

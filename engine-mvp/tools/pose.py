@@ -3,7 +3,10 @@ will: the upper body leans forward about the back of the waist, the arms hang st
 head tilts forward and down about the neck. Writes posed copies of the figure sheet, the part map, the head sheet and
 its hair mask, and the moved head box.
 
-  python3 pose.py <flat.png> <map.png> <head sheet> <hair mask> <out dir> [lean deg] [head deg]
+  python3 pose.py <flat.png> <map.png> <head sheet> <hair mask> <out dir> [lean deg] [head deg] [body]
+
+body (girl, woman, man) takes the neck, shoulders, hip and head box of that body type from the kit's body/joints.json
+and body/head-boxes.json; without it the standard (girl) body's hand-placed joints below are used.
 """
 from __future__ import annotations
 
@@ -16,6 +19,9 @@ import cv2
 import numpy as np
 from PIL import Image
 from scipy import ndimage
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from img_io import save as save_image  # noqa: E402
 
 FLAT, MAP, HEADS, HMASK, OUT = map(Path, sys.argv[1:6])
 LEAN = float(sys.argv[6]) if len(sys.argv) > 6 else 8.0
@@ -31,6 +37,13 @@ ORDER = ['braid', 'upperarm_f', 'forearm_f', 'shin_f', 'foot_f', 'shin_n', 'foot
 HIP = (440.0, 632.0)                 # the back of the waist: the back stays joined, the front sinks a little into the skirt
 NECK = (505.0, 322.0)
 SHOULDER = {'n': (400.0, 360.0), 'f': (650.0, 380.0)}
+BODY = sys.argv[8] if len(sys.argv) > 8 else None
+if BODY:                             # a body type's own joints and head box (the woman and man bodies are other drawings)
+    from kit_parts import body_joints  # noqa: E402
+    _joints, HEAD_BOX = body_joints(BODY)
+    NECK, HIP = tuple(_joints['NECK']), tuple(_joints['HIP'])
+    SHOULDER = {side: tuple(xy) for side, xy in _joints['SHOULDER'].items()}
+    HK = (HEAD_BOX[2] - HEAD_BOX[0]) / 1024
 GREEN = np.array([0, 255, 0], np.uint8)
 
 
@@ -130,8 +143,8 @@ if n_:
 map_out = np.zeros((H, W, 3), np.uint8)
 for i in range(len(PARTS)):
     map_out[out_lab == i] = PAL[i]
-Image.fromarray(out_rgb).save(OUT / 'flat.png')
-Image.fromarray(map_out).save(OUT / 'map.png')
+save_image(out_rgb, OUT / 'flat.webp', lossless=True)               # re-read by kit_render: exact pixels
+save_image(map_out, OUT / 'map.webp', lossless=True)
 
 # the head sheet: the same tilt about the neck in its own space; the crop box moves with the neck
 neck_after = apply(UPPER, NECK)
@@ -144,7 +157,7 @@ hs = np.asarray(Image.open(HEADS).convert('RGB'))
 hs_out = cv2.warpAffine(hs, Mh, (1024, 1024), flags=cv2.INTER_NEAREST, borderValue=(0, 255, 0))
 hm = np.asarray(Image.open(HMASK).convert('L'))
 hm_out = cv2.warpAffine(hm, Mh, (1024, 1024), flags=cv2.INTER_NEAREST, borderValue=0)
-Image.fromarray(hs_out).save(OUT / 'head.png')
-Image.fromarray(hm_out).save(OUT / 'hair-mask.png')
+save_image(hs_out, OUT / 'head.webp', lossless=True)
+save_image(hm_out, OUT / 'hair-mask.webp', lossless=True)
 (OUT / 'box.json').write_text(json.dumps(box))
 print('posed: lean', LEAN, 'tilt', TILT, 'head box', box)

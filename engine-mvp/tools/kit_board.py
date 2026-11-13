@@ -1,6 +1,9 @@
 """The kit's parts board: every sheet the kit is made of, by folder."""
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from img_io import find, save as save_image  # noqa: E402
 R = Path.home() / 'BartsMedia/historyportal/topics/character-creator'
 K = R / 'kits/old-babylonian/v1'; A = R / 'part-sheets/ana/v1'
 rows = [
@@ -21,11 +24,11 @@ for i, (title, items) in enumerate(rows):
     d.text((20, y), title, fill=(40, 30, 20)); y += 20
     hh = CELL * (2 if i == 0 else 1)
     for k, (name, p) in enumerate(items):
-        im = Image.open(p).convert('RGB')
+        im = Image.open(find(p)).convert('RGB')   # parts are .webp now, ChatGPT sheets .png
         if i == 3:
             im = im.crop((540, 420, 940, 760))
         im.thumbnail((CELL - 10, hh - 10))
         out.paste(im, (20 + k * CELL, y))
         d.text((20 + k * CELL, y + hh - 4), name, fill=(40, 30, 20))
     y += hh + 30
-out.save(K / 'kit-parts-board.png'); print('ok', out.size)
+save_image(out, K / 'kit-parts-board.webp'); print('ok', out.size)
