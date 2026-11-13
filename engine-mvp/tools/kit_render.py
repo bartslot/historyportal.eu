@@ -58,7 +58,8 @@ ORDER = ['braid', 'upperarm_f', 'forearm_f', 'shin_f', 'foot_f', 'shin_n', 'foot
 # self-shade per group: the arms each on their own (they overlap the body), the rest as one body; per part it draws
 # the part map's edges (a long skirt crosses the shin parts) as stair-step shade lines
 SHADE_GROUPS = ([[PARTS.index(p) for p in g] for g in ARMS] + [[i for i, p in enumerate(PARTS) if not any(p in g for g in ARMS)]]
-                if os.environ.get('KIT') == '1' else [[i] for i in range(len(PARTS))])
+                if os.environ.get('KIT') == '1' or os.environ.get('SHADE_GROUPS') == 'body' else [[i] for i in range(len(PARTS))])
+# SHADE_GROUPS=body: the same grouping without the rest of KIT (the bone rig: a part border is a joint, not an edge)
 clamp = lambda v, a, b: max(a, min(b, v))
 smooth = lambda t: t * t * (3 - 2 * t)
 hexof = lambda c: '#%02x%02x%02x' % tuple(int(v) for v in c)

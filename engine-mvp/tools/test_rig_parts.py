@@ -134,3 +134,11 @@ def test_a_sleeve_showing_between_fringe_strands_stays_with_the_arm():
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-q']))
+
+
+def test_an_ankle_bends_the_whole_calf_across_its_band_not_only_the_ankle():
+    """A reach of the ankle's width left the outer calf rigid while the inside turned: a V cut in the shin (11-13)."""
+    joints = {'shin_n': (np.array([50.0, 100.0]), 40.0), 'foot_n': (np.array([50.0, 160.0]), 16.0)}
+    band = rp.band_of('foot_n', joints)
+    assert band == pytest.approx(40.0 * rp.ANKLE_BAND)
+    assert rp.reach_of('foot_n', joints, band) >= 40.0   # a full knee's width either side of the ankle

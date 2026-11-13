@@ -54,8 +54,10 @@ LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'braid': [-20, 20],
 WAIST_BEND = 30          # px either side of the waist across which the tunic bends with a leaning chest
 BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f': 0.5, 'thigh_n': 0.5, 'thigh_f': 0.5,
               'shin_n': 0.5, 'shin_f': 0.5, 'braid': 0.5}   # of the joint's width
-ANKLE_BAND = 0.35        # an ankle's band, as a share of the knee's width
-ANKLE_WIDTH = 0.75       # an ankle's thickness, as a share of the knee's width
+ANKLE_BAND = 0.6         # an ankle's band, as a share of the knee's width (0.35 kinked the shin's front edge)
+ANKLE_REACH = 1.5        # an ankle's reach, as a share of the knee's width: the band runs up into the calf, which is
+                         # wider than the ankle; a reach of the ankle's width left the outer calf rigid and the shin
+                         # sheared into a V-shaped cut at toes up or down (fresh tester, 11-13)
 WAIST_REACH = 2000       # px round the waist that its band bends: everything, so the whole hanging end of the shawl
                          # moves as one with the hips (at 300 its tip went with the chest and sheared it: tester)
 SHOULDER_REACH = 0.55    # a shoulder's band reaches this share of the arm's width round the joint
@@ -642,7 +644,7 @@ def band_of(bone, joints):
         return float(joints['head'][0][1] - joints['neck_split'][0][1])
     if bone == 'chest':
         return WAIST_BEND
-    if bone.startswith('foot_'):   # the map's foot/shin border is short; the ankle is about as thick as a third of the knee
+    if bone.startswith('foot_'):   # the map's foot/shin border is short: the band is sized from the knee
         return joints[f'shin_{bone[-1]}'][1] * ANKLE_BAND
     if bone in BAND_SHARE:
         return joints[bone][1] * BAND_SHARE[bone]
@@ -654,9 +656,9 @@ def reach_of(bone, joints, band):
     about half the arm's width, so the tunic round the armhole bends with a raised arm and the shawl does not."""
     if bone == 'chest':   # the shawl hangs far below the waist: it bends there with a lean instead of swinging rigidly
         return WAIST_REACH
-    width = float(joints['neck_split'][1]) if bone == 'head' else joints[bone][1]
     if bone.startswith('foot_'):
-        width = joints[f'shin_{bone[-1]}'][1] * ANKLE_WIDTH
+        return float(np.hypot(joints[f'shin_{bone[-1]}'][1] * ANKLE_REACH, band))
+    width = float(joints['neck_split'][1]) if bone == 'head' else joints[bone][1]
     if bone.startswith('upperarm_'):
         # (the shawl blended with the far arm kinked into a zigzag: its band keeps to the arm too. The shawl that drapes
         # over a raised far arm needs a drawing of it there; until then that arm swings 20 degrees, a walk's swing)
