@@ -20,6 +20,7 @@ import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/grou
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stage25d/stage25d/daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
+import { farEdgeOf, farEdgeOptions } from '@stage25d/stage25d/far-edge'
 import { libraryUrl } from './config.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
@@ -1069,6 +1070,28 @@ export async function createStage25d (host, opts = {}) {
       hidden = keep
       redraw()
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
+    },
+    /** The Horizon choice: what stands on an empty horizon (far-edge.ts). value '' = automatic, 'none', or a piece. */
+    farEdgeInfo () {
+      if (!cfg || !libData) return null
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      const { farEdge, ...rest } = cfg.set ?? { layers: [] }
+      const label = (id) => { const a = assets.get(id); return a ? layerLabel({}, a, lang) : id }
+      const auto = farEdgeOf({ layers: [], ...rest }, libData, terrainSlot()?.asset.horizon)
+      return { value: farEdge ?? '', auto: auto ? label(auto) : null, options: farEdgeOptions(libData).map((id) => ({ id, label: label(id) })) }
+    },
+    /** Choose what stands on the horizon ('' automatic, 'none', a piece): rebuilt on stage, saved (onFarEdge). */
+    async setFarEdge (value) {
+      if (!cfg) return
+      const v = typeof value === 'string' ? value : ''
+      const { farEdge: _old, ...set } = cfg.set ?? {}
+      cfg = { ...cfg, set: v ? { ...set, farEdge: v } : set }
+      const keep = hidden
+      await api.show({ ...cfg, look: lookNow, set: liveSet() })
+      hidden = keep
+      redraw()
+      if (api.sceneId != null) opts.onFarEdge?.(v || null, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** The World section: which ready-made world is on (config/worlds.php key), the scene's period library, and how many

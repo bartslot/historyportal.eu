@@ -526,6 +526,34 @@ trait EditsStage25d
         $this->renderedFingerprint = $this->lessonFingerprint();
     }
 
+    /**
+     * What stands on the scene's horizon when nothing else does (config.stage25d.set.farEdge, engine far-edge.ts):
+     * null = automatic, 'none', or one of the period library's far pieces (tagged far + horizon).
+     */
+    #[On('stage25d:far-edge')]
+    public function saveStage25dFarEdge(?string $farEdge, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId) {
+            return;
+        }
+        if ($farEdge !== null && $farEdge !== 'none') {
+            $asset = LibraryBundle::asset((string) ($scene->config['stage25d']['bundle'] ?? ''), $farEdge);
+            if (! is_array($asset) || array_diff(['far', 'horizon'], (array) ($asset['tags'] ?? [])) !== []) {
+                return;
+            }
+        }
+        $config = $scene->config;
+        if ($farEdge === null) {
+            unset($config['stage25d']['set']['farEdge']);
+        } else {
+            $config['stage25d']['set']['farEdge'] = $farEdge;
+        }
+        if ($config !== $scene->config) {
+            $this->storeStage25dConfig($scene, $config);
+        }
+    }
+
     /** One scene look value (config.stage25d.look.<key>). */
     #[On('stage25d:look')]
     public function saveStage25dLook(string $key, mixed $value, int $sceneId): void

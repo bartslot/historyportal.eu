@@ -1440,7 +1440,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, world: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, world: null, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1452,7 +1452,7 @@
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (id === 'world') { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; return; }
+                if (id === 'world') { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; this.farEdge = stage.farEdgeInfo?.() ?? null; return; }
                 if (!id) return;
                 if (id === 'camera') {
                     this.cam = stage.cameraInfo?.() ?? null;

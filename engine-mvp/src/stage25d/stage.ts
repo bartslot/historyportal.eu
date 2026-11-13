@@ -40,6 +40,7 @@ import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './dayl
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
 import { makeSky } from './sky-gl'
 import { isSoil, NO_RECOLOUR, soilRecolour } from './soil'
+import { farEdgeOf } from './far-edge'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
@@ -51,6 +52,9 @@ type Stain = ReturnType<typeof makeStain>
  *  standing on the floor (a band's Size would shrink it both ways and lift it off the floor) */
 const HORIZON_BAND = { z: 900 }
 const HORIZON_SQUASH = 0.12
+/** The band index of the world's far piece on an empty horizon (far-edge.ts), and how much of its painted height it keeps. */
+const FAR_PIECE = -2
+const FAR_PIECE_SQUASH = 0.5
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
 interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string }  // index -1 = the sky
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
@@ -100,7 +104,7 @@ export class Stage {
   private lightKey: unknown = null
   private skyAsset: Asset | null = null
   /** what the floor's look is made from, kept so a new time of day relights it without a rebuild */
-  private groundIn: { slots: (FloorSlot & { asset: Asset })[]; far: RGB | null | undefined; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
+  private groundIn: { slots: (FloorSlot & { asset: Asset })[]; far: RGB | null | undefined; pieceEdge: RGB | null; soil: RGB | null; wash?: string; lib: Library; measuredHaze: RGB | null; tileFoot: RGB | null } | null = null
   private hemi: HemisphericLight
   private sunLamp: DirectionalLight
   private footTint: [number, number, number] = hexRgb(PAPER_HEX)
@@ -335,7 +339,10 @@ export class Stage {
     this.nearAsset = nearAsset
     // the floor's look, lit by the scene's time of day (relight): with ground bands the floor is only the paper behind
     // them, no tile can show between the painted strips
-    this.groundIn = { slots: slotsNext, far: far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : undefined, wash: choice.kind === 'paper' ? choice.colour : undefined, lib, measuredHaze: skyHaze, tileFoot: tileBands.length ? mean3(tileBands) : null }
+    // the world's far piece on an empty horizon (far-edge.ts): the floor runs into the ground colour it stands on
+    const piece = bandsNext.find((b) => b.index === FAR_PIECE)
+    const pieceEdge = piece ? edgeColours.get(urlOf(lib, piece.asset, piece.band)) ?? piece.colour : null
+    this.groundIn = { slots: slotsNext, far: far ? edgeColours.get(urlOf(lib, far.asset, far.layer)) ?? null : undefined, pieceEdge, soil: s.set.soil ? hexRgb(s.set.soil) : null, wash: choice.kind === 'paper' ? choice.colour : undefined, lib, measuredHaze: skyHaze, tileFoot: tileBands.length ? mean3(tileBands) : null }
     this.skyAsset = s.set.sky ? resolveAsset(lib, { asset: s.set.sky }, 'sky') : null
     this.dynamicSky = dynamic
     this.ownSky.mesh.setEnabled(dynamic)
@@ -388,8 +395,10 @@ export class Stage {
     const skyHaze = l.dynamic ? l.sky.horizon : g.measuredHaze
     // with no far strip the floor fades into the sky where they meet, ground strips or not: a faint strip near by
     // carries no horizon, and fading into paper left a pale band with a hard edge (Bart 11-13, lesson 94)
-    const tint = g.far !== undefined ? g.far : skyHaze
-    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !!skyHaze)
+    // under the world's far piece it fades into the soil instead (the scene's soil colour, else the piece's own
+    // ground), so no blue shows between the floor and the ridge (Bart 11-13)
+    const tint = g.far !== undefined ? g.far : g.pieceEdge ? g.soil ?? g.pieceEdge : skyHaze
+    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !g.pieceEdge && !!skyHaze)
     this.horizonTint = look.tint
     this.footTint = g.tileFoot ?? look.base
     this.hazeTint = skyHaze ?? look.tint
@@ -410,11 +419,11 @@ export class Stage {
     const first = g?.slots[0]
     const target = soil ?? (first && isSoil(first.asset) ? first.colour : null)
     if (g) {
-      this.groundIn = { ...g, slots: g.slots.map((sl) => ({ ...sl, recolour: soil && isSoil(sl.asset) ? soilRecolour(sl.colour, soil) : NO_RECOLOUR })) }
+      this.groundIn = { ...g, soil, slots: g.slots.map((sl) => ({ ...sl, recolour: soil && isSoil(sl.asset) ? soilRecolour(sl.colour, soil) : NO_RECOLOUR })) }
       this.lightKey = null
       this.relight(s)
     }
-    for (const b of this.bands) b.handle.setRecolour(target && b.colour && isSoil(b.asset) ? soilRecolour(b.colour, target) : NO_RECOLOUR)
+    for (const b of this.bands) b.handle.setRecolour(target && b.colour && isSoil(b.asset) && b.index !== FAR_PIECE ? soilRecolour(b.colour, target) : NO_RECOLOUR)
   }
 
   /** The own sky's clouds (clouds.ts): made again when the scene, the chosen cut-outs or the Amount changed. */
@@ -734,6 +743,11 @@ export class Stage {
     const edge = groundSlots(s.set, lib)[0]?.asset.horizon
     const edgeAsset = edge ? lib.assets.find((a) => a.id === edge) : undefined
     if (edgeAsset) await build(edgeAsset, { asset: edgeAsset.id, ...HORIZON_BAND }, -1)
+    // a scene with nothing on its horizon gets its world's far piece there (far-edge.ts): a tree line, hills, palms
+    // (index FAR_PIECE: no row, never picked; its own shape, not squashed like a terrain's edge)
+    const piece = farEdgeOf(s.set, lib, edge)
+    const pieceAsset = piece ? lib.assets.find((a) => a.id === piece) : undefined
+    if (pieceAsset) await build(pieceAsset, { asset: pieceAsset.id, ...HORIZON_BAND }, FAR_PIECE)
     return out
   }
 
@@ -781,8 +795,8 @@ export class Stage {
       // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
       const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front)   // its skyline on the crest, k x z up, never off the floor
       b.z = p.z
-      const edge = b.index < 0   // the terrain's horizon: low, on the floor
-      b.handle.mesh.scaling.set(p.sx, edge ? p.sy * HORIZON_SQUASH : p.sy, 1)
+      const edge = b.index < 0   // the terrain's horizon or the world's far piece: low, on the floor
+      b.handle.mesh.scaling.set(p.sx, edge ? p.sy * (b.index === FAR_PIECE ? FAR_PIECE_SQUASH : HORIZON_SQUASH) : p.sy, 1)
       b.handle.mesh.position.set(p.x, edge ? 0 : p.y, p.z)
       b.handle.mesh.alphaIndex = p.alphaIndex
       const ppm = pxPerMetre(renderH, p.z - HOUSE.z, fovRad(HOUSE.fov))

@@ -550,6 +550,25 @@ class StageEditingTest extends TestCase
         $this->assertArrayNotHasKey('soil', $sibling->fresh()->config['stage25d']['set']);
     }
 
+    public function test_the_horizon_takes_a_far_piece_of_the_period_none_or_back_to_automatic(): void
+    {
+        Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
+            ['id' => 'stone-chamber-01', 'layer' => 'mid', 'file' => 'a.webp'],
+            ['id' => 'far-treeline-01', 'layer' => 'mid', 'file' => 'f.webp', 'tags' => ['far', 'horizon', 'trees']],
+        ]]));
+        $scene = $this->scene();
+        $editor = $this->editor($scene)->call('saveStage25dFarEdge', 'far-treeline-01', $scene->id);
+        $this->assertSame('far-treeline-01', $scene->fresh()->config['stage25d']['set']['farEdge']);
+
+        $editor->call('saveStage25dFarEdge', 'stone-chamber-01', $scene->id)->call('saveStage25dFarEdge', 'none', $scene->id + 1);
+        $this->assertSame('far-treeline-01', $scene->fresh()->config['stage25d']['set']['farEdge'], 'not a far piece, or another scene: nothing saved');
+
+        $editor->call('saveStage25dFarEdge', 'none', $scene->id);
+        $this->assertSame('none', $scene->fresh()->config['stage25d']['set']['farEdge']);
+        $editor->call('saveStage25dFarEdge', null, $scene->id);
+        $this->assertArrayNotHasKey('farEdge', $scene->fresh()->config['stage25d']['set']);
+    }
+
     public function test_the_ground_sliders_save_like_every_look_slider(): void
     {
         $scene = $this->scene();

@@ -79,6 +79,21 @@
             @endforeach
         </div>
 
+        {{-- What stands on the horizon when nothing else does (Bart 11-13): the world's own far piece, picked by what is
+             in the scene; the teacher can pick another or none. --}}
+        <template x-if="farEdge && farEdge.options.length">
+            <x-ui.panel-row :label="__('Horizon')" class="mt-3" data-stage25d-far-edge>
+                <select class="select select-sm w-full" :value="farEdge.value" aria-label="{{ __('Horizon') }}"
+                        x-on:change="farEdge.value = $event.target.value; window.__stage25d?.setFarEdge($event.target.value)">
+                    <option value="" x-text="farEdge.auto ? @js(__('Automatic')) + ': ' + farEdge.auto : @js(__('Automatic'))"></option>
+                    <template x-for="o in farEdge.options" :key="o.id">
+                        <option :value="o.id" x-text="o.label" :selected="farEdge.value === o.id"></option>
+                    </template>
+                    <option value="none" :selected="farEdge.value === 'none'">{{ __('None') }}</option>
+                </select>
+            </x-ui.panel-row>
+        </template>
+
         {{-- How the world looks: light, grass, paper, clouds. --}}
         <x-ui.settings-section :title="__('Look')" :open="true" class="-mx-4 mt-3 w-auto!" data-stage25d-look-section>
             <div class="space-y-1">
