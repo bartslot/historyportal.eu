@@ -627,7 +627,7 @@ class StageEditingTest extends TestCase
         $other = StageWorld::create(['user_id' => User::factory()->create()->id, 'name' => 'Not mine', 'bundle' => 'nl-prehistory', 'parts' => ['set' => ['sky' => 'x', 'groundSlots' => []], 'look' => []]]);
 
         $editor = $this->editor($scene)->call('selectInspectorTarget', 's25_world')
-            ->assertSeeHtml('data-world-pick="'.$world->key().'"')->assertDontSeeHtml('data-world-pick="'.$other->key().'"');
+            ->assertSeeHtml('\\u0022key\\u0022:\\u0022'.$world->key().'\\u0022')->assertDontSeeHtml('\\u0022'.$other->key().'\\u0022');   // the chooser's tree (world-chooser)
 
         $editor->call('pickStage25dWorld', $other->key(), $scene->id);
         $this->assertArrayNotHasKey('world_id', $scene->fresh()->config['stage25d'], 'another teacher\'s world is not there to pick');
@@ -664,7 +664,7 @@ class StageEditingTest extends TestCase
         $scene->update(['config' => $config]);
         $editor = $this->editor($scene);
         $editor->call('selectInspectorTarget', 's25_world')->assertSet('activeStage25dLayer', 'world')
-            ->assertSeeHtml('data-world-pick="heath"')->assertSeeHtml('data-stage25d-look');   // the World row's own panel
+            ->assertSeeHtml('\\u0022key\\u0022:\\u0022heath\\u0022')->assertSeeHtml('data-world-chooser')->assertSeeHtml('data-stage25d-look');   // the World row's own panel
 
         $editor->call('pickStage25dWorld', 'heath', $scene->id);
         $stage = $scene->fresh()->config['stage25d'];

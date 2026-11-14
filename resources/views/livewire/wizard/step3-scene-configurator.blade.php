@@ -60,12 +60,19 @@
          data-flag="{{ $lesson->territoryFlagUrl() }}"
          wire:ignore>
         <canvas id="lesson-canvas" class="w-full h-full block"></canvas>
-        {{-- A new 3D scene is two empty parts: the plus on each opens the pictures that fit it. --}}
-        <div x-data="{ parts: [], sync () { this.parts = window.__stage25d?.empty ?? [] }, fill (part) { window.Alpine.store('view').showTab('icons'); this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: part, fill: part } }))) } }"
-             x-init="sync()" x-on:stage25d-synced.window="sync()" x-show="$store.view.stage25d && parts.length" x-cloak data-stage25d-empty
+        {{-- A new 3D scene starts with its world (Bart 11-14: continent, region, world). "None, build it yourself" leaves
+             the two empty parts: the plus on each opens the pictures that fit it. --}}
+        <div x-data="{ parts: [], build: false, scene: null,
+                       sync () { const s = window.__stage25d; this.parts = s?.empty ?? []; if (s?.sceneId !== this.scene) { this.scene = s?.sceneId; this.build = false } },
+                       fill (part) { window.Alpine.store('view').showTab('icons'); this.$nextTick(() => window.dispatchEvent(new CustomEvent('stage25d-replace', { detail: { kind: part, fill: part } }))) } }"
+             x-init="sync()" x-on:stage25d-synced.window="sync()" x-on:world-chooser-build="build = true"
+             x-show="$store.view.stage25d && parts.length" x-cloak data-stage25d-empty
              class="pointer-events-none absolute inset-0 z-[3] flex flex-col">
+            <div x-show="parts.length === 2 && !build" class="pointer-events-auto m-auto max-h-full w-72 max-w-full overflow-y-auto rounded-box bg-base-100 px-3 py-2" data-stage25d-world-start>
+                <x-lesson.world-chooser none="build" />
+            </div>
             @foreach (['sky' => __('Sky'), 'ground' => __('Terrain')] as $part => $label)
-                <div class="flex flex-1 items-center justify-center">
+                <div class="flex flex-1 items-center justify-center" x-show="build || parts.length < 2">
                     <button type="button" x-show="parts.includes(@js($part))" x-on:click="fill(@js($part))" data-stage25d-fill="{{ $part }}"
                             class="pointer-events-auto flex size-40 flex-col items-center justify-center gap-1 rounded-box border border-dashed border-base-100/40 text-base-100 transition-colors hover:border-base-100 hover:bg-base-100/10">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-20" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
@@ -1419,6 +1426,45 @@
 
     // A stage25d layer's (or the scene's) Format panel: values are read off the live stage at the playhead and
     // written back through it, the way the canvas drag and the timeline row write them.
+    // The world chooser (components/lesson/world-chooser): continent, region, world (Bart 11-14).
+    window.worldChooser = function worldChooser(tree, none) { return {
+                tree, none, continent: null, region: null, current: null, scene: undefined,
+                init () { this.sync() },
+                // another scene opens on its own world's region, or at the top
+                sync () {
+                    const stage = window.__stage25d
+                    this.current = stage?.worldInfo?.() ?? null
+                    if (stage?.sceneId === this.scene) return
+                    this.scene = stage?.sceneId
+                    this.continent = null
+                    this.region = null
+                    if (this.current?.key) this.openAt(this.current.key)
+                },
+                // the continent and region a world sits in, so a scene with a world opens there
+                openAt (key) {
+                    for (const [c, regions] of Object.entries(this.tree)) {
+                        for (const [r, list] of Object.entries(regions)) if (list.some((w) => w.key === key)) { this.continent = c; this.region = r; return }
+                    }
+                },
+                count (name) {
+                    const regions = this.continent ? { [name]: this.tree[this.continent][name] } : this.tree[name]
+                    return Object.values(regions).reduce((n, list) => n + list.length, 0)
+                },
+                open (name) {
+                    if (this.continent) { this.region = name; return }
+                    this.continent = name
+                    const regions = Object.keys(this.tree[name])
+                    if (regions.length === 1) this.region = regions[0]
+                },
+                worlds () { return this.continent && this.region ? this.tree[this.continent][this.region] ?? [] : [] },
+                // a world from another period only goes on a scene with no layers of the teacher's own
+                blocked (w) { return !!this.current && this.current.bundle !== w.bundle && this.current.own > 0 },
+                pick (key) { window.__stage25d?.pickWorld?.(key) },
+                pickNone () {
+                    if (this.none === 'build') { this.$dispatch('world-chooser-build'); return }
+                    window.__stage25d?.pickWorld?.('')
+                },
+    } }
     window.stage25dInspector = function stage25dInspector(id, names, poses) {
         const DOUBLE_CLICK_MS = 250;
         const HUD_HOLD_MS = 1500;

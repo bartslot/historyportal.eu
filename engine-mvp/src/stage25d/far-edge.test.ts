@@ -27,7 +27,12 @@ describe('the far edge of a scene with nothing on its horizon', () => {
   })
 
   it('always gives something, the same every time, when nothing matches', () => {
-    expect(farEdgeOf({ layers: [] }, lib)).toBe('far-palms-01')
+    expect(farEdgeOf({ layers: [{ asset: 'bg-farmland-01x', depth: 'fg' }] }, lib)).toBe('far-palms-01')
+  })
+
+  it('an empty scene gets nothing: no instant hills on a new 3D scene (Bart 11-14)', () => {
+    expect(farEdgeOf({ layers: [] }, lib)).toBeNull()
+    expect(farEdgeOf({ layers: [], groundSlots: [{ asset: 'terrain-meadow-02', from_m: 0 }] }, lib)).toBeNull()
   })
 
   it('leaves a scene alone whose far landscape is already there', () => {
@@ -35,7 +40,7 @@ describe('the far edge of a scene with nothing on its horizon', () => {
   })
 
   it('stands behind a terrain\'s own far edge too: that edge is only the ground meeting the sky', () => {
-    expect(farEdgeOf({ layers: [], groundSlots: [{ asset: 'terrain-meadow-02', from_m: 0 }] }, lib)).toBe('far-palms-01')
+    expect(farEdgeOf({ layers: [{ asset: 'bg-farmland-01x', depth: 'fg' }], groundSlots: [{ asset: 'terrain-meadow-02', from_m: 0 }] }, lib)).toBe('far-palms-01')
   })
 
   it('the teacher can name another piece or none', () => {

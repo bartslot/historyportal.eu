@@ -9,14 +9,15 @@ declare(strict_types=1);
  * (layers). Picking one puts those parts in the scene and keeps every layer the teacher placed (EditsStage25d
  * pickStage25dWorld). Its layers arrive as ordinary layers marked world: true, so each can still be moved, swapped or
  * deleted. look: scene look values the world needs (only the panel's keys). thumb: a 320x180 render of the world on a
- * stage, in public/worlds/.
+ * stage, in public/worlds/. continent and region place it in the picker (Bart 11-14: a continent, then the region,
+ * then the world).
  *
  * The splat worlds (public/worlds/*.spz) are no longer offered: they cost too much (Bart 11-11). A scene that has one
  * keeps showing it (config.stage25d.world); picking a world or None takes it away.
  */
 return [
     'stormy-sea' => [
-        'label' => 'Stormy sea', 'bundle' => 'tasman-1642', 'thumb' => 'worlds/stormy-sea.webp',
+        'label' => 'Stormy sea', 'continent' => 'Oceania', 'region' => 'Southern seas', 'bundle' => 'tasman-1642', 'thumb' => 'worlds/stormy-sea.webp',
         'set' => [
             'sky' => 'sky-storm-01',
             'groundSlots' => [['asset' => 'sea-terrain-rough-02', 'from_m' => 0]],
@@ -28,7 +29,7 @@ return [
         ],
     ],
     'calm-sea' => [
-        'label' => 'Calm sea', 'bundle' => 'tasman-1642', 'thumb' => 'worlds/calm-sea.webp', 'look' => ['grass' => 0],
+        'label' => 'Calm sea', 'continent' => 'Oceania', 'region' => 'Southern seas', 'bundle' => 'tasman-1642', 'thumb' => 'worlds/calm-sea.webp', 'look' => ['grass' => 0],
         'set' => [
             'sky' => 'sky-clear-01',
             'groundSlots' => [['asset' => 'sea-terrain-swell-02', 'from_m' => 0]],
@@ -36,7 +37,7 @@ return [
         ],
     ],
     'farmland' => [
-        'label' => 'Farmland', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/farmland.webp',
+        'label' => 'Farmland', 'continent' => 'Europe', 'region' => 'Netherlands', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/farmland.webp',
         'set' => [
             'sky' => 'sky-summer-01',
             'groundSlots' => [['asset' => 'terrain-meadow-02', 'from_m' => 0], ['asset' => 'terrain-grain-field-02', 'from_m' => 30]],
@@ -44,7 +45,7 @@ return [
         ],
     ],
     'forest-edge' => [
-        'label' => 'Forest edge', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/forest-edge.webp',
+        'label' => 'Forest edge', 'continent' => 'Europe', 'region' => 'Netherlands', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/forest-edge.webp',
         'set' => [
             'sky' => 'sky-summer-01',
             'groundSlots' => [['asset' => 'terrain-woodland-floor-02', 'from_m' => 0]],
@@ -56,7 +57,7 @@ return [
         ],
     ],
     'heath' => [
-        'label' => 'Heath', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/heath.webp',
+        'label' => 'Heath', 'continent' => 'Europe', 'region' => 'Netherlands', 'bundle' => 'nl-prehistory', 'thumb' => 'worlds/heath.webp',
         'set' => [
             'sky' => 'sky-overcast-01',
             'groundSlots' => [['asset' => 'terrain-heath-02', 'from_m' => 0]],
@@ -64,7 +65,7 @@ return [
         ],
     ],
     'polder' => [
-        'label' => 'Polder', 'bundle' => 'nl-golden-age', 'thumb' => 'worlds/polder.webp',
+        'label' => 'Polder', 'continent' => 'Europe', 'region' => 'Netherlands', 'bundle' => 'nl-golden-age', 'thumb' => 'worlds/polder.webp',
         'set' => [
             'sky' => 'sky-wind-01',
             'groundSlots' => [['asset' => 'terrain-polder-02', 'from_m' => 0]],
@@ -72,7 +73,7 @@ return [
         ],
     ],
     'dunes' => [
-        'label' => 'Dunes', 'bundle' => 'nl-golden-age', 'thumb' => 'worlds/dunes.webp',
+        'label' => 'Dunes', 'continent' => 'Europe', 'region' => 'Netherlands', 'bundle' => 'nl-golden-age', 'thumb' => 'worlds/dunes.webp',
         'set' => [
             'sky' => 'sky-summer-01',
             'groundSlots' => [['asset' => 'terrain-dunes-02', 'from_m' => 0]],
@@ -80,7 +81,7 @@ return [
         ],
     ],
     'alpine-pass' => [
-        'label' => 'Alpine pass', 'bundle' => 'punic-alps-218', 'thumb' => 'worlds/alpine-pass.webp',
+        'label' => 'Alpine pass', 'continent' => 'Europe', 'region' => 'Alps', 'bundle' => 'punic-alps-218', 'thumb' => 'worlds/alpine-pass.webp',
         'set' => [
             'sky' => 'sky-overcast-01',
             'groundSlots' => [['asset' => 'terrain-alpine-scree-01', 'from_m' => 0]],
@@ -92,7 +93,7 @@ return [
         ],
     ],
     'mesopotamian-fields' => [
-        'label' => 'Mesopotamian fields', 'bundle' => 'babylonia-old-babylonian', 'thumb' => 'worlds/mesopotamian-fields.webp',
+        'label' => 'Mesopotamian fields', 'continent' => 'Asia', 'region' => 'Mesopotamia', 'bundle' => 'babylonia-old-babylonian', 'thumb' => 'worlds/mesopotamian-fields.webp',
         'set' => [
             'sky' => 'sky-hot-01',
             'groundSlots' => [['asset' => 'terrain-alluvial-plain-01', 'from_m' => 0]],
@@ -106,7 +107,7 @@ return [
         ],
     ],
     'euphrates' => [
-        'label' => 'Euphrates', 'bundle' => 'near-east-neolithic', 'thumb' => 'worlds/euphrates.webp',
+        'label' => 'Euphrates', 'continent' => 'Asia', 'region' => 'Mesopotamia', 'bundle' => 'near-east-neolithic', 'thumb' => 'worlds/euphrates.webp',
         'set' => [
             'sky' => 'sky-hot-01',
             'groundSlots' => [['asset' => 'terrain-river-mud-02', 'from_m' => 0]],
@@ -114,7 +115,7 @@ return [
         ],
     ],
     'desert' => [
-        'label' => 'Desert', 'bundle' => 'near-east-neolithic', 'thumb' => 'worlds/desert.webp',
+        'label' => 'Desert', 'continent' => 'Asia', 'region' => 'Mesopotamia', 'bundle' => 'near-east-neolithic', 'thumb' => 'worlds/desert.webp',
         'set' => [
             'sky' => 'sky-hot-01',
             'groundSlots' => [['asset' => 'terrain-desert-gravel-02', 'from_m' => 0]],
@@ -125,7 +126,7 @@ return [
     // floor on every camera move): the steppe floor carries the land, its far edge and the dry hills stand on the
     // horizon on their own (far-edge.ts), the trampled verge and the tents stand on the ground at their distances.
     'mesopotamian-tent-camp' => [
-        'label' => 'Mesopotamian tent camp', 'bundle' => 'babylonia-old-babylonian', 'thumb' => 'worlds/mesopotamian-tent-camp.webp',
+        'label' => 'Mesopotamian tent camp', 'continent' => 'Asia', 'region' => 'Mesopotamia', 'bundle' => 'babylonia-old-babylonian', 'thumb' => 'worlds/mesopotamian-tent-camp.webp',
         'set' => [
             'sky' => 'sky-hot-01',
             'groundSlots' => [['asset' => 'terrain-dry-steppe-01', 'from_m' => 0]],
