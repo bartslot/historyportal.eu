@@ -54,3 +54,9 @@ def test_a_jump_leaves_the_ground_by_its_lift():
         {'t': 1, 'contact': 'both', 'bones': {}},
     ]})
     assert abs(clip['keys'][1]['bob'] - 0.2) < 1e-3
+
+
+def test_a_face_is_one_the_heads_can_show():
+    clip, _ = fit({'id': 'x', 'loop': False, 'duration': 1, 'keys': [
+        {'t': 0, 'contact': 'both', 'bones': {}, 'face': 'surprised'}, {'t': 1, 'contact': 'both', 'bones': {}, 'face': 'grin'}]})
+    assert clip['keys'][0]['face'] == 'amazed' and 'face' not in clip['keys'][1]

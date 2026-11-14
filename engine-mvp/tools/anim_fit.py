@@ -59,6 +59,10 @@ STRAIGHT_DEG = 3.0       # pose-guard.ts STRAIGHT_DEG
 RAISED_THIGH_DEG = 45.0  # pose-guard.ts RAISED_THIGH_DEG
 FORWARD = 1              # the standard skeleton faces right
 CONTACTS = {'n': ('n',), 'f': ('f',), 'both': ('n', 'f'), 'none': ()}
+# the expressions a figure's head can show (Puppet.faces, the Character tab's kits); a raw clip's other words map onto them
+FACES = ('calm', 'curious', 'sad', 'angry', 'amazed')
+FACE_ALIAS = {'neutral': 'calm', 'smile': 'calm', 'happy': 'calm', 'talk': 'calm', 'think': 'curious',
+              'laugh': 'amazed', 'surprised': 'amazed', 'worried': 'sad', 'tired': 'sad', 'proud': 'calm'}
 
 Pt = tuple[float, float]
 
@@ -282,8 +286,9 @@ def fit(raw: dict) -> tuple[dict, dict]:
     out_keys = []
     for k, p, x, y in zip(keys, poses, dx, dy):
         key = {'t': round(k['t'], 4), **{f'bone:{b}': round(p[b], 1) for b in moved}, 'dx': round(x / HEIGHT_PX, 4), 'bob': round(-y / HEIGHT_PX, 4)}
-        if k.get('face'):
-            key['face'] = k['face']
+        face = FACE_ALIAS.get(k.get('face'), k.get('face'))
+        if face in FACES:
+            key['face'] = face
         out_keys.append(key)
     clip = {'id': raw['id'], 'loop': bool(raw.get('loop')), 'duration': float(raw['duration']),
             'travel': round(dx[-1] / HEIGHT_PX, 4) if raw.get('loop') and raw.get('travel') else 0.0, 'keys': out_keys}

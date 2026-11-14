@@ -54,7 +54,7 @@ figure moves forward across the ground, else false>,
 Rules: <KEYS> keys; t starts at 0 and ends at 1; a loop's last key repeats its first; name only the bones that move;
 think in clear key poses an animator would draw (contact, down, passing, up for walks); weight shifts and overlap
 make it feel alive; knees only bend positive, elbows only negative.
-FACES: neutral, smile, laugh, sad, surprised, angry, think, talk.
+FACES: calm, curious, sad, angry, amazed.
 ```
 
 ## Sheet (generate_image)
