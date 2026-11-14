@@ -17,6 +17,7 @@ import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
+import { FIELD_PX, flatRegions, shadeField } from './regions'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
  *  it is ink (inkOf), and the depth's values; returns the colour. Defines lum, inkOf and LINE_BROWN. */
@@ -156,20 +157,13 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   uniform vec3 shadeTint;
   uniform vec2 drawPx;                       // rest uv per drawing px (1 / the drawing's size)
   uniform sampler2D regions;                 // the rest drawing with its lines filled by the colour beside them (flatRegions)
+  uniform sampler2D field;                   // per px: distance to its region's edge / FIELD_PX, the way inward (regions.ts)
   #define WASH_TILE_PX 627.0                 // drawing px per tile of the wash (kit_render: the texture at half the sheet scale)
   vec4 regionAt(vec2 d) {
     vec2 q = vRest + d * drawPx;
     return (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) ? vec4(0.0) : texture2D(regions, q);
   }
-  // another colour region d drawing px away: air, or a flat colour unlike own. Read off the regions picture, where a line
-  // is the colour beside it and an eye or a speck is the region round it: no stripes along folds or across a face
-  float otherAt(vec2 d, vec3 own) {
-    vec4 n = regionAt(d);
-    if (n.a < 0.5) return 1.0;
-    return smoothstep(0.1, 0.16, length(n.rgb / n.a - own));   // skin to tunic is 0.24, a faint trace of a line 0.1
-  }
-  #define SHADE_TAPS 14
-  #define MIN_BORDER_PX 18.0                 // the other colour must run on this far to cast: the hanging cords (12-16 px) do not
+  #define FIELD_PX ${FIELD_PX.toFixed(1)}
   // s: the lit colour, lit: the time of day's light in it. Everything is worked out unlit, and with no early return: the
   // derivatives below and the textures' mip levels need every px of a quad to run the same code (specks at the folds)
   // ink: out, how much of this px is a drawn line, for the line passes after this (they would read a deep shade as ink)
@@ -189,21 +183,22 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     vec3 c = s;
     float shade = 0.0;
     if (figureShade > 0.0) {
-      // shading: each colour region on its side away from the sun, fading inward over shadeReach
-      float stepPx = shadeReach / float(SHADE_TAPS);
-      float run = 0.0, start = 0.0;
-      for (int k = 1; k <= SHADE_TAPS; k++) {
-        float f = float(k) / float(SHADE_TAPS);
-        float o = otherAt(-toSun * shadeReach * f, own);
-        if (o > 0.5) { if (run == 0.0) start = f; run += 1.0; } else run = 0.0;
-        // a wash: deepest a few px in from the edge (the outline keeps its paper beside it), thinning out to nothing
-        if (run * stepPx >= MIN_BORDER_PX) shade = max(shade, (1.0 - start) * mix(0.55, 1.0, smoothstep(0.0, 0.2, start)));
-      }
-      shade = smoothstep(0.0, 0.85, shade + 0.25 * (fbm(dp / 18.0 + 3.0) - 0.5)) * figureShade * (1.0 - feature);   // a wet, ragged, soft edge
+      // shading: each colour region on its side away from the sun. The field gives how far in this px lies and which way
+      // is inward; where the nearest edge faces away from the sun the px takes the shade, fading smoothly inward over
+      // shadeReach. Thin regions (the cords) are merged in the field: they cast nothing.
+      vec4 fd = texture2D(field, vRest);
+      float d = fd.r * FIELD_PX;
+      vec2 inward = fd.gb * 2.0 - 1.0;
+      float facing = smoothstep(0.2, 0.7, dot(inward, toSun) / max(length(inward), 1e-3));   // an edge along the light: none
+      // deepest a few px in (the outline keeps a little paper beside it), gone at shadeReach
+      float profile = mix(0.8, 1.0, smoothstep(1.0, 5.0, d)) * (1.0 - smoothstep(0.15 * shadeReach, shadeReach, d));
+      // dark colours take less (a dark rope or hair would go black), a ragged wet edge
+      shade = facing * profile * mix(0.4, 1.0, smoothstep(0.1, 0.45, lum(own)));
+      shade = clamp(shade + 0.18 * (fbm(dp / 18.0 + 3.0) - 0.5) * step(0.01, shade), 0.0, 1.0) * figureShade * (1.0 - feature);
       // a glaze of the region's own pigment: darker, toward the shadow pigment, richer, settling in the tooth
       vec3 sh = s * (1.0 - shadeDepth) * shadeTint;
       sh = mix(vec3(lum(sh)), sh, 1.0 + shadeSat);
-      sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 1.3 + 41.0) - 0.5);
+      sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 3.0 + 41.0) - 0.5);   // at 1.3 px it stippled dark hair
       c = mix(c, clamp(sh, 0.0, 1.0), shade);
     }
     if (figureWash > 0.0) {
@@ -642,143 +637,32 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
 const drawnBy = new WeakMap<Scene, Map<string, { data: Uint8ClampedArray; width: number; height: number }>>()
 const drawnIn = (scene: Scene) => { const m = drawnBy.get(scene) ?? new Map(); drawnBy.set(scene, m); return m }
 
-/** A line's core: this dark (inkOf in the shader is full at 0.2). A shawl's red is 0.49: lightness alone is no line. */
-const LINE_CORE_LUM = 0.3
-/** A line's soft rim: this much darker than its lightest neighbour (a rim fades from the line into the fill). */
-const LINE_RIM_STEP = 0.15
-/** Half the widest line, px: dark that is thicker (hair, an iris) is a fill, not a line (hair left unpainted otherwise). */
-const LINE_HALF_PX = 3
-/** Passes of filling a px from a filled neighbour: lines and small regions are at most this many px across. */
-const FILL_PASSES = 24
-/** A colour region smaller than this many px (an eye's white, an iris, a speck) takes the colour round it: a face is one
- *  region, so its features cast no shade (they striped the face and turned the eyes blue, fresh tester 11-14). */
-const MIN_REGION_PX = 900
-/** Two neighbouring px are one region when their colours differ by no more than this (sum over r, g, b, 0..255). */
-const SAME_REGION = 36
-
-const lumAt = (d: Uint8ClampedArray, i: number) => (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255
-
-/** Erode (keep where the whole (2r+1) square is set) or dilate (set where any of it is) a mask, separably. */
-function squareFilter(mask: Uint8Array, width: number, height: number, r: number, erode: boolean): Uint8Array {
-  const pass = (src: Uint8Array, along: 'x' | 'y') => {
-    const out = new Uint8Array(src.length)
-    const [n, m] = along === 'x' ? [width, height] : [height, width]
-    const at = (line: number, k: number) => (along === 'x' ? line * width + k : k * width + line)
-    const sum = new Int32Array(n + 1)
-    for (let line = 0; line < m; line++) {
-      for (let k = 0; k < n; k++) sum[k + 1] = sum[k] + src[at(line, k)]
-      for (let k = 0; k < n; k++) {
-        const a = Math.max(0, k - r), b = Math.min(n, k + r + 1), set = sum[b] - sum[a]
-        out[at(line, k)] = erode ? (set === b - a && b - a === 2 * r + 1 ? 1 : 0) : (set > 0 ? 1 : 0)
-      }
-    }
-    return out
-  }
-  return pass(pass(mask, 'x'), 'y')
-}
-
-/** Fill every px of `hole` from a neighbour outside it, outward ring by ring (the nearest colour wins), at most
- *  FILL_PASSES rings deep. A queue from the hole's rim: only the hole is visited (a pass over the whole drawing per ring
- *  took half a second a figure). */
-function fillFrom(out: Uint8ClampedArray, hole: Uint8Array, width: number, height: number): void {
-  const n = width * height
-  const depth = new Int16Array(n).fill(-1)
-  const queue = new Int32Array(n)
-  let head = 0, tail = 0
-  const near = (i: number, visit: (j: number) => void) => {
-    const x = i % width
-    if (x + 1 < width) visit(i + 1)
-    if (x > 0) visit(i - 1)
-    if (i + width < n) visit(i + width)
-    if (i >= width) visit(i - width)
-  }
-  for (let i = 0; i < n; i++) {   // the filled px beside the hole start the queue
-    if (hole[i] || out[i * 4 + 3] < 128) continue
-    let rim = false
-    near(i, (j) => { if (hole[j]) rim = true })
-    if (rim) { depth[i] = 0; queue[tail++] = i }
-  }
-  while (head < tail) {
-    const j = queue[head++]
-    if (depth[j] >= FILL_PASSES) continue
-    near(j, (i) => {
-      if (!hole[i] || depth[i] >= 0) return
-      out[i * 4] = out[j * 4]; out[i * 4 + 1] = out[j * 4 + 1]; out[i * 4 + 2] = out[j * 4 + 2]
-      depth[i] = depth[j] + 1
-      hole[i] = 0
-      queue[tail++] = i
-    })
-  }
-}
-
-/**
- * The colour regions of a drawing (straight RGBA): every line px and its soft rim take the colour of the fill beside it,
- * dark that is thicker than a line stays a fill, and a region smaller than MIN_REGION_PX takes the colour round it. What
- * is left is big flat colour areas meeting each other and the air. Pure; px with no alpha stay as they are.
- */
-export function flatRegions(src: Uint8ClampedArray, width: number, height: number): Uint8ClampedArray {
-  const out = new Uint8ClampedArray(src)
-  const n = width * height
-  const dark = new Uint8Array(n)
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = y * width + x
-      if (src[i * 4 + 3] < 128) continue
-      const l = lumAt(src, i)
-      let lightest = l
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
-        const xx = x + dx, yy = y + dy
-        if (xx >= 0 && yy >= 0 && xx < width && yy < height && src[(yy * width + xx) * 4 + 3] >= 128) lightest = Math.max(lightest, lumAt(src, yy * width + xx))
-      }
-      if (l < LINE_CORE_LUM || lightest - l > LINE_RIM_STEP) dark[i] = 1
-    }
-  }
-  // dark thicker than a line (an opening by LINE_HALF_PX survives) is a fill: hair, an iris
-  const thick = squareFilter(squareFilter(dark, width, height, LINE_HALF_PX, true), width, height, LINE_HALF_PX + 1, false)
-  const line = new Uint8Array(n)
-  for (let i = 0; i < n; i++) line[i] = dark[i] && !thick[i] ? 1 : 0
-  fillFrom(out, line, width, height)
-  // small regions: flood each colour region, mark the small ones, fill them from round them
-  const seen = new Uint8Array(n), small = new Uint8Array(n), stack = new Int32Array(n)
-  for (let i0 = 0; i0 < n; i0++) {
-    if (seen[i0] || out[i0 * 4 + 3] < 128) continue
-    let top = 0, size = 0
-    const members: number[] = []
-    stack[top++] = i0; seen[i0] = 1
-    while (top) {
-      const i = stack[--top]
-      size++
-      if (size <= MIN_REGION_PX) members.push(i)
-      const x = i % width, y = (i / width) | 0
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const xx = x + dx, yy = y + dy
-        if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue
-        const j = yy * width + xx
-        if (seen[j] || out[j * 4 + 3] < 128) continue
-        if (Math.abs(out[i * 4] - out[j * 4]) + Math.abs(out[i * 4 + 1] - out[j * 4 + 1]) + Math.abs(out[i * 4 + 2] - out[j * 4 + 2]) > SAME_REGION) continue
-        seen[j] = 1
-        stack[top++] = j
-      }
-    }
-    if (size < MIN_REGION_PX) for (const i of members) small[i] = 1
-  }
-  fillFrom(out, small, width, height)
-  return out
-}
-
-/** A flat figure's colour regions as a texture (flatRegions of its rest drawing); call after restDrawing. Cached. */
-export async function regionsTexture(puppet: Puppet, scene: Scene): Promise<RawTexture> {
+/** A flat figure's colour regions and its shade field as textures (regions.ts), from its rest drawing; call after
+ *  restDrawing. Cached per scene. */
+export async function regionsTexture(puppet: Puppet, scene: Scene): Promise<{ regions: RawTexture; field: RawTexture }> {
   await restDrawing(puppet, scene)
-  const own = textures.get(scene)!
   const key = `regions:${puppet.atlas}`
-  const hit = own.get(key)
+  const hit = regionCache.get(scene)?.get(key)
   if (hit) return hit
   const d = drawnIn(scene).get(`rest:${puppet.atlas}`)
   if (!d) throw new Error(`no rest drawing for ${puppet.atlas}`)
-  drawnIn(scene).delete(`rest:${puppet.atlas}`)   // 6 MB a figure: only needed once (the regions are cached from here)
-  const p = Promise.resolve(premultipliedTexture(flatRegions(d.data, d.width, d.height), d.width, d.height, scene))
+  drawnIn(scene).delete(`rest:${puppet.atlas}`)   // 6 MB a figure: only needed once (the textures are cached from here)
+  const flat = flatRegions(d.data, d.width, d.height)
+  const field = shadeField(flat, d.width, d.height)
+  const p = Promise.resolve({
+    regions: premultipliedTexture(flat, d.width, d.height, scene),
+    field: straightTexture(field, d.width, d.height, scene),
+  })
+  const own = regionCache.get(scene) ?? new Map()
+  regionCache.set(scene, own)
   own.set(key, p)
   return p
+}
+const regionCache = new WeakMap<Scene, Map<string, Promise<{ regions: RawTexture; field: RawTexture }>>>()
+
+/** Data that is no picture (a shade field): uploaded as it is, linear, no mipmaps (a mip would blur its directions). */
+function straightTexture(data: Uint8ClampedArray, width: number, height: number, scene: Scene): RawTexture {
+  return new RawTexture(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), width, height, Constants.TEXTUREFORMAT_RGBA, scene, false, false, Texture.BILINEAR_SAMPLINGMODE)
 }
 
 /** The wash's grain a flat figure's watercolour is painted with (public/stage25d/wash-figure.webp: kit_render's
@@ -798,14 +682,14 @@ export function figureWash(scene: Scene): Texture {
 /** A close-up's blink for makeLayer: the closed-eye texture and its eyes (blink.ts blinkOf). */
 export interface LayerBlink { tex: RawTexture; eyes: BlinkEye[] }
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean; wash?: Texture; regions?: RawTexture } = {}): LayerHandle {
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean; wash?: Texture; regions?: { regions: RawTexture; field: RawTexture } } = {}): LayerHandle {
   const aquarel = !!(rest && opts.wash && opts.regions)   // a flat figure: the shader paints its watercolour and shading
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
     uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
       ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeReach', 'shadeTint', 'drawPx'] : [])],
-    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'regions'] : [])],
+    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'regions', 'field'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
     needAlphaBlending: true,
   })
@@ -813,7 +697,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setTexture('tex', tex)
   if (rest) mat.setTexture('rest', rest)
   if (aquarel) {
-    mat.setTexture('washTex', opts.wash!).setTexture('regions', opts.regions!)
+    mat.setTexture('washTex', opts.wash!).setTexture('regions', opts.regions!.regions).setTexture('field', opts.regions!.field)
     mat.setFloat('figureWash', 0).setFloat('figureShade', 0).setFloat('shadeDepth', 0).setFloat('shadeSat', 0).setFloat('shadeGran', 0).setFloat('shadeReach', 16)
     mat.setVector3('shadeTint', new Vector3(1, 1, 1)).setVector2('drawPx', new Vector2(1 / 1024, 1 / 1536))
   }
