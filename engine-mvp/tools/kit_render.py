@@ -262,6 +262,11 @@ if DROP_BRAID:
 part = part_all.copy()
 part[~F['fill_area']] = 255
 
+def kp_keep_big(m, min_px):
+    lab_, n_ = ndimage.label(m)
+    return np.isin(lab_, 1 + np.flatnonzero(ndimage.sum(m, lab_, range(1, n_ + 1)) >= min_px)) if n_ else m
+
+
 Hd = read_sheet(Path(os.environ.get('HEAD_SHEET', find(SRC / 'head-flat.png'))), 6.0, rim=4)
 IM_ = names.index('mouth')
 MOUTH_MASK = np.asarray(Image.open(os.environ['MOUTH_MASK']).convert('L')) > 127 if os.environ.get('MOUTH_MASK') else np.zeros((1024, 1024), bool)
@@ -295,6 +300,10 @@ if os.environ.get('KIT') == '1':
     if NECK_BODY and neck_top:
         nb = np.zeros_like(head_lab); nb[max(0, int((neck_top - y0b) / HK)):] = True
         head_lab &= ~(nb & ~added)
+    # the head's own outline where the map shows only background: the map is a redrawn copy, its head edge can run down
+    # the middle of the throat line and cut it in pieces (Bart 11-14). Never over another part (a collar would double).
+    bg_lab = cv2.resize((raw_part[y0b:y1b, x0b:x1b] == len(PARTS)).astype(np.uint8), (1024, 1024), interpolation=cv2.INTER_NEAREST) > 0
+    head_lab |= ndimage.binary_dilation(head_lab, iterations=10) & Hd['ink'] & bg_lab
     fig_head = np.zeros((H, W), bool)
     fig_head[y0b:y1b, x0b:x1b] = cv2.resize(head_lab.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
     lost = (part_all == HEAD) & ~fig_head                                 # body pixels the head no longer covers: nearest body part
@@ -326,6 +335,29 @@ if os.environ.get('KIT') == '1':
         F['blob'] &= ~ndimage.binary_dilation(lost, iterations=3)      # the body sheet's own small head left thick lines there
 Hd['kind'][~head_lab] = 255
 Hd['blob'] &= head_lab
+at = lambda arr, x, y: arr[np.clip(y.astype(int), 0, arr.shape[0] - 1), np.clip(x.astype(int), 0, arr.shape[1] - 1)]
+CHIN = np.zeros((H, W), bool)                                            # figure px: where the jaw's wedge was, washed softly
+if os.environ.get('KIT') == '1':
+    # the sheets draw the shadow under the jaw as one solid black wedge (Bart 11-14: "the hard shadow underneath the chin
+    # is not correct"): it becomes a jaw line of the sheet's usual width, and a soft skin wash where the wedge was
+    d_ink = ndimage.distance_transform_edt(Hd['ink'])
+    core = d_ink > 9                                                      # an outline is ~6 px half-width; the wedge 13-16
+    core[:600] = False                                                    # (brows are as thick: only below the nose)
+    core &= ~ndimage.binary_dilation(MOUTH_MASK, iterations=4)
+    wedge = ndimage.binary_dilation(core, iterations=12) & Hd['ink']
+    wedge[:600] = False
+    wedge = kp_keep_big(wedge, 1500)                                      # not the small spots where two lines meet
+    if wedge.sum() > 300:
+        Hd['blob'] &= ~wedge
+        zone = ndimage.binary_dilation(wedge, iterations=1)
+        Hd['lines'] = cut_lines(Hd['lines'], lambda x, y: ~at(zone, x, y))       # the wedge's own rims
+        sk = cv2.ximgproc.thinning(wedge.astype(np.uint8) * 255) > 0
+        near_w = ndimage.binary_dilation(wedge, iterations=15)                 # as wide as the lines it joins (the jaw tapers into it)
+        joined = [w_ for pts_, w_ in Hd['lines'] if at(near_w, pts_[[0, -1], 0], pts_[[0, -1], 1]).any()]
+        wd_ = float(np.median(joined or [w_ for _, w_ in Hd['lines']]))
+        Hd['lines'] += [(tidy(l)[:, ::-1], wd_) for l in join([l for l in polylines(sk) if len(l) >= 3]) if len(l) >= 9]
+        CHIN[y0b:y1b, x0b:x1b] = cv2.resize(wedge.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
+        print('jaw wedge', int(wedge.sum()), 'px -> line + wash')
 at = lambda arr, x, y: arr[np.clip(y.astype(int), 0, arr.shape[0] - 1), np.clip(x.astype(int), 0, arr.shape[1] - 1)]
 head_lines = [(pts * HK + (x0b, y0b), wd * HK) for pts, wd in cut_lines(Hd['lines'], lambda x, y: at(head_lab, x, y))]
 others_core = np.zeros((H, W), bool)
@@ -446,8 +478,14 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
         for c in CASTERS[kn]:
             over = np.maximum(over, big[c])
         cast = shift(over, -4, 14 if kn == 'skin' else 10) * kind_up[kn] * (1 - over)
-        s = ndimage.gaussian_filter(np.maximum(total, cast * 0.9), 2.2 * scale) + edge_noise * 0.45
-        shades[kn] = np.clip((s - 0.42) * 6, 0, 1) * kind_up[kn]
+        s = ndimage.gaussian_filter(total, 2.2 * scale) + edge_noise * 0.45
+        # a cast shadow (a beard on the neck, a shawl on the tunic) is a soft wash blended out, never a hard band (Bart 11-13,
+        # 11-14 "the hard shadow underneath the chin is not correct"); the self-shade along a part's own edge stays crisp
+        soft = ndimage.gaussian_filter(cast, 4 * scale) + edge_noise * 0.15
+        shades[kn] = np.maximum(np.clip((s - 0.42) * 6, 0, 1), np.clip(soft * 1.4, 0, 0.8)) * kind_up[kn]
+        if kn == 'skin' and CHIN.any():   # under the jaw: a soft wash, blended out, never a hard edge
+            soft = ndimage.gaussian_filter(shift(up(CHIN), 0, 3), 4 * scale) + edge_noise * 0.15
+            shades[kn] = np.maximum(shades[kn], np.clip(soft * 1.6, 0, 0.85) * kind_up[kn])
     f = rsvg(svg_text(palette, box, with_lines=False))
     sil = f[..., 3] / 255
     if FLAT_PAINT:   # the stage shader colours the shade and adds the watercolour (plan 11): flat colour + ink + a shade mask

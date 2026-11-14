@@ -31,7 +31,7 @@ ZONE_KIND = {'garment': 'tunic', 'second': 'shawl', 'cord': 'rope', 'apron': 'ap
 BOXES = json.loads((K / 'body/head-boxes.json').read_text())
 BODIES = {   # map: the body's part map; box: where its head sheet sits; collar: the girl head sheets' collar must go
     'girl': dict(map=Path.home() / 'BartsMedia/historyportal/topics/character-bones/ana/rig/v1/map.png', box=BOXES['girl']),
-    'woman': dict(map=K / 'body/woman-map-clean.webp', box=BOXES['woman'], collar=True),
+    'woman': dict(map=K / 'body/woman-map-clean.webp', box=BOXES['woman']),   # its own head canvas since 11-14: no collar, no NECK_BODY
     'man': dict(map=K / 'body/man-map-clean.webp', box=BOXES['man']),
 }
 OUTFITS = {
@@ -46,20 +46,22 @@ OUTFITS = {
 PRESETS = {
     'miller-girl': dict(role='Girl at the grinding stone', body='girl', face='girl', outfit='work-tunic-apron', parts=['hair/loose'],
                         skin='s3', hair_colour='dark-brown', height_m=1.42, zones={'garment': 'sand', 'apron': 'raw-linen', 'cord': 'camel-brown'}),
-    'weaver': dict(role='Weaver', body='woman', face='young-woman', outfit='work-tunic-apron', parts=['hair/bun', 'headwear/headband'], mouth='pressed',
+    'weaver': dict(role='Weaver', body='woman', face='woman-n', outfit='work-tunic-apron', parts=['hair/woman-bun', 'headwear/woman-headband'],
+                   eyes='woman-round', mouth='woman-pressed',
                    skin='s3', hair_colour='black-brown', height_m=1.55, zones={'garment': 'undyed-wool', 'apron': 'indigo-blue', 'cord': 'dark-wool-brown'}),
-    'naditu': dict(role='Naditu of Sippar, trader', body='woman', face='woman', outfit='long-tunic-shawl', parts=['hair/bun', 'extras/jewellery'],
+    'naditu': dict(role='Naditu of Sippar, trader', body='woman', face='woman-40-n', outfit='long-tunic-shawl', parts=['hair/woman-bun', 'extras/woman-jewellery'],
                    skin='s2', hair_colour='dark-brown', height_m=1.56, zones={'garment': 'bleached-linen', 'second': 'madder-red'}),
-    'tavern-keeper': dict(role='Tavern keeper', body='woman', face='woman', outfit='long-wrap', parts=['hair/bun', 'headwear/headband'], mouth='ah',
+    'tavern-keeper': dict(role='Tavern keeper', body='woman', face='woman-40-n', outfit='long-wrap', parts=['hair/woman-bun', 'headwear/woman-headband'],
+                          eyes='woman-hooded', mouth='woman-ah',
                           skin='s4', hair_colour='black-brown', height_m=1.54, zones={'garment': 'raw-linen', 'second': 'red-ochre', 'band': 'reed-green'}),
-    'grandmother': dict(role='Grandmother', body='woman', face='old-woman', outfit='long-tunic-shawl', parts=['hair/bun', 'headwear/shawl-over-head'],
+    'grandmother': dict(role='Grandmother', body='woman', face='old-woman-n', outfit='long-tunic-shawl', parts=['hair/woman-bun', 'headwear/woman-shawl-over-head'],
                         skin='s2', hair_colour='grey', height_m=1.47, pose='stooped',
                         zones={'garment': 'camel-brown', 'second': 'dark-wool-brown', 'head-cloth': 'undyed-wool'}),
-    'scribe': dict(role='Scribe', body='man', face='man', outfit='scribe-wrap', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
+    'scribe': dict(eyes='man-calm', role='Scribe', body='man', face='man', outfit='scribe-wrap', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
                    skin='s3', hair_colour='black-brown', height_m=1.66, zones={'garment': 'bleached-linen', 'second': 'indigo-blue', 'band': 'madder-red'}),
-    'merchant': dict(role='Merchant', body='man', face='man', outfit='merchant-tunic', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
+    'merchant': dict(eyes='man-calm', role='Merchant', body='man', face='man', outfit='merchant-tunic', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
                      skin='s2', hair_colour='dark-brown', height_m=1.68, zones={'garment': 'undyed-wool', 'second': 'red-ochre', 'band': 'reed-green'}),
-    'soldier': dict(role='Soldier', body='man', face='man', outfit='soldier', parts=['hair/man-beard', 'headwear/man-helmet'],
+    'soldier': dict(eyes='man-calm', role='Soldier', body='man', face='man', outfit='soldier', parts=['hair/man-beard', 'headwear/man-helmet'],
                     skin='s4', hair_colour='black-brown', height_m=1.70, zones={'garment': 'raw-linen', 'second': 'madder-red', 'cord': 'dark-wool-brown', 'head-cloth': 'yellow-ochre'}),
 }
 rgbt = lambda h: [int(h[i:i + 2], 16) for i in (1, 3, 5)]
@@ -106,7 +108,7 @@ def build(pid, p, renders='full,closeup', folder='presets-bodies', root=None):
     out.mkdir(parents=True, exist_ok=True)
     (out / 'recipe.json').write_text(json.dumps(dict(kit='babylonia-old-babylonian', view='front34', **p), indent=1))
     body = BODIES[p['body']]
-    names = list(p['parts']) + ([f"mouths/{p['mouth']}"] if p.get('mouth') else [])
+    names = ([f"eyes/{p['eyes']}"] if p.get('eyes') else []) + list(p['parts']) + ([f"mouths/{p['mouth']}"] if p.get('mouth') else [])
     head, drawn = compose(p['face'], names)
     if body.get('collar'):
         head = drop_collar(head, drawn)
@@ -134,20 +136,19 @@ def build(pid, p, renders='full,closeup', folder='presets-bodies', root=None):
 def cut():
     """Data prep: the man's parts (kit_parts cuts every part the same way) and the woman's and man's cleaned maps."""
     for name, (sp, bp, how) in kp.PARTS.items():
-        if '/man-' not in name:
+        if '/man-' not in name and '/woman-' not in name:
             continue
         sheet = kp.rgb(sp)
         m = kp.cut(sheet, kp.rgb(bp), how)
         kp.save_part(name, sheet, m)
         print(f'{name:28s} {int(m.sum()):7d} px')
-    clean_map('woman')
-    clean_map('man')
+    clean_map('man')                       # (the woman map stays as cut on 11-13: her head is her own since 11-14)
 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
     if args == ['mouths']:                 # every mouth on the weaver's face (the mouths were drawn on the girl's head)
-        for m in [None, 'ah', 'oh', 'down', 'pressed', 'gentle-smile']:
+        for m in [None, 'woman-ah', 'woman-pressed']:          # (oh, down, gentle-smile: girl canvas only so far)
             build(m or 'closed', dict(PRESETS['weaver'], mouth=m), renders='closeup', folder='mouths-on-weaver')
         sys.exit()
     if args[:1] == ['cut']:

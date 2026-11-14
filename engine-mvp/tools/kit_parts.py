@@ -21,7 +21,10 @@ rgb = lambda p: np.asarray(Image.open(p).convert('RGB')).astype(np.int32)
 is_green = lambda a: (a[..., 1] > 170) & (a[..., 0] < 120) & (a[..., 2] < 120)
 
 FACES = {'girl': ANA / 'parts/head-bald.png', 'young-woman': K / 'heads/young-woman.png',
-         'woman': K / 'heads/woman-40.png', 'old-woman': ANA / 'parts/head-bald-old.png', 'man': K / 'heads/man.png'}
+         'woman': K / 'heads/woman-40.png', 'old-woman': ANA / 'parts/head-bald-old.png', 'man': K / 'heads/man.png',
+         # the woman body's own head (body/woman-body.png at its head box), redrawn clean, and its edits (Bart 11-14:
+         # "check the sourced head"; a girl head on the woman body doubled the chin and broke the throat)
+         'woman-n': K / 'heads/woman.png', 'woman-40-n': K / 'heads/woman-40-n.png', 'old-woman-n': K / 'heads/old-woman-n.png'}
 # part: (sheet, its own base, kind of cut)
 PARTS = {
     'hair/braid': (ANA / 'head-flat.png', ANA / 'parts/head-bald.png', 'add'),
@@ -34,8 +37,18 @@ PARTS = {
     # the man's parts are cut against his own face (body types, 11-13)
     **{name: (K / f'{name}.png', K / 'heads/man.png', how) for name, how in
        {'hair/man-beard': 'add', 'hair/man-hair-headband': 'add', 'headwear/man-helmet': 'cover', 'extras/man-seal': 'add'}.items()},
+    'eyes/man-calm': (K / 'eyes/man-calm.png', K / 'heads/man.png', 'eyes'),
+    # the woman's own head canvas (11-14)
+    'hair/woman-bun': (K / 'hair/woman-bun.png', K / 'heads/woman.png', 'add'),
+    'headwear/woman-headband': (K / 'headwear/woman-headband.png', K / 'hair/woman-bun.png', 'add'),
+    'headwear/woman-shawl-over-head': (K / 'headwear/woman-shawl-over-head.png', K / 'hair/woman-bun.png', 'cover'),
+    'extras/woman-jewellery': (K / 'extras/woman-jewellery.png', K / 'heads/woman.png', 'add'),
+    **{f'mouths/woman-{m}': (K / f'mouths/woman-{m}.png', K / 'heads/woman.png', 'patch') for m in ['pressed', 'ah']},
+    **{f'eyes/woman-{e}': (K / f'eyes/woman-{e}.png', K / 'heads/woman.png', 'eyes') for e in ['round', 'hooded']},
 }
 MOUTH_ZONE = (590, 560, 900, 720)          # head-sheet px: where a mouth may change (nose and jaw stay)
+EYE_ZONE = (450, 300, 900, 520)            # head-sheet px: where eyes and brows may change (nose, ear and skull stay)
+PATCHES = ('mouths/', 'eyes/')             # parts that repaint the face inside a zone, never the head's outline
 
 
 def keep_big(m, min_px):
@@ -50,8 +63,8 @@ def cut(sheet, base, how):
     """The part's mask on the head canvas."""
     changed = np.abs(sheet - base).sum(-1) > 60
     ink = (sheet @ LUMA) < 42
-    if how == 'patch':                      # a mouth: everything inside a padded hull of the change, inside the zone
-        x0, y0, x1, y1 = MOUTH_ZONE
+    if how in ('patch', 'eyes'):            # a mouth or eyes: everything inside a padded hull of the change, inside the zone
+        x0, y0, x1, y1 = MOUTH_ZONE if how == 'patch' else EYE_ZONE
         zone = np.zeros(changed.shape, bool); zone[y0:y1, x0:x1] = True
         core = keep_big(ndimage.binary_opening(changed & zone, iterations=1), 25)
         return ndimage.binary_fill_holes(ndimage.binary_dilation(core, iterations=10)) & zone & ~is_green(sheet)
@@ -122,7 +135,7 @@ def compose(face, names):
     for n in names:
         px, m = part(n)
         out[m] = px[m]
-        drawn |= m if not n.startswith('mouths/') else False
+        drawn |= m if not n.startswith(PATCHES) else False
     return out.astype(np.uint8), drawn
 
 
