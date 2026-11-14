@@ -47,7 +47,7 @@ class SvgAsset extends Model
         'collection', 'category', 'subcategory', 'era',
         'title', 'license', 'attribution',
         'svg_path', 'depth_path', 'cdn_url', 'width', 'height', 'view_box',
-        'description', 'placement', 'height_m', 'opaque_box', 'sheet',
+        'description', 'placement', 'height_m', 'opaque_box', 'sheet', 'character',
     ];
 
     protected $casts = [
@@ -56,6 +56,7 @@ class SvgAsset extends Model
         'height_m' => 'float',
         'opaque_box' => 'array',
         'sheet' => 'array',
+        'character' => 'array',
     ];
 
     public function owner(): BelongsTo

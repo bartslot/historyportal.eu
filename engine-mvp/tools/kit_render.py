@@ -32,6 +32,7 @@ REPO = Path(__file__).resolve().parents[2]   # this repo: aquarel.py and the was
 sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
 FLAT_PAINT = os.environ.get('PAINT') == 'flat'   # flat colour + ink + a shade mask (<name>-shade.webp): the stage shader colours the shade and washes it
+PIECES = FLAT_PAINT and os.environ.get('PIECES') == '1'   # kit_bake.py: <name>-fill/-ink/-shade.webp apart instead of one picture
 from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
 from thin_pieces import lying_on  # noqa: E402
 MAP = find(Path(sys.argv[2]))                     # a part map written as .webp, or an older .png
@@ -605,7 +606,12 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     img = painted * (1 - cover[..., None]) + np.array(INK, np.float32) * cover[..., None]
     a = np.clip(np.maximum(sil, cover), 0, 1)
     on_paper = lambda im, al: (im * al[..., None] + np.array(PAPER, np.float32) * (1 - al[..., None])).clip(0, 255).astype(np.uint8)
-    if name:
+    if name and PIECES:   # the character creator's bake (kit_bake.py): fill, ink and shade apart, so the browser restacks them
+        save_image(f.clip(0, 255).astype(np.uint8), OUT / f'{name}-fill.webp', lossless=True)
+        save_image((cover * 255).clip(0, 255).astype(np.uint8), OUT / f'{name}-ink.webp', lossless=True)
+        mask = np.dstack([shade_amount * (1 - cover), eyes_up, face_up])
+        save_image((mask * 255).clip(0, 255).astype(np.uint8), OUT / f'{name}-shade.webp', lossless=True)
+    elif name:
         save_image(np.dstack([img, a * 255]).clip(0, 255).astype(np.uint8), OUT / f'{name}.webp', lossless=lossless)
         if FLAT_PAINT:   # the shade mask (layer.ts AQUAREL): r how much shade (the shader's pigment colours it; none under
             # the ink), g the eyes (drawn, never washed), b the face (no blooms: a pale round bloom on a cheek reads as rouge)

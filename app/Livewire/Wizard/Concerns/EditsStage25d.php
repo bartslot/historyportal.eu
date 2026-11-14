@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\StageWorld;
+use App\Services\Editor\Characters;
 use App\Services\Editor\Cutouts;
 use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\Daylight;
@@ -880,9 +881,9 @@ trait EditsStage25d
         return $asset !== null && LibraryBundle::isBackdrop($asset);
     }
 
-    /** A picture's library kind: the period's library, or the teacher's own cut-out (Cutouts: 'cut-<id>'). */
+    /** A picture's library kind: the period's library, the teacher's own cut-out (Cutouts: 'cut-<id>') or character ('chr-<id>'). */
     private function stage25dAssetLayer(string $bundle, string $assetId): ?string
     {
-        return Cutouts::layerOf($assetId, (int) auth()->id()) ?? LibraryBundle::assetLayer($bundle, $assetId);
+        return Cutouts::layerOf($assetId, (int) auth()->id()) ?? Characters::layerOf($assetId, (int) auth()->id()) ?? LibraryBundle::assetLayer($bundle, $assetId);
     }
 }

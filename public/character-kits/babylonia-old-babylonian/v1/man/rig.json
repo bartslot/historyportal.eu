@@ -1,0 +1,266 @@
+{
+ "bones": [
+  {
+   "name": "hips",
+   "parent": null,
+   "from": [
+    394.0,
+    638.0
+   ],
+   "to": [
+    501.75,
+    641.7
+   ]
+  },
+  {
+   "name": "chest",
+   "parent": "hips",
+   "from": [
+    501.75,
+    641.7
+   ],
+   "to": [
+    481.54,
+    289.0
+   ],
+   "limit": [
+    -8,
+    8
+   ],
+   "band": 30,
+   "reach": 325.0
+  },
+  {
+   "name": "head",
+   "parent": "chest",
+   "from": [
+    481.54,
+    289.0
+   ],
+   "to": [
+    522.0,
+    40.0
+   ],
+   "limit": [
+    -25,
+    25
+   ],
+   "band": 35.0,
+   "reach": 120.0
+  },
+  {
+   "name": "upperarm_n",
+   "parent": "chest",
+   "from": [
+    363.5,
+    320.0
+   ],
+   "to": [
+    313.5,
+    555.43
+   ],
+   "limit": [
+    -120,
+    25
+   ],
+   "band": 40.0,
+   "reach": 96.0
+  },
+  {
+   "name": "upperarm_f",
+   "parent": "chest",
+   "from": [
+    621.0,
+    331.0
+   ],
+   "to": [
+    659.25,
+    555.43
+   ],
+   "limit": [
+    -20,
+    20
+   ],
+   "band": 40.0,
+   "reach": 96.0
+  },
+  {
+   "name": "forearm_n",
+   "parent": "upperarm_n",
+   "from": [
+    313.5,
+    555.43
+   ],
+   "to": [
+    275.0,
+    934.0
+   ],
+   "limit": [
+    -120,
+    0
+   ],
+   "band": 40.0,
+   "reach": 96.0
+  },
+  {
+   "name": "forearm_f",
+   "parent": "upperarm_f",
+   "from": [
+    659.25,
+    555.43
+   ],
+   "to": [
+    750.0,
+    923.0
+   ],
+   "limit": [
+    -120,
+    0
+   ],
+   "band": 40.0,
+   "reach": 96.0
+  },
+  {
+   "name": "thigh_n",
+   "parent": "hips",
+   "from": [
+    380.74,
+    638.0
+   ],
+   "to": [
+    385.62,
+    1015.28
+   ],
+   "limit": [
+    -25,
+    20
+   ]
+  },
+  {
+   "name": "thigh_f",
+   "parent": "hips",
+   "from": [
+    599.03,
+    638.0
+   ],
+   "to": [
+    573.01,
+    1015.24
+   ],
+   "limit": [
+    -25,
+    20
+   ]
+  },
+  {
+   "name": "shin_n",
+   "parent": "thigh_n",
+   "from": [
+    385.62,
+    1015.28
+   ],
+   "to": [
+    390.5,
+    1392.56
+   ],
+   "limit": [
+    0,
+    120
+   ],
+   "band": 14.5,
+   "reach": 34.8
+  },
+  {
+   "name": "shin_f",
+   "parent": "thigh_f",
+   "from": [
+    573.01,
+    1015.24
+   ],
+   "to": [
+    547.0,
+    1392.48
+   ],
+   "limit": [
+    0,
+    120
+   ],
+   "band": 15.0,
+   "reach": 36.0
+  },
+  {
+   "name": "foot_n",
+   "parent": "shin_n",
+   "from": [
+    390.5,
+    1392.56
+   ],
+   "to": [
+    506.0,
+    1501.0
+   ],
+   "limit": [
+    -30,
+    20
+   ],
+   "band": 40.8,
+   "reach": 81.6
+  },
+  {
+   "name": "foot_f",
+   "parent": "shin_f",
+   "from": [
+    547.0,
+    1392.48
+   ],
+   "to": [
+    702.0,
+    1470.0
+   ],
+   "limit": [
+    -30,
+    20
+   ],
+   "band": 45.0,
+   "reach": 90.0
+  }
+ ],
+ "parts": [
+  "forearm_f",
+  "upperarm_f",
+  "thigh_f",
+  "foot_f",
+  "shin_f",
+  "thigh_n",
+  "foot_n",
+  "shin_n",
+  "hips",
+  "chest",
+  "head",
+  "forearm_n",
+  "upperarm_n"
+ ],
+ "underFrom": {
+  "thigh_n": "shin_n",
+  "thigh_f": "shin_f"
+ },
+ "facing": 1,
+ "size": [
+  1024,
+  1536
+ ],
+ "labels": "labels.webp",
+ "canvas": [
+  2048,
+  3072
+ ],
+ "scale": 2,
+ "headBox": [
+  706,
+  28,
+  1316,
+  638
+ ],
+ "face": "man",
+ "outfit": "base-kilt"
+}

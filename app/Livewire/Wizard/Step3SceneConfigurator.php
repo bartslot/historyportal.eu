@@ -13,6 +13,7 @@ use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
+use App\Livewire\Wizard\Concerns\EditsCharacters;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
 use App\Livewire\Wizard\Concerns\EditsDrawings;
 use App\Livewire\Wizard\Concerns\EditsImages;
@@ -78,6 +79,7 @@ class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
     use DuplicatesSceneObjects;
+    use EditsCharacters;
     use EditsDiorama;
     use EditsDrawings;
     use EditsImages;

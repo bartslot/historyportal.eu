@@ -1,0 +1,1264 @@
+{
+ "id": "babylonia-old-babylonian",
+ "version": 1,
+ "view": "front34",
+ "paper": "#f6f5ee",
+ "ink": "#191410",
+ "kinds": [
+  "skin",
+  "tunic",
+  "shawl",
+  "hair",
+  "rope",
+  "tie",
+  "white",
+  "grey",
+  "apron",
+  "ochre",
+  "mouth",
+  "iris",
+  "brow"
+ ],
+ "kindDefaults": {
+  "white": "#fcfaf4",
+  "tie": "#b0754f",
+  "mouth": "#7a3a2c",
+  "iris": "#6e3c1e"
+ },
+ "zoneKinds": {
+  "garment": "tunic",
+  "second": "shawl",
+  "cord": "rope",
+  "apron": "apron",
+  "head-cloth": "ochre",
+  "band": "apron"
+ },
+ "swatches": [
+  {
+   "id": "bleached-linen",
+   "hex": "#f1eadb"
+  },
+  {
+   "id": "raw-linen",
+   "hex": "#e2d5b8"
+  },
+  {
+   "id": "undyed-wool",
+   "hex": "#d3bf9a"
+  },
+  {
+   "id": "sand",
+   "hex": "#b99a6b"
+  },
+  {
+   "id": "camel-brown",
+   "hex": "#96724a"
+  },
+  {
+   "id": "dark-wool-brown",
+   "hex": "#5f4632"
+  },
+  {
+   "id": "madder-red",
+   "hex": "#a8463a"
+  },
+  {
+   "id": "red-ochre",
+   "hex": "#b0754f"
+  },
+  {
+   "id": "yellow-ochre",
+   "hex": "#c9a24e"
+  },
+  {
+   "id": "reed-green",
+   "hex": "#7f8650"
+  },
+  {
+   "id": "indigo-blue",
+   "hex": "#46607a"
+  },
+  {
+   "id": "charcoal-wool",
+   "hex": "#3a3632"
+  }
+ ],
+ "skins": [
+  {
+   "id": "s1",
+   "hex": "#eac39a"
+  },
+  {
+   "id": "s2",
+   "hex": "#dcaa7c"
+  },
+  {
+   "id": "s3",
+   "hex": "#c99263"
+  },
+  {
+   "id": "s4",
+   "hex": "#ad764c"
+  },
+  {
+   "id": "s5",
+   "hex": "#8c5c3c"
+  }
+ ],
+ "hairColours": [
+  {
+   "id": "black-brown",
+   "hex": "#2f231d"
+  },
+  {
+   "id": "dark-brown",
+   "hex": "#4c2e20"
+  },
+  {
+   "id": "brown",
+   "hex": "#6e3b22"
+  },
+  {
+   "id": "grey",
+   "hex": "#a9a49c"
+  },
+  {
+   "id": "white",
+   "hex": "#ddd8cf"
+  }
+ ],
+ "slots": [
+  "outfit",
+  "face",
+  "eyes",
+  "mouth",
+  "expression",
+  "hair",
+  "beard",
+  "headwear",
+  "extra"
+ ],
+ "bodies": [
+  {
+   "id": "girl",
+   "label": "Girl",
+   "pieces": [
+    {
+     "id": "outfit/base-shift",
+     "slot": "outfit",
+     "label": "Plain shift",
+     "kinds": [
+      "skin",
+      "tunic",
+      "white"
+     ],
+     "box": [
+      481,
+      90,
+      1087,
+      2936
+     ],
+     "files": {
+      "fill": "outfit-base-shift.webp",
+      "ink": "outfit-base-shift-ink.webp",
+      "shade": "outfit-base-shift-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/work-tunic-apron",
+     "slot": "outfit",
+     "label": "Work tunic and apron",
+     "kinds": [
+      "skin",
+      "tunic",
+      "rope",
+      "apron"
+     ],
+     "box": [
+      480,
+      90,
+      1088,
+      2937
+     ],
+     "files": {
+      "fill": "outfit-work-tunic-apron.webp",
+      "ink": "outfit-work-tunic-apron-ink.webp",
+      "shade": "outfit-work-tunic-apron-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/long-wrap",
+     "slot": "outfit",
+     "label": "Long wrap",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl",
+      "rope"
+     ],
+     "box": [
+      480,
+      89,
+      1087,
+      2936
+     ],
+     "files": {
+      "fill": "outfit-long-wrap.webp",
+      "ink": "outfit-long-wrap-ink.webp",
+      "shade": "outfit-long-wrap-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/long-tunic-shawl",
+     "slot": "outfit",
+     "label": "Long tunic and shawl",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl"
+     ],
+     "box": [
+      480,
+      89,
+      1087,
+      2938
+     ],
+     "files": {
+      "fill": "outfit-long-tunic-shawl.webp",
+      "ink": "outfit-long-tunic-shawl-ink.webp",
+      "shade": "outfit-long-tunic-shawl-shade.webp"
+     }
+    },
+    {
+     "id": "face/girl",
+     "slot": "face",
+     "label": "Girl",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      822,
+      90,
+      405,
+      612
+     ],
+     "files": {
+      "fill": "face-girl.webp",
+      "ink": "face-girl-ink.webp",
+      "shade": "face-girl-shade.webp"
+     }
+    },
+    {
+     "id": "face/young-woman",
+     "slot": "face",
+     "label": "Young woman",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      822,
+      90,
+      402,
+      612
+     ],
+     "files": {
+      "fill": "face-young-woman.webp",
+      "ink": "face-young-woman-ink.webp",
+      "shade": "face-young-woman-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/gentle-smile",
+     "slot": "mouth",
+     "label": "Gentle smile",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      1086,
+      446,
+      95,
+      50
+     ],
+     "files": {
+      "fill": "mouths-gentle-smile.webp",
+      "ink": "mouths-gentle-smile-ink.webp",
+      "shade": "mouths-gentle-smile-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/pressed",
+     "slot": "mouth",
+     "label": "Pressed",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      1078,
+      447,
+      103,
+      49
+     ],
+     "files": {
+      "fill": "mouths-pressed.webp",
+      "ink": "mouths-pressed-ink.webp",
+      "shade": "mouths-pressed-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/down",
+     "slot": "mouth",
+     "label": "Down",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      1086,
+      447,
+      95,
+      49
+     ],
+     "files": {
+      "fill": "mouths-down.webp",
+      "ink": "mouths-down-ink.webp",
+      "shade": "mouths-down-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/oh",
+     "slot": "mouth",
+     "label": "Oh",
+     "kinds": [
+      "skin",
+      "iris"
+     ],
+     "box": [
+      1088,
+      420,
+      127,
+      88
+     ],
+     "files": {
+      "fill": "mouths-oh.webp",
+      "ink": "mouths-oh-ink.webp",
+      "shade": "mouths-oh-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/ah",
+     "slot": "mouth",
+     "label": "Ah",
+     "kinds": [
+      "skin",
+      "mouth"
+     ],
+     "box": [
+      1088,
+      448,
+      93,
+      48
+     ],
+     "files": {
+      "fill": "mouths-ah.webp",
+      "ink": "mouths-ah-ink.webp",
+      "shade": "mouths-ah-shade.webp"
+     }
+    },
+    {
+     "id": "hair/loose",
+     "slot": "hair",
+     "label": "Loose",
+     "kinds": [
+      "hair",
+      "iris"
+     ],
+     "box": [
+      737,
+      84,
+      498,
+      645
+     ],
+     "files": {
+      "fill": "hair-loose.webp",
+      "ink": "hair-loose-ink.webp",
+      "shade": "hair-loose-shade.webp",
+      "cast": "hair-loose-cast.webp"
+     }
+    },
+    {
+     "id": "hair/braid",
+     "slot": "hair",
+     "label": "Braid",
+     "kinds": [
+      "hair",
+      "tie",
+      "iris"
+     ],
+     "box": [
+      648,
+      59,
+      585,
+      725
+     ],
+     "files": {
+      "fill": "hair-braid.webp",
+      "ink": "hair-braid-ink.webp",
+      "shade": "hair-braid-shade.webp",
+      "cast": "hair-braid-cast.webp"
+     }
+    },
+    {
+     "id": "hair/bun",
+     "slot": "hair",
+     "label": "Bun",
+     "kinds": [
+      "grey",
+      "brow"
+     ],
+     "box": [
+      810,
+      89,
+      407,
+      394
+     ],
+     "files": {
+      "fill": "hair-bun.webp",
+      "ink": "hair-bun-ink.webp",
+      "shade": "hair-bun-shade.webp",
+      "cast": "hair-bun-cast.webp"
+     }
+    },
+    {
+     "id": "headwear/headband",
+     "slot": "headwear",
+     "label": "Headband",
+     "kinds": [
+      "grey",
+      "apron",
+      "brow"
+     ],
+     "box": [
+      814,
+      172,
+      401,
+      184
+     ],
+     "files": {
+      "fill": "headwear-headband.webp",
+      "ink": "headwear-headband-ink.webp",
+      "shade": "headwear-headband-shade.webp",
+      "cast": "headwear-headband-cast.webp"
+     }
+    },
+    {
+     "id": "headwear/shawl-over-head",
+     "slot": "headwear",
+     "label": "Shawl over head",
+     "kinds": [
+      "grey",
+      "ochre"
+     ],
+     "box": [
+      710,
+      83,
+      496,
+      674
+     ],
+     "files": {
+      "fill": "headwear-shawl-over-head.webp",
+      "ink": "headwear-shawl-over-head-ink.webp",
+      "shade": "headwear-shawl-over-head-shade.webp",
+      "cast": "headwear-shawl-over-head-cast.webp"
+     }
+    },
+    {
+     "id": "extras/jewellery",
+     "slot": "extra",
+     "label": "Jewellery",
+     "kinds": [
+      "rope",
+      "ochre"
+     ],
+     "box": [
+      869,
+      423,
+      222,
+      235
+     ],
+     "files": {
+      "fill": "extras-jewellery.webp",
+      "ink": "extras-jewellery-ink.webp",
+      "shade": "extras-jewellery-shade.webp"
+     }
+    }
+   ],
+   "rig": "girl/rig.json",
+   "expressions": {}
+  },
+  {
+   "id": "woman",
+   "label": "Woman",
+   "pieces": [
+    {
+     "id": "outfit/base-shift",
+     "slot": "outfit",
+     "label": "Plain shift",
+     "kinds": [
+      "skin",
+      "tunic"
+     ],
+     "box": [
+      481,
+      90,
+      1082,
+      2937
+     ],
+     "files": {
+      "fill": "outfit-base-shift.webp",
+      "ink": "outfit-base-shift-ink.webp",
+      "shade": "outfit-base-shift-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/work-tunic-apron",
+     "slot": "outfit",
+     "label": "Work tunic and apron",
+     "kinds": [
+      "skin",
+      "tunic",
+      "rope",
+      "apron"
+     ],
+     "box": [
+      481,
+      90,
+      1084,
+      2936
+     ],
+     "files": {
+      "fill": "outfit-work-tunic-apron.webp",
+      "ink": "outfit-work-tunic-apron-ink.webp",
+      "shade": "outfit-work-tunic-apron-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/long-wrap",
+     "slot": "outfit",
+     "label": "Long wrap",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl",
+      "ochre"
+     ],
+     "box": [
+      480,
+      90,
+      1085,
+      2937
+     ],
+     "files": {
+      "fill": "outfit-long-wrap.webp",
+      "ink": "outfit-long-wrap-ink.webp",
+      "shade": "outfit-long-wrap-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/long-tunic-shawl",
+     "slot": "outfit",
+     "label": "Long tunic and shawl",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl"
+     ],
+     "box": [
+      480,
+      90,
+      1085,
+      2936
+     ],
+     "files": {
+      "fill": "outfit-long-tunic-shawl.webp",
+      "ink": "outfit-long-tunic-shawl-ink.webp",
+      "shade": "outfit-long-tunic-shawl-shade.webp"
+     }
+    },
+    {
+     "id": "face/woman-n",
+     "slot": "face",
+     "label": "Woman",
+     "kinds": [
+      "skin",
+      "tunic",
+      "white",
+      "iris"
+     ],
+     "box": [
+      822,
+      90,
+      358,
+      596
+     ],
+     "files": {
+      "fill": "face-woman-n.webp",
+      "ink": "face-woman-n-ink.webp",
+      "shade": "face-woman-n-shade.webp"
+     }
+    },
+    {
+     "id": "face/woman-40-n",
+     "slot": "face",
+     "label": "Woman of forty",
+     "kinds": [
+      "skin",
+      "tunic",
+      "white",
+      "iris"
+     ],
+     "box": [
+      823,
+      90,
+      358,
+      596
+     ],
+     "files": {
+      "fill": "face-woman-40-n.webp",
+      "ink": "face-woman-40-n-ink.webp",
+      "shade": "face-woman-40-n-shade.webp"
+     }
+    },
+    {
+     "id": "face/old-woman-n",
+     "slot": "face",
+     "label": "Old woman",
+     "kinds": [
+      "skin",
+      "tunic",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      823,
+      90,
+      357,
+      596
+     ],
+     "files": {
+      "fill": "face-old-woman-n.webp",
+      "ink": "face-old-woman-n-ink.webp",
+      "shade": "face-old-woman-n-shade.webp"
+     }
+    },
+    {
+     "id": "eyes/woman-round",
+     "slot": "eyes",
+     "label": "Round",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      998,
+      264,
+      182,
+      78
+     ],
+     "files": {
+      "fill": "eyes-woman-round.webp",
+      "ink": "eyes-woman-round-ink.webp",
+      "shade": "eyes-woman-round-shade.webp"
+     }
+    },
+    {
+     "id": "eyes/woman-hooded",
+     "slot": "eyes",
+     "label": "Hooded",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      986,
+      265,
+      194,
+      74
+     ],
+     "files": {
+      "fill": "eyes-woman-hooded.webp",
+      "ink": "eyes-woman-hooded-ink.webp",
+      "shade": "eyes-woman-hooded-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/woman-pressed",
+     "slot": "mouth",
+     "label": "Pressed",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      1057,
+      411,
+      100,
+      44
+     ],
+     "files": {
+      "fill": "mouths-woman-pressed.webp",
+      "ink": "mouths-woman-pressed-ink.webp",
+      "shade": "mouths-woman-pressed-shade.webp"
+     }
+    },
+    {
+     "id": "mouths/woman-ah",
+     "slot": "mouth",
+     "label": "Ah",
+     "kinds": [
+      "skin",
+      "mouth"
+     ],
+     "box": [
+      1064,
+      409,
+      93,
+      46
+     ],
+     "files": {
+      "fill": "mouths-woman-ah.webp",
+      "ink": "mouths-woman-ah-ink.webp",
+      "shade": "mouths-woman-ah-shade.webp"
+     }
+    },
+    {
+     "id": "hair/woman-bun",
+     "slot": "hair",
+     "label": "Bun",
+     "kinds": [
+      "grey",
+      "brow"
+     ],
+     "box": [
+      823,
+      91,
+      348,
+      367
+     ],
+     "files": {
+      "fill": "hair-woman-bun.webp",
+      "ink": "hair-woman-bun-ink.webp",
+      "shade": "hair-woman-bun-shade.webp",
+      "cast": "hair-woman-bun-cast.webp"
+     }
+    },
+    {
+     "id": "headwear/woman-headband",
+     "slot": "headwear",
+     "label": "Headband",
+     "kinds": [
+      "grey",
+      "apron",
+      "brow"
+     ],
+     "box": [
+      824,
+      147,
+      345,
+      200
+     ],
+     "files": {
+      "fill": "headwear-woman-headband.webp",
+      "ink": "headwear-woman-headband-ink.webp",
+      "shade": "headwear-woman-headband-shade.webp",
+      "cast": "headwear-woman-headband-cast.webp"
+     }
+    },
+    {
+     "id": "headwear/woman-shawl-over-head",
+     "slot": "headwear",
+     "label": "Shawl over head",
+     "kinds": [
+      "tie",
+      "grey",
+      "ochre"
+     ],
+     "box": [
+      707,
+      87,
+      455,
+      578
+     ],
+     "files": {
+      "fill": "headwear-woman-shawl-over-head.webp",
+      "ink": "headwear-woman-shawl-over-head-ink.webp",
+      "shade": "headwear-woman-shawl-over-head-shade.webp",
+      "cast": "headwear-woman-shawl-over-head-cast.webp"
+     }
+    },
+    {
+     "id": "extras/woman-jewellery",
+     "slot": "extra",
+     "label": "Jewellery",
+     "kinds": [
+      "tunic",
+      "shawl",
+      "tie"
+     ],
+     "box": [
+      862,
+      376,
+      251,
+      266
+     ],
+     "files": {
+      "fill": "extras-woman-jewellery.webp",
+      "ink": "extras-woman-jewellery-ink.webp",
+      "shade": "extras-woman-jewellery-shade.webp"
+     }
+    }
+   ],
+   "rig": "woman/rig.json",
+   "expressions": {}
+  },
+  {
+   "id": "man",
+   "label": "Man",
+   "pieces": [
+    {
+     "id": "outfit/base-kilt",
+     "slot": "outfit",
+     "label": "Plain kilt",
+     "kinds": [
+      "skin",
+      "tunic",
+      "white"
+     ],
+     "box": [
+      444,
+      92,
+      1130,
+      2934
+     ],
+     "files": {
+      "fill": "outfit-base-kilt.webp",
+      "ink": "outfit-base-kilt-ink.webp",
+      "shade": "outfit-base-kilt-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/scribe-wrap",
+     "slot": "outfit",
+     "label": "Scribe wrap",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl"
+     ],
+     "box": [
+      445,
+      92,
+      1131,
+      2934
+     ],
+     "files": {
+      "fill": "outfit-scribe-wrap.webp",
+      "ink": "outfit-scribe-wrap-ink.webp",
+      "shade": "outfit-scribe-wrap-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/merchant-tunic",
+     "slot": "outfit",
+     "label": "Merchant tunic",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl",
+      "apron"
+     ],
+     "box": [
+      444,
+      91,
+      1131,
+      2934
+     ],
+     "files": {
+      "fill": "outfit-merchant-tunic.webp",
+      "ink": "outfit-merchant-tunic-ink.webp",
+      "shade": "outfit-merchant-tunic-shade.webp"
+     }
+    },
+    {
+     "id": "outfit/soldier",
+     "slot": "outfit",
+     "label": "Soldier",
+     "kinds": [
+      "skin",
+      "tunic",
+      "shawl",
+      "rope"
+     ],
+     "box": [
+      445,
+      92,
+      1131,
+      2948
+     ],
+     "files": {
+      "fill": "outfit-soldier.webp",
+      "ink": "outfit-soldier-ink.webp",
+      "shade": "outfit-soldier-shade.webp"
+     }
+    },
+    {
+     "id": "face/man",
+     "slot": "face",
+     "label": "Man",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      792,
+      92,
+      395,
+      546
+     ],
+     "files": {
+      "fill": "face-man.webp",
+      "ink": "face-man-ink.webp",
+      "shade": "face-man-shade.webp"
+     }
+    },
+    {
+     "id": "eyes/man-calm",
+     "slot": "eyes",
+     "label": "Calm",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      988,
+      234,
+      200,
+      98
+     ],
+     "files": {
+      "fill": "eyes-man-calm.webp",
+      "ink": "eyes-man-calm-ink.webp",
+      "shade": "eyes-man-calm-shade.webp"
+     }
+    },
+    {
+     "id": "hair/man-hair-headband",
+     "slot": "hair",
+     "label": "Hair headband",
+     "kinds": [
+      "hair",
+      "apron",
+      "iris"
+     ],
+     "box": [
+      794,
+      63,
+      376,
+      482
+     ],
+     "files": {
+      "fill": "hair-man-hair-headband.webp",
+      "ink": "hair-man-hair-headband-ink.webp",
+      "shade": "hair-man-hair-headband-shade.webp",
+      "cast": "hair-man-hair-headband-cast.webp"
+     }
+    },
+    {
+     "id": "hair/man-beard",
+     "slot": "beard",
+     "label": "Beard",
+     "kinds": [
+      "hair",
+      "iris"
+     ],
+     "box": [
+      896,
+      342,
+      283,
+      235
+     ],
+     "files": {
+      "fill": "hair-man-beard.webp",
+      "ink": "hair-man-beard-ink.webp",
+      "shade": "hair-man-beard-shade.webp",
+      "cast": "hair-man-beard-cast.webp"
+     }
+    },
+    {
+     "id": "headwear/man-helmet",
+     "slot": "headwear",
+     "label": "Helmet",
+     "kinds": [
+      "ochre"
+     ],
+     "box": [
+      836,
+      55,
+      349,
+      304
+     ],
+     "files": {
+      "fill": "headwear-man-helmet.webp",
+      "ink": "headwear-man-helmet-ink.webp",
+      "shade": "headwear-man-helmet-shade.webp",
+      "cast": "headwear-man-helmet-cast.webp"
+     }
+    },
+    {
+     "id": "extras/man-seal",
+     "slot": "extra",
+     "label": "Seal",
+     "kinds": [
+      "rope"
+     ],
+     "box": [
+      868,
+      516,
+      232,
+      120
+     ],
+     "files": {
+      "fill": "extras-man-seal.webp",
+      "ink": "extras-man-seal-ink.webp",
+      "shade": "extras-man-seal-shade.webp"
+     }
+    }
+   ],
+   "rig": "man/rig.json",
+   "expressions": {}
+  }
+ ],
+ "presets": [
+  {
+   "id": "miller-girl",
+   "label": "Girl at the grinding stone",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Girl at the grinding stone",
+    "body": "girl",
+    "face": "girl",
+    "outfit": "work-tunic-apron",
+    "parts": [
+     "hair/loose"
+    ],
+    "skin": "s3",
+    "hair_colour": "dark-brown",
+    "height_m": 1.42,
+    "zones": {
+     "garment": "sand",
+     "apron": "raw-linen",
+     "cord": "camel-brown"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "weaver",
+   "label": "Weaver",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Weaver",
+    "body": "woman",
+    "face": "woman-n",
+    "outfit": "work-tunic-apron",
+    "parts": [
+     "hair/woman-bun",
+     "headwear/woman-headband"
+    ],
+    "eyes": "woman-round",
+    "mouth": "woman-pressed",
+    "skin": "s3",
+    "hair_colour": "black-brown",
+    "height_m": 1.55,
+    "zones": {
+     "garment": "undyed-wool",
+     "apron": "indigo-blue",
+     "cord": "dark-wool-brown"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "naditu",
+   "label": "Naditu of Sippar, trader",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Naditu of Sippar, trader",
+    "body": "woman",
+    "face": "woman-40-n",
+    "outfit": "long-tunic-shawl",
+    "parts": [
+     "hair/woman-bun",
+     "extras/woman-jewellery"
+    ],
+    "skin": "s2",
+    "hair_colour": "dark-brown",
+    "height_m": 1.56,
+    "zones": {
+     "garment": "bleached-linen",
+     "second": "madder-red"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "tavern-keeper",
+   "label": "Tavern keeper",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Tavern keeper",
+    "body": "woman",
+    "face": "woman-40-n",
+    "outfit": "long-wrap",
+    "parts": [
+     "hair/woman-bun",
+     "headwear/woman-headband"
+    ],
+    "eyes": "woman-hooded",
+    "mouth": "woman-ah",
+    "skin": "s4",
+    "hair_colour": "black-brown",
+    "height_m": 1.54,
+    "zones": {
+     "garment": "raw-linen",
+     "second": "red-ochre",
+     "band": "reed-green"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "grandmother",
+   "label": "Grandmother",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Grandmother",
+    "body": "woman",
+    "face": "old-woman-n",
+    "outfit": "long-tunic-shawl",
+    "parts": [
+     "hair/woman-bun",
+     "headwear/woman-shawl-over-head"
+    ],
+    "skin": "s2",
+    "hair_colour": "grey",
+    "height_m": 1.47,
+    "zones": {
+     "garment": "camel-brown",
+     "second": "dark-wool-brown",
+     "head-cloth": "undyed-wool"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "scribe",
+   "label": "Scribe",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Scribe",
+    "body": "man",
+    "face": "man",
+    "outfit": "scribe-wrap",
+    "parts": [
+     "hair/man-hair-headband",
+     "hair/man-beard",
+     "extras/man-seal"
+    ],
+    "eyes": "man-calm",
+    "skin": "s3",
+    "hair_colour": "black-brown",
+    "height_m": 1.66,
+    "zones": {
+     "garment": "bleached-linen",
+     "second": "indigo-blue",
+     "band": "madder-red"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "merchant",
+   "label": "Merchant",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Merchant",
+    "body": "man",
+    "face": "man",
+    "outfit": "merchant-tunic",
+    "parts": [
+     "hair/man-hair-headband",
+     "hair/man-beard",
+     "extras/man-seal"
+    ],
+    "eyes": "man-calm",
+    "skin": "s2",
+    "hair_colour": "dark-brown",
+    "height_m": 1.68,
+    "zones": {
+     "garment": "undyed-wool",
+     "second": "red-ochre",
+     "band": "reed-green"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "soldier",
+   "label": "Soldier",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Soldier",
+    "body": "man",
+    "face": "man",
+    "outfit": "soldier",
+    "parts": [
+     "hair/man-beard",
+     "headwear/man-helmet"
+    ],
+    "eyes": "man-calm",
+    "skin": "s4",
+    "hair_colour": "black-brown",
+    "height_m": 1.7,
+    "zones": {
+     "garment": "raw-linen",
+     "second": "madder-red",
+     "cord": "dark-wool-brown",
+     "head-cloth": "yellow-ochre"
+    },
+    "facing": 1
+   }
+  }
+ ]
+}
