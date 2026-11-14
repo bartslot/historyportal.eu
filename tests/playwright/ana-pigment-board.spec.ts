@@ -53,9 +53,13 @@ test('the 8 shade pigments of a flat figure', async ({ page }) => {
 test('a flat figure whose shade mask does not load offers no shading sliders', async ({ page }) => {
   test.setTimeout(180_000)
   await muted(page)
-  await page.route('**/*-shade.webp*', (route) => route.fulfill({ status: 404, body: '' }))
+  let refused = 0
+  await page.route('**/*-shade.webp*', (route) => { refused++; return route.fulfill({ status: 404, body: '' }) })
   await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`, { waitUntil: 'load' })
   await stageReady(page, 120_000)
+  expect(refused, 'the stage asked for the mask').toBeGreaterThan(0)
+  const built = await page.evaluate(() => (window as any).BABYLON.Engine.LastCreatedScene.meshes.find((m: any) => m.name === 'layer:fig-ana-stand-01')?.getTotalVertices() ?? 0)
+  expect(built, 'the flat figure is on the stage, drawn without its mask').toBeGreaterThan(0)
   const keys: string[] = await page.evaluate(() => (window as any).__stage25d.lookControls().map((c: any) => c.key))
   expect(keys, 'drawn flat without its mask: the sliders would do nothing').not.toContain('figureShade')
   expect(keys).not.toContain('figureWash')

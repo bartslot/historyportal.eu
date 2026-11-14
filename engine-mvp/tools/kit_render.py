@@ -33,6 +33,7 @@ sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
 FLAT_PAINT = os.environ.get('PAINT') == 'flat'   # flat colour + ink + a shade mask (<name>-shade.webp): the stage shader colours the shade and washes it
 from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
+from thin_pieces import lying_on  # noqa: E402
 MAP = find(Path(sys.argv[2]))                     # a part map written as .webp, or an older .png
 
 OUT.mkdir(parents=True, exist_ok=True)
@@ -466,13 +467,13 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
     big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
     CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
-    if FLAT_PAINT:   # the cords cast no band down the tunic on the stage (fresh tester 11-14); painted rigs keep theirs
-        CASTERS = {**CASTERS, 'tunic': [c for c in CASTERS['tunic'] if c != 'rope']}
+    # flat paint: a thin piece (a cord, a strap) counts as the area it lies on for that area's edge shade (thin_pieces.py)
+    lies = lying_on(kind_up, 10 * scale) if FLAT_PAINT else {}
     shades = {}
     for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
         total = np.zeros((RH, RW), np.float32)
         for grp in SHADE_GROUPS:
-            mk = up(np.isin(part_all, grp)) * kind_up[kn]
+            mk = up(np.isin(part_all, grp)) * (np.maximum(kind_up[kn], lies[kn]) if kn in lies else kind_up[kn])
             if mk.sum() >= 50:
                 mk = np.maximum(mk, ndimage.binary_fill_holes(mk > 0.5).astype(np.float32))   # an eye is not a hole in the face
                 total = np.maximum(total, np.clip(mk - shift(mk, dpx, -dpx * 0.35), 0, 1))
