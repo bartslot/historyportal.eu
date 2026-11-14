@@ -4,7 +4,7 @@ PAL (json kind -> [r,g,b]), RENDERS (full,closeup,eyes).
   python3 engine-mvp/tools/kit_render.py <dir with flat.png + head-flat.png> <map.png> <out dir>
 
 The one copy (vault topics/character-creator, topics/character-bones/plan.md 10); the bone rig paints flat-sheet
-figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.webp). Every output is .webp (q90, alpha lossless); inputs may be .webp or .png.
+figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.webp). Every output is .webp (img_io.WEBP, alpha lossless); inputs may be .webp or .png.
 
 flat.png       the whole figure, clean flat colour, 1024x1536 (an edit of her rest drawing)
 head-flat.png  her head redrawn at 1024x1024 from the crop HEAD_BOX of flat.png (same canvas, so it fits back)
@@ -284,16 +284,21 @@ if os.environ.get('KIT') == '1':
     head_lab &= ~cloth
     unpainted = ~Hd['alpha']; unpainted[:560] = False                     # below the chin the head is only where its sheet has paint:
     head_lab &= ~(unpainted & ~added)                                     # an adult's longer neck comes from the body sheet
-    fig_head = np.zeros((H, W), bool)
-    fig_head[y0b:y1b, x0b:x1b] = cv2.resize(head_lab.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
-    lost = (part_all == HEAD) & ~fig_head                                 # body pixels the head no longer covers: nearest body part
-    # only from the top of the neck down (where the map's head part narrows): above it the body's own skull and jaw stay
-    # hidden, even where an adult body's jaw reaches past the head sheet's
+    # the top of the neck: where the map's head part narrows
     hw = (part_all == HEAD).sum(1)
     low = np.arange(H) > y0b + 0.5 * (y1b - y0b)
     wide = low & (hw > 0.25 * hw.max())                                   # not the last few rows of a V neckline
     neck_w = hw[wide].min() if wide.any() else 0
     neck_top = int(np.flatnonzero(wide & (hw <= 1.15 * neck_w))[0]) if neck_w else 0
+    NECK_BODY = os.environ.get('NECK_BODY') == '1'                       # a head sheet drawn for another body: the body draws the neck
+    if NECK_BODY and neck_top:
+        nb = np.zeros_like(head_lab); nb[max(0, int((neck_top - y0b) / HK)):] = True
+        head_lab &= ~(nb & ~added)
+    fig_head = np.zeros((H, W), bool)
+    fig_head[y0b:y1b, x0b:x1b] = cv2.resize(head_lab.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
+    lost = (part_all == HEAD) & ~fig_head                                 # body pixels the head no longer covers: nearest body part
+    # only from the top of the neck down (where the map's head part narrows): above it the body's own skull and jaw stay
+    # hidden, even where an adult body's jaw reaches past the head sheet's
     lost[:max(int(y0b + 560 * HK), neck_top)] = False
     jb = ndimage.distance_transform_edt(lost | (part_all == HEAD), return_distances=False, return_indices=True)
     part_all = np.where(lost, part_all[jb[0], jb[1]], part_all).astype(np.uint8)
@@ -316,7 +321,8 @@ if os.environ.get('KIT') == '1':
         F['fill_area'] |= gap
         print('filled', int(gap.sum()), 'px between head and body')
     part = part_all.copy(); part[~F['fill_area']] = 255
-    F['blob'] &= ~ndimage.binary_dilation(lost, iterations=3)          # the body sheet's own small head left thick lines there
+    if not NECK_BODY:                                                     # (the body's own neck lines stay when it draws the neck)
+        F['blob'] &= ~ndimage.binary_dilation(lost, iterations=3)      # the body sheet's own small head left thick lines there
 Hd['kind'][~head_lab] = 255
 Hd['blob'] &= head_lab
 at = lambda arr, x, y: arr[np.clip(y.astype(int), 0, arr.shape[0] - 1), np.clip(x.astype(int), 0, arr.shape[1] - 1)]
