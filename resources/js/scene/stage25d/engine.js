@@ -806,6 +806,7 @@ export async function createStage25d (host, opts = {}) {
         // an animation preset's size on this figure (presets-picker.js): the way it faces, its height in metres, the
         // view's width at its distance (x is a share of it)
         facing: puppet?.facing ?? 1,
+        limits: Object.fromEntries((puppet?.bones ?? []).filter((b) => b.limit).map((b) => [b.name, b.limit])),
         heightM: (asset?.height_m ?? FIGURE_M) * (l.scale ?? 1),
         viewWidth: viewWidthAt(zNow(layerIndex(id))),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },

@@ -35,6 +35,9 @@ final class AnimationPresets
     /** A walk or a run with no length of its own crosses the shot this many cycles (presets.js TRAVEL_CYCLES). */
     private const TRAVEL_CYCLES = 3;
 
+    /** The leg room a clip is fitted for (presets.js FITTED_LEGS): thigh swing and knee bend in degrees. */
+    private const FITTED_LEGS = ['thigh' => 45.0, 'shin' => 120.0];
+
     /** The face a figure shows when nothing says otherwise (presets.js REST_FACE). */
     private const REST_FACE = 'calm';
 
@@ -122,6 +125,7 @@ final class AnimationPresets
         $bones = array_flip($o['bones'] ?? []);
         $facing = ($o['facing'] ?? 1) < 0 ? -1 : 1;
         [$start, $x0, $y0] = [(float) ($o['start'] ?? 0), (float) ($o['x0'] ?? 0.5), (float) ($o['y0'] ?? 0)];
+        [$roomTravel, $roomSink] = self::legRoom($o['limits'] ?? []);
         $out = [];
         $face = null;
         for ($c = 0; $c < $cycles; $c++) {
@@ -136,10 +140,11 @@ final class AnimationPresets
                     }
                 }
                 if ($moves) {
-                    $key['x'] = round($x0 + $facing * ($c * $travel + (float) ($k['dx'] ?? 0)) * (float) ($o['xPerHeight'] ?? 0), 3);
+                    $key['x'] = round($x0 + $facing * ($c * $travel + (float) ($k['dx'] ?? 0)) * $roomTravel * (float) ($o['xPerHeight'] ?? 0), 3);
                 }
                 if ($bobs) {
-                    $key['y'] = round($y0 + (float) ($k['bob'] ?? 0) * (float) ($o['yPerHeight'] ?? 0), 3);
+                    $bob = (float) ($k['bob'] ?? 0);
+                    $key['y'] = round($y0 + $bob * ($bob < 0 ? $roomSink : 1.0) * (float) ($o['yPerHeight'] ?? 0), 3);   // a jump's lift stays
                 }
                 if (is_string($k['face'] ?? null) && $k['face'] !== '' && $k['face'] !== $face) {
                     $key['face'] = $face = $k['face'];   // a face steps: only where it changes
@@ -152,6 +157,20 @@ final class AnimationPresets
         }
 
         return $out;
+    }
+
+    /**
+     * How much of a clip's root movement a figure's legs can carry (presets.js legRoom): [travel, sink], 1 for full room.
+     *
+     * @param  array<string,array{0:float,1:float}>  $limits
+     * @return array{0:float,1:float}
+     */
+    public static function legRoom(array $limits): array
+    {
+        $swing = isset($limits['thigh_n']) ? ((float) $limits['thigh_n'][1] - (float) $limits['thigh_n'][0]) / self::FITTED_LEGS['thigh'] : 1.0;
+        $bend = isset($limits['shin_n']) ? (float) $limits['shin_n'][1] / self::FITTED_LEGS['shin'] : 1.0;
+
+        return [min(1.0, max(0.0, $swing)), min(1.0, max(0.0, $bend))];
     }
 
     /**
@@ -263,7 +282,7 @@ final class AnimationPresets
      * @param  array<string,mixed>  $layer
      * @param  array<string,mixed>  $asset
      * @param  array<string,mixed>  $puppet
-     * @return array{bones:list<string>,facing:int,x0:float,y0:float,xPerHeight:float,yPerHeight:float}
+     * @return array{bones:list<string>,facing:int,limits:array<string,mixed>,x0:float,y0:float,xPerHeight:float,yPerHeight:float}
      */
     private static function sizeOf(array $layer, array $asset, array $puppet): array
     {
@@ -274,6 +293,8 @@ final class AnimationPresets
         return [
             'bones' => array_values(array_filter(array_column((array) $puppet['bones'], 'name'), 'is_string')),
             'facing' => ($puppet['facing'] ?? 1) < 0 ? -1 : 1,
+            'limits' => collect((array) $puppet['bones'])->filter(fn ($b) => is_array($b['limit'] ?? null) && is_string($b['name'] ?? null))
+                ->mapWithKeys(fn ($b) => [$b['name'] => $b['limit']])->all(),
             'x0' => (float) ($layer['x'] ?? 0.5),
             'y0' => (float) ($layer['y'] ?? 0),
             'xPerHeight' => $wide > 0 ? $height / $wide : 0.0,

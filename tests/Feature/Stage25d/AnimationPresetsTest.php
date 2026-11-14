@@ -84,6 +84,15 @@ class AnimationPresetsTest extends TestCase
         $this->assertFalse(collect(AnimationPresets::expand($still, ['bones' => ['head'], 'xPerHeight' => 1.0]))->contains(fn ($k) => isset($k['x'])));
     }
 
+    public function test_a_robed_figure_travels_and_sinks_only_as_far_as_its_legs_carry_it(): void
+    {
+        $this->assertEqualsWithDelta([12 / 45, 8 / 120], AnimationPresets::legRoom(['thigh_n' => [-6, 6], 'shin_n' => [0, 8]]), 1e-9);
+        $fixture = json_decode((string) file_get_contents(base_path('tests/Fixtures/animations/expand.json')), true);
+        $full = AnimationPresets::expand($fixture['clip'], $fixture['options']);
+        $robed = AnimationPresets::expand($fixture['clip'], [...$fixture['options'], 'limits' => ['thigh_n' => [-6, 6], 'shin_n' => [0, 8]]]);
+        $this->assertEqualsWithDelta(abs(end($full)['x'] - 0.6) * 12 / 45, abs(end($robed)['x'] - 0.6), 0.002);
+    }
+
     public function test_a_move_near_the_end_of_the_scene_is_cut_there(): void
     {
         Storage::fake('public');

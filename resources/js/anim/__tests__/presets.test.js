@@ -1,12 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import catalogue from '../../../animations/presets.json'
-import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip } from '../presets.js'
+import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom } from '../presets.js'
 
 
 describe('expandClip', () => {
   it('lays a clip out in scene seconds, the same as the server (shared fixture)', () => {
     expect(expandClip(fixture.clip, fixture.options)).toEqual(fixture.expected)
+  })
+  it('a figure whose legs are held to a shuffle (a long robe) travels and sinks only as far as its legs carry it', () => {
+    const robe = { thigh_n: [-6, 6], shin_n: [0, 8] }
+    expect(legRoom(robe)).toEqual({ travel: 12 / 45, sink: 8 / 120 })
+    expect(legRoom({ thigh_n: [-25, 20], shin_n: [0, 120] })).toEqual({ travel: 1, sink: 1 })
+    const full = expandClip(fixture.clip, fixture.options)
+    const robed = expandClip(fixture.clip, { ...fixture.options, limits: robe })
+    expect(Math.abs(robed.at(-1).x - 0.6)).toBeCloseTo(Math.abs(full.at(-1).x - 0.6) * 12 / 45, 3)
   })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'bone:tail' in k)).toBe(false)

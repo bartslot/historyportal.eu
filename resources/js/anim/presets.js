@@ -20,6 +20,20 @@ const BONE = 'bone:'
 export const MOVE_MIN = 0.01
 /** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
 export const TRAVEL_CYCLES = 3
+/** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend. */
+export const FITTED_LEGS = { thigh: 45, shin: 120 }
+
+/**
+ * How much of a clip's root movement a figure's legs can carry: a long robe holds the legs to a shuffle (thigh +-6,
+ * knee 0..8, the Character tab's robeLimits), so a walk covers less ground and a crouch sinks less, or the feet slide
+ * and the hem goes into the floor. `limits`: the figure's bone limits by name. 1 and 1 for a figure with the full room.
+ */
+export function legRoom (limits = {}) {
+  const swing = limits.thigh_n ? (limits.thigh_n[1] - limits.thigh_n[0]) / FITTED_LEGS.thigh : 1
+  const bend = limits.shin_n ? limits.shin_n[1] / FITTED_LEGS.shin : 1
+  return { travel: Math.min(1, Math.max(0, swing)), sink: Math.min(1, Math.max(0, bend)) }
+}
+
 /** The face a figure shows when nothing says otherwise (the Character tab's kits: the rest head). */
 export const REST_FACE = 'calm'
 
@@ -36,7 +50,8 @@ export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
  * track); `facing` -1 mirrors it for a figure looking left; `x0`/`y0` where the figure stands at `start`;
  * `xPerHeight` the layer's x for one body height (its height over the view's width there), `yPerHeight` metres.
  */
-export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0 } = {}) {
+export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {} } = {}) {
+  const room = legRoom(limits)
   const { cycles, cycle } = clipSpan(clip, { length, speed })
   const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > MOVE_MIN) || Math.abs(clip.travel ?? 0) > 1e-6
   const bobs = clip.keys.some((k) => Math.abs(k.bob ?? 0) > 1e-6)
@@ -50,8 +65,8 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       for (const [field, deg] of Object.entries(k)) {
         if (field.startsWith(BONE) && has.has(field.slice(BONE.length))) key[field] = round3(deg * facing)
       }
-      if (moves) key.x = round3(x0 + facing * (c * (clip.travel ?? 0) + (k.dx ?? 0)) * xPerHeight)
-      if (bobs) key.y = round3(y0 + (k.bob ?? 0) * yPerHeight)
+      if (moves) key.x = round3(x0 + facing * (c * (clip.travel ?? 0) + (k.dx ?? 0)) * room.travel * xPerHeight)
+      if (bobs) key.y = round3(y0 + (k.bob ?? 0) * (k.bob < 0 ? room.sink : 1) * yPerHeight)   // a jump's lift stays
       if (k.face && k.face !== face) key.face = face = k.face   // a face steps: only where it changes
       out.push(key)
     })
