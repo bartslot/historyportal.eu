@@ -31,6 +31,7 @@ SRC, OUT = Path(sys.argv[1]), Path(sys.argv[3])
 REPO = Path(__file__).resolve().parents[2]   # this repo: aquarel.py and the wash texture (a 4th argument is ignored)
 sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
+FLAT_PAINT = os.environ.get('PAINT') == 'flat'   # flat colour + ink: the stage shader shades and washes it (rigs)
 from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
 MAP = find(Path(sys.argv[2]))                     # a part map written as .webp, or an older .png
 
@@ -430,53 +431,58 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     feat = lambda n: max(3.0, n * w / 1024)                           # noise features across the picture, kept at figure size
     edge_noise = aquarel.noise_at((RH, RW), feat(40), 5) - 0.5
     kind_up = {n: rsvg(svg_text(palette, box, with_lines=False, only_kind=n))[..., 3] / 255 for n in names}
-    disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
-    big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
-    CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
-    shades = {}
-    for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
-        total = np.zeros((RH, RW), np.float32)
-        for grp in SHADE_GROUPS:
-            mk = up(np.isin(part_all, grp)) * kind_up[kn]
-            if mk.sum() >= 50:
-                mk = np.maximum(mk, ndimage.binary_fill_holes(mk > 0.5).astype(np.float32))   # an eye is not a hole in the face
-                total = np.maximum(total, np.clip(mk - shift(mk, dpx, -dpx * 0.35), 0, 1))
-        over = np.zeros((RH, RW), np.float32)
-        for c in CASTERS[kn]:
-            over = np.maximum(over, big[c])
-        cast = shift(over, -4, 14 if kn == 'skin' else 10) * kind_up[kn] * (1 - over)
-        s = ndimage.gaussian_filter(np.maximum(total, cast * 0.9), 2.2 * scale) + edge_noise * 0.45
-        shades[kn] = np.clip((s - 0.42) * 6, 0, 1) * kind_up[kn]
+    if FLAT_PAINT:   # the stage shader paints the shading and the watercolour (plan 11): flat colour + ink only
+        f = rsvg(svg_text(palette, box, with_lines=False))
+        sil = f[..., 3] / 255
+        painted = f[..., :3] * sil[..., None] + np.array(palette['tunic'], np.float32) * (1 - sil[..., None])
+    else:
+        disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
+        big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
+        CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
+        shades = {}
+        for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
+            total = np.zeros((RH, RW), np.float32)
+            for grp in SHADE_GROUPS:
+                mk = up(np.isin(part_all, grp)) * kind_up[kn]
+                if mk.sum() >= 50:
+                    mk = np.maximum(mk, ndimage.binary_fill_holes(mk > 0.5).astype(np.float32))   # an eye is not a hole in the face
+                    total = np.maximum(total, np.clip(mk - shift(mk, dpx, -dpx * 0.35), 0, 1))
+            over = np.zeros((RH, RW), np.float32)
+            for c in CASTERS[kn]:
+                over = np.maximum(over, big[c])
+            cast = shift(over, -4, 14 if kn == 'skin' else 10) * kind_up[kn] * (1 - over)
+            s = ndimage.gaussian_filter(np.maximum(total, cast * 0.9), 2.2 * scale) + edge_noise * 0.45
+            shades[kn] = np.clip((s - 0.42) * 6, 0, 1) * kind_up[kn]
 
-    f = rsvg(svg_text(palette, box, with_lines=False))
-    sil = f[..., 3] / 255
-    field = f[..., :3] * sil[..., None] + np.array(palette['tunic'], np.float32) * (1 - sil[..., None])
-    flat = field.copy()
-    for kn, sm in shades.items():
-        field = field * (1 - sm[..., None]) + np.array(palette[kn], np.float32) * np.array(SHADE[kn], np.float32) * sm[..., None]
-    wash = Image.open(REPO / 'resources/map-chart/wash-land-1.webp').convert('L')
-    wash = np.asarray(wash.resize((max(8, int(wash.width * scale / 2)), max(8, int(wash.height * scale / 2))), Image.LANCZOS)).astype(np.float32)
-    wash = np.concatenate([np.concatenate([wash, wash[:, ::-1]], 1), np.concatenate([wash[::-1], wash[::-1, ::-1]], 1)], 0)
-    g = np.tile(wash, (RH // wash.shape[0] + 1, RW // wash.shape[1] + 1))[:RH, :RW]
-    g = 1 + (g / g.mean() - 1) * 0.6
-    tex = np.stack([g ** 0.8, g, g ** 1.3], -1) * 128
-    recipe = dict(FIGURE, ref=w, bloom_scale=feat(FIGURE['bloom_scale']))
-    painted = aquarel.paint(field, recipe, seed=seed, texture=tex, paper=(252, 247, 236))
-    # pigment pools where one wash meets the next (aquarel step 2), never in the middle of one flat colour: its bands can
-    # fall inside a flat fill and draw stray contour lines there, so pooling is kept only near a real change of colour
-    calm = aquarel.paint(field, dict(recipe, edge=0), seed=seed, texture=tex, paper=(252, 247, 236))
-    meet = np.abs(np.diff(field, axis=0, prepend=field[:1])).sum(-1) + np.abs(np.diff(field, axis=1, prepend=field[:, :1])).sum(-1)
-    near = ndimage.gaussian_filter(ndimage.maximum_filter((meet > 6).astype(np.float32), int(7 * scale)), 2 * scale)
-    near = np.clip(near * 2, 0, 1)[..., None]
-    painted = painted * near + calm * (1 - near)
-    # no blooms on the face: a round pale bloom on a cheek reads as rouge
-    nob = aquarel.paint(field, dict(recipe, edge=0, bloom_share=0), seed=seed, texture=tex, paper=(252, 247, 236))
-    fc = np.clip(ndimage.gaussian_filter(up(part_all == HEAD) * kind_up['skin'], 1.5 * scale), 0, 1)[..., None]
-    painted = painted * (1 - fc) + nob * fc
-    # the eyes stay drawn, not washed: white, iris and glint keep their flat colour
-    eyes = kind_up['white']
-    crisp = np.clip(ndimage.gaussian_filter(ndimage.maximum_filter(eyes, max(1, int(1.5 * scale))), 0.5 * scale), 0, 1)[..., None] * (shades['skin'] < 2)[..., None]
-    painted = painted * (1 - crisp) + flat * crisp
+        f = rsvg(svg_text(palette, box, with_lines=False))
+        sil = f[..., 3] / 255
+        field = f[..., :3] * sil[..., None] + np.array(palette['tunic'], np.float32) * (1 - sil[..., None])
+        flat = field.copy()
+        for kn, sm in shades.items():
+            field = field * (1 - sm[..., None]) + np.array(palette[kn], np.float32) * np.array(SHADE[kn], np.float32) * sm[..., None]
+        wash = Image.open(REPO / 'resources/map-chart/wash-land-1.webp').convert('L')
+        wash = np.asarray(wash.resize((max(8, int(wash.width * scale / 2)), max(8, int(wash.height * scale / 2))), Image.LANCZOS)).astype(np.float32)
+        wash = np.concatenate([np.concatenate([wash, wash[:, ::-1]], 1), np.concatenate([wash[::-1], wash[::-1, ::-1]], 1)], 0)
+        g = np.tile(wash, (RH // wash.shape[0] + 1, RW // wash.shape[1] + 1))[:RH, :RW]
+        g = 1 + (g / g.mean() - 1) * 0.6
+        tex = np.stack([g ** 0.8, g, g ** 1.3], -1) * 128
+        recipe = dict(FIGURE, ref=w, bloom_scale=feat(FIGURE['bloom_scale']))
+        painted = aquarel.paint(field, recipe, seed=seed, texture=tex, paper=(252, 247, 236))
+        # pigment pools where one wash meets the next (aquarel step 2), never in the middle of one flat colour: its bands can
+        # fall inside a flat fill and draw stray contour lines there, so pooling is kept only near a real change of colour
+        calm = aquarel.paint(field, dict(recipe, edge=0), seed=seed, texture=tex, paper=(252, 247, 236))
+        meet = np.abs(np.diff(field, axis=0, prepend=field[:1])).sum(-1) + np.abs(np.diff(field, axis=1, prepend=field[:, :1])).sum(-1)
+        near = ndimage.gaussian_filter(ndimage.maximum_filter((meet > 6).astype(np.float32), int(7 * scale)), 2 * scale)
+        near = np.clip(near * 2, 0, 1)[..., None]
+        painted = painted * near + calm * (1 - near)
+        # no blooms on the face: a round pale bloom on a cheek reads as rouge
+        nob = aquarel.paint(field, dict(recipe, edge=0, bloom_share=0), seed=seed, texture=tex, paper=(252, 247, 236))
+        fc = np.clip(ndimage.gaussian_filter(up(part_all == HEAD) * kind_up['skin'], 1.5 * scale), 0, 1)[..., None]
+        painted = painted * (1 - fc) + nob * fc
+        # the eyes stay drawn, not washed: white, iris and glint keep their flat colour
+        eyes = kind_up['white']
+        crisp = np.clip(ndimage.gaussian_filter(ndimage.maximum_filter(eyes, max(1, int(1.5 * scale))), 0.5 * scale), 0, 1)[..., None] * (shades['skin'] < 2)[..., None]
+        painted = painted * (1 - crisp) + flat * crisp
 
     # the pen (InkDrawEngine._makeStroke / _ribbon)
     rs = [11]

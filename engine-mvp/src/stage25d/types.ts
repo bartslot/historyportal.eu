@@ -83,6 +83,9 @@ export interface Puppet {
     reach?: number }[]
   /** quad: top-left, top-right, bottom-right, bottom-left; uv: u0, v0, u1, v1 on the atlas */
   parts: { bone: string; quad: [number, number][]; uv: [number, number, number, number] }[]
+  /** 'flat': the atlas is flat colour + ink; the stage shader shades and washes it (layer.ts AQUAREL, look.ts aquarelOf).
+   *  Absent: the shading and the watercolour are painted into the atlas, drawn as they are. */
+  paint?: 'flat'
 }
 
 /** A painted map of a picture's body parts. `parts`: back to front, a colour [r, g, b] and its part (bones.ts bodyParts). */

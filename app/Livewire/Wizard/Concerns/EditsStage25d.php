@@ -267,6 +267,7 @@ trait EditsStage25d
         'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
         'groundWash' => [0, 1], 'groundGrain' => [0.5, 3], 'grass' => [0, 1], 'grassSway' => [0, 1], 'horizonBushes' => [0, 1],
         'worldReveal' => [0, 20], 'worldPaint' => [0, 1],
+        'figureWash' => [0, 1], 'figureShade' => [0, 1], 'figurePigment' => [1, 8],
     ];
 
     /**

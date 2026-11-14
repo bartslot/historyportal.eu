@@ -21,14 +21,14 @@ import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import type { LinesMesh } from '@babylonjs/core/Meshes/linesMesh'
 import type { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { aliveOf, aquarelOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
-import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
+import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, regionsTexture, restDrawing, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
@@ -259,7 +259,12 @@ export class Stage {
       if (token !== this.buildToken) return
       // what stands on the floor throws its own shadow (layer.ts makeCast): not far strips, ground strips, decals or sky props
       const casts = STANDING.includes(layer.depth) && !asset.tileable_x && !liesFlat(layer, asset) && !isGroundStrip(asset) && asset.layer !== 'bg'
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts })
+      // a figure painted flat (plan 11): the shader paints its watercolour and its shading
+      const flatFigure = rest && puppet?.paint === 'flat'
+      const wash = flatFigure ? figureWash(this.scene) : undefined
+      const regions = flatFigure ? await regionsTexture(layer.src ? { ...puppet!, atlas: layer.src } : puppet!, this.scene).catch(() => undefined) : undefined
+      if (token !== this.buildToken) return
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, regions })
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -480,6 +485,11 @@ export class Stage {
 
   /** (Re)strew the ground when the scene or the look's Gras / Horizon changed: pure plan (strew.ts), one mesh set per
    *  picture file (scatter-gl.ts). */
+  /** A figure painted flat stands in the scene (plan 11): the panel offers its watercolour and shading sliders. */
+  get hasFlatFigure(): boolean {
+    return this.built.some((b) => puppetOf(b.asset, b.layer)?.paint === 'flat')
+  }
+
   /** What can grow on this scene's ground: its tags decide (scatter.ts), so a deck or a stone floor has neither. */
   get strewable(): { grass: boolean; bushes: boolean } {
     const src = this.strewSrc
@@ -846,6 +856,8 @@ export class Stage {
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
+      const drawn = puppetOf(b.asset, b.layer)
+      if (drawn?.paint === 'flat') b.handle.setAquarel(aquarelOf(this.look), [drawn.width, drawn.height])
       b.stain?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.stain?.setTint(lit.shadow)

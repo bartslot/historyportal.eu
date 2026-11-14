@@ -687,6 +687,15 @@ def puppet_json(layers, joints, facing, own, size, atlas_url):
     return atlas, {'atlas': atlas_url, 'width': size[1], 'height': size[0], 'facing': facing, 'bones': bones, 'parts': quads}
 
 
+def painted_flat(folder):
+    """A sheet folder flat_rig_sheet.py painted flat (its flat-sheet.json says so)."""
+    path = os.path.join(folder, 'flat-sheet.json')
+    if not os.path.exists(path):
+        return False
+    with open(path) as f:
+        return json.load(f).get('paint') == 'flat'
+
+
 def run(folder, out_dir, name, atlas_url):
     keyed, labels, labels_b = load(folder)
     own = stray_pieces(split_belt(fringe_slivers(owners(labels, labels_b), keyed)))
@@ -700,6 +709,8 @@ def run(folder, out_dir, name, atlas_url):
     differ = int(((np.abs(drawn.astype(int) - rest).sum(-1) > 0) & visible).sum())
     holes = {bone: holes_bending(layers, joints, bone, facing) for bone in LIMIT}
     atlas, puppet = puppet_json(layers, joints, facing, own, rest.shape[:2], atlas_url)
+    if painted_flat(folder):
+        puppet['paint'] = 'flat'   # flat colour + ink: the stage shader shades and washes it (plan 11, layer.ts AQUAREL)
     os.makedirs(out_dir, exist_ok=True)
     save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # img_io.WEBP (q70, alpha lossless): 1/10 of the PNG
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:

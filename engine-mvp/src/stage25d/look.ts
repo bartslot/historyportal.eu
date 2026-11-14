@@ -36,6 +36,10 @@ export const STAGE_SHEET: Record<string, number> = {
   worldReveal: 7,
   // ...and is painted in our style (flat colour, calmer, its far edge left to the paper); 0 = as captured
   worldPaint: 1,
+  // a figure painted flat (puppet.paint 'flat', plan 11): the stage paints its watercolour and its shading.
+  // figurePigment 1..8: how far the shade's pigment moves from the base colour (Bart 11-14: "8 options with small to big
+  // pigment differences")
+  figureWash: 1, figureShade: 1, figurePigment: 4,
 }
 export const INK_FLOOR = 0.65
 /** The one light every picture is lit by: warm on the sun's side, cool in the shade. */
@@ -61,6 +65,39 @@ export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | '
     footTint,
   }
 }
+/** A flat figure's watercolour and shading in the shader (layer.ts AQUAREL). */
+export interface Aquarel {
+  /** the wash's grain, pooling and blooms, 0..1 */
+  wash: number
+  /** how much of the shading there is, 0..1 */
+  shade: number
+  /** the shade's pigment: darker by `depth`, times `tint` per channel, saturation up by `sat`, granulating by `gran` */
+  depth: number
+  tint: [number, number, number]
+  sat: number
+  gran: number
+  /** drawing px from a colour's edge that its shade reaches (kit_render shades 12-18 px of the sheet and blurs it; 16 here
+   *  read as a line along the edge, not a wash) */
+  reach: number
+}
+export const PIGMENT_STEPS = 8
+export const SHADE_REACH_PX = 30
+/** The cool shadow pigment a big step glazes toward (ultramarine-ish), per channel. */
+const SHADOW_PIGMENT: [number, number, number] = [0.8, 0.86, 1.18]
+/** A step 1..8 of pigment difference: 1 a little darker in the same hue, 8 much darker, cool, richer and granulating. */
+export function pigmentOf(step: number): Omit<Aquarel, 'wash' | 'shade' | 'reach'> {
+  const t = (Math.max(1, Math.min(PIGMENT_STEPS, Math.round(step))) - 1) / (PIGMENT_STEPS - 1)
+  const hue = 0.05 + 0.6 * t ** 1.3
+  return {
+    depth: 0.05 + 0.25 * t,
+    tint: SHADOW_PIGMENT.map((c) => 1 + (c - 1) * hue) as [number, number, number],
+    sat: -0.05 + 0.4 * t,
+    gran: 0.15 + 0.85 * t,
+  }
+}
+export const aquarelOf = (look: Record<string, unknown>): Aquarel =>
+  ({ wash: num(look, 'figureWash'), shade: num(look, 'figureShade'), reach: SHADE_REACH_PX, ...pigmentOf(num(look, 'figurePigment')) })
+
 /** The warm raw-sienna wash the whole picture is painted over (sheet.ts even part, PAPER_GLSL patches). */
 export const WASH_COLOUR: [number, number, number] = [0.93, 0.86, 0.74]
 export interface Paper { paper: number; grain: number; patches: number; wash: number; washColour: [number, number, number] }
@@ -73,6 +110,7 @@ export const lineContrast = (l: { fade: number; haze: number }) => (1 - 0.75 * l
 /** Slider ranges for the panel (same order as STAGE_SHEET). */
 const RANGES: Record<string, [number, number, number]> = {
   groundScale: [0.5, 5, 0.1], nearFar: [4, 40, 0.5], bandHeight: [0.02, 0.6, 0.01], bandFade: [0, 3, 0.05], housePitch: [-6, 12, 0.5], lineInk: [0.05, 0.6, 0.01], groundGrain: [0.5, 3, 0.05], worldReveal: [0, 20, 0.5],
+  figurePigment: [1, 8, 1],
 }
 export const LOOK_RANGE: Record<string, [number, number, number]> = Object.fromEntries(Object.keys(STAGE_SHEET).map((k) => [
   k, RANGES[k] ?? (k.startsWith('lineThin') ? [0, 2, 0.05] : [0, 1, 0.01]),

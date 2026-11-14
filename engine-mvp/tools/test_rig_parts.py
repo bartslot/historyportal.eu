@@ -142,3 +142,11 @@ def test_an_ankle_bends_the_whole_calf_across_its_band_not_only_the_ankle():
     band = rp.band_of('foot_n', joints)
     assert band == pytest.approx(40.0 * rp.ANKLE_BAND)
     assert rp.reach_of('foot_n', joints, band) >= 40.0   # a full knee's width either side of the ankle
+
+
+def test_a_sheet_painted_flat_is_marked_flat_for_the_stage(tmp_path):
+    (tmp_path / 'flat-sheet.json').write_text('{"paint": "flat"}')
+    assert rp.painted_flat(str(tmp_path))
+    (tmp_path / 'flat-sheet.json').write_text('{"paint": "baked"}')
+    assert not rp.painted_flat(str(tmp_path))
+    assert not rp.painted_flat(str(tmp_path / 'nowhere'))
