@@ -23,3 +23,31 @@ describe('a flat figure\'s colour regions', () => {
     expect(at(0)).toEqual([250, 230, 180, 255])
   })
 })
+
+describe('what is a region on a face', () => {
+  /** A 60 x 60 skin square with a small eye (white round a thick dark iris) and a thin line across it. */
+  function face(): Uint8ClampedArray {
+    const d = new Uint8ClampedArray(60 * 60 * 4)
+    for (let i = 0; i < 3600; i++) d.set([250, 190, 120, 255], i * 4)
+    const put = (x: number, y: number, c: number[]) => d.set(c, (y * 60 + x) * 4)
+    for (let y = 20; y < 30; y++) for (let x = 15; x < 35; x++) put(x, y, [252, 250, 245, 255])   // the eye's white
+    for (let y = 21; y < 29; y++) for (let x = 21; x < 29; x++) put(x, y, [70, 40, 20, 255])       // a thick dark iris
+    for (let x = 5; x < 55; x++) put(x, 45, [25, 20, 16, 255])                                      // a thin line
+    return d
+  }
+
+  it('a small eye and its thick iris melt into the skin; a thin line takes the skin beside it', () => {
+    const out = flatRegions(face(), 60, 60)
+    const at = (x: number, y: number) => [...out.slice((y * 60 + x) * 4, (y * 60 + x) * 4 + 3)]
+    expect(at(25, 25)).toEqual([250, 190, 120])   // the iris: no region of its own
+    expect(at(17, 22)).toEqual([250, 190, 120])   // the white: too small to be one
+    expect(at(30, 45)).toEqual([250, 190, 120])   // the line
+  })
+
+  it('dark that is thicker than a line and big is a region of its own (hair)', () => {
+    const d = new Uint8ClampedArray(60 * 60 * 4)
+    for (let i = 0; i < 3600; i++) d.set(i % 60 < 30 ? [60, 35, 20, 255] : [250, 190, 120, 255], i * 4)
+    const out = flatRegions(d, 60, 60)
+    expect([...out.slice((30 * 60 + 10) * 4, (30 * 60 + 10) * 4 + 3)]).toEqual([60, 35, 20])
+  })
+})

@@ -13,6 +13,17 @@ export async function muted(page: Page) {
   })
 }
 
+/** The page's clock can be stopped (window.__freeze()): breathing and camera drift hold still, so two captures of the same
+ *  look compare (unfrozen, the same build differed in 7 % of px). Install before the page loads. */
+export async function freezable(page: Page) {
+  await page.addInitScript(() => {
+    const real = performance.now.bind(performance)
+    let at: number | null = null
+    ;(window as any).__freeze = () => { at = real() }
+    performance.now = () => at ?? real()
+  })
+}
+
 /** Wait until the stage is built and has its layers. */
 export const stageReady = (page: Page, timeout = 60_000) =>
   page.waitForFunction(() => (window as any).BABYLON?.Engine?.LastCreatedScene?.isReady?.() && (window as any).__stage25d?.items?.().length, null, { timeout })

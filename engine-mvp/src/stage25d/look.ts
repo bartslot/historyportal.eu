@@ -87,12 +87,14 @@ const SHADOW_PIGMENT: [number, number, number] = [0.8, 0.86, 1.18]
 /** A step 1..8 of pigment difference: 1 a little darker in the same hue, 8 much darker, cool, richer and granulating. */
 export function pigmentOf(step: number): Omit<Aquarel, 'wash' | 'shade' | 'reach'> {
   const t = (Math.max(1, Math.min(PIGMENT_STEPS, Math.round(step))) - 1) / (PIGMENT_STEPS - 1)
-  const hue = 0.05 + 0.6 * t ** 1.3
+  // spread so neighbouring steps tell apart at stage size (at 0.05..0.30 dark they barely did, fresh tester 11-14)
+  // granulation stays moderate: at 1.2 its noise lightened as many px as it darkened and step 8 read weaker than 7
+  const hue = 0.04 + 0.7 * t ** 1.2
   return {
-    depth: 0.05 + 0.25 * t,
+    depth: 0.04 + 0.4 * t,
     tint: SHADOW_PIGMENT.map((c) => 1 + (c - 1) * hue) as [number, number, number],
-    sat: -0.05 + 0.4 * t,
-    gran: 0.15 + 0.85 * t,
+    sat: -0.05 + 0.3 * t,
+    gran: 0.15 + 0.45 * t,
   }
 }
 export const aquarelOf = (look: Record<string, unknown>): Aquarel =>

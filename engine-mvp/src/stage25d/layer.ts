@@ -161,54 +161,62 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     vec2 q = vRest + d * drawPx;
     return (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) ? vec4(0.0) : texture2D(regions, q);
   }
-  // another colour region d drawing px away: air, or a flat colour unlike own. Read off the regions picture, where a
-  // line is the colour beside it: the folds inside a tunic and the soft rim of every line are no border (they striped it)
+  // another colour region d drawing px away: air, or a flat colour unlike own. Read off the regions picture, where a line
+  // is the colour beside it and an eye or a speck is the region round it: no stripes along folds or across a face
   float otherAt(vec2 d, vec3 own) {
     vec4 n = regionAt(d);
     if (n.a < 0.5) return 1.0;
-    vec3 ns = n.rgb / n.a;
-    if (lum(ns) > 0.9 && max(ns.r, max(ns.g, ns.b)) - min(ns.r, min(ns.g, ns.b)) < 0.08) return 0.0;   // an eye's white
-    return smoothstep(0.06, 0.12, length(ns - own));
+    return smoothstep(0.1, 0.16, length(n.rgb / n.a - own));   // skin to tunic is 0.24, a faint trace of a line 0.1
   }
-  // s: the lit colour, lit: the time of day's light already in it (the rest drawing is unlit, so regions are compared
-  // unlit: compared lit, every neighbour differed and the whole figure took the shade)
+  #define SHADE_TAPS 12
+  #define MIN_BORDER_PX 10.0                 // the other colour must run on this far to cast: a rope or a hem band does not
+  // s: the lit colour, lit: the time of day's light in it. Everything is worked out unlit, and with no early return: the
+  // derivatives below and the textures' mip levels need every px of a quad to run the same code (specks at the folds)
   vec3 aquarel(vec3 s, vec3 lit) {
-    if (inkOf(s) > 0.5) return s;                       // the ink stays as drawn
+    vec3 unlit = s / max(lit, vec3(0.001));              // the drawing's own colour
+    float ink = inkOf(unlit);                            // the ink stays as drawn (unlit: at night skin is no line)
     vec2 dp = vRest / drawPx;                           // drawing px
+    // toward the sun in this part's own drawing px: the sun is on the screen (sunSide, a little above), and a part may be
+    // turned (a raised arm), so the screen direction is carried into the drawing by the derivatives of vRest
+    vec2 toSun = (dFdx(vRest) * sunSide + dFdy(vRest) * 0.35) / drawPx;
+    toSun = length(toSun) > 1e-6 ? normalize(toSun) : vec2(0.0, -1.0);
     vec4 r0 = regionAt(vec2(0.0));
-    vec3 own = r0.a > 0.004 ? r0.rgb / r0.a : s / max(lit, vec3(0.001));   // the region this px belongs to, unlit
+    vec3 own = r0.a > 0.004 ? r0.rgb / r0.a : unlit;    // the region this px belongs to
+    float feature = smoothstep(0.1, 0.2, length(unlit - own));   // an eye, a mouth: drawn as it is, never glazed
     float l = lum(s);
+    vec3 c = s;
     float shade = 0.0;
     if (figureShade > 0.0) {
-      // shading: each colour region on its side away from the sun (sunSide, the time of day's light), fading inward
-      // a border counts where two taps in a row see the other colour (a speck of another colour is no region)
-      vec2 toSun = normalize(vec2(sunSide, -0.35));
-      float before = otherAt(-toSun * shadeReach / 7.0, own);
-      for (int k = 2; k <= 8; k++) {
-        float f = float(k) / 7.0;
-        float here = otherAt(-toSun * shadeReach * f, own);
-        shade = max(shade, min(before, here) * (1.2 - 0.8 * f));
-        before = here;
+      // shading: each colour region on its side away from the sun, fading inward over shadeReach
+      float stepPx = shadeReach / float(SHADE_TAPS);
+      float run = 0.0, start = 0.0;
+      // each px taps at its own fraction of a step: 12 fixed distances drew the band's edge in stair steps
+      float jitter = fbm(dp / 2.0 + 11.0);
+      for (int k = 1; k <= SHADE_TAPS; k++) {
+        float f = (float(k) - 1.0 + jitter) / float(SHADE_TAPS);
+        float o = otherAt(-toSun * shadeReach * f, own);
+        if (o > 0.5) { if (run == 0.0) start = f; run += 1.0; } else run = 0.0;
+        if (run * stepPx >= MIN_BORDER_PX) shade = max(shade, 1.2 - 0.8 * start);
       }
-      shade = smoothstep(0.12, 0.8, shade + 0.3 * (fbm(dp / 18.0 + 3.0) - 0.5)) * figureShade;   // a wet, ragged, soft edge
+      shade = smoothstep(0.12, 0.8, shade + 0.3 * (fbm(dp / 18.0 + 3.0) - 0.5)) * figureShade * (1.0 - feature);   // a wet, ragged, soft edge
       // a glaze of the region's own pigment: darker, toward the shadow pigment, richer, settling in the tooth
       vec3 sh = s * (1.0 - shadeDepth) * shadeTint;
       sh = mix(vec3(lum(sh)), sh, 1.0 + shadeSat);
       sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 1.3 + 41.0) - 0.5);
-      s = mix(s, clamp(sh, 0.0, 1.0), shade);
+      c = mix(c, clamp(sh, 0.0, 1.0), shade);
     }
     if (figureWash > 0.0) {
       // the wash's grain: lighter and darker where the pigment lay thinner and thicker, blue settling most
       float g = texture2D(washTex, dp / WASH_TILE_PX).r;
-      s *= vec3(1.0) + figureWash * 1.2 * (g - 0.5) * vec3(0.8, 1.0, 1.3) * (1.0 - 0.4 * l);
+      c *= vec3(1.0) + figureWash * 1.2 * (g - 0.5) * vec3(0.8, 1.0, 1.3) * (1.0 - 0.4 * l);
       // pigment pools along the shade's wet edge, the way a wash dries darker at its rim
-      s *= 1.0 - 0.12 * figureWash * shade * (1.0 - shade) * 4.0;
+      c *= 1.0 - 0.12 * figureWash * shade * (1.0 - shade) * 4.0;
       // a few soft blooms: paler where water ran back in, with a faint darker rim
-      float b = smoothstep(0.66, 0.74, fbm(dp / 60.0 + 9.0));
-      s = mix(s, s * 1.05 + 0.02, 0.6 * figureWash * b);
-      s *= 1.0 - 0.06 * figureWash * b * (1.0 - b) * 4.0;
+      float b = smoothstep(0.66, 0.74, fbm(dp / 60.0 + 9.0)) * (1.0 - feature);
+      c = mix(c, c * 1.05 + 0.02, 0.6 * figureWash * b);
+      c *= 1.0 - 0.06 * figureWash * b * (1.0 - b) * 4.0;
     }
-    return clamp(s, 0.0, 1.0);
+    return mix(clamp(c, 0.0, 1.0), s, smoothstep(0.3, 0.6, ink));
   }
   #endif
   #ifdef BLINK
@@ -618,7 +626,7 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
         g.drawImage(img, u0 * aw, v0 * ah, (u1 - u0) * aw, (v1 - v0) * ah, x0, y0, x1 - x0, y1 - y0)
       }
       const data = g.getImageData(0, 0, c.width, c.height).data
-      drawn.set(key, { data, width: c.width, height: c.height })
+      drawn.set(key, { data: new Uint8ClampedArray(data), width: c.width, height: c.height })   // straight: premultiplying changes data in place
       resolve(premultipliedTexture(data, c.width, c.height, scene))
     }
     img.src = puppet.atlas
@@ -635,50 +643,111 @@ const drawn = new Map<string, { data: Uint8ClampedArray; width: number; height: 
 const LINE_CORE_LUM = 0.3
 /** A line's soft rim: this much darker than its lightest neighbour (a rim fades from the line into the fill). */
 const LINE_RIM_STEP = 0.15
-/** Passes of filling a line px from a filled neighbour: lines are at most this many px wide. */
-const LINE_FILL_PASSES = 8
+/** Half the widest line, px: dark that is thicker (hair, an iris) is a fill, not a line (hair left unpainted otherwise). */
+const LINE_HALF_PX = 3
+/** Passes of filling a px from a filled neighbour: lines and small regions are at most this many px across. */
+const FILL_PASSES = 24
+/** A colour region smaller than this many px (an eye's white, an iris, a speck) takes the colour round it: a face is one
+ *  region, so its features cast no shade (they striped the face and turned the eyes blue, fresh tester 11-14). */
+const MIN_REGION_PX = 900
+/** Two neighbouring px are one region when their colours differ by no more than this (sum over r, g, b, 0..255). */
+const SAME_REGION = 36
+
+const lumAt = (d: Uint8ClampedArray, i: number) => (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255
+
+/** Erode (keep where the whole (2r+1) square is set) or dilate (set where any of it is) a mask, separably. */
+function squareFilter(mask: Uint8Array, width: number, height: number, r: number, erode: boolean): Uint8Array {
+  const pass = (src: Uint8Array, along: 'x' | 'y') => {
+    const out = new Uint8Array(src.length)
+    const [n, m] = along === 'x' ? [width, height] : [height, width]
+    const at = (line: number, k: number) => (along === 'x' ? line * width + k : k * width + line)
+    const sum = new Int32Array(n + 1)
+    for (let line = 0; line < m; line++) {
+      for (let k = 0; k < n; k++) sum[k + 1] = sum[k] + src[at(line, k)]
+      for (let k = 0; k < n; k++) {
+        const a = Math.max(0, k - r), b = Math.min(n, k + r + 1), set = sum[b] - sum[a]
+        out[at(line, k)] = erode ? (set === b - a && b - a === 2 * r + 1 ? 1 : 0) : (set > 0 ? 1 : 0)
+      }
+    }
+    return out
+  }
+  return pass(pass(mask, 'x'), 'y')
+}
+
+/** Fill every px of `hole` from a neighbour outside it, outward pass by pass (the nearest colour wins). */
+function fillFrom(out: Uint8ClampedArray, hole: Uint8Array, width: number, height: number): void {
+  for (let pass = 0; pass < FILL_PASSES; pass++) {
+    const done: number[] = []
+    for (let i = 0; i < width * height; i++) {
+      if (!hole[i]) continue
+      const x = i % width, y = (i / width) | 0
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const xx = x + dx, yy = y + dy
+        if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue
+        const j = yy * width + xx
+        if (hole[j] || out[j * 4 + 3] < 128) continue
+        out[i * 4] = out[j * 4]; out[i * 4 + 1] = out[j * 4 + 1]; out[i * 4 + 2] = out[j * 4 + 2]
+        done.push(i)
+        break
+      }
+    }
+    for (const i of done) hole[i] = 0
+    if (!done.length) break
+  }
+}
 
 /**
- * The colour regions of a drawing: every line px (and its soft rim) takes the colour of the fill beside it, so what is
- * left is flat colour areas meeting each other and the air. Pure, on straight RGBA; pixels with no alpha stay as they are.
+ * The colour regions of a drawing (straight RGBA): every line px and its soft rim take the colour of the fill beside it,
+ * dark that is thicker than a line stays a fill, and a region smaller than MIN_REGION_PX takes the colour round it. What
+ * is left is big flat colour areas meeting each other and the air. Pure; px with no alpha stay as they are.
  */
 export function flatRegions(src: Uint8ClampedArray, width: number, height: number): Uint8ClampedArray {
   const out = new Uint8ClampedArray(src)
-  const line = new Uint8Array(width * height)
-  const lum = new Float32Array(width * height)
-  for (let i = 0; i < width * height; i++) lum[i] = src[i * 4 + 3] < 128 ? -1 : (0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2]) / 255
+  const n = width * height
+  const dark = new Uint8Array(n)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x
-      if (lum[i] < 0) continue
-      let lightest = lum[i]
+      if (src[i * 4 + 3] < 128) continue
+      const l = lumAt(src, i)
+      let lightest = l
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
         const xx = x + dx, yy = y + dy
-        if (xx >= 0 && yy >= 0 && xx < width && yy < height) lightest = Math.max(lightest, lum[yy * width + xx])
+        if (xx >= 0 && yy >= 0 && xx < width && yy < height && src[(yy * width + xx) * 4 + 3] >= 128) lightest = Math.max(lightest, lumAt(src, yy * width + xx))
       }
-      if (lum[i] < LINE_CORE_LUM || lightest - lum[i] > LINE_RIM_STEP) line[i] = 1
+      if (l < LINE_CORE_LUM || lightest - l > LINE_RIM_STEP) dark[i] = 1
     }
   }
-  for (let pass = 0; pass < LINE_FILL_PASSES; pass++) {
-    const next: number[] = []
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const i = y * width + x
-        if (!line[i]) continue
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const xx = x + dx, yy = y + dy
-          if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue
-          const j = yy * width + xx
-          if (line[j] || out[j * 4 + 3] < 128) continue
-          out[i * 4] = out[j * 4]; out[i * 4 + 1] = out[j * 4 + 1]; out[i * 4 + 2] = out[j * 4 + 2]
-          next.push(i)
-          break
-        }
+  // dark thicker than a line (an opening by LINE_HALF_PX survives) is a fill: hair, an iris
+  const thick = squareFilter(squareFilter(dark, width, height, LINE_HALF_PX, true), width, height, LINE_HALF_PX + 1, false)
+  const line = new Uint8Array(n)
+  for (let i = 0; i < n; i++) line[i] = dark[i] && !thick[i] ? 1 : 0
+  fillFrom(out, line, width, height)
+  // small regions: flood each colour region, mark the small ones, fill them from round them
+  const seen = new Uint8Array(n), small = new Uint8Array(n), stack = new Int32Array(n)
+  for (let i0 = 0; i0 < n; i0++) {
+    if (seen[i0] || out[i0 * 4 + 3] < 128) continue
+    let top = 0, size = 0
+    const members: number[] = []
+    stack[top++] = i0; seen[i0] = 1
+    while (top) {
+      const i = stack[--top]
+      size++
+      if (size <= MIN_REGION_PX) members.push(i)
+      const x = i % width, y = (i / width) | 0
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const xx = x + dx, yy = y + dy
+        if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue
+        const j = yy * width + xx
+        if (seen[j] || out[j * 4 + 3] < 128) continue
+        if (Math.abs(out[i * 4] - out[j * 4]) + Math.abs(out[i * 4 + 1] - out[j * 4 + 1]) + Math.abs(out[i * 4 + 2] - out[j * 4 + 2]) > SAME_REGION) continue
+        seen[j] = 1
+        stack[top++] = j
       }
     }
-    for (const i of next) line[i] = 0
-    if (!next.length) break
+    if (size < MIN_REGION_PX) for (const i of members) small[i] = 1
   }
+  fillFrom(out, small, width, height)
   return out
 }
 
@@ -690,6 +759,7 @@ export async function regionsTexture(puppet: Puppet, scene: Scene): Promise<RawT
   const hit = own.get(key)
   if (hit) return hit
   const d = drawn.get(`rest:${puppet.atlas}`)!
+  drawn.delete(`rest:${puppet.atlas}`)   // 6 MB a figure: only needed once
   const p = Promise.resolve(premultipliedTexture(flatRegions(d.data, d.width, d.height), d.width, d.height, scene))
   own.set(key, p)
   return p

@@ -8,7 +8,7 @@
  */
 import { test, expect } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { captureFigure, muted, stageReady } from './stage-capture'
+import { captureFigure, freezable, muted, stageReady } from './stage-capture'
 
 const [LESSON, SCENE, LAYER] = (process.env.ANA_RIG ?? '').split('/')
 const OUT = process.env.PW_OUT ?? 'test-results/ana-pigments'
@@ -24,8 +24,10 @@ test('the 8 shade pigments of a flat figure', async ({ page }) => {
   test.setTimeout(300_000)
   await page.setViewportSize({ width: 1600, height: 1000 })
   await muted(page)
+  await freezable(page)
   await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`, { waitUntil: 'load' })
   await stageReady(page, 120_000)
+  await page.evaluate(() => (window as any).__freeze())   // still: only the look changes between the captures
   const id = `layer-${LAYER}`
   expect(await page.evaluate(() => (window as any).__stage25d.lookControls().map((c: any) => c.key)), 'a flat figure offers its sliders')
     .toEqual(expect.arrayContaining(['figureWash', 'figureShade', 'figurePigment']))
