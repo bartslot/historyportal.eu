@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { stackOf, paletteOf, wear, colour, randomRecipe, cleanRecipe, zonesOf, onBody, presetRecipe } from '../recipe.js'
 import { kindIndex, recolour, shadeLayer, castLayer, partLabels, INK } from '../paint.js'
 import { cutPuppet, pack, fillFrom } from '../rig.js'
+import { withFace } from '../face-keys.js'
 
 const kinds = ['skin', 'tunic', 'shawl', 'hair', 'rope', 'tie', 'white', 'grey', 'apron', 'ochre', 'mouth', 'iris', 'brow']
 const piece = (id, slot, k = []) => ({ id, slot, label: id, kinds: k, box: [0, 0, 1, 1], files: {} })
@@ -186,5 +187,14 @@ describe('rig', () => {
     const x = Math.round(u0 * atlas.width), y = Math.round(v0 * atlas.height)
     expect(atlas.data[(y * atlas.width + x) * 4]).toBe(10)             // outside the region: the person as saved
     expect(atlas.data[(y * atlas.width + x + 1) * 4]).toBe(99)         // inside it: the expression
+  })
+})
+
+describe('face keys', () => {
+  it('sets the face on the key at the playhead, else adds one in time order', () => {
+    const keys = [{ t: 0, x: 0.5 }, { t: 2, 'bone:head': 5 }]
+    expect(withFace(keys, 2.004, 'sad')).toEqual([{ t: 0, x: 0.5 }, { t: 2, 'bone:head': 5, face: 'sad' }])
+    expect(withFace(keys, 1, 'amazed')).toEqual([{ t: 0, x: 0.5 }, { t: 1, face: 'amazed' }, { t: 2, 'bone:head': 5 }])
+    expect(keys[1].face).toBeUndefined()
   })
 })

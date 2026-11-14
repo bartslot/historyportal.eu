@@ -9,6 +9,7 @@ import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
 import { animationTimeline } from './anim/timeline-panel.js';
 import { animationPresets } from './anim/presets-picker.js';
+import { characterExpressions } from './character/face-keys.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
 import { setupLandingReveal } from './landing-reveal.js';
@@ -150,6 +151,7 @@ initNumericFields();
 window.animationTimeline = animationTimeline;
 // A figure's Animation section: x-data="animationPresets(layerId, presets)".
 window.animationPresets = animationPresets;
+window.characterExpressions = characterExpressions;
 
 // "Is someone typing?" — the guard every global shortcut owes a teacher before it takes a key.
 // A global as well as an import because the wizard's own shortcuts (⌘Z, Delete) live in an inline

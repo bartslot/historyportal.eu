@@ -14,7 +14,7 @@ import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
-import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, faceAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -800,6 +800,9 @@ export async function createStage25d (host, opts = {}) {
         anim: animOf(asset),
         puppet: !!puppet,
         bones: puppet?.bones.map((b) => b.name) ?? [],
+        // a figure from the Character tab: its expressions, and the one it shows at the playhead (character-expressions)
+        faces: puppet?.faces ? ['calm', ...Object.keys(puppet.faces)] : [],
+        face: faceAt(l, nowT()) ?? 'calm',
         // an animation preset's size on this figure (presets-picker.js): the way it faces, its height in metres, the
         // view's width at its distance (x is a share of it)
         facing: puppet?.facing ?? 1,
