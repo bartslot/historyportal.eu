@@ -1,7 +1,7 @@
 /**
  * The 8 shade pigments of a flat figure on the real stage (plan 11, Bart 11-14: "create 8 options with small to big
  * pigment differences"): flat Ana in two poses at every figurePigment, and with the shader's watercolour and shading off.
- * Writes one PNG per option to PW_OUT; a board is made from them for the eye.
+ * Writes one PNG per option to PW_OUT; a board is made from them for the eye. Without its shade mask the sliders hide.
  *
  *   RIG_DIR=.../flat-v1/rig-shader RIG_NAME=fig-ana-flat-rig-01 php artisan tinker --execute='require "tests/playwright/ana-rig-lesson.php";'
  *   ANA_RIG=<lesson>/<scene>/<layer> PW_OUT=/tmp/pigments PW_BASE_URL=http://127.0.0.1:8061 npx playwright test tests/playwright/ana-pigment-board.spec.ts --project=chromium
@@ -48,4 +48,16 @@ test('the 8 shade pigments of a flat figure', async ({ page }) => {
     await shoot(`pigment-${p}`)
   }
   await look('figurePigment', 2)   // back to the default (Bart's pick)
+})
+
+test('a flat figure whose shade mask does not load offers no shading sliders', async ({ page }) => {
+  test.setTimeout(180_000)
+  await muted(page)
+  await page.route('**/*-shade.webp*', (route) => route.fulfill({ status: 404, body: '' }))
+  await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`, { waitUntil: 'load' })
+  await stageReady(page, 120_000)
+  const keys: string[] = await page.evaluate(() => (window as any).__stage25d.lookControls().map((c: any) => c.key))
+  expect(keys, 'drawn flat without its mask: the sliders would do nothing').not.toContain('figureShade')
+  expect(keys).not.toContain('figureWash')
+  expect(keys).not.toContain('figurePigment')
 })

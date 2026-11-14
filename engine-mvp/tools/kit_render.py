@@ -466,6 +466,8 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
     big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
     CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
+    if FLAT_PAINT:   # the cords cast no band down the tunic on the stage (fresh tester 11-14); painted rigs keep theirs
+        CASTERS = {**CASTERS, 'tunic': [c for c in CASTERS['tunic'] if c != 'rope']}
     shades = {}
     for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
         total = np.zeros((RH, RW), np.float32)
