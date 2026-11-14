@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Stage25d;
 
+use App\Models\SvgAsset;
+use App\Services\Editor\Characters;
+
 /**
  * The animation preset library (resources/animations): walk, wave, dance and the rest, one clip each, shared by every
  * rig by bone name. Agents and the composer name a preset on a figure (`animation: 'walk'` or
@@ -203,7 +206,7 @@ final class AnimationPresets
             }
             unset($layer['animation']);
             $spec = self::spec($layers[$i]['animation']);
-            $asset = is_string($layer['asset'] ?? null) ? (array) $assets->get($layer['asset'], []) : [];
+            $asset = is_string($layer['asset'] ?? null) ? (array) ($assets->get($layer['asset']) ?? self::character($layer['asset'])) : [];
             $puppet = $layer['puppet'] ?? $asset['puppet'] ?? null;
             $bones = is_array($puppet) ? array_values(array_filter(array_column((array) ($puppet['bones'] ?? []), 'name'), 'is_string')) : [];
             $clip = $spec ? self::clip($spec['id']) : null;
@@ -223,6 +226,15 @@ final class AnimationPresets
         $stage['set']['layers'] = $layers;
 
         return [$stage, $report];
+    }
+
+    /** @return array<string,mixed> a teacher's own character ('chr-<id>', the Character tab) as the stage's library row, or nothing */
+    private static function character(string $assetId): array
+    {
+        $id = Characters::idOf($assetId);
+        $asset = $id === null ? null : SvgAsset::query()->whereKey($id)->where('source', Characters::SOURCE)->first();
+
+        return $asset ? Characters::stageRow($asset) : [];
     }
 
     /**
