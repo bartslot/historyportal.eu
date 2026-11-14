@@ -2,7 +2,7 @@
 """Cut a checked part sheet into a full-body puppet: legs and feet too (vault topics/character-bones/plan.md, 3.1).
 
 In:  a sheet folder that rig_check.py passed: rest, map, under-a, under-b, map-b (all on one canvas; .webp or .png).
-Out: <name>.webp (atlas: q90, alpha lossless) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
+Out: <name>.webp (atlas: img_io.WEBP, alpha lossless) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
 
 Every visible pixel is the rest drawing's own, so at rest the puppet IS the drawing. The joints are found, not drawn: each
 is the middle of the border two parts share on the map; a hip, hidden under the tunic, sits one shin's length up the thigh
@@ -701,7 +701,7 @@ def run(folder, out_dir, name, atlas_url):
     holes = {bone: holes_bending(layers, joints, bone, facing) for bone in LIMIT}
     atlas, puppet = puppet_json(layers, joints, facing, own, rest.shape[:2], atlas_url)
     os.makedirs(out_dir, exist_ok=True)
-    save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # q90, alpha lossless: 1/6 of the PNG
+    save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # img_io.WEBP (q70, alpha lossless): 1/10 of the PNG
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)
     report = {'facing': facing, 'differ_at_rest': differ, 'visible': int(visible.sum()), 'holes': holes,

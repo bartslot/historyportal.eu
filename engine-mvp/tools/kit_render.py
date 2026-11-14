@@ -4,7 +4,7 @@ PAL (json kind -> [r,g,b]), RENDERS (full,closeup,eyes).
   python3 engine-mvp/tools/kit_render.py <dir with flat.png + head-flat.png> <map.png> <out dir>
 
 The one copy (vault topics/character-creator, topics/character-bones/plan.md 10); the bone rig paints flat-sheet
-figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.webp). Every output is .webp (q90, alpha lossless); inputs may be .webp or .png.
+figures with it too (flat_rig_sheet.py, RENDERS=canvas: the whole sheet at CANVAS_SCALE, as <NAME>-canvas.webp). Every output is .webp (img_io.WEBP, alpha lossless); inputs may be .webp or .png.
 
 flat.png       the whole figure, clean flat colour, 1024x1536 (an edit of her rest drawing)
 head-flat.png  her head redrawn at 1024x1024 from the crop HEAD_BOX of flat.png (same canvas, so it fits back)

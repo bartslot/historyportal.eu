@@ -35,3 +35,11 @@ def test_find_prefers_webp_then_png_then_names_the_missing_file(tmp_path):
 
 def test_the_app_setting_is_the_q70_the_ladder_picked_with_the_alpha_lossless():
     assert img_io.WEBP['quality'] == 70 and img_io.WEBP['alpha_quality'] == 100 and img_io.WEBP['exact']
+
+
+def test_a_lossy_save_puts_edge_colour_under_the_alpha_and_leaves_the_alpha_alone():
+    a = rgba()
+    out = img_io.edge_bleed(a, band=2)
+    assert (out[..., 3] == a[..., 3]).all()
+    assert tuple(out[20, 6, :3]) == (200, 120, 60)      # 2 px outside the edge: the edge's colour
+    assert tuple(out[20, 2, :3]) == (0, 0, 0)           # further out: left as it was
