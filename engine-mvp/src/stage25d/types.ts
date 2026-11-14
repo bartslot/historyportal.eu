@@ -58,7 +58,9 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
-export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number; [bone: `bone:${string}`]: number | undefined }
+/** ease 'smooth': the run from this key to the next passes through the keys round it (an animation preset's poses,
+ *  resources/animations) instead of stopping at each one; absent: eased in and out. face: an expression id, held until the next. */
+export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number; ease?: 'smooth'; face?: string; [bone: `bone:${string}`]: number | undefined }
 
 /** The values a backdrop (a ground band, the sky picture) takes from a layer. */
 export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys' | 'src'>>

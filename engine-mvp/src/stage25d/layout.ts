@@ -277,7 +277,26 @@ function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): nu
   if (t >= last.t) return last[field] as number
   const i = keys.findIndex((k) => k.t > t)
   const a = keys[i - 1], b = keys[i]
-  return lerp(a[field] as number, b[field] as number, ease('inOut', (t - a.t) / (b.t - a.t)))
+  const k = (t - a.t) / (b.t - a.t)
+  if (a.ease === 'smooth') return through(keys[i - 2] ?? a, a, b, keys[i + 1] ?? b, field, k)
+  return lerp(a[field] as number, b[field] as number, ease('inOut', k))
+}
+
+/** From a to b through the keys either side (Hermite, each slope from its neighbours over their time): a walk's poses
+ *  flow into each other without a stop at every key. */
+function through(prev: LayerKey, a: LayerKey, b: LayerKey, next: LayerKey, field: keyof LayerKey, k: number): number {
+  const v = (key: LayerKey) => key[field] as number
+  const h = b.t - a.t
+  const slope = (p: LayerKey, q: LayerKey) => (q.t > p.t ? ((v(q) - v(p)) / (q.t - p.t)) * h : 0)
+  const ma = slope(prev, b), mb = slope(a, next)
+  const k2 = k * k, k3 = k2 * k
+  return (2 * k3 - 3 * k2 + 1) * v(a) + (k3 - 2 * k2 + k) * ma + (-2 * k3 + 3 * k2) * v(b) + (k3 - k2) * mb
+}
+
+/** The expression a figure shows at time t: the last key at or before it that names one (it steps, never blends). */
+export function faceAt(layer: SceneLayer, t: number): string | null {
+  const keyed = (layer.keys ?? []).filter((k) => typeof k.face === 'string' && k.t <= t).sort((a, b) => a.t - b.t)
+  return keyed.length ? keyed[keyed.length - 1].face! : null
 }
 
 /** A bone's turn is a field like x or scale: `bone:head` on the layer, and on its keys. */

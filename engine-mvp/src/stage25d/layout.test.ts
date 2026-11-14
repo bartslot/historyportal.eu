@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
-import { cameraWobble, tileU } from './layout'
+import { cameraWobble, faceAt, tileU } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -544,5 +544,28 @@ describe('a repeated ground band', () => {
     expect(tileU(1.25 / 7, 7, true)).toBeCloseTo(0.75)   // the second copy is mirrored: its quarter is the picture's three quarters
     expect(tileU(1.25 / 7, 7, false)).toBeCloseTo(0.25)  // a tileable picture repeats as it is
     expect(tileU(2.25 / 7, 7, true)).toBeCloseTo(0.25)
+  })
+})
+
+describe('smooth keys (animation presets)', () => {
+  const keys = [{ t: 0, 'bone:thigh_n': 0, ease: 'smooth' as const }, { t: 1, 'bone:thigh_n': 10, ease: 'smooth' as const }, { t: 2, 'bone:thigh_n': 20, ease: 'smooth' as const }, { t: 3, 'bone:thigh_n': 30 }]
+  it('passes through every key', () => {
+    for (const k of keys) expect(bonesAt({ depth: 'fg', keys }, k.t).thigh_n).toBeCloseTo(k['bone:thigh_n'])
+  })
+  it('keeps moving through a key instead of stopping there', () => {
+    const at = (t: number) => bonesAt({ depth: 'fg', keys }, t).thigh_n
+    expect(at(1.05) - at(0.95)).toBeCloseTo(1, 1)   // a steady 10 a second runs on through the key at 1
+    expect(at(1.5)).toBeCloseTo(15)
+  })
+  it('a key without ease still eases in and out, so old lessons play as before', () => {
+    const plain = [{ t: 0, x: 0 }, { t: 1, x: 1 }, { t: 2, x: 2 }]
+    expect(layerAt({ depth: 'fg', keys: plain }, 0.99).x - layerAt({ depth: 'fg', keys: plain }, 0.97).x).toBeLessThan(0.002)
+  })
+})
+
+describe('faceAt', () => {
+  it('steps to the last face at or before t', () => {
+    const layer = { depth: 'fg' as const, keys: [{ t: 0, face: 'neutral' }, { t: 2, face: 'smile' }, { t: 1, x: 0.3 }] }
+    expect([faceAt(layer, 0), faceAt(layer, 1.9), faceAt(layer, 2), faceAt({ depth: 'fg' }, 1)]).toEqual(['neutral', 'neutral', 'smile', null])
   })
 })
