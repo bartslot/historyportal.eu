@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Stage25d\AnimationPresets;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LessonImporter;
+use App\Services\Stage25d\StageSet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -42,6 +43,20 @@ class AnimationPresetsTest extends TestCase
                 $labels = json_decode((string) file_get_contents(lang_path("{$lang}.json")), true);
                 $this->assertArrayHasKey($p['label'], $labels, "{$lang} label for {$p['id']}");
             }
+        }
+    }
+
+    public function test_the_writers_schema_and_brief_offer_exactly_the_presets_there_are(): void
+    {
+        $schema = json_decode((string) file_get_contents(base_path('tools/lessongen/lesson.schema.json')), true);
+        $figure = data_get($schema, 'properties.scenes.items.properties.figures.items.properties.animation')
+            ?? collect(data_get($schema, '$defs', []))->pluck('properties.figures.items.properties.animation')->filter()->first();
+        $this->assertNotNull($figure, 'figures[].animation in lesson.schema.json');
+        $this->assertSame(AnimationPresets::ids(), $figure['oneOf'][0]['enum']);
+        $this->assertSame(AnimationPresets::ids(), $figure['oneOf'][1]['properties']['id']['enum']);
+        $brief = (string) file_get_contents(base_path('tools/lessongen/writer-brief.md'));
+        foreach (AnimationPresets::ids() as $id) {
+            $this->assertStringContainsString($id, $brief);
         }
     }
 
@@ -93,6 +108,23 @@ class AnimationPresetsTest extends TestCase
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][0]);
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][1]);
         $this->assertArrayNotHasKey('keys', $out['set']['layers'][2]);
+    }
+
+    public function test_a_planned_scene_gives_a_figure_with_bones_the_preset_its_words_ask_for(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('library/anim-test/library.json', json_encode(['assets' => [
+            ['id' => 'sky-1', 'layer' => 'sky', 'file' => 's.webp', 'tags' => ['sky']],
+            ['id' => 'fig-ana', 'layer' => 'figure', 'file' => 'a.webp', 'height_m' => 1.6, 'tags' => ['char:ana', 'pose:stand', 'facing:right'], 'puppet' => $this->puppet()],
+            ['id' => 'fig-bo', 'layer' => 'figure', 'file' => 'b.webp', 'tags' => ['char:bo', 'pose:stand', 'facing:left']],
+        ]]));
+
+        $layers = collect(StageSet::forScene('anim-test', 's1', 'Ana loopt naar Bo.')['set']['layers']);
+
+        $ana = $layers->firstWhere('figure', 'ana');
+        $this->assertArrayHasKey('bone:thigh_n', $ana['keys'][0], 'Ana walks: the words say she does');
+        $this->assertArrayNotHasKey('animation', $ana);
+        $this->assertArrayNotHasKey('keys', $layers->firstWhere('figure', 'bo'), 'Bo has no bones: nothing to play');
     }
 
     public function test_a_composed_lesson_with_animations_imports_figures_that_play_them(): void

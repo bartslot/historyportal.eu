@@ -117,7 +117,7 @@ export function placeFigures(scene: Scene, lib: Library | null): Scene {
   })
   if (!placed.length) return base.length === scene.set.layers.length ? scene : { ...scene, set: { ...scene.set, layers: base } }
   const apart = spread(placed)
-  const layers = apart.map((p) => ({ asset: p.a.id, need: `char:${p.f.char} pose:${p.pose}`, depth: p.depth, x: p.x, ...(p.y === undefined ? {} : { y: p.y }), scale: p.scale, figure: p.f.char, shadow: p.shadow }))
+  const layers = apart.map((p) => ({ asset: p.a.id, need: `char:${p.f.char} pose:${p.pose}`, depth: p.depth, x: p.x, ...(p.y === undefined ? {} : { y: p.y }), scale: p.scale, figure: p.f.char, shadow: p.shadow, ...(p.f.animation ? { animation: p.f.animation } : {}) }))
   const moved = new Map(apart.map((p) => [p.f, p]))
   return {
     ...scene,

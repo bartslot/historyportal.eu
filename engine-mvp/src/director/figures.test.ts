@@ -98,6 +98,11 @@ describe('placeFigures', () => {
   it('is idempotent: a second run replaces the figure layers instead of doubling them', () => {
     expect(placeFigures(out, LIB).set.layers.filter((l) => l.figure)).toHaveLength(2)
   })
+  it('a figure\'s animation preset rides onto its layer, for the importer to turn into keys', () => {
+    const walking = placeFigures(scene([{ char: 'opa', pose: 'stand', x: 0.5, depth: 'mid', animation: { id: 'walk', start: 1 } }]), LIB)
+    expect(walking.set.layers.find((l) => l.figure)?.animation).toEqual({ id: 'walk', start: 1 })
+    expect(layers.some((l) => 'animation' in l)).toBe(false)
+  })
   it('skips a char with no art, leaves the scene alone', () => {
     const lonely = scene([{ char: 'hond', pose: 'stand' }])
     expect(placeFigures(lonely, LIB)).toBe(lonely)

@@ -24,6 +24,10 @@ the lesson's `blueprint.md`, `sources.md`, `ledger.md`. Output: one `lesson.json
   Shots without narration are fine (look time, a balloon) if `est_s` >= 6.
 - Change the picture every shot: angle, distance, who is in front. No slideshow: figures do something
   (`pose`: walk, carry, kneel, pull, dig, point, ...), never stand side by side.
+- A figure can also MOVE through the shot with `animation` (optional): one preset id, or `{id, start, length, speed}`
+  (seconds into the shot; a loop like walk runs to the end of the shot without `length`). Presets: idle, walk, run, carry, pick_up, sit_down, stand_up, look_around, wave, point, talk, think, nod_yes, shake_no, clap, bow, cheer, shiver, jump, dance_sway, dance_hop, fall_get_up.
+  Pick the one the narration shows: walk or run to cross the shot, wave or point when someone calls, talk under a
+  balloon, cheer, shiver, bow. Never more than one per figure per shot.
 - `set`: `sky` tags, `layers` with `need` tags (FIRST tag = the head noun, required for a library match; further
   tags only rank, e.g. "field barley ripe"; prefix a tag with ! to require it too, always for a place outside the
   Netherlands: "hills dry !mideast", "river !egypt". Regions: mideast, egypt, mesopotamia, batavia, banda,

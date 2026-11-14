@@ -44,8 +44,13 @@ export type SoundPlan = {
 /** `dressed`: proposed by the set dresser (director/dress.ts), the teacher may remove it. */
 export type LayerRef = { need?: string; asset?: string | null; depth: Depth; x?: number; y?: number; scale?: number; motion?: unknown; keys?: unknown[]; dressed?: boolean; shadow?: number
   /** the char this layer draws (director/figures.ts): a figure from `figures[]`, rebuilt on every run */
-  figure?: string }
+  figure?: string
+  /** an animation preset the figure plays (resources/animations): the importer turns it into keys (AnimationPresets.php) */
+  animation?: Animation }
+/** A preset id, or one with its timing in the shot (lesson.schema.json figures[].animation). */
+export type Animation = string | { id: string; start?: number; length?: number; speed?: number }
 export type Figure = { char: string; pose?: string; x?: number; depth?: Depth; facing?: 'left' | 'right'; expression?: string; scale?: number
+  animation?: Animation
   /** set by the director (figures.ts): the figure's drawn height in metres, scale included */
   h_m?: number
   /** set by the director for a bust (close-up): metres its bottom edge stands below the ground, out of frame */
