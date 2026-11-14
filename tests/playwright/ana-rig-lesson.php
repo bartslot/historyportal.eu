@@ -6,7 +6,7 @@ declare(strict_types=1);
  * A throwaway lesson with Ana's full-body rig on a Mesopotamian scene, for checking bones in the real browser
  * (vault topics/character-bones/plan.md, phase 2). Made fresh on every run.
  *
- *   RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/v1/rig [RIG_NAME=fig-ana-flat-rig-01] \
+ *   RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/v1/rig [RIG_NAME=fig-ana-flat-rig-01] [KIT_CHARACTER=<id>] \
  *     php artisan tinker --execute='require "tests/playwright/ana-rig-lesson.php";'
  *
  * Prints ANA_RIG=<lesson>/<scene>/<layer index> (and PIETER_LAYER=<index> with PIETER_DIR set). Local database only. The rig rides on the layer (layer.puppet) over
@@ -69,6 +69,13 @@ if (is_file("{$pieterDir}/pieter-rigid.json")) {
     $pieter['atlas'] = "/storage/{$edits}/{$pieterAtlas}";
     $layers[] = ['need' => 'fig-ana-stand-01', 'asset' => 'fig-ana-stand-01', 'depth' => 'mid', 'x' => 1.3, 'z' => 5, 'scale' => 1, 'puppet' => $pieter];
 }
+// KIT_CHARACTER=<id>: a teacher's own character from the Character tab (a kit body, chr-<id>) beside her, for the
+// animation presets on a kit rig. It has to be the lesson teacher's own.
+$kit = (int) getenv('KIT_CHARACTER');
+if ($kit > 0) {
+    throw_unless(App\Models\SvgAsset::whereKey($kit)->where('user_id', $lesson->teacher_id)->where('source', 'character')->exists(), RuntimeException::class, "Character {$kit} is not the teacher's own.");
+    $layers[] = ['asset' => "chr-{$kit}", 'depth' => 'mid', 'x' => 0.9, 'z' => 5, 'scale' => 1];
+}
 $config['stage25d']['set']['layers'] = $layers;
 
 $scene = $fromScene->replicate();
@@ -77,4 +84,4 @@ $scene->order = 1;
 $scene->config = $config;
 $scene->save();
 
-echo 'ANA_RIG='.$lesson->id.'/'.$scene->id.'/'.$anaLayer.(count($layers) - 1 > $anaLayer ? ' PIETER_LAYER='.(count($layers) - 1) : '').PHP_EOL;
+echo 'ANA_RIG='.$lesson->id.'/'.$scene->id.'/'.$anaLayer.(count($layers) - 1 > $anaLayer ? ' LAST_LAYER='.(count($layers) - 1) : '').PHP_EOL;
