@@ -17,9 +17,10 @@
     }
 @endphp
 
-{{-- none: 'remove' takes the world off the scene (the World panel); 'build' leaves the scene empty to build by hand
+{{-- The key changes with the list, so a saved or removed world re-renders the chooser (x-data is read once).
+     none: 'remove' takes the world off the scene (the World panel); 'build' leaves the scene empty to build by hand
      (a new 3D scene). Every world opens on its own region when the scene already has it. --}}
-<div x-data="worldChooser(@js($tree), @js($none))" x-on:stage25d-synced.window="sync()" data-world-chooser {{ $attributes }}>
+<div wire:key="world-chooser-{{ md5(json_encode($tree)) }}" x-data="worldChooser(@js($tree), @js($none))" x-on:stage25d-synced.window="sync()" data-world-chooser {{ $attributes }}>
     <div class="flex min-h-8 items-center gap-1 text-xs font-semibold uppercase tracking-wide text-panel-label">
         <button type="button" class="hover:text-base-content" x-on:click="continent = null; region = null" :class="continent ? '' : 'text-base-content'" data-world-crumb="all">{{ __('World') }}</button>
         <template x-if="continent">

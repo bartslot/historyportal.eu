@@ -1486,7 +1486,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, world: null, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1498,7 +1498,7 @@
             sync() {
                 const stage = window.__stage25d;
                 if (!stage) return;
-                if (id === 'world') { this.look = stage.lookControls?.() ?? []; this.world = stage.worldInfo?.() ?? null; this.farEdge = stage.farEdgeInfo?.() ?? null; return; }
+                if (id === 'world') { this.look = stage.lookControls?.() ?? []; this.farEdge = stage.farEdgeInfo?.() ?? null; return; }
                 if (!id) return;
                 if (id === 'camera') {
                     this.cam = stage.cameraInfo?.() ?? null;
@@ -1623,7 +1623,6 @@
             lastCloud(c) { return c.on && (this.sky?.clouds ?? []).filter((x) => x.on).length === 1; },
             /** Put a library world under the scene, or none: live, and saved. */
             /** A ready-made world under the scene, or none (''): the server writes it, the stage rebuilds from the scene. */
-            pickWorld(key) { window.__stage25d?.pickWorld?.(key); },
             // Save as world: the stage as it looks now is the tile's picture (a small JPEG), the scene's place the world
             async saveWorld(name) { const still = await window.__stage25d?.still?.(320).catch(() => null); await this.$wire.saveStage25dWorldAs(name, still ?? null); },
             /** Frame the start or the end of the camera move on the canvas. */

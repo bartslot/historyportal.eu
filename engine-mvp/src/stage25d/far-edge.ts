@@ -20,14 +20,14 @@ const farPieces = (lib: Library): Asset[] => {
  * hunebed) without a list per period. `set.farEdge` names another piece, or 'none'. A scene whose far landscape is
  * already there (a far strip) gets nothing; a terrain's own far edge is only the ground meeting the sky, so the piece
  * stands behind it. An empty scene gets nothing (Bart 11-14: a new 3D scene showed "instant hills"): its world comes
- * from the teacher, so a piece goes up only once something stands in the scene.
+ * from the teacher, so a piece goes up only once the scene has something: a layer, a strip or a picked terrain.
  */
 export function farEdgeOf(set: Scene['set'], lib: Library): string | null {
   if (set.farEdge === 'none') return null
   if (set.farEdge) return lib.assets.some((a) => a.id === set.farEdge) ? set.farEdge : null
   const byId = new Map(lib.assets.map((a) => [a.id, a]))
   if (set.layers.some((l) => byId.get(l.asset ?? '')?.layer === 'bg')) return null
-  if (!set.layers.length && !set.groundBands?.length) return null
+  if (!set.layers.length && !set.groundBands?.length && !set.groundSlots?.length) return null
   const used = [...set.layers.map((l) => l.asset ?? ''), ...(set.groundBands ?? []).map((g) => g.asset), ...(set.groundSlots ?? []).map((g) => g.asset), set.sky ?? '']
   const seen = new Set(used.flatMap((id) => byId.get(id)?.tags ?? []).filter((t) => !FAR_TAGS.includes(t)).map(stem))
   const ranked = farPieces(lib)
