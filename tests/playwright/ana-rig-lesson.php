@@ -48,6 +48,9 @@ $edits = "lessons/{$lesson->id}/edits";
 $disk->makeDirectory($edits);
 $atlas = $atlasOf($rigDir, $rigName);
 $disk->put("{$edits}/{$atlas}", (string) file_get_contents("{$rigDir}/{$atlas}"));
+if (is_file("{$rigDir}/{$rigName}-shade.webp")) {   // a flat rig's shade mask lies beside its atlas (layer.ts shadeMask)
+    $disk->put("{$edits}/{$rigName}-shade.webp", (string) file_get_contents("{$rigDir}/{$rigName}-shade.webp"));
+}
 $puppet = json_decode((string) file_get_contents("{$rigDir}/".$rigName.'.json'), true, flags: JSON_THROW_ON_ERROR);
 $puppet['atlas'] = "/storage/{$edits}/{$atlas}";
 

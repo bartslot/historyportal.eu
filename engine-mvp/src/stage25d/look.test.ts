@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Texture } from '@babylonjs/core'
 import { nearWrapU } from './ground-gl'
-import { DEPTHS, houseProjection, INK_FLOOR, inkScale, lineContrast, lineOf, paperOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { DEPTHS, houseProjection, INK_FLOOR, inkScale, lineContrast, lineOf, paperOf, lineKeys, LOOK_RANGE, pxPerMetre, pxUV, STAGE_SHEET, aquarelOf, pigmentOf, PIGMENT_STEPS } from './look'
 import { autoHorizon, DECAL_SLOT, GROUND_SLOT, placeLayer } from './layout'
 import type { Asset } from './types'
 
@@ -107,5 +107,29 @@ describe('the near band never runs out on a camera move (checker floor HIGH)', (
     expect(nearWrapU(true)).toBe(Texture.WRAP_ADDRESSMODE)
     expect(nearWrapU(false)).toBe(Texture.MIRROR_ADDRESSMODE)
     expect([nearWrapU(true), nearWrapU(false)]).not.toContain(Texture.CLAMP_ADDRESSMODE)
+  })
+})
+
+describe('a flat figure: watercolour and shading in the shader (plan 11)', () => {
+  it('eight pigment steps, from a little darker in the same hue to much darker, cool and granulating', () => {
+    const steps = Array.from({ length: PIGMENT_STEPS }, (_, i) => pigmentOf(i + 1))
+    expect(steps).toHaveLength(8)
+    for (let i = 1; i < steps.length; i++) {
+      expect(steps[i].depth).toBeGreaterThan(steps[i - 1].depth)
+      expect(steps[i].tint[2] - steps[i].tint[0]).toBeGreaterThan(steps[i - 1].tint[2] - steps[i - 1].tint[0])   // cooler
+      expect(steps[i].gran).toBeGreaterThan(steps[i - 1].gran)
+    }
+    expect(steps[0].depth).toBeLessThan(0.1)
+    expect(Math.abs(steps[0].tint[2] - steps[0].tint[0])).toBeLessThan(0.05)   // step 1 keeps the hue
+    expect(steps[7].tint[2] - steps[7].tint[0]).toBeGreaterThan(0.2)
+  })
+
+  it('a step outside 1..8 is held to it, and the look gives the defaults', () => {
+    expect(pigmentOf(0)).toEqual(pigmentOf(1))
+    expect(pigmentOf(12)).toEqual(pigmentOf(8))
+    const a = aquarelOf({})
+    expect(a.wash).toBe(1); expect(a.shade).toBe(1); expect(a.depth).toBe(pigmentOf(2).depth)   // Bart's pick
+    expect(aquarelOf({ figurePigment: 7, figureShade: 0.5 })).toMatchObject({ shade: 0.5, ...pigmentOf(7) })
+    expect(LOOK_RANGE.figurePigment).toEqual([1, 8, 1])
   })
 })

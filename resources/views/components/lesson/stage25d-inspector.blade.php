@@ -8,6 +8,7 @@
         'castShadow' => __('Shadows'), 'edgeSoft' => __('Soft edges'), 'cloudDrift' => __('Clouds'), 'housePitch' => __('Tilt'),
         'groundWash' => __('Watercolour'), 'groundGrain' => __('Grain size'), 'grass' => __('Grass'), 'grassSway' => __('Grass sway'), 'horizonBushes' => __('Horizon bushes'),
         'worldReveal' => __('Build-up'), 'worldPaint' => __('Painted'),
+        'figureWash' => __('Watercolour on figures'), 'figureShade' => __('Shading on figures'), 'figurePigment' => __('Shade pigment'),
     ];
     // The poses a figure series is painted in (library.json `pose:` tags).
     $poses = [

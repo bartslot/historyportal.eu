@@ -52,7 +52,7 @@ const newestOf = (assets, inUse = []) => {
   return assets.filter((a) => latest.get(base(a.id)) === a || inUse.includes(a.id))
 }
 
-export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint']
+export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint', 'figureWash', 'figureShade', 'figurePigment']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
 const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
@@ -1117,7 +1117,8 @@ export async function createStage25d (host, opts = {}) {
     lookControls () {
       const can = stage?.strewable ?? { grass: true, bushes: true }
       // only what can show in this scene: no grass on a deck, nothing in a sky that is not there. The values stay, for a ground swapped back
-      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, cloudDrift: hasSky(setNow()), worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted }
+      const offered = { grass: can.grass, grassSway: can.grass || can.bushes, horizonBushes: can.bushes, cloudDrift: hasSky(setNow()), worldReveal: !!cfg?.world?.src, worldPaint: !!cfg?.world?.src && !cfg.world.painted,
+        figureWash: !!stage?.hasFlatFigure, figureShade: !!stage?.hasFlatFigure, figurePigment: !!stage?.hasFlatFigure }
       return LOOK_KEYS.filter((key) => offered[key] !== false).map((key) => {
         const [min, max, step] = LOOK_RANGE[key] ?? [0, 1, 0.01]
         return { key, min, max, step, value: lookNum({ ...STAGE_LOOK, ...lookNow }, key) }

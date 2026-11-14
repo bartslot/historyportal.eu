@@ -11,7 +11,8 @@ describe('stage shaders', () => {
     const bad: string[] = []
     for (const f of readdirSync(dir).filter((n) => n.endsWith('.ts') && !n.endsWith('.test.ts'))) {
       const src = readFileSync(join(dir, f), 'utf8')
-      for (const m of src.matchAll(/ShadersStore\.\w+ = `([\s\S]*?)`/g)) {
+      // a shader ends at the first backtick that is not escaped (a comment may quote a name as \`name\`)
+      for (const m of src.matchAll(/ShadersStore\.\w+ = `((?:\\`|[^`])*)`/g)) {
         for (const line of m[1].split('\n')) if (/^\s*[^\s/].*\/\/.*;/.test(line)) bad.push(`${f}: ${line.trim()}`)
       }
     }

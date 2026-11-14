@@ -2,7 +2,8 @@
 """Cut a checked part sheet into a full-body puppet: legs and feet too (vault topics/character-bones/plan.md, 3.1).
 
 In:  a sheet folder that rig_check.py passed: rest, map, under-a, under-b, map-b (all on one canvas; .webp or .png).
-Out: <name>.webp (atlas: img_io.WEBP, alpha lossless) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
+Out: <name>.webp (atlas: img_io.WEBP, alpha lossless), <name>-shade.webp beside it for a sheet painted flat (kit_render's
+     shade mask on the atlas's layout, lossless) and <name>.json (bones.ts Puppet: bones with from, to and limit; parts back to front).
 
 Every visible pixel is the rest drawing's own, so at rest the puppet IS the drawing. The joints are found, not drawn: each
 is the middle of the border two parts share on the map; a hip, hidden under the tunic, sits one shin's length up the thigh
@@ -78,6 +79,7 @@ TONE_MIN_PX = 500        # a part needs this many of its own pixels in an under 
 TONE_GAIN_MAX = 1.5      # how far a channel's spread may be stretched or squeezed to match
 CAP_MARGIN = 1.15        # a round end's radius, in half joint widths: a little past the edge, so its outline is under the parent
 SLEEVE_MARGIN = 12       # px a hidden upper arm reaches past the sleeve's own half width
+SHADE_SCALE = 0.5        # the shade mask at half the atlas's size: kit_render blurs it over 4+ px; lossless that is about 40 % of the bytes
 NECK_R = 0.9             # radius of the neck's hidden paint, in neck widths
 BEHIND_ARM = 25          # px past the body's own outline that the tunic behind an arm may reach
 FRINGE_REACH = 6         # px from the shawl that a sliver outside the tunic counts as fringe
@@ -99,6 +101,9 @@ def load(folder):
     for name in ('rest', 'under-a', 'under-b', 'under-c'):
         c, a = rc.keyed(rc.rgb_of(at(f'{name}.png')))
         keyed[name] = rgba_of(c, a)
+        shade = find(os.path.join(folder, f'{name}-shade.png'))
+        if shade.is_file():   # painted flat: the shade mask rides along as channels 4-6, so every cut and copy keeps it
+            keyed[name] = np.dstack([keyed[name], np.asarray(Image.open(shade).convert('RGB'))])
     solid = keyed['rest'][..., 3] > rc.SOLID * 255
     labels, _ = rc.labels_of(rc.rgb_of(at('map.png')), rc.MAP_PARTS)
     labels = rc.absorb_islands(rc.clean_labels(labels, solid), islands=False)
@@ -687,6 +692,15 @@ def puppet_json(layers, joints, facing, own, size, atlas_url):
     return atlas, {'atlas': atlas_url, 'width': size[1], 'height': size[0], 'facing': facing, 'bones': bones, 'parts': quads}
 
 
+def painted_flat(folder):
+    """A sheet folder flat_rig_sheet.py painted flat (its flat-sheet.json says so)."""
+    path = os.path.join(folder, 'flat-sheet.json')
+    if not os.path.exists(path):
+        return False
+    with open(path) as f:
+        return json.load(f).get('paint') == 'flat'
+
+
 def run(folder, out_dir, name, atlas_url):
     keyed, labels, labels_b = load(folder)
     own = stray_pieces(split_belt(fringe_slivers(owners(labels, labels_b), keyed)))
@@ -700,7 +714,14 @@ def run(folder, out_dir, name, atlas_url):
     differ = int(((np.abs(drawn.astype(int) - rest).sum(-1) > 0) & visible).sum())
     holes = {bone: holes_bending(layers, joints, bone, facing) for bone in LIMIT}
     atlas, puppet = puppet_json(layers, joints, facing, own, rest.shape[:2], atlas_url)
+    if painted_flat(folder):
+        puppet['paint'] = 'flat'   # flat colour + ink: the stage shader colours the shade mask and washes it (plan 11)
     os.makedirs(out_dir, exist_ok=True)
+    if atlas.shape[-1] > 4:   # the shade mask on the atlas's own layout, lossless, beside it: layer.ts shadeMask reads it
+        mask = Image.fromarray(np.ascontiguousarray(atlas[..., 4:7]))
+        mask = mask.resize((round(mask.width * SHADE_SCALE), round(mask.height * SHADE_SCALE)), Image.LANCZOS)
+        save_image(mask, os.path.join(out_dir, f'{name}-shade.webp'), lossless=True)
+        atlas = atlas[..., :4]
     save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # img_io.WEBP (q30, alpha lossless)
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)

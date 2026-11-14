@@ -12,7 +12,7 @@ import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import type { Scene } from '@babylonjs/core/scene'
 import type { Asset, BlinkEye, MotionSpec, Puppet } from './types'
-import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Paper } from './look'
+import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Aquarel, type Paper } from './look'
 import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
@@ -147,6 +147,43 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     return past(q) ? vec4(0.0) : tap(q);
     #endif
   }
+  #ifdef AQUAREL
+  // A figure painted flat (puppet.paint 'flat', plan 11): kit_render baked where its shade lies into a mask beside the
+  // atlas (shadeMask); the shade's pigment and the watercolour are painted here, so a teacher can change both.
+  uniform sampler2D washTex;                 // kit_render's wash grain, stored as 0.5 + (g / mean - 1) / 2, mirrored
+  uniform sampler2D shadeTex;                // on the atlas's layout: r how much shade, g the eyes, b the face
+  uniform float figureWash, figureShade;     // look.ts aquarelOf
+  uniform float shadeDepth, shadeSat, shadeGran;
+  uniform vec3 shadeTint;
+  uniform vec2 drawPx;                       // rest uv per drawing px (1 / the drawing's size)
+  #define WASH_TILE_PX 627.0                 // drawing px per tile of the wash (kit_render: the texture at half the sheet scale)
+  // s: the lit colour at atlas uv. ink: out, how much of this px is a drawn line, for the line passes after this (they
+  // would read a deep shade as ink)
+  vec3 aquarel(vec3 s, vec2 uv, out float ink) {
+    ink = inkOf(s);
+    vec4 m = texture2D(shadeTex, uv);
+    vec2 dp = vRest / drawPx;                           // drawing px: the grain runs on across a cut between two parts
+    float calm = 1.0 - m.g;                             // the eyes stay drawn: no glaze, no wash
+    // a glaze of the colour's own pigment where kit_render put the shade: darker, toward the shadow pigment, richer,
+    // settling in the tooth
+    float shade = m.r * figureShade * calm;
+    vec3 sh = s * (1.0 - shadeDepth) * shadeTint;
+    sh = mix(vec3(lum(sh)), sh, 1.0 + shadeSat);
+    sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 3.0 + 41.0) - 0.5);   // at 1.3 px it stippled dark hair
+    vec3 c = mix(s, clamp(sh, 0.0, 1.0), shade);
+    // the wash's grain: lighter and darker where the pigment lay thinner and thicker, blue settling most
+    float w = figureWash * calm;
+    float g = texture2D(washTex, dp / WASH_TILE_PX).r;
+    c *= vec3(1.0) + w * 1.2 * (g - 0.5) * vec3(0.8, 1.0, 1.3) * (1.0 - 0.4 * lum(s));
+    // pigment pools along the shade's wet edge, the way a wash dries darker at its rim
+    c *= 1.0 - 0.12 * w * shade * (1.0 - shade) * 4.0;
+    // a few soft blooms off the face: paler where water ran back in, with a faint darker rim
+    float b = smoothstep(0.66, 0.74, fbm(dp / 60.0 + 9.0)) * (1.0 - m.b);
+    c = mix(c, c * 1.05 + 0.02, 0.6 * w * b);
+    c *= 1.0 - 0.06 * w * b * (1.0 - b) * 4.0;
+    return mix(clamp(c, 0.0, 1.0), s, smoothstep(0.3, 0.6, ink));
+  }
+  #endif
   #ifdef BLINK
   // a close-up blinks (blink.ts): per eye the closed lid's edge slides from just above the eye box down to the closed
   // lash line; above the edge the closed picture in place, on a thin band above it the closed lash line riding the
@@ -200,9 +237,13 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       t *= 0.3 + 0.7 * smoothstep(0.15, 0.55, l);
       c.rgb = mix(s, t, tone * (1.0 - inkOf(s))) * c.a;
     }
+    float drawnInk = -1.0;                   // a flat figure: how much of this px is a drawn line (aquarel), else -1
+    #ifdef AQUAREL
+    if (c.a > 0.004) c.rgb = aquarel(c.rgb / c.a, uv, drawnInk) * c.a;
+    #endif
     if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
-      float ink = inkOf(s);
+      float ink = drawnInk >= 0.0 ? drawnInk : inkOf(s);   // a flat figure's shade is no line, however deep
       // thinner: a line pixel takes its lightest opaque neighbour lineThin px away (an opening of the dark lines);
       // a line pixel next to the air loses its alpha instead, so the silhouette outline thins the same way
       if (lineThin > 0.0 && ink > 0.0) {
@@ -219,7 +260,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
         }
         s = mix(s, best, ink);
         c.a *= mix(1.0, edge, ink);   // the outline against the air thins too: its outer line pixels go
-        ink = inkOf(s);
+        ink = drawnInk >= 0.0 ? min(drawnInk, inkOf(s)) : inkOf(s);
       }
       s = mix(s, clamp(s * inkMul, 0.0, 1.0), ink);                  // one ink value for every layer
       s = lineByDepth(s, ink, lineFade, haze, lineBrown, hazeTint);
@@ -520,6 +561,8 @@ export interface LayerHandle {
   setCell(c: readonly [number, number, number, number]): void
   /** a close-up's lid: 0 open .. 1 closed (no-op on a layer built without a blink) */
   setBlink(t: number): void
+  /** a flat figure's watercolour and shading (look.ts aquarelOf) and its drawing's size in px; no-op unless built with one */
+  setAquarel(a: Aquarel, drawSize: readonly [number, number]): void
 }
 
 let seed = 0
@@ -557,21 +600,56 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
   return p
 }
 
+/** A flat figure's shade mask: rig_parts.py writes it beside the atlas (fig.webp, fig-shade.webp) on the same layout,
+ *  so it is sampled at the atlas's own uv (row 0 at the top, as the atlas: no flip). */
+export function shadeMaskUrl(atlas: string): string {
+  return atlas.replace(/(\.\w+)?(\?.*)?$/, (_m, ext?: string, query?: string) => `-shade${ext ?? '.webp'}${query ?? ''}`)
+}
+export function shadeMask(atlas: string, scene: Scene): Promise<Texture> {
+  const url = shadeMaskUrl(atlas)
+  return new Promise((resolve, reject) => {
+    const t = new Texture(url, scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, () => resolve(t), () => reject(new Error(`shade mask ${url} did not load`)))
+    t.wrapU = Texture.CLAMP_ADDRESSMODE
+    t.wrapV = Texture.CLAMP_ADDRESSMODE
+  })
+}
+
+/** The wash's grain a flat figure's watercolour is painted with (public/stage25d/wash-figure.webp: kit_render's
+ *  wash-land texture, grey, mean 0.5), mirrored so its tiles never show a seam. One per scene. */
+export const FIGURE_WASH_URL = '/stage25d/wash-figure.webp'
+const washes = new WeakMap<Scene, Texture>()
+export function figureWash(scene: Scene): Texture {
+  const hit = washes.get(scene)
+  if (hit) return hit
+  const t = new Texture(FIGURE_WASH_URL, scene, false, true, Texture.TRILINEAR_SAMPLINGMODE)
+  t.wrapU = Texture.MIRROR_ADDRESSMODE
+  t.wrapV = Texture.MIRROR_ADDRESSMODE
+  washes.set(scene, t)
+  return t
+}
+
 /** A close-up's blink for makeLayer: the closed-eye texture and its eyes (blink.ts blinkOf). */
 export interface LayerBlink { tex: RawTexture; eyes: BlinkEye[] }
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean } = {}): LayerHandle {
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean; wash?: Texture; shade?: Texture } = {}): LayerHandle {
+  const aquarel = !!(rest && opts.wash && opts.shade)   // a flat figure: the shader colours its shade and paints its watercolour
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : [])],
-    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : [])],
-    defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : [])],
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
+      ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeTint', 'drawPx'] : [])],
+    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
+    defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
     needAlphaBlending: true,
   })
   tex.wrapU = uRepeat !== 1 ? Texture.WRAP_ADDRESSMODE : Texture.CLAMP_ADDRESSMODE
   mat.setTexture('tex', tex)
   if (rest) mat.setTexture('rest', rest)
+  if (aquarel) {
+    mat.setTexture('washTex', opts.wash!).setTexture('shadeTex', opts.shade!)
+    mat.setFloat('figureWash', 0).setFloat('figureShade', 0).setFloat('shadeDepth', 0).setFloat('shadeSat', 0).setFloat('shadeGran', 0)
+    mat.setVector3('shadeTint', new Vector3(1, 1, 1)).setVector2('drawPx', new Vector2(1 / 1024, 1 / 1536))
+  }
   if (blink) {
     mat.setTexture('blinkTex', blink.tex).setFloat('blinkT', 0)
     for (const i of [0, 1]) {
@@ -640,6 +718,12 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
     setCell: (c) => { for (const x of cast ? [mat, cast.mat] : [mat]) x.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setBlink: (t) => { if (blink) mat.setFloat('blinkT', t) },
+    setAquarel: (a, size) => {
+      if (!aquarel) return
+      mat.setFloat('figureWash', a.wash).setFloat('figureShade', a.shade).setFloat('shadeDepth', a.depth).setFloat('shadeSat', a.sat)
+        .setFloat('shadeGran', a.gran)
+      mat.setVector3('shadeTint', Vector3.FromArray(a.tint)).setVector2('drawPx', new Vector2(1 / size[0], 1 / size[1]))
+    },
     setCast: (c) => {
       if (!cast) return
       cast.mesh.isVisible = !!c && c.opacity > 0.001 && mesh.isVisible

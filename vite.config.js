@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => ({
         // The 2.5D stage, director and sound live in engine-mvp/src (one source for the lab and the Laravel
         // editor + player). Imported through this alias, never copied.
         alias: { '@stage25d': fileURLToPath(new URL('./engine-mvp/src', import.meta.url)) },
+        // engine-mvp has its own node_modules with the same Babylon: one copy in the bundle, never two (a build with
+        // both shipped 3.6 MB instead of 2.2, fresh tester 11-14)
+        dedupe: ['@babylonjs/core', '@babylonjs/loaders', '@babylonjs/materials'],
     },
     build: {
         // The hero "launch" animation dynamically imports three.js (~1.7 MB). Vite would emit a

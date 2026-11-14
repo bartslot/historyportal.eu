@@ -21,14 +21,14 @@ import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import type { LinesMesh } from '@babylonjs/core/Meshes/linesMesh'
 import type { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
 import { createLookChain, PRESETS } from '../engine/look-chain.js'
-import { aliveOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
+import { aliveOf, aquarelOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
 import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
-import { bandColours, edgeColours, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, skylines, type LayerHandle } from './layer'
+import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
@@ -57,7 +57,7 @@ const FAR_PIECE = -2
 const FAR_PIECE_SQUASH = 1
 const FAR_PIECE_Z = 880   // just in front of a terrain's far edge (900 m): that hazy strip rises above the horizon and hid a low piece
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string }  // index -1 = the sky
+interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -259,7 +259,12 @@ export class Stage {
       if (token !== this.buildToken) return
       // what stands on the floor throws its own shadow (layer.ts makeCast): not far strips, ground strips, decals or sky props
       const casts = STANDING.includes(layer.depth) && !asset.tileable_x && !liesFlat(layer, asset) && !isGroundStrip(asset) && asset.layer !== 'bg'
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts })
+      // a figure painted flat (plan 11): the shader colours its baked shade and paints its watercolour (no mask: drawn flat)
+      const flatFigure = rest && puppet?.paint === 'flat'
+      const wash = flatFigure ? figureWash(this.scene) : undefined
+      const shade = flatFigure ? await shadeMask(layer.src ?? puppet!.atlas, this.scene).catch(() => undefined) : undefined
+      if (token !== this.buildToken) return
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, shade })
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -277,7 +282,7 @@ export class Stage {
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
+      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, aquarel: !!(wash && shade), ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -480,6 +485,12 @@ export class Stage {
 
   /** (Re)strew the ground when the scene or the look's Gras / Horizon changed: pure plan (strew.ts), one mesh set per
    *  picture file (scatter-gl.ts). */
+  /** A figure painted flat stands in the scene and its shade mask loaded (plan 11): the panel offers its watercolour and
+   *  shading sliders. Without the mask the figure is drawn flat and the sliders would do nothing, so they stay hidden. */
+  get hasFlatFigure(): boolean {
+    return this.built.some((b) => b.aquarel)
+  }
+
   /** What can grow on this scene's ground: its tags decide (scatter.ts), so a deck or a stone floor has neither. */
   get strewable(): { grass: boolean; bushes: boolean } {
     const src = this.strewSrc
@@ -846,6 +857,8 @@ export class Stage {
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
+      const drawn = puppetOf(b.asset, b.layer)
+      if (drawn?.paint === 'flat') b.handle.setAquarel(aquarelOf(this.look), [drawn.width, drawn.height])
       b.stain?.setEtch(b.layer.etch ?? 0)
       b.stain?.setOpacity((b.layer.shadow ?? STAIN_DEFAULT) * opacity)
       b.stain?.setTint(lit.shadow)

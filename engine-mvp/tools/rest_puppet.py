@@ -255,7 +255,7 @@ def pack(parts):
             x, y, shelf = ATLAS_MARGIN, y + shelf + ATLAS_MARGIN, 0
         placed.append((x, y))
         x, shelf = x + w + ATLAS_MARGIN, max(shelf, h)
-    atlas = np.zeros((y + shelf + ATLAS_MARGIN, width, 4), 'uint8')
+    atlas = np.zeros((y + shelf + ATLAS_MARGIN, width, parts[0][1].shape[-1]), 'uint8')   # rgba, or rgba + shade
     for (bone, rgba), box, (ax, ay) in zip(parts, boxes, placed):
         _, x0, y0, x1, y1 = box
         atlas[ay:ay + y1 - y0, ax:ax + x1 - x0] = rgba[y0:y1, x0:x1]
