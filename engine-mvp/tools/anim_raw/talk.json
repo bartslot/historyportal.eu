@@ -1,0 +1,86 @@
+{
+  "id": "talk",
+  "loop": true,
+  "duration": 2.8,
+  "travel": false,
+  "keys": [
+    {
+      "t": 0,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "forearm_n": 0,
+        "upperarm_f": 0,
+        "forearm_f": 0
+      }
+    },
+    {
+      "t": 0.18,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 2,
+        "head": -2,
+        "upperarm_n": -12,
+        "forearm_n": -42,
+        "upperarm_f": -5,
+        "forearm_f": -16
+      }
+    },
+    {
+      "t": 0.4,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": 4,
+        "head": -4,
+        "upperarm_n": -8,
+        "forearm_n": -92,
+        "upperarm_f": -15,
+        "forearm_f": -55
+      }
+    },
+    {
+      "t": 0.59,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": 2,
+        "head": -6,
+        "upperarm_n": -32,
+        "forearm_n": -103,
+        "upperarm_f": -12,
+        "forearm_f": -78
+      }
+    },
+    {
+      "t": 0.8,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 1,
+        "head": 2,
+        "upperarm_n": -35,
+        "forearm_n": -35,
+        "upperarm_f": -7,
+        "forearm_f": -40
+      }
+    },
+    {
+      "t": 1,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "forearm_n": 0,
+        "upperarm_f": 0,
+        "forearm_f": 0
+      }
+    }
+  ]
+}

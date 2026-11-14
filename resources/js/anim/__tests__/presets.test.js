@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
+import catalogue from '../../../animations/presets.json'
 import { CLIPS, applyClip, clipSpan, expandClip } from '../presets.js'
 
 
@@ -30,6 +31,9 @@ describe('applyClip', () => {
 })
 
 describe('the shipped presets', () => {
+  it('every preset the picker lists has its clip', () => {
+    expect(Object.keys(CLIPS).sort()).toEqual(catalogue.presets.map((p) => p.id).sort())
+  })
   it('each is a clip the stage can play: keys from 0 to 1, turns in degrees, a loop closing on itself', () => {
     for (const clip of Object.values(CLIPS)) {
       expect(clip.keys[0].t).toBe(0)

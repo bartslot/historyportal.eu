@@ -41,9 +41,9 @@ def test_a_loop_ends_on_its_first_pose():
 def test_a_squat_sinks_the_hips_and_keeps_both_feet_where_they_stand():
     clip, report = fit({'id': 'squat', 'loop': False, 'duration': 1, 'keys': [
         {'t': 0, 'contact': 'both', 'bones': {}},
-        {'t': 1, 'contact': 'both', 'bones': {'thigh_n': -70, 'shin_n': 110, 'thigh_f': -70, 'shin_f': 110}},
+        {'t': 1, 'contact': 'both', 'bones': {'thigh_n': -45, 'shin_n': 70, 'thigh_f': -45, 'shin_f': 70}},
     ]})
-    assert clip['keys'][-1]['bob'] < -0.08
+    assert clip['keys'][-1]['bob'] < -0.03
     assert report['slide'] < 0.002
     assert clip['travel'] == 0.0 and clip['keys'][-1]['dx'] < 0   # the hips go back over the heels
 
@@ -60,3 +60,16 @@ def test_a_face_is_one_the_heads_can_show():
     clip, _ = fit({'id': 'x', 'loop': False, 'duration': 1, 'keys': [
         {'t': 0, 'contact': 'both', 'bones': {}, 'face': 'surprised'}, {'t': 1, 'contact': 'both', 'bones': {}, 'face': 'grin'}]})
     assert clip['keys'][0]['face'] == 'amazed' and 'face' not in clip['keys'][1]
+
+
+def test_a_move_that_starts_sitting_starts_low_and_no_foot_ever_goes_through_the_floor():
+    from anim_fit import sinking, HEIGHT_PX
+    sit = {'thigh_n': -85, 'shin_n': 85, 'thigh_f': -85, 'shin_f': 85}
+    raw = {'id': 'up', 'loop': False, 'duration': 1, 'keys': [
+        {'t': 0, 'contact': 'both', 'bones': sit}, {'t': 0.5, 'contact': 'both', 'bones': {**sit, 'foot_n': -45}},
+        {'t': 1, 'contact': 'both', 'bones': {}}]}
+    clip, _ = fit(raw)
+    assert clip['keys'][0]['bob'] < -0.1 and abs(clip['keys'][-1]['bob']) < 1e-3
+    for k in clip['keys']:
+        pose = {b[5:]: v for b, v in k.items() if b.startswith('bone:')}
+        assert sinking(pose, -k['bob'] * HEIGHT_PX) < 0.6

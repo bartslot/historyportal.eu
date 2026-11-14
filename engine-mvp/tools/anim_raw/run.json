@@ -1,0 +1,162 @@
+{
+  "id": "run",
+  "loop": true,
+  "duration": 0.64,
+  "travel": true,
+  "keys": [
+    {
+      "t": 0,
+      "contact": "n",
+      "face": "neutral",
+      "bones": {
+        "chest": 12,
+        "head": -8,
+        "upperarm_n": -35,
+        "upperarm_f": 38,
+        "forearm_n": -78,
+        "forearm_f": -95,
+        "thigh_n": -35,
+        "thigh_f": 32,
+        "shin_n": 12,
+        "shin_f": 105,
+        "foot_n": 18,
+        "foot_f": -40
+      }
+    },
+    {
+      "t": 0.14,
+      "contact": "n",
+      "face": "neutral",
+      "bones": {
+        "chest": 16,
+        "head": -10,
+        "upperarm_n": -20,
+        "upperarm_f": 24,
+        "forearm_n": -82,
+        "forearm_f": -100,
+        "thigh_n": -12,
+        "thigh_f": 12,
+        "shin_n": 48,
+        "shin_f": 120,
+        "foot_n": -36,
+        "foot_f": -50
+      }
+    },
+    {
+      "t": 0.28,
+      "contact": "n",
+      "face": "neutral",
+      "bones": {
+        "chest": 13,
+        "head": -9,
+        "upperarm_n": 15,
+        "upperarm_f": -15,
+        "forearm_n": -95,
+        "forearm_f": -80,
+        "thigh_n": 24,
+        "thigh_f": -35,
+        "shin_n": 18,
+        "shin_f": 115,
+        "foot_n": -42,
+        "foot_f": -45
+      }
+    },
+    {
+      "t": 0.42,
+      "contact": "none",
+      "lift": 0.055,
+      "face": "neutral",
+      "bones": {
+        "chest": 10,
+        "head": -7,
+        "upperarm_n": 40,
+        "upperarm_f": -38,
+        "forearm_n": -100,
+        "forearm_f": -75,
+        "thigh_n": 35,
+        "thigh_f": -65,
+        "shin_n": 95,
+        "shin_f": 80,
+        "foot_n": -35,
+        "foot_f": -20
+      }
+    },
+    {
+      "t": 0.5,
+      "contact": "f",
+      "face": "neutral",
+      "bones": {
+        "chest": 12,
+        "head": -8,
+        "upperarm_n": 38,
+        "upperarm_f": -35,
+        "forearm_n": -95,
+        "forearm_f": -78,
+        "thigh_n": 32,
+        "thigh_f": -35,
+        "shin_n": 105,
+        "shin_f": 12,
+        "foot_n": -40,
+        "foot_f": 18
+      }
+    },
+    {
+      "t": 0.64,
+      "contact": "f",
+      "face": "neutral",
+      "bones": {
+        "chest": 16,
+        "head": -10,
+        "upperarm_n": 24,
+        "upperarm_f": -20,
+        "forearm_n": -100,
+        "forearm_f": -82,
+        "thigh_n": 12,
+        "thigh_f": -12,
+        "shin_n": 120,
+        "shin_f": 48,
+        "foot_n": -50,
+        "foot_f": -36
+      }
+    },
+    {
+      "t": 0.82,
+      "contact": "none",
+      "lift": 0.06,
+      "face": "neutral",
+      "bones": {
+        "chest": 10,
+        "head": -7,
+        "upperarm_n": -38,
+        "upperarm_f": 40,
+        "forearm_n": -75,
+        "forearm_f": -100,
+        "thigh_n": -65,
+        "thigh_f": 35,
+        "shin_n": 80,
+        "shin_f": 95,
+        "foot_n": -20,
+        "foot_f": -35
+      }
+    },
+    {
+      "t": 1,
+      "contact": "n",
+      "face": "neutral",
+      "bones": {
+        "chest": 12,
+        "head": -8,
+        "upperarm_n": -35,
+        "upperarm_f": 38,
+        "forearm_n": -78,
+        "forearm_f": -95,
+        "thigh_n": -35,
+        "thigh_f": 32,
+        "shin_n": 12,
+        "shin_f": 105,
+        "foot_n": 18,
+        "foot_f": -40
+      }
+    }
+  ]
+}

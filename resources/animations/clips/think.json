@@ -1,0 +1,56 @@
+{
+ "id": "think",
+ "loop": false,
+ "duration": 2.4,
+ "travel": 0.0,
+ "keys": [
+  {
+   "t": 0,
+   "bone:chest": 0.0,
+   "bone:forearm_f": 0.0,
+   "bone:forearm_n": 0.0,
+   "bone:head": 0.0,
+   "bone:upperarm_f": 0.0,
+   "bone:upperarm_n": 0.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  },
+  {
+   "t": 0.3,
+   "bone:chest": 3.0,
+   "bone:forearm_f": -12.0,
+   "bone:forearm_n": -137.0,
+   "bone:head": 10.0,
+   "bone:upperarm_f": 0.0,
+   "bone:upperarm_n": -8.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "curious"
+  },
+  {
+   "t": 0.64,
+   "bone:chest": 5.0,
+   "bone:forearm_f": -94.0,
+   "bone:forearm_n": -119.0,
+   "bone:head": 16.0,
+   "bone:upperarm_f": -24.0,
+   "bone:upperarm_n": -42.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "curious"
+  },
+  {
+   "t": 1,
+   "bone:chest": 9.0,
+   "bone:forearm_f": -91.0,
+   "bone:forearm_n": -122.0,
+   "bone:head": 22.0,
+   "bone:upperarm_f": -29.0,
+   "bone:upperarm_n": -43.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "curious"
+  }
+ ]
+}

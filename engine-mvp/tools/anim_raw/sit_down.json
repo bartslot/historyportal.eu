@@ -1,0 +1,103 @@
+{
+  "id": "sit_down",
+  "loop": false,
+  "duration": 2.1,
+  "travel": false,
+  "keys": [
+    {
+      "t": 0,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "forearm_n": 0,
+        "upperarm_f": 0,
+        "forearm_f": 0,
+        "thigh_n": 0,
+        "shin_n": 0,
+        "thigh_f": 0,
+        "shin_f": 0,
+        "foot_n": 0,
+        "foot_f": 0
+      }
+    },
+    {
+      "t": 0.24,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 14,
+        "head": -8,
+        "upperarm_n": -10,
+        "forearm_n": -12,
+        "upperarm_f": -6,
+        "forearm_f": -8,
+        "thigh_n": -25,
+        "shin_n": 37,
+        "thigh_f": -23,
+        "shin_f": 35,
+        "foot_n": -12,
+        "foot_f": -12
+      }
+    },
+    {
+      "t": 0.52,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 28,
+        "head": -18,
+        "upperarm_n": -34,
+        "forearm_n": -60,
+        "upperarm_f": -28,
+        "forearm_f": -57,
+        "thigh_n": -58,
+        "shin_n": 78,
+        "thigh_f": -56,
+        "shin_f": 76,
+        "foot_n": -20,
+        "foot_f": -20
+      }
+    },
+    {
+      "t": 0.78,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 18,
+        "head": -12,
+        "upperarm_n": -16,
+        "forearm_n": -76,
+        "upperarm_f": -12,
+        "forearm_f": -73,
+        "thigh_n": -83,
+        "shin_n": 94,
+        "thigh_f": -81,
+        "shin_f": 92,
+        "foot_n": -11,
+        "foot_f": -11
+      }
+    },
+    {
+      "t": 1,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": -5,
+        "forearm_n": -80,
+        "upperarm_f": -3,
+        "forearm_f": -82,
+        "thigh_n": -85,
+        "shin_n": 85,
+        "thigh_f": -85,
+        "shin_f": 85,
+        "foot_n": 0,
+        "foot_f": 0
+      }
+    }
+  ]
+}

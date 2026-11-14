@@ -1,0 +1,56 @@
+{
+  "id": "point",
+  "loop": false,
+  "duration": 2.4,
+  "travel": false,
+  "keys": [
+    {
+      "t": 0,
+      "contact": "both",
+      "face": "neutral",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "forearm_n": 0,
+        "upperarm_f": 0
+      }
+    },
+    {
+      "t": 0.3,
+      "contact": "both",
+      "face": "talk",
+      "bones": {
+        "chest": 4,
+        "head": -6,
+        "upperarm_n": -94,
+        "forearm_n": -5,
+        "upperarm_f": 5
+      }
+    },
+    {
+      "t": 0.72,
+      "contact": "both",
+      "face": "smile",
+      "bones": {
+        "chest": 3,
+        "head": -4,
+        "upperarm_n": -93,
+        "forearm_n": 0,
+        "upperarm_f": 3
+      }
+    },
+    {
+      "t": 1,
+      "contact": "both",
+      "face": "neutral",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "forearm_n": 0,
+        "upperarm_f": 0
+      }
+    }
+  ]
+}

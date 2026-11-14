@@ -1,0 +1,48 @@
+{
+ "id": "nod_yes",
+ "loop": false,
+ "duration": 1.5,
+ "travel": 0.0,
+ "keys": [
+  {
+   "t": 0,
+   "bone:chest": 0.0,
+   "bone:head": 0.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  },
+  {
+   "t": 0.23,
+   "bone:chest": 2.0,
+   "bone:head": 27.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  },
+  {
+   "t": 0.46,
+   "bone:chest": 0.0,
+   "bone:head": -5.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  },
+  {
+   "t": 0.7,
+   "bone:chest": 1.0,
+   "bone:head": 23.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  },
+  {
+   "t": 1,
+   "bone:chest": 0.0,
+   "bone:head": 0.0,
+   "dx": 0.0,
+   "bob": -0.0,
+   "face": "calm"
+  }
+ ]
+}

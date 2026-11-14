@@ -1,0 +1,87 @@
+{
+  "tuned": "look up head -48 -> -35 (head range), chest -12 -> -18 to keep the look up",
+  "id": "look_around",
+  "loop": true,
+  "duration": 4.2,
+  "travel": false,
+  "keys": [
+    {
+      "t": 0,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "upperarm_f": 0,
+        "forearm_n": -5,
+        "forearm_f": -7
+      }
+    },
+    {
+      "t": 0.2,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": -5,
+        "head": -30,
+        "upperarm_n": 3,
+        "upperarm_f": -3,
+        "forearm_n": -8,
+        "forearm_f": -10
+      }
+    },
+    {
+      "t": 0.4,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": -18,
+        "head": -35,
+        "upperarm_n": 8,
+        "upperarm_f": -10,
+        "forearm_n": -15,
+        "forearm_f": -9
+      }
+    },
+    {
+      "t": 0.6,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": 8,
+        "head": 10,
+        "upperarm_n": -8,
+        "upperarm_f": 5,
+        "forearm_n": -9,
+        "forearm_f": -15
+      }
+    },
+    {
+      "t": 0.8,
+      "contact": "both",
+      "face": "curious",
+      "bones": {
+        "chest": 12,
+        "head": 34,
+        "upperarm_n": -5,
+        "upperarm_f": -2,
+        "forearm_n": -12,
+        "forearm_f": -10
+      }
+    },
+    {
+      "t": 1,
+      "contact": "both",
+      "face": "calm",
+      "bones": {
+        "chest": 0,
+        "head": 0,
+        "upperarm_n": 0,
+        "upperarm_f": 0,
+        "forearm_n": -5,
+        "forearm_f": -7
+      }
+    }
+  ]
+}

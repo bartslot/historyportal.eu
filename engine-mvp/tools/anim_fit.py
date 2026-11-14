@@ -51,7 +51,9 @@ MOVABLE = [b for b in SKELETON if b != 'hips']   # the hips never turn (bones.ts
 # degrees clockwise on screen from the drawn pose, facing right (bones.ts JOINT_RANGE, opened to a whole body's reach:
 # a rig clamps to its own limits when it plays)
 HUMAN_RANGE = {
-    'thigh': (-120.0, 45.0), 'shin': (0.0, 150.0), 'foot': (-45.0, 45.0),
+    # a foot as far as the rigs let it turn (rig_parts.py writes -30..20): a pose that needs more lifts its heel here,
+    # not through the floor on the stage
+    'thigh': (-120.0, 45.0), 'shin': (0.0, 150.0), 'foot': (-30.0, 20.0),
     'upperarm': (-190.0, 70.0), 'forearm': (-150.0, 5.0),
     'chest': (-30.0, 45.0), 'head': (-35.0, 35.0), 'braid': (-30.0, 30.0),
 }
@@ -275,12 +277,16 @@ def fit(raw: dict) -> tuple[dict, dict]:
         hips[i] = (ha[0] + (hb[0] - ha[0]) * u, ha[1] + (hb[1] - ha[1]) * u)
 
     dx = [h[0] - hips[0][0] for h in hips]
-    dy = [h[1] - hips[0][1] - float(k.get('lift', 0)) * HEIGHT_PX for h, k in zip(hips, keys)]
+    # the hips' height is measured from standing (the layer's own y), not from the first key: a clip that starts
+    # sitting starts low
+    dy = [h[1] - float(k.get('lift', 0)) * HEIGHT_PX for h, k in zip(hips, keys)]
     # standing still: a clip that does not travel ends where it started (the drift spread over it)
     if raw.get('loop') and not raw.get('travel'):
         dx = [x - dx[-1] * k['t'] for x, k in zip(dx, keys)]
     if raw.get('loop'):
-        dy = [y - dy[-1] * k['t'] for y, k in zip(dy, keys)]
+        dy = [y - (dy[-1] - dy[0]) * k['t'] for y, k in zip(dy, keys)]
+    # nothing goes through the floor: a foot that cannot lie flat (its turn at the end of its range) lifts the body
+    dy = [y - max(0.0, sinking(p, y)) for p, y in zip(poses, dy)]
 
     moved = sorted({b for p in poses for b in MOVABLE if abs(p[b]) > 0.05})
     out_keys = []
@@ -295,15 +301,25 @@ def fit(raw: dict) -> tuple[dict, dict]:
     return clip, {'id': raw['id'], 'notes': notes, 'slide': slide(keys, poses, dx, dy)}
 
 
+def sinking(pose: dict[str, float], dy: float) -> float:
+    """How far (px) the lowest point of either foot, heel or toe, stands below where it touches the floor when standing."""
+    worst = -math.inf
+    for side in 'nf':
+        j, rest = joints(pose, side), joints({}, side)
+        worst = max(worst, j['ankle'][1] + dy - rest['ankle'][1], j['toe'][1] + dy - rest['toe'][1])
+    return worst
+
+
 def slide(keys: list[dict], poses: list[dict], dx: list[float], dy: list[float]) -> float:
-    """How far (body heights) a foot that stands on the ground at two keys in a row moved between them: should be 0."""
+    """How far (body heights) a foot that stands on the ground at two keys in a row slid along it between them: should be
+    0. Up and down does not count: a heel lifts when a crouch asks more of the foot than the rigs allow (sinking)."""
     worst = 0.0
     for i in range(1, len(keys)):
         for s in set(CONTACTS[keys[i - 1].get('contact', 'both')]) & set(CONTACTS[keys[i].get('contact', 'both')]):
             if keys[i - 1].get('lift') or keys[i].get('lift'):
                 continue
             a, b = joints(poses[i - 1], s)['ankle'], joints(poses[i], s)['ankle']
-            worst = max(worst, math.dist((a[0] + dx[i - 1], a[1] + dy[i - 1]), (b[0] + dx[i], b[1] + dy[i])) / HEIGHT_PX)
+            worst = max(worst, abs((a[0] + dx[i - 1]) - (b[0] + dx[i])) / HEIGHT_PX)
     return round(worst, 4)
 
 
