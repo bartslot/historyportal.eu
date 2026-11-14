@@ -149,14 +149,13 @@
      "label": "Plain shift",
      "kinds": [
       "skin",
-      "tunic",
-      "white"
+      "tunic"
      ],
      "box": [
       481,
-      90,
+      89,
       1087,
-      2936
+      2937
      ],
      "files": {
       "fill": "outfit-base-shift.webp",
@@ -176,9 +175,9 @@
      ],
      "box": [
       480,
-      90,
-      1088,
-      2937
+      89,
+      1087,
+      2939
      ],
      "files": {
       "fill": "outfit-work-tunic-apron.webp",
@@ -197,10 +196,10 @@
       "rope"
      ],
      "box": [
-      480,
+      481,
       89,
-      1087,
-      2936
+      1086,
+      2937
      ],
      "files": {
       "fill": "outfit-long-wrap.webp",
@@ -240,9 +239,9 @@
      ],
      "box": [
       822,
-      90,
-      405,
-      612
+      89,
+      402,
+      587
      ],
      "files": {
       "fill": "face-girl.webp",
@@ -262,8 +261,8 @@
      "box": [
       822,
       90,
-      402,
-      612
+      398,
+      586
      ],
      "files": {
       "fill": "face-young-woman.webp",
@@ -338,9 +337,9 @@
      ],
      "box": [
       1088,
-      420,
-      127,
-      88
+      432,
+      117,
+      76
      ],
      "files": {
       "fill": "mouths-oh.webp",
@@ -377,10 +376,10 @@
       "iris"
      ],
      "box": [
-      737,
-      84,
-      498,
-      645
+      733,
+      83,
+      502,
+      646
      ],
      "files": {
       "fill": "hair-loose.webp",
@@ -400,9 +399,9 @@
      ],
      "box": [
       648,
-      59,
+      60,
       585,
-      725
+      718
      ],
      "files": {
       "fill": "hair-braid.webp",
@@ -421,9 +420,9 @@
      ],
      "box": [
       810,
-      89,
-      407,
-      394
+      88,
+      403,
+      400
      ],
      "files": {
       "fill": "hair-bun.webp",
@@ -442,9 +441,9 @@
       "brow"
      ],
      "box": [
-      814,
+      812,
       172,
-      401,
+      399,
       184
      ],
      "files": {
@@ -463,10 +462,10 @@
       "ochre"
      ],
      "box": [
-      710,
-      83,
-      496,
-      674
+      712,
+      82,
+      489,
+      671
      ],
      "files": {
       "fill": "headwear-shawl-over-head.webp",
@@ -484,10 +483,10 @@
       "ochre"
      ],
      "box": [
-      869,
-      423,
-      222,
-      235
+      873,
+      424,
+      214,
+      234
      ],
      "files": {
       "fill": "extras-jewellery.webp",
@@ -507,7 +506,7 @@
      "box": [
       987,
       240,
-      234,
+      235,
       256
      ],
      "files": {
@@ -528,7 +527,7 @@
      "box": [
       991,
       265,
-      230,
+      231,
       231
      ],
      "files": {
@@ -548,9 +547,9 @@
      ],
      "box": [
       983,
-      266,
-      237,
-      230
+      268,
+      230,
+      228
      ],
      "files": {
       "fill": "expressions-girl-angry.webp",
@@ -570,7 +569,7 @@
      "box": [
       976,
       224,
-      245,
+      237,
       272
      ],
      "files": {
@@ -603,7 +602,7 @@
      "box": [
       481,
       90,
-      1082,
+      1083,
       2937
      ],
      "files": {
@@ -623,9 +622,9 @@
       "apron"
      ],
      "box": [
-      481,
+      480,
       90,
-      1084,
+      1085,
       2936
      ],
      "files": {
@@ -645,10 +644,10 @@
       "ochre"
      ],
      "box": [
-      480,
-      90,
-      1085,
-      2937
+      481,
+      91,
+      1084,
+      2936
      ],
      "files": {
       "fill": "outfit-long-wrap.webp",
@@ -666,9 +665,9 @@
       "shawl"
      ],
      "box": [
-      480,
+      479,
       90,
-      1085,
+      1086,
       2936
      ],
      "files": {
@@ -683,15 +682,14 @@
      "label": "Woman",
      "kinds": [
       "skin",
-      "tunic",
       "white",
       "iris"
      ],
      "box": [
-      822,
+      825,
       90,
-      358,
-      596
+      357,
+      574
      ],
      "files": {
       "fill": "face-woman-n.webp",
@@ -705,15 +703,14 @@
      "label": "Woman of forty",
      "kinds": [
       "skin",
-      "tunic",
       "white",
       "iris"
      ],
      "box": [
-      823,
+      824,
       90,
       358,
-      596
+      574
      ],
      "files": {
       "fill": "face-woman-40-n.webp",
@@ -727,16 +724,15 @@
      "label": "Old woman",
      "kinds": [
       "skin",
-      "tunic",
       "white",
       "iris",
       "brow"
      ],
      "box": [
       823,
-      90,
+      92,
       357,
-      596
+      572
      ],
      "files": {
       "fill": "face-old-woman-n.webp",
@@ -755,9 +751,9 @@
      ],
      "box": [
       998,
-      264,
+      272,
       182,
-      78
+      67
      ],
      "files": {
       "fill": "eyes-woman-round.webp",
@@ -775,9 +771,9 @@
      ],
      "box": [
       986,
-      265,
+      273,
       194,
-      74
+      62
      ],
      "files": {
       "fill": "eyes-woman-hooded.webp",
@@ -795,7 +791,7 @@
      "box": [
       1057,
       411,
-      100,
+      92,
       44
      ],
      "files": {
@@ -815,7 +811,7 @@
      "box": [
       1064,
       409,
-      93,
+      85,
       46
      ],
      "files": {
@@ -833,10 +829,10 @@
       "brow"
      ],
      "box": [
-      823,
-      91,
-      348,
-      367
+      822,
+      92,
+      352,
+      363
      ],
      "files": {
       "fill": "hair-woman-bun.webp",
@@ -855,9 +851,9 @@
       "brow"
      ],
      "box": [
-      824,
+      825,
       147,
-      345,
+      342,
       200
      ],
      "files": {
@@ -872,15 +868,14 @@
      "slot": "headwear",
      "label": "Shawl over head",
      "kinds": [
-      "tie",
       "grey",
       "ochre"
      ],
      "box": [
-      707,
-      87,
-      455,
-      578
+      709,
+      88,
+      459,
+      570
      ],
      "files": {
       "fill": "headwear-woman-shawl-over-head.webp",
@@ -899,10 +894,10 @@
       "tie"
      ],
      "box": [
-      862,
-      376,
-      251,
-      266
+      866,
+      374,
+      246,
+      268
      ],
      "files": {
       "fill": "extras-woman-jewellery.webp",
@@ -922,7 +917,7 @@
      "box": [
       977,
       212,
-      202,
+      203,
       243
      ],
      "files": {
@@ -943,7 +938,7 @@
      "box": [
       978,
       241,
-      201,
+      200,
       214
      ],
      "files": {
@@ -1013,14 +1008,13 @@
      "label": "Plain kilt",
      "kinds": [
       "skin",
-      "tunic",
-      "white"
+      "tunic"
      ],
      "box": [
-      444,
-      92,
-      1130,
-      2934
+      443,
+      91,
+      1131,
+      2935
      ],
      "files": {
       "fill": "outfit-base-kilt.webp",
@@ -1039,7 +1033,7 @@
      ],
      "box": [
       445,
-      92,
+      91,
       1131,
       2934
      ],
@@ -1063,7 +1057,7 @@
       444,
       91,
       1131,
-      2934
+      2933
      ],
      "files": {
       "fill": "outfit-merchant-tunic.webp",
@@ -1082,10 +1076,10 @@
       "rope"
      ],
      "box": [
-      445,
-      92,
-      1131,
-      2948
+      444,
+      91,
+      1132,
+      2949
      ],
      "files": {
       "fill": "outfit-soldier.webp",
@@ -1103,10 +1097,10 @@
       "iris"
      ],
      "box": [
-      792,
-      92,
-      395,
-      546
+      808,
+      91,
+      377,
+      525
      ],
      "files": {
       "fill": "face-man.webp",
@@ -1124,9 +1118,9 @@
      ],
      "box": [
       988,
-      234,
-      200,
-      98
+      240,
+      189,
+      85
      ],
      "files": {
       "fill": "eyes-man-calm.webp",
@@ -1144,10 +1138,10 @@
       "iris"
      ],
      "box": [
-      794,
-      63,
-      376,
-      482
+      795,
+      64,
+      381,
+      478
      ],
      "files": {
       "fill": "hair-man-hair-headband.webp",
@@ -1165,10 +1159,10 @@
       "iris"
      ],
      "box": [
-      896,
+      892,
       342,
-      283,
-      235
+      287,
+      229
      ],
      "files": {
       "fill": "hair-man-beard.webp",
@@ -1185,10 +1179,10 @@
       "ochre"
      ],
      "box": [
-      836,
-      55,
-      349,
-      304
+      837,
+      54,
+      346,
+      303
      ],
      "files": {
       "fill": "headwear-man-helmet.webp",
@@ -1205,10 +1199,10 @@
       "rope"
      ],
      "box": [
-      868,
-      516,
-      232,
-      120
+      872,
+      520,
+      224,
+      116
      ],
      "files": {
       "fill": "extras-man-seal.webp",
@@ -1227,9 +1221,9 @@
      ],
      "box": [
       989,
-      211,
-      196,
-      245
+      214,
+      188,
+      242
      ],
      "files": {
       "fill": "expressions-man-curious.webp",
@@ -1249,7 +1243,7 @@
      "box": [
       986,
       236,
-      200,
+      191,
       220
      ],
      "files": {
@@ -1270,7 +1264,7 @@
      "box": [
       986,
       240,
-      201,
+      191,
       216
      ],
      "files": {
@@ -1291,7 +1285,7 @@
      "box": [
       982,
       205,
-      202,
+      195,
       252
      ],
      "files": {

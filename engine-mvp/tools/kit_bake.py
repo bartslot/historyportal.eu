@@ -32,7 +32,7 @@ from scipy import ndimage
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit_presets as P  # noqa: E402
 from img_io import find  # noqa: E402
-from kit_parts import ANA, K, PATCHES, compose, part as part_of  # noqa: E402
+from kit_parts import ANA, K, MOUTH_ZONE, PATCHES, compose, part as part_of  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -101,6 +101,9 @@ KNEE_AT = 0.5                   # of hip to ankle: where the knee is (it lies un
 UNDER_ARM_PX = 40               # 1x px: a torso closed this far reaches under the hanging near arm
 UNDER_SHIN_PX = 70              # 1x px: a shin goes on this far up under the skirt, so a swung leg shows no cut end
 CAST_REACH = 30                 # 2x px: how far from a piece the shade it casts can fall
+CONTOUR_KEEP = 6                # 2x px either side of the head's outline that only the face piece draws (a line's half width)
+OWN_LINE = 6                    # 2x px round a part's mask its own contour can lie
+COLLAR_GAP = 8                  # 1x px of the head next to the body that the outfit piece draws (its neckline)
 
 
 def rgb_hex(h: str) -> list[int]:
@@ -120,10 +123,18 @@ def render(body: str, outfit: str, face: str, parts: list[str], work: Path) -> d
     Image.fromarray(head.astype(np.uint8)).save(work / 'head.webp', lossless=True)
     Image.fromarray((drawn * 255).astype(np.uint8)).save(work / 'parts-mask.webp', lossless=True)
     mouth = next((p for p in parts if p.startswith('mouths/')), None)
+    mouth_mask = str(find(K / f'parts/{mouth}-mask.png')) if mouth else ''
+    expr = next((p for p in parts if p.startswith('expressions/')), None)
+    if expr:   # an expression's mouth (an open "oh" is solid ink) is a mouth, never the jaw's wedge
+        mm = np.zeros(head.shape[:2], bool)
+        x0, y0, x1, y1 = MOUTH_ZONE
+        mm[y0:y1, x0:x1] = masks[expr][y0:y1, x0:x1]
+        Image.fromarray((mm * 255).astype(np.uint8)).save(work / 'mouth-mask.webp', lossless=True)
+        mouth_mask = str(work / 'mouth-mask.webp')
     env = dict(os.environ, KIT='1', NAME='p', FLAT=str(P.OUTFITS[body][outfit]), HEAD_SHEET=str(work / 'head.webp'),
                HAIR_MASK=str(work / 'parts-mask.webp'), PAL=json.dumps({k: list(v) for k, v in KEY.items()}),
                HEAD_BOX=json.dumps(P.BODIES[body]['box']), RENDERS='canvas', CANVAS_SCALE=str(SCALE), PAINT='flat', PIECES='1',
-               MOUTH_MASK=str(find(K / f'parts/{mouth}-mask.png')) if mouth else '')
+               MOUTH_MASK=mouth_mask)
     r = subprocess.run([sys.executable, str(HERE / 'kit_render.py'), str(ANA), str(find(P.BODIES[body]['map'])), str(work)],
                        env=env, capture_output=True, text=True)
     if r.returncode:
@@ -267,6 +278,43 @@ def snap(fill: np.ndarray) -> np.ndarray:
     return out
 
 
+def kind_of(fill: np.ndarray) -> np.ndarray:
+    return np.clip(np.round((fill[..., 0].astype(int) - 10) / 18), 0, len(KINDS) - 1).astype(int)
+
+
+def one_cloth(fill: np.ndarray) -> np.ndarray:
+    """A headwear piece in one cloth kind (its most common), its hair kinds and eye white left alone."""
+    k = kind_of(fill)
+    solid = fill[..., 3] > 0
+    keep = np.isin(k, [KINDS.index(n) for n in ('hair', 'grey', 'brow', 'white')])
+    cloth = solid & ~keep
+    fabric = cloth & np.isin(k, [KINDS.index(n) for n in ('ochre', 'tunic', 'shawl', 'apron', 'rope', 'tie')])
+    if not fabric.any():
+        return fill
+    counts = np.bincount(k[fabric], minlength=len(KINDS))
+    # a head cloth is the head-cloth zone (ochre); a band of its own colour (a headband) is the band zone (apron)
+    main = KINDS.index('apron') if counts.argmax() == KINDS.index('apron') else KINDS.index('ochre')
+    out = fill.copy()
+    out[cloth, 0], out[cloth, 1], out[cloth, 2] = 10 + 18 * main, 250 - 18 * main, 128
+    return out
+
+
+def no_white(fill: np.ndarray, keep_near: str | None = None) -> np.ndarray:
+    """The 'white' kind painted over by the nearest other kind (eyes are the face piece's; on a body white is a speck).
+    `keep_near`: white within reach of this kind stays (the eye white round an iris)."""
+    r = fill[..., 0].astype(int)
+    white = (fill[..., 3] > 0) & (r == 10 + 18 * KINDS.index('white'))
+    if keep_near:
+        white &= ~ndimage.binary_dilation(kind_of(fill) == KINDS.index(keep_near), iterations=40)
+    if not white.any():
+        return fill
+    other = (fill[..., 3] > 0) & ~white
+    _, (jy, jx) = ndimage.distance_transform_edt(~other, return_indices=True)
+    out = fill.copy()
+    out[white, :3] = fill[jy[white], jx[white], :3]
+    return out
+
+
 def kinds_in(fill: np.ndarray, mask: np.ndarray, share: float = 0.0) -> list[str]:
     """The colour kinds a piece shows: at least 1 % of its solid paint, or 400 px (a cord, a band); never under `share`."""
     sel = (fill[..., 3] > 200) & mask
@@ -290,6 +338,8 @@ def save_piece(folder: Path, name: str, fill: np.ndarray, ink: np.ndarray, shade
     k = crop(keep)
     f = snap(crop(fill))
     f[~k] = 0
+    if name.split('-', 1)[0] in ('hair', 'headwear'):   # 'white' in hair is the air between a strand and the neck: see-through
+        f[f[..., 0] == 10 + 18 * KINDS.index('white')] = 0
     i = np.where(k, crop(ink), 0).astype(np.uint8)
     s = crop(shade).copy()
     s[~k] = 0
@@ -325,7 +375,9 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
 
     lab, names = map_parts(body)
     big = lambda m: np.asarray(Image.fromarray((m * 255).astype(np.uint8)).resize((m.shape[1] * SCALE, m.shape[0] * SCALE), Image.NEAREST)) > 127
-    head_region = big(ndimage.binary_dilation(lab == names.index('head'), iterations=3))
+    # the head, short of where it meets the body: the neckline and collar are the outfit's own lines, never two pieces' at once
+    below = (lab != names.index('head')) & (lab != names.index('braid')) & (lab != 255)
+    head_region = big((lab == names.index('head')) & ~ndimage.binary_dilation(below, iterations=COLLAR_GAP))
     base = done['base']
     shape = base['ink'].shape
     folder = OUT / body
@@ -343,6 +395,10 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
                        'kinds': kinds_in(r['fill'], keep), **meta})
 
     everything = np.ones(shape, bool)
+    # the head's own contour belongs to the face piece only: a patch (eyes, mouth, an expression) stops short of it, so the
+    # contour is never drawn twice with two pens' wobble (Bart 11-14: "seams between pieces never show as ink")
+    sil = base['fill'][..., 3] > 0
+    contour = ndimage.binary_dilation(sil & ~ndimage.binary_erosion(sil, iterations=2), iterations=CONTOUR_KEEP)
     for o in kit['outfits']:
         piece(f'outfit/{o}', 'outfit', everything, False)
     for f in kit['faces']:
@@ -351,13 +407,16 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
         for n in plist:
             m = head_to_canvas(done[n]['head_mask'], body, shape)
             ink = done[n]['ink'] > 20
-            keep = ndimage.binary_dilation(m, iterations=2) | (ndimage.binary_dilation(m, iterations=10) & ink)
+            if slot in ('eyes', 'mouth'):
+                keep = ndimage.binary_dilation(m, iterations=2) & ~contour
+            else:   # its own contour lies on the mask's edge: a line's width round it, no more (no face lines carried along)
+                keep = ndimage.binary_dilation(m, iterations=2) | (ndimage.binary_dilation(m, iterations=OWN_LINE) & ink)
             piece(n, slot, keep, slot in ('hair', 'beard', 'headwear'))
     for e in EXPRESSIONS:
         pid = f'expressions/{body}-{e}'
         if pid in done:
             m = head_to_canvas(done[pid]['head_mask'], body, shape)
-            piece(pid, 'expression', ndimage.binary_dilation(m, iterations=2), False)
+            piece(pid, 'expression', ndimage.binary_dilation(m, iterations=2) & ~contour, False)
     write_rig(body)
     return {'id': body, 'label': body.capitalize(), 'pieces': pieces, 'rig': f'{body}/rig.json',
             'expressions': {e: f'expressions/{body}-{e}' for e in EXPRESSIONS if f'expressions/{body}-{e}' in done}}
@@ -399,6 +458,12 @@ def main() -> None:
             for pc in b['pieces']:
                 path = OUT / b['id'] / pc['files']['fill']
                 f = snap(np.asarray(Image.open(path).convert('RGBA')))
+                if pc['slot'] == 'outfit':   # eye-white on a body is a nail glint or a collar speck: the colour beside it
+                    f = no_white(f)
+                if pc['slot'] == 'face':     # and on a face only in the eyes
+                    f = no_white(f, keep_near='iris')
+                if pc['slot'] == 'headwear':   # one cloth: its painted gradient fell between kinds and read as patchwork
+                    f = one_cloth(f)
                 Image.fromarray(f).save(path, lossless=True, method=6)
                 own = f[..., 3] > 0
                 if pc['slot'] in ('hair', 'beard', 'headwear', 'extra'):   # what the piece adds, not the skin rim round it

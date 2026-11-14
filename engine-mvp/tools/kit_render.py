@@ -45,6 +45,11 @@ if os.environ.get('HEAD_BOX'):
     HEAD_BOX = tuple(json.loads(os.environ['HEAD_BOX']))       # a posed head: the same crop, moved with the neck
 HK = (HEAD_BOX[2] - HEAD_BOX[0]) / 1024          # head sheet px -> figure px
 S = dict(width=2.2, startW=90, endW=55, wJitter=35, wobble=2.1, wFreq=1.0, longBoost=60, retrace=15)   # Ink Lab "production"
+KIT_PEN = os.environ.get('KIT') == '1'
+if KIT_PEN:
+    # kit figures (Bart 11-14 "LOOK AT THE LINES OF THE CHIN"): one clean tapered stroke per contour. A retrace laid a
+    # second, offset stroke over part of a line (it read as a blobby dash), and a 35 % width jitter swelled lines into blobs
+    S.update(wJitter=10, retrace=0)
 FIGURE = {'ref': 1024, 'soften': 0, 'warp': 0, 'levels': 5, 'edge': 0.06, 'edge_px': 4,
           'bloom_share': 0.12, 'bloom_light': 0.10, 'bloom_rim': 0.05, 'bloom_scale': 14, 'bloom_soft': 6,
           'reserve_share': 0.0, 'reserve_px': 2, 'sliver_share': 0.02}
@@ -150,6 +155,50 @@ def join(segs):
     return out
 
 
+def rejoin(lines, reach, min_len):
+    """Broken strokes made whole: two line ends within `reach` px that run on into each other become one line (a contour
+    cut by a junction, a jaw cut where its wedge was); then strokes shorter than `min_len` (ticks, specks) go."""
+    lines = [(np.asarray(p, np.float32), w) for p, w in lines]
+    while True:
+        ends = []
+        for i, (p, _) in enumerate(lines):
+            if len(p) < 2:
+                continue
+            for e in (0, 1):
+                tip = p[0] if e == 0 else p[-1]
+                back = p[min(len(p) - 1, 6)] if e == 0 else p[max(0, len(p) - 7)]
+                v = tip - back
+                ends.append((i, e, tip, v / (np.linalg.norm(v) or 1)))
+        if len(ends) < 2:
+            break
+        tree = cKDTree([t for _, _, t, _ in ends])
+        best = None
+        for a, b in tree.query_pairs(reach):
+            ia, ea, ta, va = ends[a]
+            ib, eb, tb, vb = ends[b]
+            if ia == ib:
+                continue
+            gap = tb - ta
+            g = gap / (np.linalg.norm(gap) or 1)
+            # both run on through the gap: a's end points at b, b's end points back at a
+            score = float(va @ g) - float(vb @ g) - float(va @ vb)
+            short = min(len(lines[ia][0]), len(lines[ib][0])) < 14      # a fragment's own direction is noise: looser
+            if float(va @ vb) < (-0.2 if short else -0.5) and (np.linalg.norm(gap) < 2 or (float(va @ g) > (0.0 if short else 0.3) and float(vb @ g) < (0.0 if short else -0.3))):
+                if best is None or score > best[0]:
+                    best = (score, ia, ea, ib, eb)
+        if best is None:
+            break
+        _, ia, ea, ib, eb = best
+        pa, wa = lines[ia]
+        pb, wb = lines[ib]
+        pa = pa if ea == 1 else pa[::-1]                  # a runs into the gap
+        pb = pb if eb == 0 else pb[::-1]                  # b runs out of it
+        merged = (np.concatenate([pa, pb]), (wa * len(pa) + wb * len(pb)) / (len(pa) + len(pb)))
+        lines = [l for k, l in enumerate(lines) if k not in (ia, ib)] + [merged]
+    length = lambda p: float(np.hypot(*np.diff(p, axis=0).T).sum()) if len(p) > 1 else 0.0
+    return [(p, w) for p, w in lines if length(p) >= min_len]
+
+
 def tidy(l):
     if len(l) < 7:
         return l
@@ -158,7 +207,7 @@ def tidy(l):
     return np.stack([np.convolve(pad[:, 0], k, 'valid'), np.convolve(pad[:, 1], k, 'valid')], 1)
 
 
-def read_sheet(path: Path, blob_r: float, rim: int = 2):
+def read_sheet(path: Path, blob_r: float, rim: int = 2, solid_rows: tuple | None = None, solid_also=None):
     """A clean flat-colour sheet on green -> what each pixel is (kind), its ink as centre lines + solid spots."""
     rgb = np.asarray(Image.open(path).convert('RGB')).astype(np.int32)
     h, w = rgb.shape[:2]
@@ -202,6 +251,15 @@ def read_sheet(path: Path, blob_r: float, rim: int = 2):
     dist = ndimage.distance_transform_edt(ink)
     rr = int(blob_r + 3)
     blob = (cv2.dilate((dist > blob_r).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rr + 1, 2 * rr + 1))) > 0) & ink
+    if solid_rows is not None:   # kit sheets: solid ink only where it is shape (eyes, brows); a thick bit of a contour stays
+        keep = np.zeros_like(blob)   # in its stroke, never a blob with round ends (Bart 11-14, the chin's dashes)
+        keep[solid_rows[0]:solid_rows[1]] = True
+        eyes = np.isin(kind, [names.index(n) for n in ('white',) if n in names])
+        keep &= ndimage.binary_dilation(eyes, iterations=40) if eyes.any() else False   # round the eyes: lashes, brows
+        keep &= ndimage.binary_erosion(alpha, iterations=10)                            # never the head's own contour
+        if solid_also is not None:                                                      # and an open mouth: solid ink
+            keep |= solid_also
+        blob &= keep
     thin = cv2.resize((ink & ~ndimage.binary_erosion(blob, iterations=2)).astype(np.uint8) * 255, (w * 2, h * 2), interpolation=cv2.INTER_CUBIC)
     skel = cv2.ximgproc.thinning((cv2.GaussianBlur(thin, (0, 0), 0.8) > 110).astype(np.uint8) * 255) > 0
     half = ndimage.zoom(dist.astype(np.float32), 2, order=1)
@@ -214,11 +272,14 @@ def read_sheet(path: Path, blob_r: float, rim: int = 2):
     return dict(rgb=rgb, alpha=alpha, fill_area=fill_area, ink=ink, kind=kind, colour=colour, blob=blob, lines=lines, w=w, h=h)
 
 
-def cut_lines(lines, keep):
-    """Keep the stretches of each line where keep(x, y) holds."""
+def cut_lines(lines, keep, smooth=0):
+    """Keep the stretches of each line where keep(x, y) holds. `smooth`: points either side a decision is the majority of,
+    so a line running along a border is cut once, not into dashes where the border wavers across it."""
     out = []
     for pts, wd in lines:
         ok = keep(pts[:, 0], pts[:, 1])
+        if smooth and len(ok) > 2 * smooth:
+            ok = ndimage.median_filter(np.asarray(ok, np.uint8), size=2 * smooth + 1, mode='nearest').astype(bool)
         start = None
         for i, v in enumerate(list(ok) + [False]):
             if v and start is None:
@@ -230,7 +291,7 @@ def cut_lines(lines, keep):
     return out
 
 
-F = read_sheet(Path(os.environ.get('FLAT', find(SRC / 'flat.png'))), 3.6)
+F = read_sheet(Path(os.environ.get('FLAT', find(SRC / 'flat.png'))), 3.6, solid_rows=(0, 0) if os.environ.get('KIT') == '1' else None)
 NAME = os.environ.get('NAME', 'ana')
 W, H = F['w'], F['h']
 m = np.asarray(Image.open(MAP).convert('RGB')).astype(np.float32)
@@ -269,7 +330,9 @@ def kp_keep_big(m, min_px):
     return np.isin(lab_, 1 + np.flatnonzero(ndimage.sum(m, lab_, range(1, n_ + 1)) >= min_px)) if n_ else m
 
 
-Hd = read_sheet(Path(os.environ.get('HEAD_SHEET', find(SRC / 'head-flat.png'))), 6.0, rim=4)
+_mouth_early = np.asarray(Image.open(os.environ['MOUTH_MASK']).convert('L')) > 127 if os.environ.get('MOUTH_MASK') else None
+Hd = read_sheet(Path(os.environ.get('HEAD_SHEET', find(SRC / 'head-flat.png'))), 6.0, rim=4, solid_rows=(280, 560) if os.environ.get('KIT') == '1' else None,
+                solid_also=ndimage.binary_dilation(_mouth_early, iterations=6) if _mouth_early is not None else None)
 IM_ = names.index('mouth')
 MOUTH_MASK = np.asarray(Image.open(os.environ['MOUTH_MASK']).convert('L')) > 127 if os.environ.get('MOUTH_MASK') else np.zeros((1024, 1024), bool)
 Hd['kind'] = np.where((Hd['kind'] == IM_) & ~MOUTH_MASK, names.index('hair'), Hd['kind']).astype(np.uint8)
@@ -360,16 +423,24 @@ if os.environ.get('KIT') == '1':
         Hd['lines'] += [(tidy(l)[:, ::-1], wd_) for l in join([l for l in polylines(sk) if len(l) >= 3]) if len(l) >= 9]
         CHIN[y0b:y1b, x0b:x1b] = cv2.resize(wedge.astype(np.uint8), (x1b - x0b, y1b - y0b), interpolation=cv2.INTER_NEAREST) > 0
         print('jaw wedge', int(wedge.sum()), 'px -> line + wash')
+if os.environ.get('KIT') == '1':
+    # one jaw: the jaw line cut at the wedge and the wedge's own line become one stroke; no ticks left where lines met
+    Hd['lines'] = rejoin(Hd['lines'], 18, 12)
+    F['lines'] = rejoin(F['lines'], 12, 9)
 at = lambda arr, x, y: arr[np.clip(y.astype(int), 0, arr.shape[0] - 1), np.clip(x.astype(int), 0, arr.shape[1] - 1)]
-head_lines = [(pts * HK + (x0b, y0b), wd * HK) for pts, wd in cut_lines(Hd['lines'], lambda x, y: at(head_lab, x, y))]
+BORDER_SMOOTH = 12 if os.environ.get('KIT') == '1' else 0
+head_lines = [(pts * HK + (x0b, y0b), wd * HK) for pts, wd in cut_lines(Hd['lines'], lambda x, y: at(head_lab, x, y), BORDER_SMOOTH)]
 others_core = np.zeros((H, W), bool)
 for i in range(len(PARTS)):
     if i != BRAID:
         others_core |= ndimage.binary_erosion(raw_part == i, iterations=2)
 braid_zone = ndimage.binary_dilation(raw_part == BRAID, iterations=8) & ~others_core
-body_lines = cut_lines(F['lines'], lambda x, y: (at(part_all, x, y) != HEAD) & ~(DROP_BRAID & at(braid_zone, x, y)))
+body_lines = cut_lines(F['lines'], lambda x, y: (at(part_all, x, y) != HEAD) & ~(DROP_BRAID & at(braid_zone, x, y)), BORDER_SMOOTH // 2)
 if DROP_BRAID:
     F['blob'] &= ~braid_zone
+if os.environ.get('KIT') == '1':   # what the head/body cut left of a line near the border is a dot: join it on, or drop it
+    body_lines = rejoin(body_lines, 6, 8)
+    head_lines = rejoin(head_lines, 4, 4)
 lines = body_lines + head_lines
 names = names + ['iris', 'brow']
 IH, IG, II, IB = names.index('hair'), names.index('grey'), names.index('iris'), names.index('brow')
@@ -578,6 +649,8 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     step = 1536 * scale / 1100
     avg = np.mean([np.hypot(*np.diff(p, axis=0).T).sum() for p, _ in lines]) * scale
     for pts_, wd_ in lines:                                            # every line, so the pen's chances fall the same in any window
+        if KIT_PEN:   # the pen's chances seeded by the line itself: the same line draws the same in every render, so two
+            rs[0] = int(abs(hash(tuple(np.round(pts_[[0, -1]]).astype(int).ravel().tolist()))) % 4294967296)   # pieces meet without a step
         xy = (pts_ - (x0, y0)) * scale
         dd = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(xy, axis=0).T))])
         s = np.arange(0, dd[-1] + step / 2, step)
