@@ -31,7 +31,7 @@ SRC, OUT = Path(sys.argv[1]), Path(sys.argv[3])
 REPO = Path(__file__).resolve().parents[2]   # this repo: aquarel.py and the wash texture (a 4th argument is ignored)
 sys.path.insert(0, str(REPO / 'tools/watercolour'))
 import aquarel  # noqa: E402
-FLAT_PAINT = os.environ.get('PAINT') == 'flat'   # flat colour + ink: the stage shader shades and washes it (rigs)
+FLAT_PAINT = os.environ.get('PAINT') == 'flat'   # flat colour + ink + a shade mask (<name>-shade.webp): the stage shader colours the shade and washes it
 from img_io import find, save as save_image  # noqa: E402  (renders out as .webp, Bart 11-13)
 MAP = find(Path(sys.argv[2]))                     # a part map written as .webp, or an older .png
 
@@ -431,31 +431,31 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     feat = lambda n: max(3.0, n * w / 1024)                           # noise features across the picture, kept at figure size
     edge_noise = aquarel.noise_at((RH, RW), feat(40), 5) - 0.5
     kind_up = {n: rsvg(svg_text(palette, box, with_lines=False, only_kind=n))[..., 3] / 255 for n in names}
-    if FLAT_PAINT:   # the stage shader paints the shading and the watercolour (plan 11): flat colour + ink only
-        f = rsvg(svg_text(palette, box, with_lines=False))
-        sil = f[..., 3] / 255
+    disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
+    big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
+    CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
+    shades = {}
+    for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
+        total = np.zeros((RH, RW), np.float32)
+        for grp in SHADE_GROUPS:
+            mk = up(np.isin(part_all, grp)) * kind_up[kn]
+            if mk.sum() >= 50:
+                mk = np.maximum(mk, ndimage.binary_fill_holes(mk > 0.5).astype(np.float32))   # an eye is not a hole in the face
+                total = np.maximum(total, np.clip(mk - shift(mk, dpx, -dpx * 0.35), 0, 1))
+        over = np.zeros((RH, RW), np.float32)
+        for c in CASTERS[kn]:
+            over = np.maximum(over, big[c])
+        cast = shift(over, -4, 14 if kn == 'skin' else 10) * kind_up[kn] * (1 - over)
+        s = ndimage.gaussian_filter(np.maximum(total, cast * 0.9), 2.2 * scale) + edge_noise * 0.45
+        shades[kn] = np.clip((s - 0.42) * 6, 0, 1) * kind_up[kn]
+    f = rsvg(svg_text(palette, box, with_lines=False))
+    sil = f[..., 3] / 255
+    if FLAT_PAINT:   # the stage shader colours the shade and adds the watercolour (plan 11): flat colour + ink + a shade mask
         painted = f[..., :3] * sil[..., None] + np.array(palette['tunic'], np.float32) * (1 - sil[..., None])
+        shade_amount = np.max(np.stack(list(shades.values())), 0)
+        eyes_up = np.clip(ndimage.gaussian_filter(ndimage.maximum_filter(kind_up['white'], max(1, int(1.5 * scale))), 0.5 * scale), 0, 1)
+        face_up = np.clip(ndimage.gaussian_filter(up(part_all == HEAD) * kind_up['skin'], 1.5 * scale), 0, 1)
     else:
-        disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * int(r) + 1, 2 * int(r) + 1))
-        big = {n: cv2.morphologyEx(kind_up[n], cv2.MORPH_OPEN, disc(7 * scale)) for n in names}   # without brows, wisps, eyes
-        CASTERS = {'skin': ['hair', 'tunic', 'shawl'], 'tunic': ['shawl', 'skin', 'hair', 'rope'], 'shawl': ['skin', 'hair'], 'hair': [], 'rope': [], 'apron': ['skin', 'rope'], 'ochre': []}
-        shades = {}
-        for kn, dpx in (('skin', 12), ('tunic', 18), ('shawl', 15), ('hair', 12), ('rope', 4), ('apron', 15), ('ochre', 12)):
-            total = np.zeros((RH, RW), np.float32)
-            for grp in SHADE_GROUPS:
-                mk = up(np.isin(part_all, grp)) * kind_up[kn]
-                if mk.sum() >= 50:
-                    mk = np.maximum(mk, ndimage.binary_fill_holes(mk > 0.5).astype(np.float32))   # an eye is not a hole in the face
-                    total = np.maximum(total, np.clip(mk - shift(mk, dpx, -dpx * 0.35), 0, 1))
-            over = np.zeros((RH, RW), np.float32)
-            for c in CASTERS[kn]:
-                over = np.maximum(over, big[c])
-            cast = shift(over, -4, 14 if kn == 'skin' else 10) * kind_up[kn] * (1 - over)
-            s = ndimage.gaussian_filter(np.maximum(total, cast * 0.9), 2.2 * scale) + edge_noise * 0.45
-            shades[kn] = np.clip((s - 0.42) * 6, 0, 1) * kind_up[kn]
-
-        f = rsvg(svg_text(palette, box, with_lines=False))
-        sil = f[..., 3] / 255
         field = f[..., :3] * sil[..., None] + np.array(palette['tunic'], np.float32) * (1 - sil[..., None])
         flat = field.copy()
         for kn, sm in shades.items():
@@ -566,6 +566,10 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     on_paper = lambda im, al: (im * al[..., None] + np.array(PAPER, np.float32) * (1 - al[..., None])).clip(0, 255).astype(np.uint8)
     if name:
         save_image(np.dstack([img, a * 255]).clip(0, 255).astype(np.uint8), OUT / f'{name}.webp', lossless=lossless)
+        if FLAT_PAINT:   # the shade mask (layer.ts AQUAREL): r how much shade (the shader's pigment colours it; none under
+            # the ink), g the eyes (drawn, never washed), b the face (no blooms: a pale round bloom on a cheek reads as rouge)
+            mask = np.dstack([shade_amount * (1 - cover), eyes_up, face_up])
+            save_image((mask * 255).clip(0, 255).astype(np.uint8), OUT / f'{name}-shade.webp', lossless=True)
         if not lossless:   # a lossless render is a tool's input (the rig's canvas), not a picture to look at
             save_image(on_paper(img, a), OUT / f'{name}-on-paper.webp')
     return on_paper(img, a)

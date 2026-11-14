@@ -65,7 +65,7 @@ export function aliveOf(look: Record<string, unknown>, kind: 'sky' | 'strip' | '
     footTint,
   }
 }
-/** A flat figure's watercolour and shading in the shader (layer.ts AQUAREL). */
+/** A flat figure's watercolour and the colour of its baked shade in the shader (layer.ts AQUAREL). */
 export interface Aquarel {
   /** the wash's grain, pooling and blooms, 0..1 */
   wash: number
@@ -76,16 +76,12 @@ export interface Aquarel {
   tint: [number, number, number]
   sat: number
   gran: number
-  /** drawing px from a colour's edge that its shade reaches (kit_render shades 12-18 px of the sheet and blurs it; 16 here
-   *  read as a line along the edge, not a wash) */
-  reach: number
 }
 export const PIGMENT_STEPS = 8
-export const SHADE_REACH_PX = 40
 /** The cool shadow pigment a big step glazes toward (ultramarine-ish), per channel. */
 const SHADOW_PIGMENT: [number, number, number] = [0.8, 0.86, 1.18]
 /** A step 1..8 of pigment difference: 1 a little darker in the same hue, 8 much darker, cool, richer and granulating. */
-export function pigmentOf(step: number): Omit<Aquarel, 'wash' | 'shade' | 'reach'> {
+export function pigmentOf(step: number): Omit<Aquarel, 'wash' | 'shade'> {
   const t = (Math.max(1, Math.min(PIGMENT_STEPS, Math.round(step))) - 1) / (PIGMENT_STEPS - 1)
   // spread so neighbouring steps tell apart at stage size (at 0.05..0.30 dark they barely did, fresh tester 11-14)
   // granulation stays moderate: at 1.2 its noise lightened as many px as it darkened and step 8 read weaker than 7
@@ -98,7 +94,7 @@ export function pigmentOf(step: number): Omit<Aquarel, 'wash' | 'shade' | 'reach
   }
 }
 export const aquarelOf = (look: Record<string, unknown>): Aquarel =>
-  ({ wash: num(look, 'figureWash'), shade: num(look, 'figureShade'), reach: SHADE_REACH_PX, ...pigmentOf(num(look, 'figurePigment')) })
+  ({ wash: num(look, 'figureWash'), shade: num(look, 'figureShade'), ...pigmentOf(num(look, 'figurePigment')) })
 
 /** The warm raw-sienna wash the whole picture is painted over (sheet.ts even part, PAPER_GLSL patches). */
 export const WASH_COLOUR: [number, number, number] = [0.93, 0.86, 0.74]

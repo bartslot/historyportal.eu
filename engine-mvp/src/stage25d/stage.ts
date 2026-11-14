@@ -28,7 +28,7 @@ import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_W
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
-import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, regionsTexture, restDrawing, skylines, type LayerHandle } from './layer'
+import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
@@ -259,12 +259,12 @@ export class Stage {
       if (token !== this.buildToken) return
       // what stands on the floor throws its own shadow (layer.ts makeCast): not far strips, ground strips, decals or sky props
       const casts = STANDING.includes(layer.depth) && !asset.tileable_x && !liesFlat(layer, asset) && !isGroundStrip(asset) && asset.layer !== 'bg'
-      // a figure painted flat (plan 11): the shader paints its watercolour and its shading
+      // a figure painted flat (plan 11): the shader colours its baked shade and paints its watercolour (no mask: drawn flat)
       const flatFigure = rest && puppet?.paint === 'flat'
       const wash = flatFigure ? figureWash(this.scene) : undefined
-      const regions = flatFigure ? await regionsTexture(layer.src ? { ...puppet!, atlas: layer.src } : puppet!, this.scene).catch(() => undefined) : undefined
+      const shade = flatFigure ? await shadeMask(layer.src ?? puppet!.atlas, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
-      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, regions })
+      const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, shade })
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)

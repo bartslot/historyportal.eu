@@ -150,3 +150,13 @@ def test_a_sheet_painted_flat_is_marked_flat_for_the_stage(tmp_path):
     (tmp_path / 'flat-sheet.json').write_text('{"paint": "baked"}')
     assert not rp.painted_flat(str(tmp_path))
     assert not rp.painted_flat(str(tmp_path / 'nowhere'))
+
+
+def test_the_shade_mask_rides_on_the_atlas_layout():
+    # a flat sheet's shade mask is carried as channels 4-6 of every layer: the packed atlas holds it at the same place
+    layer = np.zeros((40, 40, 7), np.uint8)
+    layer[10:20, 5:15] = (200, 150, 100, 255, 180, 0, 90)
+    atlas, boxes, placed = rp.pack([('chest', layer)])
+    (ax, ay), (_, x0, y0, x1, y1) = placed[0], boxes[0]
+    assert atlas.shape[-1] == 7
+    assert (atlas[ay:ay + y1 - y0, ax:ax + x1 - x0] == (200, 150, 100, 255, 180, 0, 90)).all()

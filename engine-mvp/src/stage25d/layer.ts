@@ -17,7 +17,6 @@ import { MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
-import { FIELD_PX, flatRegions, shadeField } from './regions'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
  *  it is ink (inkOf), and the depth's values; returns the colour. Defines lum, inkOf and LINE_BROWN. */
@@ -149,69 +148,39 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     #endif
   }
   #ifdef AQUAREL
-  // A figure painted flat (puppet.paint 'flat', plan 11): its shading and its watercolour are painted here, in the px of
-  // the drawing put back together (rest), so they run on across a cut between two parts and move with each part.
+  // A figure painted flat (puppet.paint 'flat', plan 11): kit_render baked where its shade lies into a mask beside the
+  // atlas (shadeMask); the shade's pigment and the watercolour are painted here, so a teacher can change both.
   uniform sampler2D washTex;                 // kit_render's wash grain, stored as 0.5 + (g / mean - 1) / 2, mirrored
+  uniform sampler2D shadeTex;                // on the atlas's layout: r how much shade, g the eyes, b the face
   uniform float figureWash, figureShade;     // look.ts aquarelOf
-  uniform float shadeDepth, shadeSat, shadeGran, shadeReach;
+  uniform float shadeDepth, shadeSat, shadeGran;
   uniform vec3 shadeTint;
   uniform vec2 drawPx;                       // rest uv per drawing px (1 / the drawing's size)
-  uniform sampler2D regions;                 // the rest drawing with its lines filled by the colour beside them (flatRegions)
-  uniform sampler2D field;                   // per px: distance to its region's edge / FIELD_PX, the way inward (regions.ts)
   #define WASH_TILE_PX 627.0                 // drawing px per tile of the wash (kit_render: the texture at half the sheet scale)
-  vec4 regionAt(vec2 d) {
-    vec2 q = vRest + d * drawPx;
-    return (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) ? vec4(0.0) : texture2D(regions, q);
-  }
-  #define FIELD_PX ${FIELD_PX.toFixed(1)}
-  // s: the lit colour, lit: the time of day's light in it. Everything is worked out unlit, and with no early return: the
-  // derivatives below and the textures' mip levels need every px of a quad to run the same code (specks at the folds)
-  // ink: out, how much of this px is a drawn line, for the line passes after this (they would read a deep shade as ink)
-  vec3 aquarel(vec3 s, vec3 lit, out float ink) {
-    vec3 unlit = s / max(lit, vec3(0.001));              // the drawing's own colour
-    vec2 dp = vRest / drawPx;                           // drawing px
-    // toward the sun in this part's own drawing px: the sun is on the screen (sunSide, a little above), and a part may be
-    // turned (a raised arm), so the screen direction is carried into the drawing by the derivatives of vRest
-    vec2 toSun = (dFdx(vRest) * sunSide + dFdy(vRest) * 0.35) / drawPx;
-    toSun = length(toSun) > 1e-6 ? normalize(toSun) : vec2(0.0, -1.0);
-    vec4 r0 = regionAt(vec2(0.0));
-    vec3 own = r0.a > 0.004 ? r0.rgb / r0.a : unlit;    // the region this px belongs to
-    float feature = smoothstep(0.1, 0.2, length(unlit - own));   // an eye, a mouth: drawn as it is, never glazed
-    // a line is dark AND unlike its region: dark hair is a region of its own and gets its wash and its shade
-    ink = inkOf(unlit) * smoothstep(0.04, 0.1, length(unlit - own));
-    float l = lum(s);
-    vec3 c = s;
-    float shade = 0.0;
-    if (figureShade > 0.0) {
-      // shading: each colour region on its side away from the sun. The field gives how far in this px lies and which way
-      // is inward; where the nearest edge faces away from the sun the px takes the shade, fading smoothly inward over
-      // shadeReach. Thin regions (the cords) are merged in the field: they cast nothing.
-      vec4 fd = texture2D(field, vRest);
-      float d = fd.r * FIELD_PX;
-      vec2 inward = fd.gb * 2.0 - 1.0;
-      float facing = smoothstep(0.2, 0.7, dot(inward, toSun) / max(length(inward), 1e-3));   // an edge along the light: none
-      // deepest a few px in (the outline keeps a little paper beside it), gone at shadeReach
-      float profile = mix(0.8, 1.0, smoothstep(1.0, 5.0, d)) * (1.0 - smoothstep(0.15 * shadeReach, shadeReach, d));
-      // dark colours take less (a dark rope or hair would go black), a ragged wet edge
-      shade = facing * profile * mix(0.4, 1.0, smoothstep(0.1, 0.45, lum(own)));
-      shade = clamp(shade + 0.18 * (fbm(dp / 18.0 + 3.0) - 0.5) * step(0.01, shade), 0.0, 1.0) * figureShade * (1.0 - feature);
-      // a glaze of the region's own pigment: darker, toward the shadow pigment, richer, settling in the tooth
-      vec3 sh = s * (1.0 - shadeDepth) * shadeTint;
-      sh = mix(vec3(lum(sh)), sh, 1.0 + shadeSat);
-      sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 3.0 + 41.0) - 0.5);   // at 1.3 px it stippled dark hair
-      c = mix(c, clamp(sh, 0.0, 1.0), shade);
-    }
-    if (figureWash > 0.0) {
-      // the wash's grain: lighter and darker where the pigment lay thinner and thicker, blue settling most
-      float g = texture2D(washTex, dp / WASH_TILE_PX).r;
-      c *= vec3(1.0) + figureWash * 1.2 * (g - 0.5) * vec3(0.8, 1.0, 1.3) * (1.0 - 0.4 * l);
-      // pigment pools along the shade's wet edge, the way a wash dries darker at its rim
-      c *= 1.0 - 0.12 * figureWash * shade * (1.0 - shade) * 4.0;
-      // a few soft blooms: paler where water ran back in, with a faint darker rim
-      float b = smoothstep(0.66, 0.74, fbm(dp / 60.0 + 9.0)) * (1.0 - feature);
-      c = mix(c, c * 1.05 + 0.02, 0.6 * figureWash * b);
-      c *= 1.0 - 0.06 * figureWash * b * (1.0 - b) * 4.0;
-    }
+  // s: the lit colour at atlas uv. ink: out, how much of this px is a drawn line, for the line passes after this (they
+  // would read a deep shade as ink)
+  vec3 aquarel(vec3 s, vec2 uv, out float ink) {
+    ink = inkOf(s);
+    vec4 m = texture2D(shadeTex, uv);
+    vec2 dp = vRest / drawPx;                           // drawing px: the grain runs on across a cut between two parts
+    float calm = 1.0 - m.g;                             // the eyes stay drawn: no glaze, no wash
+    // a glaze of the colour's own pigment where kit_render put the shade: darker, toward the shadow pigment, richer,
+    // settling in the tooth
+    float shade = m.r * figureShade * calm;
+    vec3 sh = s * (1.0 - shadeDepth) * shadeTint;
+    sh = mix(vec3(lum(sh)), sh, 1.0 + shadeSat);
+    sh *= 1.0 + shadeGran * 0.5 * (fbm(dp / 3.0 + 41.0) - 0.5);   // at 1.3 px it stippled dark hair
+    vec3 c = mix(s, clamp(sh, 0.0, 1.0), shade);
+    // the wash's grain: lighter and darker where the pigment lay thinner and thicker, blue settling most
+    float w = figureWash * calm;
+    float g = texture2D(washTex, dp / WASH_TILE_PX).r;
+    c *= vec3(1.0) + w * 1.2 * (g - 0.5) * vec3(0.8, 1.0, 1.3) * (1.0 - 0.4 * lum(s));
+    // pigment pools along the shade's wet edge, the way a wash dries darker at its rim
+    c *= 1.0 - 0.12 * w * shade * (1.0 - shade) * 4.0;
+    // a few soft blooms off the face: paler where water ran back in, with a faint darker rim
+    float b = smoothstep(0.66, 0.74, fbm(dp / 60.0 + 9.0)) * (1.0 - m.b);
+    c = mix(c, c * 1.05 + 0.02, 0.6 * w * b);
+    c *= 1.0 - 0.06 * w * b * (1.0 - b) * 4.0;
     return mix(clamp(c, 0.0, 1.0), s, smoothstep(0.3, 0.6, ink));
   }
   #endif
@@ -270,7 +239,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     }
     float drawnInk = -1.0;                   // a flat figure: how much of this px is a drawn line (aquarel), else -1
     #ifdef AQUAREL
-    if (c.a > 0.004) c.rgb = aquarel(c.rgb / c.a, amb, drawnInk) * c.a;
+    if (c.a > 0.004) c.rgb = aquarel(c.rgb / c.a, uv, drawnInk) * c.a;
     #endif
     if (c.a > 0.004 && (lineFade + lineThin + haze + lineBrown + abs(inkMul - 1.0)) > 0.0) {
       vec3 s = c.rgb / c.a;                            // straight colour
@@ -622,9 +591,7 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
       for (const { quad: [[x0, y0], , [x1, y1]], uv: [u0, v0, u1, v1] } of puppet.parts) {
         g.drawImage(img, u0 * aw, v0 * ah, (u1 - u0) * aw, (v1 - v0) * ah, x0, y0, x1 - x0, y1 - y0)
       }
-      const data = g.getImageData(0, 0, c.width, c.height).data
-      drawnIn(scene).set(key, { data: new Uint8ClampedArray(data), width: c.width, height: c.height })   // straight: premultiplying changes data in place
-      resolve(premultipliedTexture(data, c.width, c.height, scene))
+      resolve(premultipliedTexture(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height, scene))
     }
     img.src = puppet.atlas
   })
@@ -633,36 +600,18 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
   return p
 }
 
-/** The rest drawing's own pixels (straight RGBA) per scene, kept for flatRegions; gone with the scene. */
-const drawnBy = new WeakMap<Scene, Map<string, { data: Uint8ClampedArray; width: number; height: number }>>()
-const drawnIn = (scene: Scene) => { const m = drawnBy.get(scene) ?? new Map(); drawnBy.set(scene, m); return m }
-
-/** A flat figure's colour regions and its shade field as textures (regions.ts), from its rest drawing; call after
- *  restDrawing. Cached per scene. */
-export async function regionsTexture(puppet: Puppet, scene: Scene): Promise<{ regions: RawTexture; field: RawTexture }> {
-  await restDrawing(puppet, scene)
-  const key = `regions:${puppet.atlas}`
-  const hit = regionCache.get(scene)?.get(key)
-  if (hit) return hit
-  const d = drawnIn(scene).get(`rest:${puppet.atlas}`)
-  if (!d) throw new Error(`no rest drawing for ${puppet.atlas}`)
-  drawnIn(scene).delete(`rest:${puppet.atlas}`)   // 6 MB a figure: only needed once (the textures are cached from here)
-  const flat = flatRegions(d.data, d.width, d.height)
-  const field = shadeField(flat, d.width, d.height)
-  const p = Promise.resolve({
-    regions: premultipliedTexture(flat, d.width, d.height, scene),
-    field: straightTexture(field, d.width, d.height, scene),
-  })
-  const own = regionCache.get(scene) ?? new Map()
-  regionCache.set(scene, own)
-  own.set(key, p)
-  return p
+/** A flat figure's shade mask: rig_parts.py writes it beside the atlas (fig.webp, fig-shade.webp) on the same layout,
+ *  so it is sampled at the atlas's own uv (row 0 at the top, as the atlas: no flip). */
+export function shadeMaskUrl(atlas: string): string {
+  return atlas.replace(/(\.\w+)?(\?.*)?$/, (_m, ext?: string, query?: string) => `-shade${ext ?? '.webp'}${query ?? ''}`)
 }
-const regionCache = new WeakMap<Scene, Map<string, Promise<{ regions: RawTexture; field: RawTexture }>>>()
-
-/** Data that is no picture (a shade field): uploaded as it is, linear, no mipmaps (a mip would blur its directions). */
-function straightTexture(data: Uint8ClampedArray, width: number, height: number, scene: Scene): RawTexture {
-  return new RawTexture(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), width, height, Constants.TEXTUREFORMAT_RGBA, scene, false, false, Texture.BILINEAR_SAMPLINGMODE)
+export function shadeMask(atlas: string, scene: Scene): Promise<Texture> {
+  const url = shadeMaskUrl(atlas)
+  return new Promise((resolve, reject) => {
+    const t = new Texture(url, scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, () => resolve(t), () => reject(new Error(`shade mask ${url} did not load`)))
+    t.wrapU = Texture.CLAMP_ADDRESSMODE
+    t.wrapV = Texture.CLAMP_ADDRESSMODE
+  })
 }
 
 /** The wash's grain a flat figure's watercolour is painted with (public/stage25d/wash-figure.webp: kit_render's
@@ -682,14 +631,14 @@ export function figureWash(scene: Scene): Texture {
 /** A close-up's blink for makeLayer: the closed-eye texture and its eyes (blink.ts blinkOf). */
 export interface LayerBlink { tex: RawTexture; eyes: BlinkEye[] }
 
-export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean; wash?: Texture; regions?: { regions: RawTexture; field: RawTexture } } = {}): LayerHandle {
-  const aquarel = !!(rest && opts.wash && opts.regions)   // a flat figure: the shader paints its watercolour and shading
+export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, uRepeat: number, scene: Scene, rest?: RawTexture, blink?: LayerBlink, opts: { cast?: boolean; wash?: Texture; shade?: Texture } = {}): LayerHandle {
+  const aquarel = !!(rest && opts.wash && opts.shade)   // a flat figure: the shader colours its shade and paints its watercolour
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
     uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
-      ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeReach', 'shadeTint', 'drawPx'] : [])],
-    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'regions', 'field'] : [])],
+      ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeTint', 'drawPx'] : [])],
+    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
     needAlphaBlending: true,
   })
@@ -697,8 +646,8 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setTexture('tex', tex)
   if (rest) mat.setTexture('rest', rest)
   if (aquarel) {
-    mat.setTexture('washTex', opts.wash!).setTexture('regions', opts.regions!.regions).setTexture('field', opts.regions!.field)
-    mat.setFloat('figureWash', 0).setFloat('figureShade', 0).setFloat('shadeDepth', 0).setFloat('shadeSat', 0).setFloat('shadeGran', 0).setFloat('shadeReach', 16)
+    mat.setTexture('washTex', opts.wash!).setTexture('shadeTex', opts.shade!)
+    mat.setFloat('figureWash', 0).setFloat('figureShade', 0).setFloat('shadeDepth', 0).setFloat('shadeSat', 0).setFloat('shadeGran', 0)
     mat.setVector3('shadeTint', new Vector3(1, 1, 1)).setVector2('drawPx', new Vector2(1 / 1024, 1 / 1536))
   }
   if (blink) {
@@ -772,7 +721,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setAquarel: (a, size) => {
       if (!aquarel) return
       mat.setFloat('figureWash', a.wash).setFloat('figureShade', a.shade).setFloat('shadeDepth', a.depth).setFloat('shadeSat', a.sat)
-        .setFloat('shadeGran', a.gran).setFloat('shadeReach', a.reach)
+        .setFloat('shadeGran', a.gran)
       mat.setVector3('shadeTint', Vector3.FromArray(a.tint)).setVector2('drawPx', new Vector2(1 / size[0], 1 / size[1]))
     },
     setCast: (c) => {

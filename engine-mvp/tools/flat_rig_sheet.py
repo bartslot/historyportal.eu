@@ -115,12 +115,13 @@ def on_green(rgba: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return (rgb * alpha + GREEN * (1 - alpha)).clip(0, 255).astype(np.uint8)
 
 
-def paint(sheet: Path, part_map: Path, head: Path, size: tuple[int, int], how: str = 'flat') -> np.ndarray:
-    """A flat sheet painted by kit_render.py at SCALE, on its own canvas, brought to sheet size on #00FF00."""
+def paint(sheet: Path, part_map: Path, head: Path, size: tuple[int, int], how: str = 'flat') -> tuple[np.ndarray, np.ndarray | None]:
+    """A flat sheet painted by kit_render.py at SCALE, on its own canvas, brought to sheet size on #00FF00, and (painted
+    flat) its shade mask at sheet size: how much shade each pixel takes, which the stage shader colours (plan 11)."""
     with tempfile.TemporaryDirectory() as out:
         env = dict(os.environ, FLAT=str(sheet), HEAD_SHEET=str(head), RENDERS='canvas', CANVAS_SCALE=str(SCALE), NAME='sheet',
                    SHADE_GROUPS='body',   # shaded as one body and two arms: per part, every joint drew a shade line
-                   PAINT='flat' if how == 'flat' else '')   # flat: the stage shader shades and washes it (plan 11)
+                   PAINT='flat' if how == 'flat' else '')   # flat: the stage shader colours its shade mask and washes it (plan 11)
         for key in ('KIT', 'HAIR_MASK', 'DROP_BRAID', 'PAL', 'HEAD_BOX', 'MOUTH_MASK'):
             env.pop(key, None)
         run = subprocess.run([sys.executable, str(HERE / 'kit_render.py'), str(sheet.parent), str(part_map), out],
@@ -128,7 +129,17 @@ def paint(sheet: Path, part_map: Path, head: Path, size: tuple[int, int], how: s
         if run.returncode:
             raise SystemExit(f'kit_render.py failed on {sheet}:\n{run.stderr[-2000:]}')
         rgba = np.asarray(Image.open(Path(out) / 'sheet-canvas.webp').convert('RGBA')).astype(np.float32)
-    return on_green(rgba, size)
+        mask = Path(out) / 'sheet-canvas-shade.webp'
+        shade = np.asarray(Image.open(mask).convert('RGB').resize(size, Image.LANCZOS)) if mask.exists() else None
+    return on_green(rgba, size), shade
+
+
+def save_painted(painted: tuple[np.ndarray, np.ndarray | None], out_dir: Path, name: str) -> None:
+    """<name>.webp and, painted flat, <name>-shade.webp: both lossless, rig_parts.py re-reads them."""
+    rgb, shade = painted
+    save_image(rgb, out_dir / f'{name}.webp', lossless=True)
+    if shade is not None:
+        save_image(shade, out_dir / f'{name}-shade.webp', lossless=True)
 
 
 def build(rig_dir: Path, flat_dir: Path, out_dir: Path, how: str = 'flat') -> dict:
@@ -145,7 +156,7 @@ def build(rig_dir: Path, flat_dir: Path, out_dir: Path, how: str = 'flat') -> di
     head = find(flat_dir / 'head-flat.png')
     flat_path, map_path = find(flat_dir / 'flat.png'), find(rig_dir / 'map.png')
     rest = Image.open(find(rig_dir / 'rest.png'))
-    save_image(paint(flat_path, map_path, head, rest.size, how), out_dir / 'rest.webp', lossless=True)   # re-read by rig_parts
+    save_painted(paint(flat_path, map_path, head, rest.size, how), out_dir, 'rest')
     map_rgb = np.asarray(Image.open(map_path).convert('RGB'))
     head_rgb = rgb_of(head)
     report = {}
@@ -156,8 +167,7 @@ def build(rig_dir: Path, flat_dir: Path, out_dir: Path, how: str = 'flat') -> di
             Image.fromarray(sheet).save(tmp / f'{name}.png')
             Image.fromarray(regions_map(map_rgb, region)).save(tmp / f'{name}-map.png')
             Image.fromarray(under_head(head_rgb, sheet.astype(np.float32), region)).save(tmp / f'{name}-head.png')
-            painted = paint(tmp / f'{name}.png', tmp / f'{name}-map.png', tmp / f'{name}-head.png', rest.size, how)
-            save_image(painted, out_dir / f'{name}.webp', lossless=True)
+            save_painted(paint(tmp / f'{name}.png', tmp / f'{name}-map.png', tmp / f'{name}-head.png', rest.size, how), out_dir, name)
             report[name] = int(region.sum())
             print(f'{name}: {region.sum()} px from its own flat sheet')
     (out_dir / 'flat-sheet.json').write_text(json.dumps({'flat': str(flat_dir), 'rig': str(rig_dir), 'paint': how, 'shown_px': report}, indent=1))
@@ -170,7 +180,7 @@ def main() -> None:
     ap.add_argument('flat_dir', type=Path)
     ap.add_argument('out_dir', type=Path)
     ap.add_argument('--paint', choices=('flat', 'baked'), default='flat',
-                    help='flat: colour + ink, the stage shader shades and washes it; baked: shading and watercolour in the sheet')
+                    help='flat: colour + ink + a shade mask, the stage shader colours the shade and washes it; baked: shading and watercolour in the sheet')
     args = ap.parse_args()
     build(args.rig_dir, args.flat_dir, args.out_dir, args.paint)
 
