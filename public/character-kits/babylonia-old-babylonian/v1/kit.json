@@ -494,10 +494,99 @@
       "ink": "extras-jewellery-ink.webp",
       "shade": "extras-jewellery-shade.webp"
      }
+    },
+    {
+     "id": "expressions/girl-curious",
+     "slot": "expression",
+     "label": "Girl curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      987,
+      240,
+      234,
+      256
+     ],
+     "files": {
+      "fill": "expressions-girl-curious.webp",
+      "ink": "expressions-girl-curious-ink.webp",
+      "shade": "expressions-girl-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/girl-sad",
+     "slot": "expression",
+     "label": "Girl sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      991,
+      265,
+      230,
+      231
+     ],
+     "files": {
+      "fill": "expressions-girl-sad.webp",
+      "ink": "expressions-girl-sad-ink.webp",
+      "shade": "expressions-girl-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/girl-angry",
+     "slot": "expression",
+     "label": "Girl angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      983,
+      266,
+      237,
+      230
+     ],
+     "files": {
+      "fill": "expressions-girl-angry.webp",
+      "ink": "expressions-girl-angry-ink.webp",
+      "shade": "expressions-girl-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/girl-amazed",
+     "slot": "expression",
+     "label": "Girl amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      976,
+      224,
+      245,
+      272
+     ],
+     "files": {
+      "fill": "expressions-girl-amazed.webp",
+      "ink": "expressions-girl-amazed-ink.webp",
+      "shade": "expressions-girl-amazed-shade.webp"
+     }
     }
    ],
    "rig": "girl/rig.json",
-   "expressions": {}
+   "expressions": {
+    "curious": "expressions/girl-curious",
+    "sad": "expressions/girl-sad",
+    "angry": "expressions/girl-angry",
+    "amazed": "expressions/girl-amazed"
+   }
   },
   {
    "id": "woman",
@@ -820,10 +909,99 @@
       "ink": "extras-woman-jewellery-ink.webp",
       "shade": "extras-woman-jewellery-shade.webp"
      }
+    },
+    {
+     "id": "expressions/woman-curious",
+     "slot": "expression",
+     "label": "Curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      977,
+      212,
+      202,
+      243
+     ],
+     "files": {
+      "fill": "expressions-woman-curious.webp",
+      "ink": "expressions-woman-curious-ink.webp",
+      "shade": "expressions-woman-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-sad",
+     "slot": "expression",
+     "label": "Sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      978,
+      241,
+      201,
+      214
+     ],
+     "files": {
+      "fill": "expressions-woman-sad.webp",
+      "ink": "expressions-woman-sad-ink.webp",
+      "shade": "expressions-woman-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-angry",
+     "slot": "expression",
+     "label": "Angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      975,
+      243,
+      205,
+      212
+     ],
+     "files": {
+      "fill": "expressions-woman-angry.webp",
+      "ink": "expressions-woman-angry-ink.webp",
+      "shade": "expressions-woman-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-amazed",
+     "slot": "expression",
+     "label": "Amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      968,
+      212,
+      211,
+      252
+     ],
+     "files": {
+      "fill": "expressions-woman-amazed.webp",
+      "ink": "expressions-woman-amazed-ink.webp",
+      "shade": "expressions-woman-amazed-shade.webp"
+     }
     }
    ],
    "rig": "woman/rig.json",
-   "expressions": {}
+   "expressions": {
+    "curious": "expressions/woman-curious",
+    "sad": "expressions/woman-sad",
+    "angry": "expressions/woman-angry",
+    "amazed": "expressions/woman-amazed"
+   }
   },
   {
    "id": "man",
@@ -1037,10 +1215,99 @@
       "ink": "extras-man-seal-ink.webp",
       "shade": "extras-man-seal-shade.webp"
      }
+    },
+    {
+     "id": "expressions/man-curious",
+     "slot": "expression",
+     "label": "Curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      989,
+      211,
+      196,
+      245
+     ],
+     "files": {
+      "fill": "expressions-man-curious.webp",
+      "ink": "expressions-man-curious-ink.webp",
+      "shade": "expressions-man-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-sad",
+     "slot": "expression",
+     "label": "Sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      986,
+      236,
+      200,
+      220
+     ],
+     "files": {
+      "fill": "expressions-man-sad.webp",
+      "ink": "expressions-man-sad-ink.webp",
+      "shade": "expressions-man-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-angry",
+     "slot": "expression",
+     "label": "Angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      986,
+      240,
+      201,
+      216
+     ],
+     "files": {
+      "fill": "expressions-man-angry.webp",
+      "ink": "expressions-man-angry-ink.webp",
+      "shade": "expressions-man-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-amazed",
+     "slot": "expression",
+     "label": "Amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      982,
+      205,
+      202,
+      252
+     ],
+     "files": {
+      "fill": "expressions-man-amazed.webp",
+      "ink": "expressions-man-amazed-ink.webp",
+      "shade": "expressions-man-amazed-shade.webp"
+     }
     }
    ],
    "rig": "man/rig.json",
-   "expressions": {}
+   "expressions": {
+    "curious": "expressions/man-curious",
+    "sad": "expressions/man-sad",
+    "angry": "expressions/man-angry",
+    "amazed": "expressions/man-amazed"
+   }
   }
  ],
  "presets": [
