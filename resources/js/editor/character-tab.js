@@ -70,7 +70,12 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
   let id = target.character?.id ?? null
 
   const recipe = () => history.now
-  const set = (next) => { if (history.push(next)) { changed(); } }
+  const set = (next) => {
+    const bodyChanged = next.body !== history.now.body
+    if (!history.push(next)) return
+    if (bodyChanged) rigFor(next).then(changed)   // the close view and the head tiles frame this body's head
+    else changed()
+  }
   const changed = () => { draw(); fillPanel(); onChange() }
 
   // ── drawing ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -110,7 +115,8 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     g.setTransform(1, 0, 0, 1, 0, 0)
     if (!frame || !hover) { g.clearRect(0, 0, edge.width, edge.height); return }
     const d = frame.dst.map((v) => v * frame.dpr)
-    drawEdge(g, layers, hover === 'body' ? ['outfit'] : PART_SLOTS[hover] ?? [], frame.src, d, '#f59e0b', 3 * frame.dpr)
+    const body = hover === 'body'
+    drawEdge(g, layers, body ? ['outfit'] : PART_SLOTS[hover] ?? [], frame.src, d, '#f59e0b', 3 * frame.dpr, body ? [kit.kinds.indexOf('skin'), kit.kinds.length] : null)
   }
   /** The part under a point of the view: the slot painted there, bare skin of the outfit being the body. */
   const partAt = (x, y) => {
@@ -161,7 +167,7 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     let html = ''
     if (part === 'who') {
       html = `${title(t('Who'))}
-        <label class="flex flex-col gap-1">${label(t('Name'))}<input type="text" class="input input-sm w-full" maxlength="60" value="${esc(name)}" data-chr-name></label>
+        <div class="flex flex-col gap-1"><label for="chr-name" class="text-xs font-semibold uppercase tracking-wide text-panel-label">${esc(t('Name'))}</label><input id="chr-name" type="text" class="input input-sm w-full" maxlength="60" value="${esc(name)}" data-chr-name></div>
         ${bodyTabs(r)}
         <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="${esc(t('People of this time'))}">
           ${kit.presets.filter((p) => p.recipe.body === r.body).map((p) => `<button type="button" role="radio" class="relative overflow-hidden rounded-md border" data-chr-preset="${esc(p.id)}"
@@ -188,7 +194,7 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
       html = `${title(t('Extra'))}
         ${tiles(t('Headwear'), [null, ...piecesIn(body, 'headwear').map((p) => p.id)], worn('headwear')[0] ?? null, 'head', { slot: 'headwear', none: 'Nothing on the head' })}
         ${piecesIn(body, 'extra').length ? tiles(t('Jewellery'), piecesIn(body, 'extra').map((p) => p.id), worn('extra'), 'head', { slot: 'extra' }) : ''}
-        ${zonesOf(kit, r, 'extra').filter((z) => !zonesOf(kit, r, 'outfit').includes(z)).map((z) => swatchRow(z, kit.swatches, r.zones?.[z], t(ZONE_LABELS[z] ?? z))).join('')}`
+        ${zonesOf(kit, r, 'extra').filter((z) => !zonesOf(kit, r, 'outfit').includes(z)).map((z) => swatchRow(z, kit.swatches, r.zones?.[z], t(z === 'head-cloth' ? 'Head cloth' : ZONE_LABELS[z] ?? z))).join('')}`
     }
     panel.innerHTML = html
     for (const b of view.querySelectorAll('[data-chr-rail]')) {
@@ -380,7 +386,7 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     save,
     discard () {},
     key (e) {
-      if (e.key.toLowerCase() === 'r' && !e.target.matches?.('input')) { set(randomRecipe(kit, recipe(), Math.random, null)); return true }
+      if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey && !e.target.matches?.('input, textarea, select')) { set(randomRecipe(kit, recipe(), Math.random, null)); return true }
       return false
     },
     show () { draw() },

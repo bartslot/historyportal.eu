@@ -91,7 +91,9 @@ PARTS = ['forearm_f', 'upperarm_f', 'thigh_f', 'foot_f', 'shin_f', 'thigh_n', 'f
 UNDER_FROM = {'thigh_n': 'shin_n', 'thigh_f': 'shin_f'}
 PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'upperarm_n': 'chest', 'upperarm_f': 'chest', 'forearm_n': 'upperarm_n',
           'forearm_f': 'upperarm_f', 'thigh_n': 'hips', 'thigh_f': 'hips', 'shin_n': 'thigh_n', 'shin_f': 'thigh_f', 'foot_n': 'shin_n', 'foot_f': 'shin_f'}
-LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'upperarm_n': [-120, 25], 'upperarm_f': [-20, 20], 'forearm_n': [-120, 0], 'forearm_f': [-120, 0],
+# the near upper arm swings forward across the body in a 3/4 view: past 50 its elbow crosses to the far side (tester
+# 11-15: the arm went through the face); posing rule: an upper arm never crosses the torso
+LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'upperarm_n': [-50, 25], 'upperarm_f': [-20, 20], 'forearm_n': [-110, 0], 'forearm_f': [-120, 0],
          'thigh_n': [-25, 20], 'thigh_f': [-25, 20], 'shin_n': [0, 120], 'shin_f': [0, 120], 'foot_n': [-30, 20], 'foot_f': [-30, 20]}
 BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f': 0.5, 'foot_n': 0.6, 'foot_f': 0.6, 'head': 0.35,
               'shin_n': 0.5, 'shin_f': 0.5}

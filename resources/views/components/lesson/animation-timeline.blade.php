@@ -61,6 +61,7 @@
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),
             'bone:thigh_n' => __('Near thigh'), 'bone:shin_n' => __('Near knee'), 'bone:foot_n' => __('Near foot'),
             'bone:thigh_f' => __('Far thigh'), 'bone:shin_f' => __('Far knee'), 'bone:foot_f' => __('Far foot'),
+            'face' => __('Expression'),
             'x' => __('Position').' X', 'y' => __('Position').' Y', 'z' => 'Z',
             'w' => __('Width'), 'width' => __('Width'), 'height' => __('Height'),
             'scale' => __('Scale'), 'rotation' => __('Rotate'), 'blur' => __('Blur'),
@@ -74,7 +75,7 @@
         ],
         'groupLabels' => [
             'transform' => __('Transform'), 'appearance' => __('Appearance'), 'tail' => __('Tail'),
-            'arrow' => __('Arrow'), 'position' => __('Position'), 'view' => __('Viewing angle'), 'bones' => __('Bones'),
+            'arrow' => __('Arrow'), 'position' => __('Position'), 'view' => __('Viewing angle'), 'bones' => __('Bones'), 'face' => __('Expression'),
         ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"
@@ -342,7 +343,7 @@
                                      x-show="isSectionOpen(object.target, group.id)"
                                      style="height: var(--timeline-row-pitch); grid-template-columns: 1.25rem minmax(var(--settings-panel-label-w), 1fr) 4.5rem auto">
                                     {{-- The stopwatch: animate this property, or stop (Reset). --}}
-                                    <button type="button" x-on:click.prevent="toggleAnimated(object.target, property.key)"
+                                    <button type="button" x-on:click.prevent="toggleAnimated(object.target, property.key)" :style="property.type === 'face' ? 'visibility: hidden' : ''" :disabled="property.type === 'face'"
                                             :data-timeline-stopwatch="object.target + ':' + property.key"
                                             :aria-pressed="isAnimated(object.target, property.key) ? 'true' : 'false'"
                                             :aria-label="isAnimated(object.target, property.key) ? @js(__('Stop animating')) : @js(__('Animate'))"
@@ -373,7 +374,18 @@
                                          click to type; Enter keeps, Escape gives the old number back, the
                                          arrows step (Shift x10, Alt /10). The input only takes the pointer
                                          once it is focused, so a press on it scrubs instead of selecting. --}}
-                                    <template x-if="property.type !== 'color'">
+                                    {{-- A figure's expression: a word, keyed at the playhead when picked (character/face-keys.js). --}}
+                                    <template x-if="property.type === 'face'">
+                                        <select class="select select-sm w-full min-w-0 text-xs" data-timeline-value data-timeline-face
+                                                aria-label="{{ __('Expression') }}"
+                                                x-effect="void time; void tracks; $el.value = window.__timelineFace?.at(object.target) ?? 'calm'"
+                                                x-on:change="window.__timelineFace?.key(object.target, $event.target.value)">
+                                            @foreach (['calm' => 'Calm', 'curious' => 'Curious', 'sad' => 'Sad', 'angry' => 'Angry', 'amazed' => 'Amazed'] as $faceId => $faceLabel)
+                                                <option value="{{ $faceId }}">{{ __($faceLabel) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </template>
+                                    <template x-if="property.type !== 'color' && property.type !== 'face'">
                                         <span data-scrub
                                               x-on:click="$el.querySelector('input').focus(); $el.querySelector('input').select()"
                                               class="flex h-8 min-w-0 cursor-col-resize items-center rounded bg-panel-hairline pl-1.5 pr-1.5 focus-within:cursor-text">
@@ -403,7 +415,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
                                         </svg>
                                     </button>
-                                    <button type="button" x-on:click.prevent="toggleKey(object.target, property.key); announce()"
+                                    <button type="button" x-on:click.prevent="toggleKey(object.target, property.key); announce()" x-show="property.type !== 'face'"
                                             :data-timeline-key="object.target + ':' + property.key"
                                             :data-keyframe-state="keyState(object.target, property.key)"
                                             :aria-pressed="hasKeyHere(object.target, property.key) ? 'true' : 'false'"

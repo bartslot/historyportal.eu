@@ -2,7 +2,7 @@
  * The kit's pictures in the browser: loaded once, recoloured once per colour set (paint.js), stacked on canvases with
  * drawImage. A preview draws at screen size; Save draws at the rig's size (1 canvas px per puppet px) and cuts.
  */
-import { recolour, shadeLayer, castLayer, partLabels } from './paint.js'
+import { recolour, shadeLayer, castLayer, partLabels, kindIndex } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
 
 const loaded = new Map()      // url -> Promise<ImageData>
@@ -130,15 +130,33 @@ export function slotAt (layers, x, y) {
   return null
 }
 
-/** An amber edge round the pieces of the slots given, on `ctx` (cleared first), in the same frame as drawLayers. */
-export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', width = 3) {
+/** A piece's pixels of one colour kind as a silhouette canvas (made once): the bare skin of an outfit is the body. */
+function kindSilhouette (layer, kindIndexWanted, kindsCount) {
+  layer.sil ??= {}
+  if (!layer.sil[kindIndexWanted]) {
+    const { width: w, height: h, data } = layer.raw.fill
+    const out = new Uint8ClampedArray(w * h * 4)
+    for (let i = 0; i < w * h; i++) {
+      if (data[i * 4 + 3] > 100 && kindIndex(data[i * 4], kindsCount) === kindIndexWanted) out[i * 4 + 3] = 255
+    }
+    layer.sil[kindIndexWanted] = put(out, w, h)
+  }
+  return layer.sil[kindIndexWanted]
+}
+
+/** An amber edge round the pieces of the slots given, on `ctx` (cleared first), in the same frame as drawLayers.
+ *  `kind`: [index, count] to edge only that colour kind of them (the body: an outfit's bare skin). */
+export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', width = 3, kind = null) {
   const { width: W, height: H } = ctx.canvas
   ctx.clearRect(0, 0, W, H)
   const picked = layers.filter((l) => slots.includes(l.slot))
   if (!picked.length) return
   const sil = canvasOf(W, H)
   const g = sil.getContext('2d')
-  drawLayers(g, picked, src, dst, 'colour')
+  if (kind) {
+    const k = dst[2] / src[2]
+    for (const l of picked) g.drawImage(kindSilhouette(l, kind[0], kind[1]), dst[0] + (l.box[0] - src[0]) * k, dst[1] + (l.box[1] - src[1]) * k, l.box[2] * k, l.box[3] * k)
+  } else drawLayers(g, picked, src, dst, 'colour')
   g.globalCompositeOperation = 'source-in'
   g.fillStyle = colour
   g.fillRect(0, 0, W, H)

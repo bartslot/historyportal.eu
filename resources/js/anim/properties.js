@@ -152,6 +152,8 @@ const REGISTRY = {
     P('scale', 'Scale', 'linear', '%'),
     P('rotation', 'Angle', 'linear', '°'),
     P('opacity', 'Opacity', 'linear', ''),
+    // a figure from the Character tab: its expression, a word that steps (LayerKey.face; only on a figure with faces)
+    { ...P('face', 'Expression', 'step', '', 'face'), type: 'face' },
     // a figure of parts: one row per bone, keyed together as one pose (only on a layer that has a puppet: timeline-panel propertiesOf)
     ...BONE_NAMES.map(([key, label]) => P(key, label, 'linear', '°', 'bones')),
   ],

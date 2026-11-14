@@ -14,7 +14,7 @@
 import { propertiesFor, propertyFor } from './properties.js'
 
 /** Group ids in the order a layer lists them. Camera has its own two. */
-const ORDER = ['transform', 'position', 'view', 'appearance', 'tail', 'arrow', 'bones']
+const ORDER = ['transform', 'position', 'view', 'appearance', 'tail', 'arrow', 'face', 'bones']
 
 /** English lang key of each group's heading. The Blade passes the translations. */
 export const GROUP_LABEL_KEYS = {
@@ -25,6 +25,7 @@ export const GROUP_LABEL_KEYS = {
   position: 'Position',
   view: 'Viewing angle',
   bones: 'Bones',
+  face: 'Expression',
 }
 
 const APPEARANCE = new Set(['blur', 'opacity', 'color', 'colorOpacity', 'tint', 'tint_opacity'])

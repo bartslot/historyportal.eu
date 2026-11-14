@@ -47,7 +47,9 @@ describe('the timeline sees stage25d layers', () => {
   })
 
   it('offers x, distance, y, scale, angle and opacity, shown in readable units', () => {
-    expect(propertiesFor('s25').filter((p) => p.group !== 'bones').map((p) => p.key)).toEqual(['x', 'z', 'y', 'scale', 'rotation', 'opacity'])
+    expect(propertiesFor('s25').filter((p) => !['bones', 'face'].includes(p.group)).map((p) => p.key)).toEqual(['x', 'z', 'y', 'scale', 'rotation', 'opacity'])
+    // a figure from the Character tab adds one Expression row, a word that steps (timeline-panel shows it only on such a figure)
+    expect(propertiesFor('s25').find((p) => p.key === 'face')).toMatchObject({ group: 'face', type: 'face' })
     expect(displayOf('s25', 'z')).toMatchObject({ scale: 1, unit: 'm' })
     expect(displayOf('s25', 'x')).toMatchObject({ scale: 100, unit: '%' })
     expect(displayOf('s25', 'opacity')).toMatchObject({ scale: 100, unit: '%' })

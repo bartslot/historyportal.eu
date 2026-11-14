@@ -429,7 +429,9 @@ export const animationTimeline = (config = {}) => ({
   groupLabel (group) { return config.groupLabels?.[group.id] ?? group.labelKey },
 
   /** The object's groups, each with its rows. */
-  groupsOf (target) { return groupsFor(kindOfTarget(target)).filter((g) => g.id !== 'bones' || this.hasBones(target)) },
+  groupsOf (target) { return groupsFor(kindOfTarget(target)).filter((g) => (g.id !== 'bones' || this.hasBones(target)) && (g.id !== 'face' || this.hasFaces(target))) },
+  /** A figure from the Character tab has an Expression row (stage25d engine layerInfo faces). */
+  hasFaces (target) { return kindOfTarget(target) === 's25' && (window.__stage25d?.layerInfo?.(String(target).slice(4))?.faces?.length ?? 0) > 0 },
   /** A stage25d layer drawn from a puppet: only that one has Bones rows. */
   hasBones (target) { return !!window.__stage25d?.layerInfo?.(String(target).slice(4))?.puppet },
 
@@ -571,7 +573,9 @@ export const animationTimeline = (config = {}) => ({
   propertiesOf (target) {
     const info = window.__stage25d?.layerInfo?.(String(target).slice(4))
     const bones = info?.puppet ? info.bones ?? [] : []
-    return propertiesFor(kindOfTarget(target)).filter((p) => p.group !== 'bones' || bones.includes(p.key.slice('bone:'.length)))
+    return propertiesFor(kindOfTarget(target))
+      .filter((p) => p.group !== 'bones' || bones.includes(p.key.slice('bone:'.length)))
+      .filter((p) => p.group !== 'face' || (info?.faces?.length ?? 0) > 0)
   },
 
   trackFor (target, property) {

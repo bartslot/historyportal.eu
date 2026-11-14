@@ -525,7 +525,8 @@ export async function createStage25d (host, opts = {}) {
       const onPage = (url) => new URL(url, location.href).href
       return {
         id: `s25_${id}`,
-        title: api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
+        // a person from the Character tab is called by its own name (the row label adds "(bones)")
+        title: asset.character ? (asset.name?.[(document.documentElement.lang || 'en').slice(0, 2)] ?? asset.name?.en ?? '') : api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         original: row.src ? new URL(row.src, location.href).href : puppet ? new URL(puppet.atlas, location.href).href : libData.base + asset.file,
         // an edited copy has its own pixel size: no metres from the library's
         from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
@@ -978,7 +979,10 @@ export async function createStage25d (host, opts = {}) {
         const seen = figureInView(figures, pointer?.selected ?? null)
         if (seen !== null) {
           const now = layerAt(layers[seen], nowT())
-          layer = { asset: assetId, depth: layers[seen].depth, x: now.x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: zNow(seen), scale: now.scale ?? 1 }
+          // a new person from the Character tab stands beside that one, never on top of it (tester 11-15: it hid the other
+          // figure and took its clicks)
+          const x = a.character ? (now.x > 0.6 ? now.x - 0.18 : now.x + 0.18) : now.x
+          layer = { asset: assetId, depth: layers[seen].depth, x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: zNow(seen), scale: now.scale ?? 1 }
         }
       }
       layers = [...layers, layer]

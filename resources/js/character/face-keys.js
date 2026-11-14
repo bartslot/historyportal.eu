@@ -14,6 +14,25 @@ export function withFace (keys, t, face) {
   return [...keys, { t: Math.round(t * 1000) / 1000, face }].sort((a, b) => a.t - b.t)
 }
 
+/** The expression the keys show at time t: the last face key at or before it (layout.ts faceAt), else calm. */
+export function faceAtTime (keys, t) {
+  let at = -Infinity, face = 'calm'
+  for (const k of keys ?? []) if (typeof k.face === 'string' && k.t <= t + 1e-6 && k.t >= at) { at = k.t; face = k.face }
+  return face
+}
+
+/** The timeline's Expression row (animation-timeline.blade.php): the face at the playhead, and a new one keyed there. */
+export const timelineFace = {
+  at (target) {
+    const keying = window.__timelineKeying
+    return keying ? faceAtTime(keying.layerKeys(target), keying.time()) : 'calm'
+  },
+  key (target, face) {
+    const keying = window.__timelineKeying
+    if (keying?.setLayerKeys) keying.setLayerKeys(target, withFace(keying.layerKeys(target), keying.time(), face))
+  },
+}
+
 /** Alpine: the Expression row of a figure whose puppet has faces (stage25d-inspector, character-expressions.blade.php). */
 export function characterExpressions (layerId) {
   return {
@@ -22,7 +41,7 @@ export function characterExpressions (layerId) {
     key (face) {
       const keying = window.__timelineKeying
       if (!keying?.setLayerKeys) return
-      const target = `s25_${layerId}`
+      const target = `s25:${layerId}`   // the timeline's own track target (presets-picker uses the same)
       keying.setLayerKeys(target, withFace(keying.layerKeys(target), keying.time(), face))
     },
   }
