@@ -29,6 +29,15 @@ final class AnimationPresets
 
     private const SPEED = [0.25, 4.0];
 
+    /** A clip that stays in place moves its root less than this (body heights): its x keys are left alone (presets.js MOVE_MIN). */
+    private const MOVE_MIN = 0.01;
+
+    /** A walk or a run with no length of its own crosses the shot this many cycles (presets.js TRAVEL_CYCLES). */
+    private const TRAVEL_CYCLES = 3;
+
+    /** The face a figure shows when nothing says otherwise (presets.js REST_FACE). */
+    private const REST_FACE = 'calm';
+
     /**
      * The presets in the order the picker and the agents' schema list them: id, English label, group.
      *
@@ -108,12 +117,13 @@ final class AnimationPresets
         [$cycles, $cycle] = self::span($clip, $o['length'] ?? null, (float) ($o['speed'] ?? 1.0));
         $keys = (array) $clip['keys'];
         $travel = (float) ($clip['travel'] ?? 0);
-        $moves = abs($travel) > 1e-6 || collect($keys)->contains(fn ($k) => abs((float) ($k['dx'] ?? 0)) > 1e-6);
+        $moves = abs($travel) > 1e-6 || collect($keys)->contains(fn ($k) => abs((float) ($k['dx'] ?? 0)) > self::MOVE_MIN);
         $bobs = collect($keys)->contains(fn ($k) => abs((float) ($k['bob'] ?? 0)) > 1e-6);
         $bones = array_flip($o['bones'] ?? []);
         $facing = ($o['facing'] ?? 1) < 0 ? -1 : 1;
         [$start, $x0, $y0] = [(float) ($o['start'] ?? 0), (float) ($o['x0'] ?? 0.5), (float) ($o['y0'] ?? 0)];
         $out = [];
+        $face = null;
         for ($c = 0; $c < $cycles; $c++) {
             foreach ($keys as $i => $k) {
                 if ($c > 0 && $i === 0) {
@@ -131,8 +141,8 @@ final class AnimationPresets
                 if ($bobs) {
                     $key['y'] = round($y0 + (float) ($k['bob'] ?? 0) * (float) ($o['yPerHeight'] ?? 0), 3);
                 }
-                if (is_string($k['face'] ?? null) && $k['face'] !== '') {
-                    $key['face'] = $k['face'];
+                if (is_string($k['face'] ?? null) && $k['face'] !== '' && $k['face'] !== $face) {
+                    $key['face'] = $face = $k['face'];   // a face steps: only where it changes
                 }
                 $out[] = $key;
             }
@@ -179,6 +189,12 @@ final class AnimationPresets
                 $out[$at] = [...$out[$at], ...$a];
             }
         }
+        // a clip's faces are its own: when it ends the figure shows the face it had before it
+        if (in_array('face', $fields, true)) {
+            $before = collect($keys)->filter(fn ($k) => isset($k['face']) && $k['t'] < $from)->sortBy('t')->last()['face'] ?? self::REST_FACE;
+            $last = collect($out)->search(fn ($k) => abs($k['t'] - $added[array_key_last($added)]['t']) < 1e-6);
+            $out[$last]['face'] = $before;
+        }
         usort($out, fn ($a, $b) => $a['t'] <=> $b['t']);
 
         return array_values($out);
@@ -216,11 +232,15 @@ final class AnimationPresets
 
                 continue;
             }
-            $layers[$i] = [...$layer, 'keys' => LayerKeys::sanitize(self::apply((array) ($layer['keys'] ?? []), self::expand($clip, [
-                ...$spec,
-                'length' => $spec['length'] ?? (empty($clip['loop']) ? null : max(0.1, $duration - $spec['start'])),
-                ...self::sizeOf($layer, $asset, $puppet),
-            ])), $duration)];
+            $cycle = (float) $clip['duration'] / $spec['speed'];
+            $rest = max($cycle, $duration - $spec['start']);
+            $length = $spec['length'] ?? (empty($clip['loop']) ? null : (empty($clip['travel']) ? $rest : min($rest, self::TRAVEL_CYCLES * $cycle)));
+            // cut at the scene's end: a key past it would be squeezed onto the last moment
+            $added = array_values(array_filter(
+                self::expand($clip, [...$spec, 'length' => $length, ...self::sizeOf($layer, $asset, $puppet)]),
+                fn ($k) => $k['t'] <= $duration + 1e-6,
+            ));
+            $layers[$i] = [...$layer, 'keys' => LayerKeys::sanitize(self::apply((array) ($layer['keys'] ?? []), $added), $duration)];
             $report['animated']++;
         }
         $stage['set']['layers'] = $layers;

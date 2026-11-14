@@ -3,7 +3,7 @@
  * the figure on the stage, over and over, saving nothing; Add lays it into the figure's keys at the playhead, one
  * edit and one undo step through the timeline (window.__timelineKeying), where every key stays the teacher's to change.
  */
-import { CLIPS, applyClip, clipSpan, expandClip } from './presets.js'
+import { CLIPS, TRAVEL_CYCLES, applyClip, clipSpan, expandClip } from './presets.js'
 
 /** A loop previews this many cycles before it starts over, a move plays once and starts over. */
 const PREVIEW_CYCLES = 2
@@ -15,6 +15,7 @@ export function animationPresets (layerId, presets) {
 
   return {
     presets: presets.filter((p) => CLIPS[p.id]),
+    hints: {},
     chosen: null,
     speed: 1,
     previewing: false,
@@ -26,10 +27,11 @@ export function animationPresets (layerId, presets) {
     /** What Add will do, in a few words. */
     get hint () {
       if (!this.clip) return ''
-      return this.clip.loop ? this.$el.dataset.loopHint : this.$el.dataset.onceHint.replace(':s', (this.clip.duration / this.speed).toFixed(1))
+      return this.clip.loop ? (this.clip.travel ? this.hints.travelHint : this.hints.loopHint) : (this.hints.onceHint ?? '').replace(':s', (this.clip.duration / this.speed).toFixed(1))
     },
 
     init () {
+      this.hints = { ...this.$el.dataset }   // read here: in a getter $el is whichever element asks
       window.addEventListener('timeline-playing', (e) => { if (e.detail) this.stop() })
       this.$watch('speed', () => { if (this.previewing) this.play(this.chosen) })
     },
@@ -66,6 +68,7 @@ export function animationPresets (layerId, presets) {
       this.previewing = true
       const began = performance.now()
       const tick = (now) => {
+        if (Math.abs(keying.time() - from) > 1e-3) { this.stop(); return }   // the teacher moved the playhead
         stage.update(from + (((now - began) / 1000) % span))
         raf = requestAnimationFrame(tick)
       }
@@ -86,14 +89,19 @@ export function animationPresets (layerId, presets) {
       else this.play(id)
     },
 
-    /** The chosen preset into the figure's keys at the playhead: a loop to the end of the scene, a move once. */
+    /** The chosen preset into the figure's keys at the playhead: a loop to the end of the scene (a walk for a few
+     *  steps), a move once; cut at the scene's end, which it never stretches. */
     add () {
       const keying = window.__timelineKeying
       if (!this.clip || !keying) return
       this.stop()
       const from = keying.time()
-      const keys = this.keysFrom(from, this.clip.loop ? Math.max(this.clip.duration / this.speed, keying.duration() - from) : null)
-      if (keys) keying.setLayerKeys(target, applyClip(keying.layerKeys(target), keys))
+      const end = keying.duration()
+      const cycle = this.clip.duration / this.speed
+      const rest = Math.max(cycle, end - from)
+      const length = !this.clip.loop ? null : this.clip.travel ? Math.min(rest, TRAVEL_CYCLES * cycle) : rest
+      const keys = this.keysFrom(from, length)?.filter((k) => k.t <= end + 1e-6)
+      if (keys?.length) keying.setLayerKeys(target, applyClip(keying.layerKeys(target), keys))
     },
   }
 }

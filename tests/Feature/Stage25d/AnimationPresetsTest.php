@@ -76,6 +76,26 @@ class AnimationPresetsTest extends TestCase
         $this->assertEquals([['t' => 0.0, 'bone:head' => 1.0], ['t' => 1.0, 'ease' => 'smooth', 'bone:head' => 5.0], ['t' => 1.5, 'scale' => 2.0], ['t' => 2.0, 'bone:head' => -5.0], ['t' => 3.0, 'bone:head' => 0.0]], AnimationPresets::apply($keys, $added));
     }
 
+    public function test_after_a_clip_the_figure_shows_its_own_face_again_and_a_still_clip_leaves_its_x_alone(): void
+    {
+        $added = [['t' => 1.0, 'bone:head' => 5.0, 'face' => 'amazed'], ['t' => 2.0, 'bone:head' => 0.0]];
+        $this->assertSame(['sad', 'amazed', 'sad'], array_column(AnimationPresets::apply([['t' => 0.0, 'face' => 'sad', 'x' => 0.1]], $added), 'face'));
+        $still = ['id' => 's', 'loop' => false, 'duration' => 1.0, 'travel' => 0.0, 'keys' => [['t' => 0, 'bone:head' => 1, 'dx' => 0, 'bob' => 0], ['t' => 1, 'bone:head' => 2, 'dx' => 0.004, 'bob' => 0]]];
+        $this->assertFalse(collect(AnimationPresets::expand($still, ['bones' => ['head'], 'xPerHeight' => 1.0]))->contains(fn ($k) => isset($k['x'])));
+    }
+
+    public function test_a_move_near_the_end_of_the_scene_is_cut_there(): void
+    {
+        Storage::fake('public');
+        $stage = ['bundle' => 'none', 'set' => ['layers' => [['asset' => 'f', 'depth' => 'fg', 'z' => 7.0, 'puppet' => $this->puppet(), 'animation' => ['id' => 'fall_get_up', 'start' => 7.5]]]]];
+
+        [$out] = AnimationPresets::fill($stage, 8.0);
+
+        $times = array_column($out['set']['layers'][0]['keys'], 't');
+        $this->assertLessThanOrEqual(8.0, max($times));
+        $this->assertSame(count($times), count(array_unique(array_map('strval', $times))), 'no keys squeezed onto one moment');
+    }
+
     public function test_a_saved_key_keeps_its_smooth_ease_and_its_face_and_nothing_else_that_is_not_a_number(): void
     {
         $keys = LayerKeys::sanitize([
@@ -104,7 +124,7 @@ class AnimationPresetsTest extends TestCase
         $this->assertSame('smooth', $keys[0]['ease']);
         $this->assertArrayHasKey('bone:thigh_n', $keys[0]);
         $this->assertGreaterThan(0.3, end($keys)['x'], 'facing right, a walk goes right');
-        $this->assertEqualsWithDelta(9.0, end($keys)['t'], 0.01, 'a loop fills the scene');
+        $this->assertEqualsWithDelta(1.0 + 3 * AnimationPresets::clip('walk')['duration'], end($keys)['t'], 0.01, 'a walk crosses the shot for a few steps, not the whole scene off screen');
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][0]);
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][1]);
         $this->assertArrayNotHasKey('keys', $out['set']['layers'][2]);

@@ -16,6 +16,12 @@ export const CLIPS = Object.fromEntries(Object.values(files).map((clip) => [clip
 
 const round3 = (v) => Math.round(v * 1000) / 1000
 const BONE = 'bone:'
+/** A clip that stays in place moves its root less than this (body heights): its x keys are left to the teacher. */
+export const MOVE_MIN = 0.01
+/** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
+export const TRAVEL_CYCLES = 3
+/** The face a figure shows when nothing says otherwise (the Character tab's kits: the rest head). */
+export const REST_FACE = 'calm'
 
 /** How long the clip runs from `start`: a loop fills `length` with whole cycles, a move plays once at its own pace. */
 export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
@@ -32,10 +38,11 @@ export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
  */
 export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0 } = {}) {
   const { cycles, cycle } = clipSpan(clip, { length, speed })
-  const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > 1e-6) || Math.abs(clip.travel ?? 0) > 1e-6
+  const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > MOVE_MIN) || Math.abs(clip.travel ?? 0) > 1e-6
   const bobs = clip.keys.some((k) => Math.abs(k.bob ?? 0) > 1e-6)
   const has = new Set(bones)
   const out = []
+  let face = null
   for (let c = 0; c < cycles; c++) {
     clip.keys.forEach((k, i) => {
       if (c > 0 && i === 0) return   // the seam: a loop's first key is the last one of the cycle before
@@ -45,7 +52,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       }
       if (moves) key.x = round3(x0 + facing * (c * (clip.travel ?? 0) + (k.dx ?? 0)) * xPerHeight)
       if (bobs) key.y = round3(y0 + (k.bob ?? 0) * yPerHeight)
-      if (k.face) key.face = k.face
+      if (k.face && k.face !== face) key.face = face = k.face   // a face steps: only where it changes
       out.push(key)
     })
   }
@@ -76,6 +83,11 @@ export function applyClip (keys, added) {
     const same = out.find((k) => sameTime(k.t, a.t))
     if (same) Object.assign(same, a)
     else out.push({ ...a })
+  }
+  // a clip's faces are its own: when it ends the figure shows the face it had before it, not the clip's last one
+  if (fields.has('face')) {
+    const before = (keys ?? []).filter((k) => k.face && k.t < from).sort((a, b) => a.t - b.t).pop()?.face ?? REST_FACE
+    out.find((k) => sameTime(k.t, added[added.length - 1].t)).face = before
   }
   return out.sort((a, b) => a.t - b.t)
 }

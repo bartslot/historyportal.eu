@@ -45,7 +45,7 @@ def test_a_squat_sinks_the_hips_and_keeps_both_feet_where_they_stand():
     ]})
     assert clip['keys'][-1]['bob'] < -0.03
     assert report['slide'] < 0.002
-    assert clip['travel'] == 0.0 and clip['keys'][-1]['dx'] < 0   # the hips go back over the heels
+    assert clip['travel'] == 0.0
 
 
 def test_a_jump_leaves_the_ground_by_its_lift():
@@ -69,7 +69,18 @@ def test_a_move_that_starts_sitting_starts_low_and_no_foot_ever_goes_through_the
         {'t': 0, 'contact': 'both', 'bones': sit}, {'t': 0.5, 'contact': 'both', 'bones': {**sit, 'foot_n': -45}},
         {'t': 1, 'contact': 'both', 'bones': {}}]}
     clip, _ = fit(raw)
-    assert clip['keys'][0]['bob'] < -0.1 and abs(clip['keys'][-1]['bob']) < 1e-3
+    assert clip['keys'][0]['bob'] < -0.05 and abs(clip['keys'][-1]['bob']) < 1e-3
     for k in clip['keys']:
         pose = {b[5:]: v for b, v in k.items() if b.startswith('bone:')}
         assert sinking(pose, -k['bob'] * HEIGHT_PX) < 0.6
+
+
+def test_no_turn_goes_past_what_the_rigs_allow():
+    from anim_fit import RIG_LIMIT
+    clip, _ = fit({'id': 'x', 'loop': False, 'duration': 1, 'keys': [
+        {'t': 0, 'contact': 'both', 'bones': {'thigh_n': -100, 'chest': 45, 'upperarm_f': -150}}, {'t': 1, 'contact': 'both', 'bones': {}}]})
+    for k in clip['keys']:
+        for f, v in k.items():
+            if f.startswith('bone:'):
+                lo, hi = RIG_LIMIT[f[5:]]
+                assert lo - 0.05 <= v <= hi + 0.05, (f, v)

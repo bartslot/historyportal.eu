@@ -859,8 +859,6 @@ export const animationTimeline = (config = {}) => ({
     const fresh = tracksFromKeys([{ id: String(target).slice(4), keys }])
       .map((t) => ({ ...(old.find((o) => o.property === t.property) ?? {}), ...t }))
     this.tracks = [...this.tracks.filter((t) => t.target !== target || !isLayerKeyTrack(t)), ...fresh]
-    const last = Math.max(0, ...keys.map((k) => k.t))
-    if (last > this.duration) { this.duration = last; this.measureFit() }
     this.applyFrame()
     this.save()
     this.announce()

@@ -11,7 +11,7 @@ A raw clip (anim_raw/<id>.json, what ChatGPT answered, hand-tuned where it was w
   the body is off the ground (a jump), on top of where the feet put it; face: an expression id (optional).
 
 What the fit corrects, on the standard skeleton (Ana's flat rig, facing right), before a key is written:
-  - every turn inside what a body can do (HUMAN_RANGE), knees and elbows by the posing rules (pose-guard.ts,
+  - every turn inside what the rigs can do (RIG_LIMIT), knees and elbows by the posing rules (pose-guard.ts,
     ~/.claude/rules/posing.md): a knee never bends backwards, an elbow folds to the front, a raised thigh keeps its knee
     in front of the hip. A wrong turn is mirrored; still wrong, it is dropped.
   - a foot on the ground is flat and does not slide: the hips move (dx) and sink (bob) so the planted ankle stays where
@@ -27,6 +27,8 @@ import json
 import math
 import sys
 from pathlib import Path
+
+from rig_parts import LIMIT
 
 # Ana's flat rig (fig-ana-flat-rig-01), picture px, y down, facing right: the standard skeleton every rig shares by name
 SKELETON: dict[str, tuple[str | None, tuple[float, float], tuple[float, float]]] = {
@@ -48,18 +50,15 @@ SKELETON: dict[str, tuple[str | None, tuple[float, float], tuple[float, float]]]
 HEIGHT_PX = 1508.0 - 33.0   # head top to sole: one body height
 MOVABLE = [b for b in SKELETON if b != 'hips']   # the hips never turn (bones.ts joints)
 
-# degrees clockwise on screen from the drawn pose, facing right (bones.ts JOINT_RANGE, opened to a whole body's reach:
-# a rig clamps to its own limits when it plays)
-HUMAN_RANGE = {
-    # a foot as far as the rigs let it turn (rig_parts.py writes -30..20): a pose that needs more lifts its heel here,
-    # not through the floor on the stage
-    'thigh': (-120.0, 45.0), 'shin': (0.0, 150.0), 'foot': (-30.0, 20.0),
-    'upperarm': (-190.0, 70.0), 'forearm': (-150.0, 5.0),
-    'chest': (-30.0, 45.0), 'head': (-35.0, 35.0), 'braid': (-30.0, 30.0),
-}
+# How far each bone turns, degrees clockwise on screen from the drawn pose, facing right: the rigs' own limits
+# (rig_parts.py LIMIT, which Ana's flat rig and the Character tab's kit bodies carry). The stage clamps every turn to them
+# (bones.ts limitBone), so a clip fitted in a wider range would play clamped, its hips sunk for knees that never bend
+# (fresh tester 11-15: Ana buried to the hip in pick up). Fitted inside them, what plays is what was fitted.
+RIG_LIMIT: dict[str, tuple[float, float]] = {b: (float(lo), float(hi)) for b, (lo, hi) in LIMIT.items()}
 STRAIGHT_DEG = 3.0       # pose-guard.ts STRAIGHT_DEG
 RAISED_THIGH_DEG = 45.0  # pose-guard.ts RAISED_THIGH_DEG
 FORWARD = 1              # the standard skeleton faces right
+REACH_TRIES = 24         # rounds of moving the hips towards a foot the legs cannot reach
 CONTACTS = {'n': ('n',), 'f': ('f',), 'both': ('n', 'f'), 'none': ()}
 # the expressions a figure's head can show (Puppet.faces, the Character tab's kits); a raw clip's other words map onto them
 FACES = ('calm', 'curious', 'sad', 'angry', 'amazed')
@@ -70,7 +69,7 @@ Pt = tuple[float, float]
 
 
 def range_of(bone: str) -> tuple[float, float]:
-    return HUMAN_RANGE[bone.split('_')[0]]
+    return RIG_LIMIT[bone]
 
 
 # ── forward kinematics, the same sums as Rigby2D's Pose (a bone's turn adds to its parent's) ────────────────────────
@@ -182,7 +181,7 @@ def elbow_ok(bones: dict[str, float], side: str) -> bool:
 
 def flat_foot(bones: dict[str, float], side: str) -> dict[str, float]:
     """The foot turned back to the angle it is drawn at, so its sole lies on the floor."""
-    lo, hi = range_of('foot')
+    lo, hi = range_of(f'foot_{side}')
     return {**bones, f'foot_{side}': min(max(-(bones[f'thigh_{side}'] + bones[f'shin_{side}']), lo), hi)}
 
 
@@ -202,17 +201,18 @@ def reach(bones: dict[str, float], side: str, target: Pt) -> dict[str, float]:
     d = min(max(math.dist(hip, target), abs(l1 - l2) + 1e-3), l1 + l2 - 1e-3)
     base = angle((target[0] - hip[0], target[1] - hip[1]))
     a = math.degrees(math.acos((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)))
-    best = None
+    clamp = lambda b, v: min(max(v, range_of(b)[0]), range_of(b)[1])   # the rig's limits: a reach past them falls short
+    ranked = []
     for sign in (1, -1):
         th = math.radians(base + sign * a)
         knee = (hip[0] + l1 * math.cos(th), hip[1] + l1 * math.sin(th))
         thigh = wrap(math.degrees(th) - angle((knee0[0] - hip[0], knee0[1] - hip[1])))
         shin = wrap(angle((target[0] - knee[0], target[1] - knee[1])) - angle((ankle0[0] - knee0[0], ankle0[1] - knee0[1])) - thigh)
-        cand = {**bones, f'thigh_{side}': thigh, f'shin_{side}': shin}
-        if knee_ok(cand, side):
-            best = cand
-            break
-    return flat_foot(best or bones, side)
+        free = {**bones, f'thigh_{side}': thigh, f'shin_{side}': shin}
+        held = {**bones, f'thigh_{side}': clamp(f'thigh_{side}', thigh), f'shin_{side}': clamp(f'shin_{side}', shin)}
+        # the knee judged on the bend the IK found (a clamp can hide a backwards knee), then the one that lands nearest
+        ranked.append((not knee_ok(free, side), math.dist(joints(held, side)['ankle'], target), sign, held))
+    return flat_foot(min(ranked)[3], side)
 
 
 def fit(raw: dict) -> tuple[dict, dict]:
@@ -243,15 +243,26 @@ def fit(raw: dict) -> tuple[dict, dict]:
             nat = joints(poses[i], s)['ankle']
             prev = next((h for h in reversed(hips[:i]) if h is not None), (0.0, 0.0))
             hips[i] = (prev[0], ground[s] - nat[1])
-        # the other planted foot is reached by bending its leg, at the place it already has (or lands on)
-        for s in feet:
-            if hips[i] is None:
-                continue
+        # a foot that stays put is reached by bending its leg, at the place it has; one that lands now lands where its leg
+        # reaches, on the floor. A foot the rig's limits cannot reach brings the hips towards it (down, for a landing
+        # foot), and the legs bend again. What the feet reach is where they stand from now on.
+        if hips[i] is not None and feet:
+            landing = {s: joints(poses[i], s)['ankle'][0] for s in feet if s not in planted}
+            for n in range(REACH_TRIES):
+                hx, hy = hips[i]
+                gaps = []
+                for s in feet:
+                    want = planted[s] if s in planted else (landing[s] + hx, ground[s])
+                    poses[i] = reach(poses[i], s, (want[0] - hx, want[1] - hy))
+                    got = joints(poses[i], s)['ankle']
+                    gap = (want[0] - got[0] - hx, want[1] - got[1] - hy)
+                    gaps.append(gap if s in planted else (0.0, gap[1]))
+                worst = max(gaps, key=lambda g: math.hypot(*g))
+                if math.hypot(*worst) <= 0.5 or n == REACH_TRIES - 1:
+                    break   # the last round keeps the hips its legs were bent for
+                hips[i] = (hx + worst[0], hy + worst[1])
             hx, hy = hips[i]
-            want = planted.get(s, (joints(poses[i], s)['ankle'][0] + hx, ground[s]))
-            if math.dist((joints(poses[i], s)['ankle'][0] + hx, joints(poses[i], s)['ankle'][1] + hy), want) > 0.5:
-                poses[i] = reach(poses[i], s, (want[0] - hx, want[1] - hy))
-            planted[s] = want
+            planted.update({s: (joints(poses[i], s)['ankle'][0] + hx, joints(poses[i], s)['ankle'][1] + hy) for s in feet})
         for s in [s for s in planted if s not in feet]:
             del planted[s]
 

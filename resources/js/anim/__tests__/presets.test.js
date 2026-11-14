@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import catalogue from '../../../animations/presets.json'
-import { CLIPS, applyClip, clipSpan, expandClip } from '../presets.js'
+import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip } from '../presets.js'
 
 
 describe('expandClip', () => {
@@ -22,6 +22,15 @@ describe('applyClip', () => {
   it('takes over only the fields it moves, only in its stretch of time', () => {
     const keys = [{ t: 0, 'bone:head': 1 }, { t: 1.5, 'bone:head': 9, scale: 2 }, { t: 1.8, 'bone:head': 3 }, { t: 3, 'bone:head': 0 }]
     expect(applyClip(keys, added)).toEqual([{ t: 0, 'bone:head': 1 }, { t: 1, ease: 'smooth', 'bone:head': 5 }, { t: 1.5, scale: 2 }, { t: 2, 'bone:head': -5 }, { t: 3, 'bone:head': 0 }])
+  })
+  it('when it ends the figure shows the face it had before, not the clip\'s last one', () => {
+    const faced = [{ t: 1, 'bone:head': 5, face: 'amazed' }, { t: 2, 'bone:head': 0 }]
+    expect(applyClip([{ t: 0, face: 'sad', x: 0.1 }], faced).map((k) => k.face)).toEqual(['sad', 'amazed', 'sad'])
+    expect(applyClip([], faced).pop().face).toBe('calm')
+  })
+  it('a clip that stays in place leaves the teacher\'s x keys alone', () => {
+    const still = { id: 's', loop: false, duration: 1, travel: 0, keys: [{ t: 0, 'bone:head': 1, dx: 0, bob: 0 }, { t: 1, 'bone:head': 2, dx: MOVE_MIN / 2, bob: 0 }] }
+    expect(expandClip(still, { bones: ['head'], xPerHeight: 1 }).some((k) => 'x' in k)).toBe(false)
   })
   it('leaves the keys it was given alone', () => {
     const keys = [{ t: 1, x: 0.2 }]

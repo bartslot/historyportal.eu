@@ -9,7 +9,7 @@
 @endphp
 <x-ui.settings-section :title="__('Animation')" :open="false" class="-mx-4 mt-3 w-auto!" x-show="info?.puppet" data-stage25d-animation-section>
     <div x-data="animationPresets(@js($layerId), @js($presets))" x-effect="open || stop()" class="space-y-3"
-         data-loop-hint="{{ __('Repeats to the end of the scene') }}" data-once-hint="{{ __('Plays once, :s s') }}">
+         data-loop-hint="{{ __('Repeats to the end of the scene') }}" data-travel-hint="{{ __('Walks a few steps, up to the end of the scene') }}" data-once-hint="{{ __('Plays once, :s s') }}">
         <template x-for="g in groups" :key="g.name">
             <div class="space-y-1">
                 <div class="text-xs text-panel-hint" x-text="g.name"></div>
