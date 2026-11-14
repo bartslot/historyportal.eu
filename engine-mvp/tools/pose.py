@@ -100,12 +100,33 @@ def lean_hanging(img, interp):
     return cv2.remap(img, sx.astype(np.float32), sy.astype(np.float32), interp, borderValue=0)
 
 
+ARM_RAMP = 120.0                     # the arm turns back gradually: none at the shoulder, all of it this far down the arm
+UPPER_INV = cv2.invertAffineTransform(UPPER)
+
+
+def bend_arm(img, side, interp):
+    """The arm leans with the body at the shoulder and hangs straight again ARM_RAMP px lower (inverse map, small angles):
+    joined to the shoulder all the way, so no wedge opens between arm and body (a rigid turn about the shoulder tore one)."""
+    sx_, sy_ = apply(UPPER, SHOULDER[side])
+    a = np.radians(LEAN * 0.85) * np.clip((yy - sy_) / ARM_RAMP, 0, 1)    # undo the arm's own turn (it turned by -a)
+    dx, dy = xx - sx_, yy - sy_
+    qx = sx_ + dx * np.cos(a) - dy * np.sin(a)
+    qy = sy_ + dx * np.sin(a) + dy * np.cos(a)
+    mx = UPPER_INV[0, 0] * qx + UPPER_INV[0, 1] * qy + UPPER_INV[0, 2]  # then undo the body's lean
+    my = UPPER_INV[1, 0] * qx + UPPER_INV[1, 1] * qy + UPPER_INV[1, 2]
+    return cv2.remap(img, mx.astype(np.float32), my.astype(np.float32), interp, borderValue=0)
+
+
 for pn in ORDER:
     i = PARTS.index(pn)
     mk = ((part == i) & ~green).astype(np.uint8)
     if pn in HANG:
         wm = lean_hanging(mk, cv2.INTER_NEAREST) > 0
         wc = lean_hanging(rgb, cv2.INTER_NEAREST)
+    elif pn.startswith(('upperarm_', 'forearm_')):
+        side = pn[-1]
+        wm = bend_arm(mk, side, cv2.INTER_NEAREST) > 0
+        wc = bend_arm(rgb, side, cv2.INTER_NEAREST)
     else:
         wm = cv2.warpAffine(mk, T[pn], (W, H), flags=cv2.INTER_NEAREST) > 0
         wc = cv2.warpAffine(rgb, T[pn], (W, H), flags=cv2.INTER_NEAREST)
@@ -118,7 +139,8 @@ holes = (ndimage.binary_fill_holes(ndimage.binary_closing(~g, iterations=4)) & g
 near_sh = np.zeros((H, W), bool)
 for side in 'nf':
     sx, sy = apply(UPPER, SHOULDER[side])
-    near_sh |= (xx - sx) ** 2 + (yy - sy - 90) ** 2 < 150 ** 2
+    for down in (90, 240):                                            # the shoulder and on down the arm to the waist
+        near_sh |= (xx - sx) ** 2 + (yy - sy - down) ** 2 < 150 ** 2
 wedge = ndimage.binary_fill_holes(ndimage.binary_closing(~g, iterations=14)) & g & near_sh
 holes |= wedge
 if holes.any():

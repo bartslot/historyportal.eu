@@ -53,7 +53,8 @@ PRESETS = {
     'tavern-keeper': dict(role='Tavern keeper', body='woman', face='woman', outfit='long-wrap', parts=['hair/bun', 'headwear/headband'], mouth='ah',
                           skin='s4', hair_colour='black-brown', height_m=1.54, zones={'garment': 'raw-linen', 'second': 'red-ochre', 'band': 'reed-green'}),
     'grandmother': dict(role='Grandmother', body='woman', face='old-woman', outfit='long-tunic-shawl', parts=['hair/bun', 'headwear/shawl-over-head'],
-                        skin='s2', hair_colour='grey', height_m=1.50, zones={'garment': 'camel-brown', 'second': 'dark-wool-brown', 'head-cloth': 'undyed-wool'}),
+                        skin='s2', hair_colour='grey', height_m=1.47, pose='stooped',
+                        zones={'garment': 'camel-brown', 'second': 'dark-wool-brown', 'head-cloth': 'undyed-wool'}),
     'scribe': dict(role='Scribe', body='man', face='man', outfit='scribe-wrap', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
                    skin='s3', hair_colour='black-brown', height_m=1.66, zones={'garment': 'bleached-linen', 'second': 'indigo-blue', 'band': 'madder-red'}),
     'merchant': dict(role='Merchant', body='man', face='man', outfit='merchant-tunic', parts=['hair/man-hair-headband', 'hair/man-beard', 'extras/man-seal'],
@@ -115,7 +116,8 @@ def build(pid, p, renders='full,closeup', folder='presets-bodies', root=None):
     save_image((mouth * 255).astype(np.uint8), out / 'mouth-mask.webp', lossless=True)
     flat = OUTFITS[p['body']][p['outfit']]
     env = dict(os.environ, KIT='1', NAME=pid, FLAT=str(flat), HEAD_SHEET=str(out / 'head.webp'), HAIR_MASK=str(out / 'parts-mask.webp'),
-               MOUTH_MASK=str(out / 'mouth-mask.webp'), PAL=json.dumps(palette(p)), HEAD_BOX=json.dumps(body['box']), RENDERS=renders)
+               MOUTH_MASK=str(out / 'mouth-mask.webp'), PAL=json.dumps(palette(p)), HEAD_BOX=json.dumps(body['box']), RENDERS=renders,
+               NECK_BODY='1' if body.get('collar') else '')                # girl head sheets on another body: its own neck shows
     part_map = find(body['map'])                                       # the cleaned maps were written as .png before 11-13
     if p.get('pose') == 'stooped':     # posed rigidly per part about this body's own joints
         pd = out / 'posed'
