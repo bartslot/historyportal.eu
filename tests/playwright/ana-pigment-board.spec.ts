@@ -47,5 +47,5 @@ test('the 8 shade pigments of a flat figure', async ({ page }) => {
     await look('figurePigment', p)
     await shoot(`pigment-${p}`)
   }
-  await look('figurePigment', 4)
+  await look('figurePigment', 2)   // back to the default (Bart's pick)
 })

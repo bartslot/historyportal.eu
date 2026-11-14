@@ -38,8 +38,8 @@ export const STAGE_SHEET: Record<string, number> = {
   worldPaint: 1,
   // a figure painted flat (puppet.paint 'flat', plan 11): the stage paints its watercolour and its shading.
   // figurePigment 1..8: how far the shade's pigment moves from the base colour (Bart 11-14: "8 options with small to big
-  // pigment differences")
-  figureWash: 1, figureShade: 1, figurePigment: 4,
+  // pigment differences"); Bart 11-14 picked the default: "i believe pigment 2 is best"
+  figureWash: 1, figureShade: 1, figurePigment: 2,
 }
 export const INK_FLOOR = 0.65
 /** The one light every picture is lit by: warm on the sun's side, cool in the shade. */

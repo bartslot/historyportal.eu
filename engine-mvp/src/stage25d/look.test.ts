@@ -128,7 +128,7 @@ describe('a flat figure: watercolour and shading in the shader (plan 11)', () =>
     expect(pigmentOf(0)).toEqual(pigmentOf(1))
     expect(pigmentOf(12)).toEqual(pigmentOf(8))
     const a = aquarelOf({})
-    expect(a.wash).toBe(1); expect(a.shade).toBe(1); expect(a.depth).toBe(pigmentOf(4).depth)
+    expect(a.wash).toBe(1); expect(a.shade).toBe(1); expect(a.depth).toBe(pigmentOf(2).depth)   // Bart's pick
     expect(aquarelOf({ figurePigment: 7, figureShade: 0.5 })).toMatchObject({ shade: 0.5, ...pigmentOf(7) })
     expect(LOOK_RANGE.figurePigment).toEqual([1, 8, 1])
   })
