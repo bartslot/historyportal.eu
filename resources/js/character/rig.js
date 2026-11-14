@@ -6,6 +6,7 @@
  */
 
 const PAD = 2              // canvas px round a tile, so a bent edge samples its own colour and not the next tile's
+const OVERLAP = 2          // canvas px a part reaches over the parts beside it: their edges sample paint, never air (no seam line)
 const ATLAS_W = 2048
 
 /** For each pixel in `region`, the colour (and shade) of the nearest `source` pixel, walking through the region only. */
@@ -89,8 +90,21 @@ export function cutPuppet ({ canvas, rest, under, faces = {}, rig }) {
     let anyHidden = false, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1
     for (let i = 0; i < n; i++) {
       own[i] = rest.label[i] === id ? 1 : 0
-      hidden[i] = !own[i] && under[i] === id && rest.colour[i * 4 + 3] > 0 ? 1 : 0
       source[i] = rest.label[i] === sourceId ? 1 : 0
+    }
+    // reach OVERLAP px over the neighbouring parts' paint (never the air): drawn back to front it is the same picture at
+    // rest, and a bilinear edge between two tiles samples paint on both sides
+    for (let r = 0; r < OVERLAP; r++) {
+      const grown = own.slice()
+      for (let i = 0; i < n; i++) {
+        if (own[i] || !rest.label[i] || under[i] === id) continue   // what this part hides under its neighbour is filled, not copied
+        const x = i % W
+        if ((x > 0 && own[i - 1]) || (x < W - 1 && own[i + 1]) || (i >= W && own[i - W]) || (i + W < n && own[i + W])) grown[i] = 1
+      }
+      own.set(grown)
+    }
+    for (let i = 0; i < n; i++) {
+      hidden[i] = !own[i] && under[i] === id && rest.colour[i * 4 + 3] > 0 ? 1 : 0
       anyHidden ||= hidden[i] === 1
     }
     filledColour.fill(0)
