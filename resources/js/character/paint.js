@@ -1,0 +1,95 @@
+/**
+ * Painting a person from baked pieces (kit_bake.py): each piece's fill carries its colour KIND in the red channel (key
+ * colour R = 10 + 18 i), its ink and shade beside it. These functions work on plain pixel arrays (tested); layers.js puts
+ * them on canvases.
+ */
+
+export const INK = [25, 20, 16]
+
+/** The kind index a key colour's red channel names. */
+export const kindIndex = (r, count) => Math.max(0, Math.min(count - 1, Math.round((r - 10) / 18)))
+
+/**
+ * A piece recoloured: `colour` is fill in the palette's colours with the ink over it, `flat` the fill alone (the rig
+ * paints hidden parts from it). Straight alpha, RGBA, the piece's own size.
+ */
+export function recolour (fill, ink, palette, kinds) {
+  const n = fill.width * fill.height
+  const colour = new Uint8ClampedArray(n * 4)
+  const flat = new Uint8ClampedArray(n * 4)
+  const table = kinds.map((k) => palette[k] ?? [200, 190, 170])
+  for (let i = 0; i < n; i++) {
+    const o = i * 4
+    const a = fill.data[o + 3] / 255
+    const c = a > 0 ? table[kindIndex(fill.data[o], kinds.length)] : INK
+    const k = ink ? ink.data[o] / 255 : 0
+    flat[o] = c[0]; flat[o + 1] = c[1]; flat[o + 2] = c[2]; flat[o + 3] = fill.data[o + 3]
+    const al = a + k * (1 - a)
+    if (al <= 0) continue
+    // ink over the fill: premultiplied mix, back to straight alpha
+    for (let ch = 0; ch < 3; ch++) colour[o + ch] = Math.round((INK[ch] * k + c[ch] * a * (1 - k)) / al)
+    colour[o + 3] = Math.round(al * 255)
+  }
+  return { colour, flat }
+}
+
+/** A piece's shade as a layer that replaces the shade under it where the piece paints (its fill's alpha). */
+export function shadeLayer (shade, fill, ink) {
+  const n = fill.width * fill.height
+  const out = new Uint8ClampedArray(n * 4)
+  for (let i = 0; i < n; i++) {
+    const o = i * 4
+    out[o] = shade.data[o]; out[o + 1] = shade.data[o + 1]; out[o + 2] = shade.data[o + 2]
+    out[o + 3] = Math.max(fill.data[o + 3], ink ? ink.data[o] : 0)
+  }
+  return out
+}
+
+/** The shade a piece casts on what lies under it, as red only (drawn with 'lighten': the eyes and face channels stay). */
+export function castLayer (cast) {
+  const n = cast.width * cast.height
+  const out = new Uint8ClampedArray(n * 4)
+  for (let i = 0; i < n; i++) {
+    const c = cast.data[i * 4]
+    if (c > 4) { out[i * 4] = c; out[i * 4 + 3] = 255 }
+  }
+  return out
+}
+
+/** Head-canvas slots: everything they paint turns with the head. */
+export const HEAD_SLOTS = new Set(['face', 'eyes', 'mouth', 'expression', 'hair', 'beard', 'headwear'])
+const CLOTH_ON_LEGS = new Set(['tunic', 'shawl', 'apron', 'rope', 'ochre'])
+
+/**
+ * Which rig part each canvas pixel follows (1 + index into rig.parts, 0: nothing), from the pieces drawn back to front.
+ * `layers`: [{ slot, box: [x, y, w, h], fill, ink }]; `labels`: the body's label map (R part, G torso outside the body).
+ */
+export function partLabels (layers, labels, rig, kinds) {
+  const W = labels.width, H = labels.height
+  const out = new Uint8Array(W * H)
+  const idx = (name) => rig.parts.indexOf(name) + 1
+  const head = idx('head'), hips = idx('hips')
+  const legs = new Set(rig.parts.filter((p) => /^(thigh|shin|foot)_/.test(p)).map(idx))
+  for (const { slot, box: [bx, by, bw, bh], fill, ink } of layers) {
+    const onHead = HEAD_SLOTS.has(slot)
+    for (let y = 0; y < bh; y++) {
+      const cy = by + y
+      if (cy < 0 || cy >= H) continue
+      for (let x = 0; x < bw; x++) {
+        const cx = bx + x
+        if (cx < 0 || cx >= W) continue
+        const p = (y * bw + x) * 4
+        const a = fill.data[p + 3], k = ink ? ink.data[p] : 0
+        if (a < 128 && k < 128) continue
+        const c = cy * W + cx
+        if (onHead) { out[c] = head; continue }
+        const own = labels.data[c * 4]
+        if (own) {
+          const cloth = a >= 128 && CLOTH_ON_LEGS.has(kinds[kindIndex(fill.data[p], kinds.length)])
+          out[c] = cloth && legs.has(own) ? hips : own
+        } else out[c] = labels.data[c * 4 + 1] || hips
+      }
+    }
+  }
+  return out
+}
