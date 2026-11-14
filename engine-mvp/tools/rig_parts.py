@@ -701,7 +701,7 @@ def run(folder, out_dir, name, atlas_url):
     holes = {bone: holes_bending(layers, joints, bone, facing) for bone in LIMIT}
     atlas, puppet = puppet_json(layers, joints, facing, own, rest.shape[:2], atlas_url)
     os.makedirs(out_dir, exist_ok=True)
-    save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # img_io.WEBP (q70, alpha lossless): 1/10 of the PNG
+    save_image(atlas, os.path.join(out_dir, f'{name}.webp'))   # img_io.WEBP (q30, alpha lossless)
     with open(os.path.join(out_dir, f'{name}.json'), 'w') as f:
         json.dump(puppet, f, indent=1)
     report = {'facing': facing, 'differ_at_rest': differ, 'visible': int(visible.sum()), 'holes': holes,

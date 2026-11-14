@@ -1,12 +1,11 @@
 """WebP out, WebP or PNG in, for the rig and kit tools (Bart 2026-11-13: "please use webp and not the very big .png files").
 
 Every picture a person opens or the app loads is written as .webp with alpha. Two settings:
-- WEBP (q70, alpha lossless): the rig atlas and renders. Bart 11-14: "paper grain is not important. aquarel texture is
-  ... make it even smaller". Picked off a ladder q90..q10 (BartsMedia topics/character-bones/webp-ladder/
-  ladder-board.webp): Ana's atlas about 100 KB at q70 (169 at q90, 1,029 as PNG). q70 is the knee: the watercolour
-  washes and every ink line still hold and an iris is only a little greyer; q60 saves 7 KB more and greys the iris
-  and flattens the washes; q20 and below block the brows, ring round the ink and blotch the washes. The alpha stays
-  lossless at every q, so edges and holes never move.
+- WEBP (q30, alpha lossless): the rig atlas and renders. Bart 11-14: "paper grain is not important. aquarel texture is
+  ... make it even smaller", then, off the q90..q10 ladder (BartsMedia topics/character-bones/webp-ladder/
+  ladder-board.webp): "Q70 is too big. i can barely tell the difference at 30/40 with a human eye so use Q30".
+  q20 and below block the brows, ring round the ink and blotch the washes. The alpha stays lossless at every q, so
+  edges and holes never move.
   Under the alpha the colour is filled EDGE_BAND px out with the nearest opaque colour: lossy chroma blended the black
   there into the outermost opaque pixel and greyed every cut edge (tester 11-14: saturation -12 there; -2.5 with the
   band, for 106 KB instead of 97).
@@ -24,7 +23,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-WEBP = dict(quality=70, alpha_quality=100, method=6, exact=True)
+WEBP = dict(quality=30, alpha_quality=100, method=6, exact=True)
 EDGE_BAND = 4             # px of edge colour under the transparent side of every alpha edge (lossy saves only)
 LOSSLESS = dict(lossless=True, quality=100, method=6, exact=True)
 
