@@ -92,6 +92,9 @@
                 </template>
                 <input type="search" x-model="query" placeholder="{{ __('Search') }}" aria-label="{{ __('Search') }}"
                        class="input input-xs ml-auto w-40" />
+                <button type="button" class="btn btn-sm" x-on:click="newCharacter()" data-new-character>
+                    <x-icons.user-plus class="h-4 w-4" />{{ __('New character') }}
+                </button>
             </div>
             <div class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] content-start gap-2 overflow-y-auto">
                 {{-- One tile per picture, and one per series (a character's poses and facings), with its count. --}}
@@ -117,6 +120,10 @@
                         <span class="truncate text-xs text-panel-label" x-text="t.asset.label"></span>
                         <span x-show="t.count > 1" class="badge badge-sm badge-neutral absolute right-1.5 top-1.5" x-text="t.count" data-series-count></span>
                     </button>
+                    {{-- A teacher's own character can go too, the same way. --}}
+                    <button type="button" x-show="t.asset.character" x-cloak x-on:click="$wire.removeCharacter(Number(String(t.asset.id).slice(4)))"
+                            data-tooltip="{{ __('Remove from My characters') }}" aria-label="{{ __('Remove from My characters') }}"
+                            class="btn btn-xs btn-square btn-neutral absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"><x-icons.x-mark class="h-3.5 w-3.5" /></button>
                     {{-- A teacher's own cut-out can go; scenes that use it keep showing it. --}}
                     <button type="button" x-show="t.asset.cutout" x-cloak x-on:click="$wire.removeCutout(Number(String(t.asset.id).slice(4)))"
                             data-tooltip="{{ __('Remove from My cut-outs') }}" aria-label="{{ __('Remove from My cut-outs') }}"

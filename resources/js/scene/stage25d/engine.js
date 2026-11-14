@@ -56,7 +56,7 @@ const newestOf = (assets, inUse = []) => {
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint', 'figureWash', 'figureShade', 'figurePigment']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
-const shelfOf = (a) => (a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
+const shelfOf = (a) => (a.character ? 'characters' : a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
 
 /**
  * The teacher's own cut-outs (Uitknippen, app/Services/Editor/Cutouts.php) as rows of the library: the page lists
@@ -169,7 +169,7 @@ export async function createStage25d (host, opts = {}) {
   }
   const figureUrl = (l) => { const f = figures.get(l.src); return f && f !== 'loading' ? f : null }
   // library:sync's small copy for a shelf tile (an animation's tile plays its sheet); a tile falls back to url without it
-  const thumbOf = (a) => (isAnimation(a) ? null : a.cutout ? libData.base + a.file : libData.base + 'thumbs/' + a.file)
+  const thumbOf = (a) => (isAnimation(a) ? null : a.thumb ?? (a.cutout ? libData.base + a.file : libData.base + 'thumbs/' + a.file))
   let alpha = null
   let backdrop = null        // the backdrop row that is the selection: 'sky' or 'band-<n>' (it has no box on the canvas)
   let lookNow = {}          // the scene's look values as edited (config.stage25d.look + the sliders)
@@ -540,7 +540,13 @@ export async function createStage25d (host, opts = {}) {
         puppet: puppet ? { ...puppet, atlas: onPage(puppet.atlas), sheet: onPage(row.src ?? puppet.atlas) } : null,
         // an animation on a layer: its sheet and how this layer plays it (the editor's Frames tab)
         frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
+        // a person made in the Character tab (app/Services/Editor/Characters.php): it opens there, on its own recipe
+        character: layerIndex(id) >= 0 && asset.character ? { id: Number(String(asset.id).slice(4)), recipe: asset.recipe ?? null } : null,
       }
+    },
+    /** What the Character tab opens for a new person: no picture yet, the period's first person to start from. */
+    newCharacter () {
+      return { id: 's25_new-character', title: '', el: host, stage: api, character: { id: null, recipe: null } }
     },
     /** The picture editor's Show scene: the scene as the class sees it, with the editor on top. */
     setPeeking (on) { peeking = !!on },
@@ -789,7 +795,7 @@ export async function createStage25d (host, opts = {}) {
         fields: ground ? ['x', 'z', ...(showScale ? ['scale'] : []), 'rotation', 'opacity'] : ['x', ...(strip ? ['z'] : []), 'y', 'scale', 'rotation', 'opacity'],
         label: api.items().find((row) => row.id === id)?.label ?? layerLabel(l, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         // the edited copy, when there is one; a figure of parts is shown whole, never its atlas
-        file: asset?.file && puppet ? figureUrl(l) ?? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
+        file: asset?.file && puppet ? figureUrl(l) ?? asset.thumb ?? `${libData.base}${asset.file}` : l.src ?? (asset ? `${libData.base}${asset.file}` : null),
         motion: motionOf(l, asset),
         anim: animOf(asset),
         puppet: !!puppet,
@@ -861,7 +867,7 @@ export async function createStage25d (host, opts = {}) {
       if (!libData) return null
       const lang = (document.documentElement.lang || 'en').slice(0, 2)
       // a sprite sheet (the ground's clumps) is cut into its cells, never placed whole
-      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet' && !a.removed).map((a) => ({ id: a.id, cutout: !!a.cutout, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
+      return { bundle: libData.bundle, assets: libData.assets.filter((a) => a.kind !== 'sheet' && !a.removed).map((a) => ({ id: a.id, cutout: !!a.cutout, character: !!a.character, layer: a.layer, shelf: shelfOf(a), anim: animOf(a), band: isBandPicture(a), tags: a.tags ?? [], url: libData.base + a.file, thumb: thumbOf(a), label: layerLabel({}, a, lang) })) }
     },
     /** The Assets tab's tiles for these library rows (library().assets, filtered): one tile per series. */
     tiles: (rows) => libraryTiles(rows),

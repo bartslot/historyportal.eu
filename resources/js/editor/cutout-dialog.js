@@ -38,6 +38,7 @@ import { flashTooltip } from '../tooltip.js'
 import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
+import { mountCharacter } from './character-tab.js'
 import { figureFromSheet, writeBack, sheetDataUrl } from './puppet-sheet.js'
 import { mountScenePeek } from './scene-peek.js'
 
@@ -95,7 +96,7 @@ let open = null
 
 /** Open the picture editor for one picture. Resolves when it closes (saved or not). */
 export async function openCutout (target) {
-  if (open || !target?.original) return
+  if (open || (!target?.original && !target?.character)) return
   const labels = words()
   const t = (en) => labels[en] ?? en
   const wire = wireFor(target.el)
@@ -110,7 +111,8 @@ export async function openCutout (target) {
   root.setAttribute('aria-modal', 'true')
   root.setAttribute('aria-label', target.title || t('Picture'))
   root.dataset.cutout = target.id
-  const modes = ['picture', ...(target.frames ? ['frames'] : [])]
+  // a person made in the Character tab opens on it; a new one has nothing else to show
+  const modes = target.character ? ['character', ...(target.original ? ['picture'] : [])] : ['picture', ...(target.frames ? ['frames'] : [])]
   // An already cleaned picture starts at 0: cleaning it again would fade the bottom twice. A sheet of frames or a figure's
   // atlas is no picture to clean as one, and on a sky or a landscape white is paint (clouds), not paper.
   const opensCleaned = modes.length === 1 && !target.edited && !target.plain
@@ -121,7 +123,7 @@ export async function openCutout (target) {
   for (const el of behind) el.inert = true
   document.body.appendChild(root)
   const $ = (sel) => root.querySelector(sel)
-  $('[data-cut-title]').textContent = target.title || t('Picture')
+  $('[data-cut-title]').textContent = target.title || t(target.character ? (target.character.id ? 'Character' : 'New character') : 'Picture')
   root.focus()
 
   let mask = null
@@ -132,7 +134,7 @@ export async function openCutout (target) {
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
   const edges = { feather: 0, shift: 0 }
-  let mode = modes.at(-1)   // an animation opens on its frames
+  let mode = target.character ? 'character' : modes.at(-1)   // an animation opens on its frames, a character on itself
   const others = {}         // the modes other than Picture, once made
   const active = () => others[mode] ?? null
   let peek = null
@@ -454,7 +456,7 @@ export async function openCutout (target) {
     }
     for (const input of root.querySelectorAll('[name="cut-mode"]')) input.addEventListener('change', () => { setMode(input.value); root.focus() })
 
-    if (target.stage) {
+    if (target.stage && target.stageId) {
       peek = mountScenePeek({
         button: $('[data-cut-scene]'), label: $('[data-cut-scene-label]'), pane: $('[data-cut-scene-pane]'), t, stage: target.stage, stageId: target.stageId,
         picture: pictureNow,
@@ -467,6 +469,14 @@ export async function openCutout (target) {
         view: $('[data-slot-view="frames"]'), strip: $('[data-slot-strip="frames"]'), panel: $('[data-slot-panel="frames"]'),
         t, sheet: target.original, frames: target.frames, stage: target.stage, stageId: target.stageId, saveLayer,
         onChange: () => refresh(), onTime: (seconds) => peek?.setTime(seconds),
+      })
+    }
+    if (target.character) {
+      others.character = mountCharacter({
+        view: $('[data-slot-view="character"]'), panel: $('[data-slot-panel="character"]'), t, target, wire, stage: target.stage, limit: limitBytes,
+        onChange: () => refresh(),
+        // a new person joins the scene; a saved one changed every scene that shows it: the stage builds again
+        onSaved: (row, isNew) => { if (isNew) target.stage?.addLayer?.(row.id); else target.stage?.show?.(target.stage.config) },
       })
     }
     setMode(mode)

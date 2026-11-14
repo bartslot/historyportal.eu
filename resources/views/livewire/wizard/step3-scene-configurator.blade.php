@@ -1699,7 +1699,7 @@
             // skies and terrains are picked in the Sky and Terrain panels' own grids (Bart 11-11: "hide terrain and sky
             // assets from the asset list"); only filling a scene's empty sky or terrain opens this tab on them
             ownPanel: ['sky', 'ground'],
-            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cloud' => __('Clouds'), 'cutouts' => __('My cut-outs')]),
+            labels: @js(['all' => __('All'), 'sky' => __('Sky'), 'bg' => __('Backdrop'), 'mid' => __('Middle ground'), 'fg' => __('Foreground'), 'prop' => __('Props'), 'ground' => __('Terrain'), 'near_ground' => __('Near ground'), 'decal' => __('On the ground'), 'figure' => __('Characters'), 'band' => __('Ground bands'), 'ground_band' => __('Ground bands'), 'vfx' => __('VFX'), 'cloud' => __('Clouds'), 'cutouts' => __('My cut-outs'), 'characters' => __('My characters')]),
             init() { this.sync(); },
             // id: the editor id just selected (scene-object-selected). The stage may still hold the backdrop it had (its
             // own listener can run after this one), so the click decides: the ship kept the Terrain shelf (Bart 11-11)
@@ -1728,6 +1728,11 @@
                     && (kind === 'all' || (kind === 'band' ? a.band : a.shelf === kind))
                     && (!q || a.label.toLowerCase().includes(q) || a.tags.some((t) => t.includes(q))));
                 return window.__stage25d?.tiles?.(rows) ?? rows.map((a) => ({ id: a.id, asset: a, series: null, count: 1 }));
+            },
+            /** The Character tab on a new person (resources/js/editor/character-tab.js); Save adds it to this scene. */
+            newCharacter() {
+                const target = window.__stage25d?.newCharacter?.();
+                if (target) window.dispatchEvent(new CustomEvent('image-edit:open', { detail: target }));
             },
             /** A series on a selected figure switches who stands there and keeps the pose; anything else replaces or adds. */
             pick(tile) {
@@ -3024,8 +3029,8 @@
 
     {{-- Uitknippen's words in this language (resources/js/editor/cutout-dialog.js reads them). --}}
     {{-- The teacher's own cut-outs, and the ones this lesson's 3D scenes use: rows of the 3D library (stage25d/engine.js). --}}
-    <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode(\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson)) }}"></div>
-    <div hidden wire:ignore data-cutout-labels="{{ json_encode(\App\Services\Editor\Cutouts::labels()) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
+    <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode([...\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson), ...\App\Services\Editor\Characters::forStage(auth()->user(), $lesson)]) }}"></div>
+    <div hidden wire:ignore data-cutout-labels="{{ json_encode([...\App\Services\Editor\Cutouts::labels(), ...\App\Services\Editor\Characters::labels()]) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
 
     {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
          The selected thumb is announced to it here: the element is new whenever the selection changes. --}}

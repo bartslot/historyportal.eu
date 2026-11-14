@@ -53,7 +53,8 @@ export function pack (boxes, width = ATLAS_W) {
 /**
  * The puppet. `canvas`: { width, height, scale } (the baked canvas, `scale` canvas px per puppet px); `rest`: { colour,
  * flat, shade, label } of the person as saved; `under`: the label map's B channel (the part hidden under each pixel);
- * `faces`: { [expression]: { colour, shade } }, the same person with that expression; `rig`: the body's rig.json.
+ * `faces`: { [expression]: { x0, y0, w, h, colour, shade } }, a region round the head of the same person with that
+ * expression; `rig`: the body's rig.json.
  * Returns the atlas and its shade atlas (RGBA) and the puppet without its atlas url.
  */
 export function cutPuppet ({ canvas, rest, under, faces = {}, rig }) {
@@ -63,16 +64,21 @@ export function cutPuppet ({ canvas, rest, under, faces = {}, rig }) {
   const own = new Uint8Array(n), hidden = new Uint8Array(n), source = new Uint8Array(n)
   const filledColour = new Uint8ClampedArray(n * 4), filledShade = new Uint8ClampedArray(n * 4)
   const tiles = []
-  /** A tile's pixels copied out now: own pixels from `c`/`s`, hidden ones from the fill. */
-  const copy = (box, c, s) => {
+  /** A tile's pixels copied out now: own pixels from the person (or from `face`, a region of the same person with an
+   *  expression: { x0, y0, w, h, colour, shade }), hidden ones from the fill. */
+  const copy = (box, face = null) => {
     const { x0, y0, w, h } = box
     const tc = new Uint8ClampedArray(w * h * 4), ts = new Uint8ClampedArray(w * h * 4)
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const i = (y0 + y) * W + x0 + x, o = (y * w + x) * 4
-        const [cc, ss] = own[i] ? [c, s] : hidden[i] && filledColour[i * 4 + 3] ? [filledColour, filledShade] : [null, null]
+        const cx = x0 + x, cy = y0 + y, i = cy * W + cx, o = (y * w + x) * 4
+        let cc = null, ss = null, j = i
+        if (own[i]) {
+          const fx = face ? cx - face.x0 : -1, fy = face ? cy - face.y0 : -1
+          if (face && fx >= 0 && fy >= 0 && fx < face.w && fy < face.h) { cc = face.colour; ss = face.shade; j = fy * face.w + fx } else { cc = rest.colour; ss = rest.shade }
+        } else if (hidden[i] && filledColour[i * 4 + 3]) { cc = filledColour; ss = filledShade }
         if (!cc) continue
-        for (let ch = 0; ch < 4; ch++) { tc[o + ch] = cc[i * 4 + ch]; ts[o + ch] = ss[i * 4 + ch] }
+        for (let ch = 0; ch < 4; ch++) { tc[o + ch] = cc[j * 4 + ch]; ts[o + ch] = ss[j * 4 + ch] }
       }
     }
     return { tc, ts }
@@ -99,8 +105,8 @@ export function cutPuppet ({ canvas, rest, under, faces = {}, rig }) {
     const box = { x0: Math.max(0, x0 - PAD), y0: Math.max(0, y0 - PAD) }
     box.w = Math.min(W - 1, x1 + PAD) - box.x0 + 1
     box.h = Math.min(H - 1, y1 + PAD) - box.y0 + 1
-    tiles.push({ name, ...box, ...copy(box, rest.colour, rest.shade) })
-    if (name === 'head') for (const [face, f] of Object.entries(faces)) tiles.push({ name, face, ...box, ...copy(box, f.colour, f.shade) })
+    tiles.push({ name, ...box, ...copy(box) })
+    if (name === 'head') for (const [face, f] of Object.entries(faces)) tiles.push({ name, face, ...box, ...copy(box, f) })
   })
   const { at, height } = pack(tiles.map((t) => ({ w: t.w, h: t.h })))
   const atlas = new Uint8ClampedArray(ATLAS_W * height * 4)

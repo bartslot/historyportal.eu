@@ -70,7 +70,7 @@ export const iconButton = (attr, label, d, key = '') => `
   <button type="button" class="btn btn-ghost btn-sm btn-square" ${attr} data-tooltip="${label}" ${key ? `data-tooltip-key="${key}"` : ''} aria-label="${label}">${icon(d)}</button>`
 
 /** The modes of one editor, in tab order: [value, label]. */
-export const MODES = [['picture', 'Picture'], ['frames', 'Frames']]
+export const MODES = [['character', 'Character'], ['picture', 'Picture'], ['frames', 'Frames']]
 
 /** The whole editor, in the page's words (t), with the clean-up at these strengths. Tabs show when it has more than one mode. */
 export function markup (t, clean, modes = ['picture']) {
@@ -80,7 +80,7 @@ export function markup (t, clean, modes = ['picture']) {
     <button type="button" class="btn btn-circle btn-sm absolute left-3 top-3 border-0 bg-transparent shadow-none hover:bg-white/10"
             data-cut-back data-tooltip="${t('Back to the scene')}" data-tooltip-key="Esc" aria-label="${t('Back to the scene')}">${icon(ICONS.back)}</button>
     <h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-panel-value" data-cut-title></h2>
-    ${extra.length ? `<div class="tabs tabs-box tabs-sm absolute left-1/2 top-2 -translate-x-1/2" role="radiogroup" aria-label="${t('Picture')}">
+    ${modes.length > 1 ? `<div class="tabs tabs-box tabs-sm absolute left-1/2 top-2 -translate-x-1/2" role="radiogroup" aria-label="${t('Picture')}">
       ${MODES.filter(([value]) => modes.includes(value)).map(([value, label]) => `<input type="radio" name="cut-mode" value="${value}" class="tab" aria-label="${t(label)}">`).join('')}
     </div>` : ''}
     <button type="button" class="btn btn-ghost btn-sm mr-1" data-cut-scene aria-pressed="false" hidden>${icon(ICONS.eye)}<span data-cut-scene-label>${t('Show scene')}</span></button>

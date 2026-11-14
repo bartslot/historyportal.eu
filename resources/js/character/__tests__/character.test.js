@@ -171,4 +171,20 @@ describe('rig', () => {
     expect(atlas.data[(ay * atlas.width + ax + 1) * 4]).toBe(50)
     expect(puppet.faces).toBeUndefined()
   })
+
+  it('cuts the head again for each expression, from its region, the rest of the head from the person', () => {
+    const W = 4, H = 2, n = W * H
+    const label = Uint8Array.from({ length: n }, () => 1)                 // all head
+    const colour = Uint8ClampedArray.from({ length: n * 4 }, (_, i) => (i % 4 === 3 ? 255 : 10))
+    const rig = { parts: ['head'], facing: 1, bones: [{ name: 'head', parent: null, from: [1, 1] }] }
+    const rest = { colour, flat: colour, shade: new Uint8ClampedArray(n * 4), label }
+    const sad = { x0: 1, y0: 0, w: 1, h: 1, colour: Uint8ClampedArray.from([99, 99, 99, 255]), shade: new Uint8ClampedArray(4) }
+    const { atlas, puppet } = cutPuppet({ canvas: { width: W, height: H, scale: 1 }, rest, under: new Uint8Array(n), faces: { sad }, rig })
+    expect(Object.keys(puppet.faces)).toEqual(['sad'])
+    expect(puppet.parts).toHaveLength(1)
+    const [u0, v0] = puppet.faces.sad
+    const x = Math.round(u0 * atlas.width), y = Math.round(v0 * atlas.height)
+    expect(atlas.data[(y * atlas.width + x) * 4]).toBe(10)             // outside the region: the person as saved
+    expect(atlas.data[(y * atlas.width + x + 1) * 4]).toBe(99)         // inside it: the expression
+  })
 })

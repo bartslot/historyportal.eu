@@ -81,7 +81,7 @@ class CharacterTest extends TestCase
 
         Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
             ->call('selectScene', $scene->id)
-            ->call('saveCharacter', null, self::webp(), self::webp(), self::puppet(), self::recipe(), 'Weaver')
+            ->call('saveCharacter', null, self::webp(), self::webp(), self::puppet(), self::recipe(), 'Weaver', self::webp(4, 8))
             ->assertReturned(fn ($r) => $r['ok'] === true && $r['stage']['id'] === 'chr-'.$r['id'] && $r['stage']['puppet']['paint'] === 'flat')
             ->assertDispatched('cutouts-changed');
 
@@ -90,11 +90,13 @@ class CharacterTest extends TestCase
         $this->assertSame(1.55, $asset->height_m);
         Storage::disk('public')->assertExists($asset->svg_path);
         Storage::disk('public')->assertExists(Characters::shadePath($asset->svg_path));
+        Storage::disk('public')->assertExists(Characters::thumbPath($asset->svg_path));
         $this->assertSame(['sad'], array_keys($asset->character['puppet']['faces']), 'an unknown expression is dropped');
         $this->assertSame('woman-round', $asset->character['recipe']['eyes']);
         $row = Characters::stageRow($asset);
         $this->assertSame('/storage/'.$asset->svg_path, $row['puppet']['atlas']);
         $this->assertSame(['figure', 'character'], $row['tags']);
+        $this->assertSame('/storage/'.Characters::thumbPath($asset->svg_path), $row['thumb']);
     }
 
     public function test_saving_again_keeps_the_id_and_replaces_the_files(): void

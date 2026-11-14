@@ -19,9 +19,9 @@ trait EditsCharacters
      * @return array{ok: bool, id?: int, stage?: array<string,mixed>}
      */
     #[Renderless]
-    public function saveCharacter(?int $id, string $atlas, string $shade, array $puppet, array $recipe, string $name = ''): array
+    public function saveCharacter(?int $id, string $atlas, string $shade, array $puppet, array $recipe, string $name = '', string $thumb = ''): array
     {
-        $asset = Characters::save(auth()->user(), $id, $atlas, $shade, $puppet, $recipe, $name);
+        $asset = Characters::save(auth()->user(), $id, $atlas, $shade, $puppet, $recipe, $name, $thumb);
         if ($asset === null) {
             return ['ok' => false];
         }

@@ -34,6 +34,40 @@ final class Characters
 
     private const MAX_PARTS = 40;
 
+    /** The Character tab's words (resources/js/editor/character-tab.js reads them through t()). */
+    private const LABELS = [
+        'Character', 'Who', 'Body', 'Face', 'Hair', 'Clothes', 'Extra', 'Random', 'Whole figure', 'Expression',
+        'Calm', 'Curious', 'Sad', 'Angry', 'Amazed', 'Name', 'People of this time', 'Skin', 'Eyes', 'Mouth', 'Hair colour',
+        'Beard', 'Headwear', 'Jewellery', 'None', 'Own eyes', 'Own mouth', 'No hair', 'No beard', 'Nothing on the head',
+        'Cloth', 'Shawl', 'Cord', 'Apron', 'Band', 'Trim', 'Girl', 'Woman', 'Man', 'The character kit could not be loaded.', 'New character',
+    ];
+
+    /** The kit's colours by id, as the tab names them. */
+    private const COLOURS = [
+        'bleached-linen' => 'Bleached linen', 'raw-linen' => 'Raw linen', 'undyed-wool' => 'Undyed wool', 'sand' => 'Sand',
+        'camel-brown' => 'Camel brown', 'dark-wool-brown' => 'Dark wool brown', 'madder-red' => 'Madder red', 'red-ochre' => 'Red ochre',
+        'yellow-ochre' => 'Yellow ochre', 'reed-green' => 'Reed green', 'indigo-blue' => 'Indigo blue', 'charcoal-wool' => 'Charcoal wool',
+        's1' => 'Very light skin', 's2' => 'Light skin', 's3' => 'Medium skin', 's4' => 'Brown skin', 's5' => 'Dark brown skin',
+        'black-brown' => 'Black brown', 'dark-brown' => 'Dark brown', 'brown' => 'Brown', 'grey' => 'Grey', 'white' => 'White',
+    ];
+
+    /**
+     * Every word the tab shows, in the page's language: its own, the colours, and the kit's pieces and people.
+     *
+     * @return array<string,string>
+     */
+    public static function labels(): array
+    {
+        $words = collect(self::LABELS)->mapWithKeys(fn (string $en) => [$en => __($en)]);
+        $colours = collect(self::COLOURS)->map(fn (string $en) => __($en));
+        $kit = self::kit('babylonia-old-babylonian') ?? [];
+        $names = collect($kit['bodies'] ?? [])->flatMap(fn ($b) => collect($b['pieces'] ?? [])->where('slot', '!=', 'expression')->pluck('label'))
+            ->merge(collect($kit['presets'] ?? [])->pluck('label'))
+            ->filter(fn ($l) => is_string($l))->unique()->mapWithKeys(fn (string $en) => [$en => __($en)]);
+
+        return [...$words->all(), ...$colours->all(), ...$names->all()];
+    }
+
     private const MAX_PX = 4096;
 
     /**
@@ -43,7 +77,7 @@ final class Characters
      * @param  array<string,mixed>  $puppet
      * @param  array<string,mixed>  $recipe
      */
-    public static function save(User $user, ?int $id, string $atlas, string $shade, array $puppet, array $recipe, string $name): ?SvgAsset
+    public static function save(User $user, ?int $id, string $atlas, string $shade, array $puppet, array $recipe, string $name, string $thumb = ''): ?SvgAsset
     {
         $row = $id === null ? null : SvgAsset::query()->whereKey($id)->where('user_id', $user->id)->where('source', self::SOURCE)->first();
         if ($id !== null && $row === null) {
@@ -66,6 +100,10 @@ final class Characters
             return null;
         }
         Storage::disk('public')->put(self::shadePath($path), $shadeBytes);
+        $thumbBytes = $thumb !== '' ? self::webpBytes($thumb) : null;
+        if ($thumbBytes !== null) {
+            Storage::disk('public')->put(self::thumbPath($path), $thumbBytes);
+        }
         $title = trim(Str::limit(strip_tags($name), 60, '')) ?: __('Character');
         $fields = [
             'title' => $title,
@@ -78,7 +116,7 @@ final class Characters
         if ($row !== null) {
             $old = $row->svg_path;
             $row->update($fields);
-            Storage::disk('public')->delete([$old, self::shadePath($old)]);
+            Storage::disk('public')->delete([$old, self::shadePath($old), self::thumbPath($old)]);
 
             return $row->refresh();
         }
@@ -97,6 +135,12 @@ final class Characters
     public static function shadePath(string $atlas): string
     {
         return preg_replace('/\.webp$/', '', $atlas).'-shade.webp';
+    }
+
+    /** The small picture of the whole person beside an atlas: the shelf's tile and the inspector's preview. */
+    public static function thumbPath(string $atlas): string
+    {
+        return preg_replace('/\.webp$/', '', $atlas).'-thumb.webp';
     }
 
     /** A WebP data url's bytes, checked like EditedImages checks a picture; null when it is anything else. */
@@ -294,6 +338,7 @@ final class Characters
             'character' => true,
             'recipe' => $a->character['recipe'] ?? null,
             'puppet' => [...$puppet, 'atlas' => $url],
+            ...(Storage::disk('public')->exists(self::thumbPath($a->svg_path)) ? ['thumb' => '/storage/'.self::thumbPath($a->svg_path)] : []),
             ...($a->source === self::REMOVED ? ['removed' => true] : []),
         ];
     }
