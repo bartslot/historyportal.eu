@@ -10,6 +10,8 @@ declare(strict_types=1);
  *   KIT_CHARACTER=<id> RIG_DIR=~/BartsMedia/historyportal/topics/character-bones/ana/rig/flat-v1/rig-shader \
  *     php artisan tinker --execute='require "tests/playwright/anim-composed-lesson.php";'
  *
+ * NARRATION_MP3=<file>: an mp3 to read as the scene's narration, so the player's clock (the narration's time) runs.
+ *
  * Prints ANIM_COMPOSED=<lesson>/<scene> and the import's report.
  */
 
@@ -55,13 +57,13 @@ $lesson = [
     'teacher' => 'Doelen.',
     'scenes' => [[
         'id' => 'sc01', 'beat' => 'hook', 'where_when' => 'Babylon', 'narration' => 'Een schrijver loopt over de vlakte. Ana zwaait naar hem.',
-        'dur_s' => 8.0, 'set' => $set, 'camera' => $from['camera'] ?? null, 'sound' => null, 'interaction' => null, 'balloons' => [],
+        'dur_s' => 8.0, 'set' => $set, ...(getenv('NARRATION_MP3') ? ['audio' => basename((string) getenv('NARRATION_MP3'))] : []), 'camera' => $from['camera'] ?? null, 'sound' => null, 'interaction' => null, 'balloons' => [],
         'figures' => [['char' => 'scribe', 'pose' => 'walk', 'x' => 0.75, 'depth' => 'mid', 'facing' => 'right', 'expression' => 'neutral', 'animation' => ['id' => 'walk', 'start' => 0.5, 'length' => 5]],
             ['char' => 'ana', 'pose' => 'stand', 'x' => 1.12, 'depth' => 'mid', 'facing' => 'left', 'expression' => 'happy', 'animation' => ['id' => 'wave', 'start' => 2]]],
     ]],
 ];
 
-$report = app(LessonImporter::class)->import($lesson, $teacher, force: true);
+$report = app(LessonImporter::class)->import($lesson, $teacher, getenv('NARRATION_MP3') ? dirname((string) getenv('NARRATION_MP3')) : null, force: true);
 $scene = Scene::where('lesson_id', $report['lesson_id'])->orderBy('order')->firstOrFail();
 echo 'ANIM_COMPOSED='.$report['lesson_id'].'/'.$scene->id.PHP_EOL;
-echo json_encode(['keys' => $report['keys'], 'warnings' => $report['warnings']]).PHP_EOL;
+echo json_encode(['keys' => $report['keys'], 'audio' => $report['audio'], 'warnings' => $report['warnings']]).PHP_EOL;
