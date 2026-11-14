@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { stackOf, paletteOf, wear, colour, randomRecipe, cleanRecipe, zonesOf, onBody, presetRecipe } from '../recipe.js'
 import { kindIndex, recolour, shadeLayer, castLayer, partLabels, INK } from '../paint.js'
-import { cutPuppet, pack, fillFrom } from '../rig.js'
+import { cutPuppet, pack, fillFrom, robeLimits } from '../rig.js'
 import { withFace } from '../face-keys.js'
 
 const kinds = ['skin', 'tunic', 'shawl', 'hair', 'rope', 'tie', 'white', 'grey', 'apron', 'ochre', 'mouth', 'iris', 'brow']
@@ -196,5 +196,18 @@ describe('face keys', () => {
     expect(withFace(keys, 2.004, 'sad')).toEqual([{ t: 0, x: 0.5 }, { t: 2, 'bone:head': 5, face: 'sad' }])
     expect(withFace(keys, 1, 'amazed')).toEqual([{ t: 0, x: 0.5 }, { t: 1, face: 'amazed' }, { t: 2, 'bone:head': 5 }])
     expect(keys[1].face).toBeUndefined()
+  })
+})
+
+describe('robe limits', () => {
+  const bones = [{ name: 'thigh_n', from: [0, 500], limit: [-25, 20] }, { name: 'shin_n', from: [0, 1000], to: [0, 1400], limit: [0, 120] }, { name: 'head', from: [0, 100], limit: [-25, 25] }]
+  it('a robe past the middle of the shin holds the legs to a shuffle', () => {
+    const out = robeLimits(bones, 1300)
+    expect(out.find((b) => b.name === 'thigh_n').limit).toEqual([-6, 6])
+    expect(out.find((b) => b.name === 'shin_n').limit).toEqual([0, 8])
+    expect(out.find((b) => b.name === 'head').limit).toEqual([-25, 25])
+  })
+  it('a kilt to the knee leaves the legs free', () => {
+    expect(robeLimits(bones, 1050)).toBe(bones)
   })
 })

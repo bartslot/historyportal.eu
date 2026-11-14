@@ -7,6 +7,19 @@
 
 const PAD = 2              // canvas px round a tile, so a bent edge samples its own colour and not the next tile's
 const OVERLAP = 2          // canvas px a part reaches over the parts beside it: their edges sample paint, never air (no seam line)
+/** A robe that reaches this far down the shin (0 knee, 1 ankle) hides the legs: they may only shuffle under it, or a
+ *  swung leg puts a foot in the air beside a stiff robe (presets tester, 11-15). Degrees, as bones.ts limitBone reads them. */
+const LONG_ROBE = 0.5
+const ROBE_LIMITS = { thigh_n: [-6, 6], thigh_f: [-6, 6], shin_n: [0, 8], shin_f: [0, 8] }
+
+/** The bones' limits for this person: a long robe holds the legs to a shuffle. Pure. */
+export function robeLimits (bones, hipsBottom) {
+  const shin = bones.find((b) => b.name === 'shin_n')
+  if (!shin?.to || !Number.isFinite(hipsBottom)) return bones
+  const reach = (hipsBottom - shin.from[1]) / Math.max(1, shin.to[1] - shin.from[1])
+  if (reach < LONG_ROBE) return bones
+  return bones.map((b) => (ROBE_LIMITS[b.name] ? { ...b, limit: ROBE_LIMITS[b.name] } : b))
+}
 const ATLAS_W = 2048
 
 /** For each pixel in `region`, the colour (and shade) of the nearest `source` pixel, walking through the region only. */
@@ -151,7 +164,8 @@ export function cutPuppet ({ canvas, rest, under, faces = {}, rig }) {
     height: Math.ceil(fy1 / scale) - oy,
     facing: rig.facing,
     paint: 'flat',
-    bones: rig.bones.map((b) => ({ ...b, from: shift(b.from), ...(b.to ? { to: shift(b.to) } : {}) })),
+    bones: robeLimits(rig.bones, (() => { const h = tiles.find((t) => t.name === 'hips' && !t.face); return h ? (h.y0 + h.h) / scale : NaN })())
+      .map((b) => ({ ...b, from: shift(b.from), ...(b.to ? { to: shift(b.to) } : {}) })),
     parts,
     ...(Object.keys(facesUv).length ? { faces: facesUv } : {}),
   }
