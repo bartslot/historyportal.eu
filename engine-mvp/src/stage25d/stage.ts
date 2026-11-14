@@ -24,7 +24,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, aquarelOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt } from './layout'
+import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt, faceAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
@@ -856,7 +856,10 @@ export class Stage {
       b.handle.setPaper(paper, fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080), b.uvFit))
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
-      if (b.bent) b.handle.setBent(b.bent, bonesAt(b.layer, t))
+      if (b.bent) {
+        b.handle.setBent(b.bent, bonesAt(b.layer, t))
+        if ('uvsFor' in b.bent) b.handle.setUvs(b.bent, (b.bent as BentPuppet).uvsFor(faceAt(b.layer, t) ?? undefined))
+      }
       const drawn = puppetOf(b.asset, b.layer)
       if (drawn?.paint === 'flat') b.handle.setAquarel(aquarelOf(this.look), [drawn.width, drawn.height])
       b.stain?.setEtch(b.layer.etch ?? 0)

@@ -89,6 +89,9 @@ export interface Puppet {
    *  shadeMask); the stage shader colours the shade and washes it (layer.ts AQUAREL, look.ts aquarelOf).
    *  Absent: the shading and the watercolour are painted into the atlas, drawn as they are. */
   paint?: 'flat'
+  /** expressions: for each id (calm, curious, sad, angry, amazed) the head part's uv on the atlas; its layer's keys'
+   *  `face` pick one (layout.ts faceAt). Absent or unknown: the head part's own uv. */
+  faces?: Record<string, [number, number, number, number]>
 }
 
 /** A painted map of a picture's body parts. `parts`: back to front, a colour [r, g, b] and its part (bones.ts bodyParts). */

@@ -249,6 +249,8 @@ export interface BentPuppet extends BentPicture {
   safe(bones: Record<string, number>): Record<string, number>
   /** One turn held to its joint's limits (limitBone, with the figure's facing). */
   limit(name: string, deg: number): number
+  /** The mesh uvs with the head part showing this expression (Puppet.faces); the rest uvs for none or an unknown one. */
+  uvsFor(face?: string): number[]
   /** The bones a teacher can turn, in the pose bend() last placed, in puppet px: `at` the joint it turns round, `tip` the
    *  point a handle grabs (the next joint along, or the middle of its part when nothing hangs off it). */
   joints(): { name: string; at: [number, number]; tip: [number, number] }[]
@@ -407,9 +409,18 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     }
     return deg === (bones.forearm_n ?? 0) ? bones : { ...bones, forearm_n: deg }
   }
+  const restUvs = atts.flatMap((a) => a.uvs)
+  const faceUvs = new Map<string, number[]>()
+  const uvsFor = (face?: string): number[] => {
+    const uv = face ? puppet.faces?.[face] : undefined
+    if (!face || !uv) return restUvs
+    if (!faceUvs.has(face)) faceUvs.set(face, puppet.parts.flatMap((p, i) => (p.bone === 'head' ? partMesh(puppet, { ...p, uv }).uvs : atts[i].uvs)))
+    return faceUvs.get(face)!
+  }
   return {
     width: puppet.width, height: puppet.height,
-    uvs: atts.flatMap((a) => a.uvs),
+    uvs: restUvs,
+    uvsFor,
     restUvs: meshes.flatMap((m) => m.points.flatMap(([x, y]) => [x / puppet.width, y / puppet.height])),
     triangles: (() => {   // in order: the first part is at the back
       let offset = 0

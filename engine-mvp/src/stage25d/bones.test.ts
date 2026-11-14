@@ -48,6 +48,17 @@ describe('a puppet of separate parts', () => {
   }
   const bent = bindPuppet(puppet)
 
+  it('an expression swaps only the head part\'s uv, an unknown one keeps the rest uvs', () => {
+    const faced = bindPuppet({ ...puppet, parts: [puppet.parts[0], { ...puppet.parts[1], bone: 'head' }], bones: [...puppet.bones, { name: 'head', parent: 'arm', from: [50, 50] as [number, number] }],
+      faces: { sad: [0.25, 0.5, 0.75, 1] } })
+    expect(faced.uvsFor()).toBe(faced.uvs)
+    expect(faced.uvsFor('nope')).toBe(faced.uvs)
+    const sad = faced.uvsFor('sad')
+    expect(sad.slice(0, 8)).toEqual(faced.uvs.slice(0, 8))            // the hand part keeps its uv
+    expect(sad.slice(8)).toEqual([0.25, 0.5, 0.75, 0.5, 0.75, 1, 0.25, 1])
+    expect(faced.uvsFor('sad')).toBe(sad)                              // made once
+  })
+
   it('at rest every part is where it was placed, back part first', () => {
     expect(bent.bend({}).map((n) => Math.round(n))).toEqual([40, 100, 60, 100, 60, 130, 40, 130, 40, 50, 60, 50, 60, 100, 40, 100])
     expect(bent.triangles).toEqual([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7])

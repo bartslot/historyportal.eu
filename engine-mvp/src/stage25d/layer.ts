@@ -548,6 +548,8 @@ export interface LayerHandle {
   setUvFit(fit: readonly [number, number]): void
   /** Draw the picture as this mesh, then turn its bones. */
   setBent(bent: BentPicture, bones: Record<string, number>): void
+  /** The bent mesh's uvs (a figure's expression, BentPuppet.uvsFor); after setBent. */
+  setUvs(bent: BentPicture, uvs: number[]): void
   /** A point of the bent drawing (its px) in the world, where setBent put it. */
   worldOf(bent: BentPicture, px: number, py: number): Vector3
   /** the time of day (daylight.ts): the light on the picture, its lit side's and its shaded side's colour */
@@ -662,7 +664,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.disableDepthWrite = true          // planes never hide each other by depth: draw order (alphaIndex) does that
   mat.backFaceCulling = false
   const phase = (seed++ * 2.39996) % (Math.PI * 2) // golden-angle phases: neighbours never sway in step
-  let bentOf: BentPicture | null = null, bentSig = ''
+  let bentOf: BentPicture | null = null, bentSig = '', uvsOf: number[] | null = null
   const top = asset.anchor?.[1] ?? 1
   mat.setFloat('phase', phase).setFloat('height', h * top).setFloat('width', w).setFloat('uRepeat', uRepeat).setFloat('opacity', 1)
   mat.setVector3('recolour', new Vector3(1, 1, 1))
@@ -706,9 +708,15 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       else {
         Object.assign(new VertexData(), { positions, uvs: bent.uvs, ...(bent.restUvs ? { uvs2: bent.restUvs } : {}), indices: bent.triangles }).applyToMesh(mesh, true)
         bentOf = bent
+        uvsOf = bent.uvs
       }
       mesh.refreshBoundingInfo()
       bentSig = sig
+    },
+    setUvs: (bent, uvs) => {
+      if (bentOf !== bent || uvsOf === uvs) return
+      mesh.updateVerticesData(VertexBuffer.UVKind, uvs)
+      uvsOf = uvs
     },
     worldOf: (bent, px, py) => {
       const [ax, ay] = asset.anchor ?? [0.5, 1]
