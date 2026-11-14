@@ -8,6 +8,7 @@ import { initTooltips } from './tooltip.js';
 import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
 import { animationTimeline } from './anim/timeline-panel.js';
+import { animationPresets } from './anim/presets-picker.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
 import { setupLandingReveal } from './landing-reveal.js';
@@ -147,6 +148,8 @@ initNumericFields();
 // The wizard's Timeline tab: x-data="animationTimeline({...})". Registered from a bundled
 // module because the dock is morphed in, and a <script> that arrives through a morph never runs.
 window.animationTimeline = animationTimeline;
+// A figure's Animation section: x-data="animationPresets(layerId, presets)".
+window.animationPresets = animationPresets;
 
 // "Is someone typing?" — the guard every global shortcut owes a teacher before it takes a key.
 // A global as well as an import because the wizard's own shortcuts (⌘Z, Delete) live in an inline

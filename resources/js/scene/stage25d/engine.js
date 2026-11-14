@@ -14,7 +14,7 @@ import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
-import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -41,6 +41,7 @@ const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo', es: 'Ciel
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera', es: 'Cámara' }
 const TERRAIN_NAME = { nl: 'Terrein', de: 'Gelände', fr: 'Terrain', it: 'Terreno', es: 'Terreno' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa', es: 'huesos' }
+const FIGURE_M = 1.7   // a figure the library gives no height (an animation preset's size on it, layerInfo)
 
 /** The Size a standing piece gets when it is added from the shelf (0.4 = "40"). */
 export const ADD_SCALE = 0.4
@@ -793,6 +794,11 @@ export async function createStage25d (host, opts = {}) {
         anim: animOf(asset),
         puppet: !!puppet,
         bones: puppet?.bones.map((b) => b.name) ?? [],
+        // an animation preset's size on this figure (presets-picker.js): the way it faces, its height in metres, the
+        // view's width at its distance (x is a share of it)
+        facing: puppet?.facing ?? 1,
+        heightM: (asset?.height_m ?? FIGURE_M) * (l.scale ?? 1),
+        viewWidth: viewWidthAt(zNow(layerIndex(id))),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
       }

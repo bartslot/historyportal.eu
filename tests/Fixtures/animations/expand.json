@@ -1,0 +1,16 @@
+{
+ "_": "One clip laid out by resources/js/anim/presets.js expandClip and App\\Services\\Stage25d\\AnimationPresets::expand: both must give `expected`.",
+ "clip": {"id": "step", "loop": true, "duration": 1.0, "travel": 0.5, "keys": [
+  {"t": 0, "bone:thigh_n": -20, "bone:shin_n": 5, "bone:tail": 9, "dx": 0, "bob": 0, "face": "smile"},
+  {"t": 0.5, "bone:thigh_n": 20, "bone:shin_n": 10, "bone:tail": 9, "dx": 0.25, "bob": 0.02},
+  {"t": 1, "bone:thigh_n": -20, "bone:shin_n": 5, "bone:tail": 9, "dx": 0.5, "bob": 0, "face": "smile"}
+ ]},
+ "options": {"start": 1, "length": 2.2, "speed": 1, "bones": ["thigh_n", "shin_n", "head"], "facing": -1, "x0": 0.6, "y0": 0, "xPerHeight": 0.1, "yPerHeight": 1.6},
+ "expected": [
+  {"t": 1, "ease": "smooth", "bone:thigh_n": 20, "bone:shin_n": -5, "x": 0.6, "y": 0, "face": "smile"},
+  {"t": 1.55, "ease": "smooth", "bone:thigh_n": -20, "bone:shin_n": -10, "x": 0.575, "y": 0.032},
+  {"t": 2.1, "ease": "smooth", "bone:thigh_n": 20, "bone:shin_n": -5, "x": 0.55, "y": 0, "face": "smile"},
+  {"t": 2.65, "ease": "smooth", "bone:thigh_n": -20, "bone:shin_n": -10, "x": 0.525, "y": 0.032},
+  {"t": 3.2, "bone:thigh_n": 20, "bone:shin_n": -5, "x": 0.5, "y": 0, "face": "smile"}
+ ]
+}

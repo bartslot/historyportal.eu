@@ -412,6 +412,7 @@
                 </div>
             </template>
         </div>
+        <x-lesson.animation-presets :layer-id="$layerId" />
         {{-- Figma 2607:2626, closed; 2542:1938 inside: one picture per motion, moving that way from the moment it opens. Anything else clicked closes it. --}}
         <x-ui.settings-section :title="__('Motion')" :open="false" closes-outside class="-mx-4 mt-3 w-auto!" x-show="info?.motion" data-motion-section>
             <x-slot:icon><span class="h-2 w-[13px] shrink-0 bg-current text-panel-title" aria-hidden="true" style="mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat; -webkit-mask: url('{{ asset('images/icons/motion.svg') }}') center / contain no-repeat"></span></x-slot:icon>

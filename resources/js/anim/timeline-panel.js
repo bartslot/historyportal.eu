@@ -16,7 +16,10 @@ import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
-import { keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
+import { FACE_FIELD, LAYER_KEY_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
+
+/** A track the stage keeps on a layer's keys (stage25d-keys.js), not one of the timeline's own. */
+const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || t.property === FACE_FIELD
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
@@ -220,6 +223,11 @@ export const animationTimeline = (config = {}) => ({
       hasKeySelection: () => this.selected.length > 0 && this.transportHasTheKeyboard,
       // A diorama drag records a key at the playhead while this is on (never during playback).
       autoKey: () => this.autoKey && !this.playing,
+      // an animation preset (presets-picker.js): a stage25d layer's keys as one list, read and replaced in one edit
+      duration: () => this.duration,
+      layerKeys: (target) => keysFromTracks(this.tracks)[String(target).slice(4)] ?? [],
+      setLayerKeys: (target, keys) => this.replaceLayerKeys(target, keys),
+      refresh: () => this.applyFrame(),
     }
 
     // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
@@ -838,6 +846,24 @@ export const animationTimeline = (config = {}) => ({
     // a key past the stored length (a scene's narration is longer than its first timeline) stays reachable
     const lastKey = Math.max(0, ...this.tracks.filter(own).flatMap((t) => t.keyframes.map((k) => k.time)))
     if (lastKey > this.duration) { this.duration = lastKey; this.measureFit() }
+  },
+
+  /**
+   * A stage25d layer's keys replaced by `keys` (an animation preset laid in): its tracks become those keys' tracks, a
+   * track keeping what else it carried (its base), and it is saved as one edit, so one undo takes it back.
+   */
+  replaceLayerKeys (target, keys) {
+    this.stopEasingPreview()
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))   // a pending edit saves as its own step first
+    const old = this.tracks.filter((t) => t.target === target)
+    const fresh = tracksFromKeys([{ id: String(target).slice(4), keys }])
+      .map((t) => ({ ...(old.find((o) => o.property === t.property) ?? {}), ...t }))
+    this.tracks = [...this.tracks.filter((t) => t.target !== target || !isLayerKeyTrack(t)), ...fresh]
+    const last = Math.max(0, ...keys.map((k) => k.t))
+    if (last > this.duration) { this.duration = last; this.measureFit() }
+    this.applyFrame()
+    this.save()
+    this.announce()
   },
 
   /** Hand the stage25d layers their keys, as the timeline holds them now: it eases them exactly as the player will. */

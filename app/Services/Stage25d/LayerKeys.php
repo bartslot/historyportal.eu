@@ -116,6 +116,21 @@ final class LayerKeys
         return $out === [] ? null : $out;
     }
 
+    /** What a key may say besides numbers: `ease` 'smooth' (an animation preset's poses run through it, layout.ts keyedAt)
+     *  and `face`, an expression id (layout.ts faceAt). @param array<string,mixed> $key @return array<string,string> */
+    private static function marks(array $key): array
+    {
+        $out = [];
+        if (($key['ease'] ?? null) === 'smooth') {
+            $out['ease'] = 'smooth';
+        }
+        if (is_string($key['face'] ?? null) && preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $key['face']) === 1) {
+            $out['face'] = $key['face'];
+        }
+
+        return $out;
+    }
+
     /** Below this spread a track does not move anything (a director track of all zeros). */
     private const FLAT = 1e-6;
 
@@ -123,7 +138,7 @@ final class LayerKeys
      * Editor input for one layer: finite numbers only, sorted by time, one key per moment, times kept inside the scene.
      *
      * @param  array<int,mixed>  $keys
-     * @return list<array<string,float>>
+     * @return list<array<string,float|string>>
      */
     public static function sanitize(array $keys, float $duration): array
     {
@@ -134,7 +149,9 @@ final class LayerKeys
             }
             $t = round(max(0.0, min($duration > 0 ? $duration : 3600.0, (float) $key['t'])), 3);
             $clean = self::clean($key);
-            if ($clean !== []) {
+            $marks = self::marks($key);
+            if ($clean !== [] || isset($marks['face'])) {
+                $clean = [...$clean, ...$marks];
                 $byTime[(string) $t] = [...($byTime[(string) $t] ?? []), ...$clean];
             }
         }

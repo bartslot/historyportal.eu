@@ -282,7 +282,12 @@ final class LessonImporter
         [$stage, $motion] = LayerKeys::fromMotion($stage);
         // ...and every picture on the ground has its distance in metres, as the editor drags it.
         [$stage] = GroundDistance::fill($stage);
-        $report['keys'] += $motion['converted'];
+        // ...and a figure the writer gave an animation preset (walk, wave) plays it: its keys are written onto its layer.
+        [$stage, $animated] = AnimationPresets::fill($stage, max((float) ($s['dur_s'] ?? 0), (float) ($s['tts_s'] ?? 0), 3.0));
+        $report['keys'] += $motion['converted'] + $animated['animated'];
+        if ($animated['dropped'] > 0) {
+            $report['warnings'][] = "scene {$stage['id']}: {$animated['dropped']} animation(s) dropped (unknown preset, or a figure without bones)";
+        }
 
         // Balloon times are scene times; the editor and the player read them on the narration's clock (it starts
         // narration_at_s into the scene), and the stage adds that lead back. A speaker with a painted figure layer
