@@ -81,7 +81,7 @@ export interface Aquarel {
   reach: number
 }
 export const PIGMENT_STEPS = 8
-export const SHADE_REACH_PX = 30
+export const SHADE_REACH_PX = 40
 /** The cool shadow pigment a big step glazes toward (ultramarine-ish), per channel. */
 const SHADOW_PIGMENT: [number, number, number] = [0.8, 0.86, 1.18]
 /** A step 1..8 of pigment difference: 1 a little darker in the same hue, 8 much darker, cool, richer and granulating. */
