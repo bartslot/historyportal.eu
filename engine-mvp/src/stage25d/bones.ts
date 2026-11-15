@@ -7,7 +7,7 @@ import { makeBone, makeSlot, Skeleton } from '../vendor/rigby2d/core/model.js'
 import { Pose } from '../vendor/rigby2d/core/pose.js'
 import { transform } from '../vendor/rigby2d/core/math.js'
 import type { Joint, PartMap, Puppet } from './types'
-import { elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
+import { armClearOfFace, armOnItsSide, elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
 import { partMesh } from './smart-bones'
 
 // fine enough to follow the gap between a hanging hand and the body: a coarse outline bridges it and they bend as one
@@ -352,7 +352,36 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
       const hand = toOf(fore)
       if (indexOf.has(upper) && indexOf.has(fore) && hand) {
         fix(fore, () => elbowIsRight(carriedBy(upper, from(upper)), carriedBy(fore, from(fore)), carriedBy(fore, hand), forward))
+        // an arm never passes through the body (pose-guard.ts): one drawn behind the chest stays on its own side of the
+        // torso, or it vanishes into it; one drawn in front may reach across the chest but never up across the face
+        const other = `upperarm_${side === 'n' ? 'f' : 'n'}`
+        if (indexOf.has(other) && indexOf.has('chest') && indexOf.has('head')) {
+          const waist = () => carriedBy('chest', from('chest')), neck = () => carriedBy('head', from('head'))
+          const behind = drawnBehindChest(fore)
+          const rule = (p: () => [number, number]) => () => (behind
+            ? armOnItsSide(waist(), neck(), carriedBy(upper, from(upper)), carriedBy(other, from(other)), p())
+            : armClearOfFace(waist(), neck(), carriedBy(upper, from(upper)), p()))
+          ease(upper, rule(() => carriedBy(fore, from(fore))))
+          ease(fore, rule(() => carriedBy(fore, hand)))
+          ease(upper, rule(() => carriedBy(fore, hand)))   // a straight arm: the hand is past even with the elbow back
+        }
       }
+    }
+  }
+  /** Whether this bone's part is drawn before (behind) the chest's: parts go back to front. */
+  const drawnBehindChest = (bone: string) => {
+    const at = puppet.parts.findIndex((p) => p.bone === bone), chest = puppet.parts.findIndex((p) => p.bone === 'chest')
+    return at >= 0 && chest >= 0 && at < chest
+  }
+  /** A turn that breaks a rule is taken back towards the drawing a few degrees at a time until it holds (an arm swung
+   *  across the body stops at its edge rather than flipping to the other side). */
+  const ease = (bone: string, ok: () => boolean) => {
+    const i = indexOf.get(bone)!
+    let guard = 0
+    while (!ok() && Math.abs(pose.local[i].rotation) > 1e-6 && guard++ < 90) {
+      const r = pose.local[i].rotation
+      pose.local[i].rotation = r > 0 ? Math.max(0, r - GUARD_STEP) : Math.min(0, r + GUARD_STEP)
+      pose.updateWorld(sk)
     }
   }
   // The near arm is drawn behind the chest (at rest its sleeve goes under the waistcoat), so a hand swung across the body

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bindPuppet, limitBone } from './bones'
-import { bendOf, elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
+import { armClearOfFace, armOnItsSide, bendOf, elbowIsRight, forwardOf, kneeInFront, kneeIsRight } from './pose-guard'
 import type { Puppet } from './types'
 
 describe('the posing rules on joint positions', () => {
@@ -85,5 +85,67 @@ describe('handles on a boned leg', () => {
     const shin = joints.find((j) => j.name === 'shin_n')!, foot = joints.find((j) => j.name === 'foot_n')!
     expect(shin.tip[0]).toBeCloseTo(50, 5); expect(shin.tip[1]).toBeCloseTo(160, 5)
     expect(foot.tip[0]).toBeCloseTo(80, 0)
+  })
+})
+
+describe('an arm drawn in front never crosses the face', () => {
+  const waist: [number, number] = [100, 200], neck: [number, number] = [100, 100], near: [number, number] = [70, 110]
+  it('across the chest below the neck is fine; across and up at the face is not; up on its own side is fine', () => {
+    expect(armClearOfFace(waist, neck, near, [130, 150])).toBe(true)
+    expect(armClearOfFace(waist, neck, near, [130, 80])).toBe(false)
+    expect(armClearOfFace(waist, neck, near, [50, 40])).toBe(true)
+  })
+})
+
+describe('an arm never passes through the body', () => {
+  // torso axis waist (100, 200) -> neck (100, 100); near shoulder at x 70 (left), far shoulder at x 130 (right)
+  const waist: [number, number] = [100, 200], neck: [number, number] = [100, 100], near: [number, number] = [70, 110], far: [number, number] = [130, 110]
+  it('a near hand in front of the chest is fine, one beyond the far shoulder has gone through', () => {
+    expect(armOnItsSide(waist, neck, near, far, [60, 250])).toBe(true)       // hanging at its own side
+    expect(armOnItsSide(waist, neck, near, far, [125, 150])).toBe(true)      // across the chest, short of the far shoulder
+    expect(armOnItsSide(waist, neck, near, far, [160, 120])).toBe(false)     // out past the far side
+  })
+  it('the far arm the same way round, whatever the facing', () => {
+    expect(armOnItsSide(waist, neck, far, near, [140, 250])).toBe(true)
+    expect(armOnItsSide(waist, neck, far, near, [40, 120])).toBe(false)
+  })
+  it('shoulders not either side of the axis: no rule', () => {
+    expect(armOnItsSide(waist, neck, [70, 110], [80, 110], [400, 0])).toBe(true)
+  })
+})
+
+describe('a boned arm swung across the body stops at its edge', () => {
+  const quad = (x0: number, y0: number, x1: number, y1: number): [number, number][] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+  const puppet: Puppet = {
+    atlas: 'a.png', width: 300, height: 400, facing: 1,
+    bones: [
+      { name: 'hips', parent: null, from: [150, 300] }, { name: 'chest', parent: 'hips', from: [150, 260], to: [150, 120] },
+      { name: 'head', parent: 'chest', from: [150, 120], to: [150, 40] },
+      { name: 'upperarm_n', parent: 'chest', from: [110, 130], to: [105, 210], limit: [-180, 180] }, { name: 'forearm_n', parent: 'upperarm_n', from: [105, 210], to: [100, 290] },
+      { name: 'upperarm_f', parent: 'chest', from: [190, 130], to: [195, 210] }, { name: 'forearm_f', parent: 'upperarm_f', from: [195, 210], to: [200, 290] },
+    ],
+    parts: [{ bone: 'chest', quad: quad(115, 120, 185, 260), uv: [0, 0, 0.5, 0.5] }, { bone: 'upperarm_n', quad: quad(95, 130, 115, 210), uv: [0.5, 0, 0.6, 0.5] },
+      { bone: 'forearm_n', quad: quad(90, 210, 110, 290), uv: [0.6, 0, 0.7, 0.5] }, { bone: 'upperarm_f', quad: quad(185, 130, 205, 210), uv: [0.7, 0, 0.8, 0.5] },
+      { bone: 'forearm_f', quad: quad(190, 210, 210, 290), uv: [0.8, 0, 0.9, 0.5] }, { bone: 'head', quad: quad(120, 40, 180, 120), uv: [0, 0.5, 0.5, 1] }],
+  }
+  it('an arm drawn in front, raised across the face, is taken back until its hand is below the neck', () => {
+    const bent = bindPuppet(puppet)
+    const hand = (deg: number) => { bent.bend({ upperarm_n: deg }); return Object.fromEntries(bent.joints().map((x) => [x.name, x])).forearm_n.tip as [number, number] }
+    // unguarded, -150 (counter-clockwise) carries the hand up over the head to the far side: the guard stops it lower
+    expect(armClearOfFace([150, 260], [150, 120], [110, 130], hand(-150))).toBe(true)
+    expect(hand(-150)[0]).toBeGreaterThan(hand(-10)[0])                // it did reach across, it was only kept off the face
+  })
+  it('an arm drawn behind the chest stays on its own side', () => {
+    const behind = { ...puppet, parts: [puppet.parts[1], puppet.parts[2], puppet.parts[0], ...puppet.parts.slice(3)] }   // near arm first: behind
+    const bent = bindPuppet(behind)
+    bent.bend({ upperarm_n: -150 })
+    const tip = Object.fromEntries(bent.joints().map((x) => [x.name, x])).forearm_n.tip as [number, number]
+    expect(armOnItsSide([150, 260], [150, 120], [110, 130], [190, 130], tip)).toBe(true)
+  })
+  it('a hanging arm and a small swing are left alone', () => {
+    const bent = bindPuppet(puppet)
+    const at = (deg: number) => { bent.bend({ upperarm_n: deg }); return Object.fromEntries(bent.joints().map((x) => [x.name, x])).forearm_n.tip }
+    const unguarded = (deg: number) => { const r = (deg * Math.PI) / 180, [x, y] = [100 - 110, 290 - 130]; return [110 + x * Math.cos(r) - y * Math.sin(r), 130 + x * Math.sin(r) + y * Math.cos(r)] }
+    expect(at(-20)[0]).toBeCloseTo(unguarded(-20)[0], 0)
   })
 })
