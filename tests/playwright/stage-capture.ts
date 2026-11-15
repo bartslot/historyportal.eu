@@ -28,8 +28,13 @@ export async function freezable(page: Page) {
 export const stageReady = (page: Page, timeout = 60_000) =>
   page.waitForFunction(() => (window as any).BABYLON?.Engine?.LastCreatedScene?.isReady?.() && (window as any).__stage25d?.items?.().length, null, { timeout })
 
-/** The figure mesh `mesh` at `zoom` x, cropped with a margin; the stage applies changes on its next frame, so two pass first. */
-export const captureFigure = (page: Page, mesh: string, zoom = 2.5) => page.evaluate(async ({ mesh, zoom }) => {
+/** A part of the canvas as shares of its width and height (captureFigure's `frame`). */
+export interface Frame { x0: number; y0: number; x1: number; y1: number }
+
+/** The figure mesh `mesh` at `zoom` x, cropped with a margin; the stage applies changes on its next frame, so two pass
+ *  first. `frame`: crop this part of the canvas instead, the same for every shot (a jump's height shows against the
+ *  ground). Every call leaves the box it cropped in window.__figureFrame. */
+export const captureFigure = (page: Page, mesh: string, zoom = 2.5, frame: Frame | null = null) => page.evaluate(async ({ mesh, zoom, frame }) => {
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   const B = (window as any).BABYLON
   const sc = B.Engine.LastCreatedScene
@@ -53,8 +58,10 @@ export const captureFigure = (page: Page, mesh: string, zoom = 2.5) => page.eval
   eng.resize()
   const xs = pts.map((p: number[]) => p[0]), ys = pts.map((p: number[]) => p[1])
   const h = Math.max(...ys) - Math.min(...ys)
-  const x0 = Math.max(0, Math.min(...xs) - h * 0.2), y0 = Math.max(0, Math.min(...ys) - h * 0.04)
-  const x1 = Math.min(W, Math.max(...xs) + h * 0.2), y1 = Math.min(H, Math.max(...ys) + h * 0.04)
+  let x0 = Math.max(0, Math.min(...xs) - h * 0.2), y0 = Math.max(0, Math.min(...ys) - h * 0.04)
+  let x1 = Math.min(W, Math.max(...xs) + h * 0.2), y1 = Math.min(H, Math.max(...ys) + h * 0.04)
+  if (frame) [x0, y0, x1, y1] = [frame.x0 * W, frame.y0 * H, frame.x1 * W, frame.y1 * H].map(Math.round)
+  ;(window as any).__figureFrame = { x0: x0 / W, y0: y0 / H, x1: x1 / W, y1: y1 / H }
   const img = new Image()
   img.src = url
   await img.decode()
@@ -62,4 +69,4 @@ export const captureFigure = (page: Page, mesh: string, zoom = 2.5) => page.eval
   c.width = x1 - x0; c.height = y1 - y0
   c.getContext('2d')!.drawImage(img, x0, y0, c.width, c.height, 0, 0, c.width, c.height)
   return c.toDataURL('image/png')
-}, { mesh, zoom })
+}, { mesh, zoom, frame })

@@ -37,7 +37,7 @@
    "bone:upperarm_f": -15.0,
    "bone:upperarm_n": -45.0,
    "dx": 0.0087,
-   "bob": -0.0158,
+   "bob": -0.0157,
    "rot": -4.0,
    "face": "amazed"
   },
@@ -56,7 +56,7 @@
    "bone:upperarm_f": -20.0,
    "bone:upperarm_n": -95.0,
    "dx": 0.0746,
-   "bob": -0.1671,
+   "bob": -0.1621,
    "rot": -14.0,
    "face": "amazed"
   },
@@ -75,7 +75,7 @@
    "bone:upperarm_f": 18.0,
    "bone:upperarm_n": 20.0,
    "dx": 0.0795,
-   "bob": -0.2336,
+   "bob": -0.1363,
    "rot": -48.0,
    "face": "amazed"
   },
@@ -94,7 +94,7 @@
    "bone:upperarm_f": 20.0,
    "bone:upperarm_n": 25.0,
    "dx": 0.0762,
-   "bob": -0.2514,
+   "bob": -0.0555,
    "rot": -74.0,
    "face": "sad"
   },
@@ -113,7 +113,7 @@
    "bone:upperarm_f": 20.0,
    "bone:upperarm_n": 25.0,
    "dx": 0.0737,
-   "bob": -0.246,
+   "bob": -0.0606,
    "rot": -72.0,
    "face": "sad"
   },
@@ -132,7 +132,7 @@
    "bone:upperarm_f": -20.0,
    "bone:upperarm_n": -70.0,
    "dx": 0.0795,
-   "bob": -0.2337,
+   "bob": -0.1605,
    "rot": -38.0,
    "face": "calm"
   },
@@ -151,7 +151,7 @@
    "bone:upperarm_f": -15.0,
    "bone:upperarm_n": -50.0,
    "dx": 0.0747,
-   "bob": -0.1815,
+   "bob": -0.1788,
    "rot": -10.0,
    "face": "calm"
   },

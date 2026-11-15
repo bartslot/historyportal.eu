@@ -308,8 +308,8 @@ def fit(raw: dict) -> tuple[dict, dict]:
     # key in the air keeps both feet clear of it. A key that tips the whole body over (`rot`, a fall) turns about the
     # feet, so the drawing's floor no longer applies there.
     def floor(p: dict, y: float, k: dict) -> float:
-        if k.get('rot'):
-            return y
+        if k.get('rot'):   # tipped over, the knees' drop (measured upright) turns with the body: lying down it is gone
+            return (y + float(k.get('lift', 0)) * HEIGHT_PX) * math.cos(math.radians(float(k['rot']))) - float(k.get('lift', 0)) * HEIGHT_PX
         clear = AIR_CLEAR * HEIGHT_PX if k.get('contact') == 'none' else 0.0
         return y - max(0.0, sinking(p, y) + clear)
     dy = [floor(p, y, k) for p, y, k in zip(poses, dy, keys)]
