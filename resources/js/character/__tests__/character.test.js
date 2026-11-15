@@ -33,6 +33,7 @@ describe('recipe', () => {
     const r = { ...weaver(), eyes: 'woman-round', parts: ['headwear/woman-headband', 'hair/woman-bun'] }
     expect(stackOf(kit, r)).toEqual(['outfit/work-tunic-apron', 'face/woman-n', 'eyes/woman-round', 'hair/woman-bun', 'headwear/woman-headband'])
     expect(stackOf(kit, r, 'sad')).toContain('expressions/woman-sad')
+    expect(stackOf(kit, r, 'sad')).not.toContain('eyes/woman-round')   // the expression's own eyes and mouth, never both
     expect(stackOf(kit, r, 'angry')).not.toContain('expressions/woman-sad')   // a body without that expression keeps its face
   })
 

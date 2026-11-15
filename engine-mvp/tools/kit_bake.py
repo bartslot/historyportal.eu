@@ -92,8 +92,8 @@ UNDER_FROM = {'thigh_n': 'shin_n', 'thigh_f': 'shin_f'}
 PARENT = {'hips': None, 'chest': 'hips', 'head': 'chest', 'upperarm_n': 'chest', 'upperarm_f': 'chest', 'forearm_n': 'upperarm_n',
           'forearm_f': 'upperarm_f', 'thigh_n': 'hips', 'thigh_f': 'hips', 'shin_n': 'thigh_n', 'shin_f': 'thigh_f', 'foot_n': 'shin_n', 'foot_f': 'shin_f'}
 # the near upper arm may reach forward across the chest (a 3/4 point); the stage's pose guard keeps it off the face
-# (pose-guard.ts armClearOfFace, tester 11-15: an arm raised across the face)
-LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'upperarm_n': [-110, 25], 'upperarm_f': [-20, 20], 'forearm_n': [-110, 0], 'forearm_f': [-120, 0],
+# (pose-guard.ts armClearOfFace). Past -45 the garment over the shoulder turns up with the arm like a torn flap (tester 11-15)
+LIMIT = {'head': [-25, 25], 'chest': [-8, 8], 'upperarm_n': [-45, 25], 'upperarm_f': [-20, 20], 'forearm_n': [-110, 0], 'forearm_f': [-120, 0],
          'thigh_n': [-25, 20], 'thigh_f': [-25, 20], 'shin_n': [0, 120], 'shin_f': [0, 120], 'foot_n': [-30, 20], 'foot_f': [-30, 20]}
 BAND_SHARE = {'upperarm_n': 0.5, 'upperarm_f': 0.5, 'forearm_n': 0.5, 'forearm_f': 0.5, 'foot_n': 0.6, 'foot_f': 0.6, 'head': 0.35,
               'shin_n': 0.5, 'shin_f': 0.5}

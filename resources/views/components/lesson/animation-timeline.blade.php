@@ -376,7 +376,7 @@
                                          once it is focused, so a press on it scrubs instead of selecting. --}}
                                     {{-- A figure's expression: a word, keyed at the playhead when picked (character/face-keys.js). --}}
                                     <template x-if="property.type === 'face'">
-                                        <select class="select select-sm w-full min-w-0 text-xs" data-timeline-value data-timeline-face
+                                        <select class="select select-sm w-full min-w-0 text-xs" style="padding-left: 0.375rem; padding-right: 1.25rem; background-position: calc(100% - 0.6rem) 50%, calc(100% - 0.3rem) 50%;" data-timeline-value data-timeline-face
                                                 aria-label="{{ __('Expression') }}"
                                                 x-effect="void time; void tracks; $el.value = window.__timelineFace?.at(object.target) ?? 'calm'"
                                                 x-on:change="window.__timelineFace?.key(object.target, $event.target.value)">

@@ -467,7 +467,13 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
       const partOf = (name: string) => puppet.parts.findIndex((p) => p.bone === name)
       return puppet.bones.flatMap((b) => {
         const at = partOf(b.name)
-        if (at < 0 || b.name === 'hips') return []   // the hips stay where they stand (puppet-pose movableBones)
+        if (b.name === 'hips') return []   // the hips stay where they stand (puppet-pose movableBones)
+        if (at < 0) {
+          // no paint of its own (a thigh under a robe), but a part hangs off it: its handle grabs the joint below (the
+          // knee), so a leg still bends at the hip (tester 11-15)
+          const kid = puppet.bones.find((c) => c.parent === b.name && partOf(c.name) >= 0)
+          return kid ? [{ name: b.name, at: carriedBy(b.name, b.from), tip: carriedBy(b.name, kid.from) }] : []
+        }
         const quad = puppet.parts[at].quad
         const children = puppet.bones.filter((c) => c.parent === b.name && partOf(c.name) >= 0)
         const [[x0, y0], , [x1, y1]] = quad

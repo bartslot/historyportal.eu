@@ -21,9 +21,10 @@ export const piecesIn = (body, slot) => body.pieces.filter((p) => p.slot === slo
 export function stackOf (kit, recipe, expression = 'calm') {
   const body = bodyOf(kit, recipe)
   const ids = [`outfit/${recipe.outfit}`, `face/${recipe.face}`]
-  if (recipe.eyes) ids.push(`eyes/${recipe.eyes}`)
-  if (recipe.mouth) ids.push(`mouths/${recipe.mouth}`)
   const expr = expression !== 'calm' ? body.expressions?.[expression] : null
+  // an expression repaints eyes, brows and mouth: the person's own chosen ones would show beside it (a double mouth)
+  if (recipe.eyes && !expr) ids.push(`eyes/${recipe.eyes}`)
+  if (recipe.mouth && !expr) ids.push(`mouths/${recipe.mouth}`)
   if (expr) ids.push(expr)
   ids.push(...(recipe.parts ?? []))
   const order = (id) => kit.slots.indexOf(pieceOf(body, id)?.slot ?? 'extra')

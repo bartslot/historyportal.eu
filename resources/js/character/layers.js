@@ -156,6 +156,11 @@ export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', widt
   if (kind) {
     const k = dst[2] / src[2]
     for (const l of picked) g.drawImage(kindSilhouette(l, kind[0], kind[1]), dst[0] + (l.box[0] - src[0]) * k, dst[1] + (l.box[1] - src[1]) * k, l.box[2] * k, l.box[3] * k)
+    // only what shows: everything drawn above it (the face, the hair) takes its part out, scalp and eye holes with it
+    const above = layers.slice(layers.indexOf(picked.at(-1)) + 1)
+    g.globalCompositeOperation = 'destination-out'
+    drawLayers(g, above, src, dst, 'colour')
+    g.globalCompositeOperation = 'source-over'
   } else drawLayers(g, picked, src, dst, 'colour')
   g.globalCompositeOperation = 'source-in'
   g.fillStyle = colour

@@ -86,6 +86,12 @@ describe('handles on a boned leg', () => {
     expect(shin.tip[0]).toBeCloseTo(50, 5); expect(shin.tip[1]).toBeCloseTo(160, 5)
     expect(foot.tip[0]).toBeCloseTo(80, 0)
   })
+  it('a thigh with no paint of its own (under a robe) still has a handle, grabbed at the knee', () => {
+    const robed = { ...leg(1), parts: leg(1).parts.filter((p) => p.bone !== 'thigh_n') }
+    const thigh = bindPuppet(robed).joints().find((j) => j.name === 'thigh_n')!
+    expect(thigh.at).toEqual([50, 20])
+    expect(thigh.tip[1]).toBeCloseTo(90, 5)
+  })
 })
 
 describe('an arm drawn in front never crosses the face', () => {
