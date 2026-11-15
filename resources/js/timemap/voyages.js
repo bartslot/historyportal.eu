@@ -193,7 +193,7 @@ const voyageFeatures = () => {
   const labels = [];
   for (const v of voyagesData.voyages) {
     const props = {
-      qid: v.qid, name: v.name, years: v.years,
+      id: v.id, qid: v.qid, name: v.name, years: v.years,
       showFrom: v.show_from, showTo: v.show_to,
     };
     lines.push({ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: smooth(v.waypoints) } });
@@ -207,8 +207,23 @@ const voyageFilter = (year) => ['all',
   ['>=', ['to-number', ['get', 'showTo']], year],
 ];
 
-const LAYERS = ['voyage-hit', 'voyage-line', 'voyage-label'];
+const LAYERS = ['voyage-hit', 'voyage-glow', 'voyage-line', 'voyage-label'];
 const DEFAULT_COLOR = '#20618f';
+
+// Line geometry, in px. The hit line is the visible line plus HIT_PADDING_PX on each side, so a
+// route is clickable 10 px either side of where it is drawn (Bart, 11-15).
+const LINE_WIDTH = 1.7;
+const LINE_WIDTH_SELECTED = 2.6;
+const LINE_OPACITY = 0.85;
+const HIT_PADDING_PX = 10;
+export const VOYAGE_HIT_WIDTH = Math.round(LINE_WIDTH_SELECTED + HIT_PADDING_PX * 2);   // 23: the tuner steps in whole px
+const HIT_WIDTH = VOYAGE_HIT_WIDTH;
+// The chosen route: a blurred, wider copy of itself underneath. The others step back.
+const GLOW_WIDTH = 12;
+const GLOW_BLUR = 7;
+const GLOW_OPACITY = 0.6;
+const FADED_LINE_OPACITY = 0.22;
+const FADED_LABEL_OPACITY = 0.35;
 
 /** GeoJSON sources for the initial style object. */
 export function voyageStyleSources() {
@@ -225,12 +240,19 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
     // Wide invisible twin of the line so a route is clickable without pixel-hunting.
     {
       id: 'voyage-hit', type: 'line', source: 'voyages',
-      paint: { 'line-width': 16, 'line-color': '#000', 'line-opacity': 0.01 },
+      paint: { 'line-width': HIT_WIDTH, 'line-color': '#000', 'line-opacity': 0.01 },
+    },
+    // The selection glow. Declared in the style like the others (runtime line layers do not render
+    // here) and kept at opacity 0 until a route is chosen.
+    {
+      id: 'voyage-glow', type: 'line', source: 'voyages',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': DEFAULT_COLOR, 'line-width': GLOW_WIDTH, 'line-blur': GLOW_BLUR, 'line-opacity': 0 },
     },
     {
       id: 'voyage-line', type: 'line', source: 'voyages',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': DEFAULT_COLOR, 'line-width': 1.7, 'line-opacity': 0.85 },
+      paint: { 'line-color': DEFAULT_COLOR, 'line-width': LINE_WIDTH, 'line-opacity': LINE_OPACITY },
     },
     {
       id: 'voyage-label', type: 'symbol', source: 'voyage-labels',
@@ -242,6 +264,23 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
       paint: { 'text-color': DEFAULT_COLOR, 'text-halo-color': '#f3ead6', 'text-halo-width': 1.2 },
     },
   ];
+}
+
+/**
+ * Highlight one route, or none (`null`). The chosen line glows and thickens; every other route and
+ * its name fade back so the chosen one stands out. `null` puts every route back as it was, which
+ * is what closing the card has to do.
+ */
+export function setVoyageHighlight(map, voyageId) {
+  if (!map.getLayer('voyage-line')) return;
+  const on = voyageId ? ['==', ['get', 'id'], voyageId] : null;
+  const pick = (chosen, others, none) => (on ? ['case', on, chosen, others] : none);
+  try {
+    map.setPaintProperty('voyage-glow', 'line-opacity', pick(GLOW_OPACITY, 0, 0));
+    map.setPaintProperty('voyage-line', 'line-opacity', pick(1, FADED_LINE_OPACITY, LINE_OPACITY));
+    map.setPaintProperty('voyage-line', 'line-width', pick(LINE_WIDTH_SELECTED, LINE_WIDTH, LINE_WIDTH));
+    map.setPaintProperty('voyage-label', 'text-opacity', pick(1, FADED_LABEL_OPACITY, 1));
+  } catch (e) { /* style reloading: the next selection repaints */ }
 }
 
 /** Call in the map's load handler AFTER the tm-clouds custom layer exists: registers the arrow
@@ -278,6 +317,7 @@ export function applyVoyageStyle(map, { color, halo, font }) {
   if (!map.getLayer('voyage-line')) return;
   const c = color || DEFAULT_COLOR;
   map.setPaintProperty('voyage-line', 'line-color', c);
+  if (map.getLayer('voyage-glow')) map.setPaintProperty('voyage-glow', 'line-color', c);
   map.setPaintProperty('voyage-label', 'text-color', c);
   if (halo) map.setPaintProperty('voyage-label', 'text-halo-color', halo);
   if (font) map.setLayoutProperty('voyage-label', 'text-font', font);

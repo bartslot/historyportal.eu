@@ -849,6 +849,16 @@ export function addVoyageShips(map, { beforeId = 'tm-clouds', only = null, ambie
       const idx = Math.min(v.track.cum.length - 1, wpIndex * SAMPLES_PER_SEGMENT);
       return v.track.cum[idx] / (v.track.total || 1);
     },
+    /** Track fraction at a fractional SAMPLE index of the smoothed route (the hover's pick). */
+    fractionAtSample(voyageId, sample) {
+      const v = voyages.find((x) => x.id === voyageId);
+      if (!v) return 0;
+      const cum = v.track.cum;
+      const s = Math.max(0, Math.min(cum.length - 1, Number(sample) || 0));
+      const i = Math.min(cum.length - 2, Math.floor(s));
+      if (i < 0) return 0;
+      return (cum[i] + (cum[i + 1] - cum[i]) * (s - i)) / (v.track.total || 1);
+    },
     destroy() {
       if (raf) window.clearTimeout(raf);
       // Mixers keep references to the loaded rigs; drop them or a re-mounted map leaks a skeleton

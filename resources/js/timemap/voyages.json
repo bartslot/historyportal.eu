@@ -5,7 +5,8 @@
     "existing lazy polity endpoint - no backend changes). waypoints = [lon,lat] in sailing order;",
     "longitudes beyond +/-180 keep Pacific crossings continuous (MapLibre renders them wrapped).",
     "show_from..show_to = the map years the route is visible (wider than the voyage itself, so",
-    "teachers scrubbing an era still see it). label_at = waypoint index that anchors the label."
+    "teachers scrubbing an era still see it). label_at = waypoint index that anchors the label.",
+    "legs[].depart/arrive are checked against the sources in public/timemap/voyages/<id>/card.json; depart_precision/arrive_precision (or voyage date_precision) = 'month' or 'year' where no source gives the day. Default 'day'."
   ],
   "voyages": [
     {
@@ -77,7 +78,7 @@
       "legs": [
         {
           "depart": "1492-08-03",
-          "arrive": "1492-08-12",
+          "arrive": "1492-08-09",
           "wp": [
             0,
             1
@@ -105,7 +106,8 @@
           "wp": [
             6,
             8
-          ]
+          ],
+          "depart_precision": "month"
         }
       ],
       "unknown": [
@@ -254,7 +256,8 @@
           "wp": [
             0,
             10
-          ]
+          ],
+          "arrive_precision": "month"
         },
         {
           "depart": "1497-11-25",
@@ -262,7 +265,8 @@
           "wp": [
             10,
             15
-          ]
+          ],
+          "depart_precision": "month"
         },
         {
           "depart": "1498-04-24",
@@ -496,7 +500,7 @@
           ]
         },
         {
-          "depart": "1521-04-27",
+          "depart": "1521-05-01",
           "arrive": "1521-11-08",
           "wp": [
             24,
@@ -604,7 +608,8 @@
           "wp": [
             0,
             8
-          ]
+          ],
+          "depart_precision": "month"
         },
         {
           "depart": "1596-06-17",
@@ -620,7 +625,8 @@
           "wp": [
             12,
             15
-          ]
+          ],
+          "arrive_precision": "month"
         }
       ]
     },
@@ -848,14 +854,14 @@
         },
         {
           "depart": "1642-12-04",
-          "arrive": "1642-12-13",
+          "arrive": "1642-12-18",
           "wp": [
             10,
             15
           ]
         },
         {
-          "depart": "1642-12-18",
+          "depart": "1642-12-19",
           "arrive": "1643-01-21",
           "wp": [
             15,
@@ -1062,12 +1068,12 @@
           "model": "/timemap/assets/ship.fbx"
         },
         {
-          "name": "Hoorn",
+          "name": "Trouw",
           "masts": 3,
           "flagship": false
         },
         {
-          "name": "Dordrecht",
+          "name": "Bantam",
           "masts": 3,
           "flagship": false
         }
@@ -1079,7 +1085,8 @@
           "wp": [
             0,
             4
-          ]
+          ],
+          "arrive_precision": "year"
         },
         {
           "depart": "1616-02-10",
@@ -1087,7 +1094,8 @@
           "wp": [
             4,
             11
-          ]
+          ],
+          "depart_precision": "year"
         },
         {
           "depart": "1616-08-27",
@@ -1095,7 +1103,8 @@
           "wp": [
             11,
             14
-          ]
+          ],
+          "arrive_precision": "year"
         },
         {
           "depart": "1616-10-10",
@@ -1103,7 +1112,9 @@
           "wp": [
             14,
             17
-          ]
+          ],
+          "depart_precision": "year",
+          "arrive_precision": "year"
         },
         {
           "depart": "1616-11-20",
@@ -1111,7 +1122,9 @@
           "wp": [
             17,
             19
-          ]
+          ],
+          "depart_precision": "year",
+          "arrive_precision": "year"
         }
       ]
     },
@@ -1317,7 +1330,7 @@
           ]
         },
         {
-          "depart": "1769-01-16",
+          "depart": "1769-01-21",
           "arrive": "1769-04-13",
           "wp": [
             10,
@@ -1341,7 +1354,7 @@
           ]
         },
         {
-          "depart": "1770-08-23",
+          "depart": "1770-08-22",
           "arrive": "1771-07-12",
           "wp": [
             36,
@@ -1540,17 +1553,19 @@
             4
           ],
           "transport": "sea",
-          "note": "Acre to Ayas"
+          "note": "Acre to Ayas",
+          "arrive_precision": "month"
         },
         {
-          "depart": "1271-12-01",
+          "depart": "1271-11-20",
           "arrive": "1272-03-15",
           "wp": [
             4,
             7
           ],
           "transport": "horse",
-          "note": "Anatolian and Armenian highlands"
+          "note": "Anatolian and Armenian highlands",
+          "depart_precision": "month"
         },
         {
           "depart": "1272-04-01",
@@ -1610,7 +1625,8 @@
             21
           ],
           "transport": "camel",
-          "note": "To Xanadu and Khanbaliq"
+          "note": "To Xanadu and Khanbaliq",
+          "arrive_precision": "month"
         },
         {
           "depart": "1291-01-01",
@@ -1662,7 +1678,8 @@
           "transport": "sea",
           "note": "Trebizond to Venice"
         }
-      ]
+      ],
+      "date_precision": "year"
     },
     {
       "id": "hannibal-218",
@@ -1772,27 +1789,33 @@
             2
           ],
           "transport": "horse",
-          "note": "New Carthage to the Ebro"
+          "note": "New Carthage to the Ebro",
+          "depart_precision": "month",
+          "arrive_precision": "year"
         },
         {
           "depart": "-000217-06-05",
-          "arrive": "-000217-07-25",
+          "arrive": "-000217-09-01",
           "wp": [
             2,
             5
           ],
           "transport": "horse",
-          "note": "Over the Pyrenees into Gaul"
+          "note": "Over the Pyrenees into Gaul",
+          "depart_precision": "year",
+          "arrive_precision": "month"
         },
         {
-          "depart": "-000217-07-25",
+          "depart": "-000217-09-01",
           "arrive": "-000217-09-05",
           "wp": [
             5,
             7
           ],
           "transport": "horse",
-          "note": "The Rhône crossing"
+          "note": "The Rhône crossing",
+          "depart_precision": "month",
+          "arrive_precision": "month"
         },
         {
           "depart": "-000217-09-05",
@@ -1802,7 +1825,9 @@
             10
           ],
           "transport": "horse",
-          "note": "Up the Rhône towards the mountains"
+          "note": "Up the Rhône towards the mountains",
+          "depart_precision": "month",
+          "arrive_precision": "year"
         },
         {
           "depart": "-000217-10-01",
@@ -1812,7 +1837,9 @@
             14
           ],
           "transport": "horse",
-          "note": "The Alps"
+          "note": "The Alps",
+          "depart_precision": "month",
+          "arrive_precision": "month"
         },
         {
           "depart": "-000217-11-15",
@@ -1822,7 +1849,8 @@
             15
           ],
           "transport": "horse",
-          "note": "The Trebia"
+          "note": "The Trebia",
+          "depart_precision": "year"
         },
         {
           "depart": "-000216-04-01",
@@ -1832,7 +1860,8 @@
             17
           ],
           "transport": "horse",
-          "note": "Lake Trasimene"
+          "note": "Lake Trasimene",
+          "depart_precision": "year"
         },
         {
           "depart": "-000215-05-01",
@@ -1842,7 +1871,8 @@
             19
           ],
           "transport": "horse",
-          "note": "Cannae"
+          "note": "Cannae",
+          "depart_precision": "year"
         }
       ]
     },
@@ -1947,7 +1977,7 @@
       ],
       "legs": [
         {
-          "depart": "1796-04-09",
+          "depart": "1796-04-10",
           "arrive": "1796-04-28",
           "wp": [
             0,
@@ -1964,10 +1994,11 @@
             5
           ],
           "transport": "horse",
-          "note": "Le pont de Lodi, puis Milan"
+          "note": "Le pont de Lodi, puis Milan",
+          "arrive_precision": "year"
         },
         {
-          "depart": "1796-07-04",
+          "depart": "1796-06-04",
           "arrive": "1797-02-02",
           "wp": [
             5,
@@ -1978,7 +2009,7 @@
         },
         {
           "depart": "1797-01-14",
-          "arrive": "1797-04-18",
+          "arrive": "1797-12-05",
           "wp": [
             6,
             9
@@ -2023,7 +2054,8 @@
             17
           ],
           "transport": "horse",
-          "note": "Retour au Caire, puis à Alexandrie"
+          "note": "Retour au Caire, puis à Alexandrie",
+          "arrive_precision": "month"
         },
         {
           "depart": "1799-08-23",
@@ -2032,7 +2064,8 @@
             17,
             19
           ],
-          "note": "Il laisse son armée et rentre : le 18 brumaire"
+          "note": "Il laisse son armée et rentre : le 18 brumaire",
+          "depart_precision": "month"
         }
       ]
     },
@@ -2132,13 +2165,14 @@
       ],
       "legs": [
         {
-          "depart": "1644-02-01",
+          "depart": "1644-01-29",
           "arrive": "1644-03-05",
           "wp": [
             0,
             3
           ],
-          "note": "Three ships leave Batavia: Limmen, Zeemeeuw, Bracq"
+          "note": "Three ships leave Batavia: Limmen, Zeemeeuw, Bracq",
+          "depart_precision": "month"
         },
         {
           "depart": "1644-03-05",
@@ -2183,9 +2217,11 @@
             13,
             15
           ],
-          "note": "Home to Batavia with a chart and no cargo"
+          "note": "Home to Batavia with a chart and no cargo",
+          "arrive_precision": "month"
         }
-      ]
+      ],
+      "date_precision": "year"
     }
   ]
 }

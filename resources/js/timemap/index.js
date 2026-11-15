@@ -17,7 +17,9 @@ import supplementalMarkers from './markers.json';
 import { handTerritories, provenanceFor } from './hand-territories.js';
 import theme from './theme.json';
 import qidOverrides from '../../../database/data/cliopatria-qid-overrides.json';
-import { voyageStyleSources, voyageStyleLayers, initVoyages, applyVoyageYear, applyVoyageStyle, smooth } from './voyages.js';
+import { voyageStyleSources, voyageStyleLayers, initVoyages, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
+import { initVoyageInteraction } from './voyage-interact.js';
+import { loadVoyageCard } from './voyage-card.js';
 import nationalColors from './national-colors.json';
 import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DEM_SOURCE, satelliteLayers, EARTH_COLOURS } from '../map-imagery.js';
 import { CLOUD_LAYER_ID } from './clouds.js';
@@ -807,6 +809,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     selectedHand = false;
   };
   let voyageShips = null; // set once the lazy three.js ships chunk loads
+  let voyageInteract = null; // route hover + selection highlight, set on load
   /**
    * Light the outline under the pointer.
    *
@@ -1404,9 +1407,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
         // set directly rather than through ownedPaint.
         { key: 'voyageLabelSize', label: 'Name size', min: 6, max: 28, step: 0.5, value: 11.5,
           apply: (v) => { if (map.getLayer('voyage-label')) { try { map.setLayoutProperty('voyage-label', 'text-size', v); } catch (e) { /* style reloading */ } } } },
-        // The invisible twin that makes a route clickable without pixel-hunting. 20 is Bart's 10px
-        // either side of the line.
-        { key: 'voyageHitWidth', label: 'Hover tolerance', min: 4, max: 40, step: 1, value: 16,
+        // The invisible twin that makes a route clickable without pixel-hunting: the line plus
+        // Bart's 10px either side of it.
+        { key: 'voyageHitWidth', label: 'Hover tolerance', min: 4, max: 40, step: 1, value: VOYAGE_HIT_WIDTH,
           apply: (v) => ownedPaint('voyage-hit', 'line-width', v) },
       ], { tab: 'Map' }),
 
@@ -2099,6 +2102,12 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // tm-clouds 3D layer, whose globe-wide depth writes would otherwise cull them (see voyages.js).
     // Geometry ducks under the cloud layer's depth write; the NAME goes up with the other writing.
     initVoyages(map, { year: state.year, beforeId: CLOUD_LAYER_ID, labelBeforeId: 'boundaries-label' });
+    // Pointer cursor, the click highlight and the hover that brings the fleet to the pointer with
+    // its date. The ships chunk may still be loading, so it is asked for lazily.
+    voyageInteract = initVoyageInteraction(map, {
+      ships: () => voyageShips,
+      locale: document.documentElement.lang || 'en',
+    });
     // The sailing tall ship (three.js custom layer) rides in its own lazy chunk — same
     // below-the-clouds placement, same era window as the routes.
     import('./voyage-ships.js')
@@ -2166,6 +2175,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     const marker = map.queryRenderedFeatures(box, { layers: ['markers-dot'] })[0];
     if (marker) {
       if (selectedId !== null) { clearSelection(); refreshLabels(); }
+      voyageInteract?.clear();
       const p = marker.properties;
       state.selectedRegion = p.id;
       sync();
@@ -2181,16 +2191,23 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       return;
     }
 
-    // Voyage routes next (wide invisible hit line): open the panel via the voyage's QID.
-    const voyage = map.getLayer('voyage-hit') && map.queryRenderedFeatures(box, { layers: ['voyage-hit'] })[0];
+    // Voyage routes next. Queried at the POINT, not the marker box: the hit line already carries
+    // the 10px either side, and the box on top of it would make that 17.
+    const voyage = map.getLayer('voyage-hit') && map.queryRenderedFeatures(e.point, { layers: ['voyage-hit'] })[0];
     if (voyage) {
       if (selectedId !== null) { clearSelection(); refreshLabels(); }
       const p = voyage.properties;
+      voyageInteract?.select(p.id);
       state.selectedRegion = p.qid;
       sync();
-      window.dispatchEvent(new CustomEvent('polity-selected', { detail: { id: p.qid, name: `${p.name} (${p.years})`, qid: p.qid } }));
+      // voyageId: the card shows the voyage's own story (public/timemap/voyages/<id>/card.json)
+      // instead of a territory lookup. No em dash in UI text.
+      window.dispatchEvent(new CustomEvent('polity-selected', {
+        detail: { id: p.qid, name: String(p.name).replace(/\s+—\s+/g, ': '), qid: p.qid, voyageId: p.id },
+      }));
       return;
     }
+    voyageInteract?.clear();
 
     // Identify the clicked polity client-side from the rendered (era-filtered) features.
     // Both sources, in render order — the hand-authored layer sits above Cliopatria, so where the
@@ -2328,6 +2345,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
    */
   window.__timemapClearSelection = () => {
     if (selectedId !== null) { setSelected(selectedId, false); selectedId = null; refreshLabels(); }
+    voyageInteract?.clear();
     state.selectedRegion = null;
     sync();
   };
@@ -2373,6 +2391,9 @@ window.mountAtlasSlider = function (el, mapEl, initialYear, labels) {
     if (mapEl._setYear) mapEl._setYear(y);     // update the map now
   };
 };
+
+// A voyage's own card (story, moments, people, pictures), for the information card. See voyage-card.js.
+window.__timemapLoadVoyage = (voyageId) => loadVoyageCard(voyageId, document.documentElement.lang || 'en');
 
 // ── In-panel Wikipedia content (oldmapsonline pattern) ────────────────────────
 // Wikipedia blocks iframing (X-Frame-Options: SAMEORIGIN), but its REST/action APIs send

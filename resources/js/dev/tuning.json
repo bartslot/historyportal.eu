@@ -116,7 +116,7 @@
                 "voyageLabelHalo": "#f3ead6",
                 "voyageLabelHaloWidth": 1.2,
                 "voyageLabelSize": 11.5,
-                "voyageHitWidth": 16
+                "voyageHitWidth": 23
             },
             "Advance": {
                 "seconds": 4,
@@ -321,7 +321,7 @@
                 "voyageLabelHalo": "#f3ead6",
                 "voyageLabelHaloWidth": 1.2,
                 "voyageLabelSize": 11.5,
-                "voyageHitWidth": 16
+                "voyageHitWidth": 23
             },
             "Advance": {
                 "seconds": 4,
@@ -526,7 +526,7 @@
                 "voyageLabelHalo": "#f3ead6",
                 "voyageLabelHaloWidth": 1.2,
                 "voyageLabelSize": 11.5,
-                "voyageHitWidth": 16
+                "voyageHitWidth": 23
             },
             "Advance": {
                 "seconds": 4,
@@ -731,7 +731,7 @@
                 "voyageLabelHalo": "#f3ead6",
                 "voyageLabelHaloWidth": 1.2,
                 "voyageLabelSize": 17,
-                "voyageHitWidth": 16
+                "voyageHitWidth": 23
             },
             "Advance": {
                 "seconds": 4,
@@ -916,7 +916,7 @@
                 "voyageLabelHalo": "#f3ead6",
                 "voyageLabelHaloWidth": 1.2,
                 "voyageLabelSize": 17,
-                "voyageHitWidth": 16
+                "voyageHitWidth": 23
             },
             "Advance": {
                 "seconds": 4,
