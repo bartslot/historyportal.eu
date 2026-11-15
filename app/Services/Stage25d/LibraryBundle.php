@@ -209,7 +209,7 @@ final class LibraryBundle
      * Copy a bundle folder onto the public disk; files whose size and hash already match are skipped.
      * Only library.json and the files it names are copied (not the _held / _staging folders next to them).
      *
-     * @return array{bundle:string,copied:int,skipped:int}
+     * @return array{bundle:string,copied:int,skipped:int,lod:array{copied:int,skipped:int,named:int}}
      */
     public function sync(string $dir, ?string $bundle = null): array
     {
@@ -231,7 +231,57 @@ final class LibraryBundle
             $copied++;
         }
 
-        return ['bundle' => $bundle, 'copied' => $copied, 'skipped' => $skipped];
+        // the source's library.json has no "lod": name the far copies again
+        return ['bundle' => $bundle, 'copied' => $copied, 'skipped' => $skipped, 'lod' => $this->installLod($bundle)];
+    }
+
+    /** Where the far, low-detail copies live in the repo, per bundle (engine-mvp/tools/lod_svg.py writes them). */
+    public const LOD_DIR = 'resources/library-lod';
+
+    /**
+     * Put a bundle's far copies (<stem>.lod.svg, committed under LOD_DIR) beside its pictures on the public disk and name
+     * each on its asset ("lod"), so the stage draws it far off (engine-mvp stage25d/lod.ts). The bundles live outside the
+     * repo, so this runs after every library:sync and on deploy. Unchanged files are skipped; library.json is only
+     * written when an asset's "lod" changes. A bundle without copies, or not on the disk, is left alone.
+     *
+     * @return array{copied:int,skipped:int,named:int}
+     */
+    public function installLod(string $bundle): array
+    {
+        self::assertName($bundle);
+        $disk = Storage::disk('public');
+        $src = base_path(self::LOD_DIR."/{$bundle}");
+        $listPath = self::DIR."/{$bundle}/library.json";
+        $out = ['copied' => 0, 'skipped' => 0, 'named' => 0];
+        if (! is_dir($src) || ! $disk->exists($listPath)) {
+            return $out;
+        }
+        $copies = array_map('basename', glob("{$src}/*.lod.svg") ?: []);
+        foreach ($copies as $f) {
+            $dst = self::DIR."/{$bundle}/{$f}";
+            if ($disk->exists($dst) && md5((string) $disk->get($dst)) === md5_file("{$src}/{$f}")) {
+                $out['skipped']++;
+
+                continue;
+            }
+            $disk->put($dst, (string) file_get_contents("{$src}/{$f}"));
+            $out['copied']++;
+        }
+        $lib = json_decode((string) $disk->get($listPath), true);
+        $changed = false;
+        foreach ($lib['assets'] ?? [] as $i => $a) {
+            $lod = pathinfo((string) ($a['file'] ?? ''), PATHINFO_FILENAME).'.lod.svg';
+            if (in_array($lod, $copies, true) && ($a['lod'] ?? null) !== $lod) {
+                $lib['assets'][$i]['lod'] = $lod;
+                $out['named']++;
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $disk->put($listPath, json_encode($lib, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");
+        }
+
+        return $out;
     }
 
     /** The longest side of a shelf thumbnail: a 64 px tile on a 2x screen, with room to spare. */

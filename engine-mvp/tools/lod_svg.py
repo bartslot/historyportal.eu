@@ -5,11 +5,13 @@ to fade the bottom to transparent)").
 
 Each copy is traced FROM the painted picture, so it keeps that picture's shape and colours: a few flat watercolour
 washes laid light to dark (each wash covers everything darker, so no gaps), a little lighter toward the paper (it stands
-far off), one ink line round the silhouette, and the bottom fading to transparent (per cell on a sprite sheet). It is
-written beside the picture as <stem>.lod.svg, the same size and layout, and library.json gets "lod" on the asset. The
-stage draws it instead of the painting far from the camera (engine-mvp/src/stage25d/lod.ts).
+far off), one ink line round the silhouette, and the bottom fading to transparent (per cell on a sprite sheet). Each
+is written to the repo as resources/library-lod/<bundle>/<stem>.lod.svg (the picture's layout, at most MAX_W wide):
+the bundles themselves live outside the repo. `php artisan library:lod` (also run by every library:sync) puts them
+beside the pictures and names each on its asset ("lod"); the stage draws it far from the camera (stage25d/lod.ts).
 
     python3 engine-mvp/tools/lod_svg.py storage/app/public/library/<bundle> [--force] [--only id,id]
+    php artisan library:lod <bundle>
 
 Needs potrace (brew install potrace), Pillow and numpy.
 """
@@ -35,12 +37,13 @@ SKIP_LAYERS = {'figure', 'sky', 'bg', 'ground', 'cloud'}
 SKIP_TAGS = {'ground', 'path', 'water', 'fence', 'pen', 'building'}
 WASHES = 4                 # flat colour washes per picture
 INK_SHARE = 0.12           # the darkest px (hatching, ink): part of the darkest wash, the outline is the ink
-HAZE = 0.08                # how far each wash goes toward the paper
+HAZE = 0.25                # how far each wash goes toward the paper: it stands far off, lighter than the painting
 SATURATE = 1.3             # a flat wash of mean colours goes grey: give it back its colour
 PAPER = (243, 236, 222)
 INK = '#2a2219'
 FADE_FROM = 0.65           # share of the height (from the top) where the bottom fade starts
-MAX_W = 2048               # the copy's px width at most: it is only drawn small
+MAX_W = 1024               # the copy's px width at most: it is only drawn far off, small
+MIN_H = 256                # ...but never fewer px tall than this (a 259 px palm row at 65 px went to blobs)
 
 
 def eligible(a: dict) -> bool:
@@ -72,7 +75,7 @@ def saturate(c: np.ndarray) -> np.ndarray:
 
 def lod_svg(src: Path, cells: list[list[float]] | None) -> str:
     img = Image.open(src).convert('RGBA')
-    k = min(1.0, MAX_W / img.width)
+    k = min(1.0, max(MAX_W / img.width, MIN_H / img.height))
     if k < 1:
         img = img.resize((round(img.width * k), round(img.height * k)), Image.LANCZOS)
     w, h = img.size
@@ -98,7 +101,7 @@ def lod_svg(src: Path, cells: list[list[float]] | None) -> str:
         path = trace(covered, turd)
         if path:
             washes.append(path.replace('<path ', f'<path fill="#{int(colour[0]):02x}{int(colour[1]):02x}{int(colour[2]):02x}" '))
-    outline = trace(shape, turd).replace('<path ', f'<path fill="none" stroke="{INK}" stroke-width="{12 * max(1.0, h / 400)}" stroke-linejoin="round" stroke-opacity="0.8" ')
+    outline = trace(shape, turd).replace('<path ', f'<path fill="none" stroke="{INK}" stroke-width="{12 * max(1.0, h / 400)}" stroke-linejoin="round" stroke-opacity="0.55" ')
     boxes = cells or [[0, 0, 1, 1]]
     fade = ''.join(f'<rect x="{u * w:.1f}" y="{v * h:.1f}" width="{du * w:.1f}" height="{dv * h:.1f}" fill="url(#f)"/>' for u, v, du, dv in boxes)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
@@ -115,30 +118,29 @@ def main() -> int:
     ap.add_argument('bundle', type=Path)
     ap.add_argument('--force', action='store_true', help='trace again where a copy exists')
     ap.add_argument('--only', default='', help='comma-separated asset ids')
+    ap.add_argument('--out', type=Path, default=None, help='where the copies go (default resources/library-lod/<bundle>)')
     o = ap.parse_args()
-    lib_path = o.bundle / 'library.json'
-    lib = json.loads(lib_path.read_text())
+    lib = json.loads((o.bundle / 'library.json').read_text())
+    out_dir = o.out or Path(__file__).resolve().parents[2] / 'resources' / 'library-lod' / o.bundle.resolve().name
     only = {x for x in o.only.split(',') if x}
     edges = {a['horizon'] for a in lib['assets'] if a.get('horizon')}   # a terrain's own far edge keeps its painting
     made = 0
     for a in lib['assets']:
         if (only and a['id'] not in only) or a['id'] in edges or not eligible(a):
             continue
-        out = Path(a['file']).with_suffix('.lod.svg')
-        if a.get('lod') == out.name and (o.bundle / out).exists() and not o.force:
+        out = out_dir / (Path(a['file']).stem + '.lod.svg')
+        if out.exists() and not o.force:
             continue
         try:
             svg = lod_svg(o.bundle / a['file'], [c['rect'] for c in a['cells']] if a.get('kind') == 'sheet' else None)
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
             print(f'skip {a["id"]}: {e}', file=sys.stderr)
             continue
-        (o.bundle / out).write_text(svg)
-        a['lod'] = out.name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out.write_text(svg)
         made += 1
         print(f'{a["id"]} -> {out.name} ({len(svg) // 1024} KB)')
-    if made:
-        lib_path.write_text(json.dumps(lib, indent=2, ensure_ascii=False) + '\n')
-    print(f'{made} low copies in {o.bundle}')
+    print(f'{made} low copies in {out_dir}')
     return 0
 
 

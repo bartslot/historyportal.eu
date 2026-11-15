@@ -8,8 +8,8 @@ import type { Asset, Library } from './types'
 /** px: the picture's own height in px (a sheet cell's), so a clump is never drawn taller than its px allow (layout.ts
  *  sharpWidth). lod: the far, low-detail copy of its file (Asset.lod), the same layout. */
 export interface Sprite { asset: string; file: string; tags: string[]; height_m: number; aspect: number; cell: [number, number, number, number]; px?: number; lod?: string }
-/** One strewn sprite: where it stands (metres), how tall, which pick, its sway phase. */
-export interface Clump { x: number; z: number; h: number; pick: number; phase: number }
+/** One strewn sprite: where it stands (metres), how tall, which pick, its sway phase, drawn mirrored or not. */
+export interface Clump { x: number; z: number; h: number; pick: number; phase: number; flip?: boolean }
 
 /** At most this many clumps per scene (classroom laptops). */
 export const CLUMP_MAX = 600
@@ -85,13 +85,17 @@ export function scatter(spec: ScatterSpec): Clump[] {
   const r = rng(spec.seed)
   const z0 = Math.max(spec.from, spec.front + CLUMP_CLEAR_M), z1 = Math.max(z0, spec.to)
   const out: Clump[] = []
+  let last = -1
   for (let i = 0; i < n; i++) {
     const z = z0 * Math.pow(z1 / z0, r())
-    const pick = Math.floor(r() * spec.picks.length)
+    // never the same plant twice running, and half of them mirrored (PM 11-15: "the same plant repeated in a line")
+    let pick = Math.floor(r() * spec.picks.length)
+    if (pick === last && spec.picks.length > 1) pick = (pick + 1) % spec.picks.length
+    last = pick
     const s = spec.picks[pick], x = (r() * 2 - 1) * ACROSS * viewWidthAt(z)
     // never taller than its px allow from the house camera: near the lens a 360 px tuft was blown up to 1.5 m (Bart 11-15)
     const h = Math.min(s.height_m * (0.7 + 0.6 * r()) * (spec.size ?? 1), s.px ? sharpWidth(s.px, z) : Infinity)
-    out.push({ z, x, h, pick, phase: r() * Math.PI * 2 })
+    out.push({ z, x, h, pick, phase: r() * Math.PI * 2, flip: r() < 0.5 })
   }
   return out.sort((a, b) => b.z - a.z)
 }

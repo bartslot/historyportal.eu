@@ -24,7 +24,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, aquarelOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, bandCopyWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt, faceAt } from './layout'
+import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, bandCopyWidth, bombU, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt, faceAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
@@ -269,6 +269,7 @@ export class Stage {
       if (token !== this.buildToken) return
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, shade })
       if (p.uRepeat !== 1 && !asset.tileable_x) tex.wrapU = nearWrapU(false)   // a far strip repeated to stay sharp: mirrored, no seam
+      handle.setBomb(isRow(asset))
       // far vegetation's low-detail copy (lod.ts); not for the teacher's edited picture or a figure that bends
       const low = asset.lod && !layer.src && !puppet && !bent ? await loadPremultiplied(lib.base + asset.lod, this.scene).catch(() => null) : null
       if (token !== this.buildToken) return
@@ -540,7 +541,7 @@ export class Stage {
     const own = band ? band.band.src ?? base + band.asset.file : built!.layer.src ?? puppetOf(built!.asset, built!.layer, base)?.atlas ?? urlOf({ base }, built!.asset, built!.layer)
     const tex = url ? await pictureTexture(url, this.scene) : await loadPremultiplied(own, this.scene)
     if (token !== this.pictureToken) { if (url) tex.dispose(); return }
-    handle.material.setTexture('tex', tex)
+    handle.setPicture(tex)
     const lod = band?.lod ?? built?.lod
     if (lod) lod.isLow = false   // the picture being edited, never its far copy
     if (band) band.lod = url ? undefined : band.lod
@@ -586,7 +587,7 @@ export class Stage {
       const uv = hit.getTextureCoordinates()
       if (!uv) return []
       const band = bandOf(hit.pickedMesh)
-      if (band) return [{ band: band.index, asset: band.asset, u: tileU(uv.x, band.n, !band.asset.tileable_x), v: uv.y }]
+      if (band) return [{ band: band.index, asset: band.asset, u: bombU(uv.x * band.n), v: uv.y }]
       const strip = stripOf(hit.pickedMesh)!
       return [{ index: strip.index, asset: strip.asset, u: tileU(uv.x, strip.uRepeat, true), v: uv.y }]
     })
@@ -762,6 +763,7 @@ export class Stage {
       const low = found.lod && !g.src ? await loadPremultiplied(lib.base + found.lod, this.scene).catch(() => null) : null
       if (low) low.wrapU = tex.wrapU
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
+      handle.setBomb(index >= 0)   // its copies mixed, never the same strip side by side; a terrain's far edge stays one piece
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
       handle.mesh.isPickable = index >= 0
@@ -829,6 +831,7 @@ export class Stage {
     this.land = land
     this.poseGrid(land)
     const front = cameraFront(s)   // a band stands in front of the farthest-forward camera of the scene
+    const bandFadeM = lookNum(this.look, 'bandFade')
     this.bands.forEach((b) => {
       // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
       const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front, b.copyAt)   // its skyline on the crest, k x z up, never off the floor
@@ -841,7 +844,7 @@ export class Stage {
       b.handle.mesh.alphaIndex = p.alphaIndex
       const ppm = pxPerMetre(renderH, p.z - HOUSE.z, fovRad(HOUSE.fov))
       b.handle.setOpacity(p.opacity)
-      b.handle.setBottomFade(Math.min(1, lookNum(this.look, 'bandFade') / p.h))   // the lowest metres only, not a share of the tall picture
+      b.handle.setBottomFade(Math.min(1, bandFadeM / p.h))   // the lowest metres only, not a share of the tall picture
       b.handle.setPaper(paper, pxUV(p.w, p.h, 1, ppm, renderH))
       b.handle.setLine(lineOf(this.look, 'bg'), 1, pxUV(p.w, p.h, 1, ppm, renderH), this.hazeTint)
       b.handle.setMotion(motionOf(b.asset, { ...b.band, depth: 'bg' }))
@@ -856,14 +859,16 @@ export class Stage {
     for (const b of this.built) {
       if (b.blink) b.handle.setBlink(b.blink(this.blinkTime))
       const k = layerAt(b.layer, t)
-      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
+      // placed at its built Size, then scaled by ks: a terrain picture's px cap does not shrink with its Size (placeLayer)
+      const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: b.builtScale, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
+      const ks = k.scale / (b.builtScale || 1)
       b.handle.mesh.position.x = p.x
       if (b.lod) pickLod(b.lod, b.handle, p.z - c.z)
       // a far strip moved to another distance looks the same from the house camera (it grows with the distance, about
       // the eye): what changes is what stands in front of it. Its own Y and Size still move and size it.
       const far = b.asset.layer === 'bg' && !b.asset.tileable_x ? (p.z - HOUSE.z) / Math.max(0.1, b.builtZ - HOUSE.z) : 1
       // a ground strip stands like a ground band: its skyline on the crest, never its bottom above the floor
-      b.handle.mesh.position.y = b.flat ? DECAL_LIFT_M : isGroundStrip(b.asset) ? stripBottom(p.z, bandK, p.h * k.scale, b.skyline ?? 0) + p.y : HOUSE.y + (p.y - HOUSE.y) * far
+      b.handle.mesh.position.y = b.flat ? DECAL_LIFT_M : isGroundStrip(b.asset) ? stripBottom(p.z, bandK, p.h * ks, b.skyline ?? 0) + p.y : HOUSE.y + (p.y - HOUSE.y) * far
       if (b.handle.mesh.position.z !== p.z) {
         // a picture moved along the ground (layer.z) changes distance: its draw slot follows; its stain rides along
         b.handle.mesh.position.z = p.z
@@ -872,16 +877,17 @@ export class Stage {
         if (b.stain && b.stainDepth) b.stain.mesh.scaling.y = b.stainDepth(p.z)   // a stain is as deep as it looks from here
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
-      b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
+      b.handle.mesh.scaling.setAll(ks * far)   // grows from the ground point
       const opacity = k.opacity * (this.faded.has(b.index) ? this.fadedTo : 1)
       b.handle.setOpacity(opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
-      if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * k.scale))
+      if (isRow(b.asset)) b.handle.setBottomFade(Math.min(1, bandFadeM / Math.max(0.01, p.h * ks)))   // a row melts into the ground
+      if (b.asset.layer === 'sky') b.handle.setGroundLine((c.y - p.y) / (p.h * ks))
       const ppm = pxPerMetre(renderH, p.z - c.z, this.camera.fov)
       const line = lineOf(this.look, b.layer.depth)
       // the paper's grain at the scale it has from the house camera, fixed to the picture (moves and zooms with it)
-      b.handle.setPaper(paper, fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080), b.uvFit))
-      b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
+      b.handle.setPaper(paper, fitted(pxUV(p.w * ks, p.h * ks, p.uRepeat, pxPerMetre(1080, p.z - HOUSE.z, fovRad(HOUSE.fov)), 1080), b.uvFit))
+      b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * ks, p.h * ks, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) {
         b.handle.setBent(b.bent, bonesAt(b.layer, t))
@@ -897,7 +903,7 @@ export class Stage {
       // bush's shadow falling under it instead of wearing it as streaks (Bart 11-13, lesson 94)
       b.handle.setCast({
         dir: sunGround, reach: this.light.reach, groundY: groundHeight(p.z, land), tint: lit.shadow,
-        slot: castSlot(b.handle.mesh.alphaIndex, p.z, sunGround[1] * p.h * k.scale * this.light.reach),
+        slot: castSlot(b.handle.mesh.alphaIndex, p.z, sunGround[1] * p.h * ks * this.light.reach),
         opacity: lookNum(this.look, 'castShadow') * ((b.layer.shadow ?? STAIN_DEFAULT) / STAIN_DEFAULT) * opacity * this.light.shadowK, time: clock, etch: b.layer.etch ?? 0,
       })
       const kind = b.asset.layer === 'sky' ? 'sky' : b.asset.layer === 'bg' ? 'strip' : b.asset.layer === 'figure' ? 'figure' : STANDING.includes(b.layer.depth) && !b.flat ? 'standing' : 'other'
@@ -919,8 +925,11 @@ function pickLod(lod: Lod, handle: LayerHandle, distance: number) {
   const low = lodLow(lod.isLow, distance)
   if (low === lod.isLow) return
   lod.isLow = low
-  handle.material.setTexture('tex', low ? lod.low : lod.high)
+  handle.setPicture(low ? lod.low : lod.high)
 }
+
+/** A tiled row standing on the ground (a tree screen, palms, waves): mixed and melting into the ground like a band. */
+const isRow = (a: Asset): boolean => !!a.tileable_x && !['sky', 'bg', 'ground'].includes(a.layer)
 
 /** A picture's file: the teacher's edited copy (layer.src, written by the app's image editor) or the library's own. */
 const urlOf = (lib: { base: string }, asset: Asset, layer?: { src?: string }) => layer?.src ?? lib.base + asset.file

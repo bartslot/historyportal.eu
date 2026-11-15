@@ -34,6 +34,8 @@ export function tileU(u: number, n: number, mirror: boolean): number {
 export const REF_FRAME_W = 1440
 /** The widest a picture `px` px wide may stand at distance z (metres) and still show at least one px per screen px. */
 export const sharpWidth = (px: number, z: number): number => (px / REF_FRAME_W) * viewWidthAt(z)
+/** How far a far backdrop (asset layer bg) may be drawn past its own px: the one place softness reads as distance. */
+export const BACKDROP_UPSCALE = 2
 /** How many copies side by side make at least `span` wide: odd, so one copy stands centred on the picture's x. */
 export const copiesToCover = (copy: number, span: number): number => {
   const n = Math.max(1, Math.ceil(span / Math.max(copy, 1e-6) - 1e-9))
@@ -44,6 +46,19 @@ export const copiesToCover = (copy: number, span: number): number => {
  *  tall as three views; now it is 6 m, and the floor in front of it shows. No height_m: the old three views. */
 export const bandCopyWidth = (a: Pick<Asset, 'w' | 'h' | 'height_m'>, z: number): number =>
   Math.min(bandWidth(z), sharpWidth(a.w, z), a.height_m > 0 ? (a.height_m * a.w) / Math.max(1, a.h) : Infinity)
+/** A ground band or a tiled row is mixed (layer.ts bombed, the GLSL twin): every BOMB_SPAN of a picture shows another
+ *  window of it, flipped at random and cross-faded over BOMB_SEAM into the next, so the same plant never stands in a row
+ *  at even spacing (PM 11-15). Windows follow each other by the golden ratio: two side by side are never alike. */
+export const BOMB_SPAN = 0.5
+export const BOMB_SEAM = 0.25
+const bombHash = (i: number, k: number) => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v) }
+/** Where a point `t` picture widths across a mixed plane falls on the picture (u 0..1): its own window, seam ignored. */
+export function bombU(t: number): number {
+  const w = t / BOMB_SPAN, i = Math.floor(w), f = w - i
+  const room = 1 - BOMB_SPAN * (1 + BOMB_SEAM)
+  const o = ((i * 0.618034 + 0.2 * bombHash(i, 1)) % 1 + 1) % 1 * room
+  return o + (bombHash(i, 2) > 0.5 ? 1 + BOMB_SEAM - f : f) * BOMB_SPAN
+}
 /** A band's height in metres: the look's band height (k, a share of its distance) times its distance. Stands the hill
  *  crest a little above the one behind (k ~0.15), so the hunebed at 22 m shows and the 40 m crest sits near the horizon. */
 export const bandHeight = (z: number, k: number) => k * z
@@ -177,11 +192,12 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   // view (COVER_MARGIN wide); never narrower
   const strip = asset.layer === 'bg' && !asset.tileable_x
   const coverH = strip ? (span * skyCoverK * asset.h) / asset.w : 0
-  // a terrain picture is never drawn larger than its px allow (sharpWidth): a far strip too small to cover the view
-  // sharp repeats sideways instead, mirrored (stage.ts), one copy centred; props and figures keep their own height
+  // a ground strip or a tiled screen is never drawn larger than its px allow (sharpWidth). A far backdrop keeps its world
+  // size (PM 11-15: the Alps lost their peaks at 29 m): distance hides softness, up to BACKDROP_UPSCALE. A backdrop too
+  // small to cover the view repeats sideways instead, mirrored (stage.ts), one copy centred. Props and figures keep theirs.
   const terrain = strip || !!asset.tileable_x || isGroundStrip(asset)
-  const sharpH = terrain ? (sharpWidth(asset.w, z) * asset.h) / asset.w : Infinity
-  const h = Math.min(Math.max(asset.height_m * (layer.scale ?? 1), coverH), sharpH * (layer.scale ?? 1))
+  const sharpH = terrain ? ((asset.layer === 'bg' ? BACKDROP_UPSCALE : 1) * sharpWidth(asset.w, z) * asset.h) / asset.w : Infinity
+  const h = Math.min(Math.max(asset.height_m * (layer.scale ?? 1), coverH), sharpH)
   const natW = h * (asset.w / asset.h)
   const copies = strip ? copiesToCover(natW, span * skyCoverK) : 1
   const w = asset.tileable_x ? Math.max(natW, span * skyCoverK) : natW * copies

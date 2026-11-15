@@ -33,9 +33,9 @@ class LibraryBundleTest extends TestCase
     public function test_sync_copies_then_skips_unchanged_files(): void
     {
         $b = new LibraryBundle;
-        $this->assertSame(['bundle' => 'demo-bundle', 'copied' => 2, 'skipped' => 0], $b->sync($this->dir));
+        $this->assertSame(['bundle' => 'demo-bundle', 'copied' => 2, 'skipped' => 0, 'lod' => ['copied' => 0, 'skipped' => 0, 'named' => 0]], $b->sync($this->dir));
         Storage::disk('public')->assertExists('library/demo-bundle/a.webp');
-        $this->assertSame(['bundle' => 'demo-bundle', 'copied' => 0, 'skipped' => 2], $b->sync($this->dir));
+        $this->assertSame(['bundle' => 'demo-bundle', 'copied' => 0, 'skipped' => 2, 'lod' => ['copied' => 0, 'skipped' => 0, 'named' => 0]], $b->sync($this->dir));
 
         file_put_contents("{$this->dir}/a.webp", 'BBBB');
         $this->assertSame(1, $b->sync($this->dir)['copied']);
@@ -86,6 +86,22 @@ class LibraryBundleTest extends TestCase
         $b->sync($this->dir);
         touch(Storage::disk('public')->path('library/demo-bundle/library.json'), time() + 60);   // a later sync, a later file time
         $this->assertNotSame($before, LibraryBundle::version());
+    }
+
+    public function test_sync_puts_the_far_copies_beside_the_pictures_and_names_them(): void
+    {
+        $lod = base_path(LibraryBundle::LOD_DIR.'/demo-bundle');
+        @mkdir($lod, 0777, true);
+        file_put_contents("{$lod}/a.lod.svg", '<svg/>');
+        try {
+            (new LibraryBundle)->sync($this->dir);
+            $this->assertSame('<svg/>', Storage::disk('public')->get('library/demo-bundle/a.lod.svg'));
+            $this->assertSame('a.lod.svg', LibraryBundle::asset('demo-bundle', 'a')['lod'] ?? null);
+            $this->assertSame(['copied' => 0, 'skipped' => 1, 'named' => 0], (new LibraryBundle)->installLod('demo-bundle'));   // safe to repeat
+        } finally {
+            @unlink("{$lod}/a.lod.svg");
+            @rmdir($lod);
+        }
     }
 
     public function test_url_and_names(): void

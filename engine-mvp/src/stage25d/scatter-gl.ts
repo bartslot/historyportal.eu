@@ -92,7 +92,7 @@ export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clump
       const s = picks[c.pick], [u0, v0, du, dv] = s.cell, w = c.h * s.aspect, f = foot(c.z)
       for (const [cx, cy] of [[-0.5, 0], [0.5, 0], [0.5, 1], [-0.5, 1]]) {
         pos.push(c.x, 0, c.z); quad.push(cx, cy, c.h, w)
-        uv.push(u0 + (cx + 0.5) * du, v0 + (1 - cy) * dv)   // v 0 at the sheet's top (layer textures are not flipped on upload)
+        uv.push(u0 + (c.flip ? 0.5 - cx : cx + 0.5) * du, v0 + (1 - cy) * dv)   // v 0 at the sheet's top (layer textures are not flipped on upload)
         extra.push(c.phase, f[0], f[1], f[2])
       }
       idx.push(i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3)

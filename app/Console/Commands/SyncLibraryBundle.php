@@ -25,6 +25,7 @@ class SyncLibraryBundle extends Command
             return self::FAILURE;
         }
         $this->info("Bundle {$r['bundle']}: {$r['copied']} copied, {$r['skipped']} unchanged -> ".LibraryBundle::url($r['bundle']));
+        $this->info("Far copies: {$r['lod']['copied']} copied, {$r['lod']['skipped']} unchanged, {$r['lod']['named']} named");
         $t = $bundles->thumbs($r['bundle']);
         $this->info("Thumbs: {$t['made']} made, {$t['kept']} kept");
         if ($t['failed'] !== []) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandCopyWidth, sharpWidth, REF_FRAME_W, skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
+import { BACKDROP_UPSCALE, bandCopyWidth, bombU, sharpWidth, skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
 import { cameraWobble, faceAt, tileU } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
@@ -43,13 +43,13 @@ describe('placeLayer', () => {
       expect(p.uRepeat).toBe(1)
     }
   })
-  it('an untiled bg strip is never narrower than the view at its depth, nor wider than its px allow', () => {
+  it('an untiled bg strip is never narrower than the view at its depth, nor blown up past BACKDROP_UPSCALE', () => {
     const strip: Asset = { ...hills, w: 1536, h: 475, height_m: 2, tileable_x: false }
     const p = placeLayer(strip, { depth: 'bg', x: 0.5 }, 0)
-    expect(p.w).toBeGreaterThanOrEqual(viewWidthAt(DEPTH_Z.bg) * 1.6)    // its copies cover the view
-    expect(p.w / p.uRepeat / p.h).toBeCloseTo(1536 / 475)                 // one copy keeps its proportions
-    expect(placeLayer({ ...strip, w: 4096, h: 1267 }, { depth: 'bg' }, 0)).toMatchObject({ uRepeat: 1 })   // sharp enough: one painting
-    expect(placeLayer({ ...strip, height_m: 100 }, { depth: 'bg' }, 0).h).toBeCloseTo(p.h)   // a taller strip: no taller than its px
+    expect(p.w).toBeCloseTo(viewWidthAt(DEPTH_Z.bg) * 1.6)                // one painting covers the view (1.5x its px: fine far off)
+    expect(p.w / p.h).toBeCloseTo(1536 / 475)
+    const peaks = placeLayer({ ...strip, height_m: 100 }, { depth: 'bg' }, 0)   // its world size, but never past twice its px
+    expect(peaks.h).toBeCloseTo((BACKDROP_UPSCALE * sharpWidth(1536, peaks.z) * 475) / 1536)
     expect(placeLayer({ ...tree, height_m: 2 }, { depth: 'mid' }, 0).h).toBe(2)       // props are not covered
     const longhouse: Asset = { ...tree, layer: 'mid', w: 1200, h: 600, height_m: 6 }      // a prop placed far off (hunebedden sc09)
     expect(placeLayer(longhouse, { depth: 'bg', x: 0.3 }, 0)).toMatchObject({ h: 6, w: 12 })
@@ -391,16 +391,18 @@ describe('the ground pictures stand on (groundHeight)', () => {
 })
 
 describe('terrain is never drawn larger than its px allow (Bart 11-15: "the terrain is bloated")', () => {
-  it('a far strip too small to cover the view sharp stands smaller and repeats; a band stands at its own size', () => {
-    const strip = { id: 'hills', layer: 'bg', tags: [], file: '', w: 1536, h: 518, anchor: [0.5, 1], height_m: 62.6 } as Asset
-    const p = placeLayer(strip, { depth: 'bg', x: 0.5 }, 0)
-    expect(p.w / p.uRepeat).toBeCloseTo(sharpWidth(1536, p.z))          // one copy: 1536 px over 1536 screen px of a 1440 frame
-    expect((p.w / p.uRepeat / viewWidthAt(p.z)) * REF_FRAME_W).toBeCloseTo(1536)
+  it('a backdrop keeps its world size up to twice its px, repeating mirrored to cover; a band stands at its own size', () => {
+    const small = { id: 'hills', layer: 'bg', tags: [], file: '', w: 512, h: 173, anchor: [0.5, 1], height_m: 20 } as Asset
+    const p = placeLayer(small, { depth: 'bg', x: 0.5 }, 0)
+    expect(p.h).toBeCloseTo((BACKDROP_UPSCALE * sharpWidth(512, p.z) * 173) / 512)   // a 512 px strip: twice its px, no more
     expect(p.uRepeat % 2).toBe(1)                                         // odd: one copy centred, mirrored either side
     expect(p.w).toBeGreaterThanOrEqual(viewWidthAt(p.z) * COVER_MARGIN)   // still covers a camera move
+    expect(placeLayer({ ...small, height_m: 20, w: 4096, h: 1384 }, { depth: 'bg' }, 0).uRepeat).toBe(1)   // sharp: one painting
     const verge = { w: 4096, h: 744, height_m: 6 }                        // was three views (27 m tall) at 30 m
     expect((bandCopyWidth(verge, 30) * 744) / 4096).toBeCloseTo(6)
     expect(bandCopyWidth({ w: 1530, h: 408, height_m: 18 }, 30)).toBeCloseTo(sharpWidth(1530, 30))   // its px cap it first
+    const windows = Array.from({ length: 12 }, (_, i) => bombU((i + 0.4) * 0.5))   // a band's copies, mixed: never one strip twice running
+    windows.forEach((u, i) => { expect(u).toBeGreaterThanOrEqual(0); expect(u).toBeLessThanOrEqual(1); if (i) expect(Math.abs(u - windows[i - 1])).toBeGreaterThan(0.02) })
   })
 })
 

@@ -13,7 +13,7 @@ import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import type { Scene } from '@babylonjs/core/scene'
 import type { Asset, BlinkEye, MotionSpec, Puppet } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Aquarel, type Paper } from './look'
-import { MOTION_CODE } from './layout'
+import { BOMB_SEAM, BOMB_SPAN, MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
@@ -92,6 +92,7 @@ Effect.ShadersStore.stageLayerVertexShader = `
 
 Effect.ShadersStore.stageLayerFragmentShader = `
   #extension GL_OES_standard_derivatives : enable
+  #extension GL_EXT_shader_texture_lod : enable
   precision highp float;
   varying vec2 vUV;
   varying float vH;
@@ -123,8 +124,30 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   #define EDGE_FEATHER_MAX_UV 0.025                // ...but over at most this share of the picture (small far pictures keep their edge)
   ${LINE_BY_DEPTH_GLSL}
   ${PAPER_GLSL}
+  // A ground band or a tiled row, mixed (layout.ts bombU, its twin): each half picture shows another window of the
+  // picture, flipped at random, cross-faded into the next; no two side by side alike, never one sticker in a row
+  // (PM 11-15). The windows keep the picture's px, so one mip level for all (bombLod, set in main before any branch).
+  uniform float bomb;
+  uniform vec2 texPx;                          // the picture's own px
+  float bombLod;
+  #define BOMB_SPAN ${BOMB_SPAN.toFixed(3)}
+  #define BOMB_SEAM ${BOMB_SEAM.toFixed(3)}
+  float bombHash(float i, float k) { return fract(sin(i * 12.9898 + k * 78.233) * 43758.5453); }
+  float bombU(float i, float f) {
+    float room = 1.0 - BOMB_SPAN * (1.0 + BOMB_SEAM);
+    float o = fract(i * 0.618034 + 0.2 * bombHash(i, 1.0)) * room;
+    return o + (bombHash(i, 2.0) > 0.5 ? 1.0 + BOMB_SEAM - f : f) * BOMB_SPAN;
+  }
+  vec4 bombed(vec2 p) {
+    float t = p.x / BOMB_SPAN, i = floor(t), f = t - i;
+    vec4 a = texture2DLodEXT(tex, vec2(bombU(i, f), p.y), bombLod);
+    if (f >= BOMB_SEAM) return a;
+    vec4 b = texture2DLodEXT(tex, vec2(bombU(i - 1.0, f + 1.0), p.y), bombLod);
+    return mix(b, a, smoothstep(0.0, BOMB_SEAM, f));
+  }
   // a frame of a sheet is read inside its own cell only, so no tap ever reaches the next frame
   vec4 tap(vec2 p) {
+    if (bomb > 0.0) return bombed(p);
     if (cell.z < 1.0 || cell.w < 1.0) return texture2D(tex, cell.xy + clamp(p, 0.0, 1.0) * cell.zw);
     return texture2D(tex, p);
   }
@@ -211,6 +234,8 @@ Effect.ShadersStore.stageLayerFragmentShader = `
   #endif
   void main(void) {
     vec2 uv = vec2(vUV.x * uRepeat, vUV.y);
+    vec2 d = uv * texPx;
+    bombLod = max(0.0, 0.5 * log2(max(max(dot(dFdx(d), dFdx(d)), dot(dFdy(d), dFdy(d))), 1e-6)));
     uv.x += drift * 0.03 * sin(time * 0.009 + phase);     // the backdrop sky's clouds travel, too slow to see turn
     if (kind == 3.0) {          // ripple: the water surface wobbles, more toward the bottom (nearer)
       float k = amount * (0.3 + 0.7 * (1.0 - vH));
@@ -534,6 +559,10 @@ export interface LayerHandle {
   setPaper(p: Paper, grainUV: readonly [number, number]): void
   /** ground bands: the share of the height (from the bottom) whose alpha ramps to 0 */
   setBottomFade(f: number): void
+  /** a ground band or a tiled row: mixed windows of the picture instead of one copy beside the next (layout.ts bombU) */
+  setBomb(on: boolean): void
+  /** draw another picture of the same layout (a far copy, the editor's work): its px follow for the mip level */
+  setPicture(tex: Texture): void
   /** a terrain strip: multiply its colours per channel (1 1 1 = as painted) */
   setRecolour(k: readonly number[]): void
   /** no sticker look: painted edge, grounding (footM 0 = none: not standing), shared light (look.ts aliveOf) */
@@ -638,7 +667,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', 'bomb', 'texPx', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
       ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeTint', 'drawPx'] : [])],
     samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
@@ -675,6 +704,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setVector3('ambient', new Vector3(1, 1, 1)).setVector3('sunColour', Vector3.FromArray(SUN_COLOUR)).setVector3('shadeColour', Vector3.FromArray(SHADE_COLOUR))
   mat.setVector4('cell', new Vector4(0, 0, 1, 1))
   mat.setVector2('uvFit', new Vector2(1, 1))
+  mat.setFloat('bomb', 0).setVector2('texPx', new Vector2(tex.getSize().width, tex.getSize().height))
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -694,6 +724,8 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setVector3('washColour', Vector3.FromArray(pp.washColour)).setVector2('grainUV', new Vector2(g[0], g[1]))
     },
     setBottomFade: (f) => { mat.setFloat('bottomFade', f) },
+    setBomb: (on) => { mat.setFloat('bomb', on ? 1 : 0) },
+    setPicture: (t) => { mat.setTexture('tex', t).setVector2('texPx', new Vector2(t.getSize().width, t.getSize().height)) },
     setBent: (bent, bones) => {
       const sig = JSON.stringify(bones)
       if (sig === bentSig && bentOf === bent) return

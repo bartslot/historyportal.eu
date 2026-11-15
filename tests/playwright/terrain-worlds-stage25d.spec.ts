@@ -24,20 +24,25 @@ test.setTimeout(240_000)
 test.use({ viewport: { width: 1440, height: 900 } })
 mkdirSync(OUT, { recursive: true })
 
-const load = async (page: Page, scene: string) => {
+/** Open the scene and wait until the stage draws THAT scene's set, whole and still (PM 11-15: a busy machine once
+ *  captured the lesson's first scene, a storm sea, as the polder). want: the world it must show ('' for any). */
+const load = async (page: Page, scene: string, want: string) => {
   await muted(page)
   await freezable(page)
   const [id, lesson = LESSON] = scene.split('@')   // <scene>@<lesson>: a scene of another lesson (Bart's own 16104@477)
   await page.goto(`/teacher/lessons/${lesson}/wizard?step=4&scene=${id}`, { waitUntil: 'load' })
   await page.waitForFunction(() => document.querySelector('[data-stage25d-ready="1"]') && (window as any).__stage25d?.config, undefined, { timeout: 180_000 })
   // ready flips before a slow build swaps its set in: wait until the drawn meshes stop changing
-  await page.waitForFunction(() => {
+  await page.waitForFunction((want) => {
     const w = window as any
-    const n = (w.BABYLON?.Engine?.LastCreatedScene?.meshes ?? []).filter((m: any) => m.isVisible && /^(layer|strewn):/.test(m.name)).length
-    const same = n > 1 && n === w.__terrainMeshes
-    w.__terrainMeshes = n
+    const c = w.__stage25d?.config
+    if (!c || (want && c.world_id !== want)) return false
+    const shown = (w.BABYLON?.Engine?.LastCreatedScene?.meshes ?? []).filter((m: any) => m.isVisible && /^(layer|strewn):/.test(m.name)).map((m: any) => m.name)
+    if (!(c.set?.layers ?? []).every((l: any) => shown.includes(`layer:${l.asset}`))) return false
+    const same = shown.length > 1 && shown.length === w.__terrainMeshes
+    w.__terrainMeshes = shown.length
     return same
-  }, undefined, { timeout: 180_000, polling: 3000 })
+  }, want, { timeout: 180_000, polling: 3000 })
   await page.evaluate(() => (window as any).__freeze())
 }
 
@@ -99,13 +104,14 @@ const blank = (page: Page, url: string) => page.evaluate(async (src) => {
 
 for (const [scene, world] of SCENES) {
   test(`terrain of ${world}`, async ({ page }) => {
-    await load(page, scene)
+    await load(page, scene, world.startsWith('scene-') ? '' : world)
     let shot = await capture(page)
     for (let i = 0; i < 6 && await blank(page, shot.url); i++) {   // a loaded machine can still be swapping the set in
       await page.waitForTimeout(5000)
       shot = await capture(page)
     }
     writeFileSync(`${OUT}/${world}.png`, Buffer.from(shot.url.split(',')[1], 'base64'))
-    writeFileSync(`${OUT}/${world}.json`, JSON.stringify({ scene, W: shot.W, H: shot.H, meshes: shot.meshes }, null, 1))
+    const shown = await page.evaluate(() => (window as any).__stage25d.config.world_id ?? null)
+    writeFileSync(`${OUT}/${world}.json`, JSON.stringify({ scene, world: shown, W: shot.W, H: shot.H, meshes: shot.meshes }, null, 1))
   })
 }
