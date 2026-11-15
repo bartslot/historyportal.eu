@@ -670,7 +670,19 @@ test('9. Save: window closes, the person joins the scene (chr-<n>), My character
     if (pieter) expect.soft(box.h / pieter.h, `height next to Pieter (1.7 m) ${box.h / pieter.h}`).toBeGreaterThan(0.4)
     // feet on the ground: the box bottom inside the canvas, below the middle
     expect.soft(box.y + box.h, 'feet on screen').toBeLessThanOrEqual(c.y + c.height + 2)
-    expect.soft(box.y + box.h, 'feet below the horizon').toBeGreaterThan(c.y + c.height * 0.45)
+    // on the same ground as the figures already there (a back deck can sit above the middle of the view): within 5 %
+    // of the view's height of a neighbour's feet; with nobody else on screen, below the horizon
+    const feet = box.y + box.h
+    const others: number[] = []
+    for (const l of await layers(page)) {
+      if (l.k === i || !l.figure) continue
+      const b = await layerBox(page, l.k)
+      if (b && b.y + b.h > c.y && b.y + b.h <= c.y + c.height + 2) others.push(b.y + b.h)
+    }
+    if (others.length) {
+      const gap = Math.min(...others.map((f) => Math.abs(f - feet)))
+      expect.soft(gap / c.height, `feet on the neighbours' ground line (feet y ${Math.round(feet)}, theirs ${others.map(Math.round).join(', ')})`).toBeLessThan(0.05)
+    } else expect.soft(feet, 'feet below the horizon').toBeGreaterThan(c.y + c.height * 0.45)
   }
   // beside the figure in view, never on top of one: no other figure at the same spot
   const spots = await page.evaluate(() => (window as any).__stage25d.config.set.layers.map((l: any, k: number) => ({ k, x: (window as any).__stage25d.readLayerProp(`layer-${k}`, 'x'), z: (window as any).__stage25d.readLayerProp(`layer-${k}`, 'z') })))
