@@ -181,7 +181,7 @@ final class AnimationPresets
                 $settle['rotation'] = self::r3($r0);
             }
             if (collect($keys)->contains(fn ($k) => isset($k['contact']))) {
-                $settle['contact'] = 'both';
+                $settle['contact'] = 'none';   // the feet step into the drawn stance: nothing to hold
             }
             $out[] = $settle;
         }

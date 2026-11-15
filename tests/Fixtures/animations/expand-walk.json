@@ -405,7 +405,7 @@
    "bone:upperarm_n": 0,
    "x": 0.522,
    "y": 0.1,
-   "contact": "both"
+   "contact": "none"
   }
  ]
 }

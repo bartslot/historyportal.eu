@@ -30,7 +30,7 @@ import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
-import { contactKeys, footLockOffset, type Side } from './foot-lock'
+import { contactKeys, footLockOffset, heldBones, heldY, type Side } from './foot-lock'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -644,12 +644,29 @@ export class Stage {
     }
     const foot = (time: number, side: Side) => {
       const root = (layerAt(b.layer, time).x - 0.5) * span
-      if (Math.abs(time - t) < 1e-9) return root + ankleX(bonesAt(b.layer, t), side)
+      if (Math.abs(time - t) < 1e-9) return root + ankleX(this.posed(b, t), side)
       const key = `${time}:${side}`
-      if (!cache.has(key)) cache.set(key, ankleX(bonesAt(b.layer, time), side))
+      if (!cache.has(key)) cache.set(key, ankleX(this.posed(b, time), side))
       return root + cache.get(key)!
     }
     return footLockOffset(keys!, t, foot)
+  }
+
+  /** How far a preset's legs are held back on this figure (BentPuppet.legHold): 1 unless its keys say which feet stand
+   *  and a skirt or robe keeps its legs from bending as deep as the clip asks. */
+  private heldBy(b: Built): number {
+    const bent = b.bent as BentPuppet | null | undefined
+    return bent && 'legHold' in bent && contactKeys(b.layer.keys).length > 1 ? bent.legHold : 1
+  }
+
+  /** The turns at t, a held-back figure's leg turns scaled by how deep its legs can go, so both legs bend alike. */
+  private posed(b: Built, t: number): Record<string, number> {
+    return heldBones(bonesAt(b.layer, t), this.heldBy(b))
+  }
+
+  /** A held-back figure sinks only as deep as its legs bend (foot-lock.ts heldY). */
+  private heldSink<T extends { y: number }>(b: Built, k: T): T {
+    return { ...k, y: heldY(k.y, b.layer.y ?? 0, this.heldBy(b)) }
   }
 
   /** How far each part's joint stands outside its parent part now (BentPuppet.partGaps); null for no figure of parts. */
@@ -863,7 +880,7 @@ export class Stage {
     if (!this.paused) this.blinkTime += dt
     for (const b of this.built) {
       if (b.blink) b.handle.setBlink(b.blink(this.blinkTime))
-      const k = layerAt(b.layer, t)
+      const k = this.heldSink(b, layerAt(b.layer, t))
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
       b.handle.mesh.position.x = p.x
       // a far strip moved to another distance looks the same from the house camera (it grows with the distance, about
@@ -892,7 +909,7 @@ export class Stage {
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * k.scale, p.h * k.scale, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) {
-        b.handle.setBent(b.bent, bonesAt(b.layer, t))
+        b.handle.setBent(b.bent, this.posed(b, t))
         if ('uvsFor' in b.bent) b.handle.setUvs(b.bent, (b.bent as BentPuppet).uvsFor(faceAt(b.layer, t) ?? undefined))
       }
       const drawn = puppetOf(b.asset, b.layer)

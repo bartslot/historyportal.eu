@@ -18,10 +18,11 @@ describe('footLockOffset: a planted foot stays planted', () => {
     expect(footLockOffset(keys, 3.5, drift)).toBeCloseTo(footLockOffset(keys, 3.5, drift))
     expect(footLockOffset(keys, 0, drift)).toBe(0)
   })
-  it('keeps the lock on the foot already standing when both stand', () => {
-    const both: LayerKey[] = [{ t: 0, contact: 'n' }, { t: 1, contact: 'both' }, { t: 2, contact: 'both' }]
-    const foot = (time: number, side: string) => (side === 'n' ? time : -time)
-    expect(foot(2, 'n') + footLockOffset(both, 2, foot)).toBeCloseTo(0)
+  it('when both feet stand, holds the point between them: each drifts half as far', () => {
+    const both: LayerKey[] = [{ t: 0, contact: 'both' }, { t: 1, contact: 'both' }]
+    const foot = (time: number, side: string) => (side === 'n' ? 2 * time : 0)   // the near foot drifts 2 m, the far one stays
+    const off = footLockOffset(both, 1, foot)
+    expect([foot(1, 'n') + off - foot(0, 'n'), foot(1, 'f') + off - foot(0, 'f')]).toEqual([1, -1])
   })
   it('a fall turns about the feet: no lock across a tipped key; keys without contact change nothing', () => {
     expect(footLockOffset([{ t: 0, contact: 'both' }, { t: 1, contact: 'both', rotation: -60 }], 0.5, drift)).toBe(0)

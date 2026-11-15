@@ -104,7 +104,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
     if (moves) settle.x = last.x
     if (bobs) settle.y = round3(y0)
     if (tips) settle.rotation = round3(r0)
-    if (clip.keys.some((k) => k.contact)) settle.contact = 'both'
+    if (clip.keys.some((k) => k.contact)) settle.contact = 'none'   // the feet step into the drawn stance: nothing to hold
     out.push(settle)
   }
   if (out.length) delete out[out.length - 1].ease   // from its last pose the figure eases into whatever comes next
