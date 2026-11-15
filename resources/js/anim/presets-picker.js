@@ -3,7 +3,7 @@
  * the figure on the stage, over and over, saving nothing; Add lays it into the figure's keys at the playhead, one
  * edit and one undo step through the timeline (window.__timelineKeying), where every key stays the teacher's to change.
  */
-import { CLIPS, TRAVEL_CYCLES, applyClip, clipSpan, expandClip } from './presets.js'
+import { CLIPS, TRAVEL_CYCLES, applyClip, clipSpan, expandClip, loadClips } from './presets.js'
 
 /** A loop previews this many cycles before it starts over, a move plays once and starts over. */
 const PREVIEW_CYCLES = 2
@@ -14,7 +14,7 @@ export function animationPresets (layerId, presets) {
   let raf = 0
 
   return {
-    presets: presets.filter((p) => CLIPS[p.id]),
+    presets: [],
     hints: {},
     chosen: null,
     speed: 1,
@@ -32,6 +32,7 @@ export function animationPresets (layerId, presets) {
 
     init () {
       this.hints = { ...this.$el.dataset }   // read here: in a getter $el is whichever element asks
+      loadClips().then(() => { this.presets = presets.filter((p) => CLIPS[p.id]) })
       window.addEventListener('timeline-playing', (e) => { if (e.detail) this.stop() })
       this.$watch('speed', () => { if (this.previewing) this.play(this.chosen) })
     },

@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import catalogue from '../../../animations/presets.json'
-import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf } from '../presets.js'
+import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf, loadClips } from '../presets.js'
+
+beforeAll(() => loadClips())
 
 
 describe('expandClip', () => {

@@ -9,10 +9,18 @@
  */
 import { sameTime } from './keyframes.js'
 
-const files = import.meta.glob('../../animations/clips/*.json', { eager: true, import: 'default' })
+// Lazy: 88 KB of clips stay out of app.js until a figure's Animation section opens (the chunk budget).
+const files = import.meta.glob('../../animations/clips/*.json', { import: 'default' })
 
-/** Every preset, by id, in the order the picker lists them. */
-export const CLIPS = Object.fromEntries(Object.values(files).map((clip) => [clip.id, clip]))
+/** Every preset, by id, in the order the picker lists them. Empty until loadClips() resolves. */
+export const CLIPS = {}
+let loading = null
+/** Loads every clip once; resolves to CLIPS. */
+export function loadClips () {
+  loading ??= Promise.all(Object.values(files).map((load) => load()))
+    .then((clips) => Object.assign(CLIPS, Object.fromEntries(clips.map((clip) => [clip.id, clip]))))
+  return loading
+}
 
 const round3 = (v) => Math.round(v * 1000) / 1000
 const BONE = 'bone:'
