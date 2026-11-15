@@ -1066,8 +1066,9 @@
         {{-- One panel, two subjects: what is selected on the stage, or the lesson as a whole.
              These tabs replaced the toolbar's separate Format and Settings buttons. Selecting
              anything on the stage switches back to Selection by itself (panelView 'scene'). --}}
-        <div x-show="inspectorOpen" x-ref="inspectorTabs" class="flex shrink-0 border-b border-panel-hairline px-4 py-2">
-            <x-ui.segmented name="inspector-subject" class="tabs-sm w-full" tab-class="flex-1"
+        {{-- One full-width bar, no tray padding or border around it (Bart 11-15). --}}
+        <div x-show="inspectorOpen" x-ref="inspectorTabs" class="flex shrink-0 border-b border-panel-hairline">
+            <x-ui.segmented name="inspector-subject" class="tabs-sm w-full rounded-none! border-0! p-0!" tab-class="flex-1 h-11! rounded-none!"
                             :value="$panelView === 'settings' ? 'settings' : 'scene'"
                             :options="[['scene', __('Selection')], ['settings', __('Lesson')]]"
                             on-change="$event.target.value === 'settings' ? $wire.openSettings() : $wire.openFormat().then(() => { const at = window.__stage25d?.selection; if (at !== null && at !== undefined) $wire.selectInspectorTarget('s25_layer-' + at) })" />
