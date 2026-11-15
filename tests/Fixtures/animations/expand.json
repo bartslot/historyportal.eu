@@ -88,6 +88,14 @@
    "bone:thigh_n": 20,
    "bone:shin_n": -5,
    "x": 0.5,
+   "y": 0,
+   "ease": "smooth"
+  },
+  {
+   "t": 3.7,
+   "bone:thigh_n": 0,
+   "bone:shin_n": 0,
+   "x": 0.5,
    "y": 0
   }
  ]

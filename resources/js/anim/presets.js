@@ -20,18 +20,32 @@ const BONE = 'bone:'
 export const MOVE_MIN = 0.01
 /** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
 export const TRAVEL_CYCLES = 3
-/** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend. */
-export const FITTED_LEGS = { thigh: 45, shin: 120 }
+/** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend;
+ *  share: the standard skeleton's leg (thigh and shin) as a share of its height (anim_fit SKELETON, Ana). */
+export const FITTED_LEGS = { thigh: 45, shin: 120, share: 607 / 1475 }
+/** A loop ends by settling into the drawn pose this long after its last cycle, at most half a cycle, never mid-stride. */
+export const SETTLE_S = 0.5
 
 /**
  * How much of a clip's root movement a figure's legs can carry: a long robe holds the legs to a shuffle (thigh +-6,
  * knee 0..8, the Character tab's robeLimits), so a walk covers less ground and a crouch sinks less, or the feet slide
  * and the hem goes into the floor. `limits`: the figure's bone limits by name. 1 and 1 for a figure with the full room.
  */
-export function legRoom (limits = {}) {
+export function legRoom (limits = {}, legShare = null) {
   const swing = limits.thigh_n ? (limits.thigh_n[1] - limits.thigh_n[0]) / FITTED_LEGS.thigh : 1
   const bend = limits.shin_n ? limits.shin_n[1] / FITTED_LEGS.shin : 1
-  return { travel: Math.min(1, Math.max(0, swing)), sink: Math.min(1, Math.max(0, bend)) }
+  // longer legs for the body cover more ground and drop further for the same turns (the kits' 0.52 against Ana's 0.41)
+  const legs = legShare > 0 ? legShare / FITTED_LEGS.share : 1
+  return { travel: Math.min(1, Math.max(0, swing)) * legs, sink: Math.min(1, Math.max(0, bend)) * legs }
+}
+
+/** A puppet's leg (thigh and shin) as a share of its body's height (head top to foot), or null when it cannot say. */
+export function legShareOf (bones = []) {
+  const at = Object.fromEntries(bones.map((b) => [b.name, b]))
+  const len = (b) => (b?.to ? Math.hypot(b.to[0] - b.from[0], b.to[1] - b.from[1]) : 0)
+  const legs = len(at.thigh_n) + len(at.shin_n)
+  const tall = at.foot_n?.to && at.head?.to ? Math.max(at.foot_n.to[1], at.foot_n.from[1]) - at.head.to[1] : 0
+  return legs > 0 && tall > 0 ? legs / tall : null
 }
 
 /** The face a figure shows when nothing says otherwise (the Character tab's kits: the rest head). */
@@ -50,8 +64,8 @@ export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
  * track); `facing` -1 mirrors it for a figure looking left; `x0`/`y0` where the figure stands at `start`;
  * `xPerHeight` the layer's x for one body height (its height over the view's width there), `yPerHeight` metres.
  */
-export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {} } = {}) {
-  const room = legRoom(limits)
+export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {}, legShare = null } = {}) {
+  const room = legRoom(limits, legShare)
   const { cycles, cycle } = clipSpan(clip, { length, speed })
   const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > MOVE_MIN) || Math.abs(clip.travel ?? 0) > 1e-6
   const bobs = clip.keys.some((k) => Math.abs(k.bob ?? 0) > 1e-6)
@@ -71,8 +85,27 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       out.push(key)
     })
   }
+  if (clip.loop && out.length) {   // a loop settles into the drawn pose where it stops, never frozen mid-stride
+    const last = out[out.length - 1]
+    const settle = { t: round3(last.t + Math.min(SETTLE_S, cycle / 2)) }
+    for (const field of Object.keys(last)) if (field.startsWith(BONE)) settle[field] = 0
+    if (moves) settle.x = last.x
+    if (bobs) settle.y = round3(y0)
+    out.push(settle)
+  }
   if (out.length) delete out[out.length - 1].ease   // from its last pose the figure eases into whatever comes next
   return out
+}
+
+/** A field's value at t along the keys that name it, straight between them (the stage eases; close enough for a base). */
+const valueAt = (keys, field, t) => {
+  const named = keys.filter((k) => Number.isFinite(k[field])).sort((a, b) => a.t - b.t)
+  if (!named.length) return null
+  const i = named.findIndex((k) => k.t > t)
+  if (i === 0) return named[0][field]
+  if (i < 0) return named[named.length - 1][field]
+  const a = named[i - 1], b = named[i]
+  return a[field] + (b[field] - a[field]) * ((t - a.t) / (b.t - a.t))
 }
 
 /** The fields the clip writes: its keys' bones and root, never a field it leaves alone. */
@@ -93,6 +126,9 @@ export function applyClip (keys, added) {
     const rest = Object.fromEntries(Object.entries(k).filter(([f]) => !fields.has(f)))
     return Object.keys(rest).some((f) => f !== 't' && f !== 'ease') ? [rest] : []
   })
+  // the clip's root move adds to where the teacher moves the figure: their x keys go on under it
+  const own = (keys ?? []).some((k) => Number.isFinite(k.x)) && added.some((k) => Number.isFinite(k.x))
+  if (own) added = added.map((a) => (Number.isFinite(a.x) ? { ...a, x: round3(valueAt(keys, 'x', a.t) + a.x - added[0].x) } : a))
   const out = kept.map((k) => ({ ...k }))
   for (const a of added) {
     const same = out.find((k) => sameTime(k.t, a.t))

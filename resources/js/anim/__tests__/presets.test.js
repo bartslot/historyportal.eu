@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import catalogue from '../../../animations/presets.json'
-import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom } from '../presets.js'
+import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf } from '../presets.js'
 
 
 describe('expandClip', () => {
@@ -15,6 +15,18 @@ describe('expandClip', () => {
     const full = expandClip(fixture.clip, fixture.options)
     const robed = expandClip(fixture.clip, { ...fixture.options, limits: robe })
     expect(Math.abs(robed.at(-1).x - 0.6)).toBeCloseTo(Math.abs(full.at(-1).x - 0.6) * 12 / 45, 3)
+  })
+  it('longer legs for the body travel further and sink deeper for the same turns', () => {
+    const kit = [{ name: 'head', from: [260, 258], to: [301, 9] }, { name: 'thigh_n', from: [160, 607], to: [165, 984] }, { name: 'shin_n', from: [165, 984], to: [170, 1362] }, { name: 'foot_n', from: [170, 1362], to: [285, 1470] }]
+    const share = legShareOf(kit)
+    expect(share).toBeCloseTo(755 / 1461, 2)
+    expect(legRoom({}, share).sink).toBeCloseTo(share / (607 / 1475), 3)
+    expect(legShareOf([])).toBe(null)
+  })
+  it('a loop ends by settling into the drawn pose, not frozen mid-stride', () => {
+    const keys = expandClip(fixture.clip, fixture.options)
+    expect(keys.at(-1)).toEqual({ t: 3.7, 'bone:thigh_n': 0, 'bone:shin_n': 0, x: 0.5, y: 0 })
+    expect(keys.at(-2).ease).toBe('smooth')
   })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'bone:tail' in k)).toBe(false)
@@ -30,6 +42,12 @@ describe('applyClip', () => {
   it('takes over only the fields it moves, only in its stretch of time', () => {
     const keys = [{ t: 0, 'bone:head': 1 }, { t: 1.5, 'bone:head': 9, scale: 2 }, { t: 1.8, 'bone:head': 3 }, { t: 3, 'bone:head': 0 }]
     expect(applyClip(keys, added)).toEqual([{ t: 0, 'bone:head': 1 }, { t: 1, ease: 'smooth', 'bone:head': 5 }, { t: 1.5, scale: 2 }, { t: 2, 'bone:head': -5 }, { t: 3, 'bone:head': 0 }])
+  })
+  it('its root move adds to the teacher\'s own x keys instead of wiping them', () => {
+    const slide = [{ t: 0, x: 0.2 }, { t: 4, x: 0.6 }]
+    const out = applyClip(slide, [{ t: 1, x: 0.5, 'bone:head': 1, ease: 'smooth' }, { t: 2, x: 0.55, 'bone:head': 0 }])
+    expect(out.find((k) => k.t === 1).x).toBeCloseTo(0.3)
+    expect(out.find((k) => k.t === 2).x).toBeCloseTo(0.45)
   })
   it('when it ends the figure shows the face it had before, not the clip\'s last one', () => {
     const faced = [{ t: 1, 'bone:head': 5, face: 'amazed' }, { t: 2, 'bone:head': 0 }]

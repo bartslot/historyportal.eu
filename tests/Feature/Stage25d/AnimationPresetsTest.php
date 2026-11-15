@@ -93,6 +93,15 @@ class AnimationPresetsTest extends TestCase
         $this->assertEqualsWithDelta(abs(end($full)['x'] - 0.6) * 12 / 45, abs(end($robed)['x'] - 0.6), 0.002);
     }
 
+    public function test_a_clips_root_move_adds_to_the_teachers_x_keys_and_longer_legs_drop_further(): void
+    {
+        $out = AnimationPresets::apply([['t' => 0.0, 'x' => 0.2], ['t' => 4.0, 'x' => 0.6]], [['t' => 1.0, 'x' => 0.5, 'bone:head' => 1.0], ['t' => 2.0, 'x' => 0.55, 'bone:head' => 0.0]]);
+        $this->assertEqualsWithDelta(0.3, collect($out)->firstWhere('t', 1.0)['x'], 1e-6);
+        $this->assertEqualsWithDelta(0.45, collect($out)->firstWhere('t', 2.0)['x'], 1e-6);
+        $kit = [['name' => 'head', 'from' => [260, 258], 'to' => [301, 9]], ['name' => 'thigh_n', 'from' => [160, 607], 'to' => [165, 984]], ['name' => 'shin_n', 'from' => [165, 984], 'to' => [170, 1362]], ['name' => 'foot_n', 'from' => [170, 1362], 'to' => [285, 1470]]];
+        $this->assertEqualsWithDelta(755 / 1461, AnimationPresets::legShareOf($kit), 0.005);
+    }
+
     public function test_a_move_near_the_end_of_the_scene_is_cut_there(): void
     {
         Storage::fake('public');
@@ -133,7 +142,9 @@ class AnimationPresetsTest extends TestCase
         $this->assertSame('smooth', $keys[0]['ease']);
         $this->assertArrayHasKey('bone:thigh_n', $keys[0]);
         $this->assertGreaterThan(0.3, end($keys)['x'], 'facing right, a walk goes right');
-        $this->assertEqualsWithDelta(1.0 + 3 * AnimationPresets::clip('walk')['duration'], end($keys)['t'], 0.01, 'a walk crosses the shot for a few steps, not the whole scene off screen');
+        $cycle = AnimationPresets::clip('walk')['duration'];
+        $this->assertEqualsWithDelta(1.0 + 3 * $cycle + min(0.5, $cycle / 2), end($keys)['t'], 0.01, 'a walk crosses the shot for a few steps, then settles, not the whole scene off screen');
+        $this->assertEquals(0, end($keys)['bone:thigh_n'], 'it stops standing, not mid-stride');
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][0]);
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][1]);
         $this->assertArrayNotHasKey('keys', $out['set']['layers'][2]);

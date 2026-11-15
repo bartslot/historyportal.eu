@@ -84,3 +84,11 @@ def test_no_turn_goes_past_what_the_rigs_allow():
             if f.startswith('bone:'):
                 lo, hi = RIG_LIMIT[f[5:]]
                 assert lo - 0.05 <= v <= hi + 0.05, (f, v)
+
+
+def test_a_walk_never_steps_back():
+    import json
+    from pathlib import Path
+    walk, _ = fit(json.loads(Path('anim_raw/walk.json').read_text()))
+    dx = [k['dx'] for k in walk['keys']]
+    assert dx == sorted(dx)

@@ -230,6 +230,7 @@ def fit(raw: dict) -> tuple[dict, dict]:
         poses.append(pose)
 
     ground = {s: SKELETON[f'foot_{s}'][1][1] for s in 'nf'}   # a flat foot's ankle stands at its drawn height
+    travels = bool(raw.get('travel'))
     hips: list[Pt | None] = [None] * len(keys)
     planted: dict[str, Pt] = {}
     for i, k in enumerate(keys):
@@ -288,6 +289,8 @@ def fit(raw: dict) -> tuple[dict, dict]:
         hips[i] = (ha[0] + (hb[0] - ha[0]) * u, ha[1] + (hb[1] - ha[1]) * u)
 
     dx = [h[0] - hips[0][0] for h in hips]
+    if travels:   # a walk never steps back: a rear foot past what its leg reaches pushes off instead (fresh tester 11-15)
+        dx = [max(dx[:i + 1]) for i in range(len(dx))]
     # the hips' height is measured from standing (the layer's own y), not from the first key: a clip that starts
     # sitting starts low
     dy = [h[1] - float(k.get('lift', 0)) * HEIGHT_PX for h, k in zip(hips, keys)]

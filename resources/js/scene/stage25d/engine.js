@@ -15,6 +15,7 @@ import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
 import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, faceAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { legShareOf } from '../../anim/presets.js'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
@@ -808,6 +809,7 @@ export async function createStage25d (host, opts = {}) {
         // view's width at its distance (x is a share of it)
         facing: puppet?.facing ?? 1,
         limits: Object.fromEntries((puppet?.bones ?? []).filter((b) => b.limit).map((b) => [b.name, b.limit])),
+        legShare: legShareOf(puppet?.bones ?? []),
         heightM: (asset?.height_m ?? FIGURE_M) * (l.scale ?? 1),
         viewWidth: viewWidthAt(zNow(layerIndex(id))),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },

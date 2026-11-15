@@ -36,7 +36,10 @@ final class AnimationPresets
     private const TRAVEL_CYCLES = 3;
 
     /** The leg room a clip is fitted for (presets.js FITTED_LEGS): thigh swing and knee bend in degrees. */
-    private const FITTED_LEGS = ['thigh' => 45.0, 'shin' => 120.0];
+    private const FITTED_LEGS = ['thigh' => 45.0, 'shin' => 120.0, 'share' => 607 / 1475];
+
+    /** A loop settles into the drawn pose this long after its last cycle, at most half a cycle (presets.js SETTLE_S). */
+    private const SETTLE_S = 0.5;
 
     /** The face a figure shows when nothing says otherwise (presets.js REST_FACE). */
     private const REST_FACE = 'calm';
@@ -125,7 +128,7 @@ final class AnimationPresets
         $bones = array_flip($o['bones'] ?? []);
         $facing = ($o['facing'] ?? 1) < 0 ? -1 : 1;
         [$start, $x0, $y0] = [(float) ($o['start'] ?? 0), (float) ($o['x0'] ?? 0.5), (float) ($o['y0'] ?? 0)];
-        [$roomTravel, $roomSink] = self::legRoom($o['limits'] ?? []);
+        [$roomTravel, $roomSink] = self::legRoom($o['limits'] ?? [], $o['legShare'] ?? null);
         $out = [];
         $face = null;
         for ($c = 0; $c < $cycles; $c++) {
@@ -152,6 +155,22 @@ final class AnimationPresets
                 $out[] = $key;
             }
         }
+        if (! empty($clip['loop']) && $out !== []) {   // a loop settles into the drawn pose where it stops, never frozen mid-stride
+            $last = $out[array_key_last($out)];
+            $settle = ['t' => round($last['t'] + min(self::SETTLE_S, $cycle / 2), 3)];
+            foreach (array_keys($last) as $field) {
+                if (str_starts_with((string) $field, 'bone:')) {
+                    $settle[$field] = 0;
+                }
+            }
+            if ($moves) {
+                $settle['x'] = $last['x'];
+            }
+            if ($bobs) {
+                $settle['y'] = round($y0, 3);
+            }
+            $out[] = $settle;
+        }
         if ($out !== []) {
             unset($out[array_key_last($out)]['ease']);   // from its last pose the figure eases into whatever comes next
         }
@@ -165,12 +184,50 @@ final class AnimationPresets
      * @param  array<string,array{0:float,1:float}>  $limits
      * @return array{0:float,1:float}
      */
-    public static function legRoom(array $limits): array
+    public static function legRoom(array $limits, ?float $legShare = null): array
     {
         $swing = isset($limits['thigh_n']) ? ((float) $limits['thigh_n'][1] - (float) $limits['thigh_n'][0]) / self::FITTED_LEGS['thigh'] : 1.0;
         $bend = isset($limits['shin_n']) ? (float) $limits['shin_n'][1] / self::FITTED_LEGS['shin'] : 1.0;
+        // longer legs for the body cover more ground and drop further for the same turns
+        $legs = $legShare !== null && $legShare > 0 ? $legShare / self::FITTED_LEGS['share'] : 1.0;
 
-        return [min(1.0, max(0.0, $swing)), min(1.0, max(0.0, $bend))];
+        return [min(1.0, max(0.0, $swing)) * $legs, min(1.0, max(0.0, $bend)) * $legs];
+    }
+
+    /**
+     * A puppet's leg (thigh and shin) as a share of its body's height (head top to foot), or null (presets.js legShareOf).
+     *
+     * @param  list<array<string,mixed>>  $bones
+     */
+    public static function legShareOf(array $bones): ?float
+    {
+        $at = collect($bones)->keyBy('name');
+        $len = fn ($b) => isset($b['to'], $b['from']) ? hypot($b['to'][0] - $b['from'][0], $b['to'][1] - $b['from'][1]) : 0.0;
+        $legs = $len($at->get('thigh_n')) + $len($at->get('shin_n'));
+        $foot = $at->get('foot_n');
+        $head = $at->get('head');
+        $tall = isset($foot['to'], $head['to']) ? max($foot['to'][1], $foot['from'][1]) - $head['to'][1] : 0.0;
+
+        return $legs > 0 && $tall > 0 ? $legs / $tall : null;
+    }
+
+    /** A field's value at t along the keys that name it, straight between them. @param list<array<string,mixed>> $keys */
+    private static function valueAt(array $keys, string $field, float $t): ?float
+    {
+        $named = collect($keys)->filter(fn ($k) => isset($k[$field]) && is_numeric($k[$field]))->sortBy('t')->values();
+        if ($named->isEmpty()) {
+            return null;
+        }
+        $i = $named->search(fn ($k) => $k['t'] > $t);
+        if ($i === 0) {
+            return (float) $named[0][$field];
+        }
+        if ($i === false) {
+            return (float) $named->last()[$field];
+        }
+        [$a, $b] = [$named[$i - 1], $named[$i]];
+
+        return $a[$field] + ($b[$field] - $a[$field]) * (($t - $a['t']) / ($b['t'] - $a['t']));
     }
 
     /**
@@ -188,6 +245,11 @@ final class AnimationPresets
         }
         $fields = array_diff(array_unique(array_merge(...array_map('array_keys', $added))), ['t', 'ease']);
         [$from, $to] = [$added[0]['t'] - 1e-6, $added[array_key_last($added)]['t'] + 1e-6];
+        // the clip's root move adds to where the teacher moves the figure: their x keys go on under it
+        if (collect($keys)->contains(fn ($k) => isset($k['x'])) && isset($added[0]['x'])) {
+            $x0 = (float) $added[0]['x'];
+            $added = array_map(fn ($a) => isset($a['x']) ? [...$a, 'x' => round(self::valueAt($keys, 'x', (float) $a['t']) + $a['x'] - $x0, 3)] : $a, $added);
+        }
         $out = [];
         foreach ($keys as $k) {
             if ($k['t'] < $from || $k['t'] > $to) {
@@ -282,7 +344,7 @@ final class AnimationPresets
      * @param  array<string,mixed>  $layer
      * @param  array<string,mixed>  $asset
      * @param  array<string,mixed>  $puppet
-     * @return array{bones:list<string>,facing:int,limits:array<string,mixed>,x0:float,y0:float,xPerHeight:float,yPerHeight:float}
+     * @return array{bones:list<string>,facing:int,legShare:float|null,limits:array<string,mixed>,x0:float,y0:float,xPerHeight:float,yPerHeight:float}
      */
     private static function sizeOf(array $layer, array $asset, array $puppet): array
     {
@@ -293,6 +355,7 @@ final class AnimationPresets
         return [
             'bones' => array_values(array_filter(array_column((array) $puppet['bones'], 'name'), 'is_string')),
             'facing' => ($puppet['facing'] ?? 1) < 0 ? -1 : 1,
+            'legShare' => self::legShareOf(array_values((array) $puppet['bones'])),
             'limits' => collect((array) $puppet['bones'])->filter(fn ($b) => is_array($b['limit'] ?? null) && is_string($b['name'] ?? null))
                 ->mapWithKeys(fn ($b) => [$b['name'] => $b['limit']])->all(),
             'x0' => (float) ($layer['x'] ?? 0.5),
