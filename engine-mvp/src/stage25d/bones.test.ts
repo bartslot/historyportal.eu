@@ -253,6 +253,11 @@ describe('partGaps: a part never comes off the part that holds it', () => {
     leg.bend({ thigh_n: -20, shin_n: 60 })
     for (const gap of Object.values(leg.partGaps())) expect(gap).toBeLessThan(2)
   })
+  it('a foot under a robe does not swing its heel out beside the hem when the knee folds up behind', () => {
+    const robed = figure(true)
+    robed.bend({ thigh_n: 15, shin_n: 110 })
+    expect(robed.partGaps().foot_n).toBeLessThan(2)
+  })
   it('a foot under a robe stays under its hem: the leg turns only as far as the robe still holds the foot', () => {
     const robed = figure(true)
     robed.bend({ thigh_n: -20, shin_n: 40 })

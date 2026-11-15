@@ -251,8 +251,8 @@ export interface BentPuppet extends BentPicture {
   limit(name: string, deg: number): number
   /** The mesh uvs with the head part showing this expression (Puppet.faces); the rest uvs for none or an unknown one. */
   uvsFor(face?: string): number[]
-  /** For each part, how far (puppet px) its joint stands outside the part that holds it (the nearest part up its chain
-   *  covering the joint in the drawing), in the pose bend() last placed: 0 while every part stays on. A check. */
+  /** For each part, how far (puppet px) it has come off the part that holds it (the nearest part up its chain covering its
+   *  joint in the drawing), in the pose bend() last placed: 0 while every part stays on. A check. */
   partGaps(): Record<string, number>
   /** The bones a teacher can turn, in the pose bend() last placed, in puppet px: `at` the joint it turns round, `tip` the
    *  point a handle grabs (the next joint along, or the middle of its part when nothing hangs off it). */
@@ -440,21 +440,35 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   // Each part's holder: the nearest part up its chain that covers its joint in the drawing. A robed body has no thigh
   // part and a sliver of shin, so its foot is held by the robe (fresh tester, PM 11-15: a foot floated off the hem).
   // A part no part covers in the drawing is not guarded.
-  const holders: { part: number; bone: string; holder: number; between: string[] }[] = (() => {
+  // A part held by a part further up (a foot by the robe, its shin and thigh not drawn) also keeps its middle where the
+  // drawing has it against its holder: its joint can stay inside the robe's box while the foot swings out beside the
+  // hem (PM 11-15, dance hop). A part held by its own parent only keeps its joint on it (a forearm sticks out of the
+  // upper arm by nature).
+  const middle = (q: [number, number][]): [number, number] => [(q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2]
+  const holders: { part: number; bone: string; holder: number; between: string[]; rest: number }[] = (() => {
     place({})
     return puppet.parts.flatMap((part, i) => {
       const up = ancestors(part.bone)
       for (let n = 0; n < up.length; n++) {
         const j = puppet.parts.findIndex((p) => p.bone === up[n])
-        if (j >= 0 && outsideQuad(jointOf(part.bone), quadOf(j)) <= HOLD_PX) return [{ part: i, bone: part.bone, holder: j, between: up.slice(0, n) }]
+        if (j >= 0 && outsideQuad(jointOf(part.bone), quadOf(j)) <= HOLD_PX) {
+          return [{ part: i, bone: part.bone, holder: j, between: up.slice(0, n), rest: outsideQuad(middle(quadOf(i)), quadOf(j)) }]
+        }
       }
       return []
     })
   })()
-  /** Each part's joint outside the part that holds it, in the pose placed now (puppet px): 0 while it holds together. */
+  /** How far (px) a part has come off the part holding it now: its joint outside it, or for a part held from further up,
+   *  its middle further out than in the drawing. */
+  const offBy = (h: typeof holders[number]): number => {
+    const holder = quadOf(h.holder)
+    const joint = outsideQuad(jointOf(h.bone), holder)
+    return h.between.length ? Math.max(joint, outsideQuad(middle(quadOf(h.part)), holder) - h.rest) : joint
+  }
+  /** Each part off the part that holds it, in the pose placed now (puppet px): 0 while it holds together. */
   const gapsNow = (): Record<string, number> => {
     const out: Record<string, number> = {}
-    for (const h of holders) out[h.bone] = Math.max(out[h.bone] ?? 0, outsideQuad(jointOf(h.bone), quadOf(h.holder)))
+    for (const h of holders) out[h.bone] = Math.max(out[h.bone] ?? 0, offBy(h))
     return out
   }
   /** The turns eased back, along the bones between a loose part and its holder, until every part is held again; the
@@ -462,9 +476,9 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
   const keepHeld = (bones: Record<string, number>): Record<string, number> => {
     let out = bones
     for (let n = 0; n < HOLD_TRIES; n++) {
-      const loose = holders.filter((h) => outsideQuad(jointOf(h.bone), quadOf(h.holder)) > HOLD_PX)
+      const loose = holders.filter((h) => offBy(h) > HOLD_PX)
       if (!loose.length) return out
-      const ease = new Set(loose.flatMap((h) => h.between))
+      const ease = new Set(loose.flatMap((h) => (h.between.length ? [...h.between, h.bone] : h.between)))
       if (!ease.size) return out
       out = Object.fromEntries(Object.entries(out).map(([b, deg]) => [b, ease.has(b) ? deg * HOLD_EASE : deg]))
       place(out)
