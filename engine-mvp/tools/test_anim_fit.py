@@ -92,3 +92,28 @@ def test_a_walk_never_steps_back():
     walk, _ = fit(json.loads(Path('anim_raw/walk.json').read_text()))
     dx = [k['dx'] for k in walk['keys']]
     assert dx == sorted(dx)
+
+
+def test_a_jump_leaves_the_ground_from_standing_with_both_feet_clear():
+    from anim_fit import sinking, HEIGHT_PX, AIR_CLEAR
+    crouch = {'thigh_n': -25, 'shin_n': 100, 'thigh_f': -25, 'shin_f': 100}
+    clip, _ = fit({'id': 'j', 'loop': False, 'duration': 1, 'keys': [
+        {'t': 0, 'contact': 'both', 'bones': crouch}, {'t': 0.5, 'contact': 'none', 'lift': 0.25, 'bones': {}},
+        {'t': 1, 'contact': 'both', 'bones': crouch}]})
+    air = clip['keys'][1]
+    assert abs(air['bob'] - 0.25) < 0.01   # measured from standing, not from the crouches either side
+    pose = {b[5:]: v for b, v in air.items() if b.startswith('bone:')}
+    assert sinking(pose, -air['bob'] * HEIGHT_PX) <= -AIR_CLEAR * HEIGHT_PX + 0.5
+
+
+def test_a_fall_tips_the_body_over_and_keeps_every_joint_inside_the_rigs():
+    import json
+    from pathlib import Path
+    from anim_fit import RIG_LIMIT
+    clip, _ = fit(json.loads(Path('anim_raw/fall_get_up.json').read_text()))
+    assert min(k.get('rot', 0) for k in clip['keys']) < -60 and clip['keys'][-1].get('rot', 0) == 0
+    for k in clip['keys']:
+        for f, v in k.items():
+            if f.startswith('bone:'):
+                lo, hi = RIG_LIMIT[f[5:]]
+                assert lo - 0.05 <= v <= hi + 0.05

@@ -72,11 +72,12 @@ export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
  * track); `facing` -1 mirrors it for a figure looking left; `x0`/`y0` where the figure stands at `start`;
  * `xPerHeight` the layer's x for one body height (its height over the view's width there), `yPerHeight` metres.
  */
-export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {}, legShare = null } = {}) {
+export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, r0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {}, legShare = null } = {}) {
   const room = legRoom(limits, legShare)
   const { cycles, cycle } = clipSpan(clip, { length, speed })
   const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > MOVE_MIN) || Math.abs(clip.travel ?? 0) > 1e-6
   const bobs = clip.keys.some((k) => Math.abs(k.bob ?? 0) > 1e-6)
+  const tips = clip.keys.some((k) => Math.abs(k.rot ?? 0) > 1e-6)   // the whole body tips over (a fall): the layer's angle
   const has = new Set(bones)
   const out = []
   let face = null
@@ -89,6 +90,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       }
       if (moves) key.x = round3(x0 + facing * (c * (clip.travel ?? 0) + (k.dx ?? 0)) * room.travel * xPerHeight)
       if (bobs) key.y = round3(y0 + (k.bob ?? 0) * (k.bob < 0 ? room.sink : 1) * yPerHeight)   // a jump's lift stays
+      if (tips) key.rotation = round3(r0 + (k.rot ?? 0) * facing)
       if (k.face && k.face !== face) key.face = face = k.face   // a face steps: only where it changes
       out.push(key)
     })
@@ -99,6 +101,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
     for (const field of Object.keys(last)) if (field.startsWith(BONE)) settle[field] = 0
     if (moves) settle.x = last.x
     if (bobs) settle.y = round3(y0)
+    if (tips) settle.rotation = round3(r0)
     out.push(settle)
   }
   if (out.length) delete out[out.length - 1].ease   // from its last pose the figure eases into whatever comes next

@@ -47,7 +47,7 @@ export function animationPresets (layerId, presets) {
       const height = info.heightM ?? FIGURE_M
       return expandClip(this.clip, {
         start, length, speed: this.speed, bones: info.bones, facing: info.facing ?? 1, limits: info.limits ?? {}, legShare: info.legShare ?? null,
-        x0: keying?.value?.(target, 'x') ?? 0.5, y0: keying?.value?.(target, 'y') ?? 0,
+        x0: keying?.value?.(target, 'x') ?? 0.5, y0: keying?.value?.(target, 'y') ?? 0, r0: keying?.value?.(target, 'rotation') ?? 0,
         xPerHeight: info.viewWidth ? height / info.viewWidth : 0, yPerHeight: height,
       })
     },

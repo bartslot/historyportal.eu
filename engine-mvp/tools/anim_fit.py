@@ -8,7 +8,9 @@ A raw clip (anim_raw/<id>.json, what ChatGPT answered, hand-tuned where it was w
     {"id": "walk", "loop": true, "duration": 1.1, "travel": true,
      "keys": [{"t": 0, "contact": "both", "bones": {"thigh_n": -22, ...}, "lift": 0, "face": "neutral"}, ...]}
   t 0..1 through the clip; contact: which feet stand on the ground then ("n", "f", "both", "none"); lift: body heights
-  the body is off the ground (a jump), on top of where the feet put it; face: an expression id (optional).
+  the body is off the ground (a jump), measured from standing; face: an expression id (optional); rot: degrees the
+  whole body tips over about its feet, clockwise on screen facing right (a fall: the joints stay inside their limits,
+  the body goes down), with a negative lift to drop it further.
 
 What the fit corrects, on the standard skeleton (Ana's flat rig, facing right), before a key is written:
   - every turn inside what the rigs can do (RIG_LIMIT), knees and elbows by the posing rules (pose-guard.ts,
@@ -17,7 +19,7 @@ What the fit corrects, on the standard skeleton (Ana's flat rig, facing right), 
   - a foot on the ground is flat and does not slide: the hips move (dx) and sink (bob) so the planted ankle stays where
     it landed; a second planted foot is reached by bending its leg (two-bone IK), never by sliding it.
   - a loop ends on the pose it starts with; a clip that does not travel ends where it started.
-Out: resources/animations/clips/<id>.json, keys in the stage's own fields ({t, "bone:<name>": deg, dx, bob, face?}),
+Out: resources/animations/clips/<id>.json, keys in the stage's own fields ({t, "bone:<name>": deg, dx, bob, rot?, face?}),
 dx and bob in body heights (the stage scales them by the figure's height, presets.js / AnimationPresets.php).
 """
 from __future__ import annotations
@@ -59,6 +61,7 @@ STRAIGHT_DEG = 3.0       # pose-guard.ts STRAIGHT_DEG
 RAISED_THIGH_DEG = 45.0  # pose-guard.ts RAISED_THIGH_DEG
 FORWARD = 1              # the standard skeleton faces right
 REACH_TRIES = 24         # rounds of moving the hips towards a foot the legs cannot reach
+AIR_CLEAR = 0.04         # body heights both feet stay above the floor in a key that is off the ground
 CONTACTS = {'n': ('n',), 'f': ('f',), 'both': ('n', 'f'), 'none': ()}
 # the expressions a figure's head can show (Puppet.faces, the Character tab's kits); a raw clip's other words map onto them
 FACES = ('calm', 'curious', 'sad', 'angry', 'amazed')
@@ -286,7 +289,9 @@ def fit(raw: dict) -> tuple[dict, dict]:
         b = min([g for g in grounded if g > i], default=a)
         ha, hb = hips[a] or (0.0, 0.0), hips[b] or hips[a] or (0.0, 0.0)
         u = 0.0 if b == a else (keys[i]['t'] - keys[a]['t']) / (keys[b]['t'] - keys[a]['t'])
-        hips[i] = (ha[0] + (hb[0] - ha[0]) * u, ha[1] + (hb[1] - ha[1]) * u)
+        # off the ground the hips are measured from standing, not from the crouches either side: a jump's lift is
+        # height above where it stood (PM 11-15: the jump barely left the ground)
+        hips[i] = (ha[0] + (hb[0] - ha[0]) * u, 0.0)
 
     dx = [h[0] - hips[0][0] for h in hips]
     if travels:   # a walk never steps back: a rear foot past what its leg reaches pushes off instead (fresh tester 11-15)
@@ -299,13 +304,22 @@ def fit(raw: dict) -> tuple[dict, dict]:
         dx = [x - dx[-1] * k['t'] for x, k in zip(dx, keys)]
     if raw.get('loop'):
         dy = [y - (dy[-1] - dy[0]) * k['t'] for y, k in zip(dy, keys)]
-    # nothing goes through the floor: a foot that cannot lie flat (its turn at the end of its range) lifts the body
-    dy = [y - max(0.0, sinking(p, y)) for p, y in zip(poses, dy)]
+    # nothing goes through the floor: a foot that cannot lie flat (its turn at the end of its range) lifts the body; a
+    # key in the air keeps both feet clear of it. A key that tips the whole body over (`rot`, a fall) turns about the
+    # feet, so the drawing's floor no longer applies there.
+    def floor(p: dict, y: float, k: dict) -> float:
+        if k.get('rot'):
+            return y
+        clear = AIR_CLEAR * HEIGHT_PX if k.get('contact') == 'none' else 0.0
+        return y - max(0.0, sinking(p, y) + clear)
+    dy = [floor(p, y, k) for p, y, k in zip(poses, dy, keys)]
 
     moved = sorted({b for p in poses for b in MOVABLE if abs(p[b]) > 0.05})
     out_keys = []
     for k, p, x, y in zip(keys, poses, dx, dy):
         key = {'t': round(k['t'], 4), **{f'bone:{b}': round(p[b], 1) for b in moved}, 'dx': round(x / HEIGHT_PX, 4), 'bob': round(-y / HEIGHT_PX, 4)}
+        if k.get('rot'):
+            key['rot'] = round(float(k['rot']), 1)
         face = FACE_ALIAS.get(k.get('face'), k.get('face'))
         if face in FACES:
             key['face'] = face

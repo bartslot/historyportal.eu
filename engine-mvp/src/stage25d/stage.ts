@@ -624,6 +624,12 @@ export class Stage {
     return { mirrored, joints: (bent as BentPuppet).joints().map((j) => ({ name: j.name, at: on(j.at), tip: on(j.tip) })) }
   }
 
+  /** How far each part's joint stands outside its parent part now (BentPuppet.partGaps); null for no figure of parts. */
+  partGaps(index: number): Record<string, number> | null {
+    const bent = this.built.find((n) => n.index === index)?.bent
+    return bent && 'partGaps' in bent ? (bent as BentPuppet).partGaps() : null
+  }
+
   /** A turn held to the figure's own limits (a knee, an elbow); unchanged on a layer that is no figure of parts. */
   boneLimit(index: number, name: string, deg: number): number {
     const bent = this.built.find((n) => n.index === index)?.bent

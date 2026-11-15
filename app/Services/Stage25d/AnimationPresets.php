@@ -115,7 +115,7 @@ final class AnimationPresets
      * The clip as layer keys from `start` (presets.js expandClip, the same sums).
      *
      * @param  array<string,mixed>  $clip
-     * @param  array{start?:float,length?:float|null,speed?:float,bones?:list<string>,facing?:int,x0?:float,y0?:float,xPerHeight?:float,yPerHeight?:float}  $o
+     * @param  array{start?:float,length?:float|null,speed?:float,bones?:list<string>,facing?:int,x0?:float,y0?:float,r0?:float,xPerHeight?:float,yPerHeight?:float}  $o
      * @return list<array<string,mixed>>
      */
     public static function expand(array $clip, array $o): array
@@ -125,6 +125,8 @@ final class AnimationPresets
         $travel = (float) ($clip['travel'] ?? 0);
         $moves = abs($travel) > 1e-6 || collect($keys)->contains(fn ($k) => abs((float) ($k['dx'] ?? 0)) > self::MOVE_MIN);
         $bobs = collect($keys)->contains(fn ($k) => abs((float) ($k['bob'] ?? 0)) > 1e-6);
+        $tips = collect($keys)->contains(fn ($k) => abs((float) ($k['rot'] ?? 0)) > 1e-6);   // the whole body tips over (a fall)
+        $r0 = (float) ($o['r0'] ?? 0);
         $bones = array_flip($o['bones'] ?? []);
         $facing = ($o['facing'] ?? 1) < 0 ? -1 : 1;
         [$start, $x0, $y0] = [(float) ($o['start'] ?? 0), (float) ($o['x0'] ?? 0.5), (float) ($o['y0'] ?? 0)];
@@ -149,6 +151,9 @@ final class AnimationPresets
                     $bob = (float) ($k['bob'] ?? 0);
                     $key['y'] = round($y0 + $bob * ($bob < 0 ? $roomSink : 1.0) * (float) ($o['yPerHeight'] ?? 0), 3);   // a jump's lift stays
                 }
+                if ($tips) {
+                    $key['rotation'] = round($r0 + (float) ($k['rot'] ?? 0) * $facing, 3);
+                }
                 if (is_string($k['face'] ?? null) && $k['face'] !== '' && $k['face'] !== $face) {
                     $key['face'] = $face = $k['face'];   // a face steps: only where it changes
                 }
@@ -168,6 +173,9 @@ final class AnimationPresets
             }
             if ($bobs) {
                 $settle['y'] = round($y0, 3);
+            }
+            if ($tips) {
+                $settle['rotation'] = round($r0, 3);
             }
             $out[] = $settle;
         }
@@ -324,7 +332,7 @@ final class AnimationPresets
      * @param  array<string,mixed>  $layer
      * @param  array<string,mixed>  $asset
      * @param  array<string,mixed>  $puppet
-     * @return array{bones:list<string>,facing:int,legShare:float|null,limits:array<string,mixed>,x0:float,y0:float,xPerHeight:float,yPerHeight:float}
+     * @return array{bones:list<string>,facing:int,legShare:float|null,limits:array<string,mixed>,x0:float,y0:float,r0:float,xPerHeight:float,yPerHeight:float}
      */
     private static function sizeOf(array $layer, array $asset, array $puppet): array
     {
@@ -340,6 +348,7 @@ final class AnimationPresets
                 ->mapWithKeys(fn ($b) => [$b['name'] => $b['limit']])->all(),
             'x0' => (float) ($layer['x'] ?? 0.5),
             'y0' => (float) ($layer['y'] ?? 0),
+            'r0' => (float) ($layer['rotation'] ?? 0),
             'xPerHeight' => $wide > 0 ? $height / $wide : 0.0,
             'yPerHeight' => $height,
         ];

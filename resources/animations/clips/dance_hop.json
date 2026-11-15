@@ -55,7 +55,7 @@
    "bone:upperarm_f": -20.0,
    "bone:upperarm_n": -65.0,
    "dx": 0.064,
-   "bob": 0.0089,
+   "bob": 0.06,
    "face": "amazed"
   },
   {
@@ -73,7 +73,7 @@
    "bone:upperarm_f": -20.0,
    "bone:upperarm_n": -105.0,
    "dx": 0.0587,
-   "bob": 0.1126,
+   "bob": 0.16,
    "face": "amazed"
   },
   {
@@ -109,7 +109,7 @@
    "bone:upperarm_f": -20.0,
    "bone:upperarm_n": -115.0,
    "dx": 0.048,
-   "bob": 0.0725,
+   "bob": 0.12,
    "face": "amazed"
   },
   {

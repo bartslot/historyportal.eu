@@ -251,11 +251,17 @@ export interface BentPuppet extends BentPicture {
   limit(name: string, deg: number): number
   /** The mesh uvs with the head part showing this expression (Puppet.faces); the rest uvs for none or an unknown one. */
   uvsFor(face?: string): number[]
+  /** For each part, how far (puppet px) its joint stands outside the part that holds it (the nearest part up its chain
+   *  covering the joint in the drawing), in the pose bend() last placed: 0 while every part stays on. A check. */
+  partGaps(): Record<string, number>
   /** The bones a teacher can turn, in the pose bend() last placed, in puppet px: `at` the joint it turns round, `tip` the
    *  point a handle grabs (the next joint along, or the middle of its part when nothing hangs off it). */
   joints(): { name: string; at: [number, number]; tip: [number, number] }[]
 }
 
+const HOLD_PX = 2          // px a joint may stand outside the part holding it (outline anti-aliasing)
+const HOLD_TRIES = 12      // rounds of easing a loose part's chain back
+const HOLD_EASE = 0.8      // each round keeps this share of those turns
 const TIP_REACH = 1.6   // a last bone's handle: this far from its joint, in steps of joint-to-middle-of-its-part
 const GUARD_STEP = 3      // degrees a forearm is taken back at a time until it is clear of the body
 const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow to hand, that have to stay out of it
@@ -423,6 +429,49 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     return gaps().map((gap) => (gap === null ? wanted : gap < 0 ? -Infinity : Math.min(wanted, gap)))
   })()
   let last: number[] = []   // the vertices bend() placed last: the pose on screen, for joints()
+  /** The bones up from a part's bone, nearest first (its parent, its parent's parent, ...). */
+  const ancestors = (bone: string): string[] => {
+    const up: string[] = []
+    for (let b = boneOf.get(bone)?.parent ?? null; b; b = boneOf.get(b)?.parent ?? null) up.push(b)
+    return up
+  }
+  const quadOf = (i: number): [number, number][] => { const c = cornersOf(i); return [[c[0], c[1]], [c[2], c[3]], [c[4], c[5]], [c[6], c[7]]] }
+  const jointOf = (bone: string) => carriedBy(bone, from(bone) as [number, number])
+  // Each part's holder: the nearest part up its chain that covers its joint in the drawing. A robed body has no thigh
+  // part and a sliver of shin, so its foot is held by the robe (fresh tester, PM 11-15: a foot floated off the hem).
+  // A part no part covers in the drawing is not guarded.
+  const holders: { part: number; bone: string; holder: number; between: string[] }[] = (() => {
+    place({})
+    return puppet.parts.flatMap((part, i) => {
+      const up = ancestors(part.bone)
+      for (let n = 0; n < up.length; n++) {
+        const j = puppet.parts.findIndex((p) => p.bone === up[n])
+        if (j >= 0 && outsideQuad(jointOf(part.bone), quadOf(j)) <= HOLD_PX) return [{ part: i, bone: part.bone, holder: j, between: up.slice(0, n) }]
+      }
+      return []
+    })
+  })()
+  /** Each part's joint outside the part that holds it, in the pose placed now (puppet px): 0 while it holds together. */
+  const gapsNow = (): Record<string, number> => {
+    const out: Record<string, number> = {}
+    for (const h of holders) out[h.bone] = Math.max(out[h.bone] ?? 0, outsideQuad(jointOf(h.bone), quadOf(h.holder)))
+    return out
+  }
+  /** The turns eased back, along the bones between a loose part and its holder, until every part is held again; the
+   *  pose stays placed for what it returns. A figure whose parts hold (Ana, a short tunic) is never touched. */
+  const keepHeld = (bones: Record<string, number>): Record<string, number> => {
+    let out = bones
+    for (let n = 0; n < HOLD_TRIES; n++) {
+      const loose = holders.filter((h) => outsideQuad(jointOf(h.bone), quadOf(h.holder)) > HOLD_PX)
+      if (!loose.length) return out
+      const ease = new Set(loose.flatMap((h) => h.between))
+      if (!ease.size) return out
+      out = Object.fromEntries(Object.entries(out).map(([b, deg]) => [b, ease.has(b) ? deg * HOLD_EASE : deg]))
+      place(out)
+    }
+    return out
+  }
+  let lastBones: Record<string, number> = {}   // the turns bend() placed last
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
   /** Also leaves the pose placed for what it returns, so bend() needs no second place(). */
   const safe = (bones: Record<string, number>): Record<string, number> => {
@@ -458,9 +507,13 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     safe,
     limit: (name, deg) => limitBone(name, deg, puppet.facing, limits.get(name)),
     bend(bones) {
-      safe(bones)
+      lastBones = keepHeld(safe(bones))
       last = skinned()
       return last
+    },
+    partGaps() {
+      if (!last.length) this.bend({})
+      return gapsNow()
     },
     joints() {
       if (!last.length) this.bend({})
@@ -492,6 +545,13 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
       })
     },
   }
+}
+
+/** How far a point stands outside a convex quad (0 inside or on it): the distance to its nearest edge. */
+export function outsideQuad(p: readonly [number, number], quad: readonly (readonly [number, number])[]): number {
+  const sides = quad.map((a, i) => { const b = quad[(i + 1) % quad.length]; return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) })
+  if (sides.every((v) => v >= 0) || sides.every((v) => v <= 0)) return 0
+  return Math.min(...quad.map((a, i) => { const b = quad[(i + 1) % quad.length]; return onSegment([p[0], p[1]], [a[0], a[1]], [b[0], b[1]]) }))
 }
 
 /** The alpha of a picture at a url, one byte per pixel. */

@@ -594,6 +594,8 @@ export async function createStage25d (host, opts = {}) {
     /** Live, no rebuild: one base value of one layer (a field edit, the timeline's frame). */
     setLayerProp (id, prop, v) { edit(id, { [prop]: v }) },
     /** Live: a row's keys (a layer, a ground band, the sky), as the timeline holds them. */
+    /** How far each part of a figure stands off its parent part in the pose on screen (a check: 0 while it holds together). */
+    partGaps (id) { return layerIndex(id) >= 0 ? stage?.partGaps?.(layerIndex(id)) ?? null : null },
     setLayerKeys (id, keys) {
       const now = valuesOf(id)
       if (now && JSON.stringify(now.keys ?? []) !== JSON.stringify(keys)) edit(id, { keys })

@@ -103,6 +103,15 @@ class AnimationPresetsTest extends TestCase
         $this->assertEqualsWithDelta(755 / 1461, AnimationPresets::legShareOf($kit), 0.005);
     }
 
+    public function test_a_fall_tips_the_whole_figure_over_and_a_jump_leaves_the_ground(): void
+    {
+        $fall = ['id' => 'f', 'loop' => false, 'duration' => 1.0, 'travel' => 0.0, 'keys' => [['t' => 0, 'dx' => 0, 'bob' => 0], ['t' => 0.5, 'rot' => -70, 'dx' => 0, 'bob' => -0.2], ['t' => 1, 'dx' => 0, 'bob' => 0]]];
+        $this->assertEquals([5, -65, 5], array_column(AnimationPresets::expand($fall, ['r0' => 5.0]), 'rotation'));
+        $this->assertEquals([0, 70, 0], array_column(AnimationPresets::expand($fall, ['facing' => -1]), 'rotation'));
+        $this->assertLessThan(-60, min(array_column(AnimationPresets::clip('fall_get_up')['keys'], 'rot')), 'the shipped fall goes down');
+        $this->assertGreaterThan(0.25, max(array_column(AnimationPresets::clip('jump')['keys'], 'bob')), 'the shipped jump leaves the ground');
+    }
+
     public function test_a_move_near_the_end_of_the_scene_is_cut_there(): void
     {
         Storage::fake('public');

@@ -230,3 +230,32 @@ describe('a picture cut along its part map', () => {
   })
 })
 
+
+describe('partGaps: a part never comes off the part that holds it', () => {
+  const figure = (robe: boolean) => bindPuppet({
+    atlas: 'x.webp', width: 100, height: 200, facing: 1,
+    bones: [
+      { name: 'hips', parent: null, from: [50, 100] },
+      { name: 'thigh_n', parent: 'hips', from: [50, 100], to: [50, 150] },
+      { name: 'shin_n', parent: 'thigh_n', from: [50, 150], to: [50, 190] },
+      { name: 'foot_n', parent: 'shin_n', from: [50, 190], to: [65, 198] },
+    ],
+    parts: [
+      // a robe on the hips to just below the ankle; with legs drawn, a thigh and a shin
+      { bone: 'hips', quad: robe ? [[35, 60], [65, 60], [65, 192], [35, 192]] : [[35, 60], [65, 60], [65, 110], [35, 110]], uv: [0, 0, 0.5, 0.5] },
+      ...(robe ? [] : [{ bone: 'thigh_n', quad: [[44, 95], [56, 95], [56, 155], [44, 155]] as [number, number][], uv: [0, 0, 0.5, 0.5] as [number, number, number, number] },
+        { bone: 'shin_n', quad: [[45, 145], [55, 145], [55, 192], [45, 192]] as [number, number][], uv: [0, 0, 0.5, 0.5] as [number, number, number, number] }]),
+      { bone: 'foot_n', quad: [[44, 186], [68, 186], [68, 200], [44, 200]], uv: [0, 0, 0.5, 0.5] },
+    ],
+  })
+  it('a bent leg stays on: every joint inside the part holding it', () => {
+    const leg = figure(false)
+    leg.bend({ thigh_n: -20, shin_n: 60 })
+    for (const gap of Object.values(leg.partGaps())) expect(gap).toBeLessThan(2)
+  })
+  it('a foot under a robe stays under its hem: the leg turns only as far as the robe still holds the foot', () => {
+    const robed = figure(true)
+    robed.bend({ thigh_n: -20, shin_n: 40 })
+    expect(robed.partGaps().foot_n).toBeLessThan(2)
+  })
+})

@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { muted, stageReady } from './stage-capture'
 
-export const EDITOR_441 = '/teacher/lessons/441/wizard?step=4&scene=16038'
+/** The scene with flat-sheet Ana (layer-6) and a kit character (layer-7): ana-rig-lesson.php with KIT_CHARACTER prints it. */
+export const EDITOR_441 = process.env.PW_ANIM_EDITOR ?? '/teacher/lessons/441/wizard?step=4&scene=16038'
 export const EDITOR_443 = '/teacher/lessons/443/wizard?step=4&scene=16041'
 export const FIGS = [
   { id: 'layer-6', mesh: 'layer:fig-ana-stand-01', name: 'ana' },
@@ -40,12 +41,23 @@ export async function openEditor (page: Page, url = EDITOR_441) {
   await page.waitForTimeout(1500)
 }
 
-/** The kit character's mesh name on the stage (it is named after its asset). */
-export const meshOf = (page: Page, id: string) => page.evaluate((id) => {
-  const st = (window as any).__stage25d
-  const asset = st.layerInfo(id)?.asset
-  return (window as any).BABYLON.Engine.LastCreatedScene.meshes.find((m: any) => m.name === `layer:${asset}`)?.name ?? null
-}, id)
+/** A figure's mesh name on the stage (named after its asset), once the stage has built it: a figure of parts is
+ *  built after its atlas loads, later than the stage's item list (a capture before that read an undefined mesh, PM 11-15). */
+export async function meshOf (page: Page, id: string): Promise<string> {
+  const name = (ids: string) => page.evaluate((id) => {
+    const asset = (window as any).__stage25d?.layerInfo(id)?.asset
+    const mesh = (window as any).BABYLON?.Engine?.LastCreatedScene?.meshes.find((m: any) => m.name === `layer:${asset}`)
+    return mesh && mesh.getTotalVertices() > 0 ? mesh.name : null
+  }, ids)
+  await page.waitForFunction((id) => {
+    const asset = (window as any).__stage25d?.layerInfo(id)?.asset
+    const mesh = (window as any).BABYLON?.Engine?.LastCreatedScene?.meshes.find((m: any) => m.name === `layer:${asset}`)
+    return !!mesh && mesh.getTotalVertices() > 0
+  }, id, { timeout: 60_000 }).catch(() => {
+    throw new Error(`no built mesh for ${id} on this scene: is the throwaway lesson there (tests/playwright/ana-rig-lesson.php, PW_ANIM_EDITOR)?`)
+  })
+  return (await name(id))!
+}
 
 export async function selectFigure (page: Page, id: string) {
   await page.evaluate((id) => (window as any).__stage25d.select(id), id)

@@ -30,6 +30,12 @@ describe('expandClip', () => {
     expect(keys.at(-1)).toEqual({ t: 3.7, 'bone:thigh_n': 0, 'bone:shin_n': 0, x: 0.5, y: 0 })
     expect(keys.at(-2).ease).toBe('smooth')
   })
+  it('a fall tips the whole figure over: rot becomes the layer\'s angle, mirrored for a figure looking left', () => {
+    const fall = { id: 'f', loop: false, duration: 1, travel: 0, keys: [{ t: 0, dx: 0, bob: 0 }, { t: 0.5, rot: -70, dx: 0, bob: -0.2 }, { t: 1, dx: 0, bob: 0 }] }
+    expect(expandClip(fall, { r0: 5 }).map((k) => k.rotation)).toEqual([5, -65, 5])
+    expect(expandClip(fall, { facing: -1 }).map((k) => k.rotation)).toEqual([0, 70, 0])
+    expect(expandClip(fixture.clip, fixture.options).some((k) => 'rotation' in k)).toBe(false)
+  })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'bone:tail' in k)).toBe(false)
   })

@@ -69,12 +69,11 @@ if (is_file("{$pieterDir}/pieter-rigid.json")) {
     $pieter['atlas'] = "/storage/{$edits}/{$pieterAtlas}";
     $layers[] = ['need' => 'fig-ana-stand-01', 'asset' => 'fig-ana-stand-01', 'depth' => 'mid', 'x' => 1.3, 'z' => 5, 'scale' => 1, 'puppet' => $pieter];
 }
-// KIT_CHARACTER=<id>: a teacher's own character from the Character tab (a kit body, chr-<id>) beside her, for the
-// animation presets on a kit rig. It has to be the lesson teacher's own.
-$kit = (int) getenv('KIT_CHARACTER');
-if ($kit > 0) {
+// KIT_CHARACTER=<id>[,<id>...]: teachers' own characters from the Character tab (kit bodies, chr-<id>) beside her, for
+// the animation presets on kit rigs, one metre apart. Each has to be the lesson teacher's own.
+foreach (array_filter(array_map('intval', explode(',', (string) getenv('KIT_CHARACTER')))) as $n => $kit) {
     throw_unless(App\Models\SvgAsset::whereKey($kit)->where('user_id', $lesson->teacher_id)->where('source', 'character')->exists(), RuntimeException::class, "Character {$kit} is not the teacher's own.");
-    $layers[] = ['asset' => "chr-{$kit}", 'depth' => 'mid', 'x' => 0.9, 'z' => 5, 'scale' => 1];
+    $layers[] = ['asset' => "chr-{$kit}", 'depth' => 'mid', 'x' => 0.9 - 0.22 * $n, 'z' => 5, 'scale' => 1];
 }
 $config['stage25d']['set']['layers'] = $layers;
 

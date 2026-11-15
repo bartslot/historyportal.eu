@@ -42,6 +42,8 @@ export const captureFigure = (page: Page, mesh: string, zoom = 2.5) => page.eval
   const url = canvas.toDataURL('image/png')
   const W = canvas.width, H = canvas.height
   const m = sc.meshes.find((x: any) => x.name === mesh)
+  if (!m) throw new Error(`captureFigure: no mesh named ${mesh} on the stage`)
+  m.refreshBoundingInfo()   // a bent figure's box follows its bent vertices, not the pose it was built in
   const M = sc.getTransformMatrix().m
   const pts = m.getBoundingInfo().boundingBox.vectorsWorld.map((v: any) => {
     const x = v.x * M[0] + v.y * M[4] + v.z * M[8] + M[12], y = v.x * M[1] + v.y * M[5] + v.z * M[9] + M[13], w = v.x * M[3] + v.y * M[7] + v.z * M[11] + M[15]
