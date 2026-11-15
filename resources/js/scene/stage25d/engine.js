@@ -57,6 +57,8 @@ const newestOf = (assets, inUse = []) => {
 export const LOOK_KEYS = ['sheetGrain', 'groundDetail', 'sunLight', 'castShadow', 'edgeSoft', 'cloudDrift', 'housePitch', 'groundWash', 'groundGrain', 'grass', 'grassSway', 'horizonBushes', 'worldReveal', 'worldPaint', 'figureWash', 'figureShade', 'figurePigment']
 
 /** The Assets tab shelf of a library picture: an animation is VFX, anything else its layer kind. */
+/** Share of the view a new person keeps from the figures beside it (engine addLayer freeX). */
+const FREE_GAP = 0.12
 const shelfOf = (a) => (a.character ? 'characters' : a.cutout ? 'cutouts' : isAnimation(a) ? 'vfx' : a.layer)
 
 /**
@@ -954,6 +956,19 @@ export async function createStage25d (host, opts = {}) {
     /** A new layer from a library picture, standing on the ground where it was dropped (snapped to the grid), else
      *  mid-view at its own band's distance. Saved at the end of the layers. */
     async addLayer (assetId, at = null) {
+      /** The x beside `x0` where no figure stands at about this distance (tester 11-15: the second and third new person
+       *  landed on another figure): the nearest spot with FREE_GAP of room, else the one with the most room. */
+      const freeX = (x0, z) => {
+        const taken = layers.flatMap((l, i) => (assets.get(l.asset)?.layer === 'figure' && Math.abs(zNow(i) - z) < 2.5 ? [layerAt(l, nowT()).x] : []))
+        const room = (x) => Math.min(1, ...taken.map((t) => Math.abs(t - x)))
+        let best = 0.5, bestRoom = -1, bestNear = Infinity
+        for (let x = 0.1; x <= 0.9001; x += 0.02) {
+          const r = Math.min(room(x), FREE_GAP), near = Math.abs(x - x0)
+          // enough room wins; among those the nearest to the figure in view (same height on screen, beside it)
+          if (r > bestRoom + 1e-9 || (Math.abs(r - bestRoom) < 1e-9 && near < bestNear)) { best = x; bestRoom = r; bestNear = near }
+        }
+        return Math.round(best * 100) / 100
+      }
       const a = assets.get(assetId)
       if (!a) return
       // a scene has one sky and one terrain: their pictures replace, never stack as a layer (Bart 11-11: "sky autumn is
@@ -983,7 +998,7 @@ export async function createStage25d (host, opts = {}) {
           const now = layerAt(layers[seen], nowT())
           // a new person from the Character tab stands beside that one, never on top of it (tester 11-15: it hid the other
           // figure and took its clicks)
-          const x = a.character ? (now.x > 0.6 ? now.x - 0.18 : now.x + 0.18) : now.x
+          const x = a.character ? freeX(now.x, zNow(seen)) : now.x
           layer = { asset: assetId, depth: layers[seen].depth, x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: zNow(seen), scale: now.scale ?? 1 }
         }
       }

@@ -159,7 +159,9 @@ export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', widt
     // only what shows: everything drawn above it (the face, the hair) takes its part out, scalp and eye holes with it
     const above = layers.slice(layers.indexOf(picked.at(-1)) + 1)
     g.globalCompositeOperation = 'destination-out'
-    drawLayers(g, above, src, dst, 'colour')
+    for (const [ox, oy] of [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2], [2, 2], [-2, -2], [2, -2], [-2, 2]]) {   // grown a little: no hairline left round them
+      drawLayers(g, above, src, [dst[0] + ox * width / 3, dst[1] + oy * width / 3, dst[2], dst[3]], 'colour')
+    }
     g.globalCompositeOperation = 'source-over'
   } else drawLayers(g, picked, src, dst, 'colour')
   g.globalCompositeOperation = 'source-in'

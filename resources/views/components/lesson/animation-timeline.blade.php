@@ -358,6 +358,7 @@
                                          (a gesture rather than a button: the button took the room the
                                          value needs, Bart 2026-10-16). --}}
                                     <span data-scrub class="cursor-col-resize select-none whitespace-nowrap text-xs uppercase tracking-wide text-panel-label"
+                                          x-show="property.type !== 'face'"
                                           x-text="propertyLabel(property)"
                                           x-on:click="$el.closest('[data-timeline-row]').querySelector('[data-timeline-value]')?.focus()"
                                           x-on:dblclick.prevent="canReset(object.target, property.key) && resetProperty(object.target, property.key)"
@@ -376,7 +377,7 @@
                                          once it is focused, so a press on it scrubs instead of selecting. --}}
                                     {{-- A figure's expression: a word, keyed at the playhead when picked (character/face-keys.js). --}}
                                     <template x-if="property.type === 'face'">
-                                        <select class="select select-sm w-full min-w-0 text-xs" style="padding-left: 0.375rem; padding-right: 1.25rem; background-position: calc(100% - 0.6rem) 50%, calc(100% - 0.3rem) 50%;" data-timeline-value data-timeline-face
+                                        <select class="select select-sm w-full min-w-0 text-xs" style="grid-column: 2 / span 2; padding-left: 0.375rem; padding-right: 1.25rem; background-position: calc(100% - 0.6rem) 50%, calc(100% - 0.3rem) 50%;" data-timeline-value data-timeline-face
                                                 aria-label="{{ __('Expression') }}"
                                                 x-effect="void time; void tracks; $el.value = window.__timelineFace?.at(object.target) ?? 'calm'"
                                                 x-on:change="window.__timelineFace?.key(object.target, $event.target.value)">

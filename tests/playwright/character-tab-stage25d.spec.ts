@@ -276,12 +276,24 @@ test('3. point at hair, face, clothes, bare skin: amber edge and label; click op
     ['Face', 'face', [0.04, 0.2], [0.4, 0.75]],
   ]
   const edges: Record<string, { n: number, mask: number[] }> = {}
+  let headAmber = 0
   for (const [label, part, band, cols] of parts) {
     const at = await findPart(page, label, band, cols)
     expect.soft(at, `found ${label} under the mouse`).not.toBeNull()
     if (!at) continue
     await page.waitForTimeout(100)
     expect.soft(await amberPixels(page), `${label}: amber edge drawn`).toBeGreaterThan(200)
+    if (part === 'body') {
+      const f = await figureBounds(page)
+      const box = (await page.locator(ART).boundingBox())!
+      headAmber = await page.locator(`${V} [data-chr-edge]`).evaluate((c: HTMLCanvasElement, [y0, y1]) => {
+        const k = c.width / c.clientWidth
+        const d = c.getContext('2d')!.getImageData(0, Math.round(y0 * k), c.width, Math.max(1, Math.round((y1 - y0) * k))).data
+        let n = 0
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 100) n++
+        return n
+      }, [Math.max(0, f.y0 - box.y - 12), f.y0 - box.y + (f.y1 - f.y0) * 0.12] as const)
+    }
     edges[part] = await page.locator(`${V} [data-chr-edge]`).evaluate((c: HTMLCanvasElement) => {
       const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
       const mask: number[] = []
@@ -299,6 +311,8 @@ test('3. point at hair, face, clothes, bare skin: amber edge and label; click op
       await settle(page)
     }
   }
+  // Body edges the visible bare skin only: nothing on the head above the neck (no ring over the scalp, none round the eyes)
+  if (edges.body) expect.soft(headAmber, 'Body edge: no amber on the head (scalp, eyes)').toBeLessThan(40)
   // Body edges the bare skin only: not the same outline as Clothes
   if (edges.body && edges.clothes) {
     const clothes = new Set(edges.clothes.mask)
@@ -822,7 +836,7 @@ test('11. bones on the stage: drag elbow, knee, head; knees and elbows never ben
   }
   const lim = (n: string) => puppet.bones.find((b: any) => b.name === n)?.limit
   test.info().annotations.push({ type: 'limits', description: JSON.stringify(Object.fromEntries(puppet.bones.map((b: any) => [b.name, b.limit ?? null]))) })
-  expect.soft(lim('upperarm_n')?.[0], 'near upper arm limit baked at Save').toBe(-110)
+  expect.soft(lim('upperarm_n')?.[0], 'near upper arm limit baked at Save').toBe(-45)
   expect.soft(lim('forearm_n')?.[0], 'near forearm limit baked at Save').toBe(-110)
   const fx = fit(0), fy = fit(1)
   const T = ([x, y]: number[]) => [fx[0] * x + fx[1] * y + fx[2], fy[0] * x + fy[1] * y + fy[2]]
@@ -901,10 +915,13 @@ test('11. bones on the stage: drag elbow, knee, head; knees and elbows never ben
       await drag(bone, dx * fwd, dy)
       const v = await boneValue(page, i, bone)
       report.push(`${bone} -> ${v}`)
+      const l = lim(bone)
+      if (l) expect.soft(v >= l[0] - 0.5 && v <= l[1] + 0.5, `${bone} ${v} within its limit ${l}`).toBe(true)
       await check(`${bone} ${dx},${dy}`)
       await shot(page, `11-${bone}-${dx}-${dy}`, c)
     }
   }
+  if (handles.includes('thigh_n')) expect.soft(await boneValue(page, i, 'thigh_n'), 'the hip handle turns the thigh').not.toBe(rest.thigh_n)
   const moved = await boneValue(page, i, 'head')
   expect.soft(moved, 'head turned by its handle').not.toBe(rest.head)
   // undo steps back the last drag (head)
@@ -1005,6 +1022,14 @@ test('12. expressions on the timeline: Sad at 0, Amazed later; face keys shown; 
   await expect.soft(picker, 'an Expression select on the figure\'s timeline row').toBeVisible()
   if (await picker.isVisible()) {
     expect.soft(await picker.inputValue(), 'the row shows the face at 3 s').toBe('amazed')
+    const fits = await picker.evaluate((el: HTMLSelectElement) => {
+      const s = getComputedStyle(el)
+      const g = document.createElement('canvas').getContext('2d')!
+      g.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`
+      const room = el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+      return [...el.options].map((o) => ({ word: o.text, need: Math.ceil(g.measureText(o.text).width), room }))
+    })
+    expect.soft(fits.filter((f: any) => f.need > f.room).map((f: any) => `${f.word} ${f.need}>${f.room}px`), 'every expression word fits the select').toEqual([])
     await picker.click()
     await picker.selectOption('curious')
     await page.waitForTimeout(1500)
@@ -1106,6 +1131,64 @@ test('15. reload: the character, pose, face and preset keys are still there and 
   expect.soft(Math.abs((box2?.x ?? 0) - (box1?.x ?? 0)), 'same box x').toBeLessThan(2)
   await shot(page, '15-after-reload', c)
   if (SAVED) expect.soft(await page.evaluate((i) => (window as any).__stage25d.editTarget(`layer-${i}`)?.character?.recipe, i)).toEqual(SAVED.recipe)
+})
+
+test.describe('large', () => {
+  // a bigger view and twice the pixels: the shoulder is a few px on the small stage
+  test.use({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 })
+  test('11b. the near upper arm at its limit on the Scribe and a woman: no cloth lifting over the arm, no arm over the face; the hip handle shuffles a robe', async ({ page }) => {
+    test.setTimeout(480_000)
+    await load(page)
+    for (const [body, preset] of [['Man', 'scribe'], ['Woman', 'weaver']] as const) {
+      await openNew(page)
+      await pickBody(page, body)
+      await page.locator(`${P} [data-chr-preset="${preset}"]`).click()
+      await settle(page)
+      await saveWindow(page)
+      const i = await chrLayer(page)
+      const puppet = await page.evaluate((i) => (window as any).__stage25d.editTarget(`layer-${i}`).puppet, i)
+      const lim = Object.fromEntries(puppet.bones.map((b: any) => [b.name, b.limit ?? null]))
+      expect.soft(lim.upperarm_n?.[0], `${preset}: near upper arm forward limit`).toBe(-45)
+      expect(await selectLayer(page, i), `${preset} selected`).toBe(true)
+      await page.waitForTimeout(800)
+      const box = (await layerBox(page, i, true))!
+      const upper = { x: Math.round(box.x - box.w * 0.3), y: Math.round(Math.max(0, box.y - 10)), width: Math.round(box.w * 1.6), height: Math.round(box.h * 0.45) }
+      await page.screenshot({ path: `${SHOTS}/11b-${preset}-rest.png`, clip: upper })
+      const drag = async (bone: string, dx: number, dy: number) => {
+        const r = (await page.locator(`[data-bone-handle="${bone}"]`).boundingBox())!
+        await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(r.x + r.width / 2 + dx, r.y + r.height / 2 + dy, { steps: 16 })
+        await page.mouse.up()
+        await page.waitForTimeout(800)
+      }
+      const fwd = Math.sign((await tips(page)).foot_n[0] - (await tips(page)).shin_n[0])
+      for (const [dx, dy, tag] of [[200, 0, 'forward'], [150, -200, 'forward-up'], [40, -300, 'up']] as const) {
+        await drag('upperarm_n', dx * fwd, dy)
+        const v = await boneValue(page, i, 'upperarm_n')
+        test.info().annotations.push({ type: `${preset} ${tag}`, description: `upperarm_n ${v}` })
+        expect.soft(v, `${preset} ${tag}: near upper arm held at its limit`).toBeGreaterThanOrEqual(-45.5)
+        await page.screenshot({ path: `${SHOTS}/11b-${preset}-arm-${tag}.png`, clip: upper })
+      }
+      // and the forearm folded on top of it
+      await drag('forearm_n', 120 * fwd, -120)
+      await page.screenshot({ path: `${SHOTS}/11b-${preset}-arm-forearm.png`, clip: upper })
+      // the hip: a handle at the thigh, a long robe holds it to a shuffle
+      const handles = Object.keys(await tips(page))
+      expect.soft(handles, `${preset}: hip handles`).toEqual(expect.arrayContaining(['thigh_n', 'thigh_f']))
+      if (handles.includes('thigh_n')) {
+        const lower = { x: Math.round(box.x - box.w * 0.3), y: Math.round(box.y + box.h * 0.45), width: Math.round(box.w * 1.6), height: Math.round(box.h * 0.6) }
+        for (const [dx, tag] of [[150, 'forward'], [-300, 'back']] as const) {
+          await drag('thigh_n', dx * fwd, 0)
+          const v = await boneValue(page, i, 'thigh_n')
+          test.info().annotations.push({ type: `${preset} hip ${tag}`, description: `thigh_n ${v} limit ${lim.thigh_n}` })
+          expect.soft(v, `${preset} hip ${tag}: the thigh turns`).not.toBe(0)
+          if (lim.thigh_n) expect.soft(Math.abs(v) <= Math.max(Math.abs(lim.thigh_n[0]), Math.abs(lim.thigh_n[1])) + 0.5, `${preset} hip ${tag}: within ${lim.thigh_n}`).toBe(true)
+          await page.screenshot({ path: `${SHOTS}/11b-${preset}-hip-${tag}.png`, clip: lower })
+        }
+      }
+    }
+  })
 })
 
 test('13b. a long robe (Scribe, Naditu): walk and run only shuffle the legs under the hem, no foot in the air', async ({ page }) => {
