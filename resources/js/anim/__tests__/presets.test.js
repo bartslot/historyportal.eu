@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
+import walkFixture from '../../../../tests/Fixtures/animations/expand-walk.json'
+import walkClip from '../../../animations/clips/walk.json'
 import catalogue from '../../../animations/presets.json'
 import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf, loadClips } from '../presets.js'
 
@@ -35,6 +37,9 @@ describe('expandClip', () => {
     expect(expandClip(fall, { r0: 5 }).map((k) => k.rotation)).toEqual([5, -65, 5])
     expect(expandClip(fall, { facing: -1 }).map((k) => k.rotation)).toEqual([0, 70, 0])
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'rotation' in k)).toBe(false)
+  })
+  it('the shipped walk lays out the same as the server (planted-foot keys and all)', () => {
+    expect(expandClip(walkClip, walkFixture.options)).toEqual(walkFixture.expected)
   })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'bone:tail' in k)).toBe(false)

@@ -320,13 +320,146 @@ def fit(raw: dict) -> tuple[dict, dict]:
         key = {'t': round(k['t'], 4), **{f'bone:{b}': round(p[b], 1) for b in moved}, 'dx': round(x / HEIGHT_PX, 4), 'bob': round(-y / HEIGHT_PX, 4)}
         if k.get('rot'):
             key['rot'] = round(float(k['rot']), 1)
+        key['contact'] = k.get('contact', 'both')   # which feet stand: the slide check holds these still between keys
         face = FACE_ALIAS.get(k.get('face'), k.get('face'))
         if face in FACES:
             key['face'] = face
         out_keys.append(key)
     clip = {'id': raw['id'], 'loop': bool(raw.get('loop')), 'duration': float(raw['duration']),
             'travel': round(dx[-1] / HEIGHT_PX, 4) if raw.get('loop') and raw.get('travel') else 0.0, 'keys': out_keys}
-    return clip, {'id': raw['id'], 'notes': notes, 'slide': slide(keys, poses, dx, dy)}
+    added = plant(clip)
+    if added:
+        notes.append(f'{added} keys added so a planted foot stays put between keys as the stage plays it')
+    return clip, {'id': raw['id'], 'notes': notes, 'slide': slide(keys, poses, dx, dy), 'between': round(between_slide(clip), 4)}
+
+
+# ── as the stage plays it: a planted foot stays put between keys too ─────────────────────────────────────────────────
+# The stage runs every field along its own keys (layout.ts keyedAt, ease 'smooth': monotone Hermite, one slope per key,
+# at rest at the ends). The root and the leg angles bend differently between two keys, so a foot planted at both slides
+# a little in between (fresh tester 11-15: 2-4 cm). plant() plays the clip the same way and adds a key, its root solved
+# from the planted foot, wherever that foot would slide more than SLIDE_TOL.
+
+SLIDE_TOL = 0.002        # body heights a planted foot may slide between keys (0.34 cm on a grown-up)
+PLANT_SAMPLES = 24       # looks between two keys
+PLANT_MAX_KEYS = 80      # at most this many added to one clip
+FEET = {'n': ('n',), 'f': ('f',), 'both': ('n', 'f'), 'none': ()}
+
+
+def key_slope(prev, at, after) -> float:
+    """layout.ts keySlope: the one slope at a key, 0 at an end or a turn, at most 3x the gentler run beside it."""
+    if prev is None or after is None or at[0] <= prev[0] or after[0] <= at[0]:
+        return 0.0
+    left, right = (at[1] - prev[1]) / (at[0] - prev[0]), (after[1] - at[1]) / (after[0] - at[0])
+    if left == 0 or right == 0 or (left > 0) != (right > 0):
+        return 0.0
+    mean = (after[1] - prev[1]) / (after[0] - prev[0])
+    return math.copysign(min(abs(mean), 3 * min(abs(left), abs(right))), mean)
+
+
+def played(clip: dict, field: str, t: float) -> float:
+    """A field at t (0..1) as the stage plays the clip's keys (a loop's neighbours come from the cycles either side)."""
+    keys = clip['keys']
+    pts = [(k['t'], float(k.get(field, 0.0))) for k in keys]
+    if clip['loop']:
+        shift = clip['travel'] if field == 'dx' else 0.0
+        pts = [(keys[-2]['t'] - 1, float(keys[-2].get(field, 0.0)) - shift)] + pts + [(keys[1]['t'] + 1, float(keys[1].get(field, 0.0)) + shift)]
+    i = next((n for n, p in enumerate(pts) if p[0] > t), len(pts) - 1)
+    i = max(1, i)
+    a, b = pts[i - 1], pts[i]
+    prev, nxt = (pts[i - 2] if i >= 2 else None), (pts[i + 1] if i + 1 < len(pts) else None)
+    h = b[0] - a[0]
+    k = 0.0 if h <= 0 else (t - a[0]) / h
+    ma, mb = key_slope(prev, a, b) * h, key_slope(a, b, nxt) * h
+    k2, k3 = k * k, k * k * k
+    return (2 * k3 - 3 * k2 + 1) * a[1] + (k3 - 2 * k2 + k) * ma + (-2 * k3 + 3 * k2) * b[1] + (k3 - k2) * mb
+
+
+def pose_at(clip: dict, t: float) -> dict[str, float]:
+    return {b: played(clip, f'bone:{b}', t) for b in MOVABLE if f'bone:{b}' in clip['keys'][0]}
+
+
+def foot_on_floor(clip: dict, key: dict, side: str) -> Pt:
+    """Where a key's ankle stands on the floor (its root moved by dx and bob), px."""
+    pose = {b[5:]: v for b, v in key.items() if b.startswith('bone:')}
+    a = joints(pose, side)['ankle']
+    return (a[0] + key['dx'] * HEIGHT_PX, a[1] - key['bob'] * HEIGHT_PX)
+
+
+def planted_runs(clip: dict):
+    """(i, feet): two keys in a row with these feet standing at both, and no tipping over."""
+    keys = clip['keys']
+    for i in range(len(keys) - 1):
+        a, b = keys[i], keys[i + 1]
+        if a.get('rot') or b.get('rot'):
+            continue
+        feet = [s for s in FEET[a.get('contact', 'both')] if s in FEET[b.get('contact', 'both')]]
+        if feet:
+            yield i, feet
+
+
+def spot_between(clip: dict, i: int, side: str, t: float) -> Pt:
+    """Where a foot standing at keys i and i+1 belongs at t: on the straight line between its two spots (a heel can lift)."""
+    a, b = clip['keys'][i], clip['keys'][i + 1]
+    pa, pb = foot_on_floor(clip, a, side), foot_on_floor(clip, b, side)
+    u = (t - a['t']) / (b['t'] - a['t'])
+    return (pa[0] + (pb[0] - pa[0]) * u, pa[1] + (pb[1] - pa[1]) * u)
+
+
+def worst_between(clip: dict):
+    """The worst sideways slide (px) of a planted foot between two keys as the stage plays them: (px, i, t, side)."""
+    worst = (0.0, -1, 0.0, 'n')
+    for i, feet in planted_runs(clip):
+        a, b = clip['keys'][i], clip['keys'][i + 1]
+        for n in range(1, PLANT_SAMPLES):
+            t = a['t'] + (b['t'] - a['t']) * n / PLANT_SAMPLES
+            pose, x = pose_at(clip, t), played(clip, 'dx', t) * HEIGHT_PX
+            for side in feet:
+                d = abs(joints(pose, side)['ankle'][0] + x - spot_between(clip, i, side, t)[0])
+                if d > worst[0]:
+                    worst = (d, i, t, side)
+    return worst
+
+
+def between_slide(clip: dict) -> float:
+    return worst_between(clip)[0] / HEIGHT_PX
+
+
+def feet_on_spots(pose: dict, hips: Pt, spots: dict) -> tuple[dict, Pt]:
+    """The pose and the hips (px from rest) with every foot in `spots` reached by its leg, the hips moved towards a foot
+    the legs cannot reach (the fit's own loop at keys)."""
+    for n in range(REACH_TRIES):
+        gaps = []
+        for side, want in spots.items():
+            pose = reach(pose, side, (want[0] - hips[0], want[1] - hips[1]))
+            got = joints(pose, side)['ankle']
+            gaps.append((want[0] - got[0] - hips[0], want[1] - got[1] - hips[1]))
+        worst = max(gaps, key=lambda g: math.hypot(*g))
+        if math.hypot(*worst) <= 0.5 or n == REACH_TRIES - 1:
+            break
+        hips = (hips[0] + worst[0], hips[1] + worst[1])
+    return pose, hips
+
+
+def plant(clip: dict) -> int:
+    """Keys added where a planted foot would slide between keys: the pose as the stage plays it there, the root and the
+    standing legs solved so each standing foot is on its spot. Returns how many."""
+    added = 0
+    while added < PLANT_MAX_KEYS:
+        px, i, t, side = worst_between(clip)
+        if px <= SLIDE_TOL * HEIGHT_PX:
+            break
+        a, b = clip['keys'][i], clip['keys'][i + 1]
+        feet = [s for s in FEET[a.get('contact', 'both')] if s in FEET[b.get('contact', 'both')]]
+        pose = {**{m: 0.0 for m in MOVABLE}, **pose_at(clip, t)}
+        hips = (played(clip, 'dx', t) * HEIGHT_PX, -played(clip, 'bob', t) * HEIGHT_PX)
+        pose, hips = feet_on_spots(pose, hips, {s: spot_between(clip, i, s, t) for s in feet})
+        hips = (hips[0], hips[1] - max(0.0, sinking(pose, hips[1])))   # nothing through the floor here either: a heel lifts
+        moved = [f[5:] for f in a if f.startswith('bone:')]
+        key = {'t': round(t, 4), **{f'bone:{m}': round(pose.get(m, 0.0), 1) for m in moved}, 'dx': round(hips[0] / HEIGHT_PX, 4),
+               'bob': round(-hips[1] / HEIGHT_PX, 4), 'contact': 'both' if len(feet) == 2 else feet[0]}
+        clip['keys'] = sorted(clip['keys'] + [key], key=lambda k: k['t'])
+        added += 1
+    return added
 
 
 def sinking(pose: dict[str, float], dy: float) -> float:
@@ -360,7 +493,7 @@ def main(argv: list[str]) -> int:
     for path in args.raw:
         clip, report = fit(json.loads(path.read_text()))
         (args.out / f"{clip['id']}.json").write_text(json.dumps(clip, indent=1) + '\n')
-        print(f"{clip['id']}: {len(clip['keys'])} keys, travel {clip['travel']}, foot slide {report['slide']}")
+        print(f"{clip['id']}: {len(clip['keys'])} keys, travel {clip['travel']}, foot slide {report['slide']}, between keys {report['between']}")
         for n in report['notes']:
             print(f'  {n}')
     return 0

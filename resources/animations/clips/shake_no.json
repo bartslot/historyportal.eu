@@ -17,6 +17,7 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -32,6 +33,7 @@
    "bone:upperarm_n": -7.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "curious"
   },
   {
@@ -47,6 +49,7 @@
    "bone:upperarm_n": -9.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "curious"
   },
   {
@@ -62,6 +65,7 @@
    "bone:upperarm_n": -6.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "curious"
   },
   {
@@ -77,6 +81,7 @@
    "bone:upperarm_n": -3.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -92,6 +97,7 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   }
  ]

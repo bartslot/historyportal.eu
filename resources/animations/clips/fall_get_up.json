@@ -20,6 +20,7 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -39,6 +40,7 @@
    "dx": 0.0087,
    "bob": -0.0157,
    "rot": -4.0,
+   "contact": "both",
    "face": "amazed"
   },
   {
@@ -58,6 +60,7 @@
    "dx": 0.0746,
    "bob": -0.1621,
    "rot": -14.0,
+   "contact": "both",
    "face": "amazed"
   },
   {
@@ -77,6 +80,7 @@
    "dx": 0.0795,
    "bob": -0.1363,
    "rot": -48.0,
+   "contact": "both",
    "face": "amazed"
   },
   {
@@ -96,6 +100,7 @@
    "dx": 0.0762,
    "bob": -0.0555,
    "rot": -74.0,
+   "contact": "both",
    "face": "sad"
   },
   {
@@ -115,6 +120,7 @@
    "dx": 0.0737,
    "bob": -0.0606,
    "rot": -72.0,
+   "contact": "both",
    "face": "sad"
   },
   {
@@ -134,6 +140,7 @@
    "dx": 0.0795,
    "bob": -0.1605,
    "rot": -38.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -153,6 +160,7 @@
    "dx": 0.0747,
    "bob": -0.1788,
    "rot": -10.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -172,6 +180,7 @@
    "dx": 0.0256,
    "bob": -0.0353,
    "rot": -2.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -190,6 +199,7 @@
    "bone:upperarm_n": 0.0,
    "dx": -0.0,
    "bob": 0.0,
+   "contact": "both",
    "face": "calm"
   }
  ]

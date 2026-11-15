@@ -29,8 +29,8 @@ final class AnimationPresets
 
     private const SPEED = [0.25, 4.0];
 
-    /** A clip that stays in place moves its root less than this (body heights): its x keys are left alone (presets.js MOVE_MIN). */
-    private const MOVE_MIN = 0.01;
+    /** A root move smaller than this (body heights) is rounding: no x keys for it (presets.js MOVE_MIN). */
+    private const MOVE_MIN = 0.0005;
 
     /** A walk or a run with no length of its own crosses the shot this many cycles (presets.js TRAVEL_CYCLES). */
     private const TRAVEL_CYCLES = 3;

@@ -34,6 +34,13 @@ class AnimationPresetsTest extends TestCase
         $this->assertEquals($fixture['expected'], AnimationPresets::expand($fixture['clip'], $fixture['options']));
     }
 
+    public function test_the_server_lays_the_shipped_walk_out_as_the_editor_does(): void
+    {
+        $fixture = json_decode((string) file_get_contents(base_path('tests/Fixtures/animations/expand-walk.json')), true);
+
+        $this->assertEquals($fixture['expected'], AnimationPresets::expand(AnimationPresets::clip($fixture['clip']), $fixture['options']));
+    }
+
     public function test_every_preset_in_the_catalogue_has_a_clip_and_a_label_in_every_language(): void
     {
         $this->assertGreaterThanOrEqual(22, count(AnimationPresets::ids()));
@@ -80,7 +87,7 @@ class AnimationPresetsTest extends TestCase
     {
         $added = [['t' => 1.0, 'bone:head' => 5.0, 'face' => 'amazed'], ['t' => 2.0, 'bone:head' => 0.0]];
         $this->assertSame(['sad', 'amazed', 'sad'], array_column(AnimationPresets::apply([['t' => 0.0, 'face' => 'sad', 'x' => 0.1]], $added), 'face'));
-        $still = ['id' => 's', 'loop' => false, 'duration' => 1.0, 'travel' => 0.0, 'keys' => [['t' => 0, 'bone:head' => 1, 'dx' => 0, 'bob' => 0], ['t' => 1, 'bone:head' => 2, 'dx' => 0.004, 'bob' => 0]]];
+        $still = ['id' => 's', 'loop' => false, 'duration' => 1.0, 'travel' => 0.0, 'keys' => [['t' => 0, 'bone:head' => 1, 'dx' => 0, 'bob' => 0], ['t' => 1, 'bone:head' => 2, 'dx' => 0.0003, 'bob' => 0]]];
         $this->assertFalse(collect(AnimationPresets::expand($still, ['bones' => ['head'], 'xPerHeight' => 1.0]))->contains(fn ($k) => isset($k['x'])));
     }
 

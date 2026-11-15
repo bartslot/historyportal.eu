@@ -22,10 +22,11 @@ export function loadClips () {
   return loading
 }
 
-const round3 = (v) => Math.round(v * 1000) / 1000
+const round3 = (v) => Math.round(v * 1000) / 1000 + 0   // + 0: a mirrored 0 is 0, not -0
 const BONE = 'bone:'
-/** A clip that stays in place moves its root less than this (body heights): its x keys are left to the teacher. */
-export const MOVE_MIN = 0.01
+/** A root move smaller than this (body heights) is rounding: no x keys for it. A clip in place that moves the hips does
+ *  write them, so its planted feet stay put; where the teacher keys x themselves, theirs win (applyClip inPlace). */
+export const MOVE_MIN = 0.0005
 /** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
 export const TRAVEL_CYCLES = 3
 /** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend;
