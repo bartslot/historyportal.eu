@@ -419,9 +419,10 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
     for slot, names in kit['parts'].items():
         for n in names:
             jobs[n] = (outfit0, face0, [n])
-    for e in EXPRESSIONS:
-        if find_or_none(K / f'parts/expressions/{body}-{e}.png'):
-            jobs[f'expressions/{body}-{e}'] = (outfit0, face0, [f'expressions/{body}-{e}'])
+    sets = expression_sets(body)
+    for (face, eye), by_e in sets.items():   # each face and eyes' own expressions, painted over them (Bart 11-15)
+        for pid in by_e.values():
+            jobs[pid] = (outfit0, face, ([eye] if eye else []) + [pid])
     futures = {pid: pool.submit(render, body, *args, tmp / body / pid.replace('/', '_')) for pid, args in jobs.items()}
     done = {pid: f.result() for pid, f in futures.items()}
     print(body, len(done), 'renders')
@@ -468,14 +469,31 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
             else:   # its own contour lies on the mask's edge: a line's width round it, no more (no face lines carried along)
                 keep = ndimage.binary_dilation(m, iterations=2) | (ndimage.binary_dilation(m, iterations=OWN_LINE) & ink)
             piece(n, slot, keep, slot in ('hair', 'beard', 'headwear'))
-    for e in EXPRESSIONS:
-        pid = f'expressions/{body}-{e}'
+    for pid in [p for by_e in sets.values() for p in by_e.values()]:
         if pid in done:
             m = head_to_canvas(done[pid]['head_mask'], body, shape)
             piece(pid, 'expression', ndimage.binary_dilation(m, iterations=2) & ~contour, False)
     write_rig(body)
     return {'id': body, 'label': body.capitalize(), 'pieces': pieces, 'rig': f'{body}/rig.json',
-            'expressions': {e: f'expressions/{body}-{e}' for e in EXPRESSIONS if f'expressions/{body}-{e}' in done}}
+            'expressions': sets.get((face0, None), {}),
+            'expressionSets': {f'{face}/{eye or ""}': by_e for (face, eye), by_e in sets.items()}}
+
+
+def expression_sets(body: str) -> dict[tuple[str, str | None], dict[str, str]]:
+    """Each face x eyes of a body that has painted expressions: {(face, eyes or None): {expression: piece id}}. An emotion
+    changes only the brows, lids and mouth, so each chosen face and eye style has its own set (Bart 11-15: "the other
+    emotions should also show it"). Patch files: the first face keeps its old names (<body>-<e>, <eyes>-<e>), other
+    faces are <face>-<e> and <face>_<eyes>-<e>."""
+    kit = BODY_KIT[body]
+    out = {}
+    for face in kit['faces']:
+        for eye in [None] + kit['parts'].get('eyes', []):
+            name = eye.split('/', 1)[1] if eye else None
+            prefix = (name or body) if face == kit['face'] else (f'{face}_{name}' if name else face)
+            by_e = {e: f'expressions/{prefix}-{e}' for e in EXPRESSIONS if find_or_none(K / f'parts/expressions/{prefix}-{e}.png')}
+            if by_e:
+                out[(face, eye)] = by_e
+    return out
 
 
 def find_or_none(p: Path) -> Path | None:

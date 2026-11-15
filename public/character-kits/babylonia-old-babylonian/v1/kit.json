@@ -577,6 +577,88 @@
       "ink": "expressions-girl-amazed-ink.webp",
       "shade": "expressions-girl-amazed-shade.webp"
      }
+    },
+    {
+     "id": "expressions/young-woman-curious",
+     "slot": "expression",
+     "label": "Young curious",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      989,
+      260,
+      223,
+      238
+     ],
+     "files": {
+      "fill": "expressions-young-woman-curious.webp",
+      "ink": "expressions-young-woman-curious-ink.webp",
+      "shade": "expressions-young-woman-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/young-woman-sad",
+     "slot": "expression",
+     "label": "Young sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      986,
+      268,
+      236,
+      230
+     ],
+     "files": {
+      "fill": "expressions-young-woman-sad.webp",
+      "ink": "expressions-young-woman-sad-ink.webp",
+      "shade": "expressions-young-woman-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/young-woman-angry",
+     "slot": "expression",
+     "label": "Young angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      983,
+      277,
+      229,
+      221
+     ],
+     "files": {
+      "fill": "expressions-young-woman-angry.webp",
+      "ink": "expressions-young-woman-angry-ink.webp",
+      "shade": "expressions-young-woman-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/young-woman-amazed",
+     "slot": "expression",
+     "label": "Young amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      983,
+      224,
+      239,
+      278
+     ],
+     "files": {
+      "fill": "expressions-young-woman-amazed.webp",
+      "ink": "expressions-young-woman-amazed-ink.webp",
+      "shade": "expressions-young-woman-amazed-shade.webp"
+     }
     }
    ],
    "rig": "girl/rig.json",
@@ -585,6 +667,20 @@
     "sad": "expressions/girl-sad",
     "angry": "expressions/girl-angry",
     "amazed": "expressions/girl-amazed"
+   },
+   "expressionSets": {
+    "girl/": {
+     "curious": "expressions/girl-curious",
+     "sad": "expressions/girl-sad",
+     "angry": "expressions/girl-angry",
+     "amazed": "expressions/girl-amazed"
+    },
+    "young-woman/": {
+     "curious": "expressions/young-woman-curious",
+     "sad": "expressions/young-woman-sad",
+     "angry": "expressions/young-woman-angry",
+     "amazed": "expressions/young-woman-amazed"
+    }
    }
   },
   {
@@ -988,6 +1084,678 @@
       "ink": "expressions-woman-amazed-ink.webp",
       "shade": "expressions-woman-amazed-shade.webp"
      }
+    },
+    {
+     "id": "expressions/woman-round-curious",
+     "slot": "expression",
+     "label": "Round curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      978,
+      226,
+      202,
+      229
+     ],
+     "files": {
+      "fill": "expressions-woman-round-curious.webp",
+      "ink": "expressions-woman-round-curious-ink.webp",
+      "shade": "expressions-woman-round-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-round-sad",
+     "slot": "expression",
+     "label": "Round sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      983,
+      237,
+      198,
+      218
+     ],
+     "files": {
+      "fill": "expressions-woman-round-sad.webp",
+      "ink": "expressions-woman-round-sad-ink.webp",
+      "shade": "expressions-woman-round-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-round-angry",
+     "slot": "expression",
+     "label": "Round angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      977,
+      243,
+      203,
+      212
+     ],
+     "files": {
+      "fill": "expressions-woman-round-angry.webp",
+      "ink": "expressions-woman-round-angry-ink.webp",
+      "shade": "expressions-woman-round-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-round-amazed",
+     "slot": "expression",
+     "label": "Round amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      976,
+      201,
+      205,
+      257
+     ],
+     "files": {
+      "fill": "expressions-woman-round-amazed.webp",
+      "ink": "expressions-woman-round-amazed-ink.webp",
+      "shade": "expressions-woman-round-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-hooded-curious",
+     "slot": "expression",
+     "label": "Hooded curious",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      980,
+      219,
+      200,
+      236
+     ],
+     "files": {
+      "fill": "expressions-woman-hooded-curious.webp",
+      "ink": "expressions-woman-hooded-curious-ink.webp",
+      "shade": "expressions-woman-hooded-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-hooded-sad",
+     "slot": "expression",
+     "label": "Hooded sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      978,
+      240,
+      205,
+      215
+     ],
+     "files": {
+      "fill": "expressions-woman-hooded-sad.webp",
+      "ink": "expressions-woman-hooded-sad-ink.webp",
+      "shade": "expressions-woman-hooded-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-hooded-angry",
+     "slot": "expression",
+     "label": "Hooded angry",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      969,
+      243,
+      213,
+      212
+     ],
+     "files": {
+      "fill": "expressions-woman-hooded-angry.webp",
+      "ink": "expressions-woman-hooded-angry-ink.webp",
+      "shade": "expressions-woman-hooded-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-hooded-amazed",
+     "slot": "expression",
+     "label": "Hooded amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      977,
+      202,
+      204,
+      253
+     ],
+     "files": {
+      "fill": "expressions-woman-hooded-amazed.webp",
+      "ink": "expressions-woman-hooded-amazed-ink.webp",
+      "shade": "expressions-woman-hooded-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n-curious",
+     "slot": "expression",
+     "label": "40 n curious",
+     "kinds": [
+      "skin"
+     ],
+     "box": [
+      982,
+      230,
+      186,
+      225
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n-curious.webp",
+      "ink": "expressions-woman-40-n-curious-ink.webp",
+      "shade": "expressions-woman-40-n-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n-sad",
+     "slot": "expression",
+     "label": "40 n sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      980,
+      241,
+      201,
+      214
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n-sad.webp",
+      "ink": "expressions-woman-40-n-sad-ink.webp",
+      "shade": "expressions-woman-40-n-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n-angry",
+     "slot": "expression",
+     "label": "40 n angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      975,
+      242,
+      204,
+      212
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n-angry.webp",
+      "ink": "expressions-woman-40-n-angry-ink.webp",
+      "shade": "expressions-woman-40-n-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n-amazed",
+     "slot": "expression",
+     "label": "40 n amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      980,
+      200,
+      201,
+      261
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n-amazed.webp",
+      "ink": "expressions-woman-40-n-amazed-ink.webp",
+      "shade": "expressions-woman-40-n-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-round-curious",
+     "slot": "expression",
+     "label": "40 n_round curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      979,
+      229,
+      201,
+      205
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-round-curious.webp",
+      "ink": "expressions-woman-40-n_woman-round-curious-ink.webp",
+      "shade": "expressions-woman-40-n_woman-round-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-round-sad",
+     "slot": "expression",
+     "label": "40 n_round sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      983,
+      237,
+      197,
+      218
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-round-sad.webp",
+      "ink": "expressions-woman-40-n_woman-round-sad-ink.webp",
+      "shade": "expressions-woman-40-n_woman-round-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-round-angry",
+     "slot": "expression",
+     "label": "40 n_round angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      980,
+      242,
+      200,
+      213
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-round-angry.webp",
+      "ink": "expressions-woman-40-n_woman-round-angry-ink.webp",
+      "shade": "expressions-woman-40-n_woman-round-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-round-amazed",
+     "slot": "expression",
+     "label": "40 n_round amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      978,
+      195,
+      202,
+      264
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-round-amazed.webp",
+      "ink": "expressions-woman-40-n_woman-round-amazed-ink.webp",
+      "shade": "expressions-woman-40-n_woman-round-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-hooded-curious",
+     "slot": "expression",
+     "label": "40 n_hooded curious",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      980,
+      230,
+      200,
+      225
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-hooded-curious.webp",
+      "ink": "expressions-woman-40-n_woman-hooded-curious-ink.webp",
+      "shade": "expressions-woman-40-n_woman-hooded-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-hooded-sad",
+     "slot": "expression",
+     "label": "40 n_hooded sad",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      975,
+      236,
+      209,
+      219
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-hooded-sad.webp",
+      "ink": "expressions-woman-40-n_woman-hooded-sad-ink.webp",
+      "shade": "expressions-woman-40-n_woman-hooded-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-hooded-angry",
+     "slot": "expression",
+     "label": "40 n_hooded angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris"
+     ],
+     "box": [
+      968,
+      242,
+      213,
+      213
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-hooded-angry.webp",
+      "ink": "expressions-woman-40-n_woman-hooded-angry-ink.webp",
+      "shade": "expressions-woman-40-n_woman-hooded-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/woman-40-n_woman-hooded-amazed",
+     "slot": "expression",
+     "label": "40 n_hooded amazed",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      972,
+      203,
+      209,
+      257
+     ],
+     "files": {
+      "fill": "expressions-woman-40-n_woman-hooded-amazed.webp",
+      "ink": "expressions-woman-40-n_woman-hooded-amazed-ink.webp",
+      "shade": "expressions-woman-40-n_woman-hooded-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n-curious",
+     "slot": "expression",
+     "label": "Old n curious",
+     "kinds": [
+      "skin",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      980,
+      233,
+      188,
+      233
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n-curious.webp",
+      "ink": "expressions-old-woman-n-curious-ink.webp",
+      "shade": "expressions-old-woman-n-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n-sad",
+     "slot": "expression",
+     "label": "Old n sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      973,
+      240,
+      207,
+      226
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n-sad.webp",
+      "ink": "expressions-old-woman-n-sad-ink.webp",
+      "shade": "expressions-old-woman-n-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n-angry",
+     "slot": "expression",
+     "label": "Old n angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      984,
+      248,
+      197,
+      200
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n-angry.webp",
+      "ink": "expressions-old-woman-n-angry-ink.webp",
+      "shade": "expressions-old-woman-n-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n-amazed",
+     "slot": "expression",
+     "label": "Old n amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      978,
+      221,
+      190,
+      241
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n-amazed.webp",
+      "ink": "expressions-old-woman-n-amazed-ink.webp",
+      "shade": "expressions-old-woman-n-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-round-curious",
+     "slot": "expression",
+     "label": "Old n_round curious",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      981,
+      231,
+      198,
+      205
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-round-curious.webp",
+      "ink": "expressions-old-woman-n_woman-round-curious-ink.webp",
+      "shade": "expressions-old-woman-n_woman-round-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-round-sad",
+     "slot": "expression",
+     "label": "Old n_round sad",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      977,
+      240,
+      204,
+      226
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-round-sad.webp",
+      "ink": "expressions-old-woman-n_woman-round-sad-ink.webp",
+      "shade": "expressions-old-woman-n_woman-round-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-round-angry",
+     "slot": "expression",
+     "label": "Old n_round angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      982,
+      248,
+      197,
+      200
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-round-angry.webp",
+      "ink": "expressions-old-woman-n_woman-round-angry-ink.webp",
+      "shade": "expressions-old-woman-n_woman-round-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-round-amazed",
+     "slot": "expression",
+     "label": "Old n_round amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "brow"
+     ],
+     "box": [
+      971,
+      215,
+      209,
+      262
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-round-amazed.webp",
+      "ink": "expressions-old-woman-n_woman-round-amazed-ink.webp",
+      "shade": "expressions-old-woman-n_woman-round-amazed-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-hooded-curious",
+     "slot": "expression",
+     "label": "Old n_hooded curious",
+     "kinds": [
+      "skin",
+      "white",
+      "brow"
+     ],
+     "box": [
+      981,
+      231,
+      199,
+      235
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-hooded-curious.webp",
+      "ink": "expressions-old-woman-n_woman-hooded-curious-ink.webp",
+      "shade": "expressions-old-woman-n_woman-hooded-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-hooded-sad",
+     "slot": "expression",
+     "label": "Old n_hooded sad",
+     "kinds": [
+      "skin",
+      "white",
+      "brow"
+     ],
+     "box": [
+      976,
+      239,
+      206,
+      217
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-hooded-sad.webp",
+      "ink": "expressions-old-woman-n_woman-hooded-sad-ink.webp",
+      "shade": "expressions-old-woman-n_woman-hooded-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-hooded-angry",
+     "slot": "expression",
+     "label": "Old n_hooded angry",
+     "kinds": [
+      "skin",
+      "white",
+      "iris",
+      "brow"
+     ],
+     "box": [
+      974,
+      248,
+      212,
+      200
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-hooded-angry.webp",
+      "ink": "expressions-old-woman-n_woman-hooded-angry-ink.webp",
+      "shade": "expressions-old-woman-n_woman-hooded-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/old-woman-n_woman-hooded-amazed",
+     "slot": "expression",
+     "label": "Old n_hooded amazed",
+     "kinds": [
+      "skin",
+      "white",
+      "brow"
+     ],
+     "box": [
+      976,
+      224,
+      205,
+      256
+     ],
+     "files": {
+      "fill": "expressions-old-woman-n_woman-hooded-amazed.webp",
+      "ink": "expressions-old-woman-n_woman-hooded-amazed-ink.webp",
+      "shade": "expressions-old-woman-n_woman-hooded-amazed-shade.webp"
+     }
     }
    ],
    "rig": "woman/rig.json",
@@ -996,6 +1764,62 @@
     "sad": "expressions/woman-sad",
     "angry": "expressions/woman-angry",
     "amazed": "expressions/woman-amazed"
+   },
+   "expressionSets": {
+    "woman-n/": {
+     "curious": "expressions/woman-curious",
+     "sad": "expressions/woman-sad",
+     "angry": "expressions/woman-angry",
+     "amazed": "expressions/woman-amazed"
+    },
+    "woman-n/eyes/woman-round": {
+     "curious": "expressions/woman-round-curious",
+     "sad": "expressions/woman-round-sad",
+     "angry": "expressions/woman-round-angry",
+     "amazed": "expressions/woman-round-amazed"
+    },
+    "woman-n/eyes/woman-hooded": {
+     "curious": "expressions/woman-hooded-curious",
+     "sad": "expressions/woman-hooded-sad",
+     "angry": "expressions/woman-hooded-angry",
+     "amazed": "expressions/woman-hooded-amazed"
+    },
+    "woman-40-n/": {
+     "curious": "expressions/woman-40-n-curious",
+     "sad": "expressions/woman-40-n-sad",
+     "angry": "expressions/woman-40-n-angry",
+     "amazed": "expressions/woman-40-n-amazed"
+    },
+    "woman-40-n/eyes/woman-round": {
+     "curious": "expressions/woman-40-n_woman-round-curious",
+     "sad": "expressions/woman-40-n_woman-round-sad",
+     "angry": "expressions/woman-40-n_woman-round-angry",
+     "amazed": "expressions/woman-40-n_woman-round-amazed"
+    },
+    "woman-40-n/eyes/woman-hooded": {
+     "curious": "expressions/woman-40-n_woman-hooded-curious",
+     "sad": "expressions/woman-40-n_woman-hooded-sad",
+     "angry": "expressions/woman-40-n_woman-hooded-angry",
+     "amazed": "expressions/woman-40-n_woman-hooded-amazed"
+    },
+    "old-woman-n/": {
+     "curious": "expressions/old-woman-n-curious",
+     "sad": "expressions/old-woman-n-sad",
+     "angry": "expressions/old-woman-n-angry",
+     "amazed": "expressions/old-woman-n-amazed"
+    },
+    "old-woman-n/eyes/woman-round": {
+     "curious": "expressions/old-woman-n_woman-round-curious",
+     "sad": "expressions/old-woman-n_woman-round-sad",
+     "angry": "expressions/old-woman-n_woman-round-angry",
+     "amazed": "expressions/old-woman-n_woman-round-amazed"
+    },
+    "old-woman-n/eyes/woman-hooded": {
+     "curious": "expressions/old-woman-n_woman-hooded-curious",
+     "sad": "expressions/old-woman-n_woman-hooded-sad",
+     "angry": "expressions/old-woman-n_woman-hooded-angry",
+     "amazed": "expressions/old-woman-n_woman-hooded-amazed"
+    }
    }
   },
   {
@@ -1293,6 +2117,86 @@
       "ink": "expressions-man-amazed-ink.webp",
       "shade": "expressions-man-amazed-shade.webp"
      }
+    },
+    {
+     "id": "expressions/man-calm-curious",
+     "slot": "expression",
+     "label": "Calm curious",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      988,
+      205,
+      199,
+      251
+     ],
+     "files": {
+      "fill": "expressions-man-calm-curious.webp",
+      "ink": "expressions-man-calm-curious-ink.webp",
+      "shade": "expressions-man-calm-curious-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-calm-sad",
+     "slot": "expression",
+     "label": "Calm sad",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      988,
+      240,
+      188,
+      216
+     ],
+     "files": {
+      "fill": "expressions-man-calm-sad.webp",
+      "ink": "expressions-man-calm-sad-ink.webp",
+      "shade": "expressions-man-calm-sad-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-calm-angry",
+     "slot": "expression",
+     "label": "Calm angry",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      982,
+      240,
+      194,
+      216
+     ],
+     "files": {
+      "fill": "expressions-man-calm-angry.webp",
+      "ink": "expressions-man-calm-angry-ink.webp",
+      "shade": "expressions-man-calm-angry-shade.webp"
+     }
+    },
+    {
+     "id": "expressions/man-calm-amazed",
+     "slot": "expression",
+     "label": "Calm amazed",
+     "kinds": [
+      "skin",
+      "white"
+     ],
+     "box": [
+      983,
+      196,
+      193,
+      260
+     ],
+     "files": {
+      "fill": "expressions-man-calm-amazed.webp",
+      "ink": "expressions-man-calm-amazed-ink.webp",
+      "shade": "expressions-man-calm-amazed-shade.webp"
+     }
     }
    ],
    "rig": "man/rig.json",
@@ -1301,6 +2205,20 @@
     "sad": "expressions/man-sad",
     "angry": "expressions/man-angry",
     "amazed": "expressions/man-amazed"
+   },
+   "expressionSets": {
+    "man/": {
+     "curious": "expressions/man-curious",
+     "sad": "expressions/man-sad",
+     "angry": "expressions/man-angry",
+     "amazed": "expressions/man-amazed"
+    },
+    "man/eyes/man-calm": {
+     "curious": "expressions/man-calm-curious",
+     "sad": "expressions/man-calm-sad",
+     "angry": "expressions/man-calm-angry",
+     "amazed": "expressions/man-calm-amazed"
+    }
    }
   }
  ],

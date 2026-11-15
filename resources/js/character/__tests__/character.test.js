@@ -18,8 +18,10 @@ const kit = {
     pieces: [piece('outfit/work-tunic-apron', 'outfit', ['skin', 'tunic', 'apron', 'rope']), piece('outfit/long-wrap', 'outfit', ['skin', 'tunic', 'shawl']),
       piece('face/woman-n', 'face', ['skin']), piece('face/old-woman-n', 'face', ['skin']), piece('eyes/woman-round', 'eyes'),
       piece('mouths/woman-ah', 'mouth'), piece('hair/woman-bun', 'hair', ['hair']), piece('headwear/woman-headband', 'headwear', ['apron']),
-      piece('headwear/woman-shawl-over-head', 'headwear', ['ochre']), piece('extras/woman-jewellery', 'extra'), piece('expressions/woman-sad', 'expression')],
+      piece('headwear/woman-shawl-over-head', 'headwear', ['ochre']), piece('extras/woman-jewellery', 'extra'), piece('expressions/woman-sad', 'expression'),
+      piece('expressions/woman-round-sad', 'expression'), piece('expressions/old-woman-n_woman-round-sad', 'expression')],
     expressions: { sad: 'expressions/woman-sad' },
+    expressionSets: { 'woman-n/eyes/woman-round': { sad: 'expressions/woman-round-sad' }, 'old-woman-n/eyes/woman-round': { sad: 'expressions/old-woman-n_woman-round-sad' } },
   }, { id: 'man', pieces: [piece('outfit/soldier', 'outfit', ['skin']), piece('face/man', 'face', ['skin'])], expressions: {} }],
   presets: [
     { id: 'weaver', recipe: { body: 'woman', outfit: 'work-tunic-apron', face: 'woman-n', parts: ['hair/woman-bun', 'headwear/woman-headband'], skin: 's3', hair_colour: 'black-brown', zones: { garment: 'raw-linen', apron: 'indigo-blue' }, height_m: 1.55 } },
@@ -32,9 +34,24 @@ describe('recipe', () => {
   it('stacks the pieces back to front, an expression over the eyes and mouth', () => {
     const r = { ...weaver(), eyes: 'woman-round', parts: ['headwear/woman-headband', 'hair/woman-bun'] }
     expect(stackOf(kit, r)).toEqual(['outfit/work-tunic-apron', 'face/woman-n', 'eyes/woman-round', 'hair/woman-bun', 'headwear/woman-headband'])
-    expect(stackOf(kit, r, 'sad')).toContain('expressions/woman-sad')
+    expect(stackOf(kit, r, 'sad')).toContain('expressions/woman-round-sad')
     expect(stackOf(kit, r, 'sad')).not.toContain('eyes/woman-round')   // the expression's own eyes and mouth, never both
     expect(stackOf(kit, r, 'angry')).not.toContain('expressions/woman-sad')   // a body without that expression keeps its face
+  })
+
+  it('an expression keeps the eyes the teacher chose: that eye style\'s own painted expression (Bart 11-15)', () => {
+    const round = { ...weaver(), eyes: 'woman-round' }
+    expect(stackOf(kit, round, 'sad')).toContain('expressions/woman-round-sad')
+    expect(stackOf(kit, round, 'sad')).not.toContain('expressions/woman-sad')
+    expect(stackOf(kit, round, 'sad')).not.toContain('eyes/woman-round')       // the variant paints those eyes itself
+    expect(stackOf(kit, { ...weaver(), eyes: undefined }, 'sad')).toContain('expressions/woman-sad')   // her own eyes: the plain one
+  })
+
+  it('an expression keeps the face the teacher chose too: that face and eyes\' own painted expression', () => {
+    const old = { ...weaver(), face: 'old-woman-n', eyes: 'woman-round' }
+    expect(stackOf(kit, old, 'sad')).toContain('expressions/old-woman-n_woman-round-sad')
+    expect(stackOf(kit, old, 'sad')).toContain('face/old-woman-n')
+    expect(stackOf(kit, old, 'sad')).not.toContain('expressions/woman-round-sad')     // never the first face's
   })
 
   it('colours each kind from the recipe: skin, hair and brows, the zones from the twelve', () => {
