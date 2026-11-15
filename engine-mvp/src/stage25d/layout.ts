@@ -282,22 +282,26 @@ function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): nu
   return lerp(a[field] as number, b[field] as number, ease('inOut', k))
 }
 
-/** From a to b through the keys either side (Hermite, each slope from its neighbours over their time): a walk's poses
- *  flow into each other without a stop at every key. Monotone (Fritsch-Carlson): it never overshoots a key, so a root
- *  that only goes forward never steps back between keys (fresh tester 11-15), and it starts and ends at rest where no
- *  key comes before or after. */
+/** From a to b through the keys either side (Hermite): a walk's poses flow into each other without a stop at every key.
+ *  Each key has ONE slope, shared by the runs on both sides of it, so a joint's speed never jumps at a key (fresh tester
+ *  11-15, round 4). It is monotone: 0 at a key where the value turns round, and at most three times the gentler run
+ *  beside it, so a root that only goes forward never steps back between keys. Where no key comes before or after,
+ *  the motion starts or ends at rest. */
 function through(prev: LayerKey | undefined, a: LayerKey, b: LayerKey, next: LayerKey | undefined, field: keyof LayerKey, k: number): number {
   const v = (key: LayerKey) => key[field] as number
   const h = b.t - a.t
-  const d = v(b) - v(a)
-  const slope = (p: LayerKey | undefined, q: LayerKey | undefined) => (p && q && q.t > p.t ? ((v(q) - v(p)) / (q.t - p.t)) * h : 0)
-  let ma = slope(prev, b), mb = slope(a, next)
-  if (d === 0 || Math.sign(ma) !== Math.sign(d)) ma = 0
-  if (d === 0 || Math.sign(mb) !== Math.sign(d)) mb = 0
-  const r = Math.hypot(ma / (d || 1), mb / (d || 1))
-  if (r > 3) { ma *= 3 / r; mb *= 3 / r }
+  const ma = keySlope(prev, a, b, v) * h, mb = keySlope(a, b, next, v) * h
   const k2 = k * k, k3 = k2 * k
   return (2 * k3 - 3 * k2 + 1) * v(a) + (k3 - 2 * k2 + k) * ma + (-2 * k3 + 3 * k2) * v(b) + (k3 - k2) * mb
+}
+
+/** The slope (per second) at key `at`, from the runs to its neighbours: 0 at an end or a turn, never past 3x the gentler run. */
+function keySlope(before: LayerKey | undefined, at: LayerKey, after: LayerKey | undefined, v: (key: LayerKey) => number): number {
+  if (!before || !after || at.t <= before.t || after.t <= at.t) return 0
+  const left = (v(at) - v(before)) / (at.t - before.t), right = (v(after) - v(at)) / (after.t - at.t)
+  if (left === 0 || right === 0 || Math.sign(left) !== Math.sign(right)) return 0
+  const mean = (v(after) - v(before)) / (after.t - before.t)
+  return Math.sign(mean) * Math.min(Math.abs(mean), 3 * Math.min(Math.abs(left), Math.abs(right)))
 }
 
 /** The expression a figure shows at time t: the last key at or before it that names one (it steps, never blends). */

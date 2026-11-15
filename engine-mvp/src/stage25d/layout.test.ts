@@ -566,6 +566,14 @@ describe('smooth keys (animation presets)', () => {
       last = x
     }
   })
+  it('a joint\'s speed does not jump at a key, even where it turns round', () => {
+    const turn = [{ t: 0, 'bone:shin_n': 0, ease: 'smooth' as const }, { t: 0.5, 'bone:shin_n': 60, ease: 'smooth' as const }, { t: 1, 'bone:shin_n': 70, ease: 'smooth' as const }, { t: 1.4, 'bone:shin_n': 10, ease: 'smooth' as const }, { t: 2, 'bone:shin_n': 0 }]
+    const at = (t: number) => bonesAt({ depth: 'fg', keys: turn }, t).shin_n
+    for (const key of [0.5, 1, 1.4]) {
+      const before = (at(key) - at(key - 0.001)) / 0.001, after = (at(key + 0.001) - at(key)) / 0.001
+      expect(Math.abs(after - before)).toBeLessThan(2)
+    }
+  })
   it('comes to rest at the last key instead of stopping dead', () => {
     const at = (t: number) => bonesAt({ depth: 'fg', keys }, t).thigh_n
     expect(at(3) - at(2.99)).toBeLessThan(0.05)
