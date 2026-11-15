@@ -110,6 +110,8 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     drawHover()
     $('[data-chr-loading]').hidden = true
   }
+  // the neck: where the head bone starts, in kit canvas pixels
+  const neckY = () => (rig.bones.find((b) => b.name === 'head')?.from[1] ?? 0) * (rig.scale ?? 1)
   const drawHover = () => {
     const g = edge.getContext('2d')
     g.setTransform(1, 0, 0, 1, 0, 0)
@@ -118,7 +120,7 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     const body = hover === 'body'
     // the body is the bare skin below the head (the face and its neck are Face)
     drawEdge(g, layers, body ? ['outfit'] : PART_SLOTS[hover] ?? [], frame.src, d, '#f59e0b', 3 * frame.dpr,
-      body ? [kit.kinds.indexOf('skin'), kit.kinds.length] : null, body && labelsImg ? { labels: labelsImg, part: rig.parts.indexOf('head') + 1 } : null)
+      body ? [kit.kinds.indexOf('skin'), kit.kinds.length] : null, body && labelsImg ? { labels: labelsImg, part: rig.parts.indexOf('head') + 1, above: neckY() } : null)
   }
   /** The part under a point of the view: the slot painted there, bare skin of the outfit being the body. */
   const partAt = (x, y) => {

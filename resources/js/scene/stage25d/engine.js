@@ -966,8 +966,13 @@ export async function createStage25d (host, opts = {}) {
         const xAt = (fx) => { const hit = groundUnderRay(stage.pointerRay(fx * r.width, feetY), (h) => stage.groundHeightAt(h)); return hit ? layerOf(settle(hit)).x : null }
         const a = xAt(0.1), b = xAt(0.9)
         const [lo, hi] = Number.isFinite(a) && Number.isFinite(b) && a !== b ? [Math.min(a, b), Math.max(a, b)] : [0.2, 0.8]
-        const taken = layers.flatMap((l, i) => (assets.get(l.asset)?.layer === 'figure' && !hidden.has(`layer-${i}`) ? [layerAt(l, nowT()).x] : []))
-        const room = (x) => Math.min(1, ...taken.map((t) => Math.abs(t - x)))
+        // every x a figure has in the scene, not only at the playhead: one that walks keeps the whole path (tester 11-15)
+        const taken = layers.flatMap((l, i) => {
+          if (assets.get(l.asset)?.layer !== 'figure' || hidden.has(`layer-${i}`)) return []
+          const xs = [layerAt(l, 0).x, layerAt(l, nowT()).x, ...(l.keys ?? []).flatMap((k) => (Number.isFinite(k.x) ? [k.x] : []))]
+          return [[Math.min(...xs), Math.max(...xs)]]
+        })
+        const room = (x) => Math.min(1, ...taken.map(([a, b]) => (x < a ? a - x : x > b ? x - b : 0)))
         let best = null, roomiest = null
         for (let k = 0; k <= 40; k++) {
           const x = lo + ((hi - lo) * k) / 40, rx = room(x), near = Math.abs(x - x0)

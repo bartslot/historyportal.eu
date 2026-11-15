@@ -103,11 +103,12 @@ export function drawLayers (ctx, layers, src, dst, what = 'preview') {
   ctx.save()
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  const each = (key, op = 'source-over') => {
+  // `op` null keeps the caller's mode: drawEdge cuts with 'destination-out' through here
+  const each = (key, op = null) => {
     for (const l of layers) {
       const img = l[key]
       if (!img) continue
-      ctx.globalCompositeOperation = op
+      if (op) ctx.globalCompositeOperation = op
       ctx.drawImage(img, dst[0] + (l.box[0] - src[0]) * k, dst[1] + (l.box[1] - src[1]) * k, l.box[2] * k, l.box[3] * k)
     }
   }
@@ -131,7 +132,8 @@ export function slotAt (layers, x, y) {
 }
 
 /** A piece's pixels of one colour kind as a silhouette canvas (made once): the bare skin of an outfit is the body.
- *  `outside`: { labels, part } leaves out the pixels the body's label map gives that part (the head). */
+ *  `outside`: { labels, part, above } leaves out the pixels the body's label map gives that part (the head), and all
+ *  above the line `above` (the neck: a drawn skull reaches past the map). */
 function kindSilhouette (layer, kindIndexWanted, kindsCount, outside = null) {
   layer.sil ??= {}
   const key = `${kindIndexWanted}:${outside?.part ?? ''}`
@@ -143,7 +145,9 @@ function kindSilhouette (layer, kindIndexWanted, kindsCount, outside = null) {
       if (data[i * 4 + 3] <= 100 || kindIndex(data[i * 4], kindsCount) !== kindIndexWanted) continue
       if (outside) {
         const x = bx + (i % w), y = by + Math.floor(i / w)
-        if (outside.labels.data[(y * outside.labels.width + x) * 4] === outside.part) continue
+        const o = (y * outside.labels.width + x) * 4, R = outside.labels.data[o]
+        // the part itself, or paint past the map's edge whose nearest part it is (a drawn skull a little larger than the map)
+        if (y < (outside.above ?? -1) || R === outside.part || (R === 0 && outside.labels.data[o + 1] === outside.part)) continue
       }
       out[i * 4 + 3] = 255
     }

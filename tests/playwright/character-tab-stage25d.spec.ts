@@ -187,21 +187,30 @@ const saveWindow = async (page: Page) => {
   const now = (await layers(page)).length
   if (now > count) {
     const i = now - 1
-    const all = await spots(page)
-    const me = await layerBox(page, i)
     const c = await stageCanvas(page)
-    if (me) {
+    // judged where the playhead is (where Save placed it) and at the scene's start, where a figure that walks begins
+    const at = async (when: string) => {
+      const all = await spots(page)
+      const me = await layerBox(page, i)
+      if (!me) return
       const inside = Math.max(0, Math.min(me.x + me.w, c.x + c.width) - Math.max(me.x, c.x)) / me.w
-      expect.soft(inside, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)}: in view (share of its width on the stage)`).toBeGreaterThan(0.8)
+      expect.soft(inside, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)} (${when}): in view (share of its width on the stage)`).toBeGreaterThan(0.8)
       const on: string[] = []
       for (const o of all) {
         if (o.k === i || !o.figure) continue
         const b = await layerBox(page, o.k)
-        if (!b || Math.abs(o.z - all[i].z) > OWN_SPOT_Z * 2) continue
+        // a picture wider than a person (the lesson's test card) is no figure to stand beside
+        if (!b || b.w > b.h * 0.8 || Math.abs(o.z - all[i].z) > OWN_SPOT_Z * 2) continue
         const overlap = Math.max(0, Math.min(me.x + me.w, b.x + b.w) - Math.max(me.x, b.x)) / Math.min(me.w, b.w)
         if (overlap > 0.5) on.push(`layer-${o.k} ${o.asset} (${Math.round(overlap * 100)}% overlap)`)
       }
-      expect.soft(on, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)} z ${all[i].z?.toFixed(2)} stands on no other figure`).toEqual([])
+      expect.soft(on, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)} z ${all[i].z?.toFixed(2)} (${when}) stands on no other figure`).toEqual([])
+    }
+    await at('at the playhead')
+    if (await page.evaluate(() => (window as any).__timelineKeying?.time?.() ?? 0) > 0.01) {
+      await page.evaluate(() => (window as any).__timelineKeying?.seekTo?.('from'))
+      await page.waitForTimeout(600)
+      await at('at the start')
     }
     await page.evaluate((i) => (window as any).__stage25d.select(`layer-${i}`), i)   // the new one stays the selection, as Save left it
     await page.waitForTimeout(400)
