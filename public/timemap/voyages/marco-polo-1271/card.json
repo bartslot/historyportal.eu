@@ -1,0 +1,471 @@
+{
+  "id": "marco-polo-1271",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Marco_Polo",
+    "nl": "https://nl.wikipedia.org/wiki/Marco_Polo"
+  },
+  "purpose": {
+    "en": "Not a voyage of discovery but a merchant family on an errand. Marco's father Niccolò and uncle Maffeo had already met Kublai Khan, who sent them home with a letter asking the pope for a hundred educated men and oil from the lamp in Jerusalem. In 1271 the new pope, Gregory X, gave them letters for the Khan, and they set off again, this time with 17-year-old Marco.",
+    "nl": "Geen ontdekkingsreis, maar een koopmansfamilie met een opdracht. Marco's vader Niccolò en oom Maffeo waren al eens bij Koeblai Khan geweest. Hij gaf hun een brief mee voor de paus, met het verzoek om honderd geleerde mannen en olie uit de lamp in Jeruzalem. In 1271 gaf de nieuwe paus, Gregorius X, hun brieven mee voor de khan, en ze vertrokken opnieuw, nu met de 17-jarige Marco.",
+    "src": [
+      "s3",
+      "s1"
+    ]
+  },
+  "crew": {
+    "en": "Three Venetians, Niccolò, Maffeo and Marco Polo, plus two Dominican friars sent by the pope, who soon turned back out of fear. They sailed to Acre and then went overland, partly by camel, along the Silk Road.",
+    "nl": "Drie Venetianen, Niccolò, Maffeo en Marco Polo, met twee dominicaner monniken die de paus meestuurde maar die al snel uit angst omkeerden. Ze voeren naar Akko en trokken daarna over land, deels per kameel, over de Zijderoute.",
+    "src": [
+      "s1",
+      "s3"
+    ]
+  },
+  "legacy": {
+    "en": "Marco's book, told in a Genoese prison, gave Europeans their first detailed look at China and the rest of Asia, from paper money to porcelain. Mapmakers used it for the Catalan Atlas and the Fra Mauro map, and Columbus owned a copy full of notes. A few historians have doubted that Marco ever reached China, but most scholars think his account is broadly true.",
+    "nl": "Marco's boek, verteld in een gevangenis in Genua, gaf Europeanen voor het eerst een uitgebreid beeld van China en de rest van Azië, van papiergeld tot porselein. Kaartenmakers gebruikten het voor de Catalaanse Atlas en de kaart van Fra Mauro, en Columbus had een exemplaar vol aantekeningen. Een paar historici betwijfelen of Marco ooit in China was, maar de meeste onderzoekers houden zijn verhaal in grote lijnen voor waar.",
+    "src": [
+      "s1",
+      "s4"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1271-01-01",
+      "precision": "year",
+      "en": "The three Polos leave Venice for Acre. There the new pope, Gregory X, gives them letters for the Khan and two friars, who soon turn back.",
+      "nl": "De drie Polo's vertrekken uit Venetië naar Akko. Daar geeft de nieuwe paus, Gregorius X, hun brieven voor de khan mee en twee monniken, die al snel omkeren.",
+      "src": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "date": "1271-11-01",
+      "precision": "month",
+      "en": "From the port of Ayas they set off overland along the Silk Road, heading for Armenia.",
+      "nl": "Vanuit de havenstad Ayas trekken ze over land de Zijderoute op, richting Armenië.",
+      "src": [
+        "s2"
+      ]
+    },
+    {
+      "date": "1275-01-01",
+      "precision": "year",
+      "en": "They reach the court of Kublai Khan. One source says May 1275, another 1274. Marco, about 21, starts working for the Khan and, by his own account, travels all over the empire for some 17 years.",
+      "nl": "Ze bereiken het hof van Koeblai Khan. De ene bron zegt mei 1275, de andere 1274. Marco, een jaar of 21, gaat voor de khan werken en reist volgens eigen zeggen zo'n 17 jaar door het rijk.",
+      "src": [
+        "s2",
+        "s3",
+        "s1"
+      ]
+    },
+    {
+      "date": "1291-01-01",
+      "precision": "year",
+      "en": "Kublai finally lets them go, if they escort the princess Kököchin to her bridegroom in Persia. Fourteen ships sail from Quanzhou, probably in spring; bad weather keeps them five months on Sumatra.",
+      "nl": "Koeblai laat ze eindelijk gaan, als ze prinses Kököchin naar haar bruidegom in Perzië brengen. Veertien schepen vertrekken uit Quanzhou, waarschijnlijk in het voorjaar; door slecht weer zitten ze vijf maanden vast op Sumatra.",
+      "src": [
+        "s7",
+        "s3"
+      ]
+    },
+    {
+      "date": "1293-01-01",
+      "precision": "year",
+      "en": "They reach Persia around 1293 (one source says 1293 or 1294). The bridegroom, Arghun, has died, so Kököchin marries his son Ghazan.",
+      "nl": "Rond 1293 bereiken ze Perzië (een bron zegt 1293 of 1294). Bruidegom Arghun is inmiddels overleden, dus trouwt Kököchin met zijn zoon Ghazan.",
+      "src": [
+        "s7",
+        "s3",
+        "s1"
+      ]
+    },
+    {
+      "date": "1295-01-01",
+      "precision": "year",
+      "en": "Home in Venice, 24 years after leaving, with their fortune turned into gemstones.",
+      "nl": "Terug in Venetië, 24 jaar na vertrek, met hun fortuin omgezet in edelstenen.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1298-01-01",
+      "precision": "year",
+      "en": "Taken prisoner in the war between Venice and Genoa (probably in 1296, though an old story says 1298), Marco tells his travels to his cellmate Rustichello da Pisa, who writes them down. Marco is freed in August 1299.",
+      "nl": "Marco raakt gevangen in de oorlog tussen Venetië en Genua (waarschijnlijk in 1296, al zegt een oud verhaal 1298). In de cel vertelt hij zijn reizen aan Rustichello da Pisa, die ze opschrijft. In augustus 1299 komt Marco vrij.",
+      "src": [
+        "s1",
+        "s4",
+        "s6"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Marco Polo",
+      "role": {
+        "en": "Traveller and storyteller; by his own account an envoy of Kublai Khan",
+        "nl": "Reiziger en verteller; volgens eigen zeggen gezant van Koeblai Khan"
+      },
+      "born": 1254,
+      "died": 1324,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "He was about 15 when he met his father for the first time. Back in Venice he became a rich merchant, married, and died there in 1324.",
+      "nl": "Hij was een jaar of 15 toen hij zijn vader voor het eerst zag. Terug in Venetië werd hij een rijk koopman, trouwde, en stierf daar in 1324.",
+      "src": [
+        "s1"
+      ],
+      "image": {
+        "file": "people-marco-polo.webp",
+        "title": "Marco Polo (imagined portrait, 16th century)",
+        "creator": "Unknown artist",
+        "year": "16th century",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Marco_Polo_portrait.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Niccolò Polo",
+      "role": {
+        "en": "Marco's father, merchant",
+        "nl": "Vader van Marco, koopman"
+      },
+      "born": 1230,
+      "died": 1294,
+      "born_approx": true,
+      "died_approx": true,
+      "en": "With his brother Maffeo he had already reached Kublai Khan's court once, in 1266, and came back as the Khan's messenger to the pope.",
+      "nl": "Met zijn broer Maffeo was hij al eens aan het hof van Koeblai Khan geweest, in 1266, en kwam terug als boodschapper van de khan aan de paus.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Maffeo Polo",
+      "role": {
+        "en": "Marco's uncle, merchant",
+        "nl": "Oom van Marco, koopman"
+      },
+      "born": 1230,
+      "died": 1309,
+      "born_approx": true,
+      "died_approx": true,
+      "en": "Niccolò's brother and partner on both journeys. Back home he and Marco paid for other trading trips, but probably never went back to Asia.",
+      "nl": "Broer en compagnon van Niccolò op beide reizen. Thuis betaalden hij en Marco nog mee aan andere handelsreizen, maar ze gingen waarschijnlijk zelf nooit meer naar Azië.",
+      "src": [
+        "s3",
+        "s1"
+      ],
+      "image": null
+    },
+    {
+      "name": "Kublai Khan",
+      "role": {
+        "en": "Great Khan and emperor of Yuan China, the Polos' host",
+        "nl": "Grootkhan en keizer van Yuan-China, gastheer van de Polo's"
+      },
+      "born": 1215,
+      "died": 1294,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Grandson of Genghis Khan. He founded the Yuan dynasty in 1271, kept the Polos at his court for years and only let them leave around 1291.",
+      "nl": "Kleinzoon van Dzjengis Khan. Hij stichtte in 1271 de Yuan-dynastie, hield de Polo's jarenlang aan zijn hof en liet ze pas rond 1291 gaan.",
+      "src": [
+        "s5",
+        "s1"
+      ],
+      "image": {
+        "file": "people-kublai-khan.webp",
+        "title": "Portrait of Kublai Khan (made after his death)",
+        "creator": "Araniko",
+        "year": "c. 1294",
+        "source_url": "https://commons.wikimedia.org/wiki/File:YuanEmperorAlbumKhubilaiPortrait.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Kököchin",
+      "role": {
+        "en": "Mongol princess the Polos escorted to Persia",
+        "nl": "Mongoolse prinses die de Polo's naar Perzië begeleidden"
+      },
+      "born": 1274,
+      "died": 1296,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Kublai chose her, aged 17, as a bride for Arghun, ruler of Persia; she married his son Ghazan instead and died in June 1296. Persian and Chinese records of her journey back up Marco's story.",
+      "nl": "Koeblai koos haar, 17 jaar oud, als bruid voor Arghun, heerser van Perzië; ze trouwde uiteindelijk met zijn zoon Ghazan en stierf in juni 1296. Perzische en Chinese bronnen over haar reis bevestigen Marco's verhaal.",
+      "src": [
+        "s7",
+        "s1"
+      ],
+      "image": null
+    },
+    {
+      "name": "Rustichello da Pisa",
+      "role": {
+        "en": "Fellow prisoner who wrote the book down",
+        "nl": "Medegevangene die het boek opschreef"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A writer of Arthurian romances from Pisa. Scholars think he dressed up Marco's stories, even reusing a scene from one of his own earlier romances.",
+      "nl": "Een schrijver van ridderverhalen over koning Arthur uit Pisa. Onderzoekers denken dat hij Marco's verhalen wat aandikte en zelfs een scène uit een eigen, ouder ridderverhaal hergebruikte.",
+      "src": [
+        "s6",
+        "s4"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "polos-with-pope-gregory-x.webp",
+      "width": 1200,
+      "height": 722,
+      "title": "Niccolò and Maffeo Polo with Pope Gregory X (from Le Livre des merveilles du monde)",
+      "creator": "Unknown artist",
+      "year": "15th century",
+      "source_url": "https://commons.wikimedia.org/wiki/File:NoccoloAndMaffeoPoloWithGregoryX.JPG",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The Polo brothers hand Kublai's letter to Pope Gregory X, as a French painter imagined it more than a century later.",
+        "nl": "De gebroeders Polo geven de brief van Koeblai aan paus Gregorius X, zoals een Franse schilder zich dat ruim een eeuw later voorstelde."
+      }
+    },
+    {
+      "file": "polos-arrive-at-ayas.webp",
+      "width": 1176,
+      "height": 597,
+      "title": "Arrival of the Polo brothers at Ayas (Le Livre des merveilles)",
+      "creator": "Mazarine Master",
+      "year": "c. 1410-1412",
+      "source_url": "https://commons.wikimedia.org/wiki/File:AyasMarcoPolo.JPG",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The Polos at the port of Ayas, painted around 1410 for a French copy of Marco's book.",
+        "nl": "De Polo's in de havenstad Ayas, rond 1410 geschilderd voor een Franse uitgave van Marco's boek."
+      }
+    },
+    {
+      "file": "kublai-gives-golden-tablet.webp",
+      "width": 1200,
+      "height": 654,
+      "title": "Kublai Khan giving a gold laissez-passer to the Polo brothers (BnF, français 2810, f. 3v)",
+      "creator": "Unknown artist",
+      "year": "c. 1410-1412",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Fran%C3%A7ais_2810,_fol._3v,_Qubila%C3%AF_donnant_une_tablette_aux_Polo.jpeg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Kublai hands the brothers a golden tablet that let them travel safely through his lands. That was on their first trip, before Marco came along.",
+        "nl": "Koeblai geeft de broers een gouden tablet waarmee ze veilig door zijn rijk konden reizen. Dat was op hun eerste reis, nog zonder Marco."
+      }
+    },
+    {
+      "file": "catalan-atlas-caravan-1375.webp",
+      "width": 1200,
+      "height": 867,
+      "title": "Caravan on the Silk Road (Catalan Atlas)",
+      "creator": "Abraham Cresques",
+      "year": "1375",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Caravane_Marco_Polo.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A caravan on the Silk Road in the Catalan Atlas of 1375, the first map to use names from Marco's book. It is often said to show the Polos.",
+        "nl": "Een karavaan op de Zijderoute in de Catalaanse Atlas van 1375, de eerste kaart met namen uit Marco's boek. Vaak wordt gezegd dat dit de Polo's zijn."
+      }
+    },
+    {
+      "file": "kublai-hunting-1280.webp",
+      "width": 1200,
+      "height": 988,
+      "title": "Kublai Khan Hunting",
+      "creator": "Liu Guandao",
+      "year": "c. 1280",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Liu-Kuan-Tao-Jagd.JPG",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Kublai Khan, wrapped in furs, out hunting with his court. Painted by the court artist Liu Guandao around 1280, while the Polos were in China.",
+        "nl": "Koeblai Khan in bont gehuld, op jacht met zijn hofhouding. Rond 1280 geschilderd door hofschilder Liu Guandao, toen de Polo's in China waren."
+      }
+    },
+    {
+      "file": "pepper-harvest-miniature.webp",
+      "width": 1200,
+      "height": 737,
+      "title": "Pepper harvest (Le Livre des merveilles de Marco Polo)",
+      "creator": "Boucicaut Master and Mazarine Master",
+      "year": "c. 1410-1412",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Le_livre_des_merveilles_de_Marco_Polo-pepper.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Picking pepper, from a French copy of Marco's book made around 1410. His book also describes the coasts of India and South-East Asia.",
+        "nl": "Peper plukken, uit een Franse uitgave van Marco's boek van rond 1410. Zijn boek beschrijft ook de kusten van India en Zuidoost-Azië."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Marco Polo, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Marco_Polo"
+    },
+    {
+      "key": "s2",
+      "title": "Marco Polo, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Marco_Polo"
+    },
+    {
+      "key": "s3",
+      "title": "Niccolò and Maffeo Polo, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Niccol%C3%B2_and_Maffeo_Polo"
+    },
+    {
+      "key": "s4",
+      "title": "The Travels of Marco Polo, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/The_Travels_of_Marco_Polo"
+    },
+    {
+      "key": "s5",
+      "title": "Kublai Khan, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Kublai_Khan"
+    },
+    {
+      "key": "s6",
+      "title": "Rustichello da Pisa, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Rustichello_da_Pisa"
+    },
+    {
+      "key": "s7",
+      "title": "Kököchin, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/K%C3%B6k%C3%B6chin"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1271-04-01",
+      "arrive": "1271-05-20",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s1: left Venice in 1271 and spent a few months in Acre; no month or day in any source."
+    },
+    {
+      "leg": 1,
+      "depart": "1271-11-01",
+      "arrive": "1271-11-20",
+      "depart_ok": "year",
+      "arrive_ok": "month",
+      "note": "s2: they set off from Ayas in November 1271, so arriving there in November fits; no exact days."
+    },
+    {
+      "leg": 2,
+      "depart": "1271-12-01",
+      "arrive": "1272-03-15",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s2: left Ayas in November 1271, not December. Arrival: No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 3,
+      "depart": "1272-04-01",
+      "arrive": "1272-08-10",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s1 confirms they rode to Hormuz. No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 4,
+      "depart": "1272-09-01",
+      "arrive": "1273-06-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 5,
+      "depart": "1273-06-15",
+      "arrive": "1273-10-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 6,
+      "depart": "1273-10-15",
+      "arrive": "1274-03-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 7,
+      "depart": "1274-03-15",
+      "arrive": "1274-11-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No source gives dates for this stretch; the year only fits the outward journey of 1271 to 1275 (s1, s2)."
+    },
+    {
+      "leg": 8,
+      "depart": "1275-01-01",
+      "arrive": "1275-05-01",
+      "depart_ok": "year",
+      "arrive_ok": "month",
+      "note": "s2: arrived at Kublai's court in May 1275. s3 says they reached Khanbaliq in 1274, so even the year is disputed. s1 names the palace at Shangdu (Xanadu)."
+    },
+    {
+      "leg": 9,
+      "depart": "1291-01-01",
+      "arrive": "1291-02-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s4: left China in late 1290 or early 1291. s7 and s3 say the fleet sailed from Quanzhou; s2 says the party went down the coast in 1291 to 1292 to Canton, where the fleet was fitted out."
+    },
+    {
+      "leg": 10,
+      "depart": "1291-02-15",
+      "arrive": "1293-11-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s7: sailed from Quanzhou in the spring of 1291 and arrived around 1293; s3: reached the Ilkhanate in 1293 or 1294; s2 names Hormuz as the landing."
+    },
+    {
+      "leg": 11,
+      "depart": "1293-12-01",
+      "arrive": "1294-02-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s2: from Hormuz the envoys went on to the court of Gaikhatu in Tabriz, no date given. No source gives dates for this stretch; the year only fits the trip home (Persia around 1293 to 1294, Venice 1295; s1, s3)."
+    },
+    {
+      "leg": 12,
+      "depart": "1294-03-01",
+      "arrive": "1294-06-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s3: after leaving the princess they moved on to Trebizond. No source gives dates for this stretch; the year only fits the trip home (Persia around 1293 to 1294, Venice 1295; s1, s3)."
+    },
+    {
+      "leg": 13,
+      "depart": "1294-07-01",
+      "arrive": "1295-01-01",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "s1: back in Venice in 1295 (s2: by way of Constantinople and Negroponte). No month in any source."
+    }
+  ]
+}

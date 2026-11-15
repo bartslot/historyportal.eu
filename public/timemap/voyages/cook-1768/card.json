@@ -1,0 +1,418 @@
+{
+  "id": "cook-1768",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/First_voyage_of_James_Cook",
+    "nl": "https://nl.wikipedia.org/wiki/James_Cook"
+  },
+  "purpose": {
+    "en": "The Royal Society asked King George III to pay for a trip to Tahiti to watch Venus cross the Sun in 1769, so astronomers could work out the distance from the Earth to the Sun. The Admiralty added a secret second job: search the South Pacific for the great southern continent people imagined was there.",
+    "nl": "De Royal Society vroeg koning George III om een reis naar Tahiti te betalen, om daar in 1769 Venus voor de zon langs te zien schuiven. Zo konden sterrenkundigen de afstand van de aarde tot de zon uitrekenen. De Admiraliteit gaf er een geheime tweede opdracht bij: zoek in de Grote Oceaan naar het grote zuidelijke continent dat men daar vermoedde.",
+    "src": [
+      "s1"
+    ]
+  },
+  "crew": {
+    "en": "One ship, HM Bark Endeavour, a former coal ship from Whitby, under Lieutenant James Cook. She left Plymouth with 94 people on board, including scientists and artists paid for by the botanist Joseph Banks.",
+    "nl": "Eén schip, de HM Bark Endeavour, een omgebouwd kolenschip uit Whitby, onder luitenant James Cook. Ze vertrok uit Plymouth met 94 mensen aan boord, onder wie wetenschappers en tekenaars die de botanicus Joseph Banks zelf betaalde.",
+    "src": [
+      "s1"
+    ]
+  },
+  "legacy": {
+    "en": "Cook mapped New Zealand, showing it was two islands and not a southern continent, and was the first European to chart the east coast of Australia, which he claimed for Britain at Possession Island. For the people already living there it began badly: Māori were shot dead in the first meetings, and at Botany Bay Cook fired on two Gweagal men. Banks later pushed for a British convict settlement at Botany Bay.",
+    "nl": "Cook bracht Nieuw-Zeeland in kaart en liet zien dat het twee eilanden waren en geen zuidelijk continent. Hij was de eerste Europeaan die de oostkust van Australië in kaart bracht, en hij claimde die op Possession Island voor Groot-Brittannië. Voor de mensen die er al woonden begon het slecht: bij de eerste ontmoetingen werden Māori doodgeschoten, en bij Botany Bay schoot Cook op twee Gweagal-mannen. Banks drong later aan op een Britse strafkolonie bij Botany Bay.",
+    "src": [
+      "s1",
+      "s3"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1768-08-26",
+      "precision": "day",
+      "en": "The Endeavour leaves Plymouth with 94 people and food for 18 months. (One source says 25 August.)",
+      "nl": "De Endeavour vertrekt uit Plymouth met 94 mensen en eten voor 18 maanden. (Eén bron noemt 25 augustus.)",
+      "src": [
+        "s1",
+        "s6"
+      ]
+    },
+    {
+      "date": "1769-04-13",
+      "precision": "day",
+      "en": "After rounding Cape Horn, the ship anchors in Matavai Bay, Tahiti. Cook has a small fort and observatory built at what is now Point Venus.",
+      "nl": "Na Kaap Hoorn gaat het schip voor anker in de Matavaibaai op Tahiti. Cook laat een klein fort met sterrenwacht bouwen op wat nu Point Venus heet.",
+      "src": [
+        "s1",
+        "s6"
+      ]
+    },
+    {
+      "date": "1769-06-03",
+      "precision": "day",
+      "en": "Clear skies for the transit of Venus. Green, Cook and Solander all time it, but their numbers differ more than expected.",
+      "nl": "Een strakblauwe lucht voor de Venusovergang. Green, Cook en Solander meten allemaal de tijden, maar hun uitkomsten lopen meer uiteen dan gehoopt.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1769-10-06",
+      "precision": "day",
+      "en": "New Zealand is sighted. In the first two days ashore at Poverty Bay four or five Māori are killed; later meetings, with Tupaia translating, go more peacefully.",
+      "nl": "Nieuw-Zeeland komt in zicht. In de eerste twee dagen aan land bij Poverty Bay worden vier of vijf Māori gedood; latere ontmoetingen, met Tupaia als tolk, verlopen rustiger.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1770-04-29",
+      "precision": "day",
+      "en": "First landing in Australia, at Botany Bay (Kamay). Two Gweagal men try to stop the boat; Cook fires and wounds one of them in the leg.",
+      "nl": "Eerste landing in Australië, in Botany Bay (Kamay). Twee Gweagal-mannen proberen de sloep tegen te houden; Cook schiet en raakt een van hen in het been.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1770-06-11",
+      "precision": "day",
+      "en": "The Endeavour hits the Great Barrier Reef. Repairs at the Endeavour River take almost seven weeks; here the crew learns the Guugu Yimidhirr word that became 'kangaroo'.",
+      "nl": "De Endeavour loopt vast op het Groot Barrièrerif. De reparatie bij de Endeavour-rivier duurt bijna zeven weken; hier leert de bemanning het Guugu Yimidhirr-woord waar 'kangoeroe' van komt.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1771-07-12",
+      "precision": "day",
+      "en": "Back in England, at the Downs off Deal. On the way home, after Batavia, disease killed many on board, among them Tupaia, Green and Parkinson.",
+      "nl": "Terug in Engeland, op de rede bij Deal. Op de terugweg, na Batavia, stierven velen aan ziekte, onder wie Tupaia, Green en Parkinson.",
+      "src": [
+        "s1"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "James Cook",
+      "role": {
+        "en": "Commander (Lieutenant)",
+        "nl": "Bevelhebber (luitenant)"
+      },
+      "born": 1728,
+      "died": 1779,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A naval officer picked for his skill in maths and mapmaking. This was the first of his three Pacific voyages.",
+      "nl": "Marineofficier, gekozen omdat hij goed was in wiskunde en kaarten maken. Dit was de eerste van zijn drie reizen naar de Grote Oceaan.",
+      "src": [
+        "s1",
+        "s2"
+      ],
+      "image": {
+        "file": "people-cook.webp",
+        "title": "Captain James Cook, 1728-79",
+        "creator": "Nathaniel Dance-Holland",
+        "year": "1776",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Captain_James_Cook,_1728-79_RMG_BHC2628.tiff",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Joseph Banks",
+      "role": {
+        "en": "Botanist",
+        "nl": "Botanicus"
+      },
+      "born": 1743,
+      "died": 1820,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A young naturalist who paid for seven others to come along. Botany Bay got its name from the plants he and Solander collected there.",
+      "nl": "Een jonge natuurkenner die zeven anderen op eigen kosten meenam. Botany Bay is genoemd naar de planten die hij en Solander daar verzamelden.",
+      "src": [
+        "s1",
+        "s3"
+      ],
+      "image": {
+        "file": "people-banks.webp",
+        "title": "Sir Joseph Banks, Bt",
+        "creator": "Joshua Reynolds",
+        "year": "c. 1771-1773",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Joseph_Banks_1773_Reynolds.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Daniel Solander",
+      "role": {
+        "en": "Naturalist",
+        "nl": "Natuuronderzoeker"
+      },
+      "born": 1733,
+      "died": 1782,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A Swedish student of Linnaeus working at the British Museum. He helped time the transit of Venus and described the plants gathered in New Zealand and Australia.",
+      "nl": "Een Zweedse leerling van Linnaeus die bij het British Museum werkte. Hij hielp de Venusovergang te meten en beschreef de planten uit Nieuw-Zeeland en Australië.",
+      "src": [
+        "s4",
+        "s1"
+      ],
+      "image": {
+        "file": "people-solander.webp",
+        "title": "Dr Daniel Charles Solander (Wedgwood portrait medallion)",
+        "creator": "John Flaxman Jr (medallion); photo by Daderot",
+        "year": "c. 1778",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Dr_Daniel_Charles_Solander,_by_John_Flaxman_Jr,_c._1778,_pale_blue_jasper,_darker_blue_dip,_white_relief,_ormolu_frame_by_Matthew_Boulton_-_Wedgwood_Museum_-_Barlaston,_Stoke-on-Trent,_England_-_DDSC09625.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Sydney Parkinson",
+      "role": {
+        "en": "Artist",
+        "nl": "Tekenaar"
+      },
+      "born": 1745,
+      "died": 1771,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Banks's natural history artist and the first European artist to visit Tahiti, New Zealand and Australia. He died on the way home, on 26 January 1771. His birth year is uncertain.",
+      "nl": "De natuurtekenaar van Banks, en de eerste Europese kunstenaar op Tahiti, in Nieuw-Zeeland en in Australië. Hij stierf op de terugreis, op 26 januari 1771. Zijn geboortejaar is onzeker.",
+      "src": [
+        "s5",
+        "s1"
+      ],
+      "image": {
+        "file": "people-parkinson.webp",
+        "title": "Self-portrait of Sydney Parkinson",
+        "creator": "Sydney Parkinson",
+        "year": "before 1771",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Sydney_parkinson.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Charles Green",
+      "role": {
+        "en": "Astronomer",
+        "nl": "Sterrenkundige"
+      },
+      "born": 1734,
+      "died": 1771,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "The Royal Society's astronomer, sent to measure the transit of Venus. He caught dysentery in Batavia and died at sea on 29 January 1771.",
+      "nl": "De sterrenkundige van de Royal Society, meegestuurd om de Venusovergang te meten. Hij kreeg dysenterie in Batavia en stierf op zee op 29 januari 1771.",
+      "src": [
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Tupaia",
+      "role": {
+        "en": "Navigator, guide and interpreter from Ra'iatea",
+        "nl": "Navigator, gids en tolk uit Ra'iatea"
+      },
+      "born": 1725,
+      "died": 1770,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A priest and star navigator who joined in July 1769. He drew a chart of about 130 Pacific islands and spoke with Māori in New Zealand. He died after Batavia; the muster gives 20 December 1770, though Banks and Cook wrote down other dates.",
+      "nl": "Een priester en sterrennavigator die in juli 1769 aan boord kwam. Hij tekende een kaart van zo'n 130 eilanden en kon met de Māori in Nieuw-Zeeland praten. Hij stierf na Batavia; de monsterrol noemt 20 december 1770, al schreven Banks en Cook andere data op.",
+      "src": [
+        "s7",
+        "s1"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "endeavour-whitby-1768.webp",
+      "width": 1200,
+      "height": 643,
+      "title": "The Bark, Earl of Pembroke, later Endeavour, leaving Whitby Harbour in 1768",
+      "creator": "Thomas Luny",
+      "year": "1790",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_Bark,_Earl_of_Pembroke,_later_Endeavour,_leaving_Whitby_Harbour_in_1768_(cropped).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The coal ship Earl of Pembroke, soon to become the Endeavour, leaving Whitby in 1768. Painted about twenty years later.",
+        "nl": "Het kolenschip Earl of Pembroke, de latere Endeavour, verlaat Whitby in 1768. Zo'n twintig jaar later geschilderd."
+      }
+    },
+    {
+      "file": "bay-of-good-success-1769.webp",
+      "width": 1200,
+      "height": 939,
+      "title": "A view of the Endeavour's watering place in the Bay of Good Success",
+      "creator": "Alexander Buchan",
+      "year": "1769",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Endeavour%27s_watering_place_in_the_Bay_of_Good_Success,_Tierra_del_Fuego_-_Drawings_made_in_the_Countries_visited_by_Captain_Cook_in_his_First_Voyage_(1769),_f.11_-_BL_Add_MS_23920.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "January 1769: the crew fetch water in Tierra del Fuego, with local people nearby. Drawn on the spot by Banks's artist Alexander Buchan.",
+        "nl": "Januari 1769: de bemanning haalt water op Vuurland, met bewoners in de buurt. Ter plekke getekend door Alexander Buchan, een van de tekenaars van Banks."
+      }
+    },
+    {
+      "file": "tupaia-chart-1769.webp",
+      "width": 1200,
+      "height": 807,
+      "title": "Tupaia's chart of the islands around Tahiti",
+      "creator": "Tupaia, copied by James Cook",
+      "year": "c. 1769",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Tupaia%27s_map,_c._1769.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The islands Tupaia knew, around Tahiti, written down on paper for Cook. A Polynesian navigator's knowledge in European map form.",
+        "nl": "De eilanden die Tupaia kende rond Tahiti, voor Cook op papier gezet. De kennis van een Polynesische navigator in de vorm van een Europese kaart."
+      }
+    },
+    {
+      "file": "tupaia-crayfish-trade-1769.webp",
+      "width": 1200,
+      "height": 807,
+      "title": "A Maori man and Joseph Banks exchanging a crayfish for a piece of cloth",
+      "creator": "Tupaia (earlier credited to an unknown artist)",
+      "year": "c. 1769",
+      "source_url": "https://commons.wikimedia.org/wiki/File:A_Maori_man_and_Joseph_Banks_exchanging_a_crayfish_for_a_piece_of_cloth,_c._1769.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A Māori man swaps a crayfish for a piece of cloth with a man in a naval coat. Now credited to Tupaia; whether the European is Banks is not certain.",
+        "nl": "Een Māori ruilt een kreeft tegen een lap stof met een man in marinejas. Nu toegeschreven aan Tupaia; of de Europeaan Banks is, staat niet vast."
+      }
+    },
+    {
+      "file": "parkinson-maori-man-1769.webp",
+      "width": 939,
+      "height": 1200,
+      "title": "Portrait of a New Zealand man (Otegoowgoow, son of a chief of the Bay of Islands)",
+      "creator": "Sydney Parkinson",
+      "year": "1769",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Portrait_of_a_New_Zealand_man_-_Drawings_made_in_the_Countries_visited_by_Captain_Cook_in_his_First_Voyage_(1769),_f.54_-_BL_Add_MS_23920.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "Otegoowgoow, son of a chief at the Bay of Islands, with a comb in his hair and a greenstone ear ornament. Banks met him on 3 December 1769.",
+        "nl": "Otegoowgoow, zoon van een leider bij de Bay of Islands, met een kam in zijn haar en een oorsieraad van groensteen. Banks ontmoette hem op 3 december 1769."
+      }
+    },
+    {
+      "file": "cook-chart-new-zealand.webp",
+      "width": 967,
+      "height": 1200,
+      "title": "Chart of New Zealand, explored in 1769 and 1770 by Lieut. I. Cook",
+      "creator": "James Cook (survey), I. Bayly (engraving)",
+      "year": "1772",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Chart_of_New_Zealand,_explored_in_1769_and_1770_by_Lieut._I-_Cook,Commander_of_His_Majesty%27s_Bark_Endeavour._RMG_F0293.tiff",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Cook's own chart of New Zealand with the Endeavour's track from 6 October 1769 to 1 April 1770. Two islands, no continent.",
+        "nl": "Cooks eigen kaart van Nieuw-Zeeland met de route van de Endeavour van 6 oktober 1769 tot 1 april 1770. Twee eilanden, geen continent."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "First voyage of James Cook, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/First_voyage_of_James_Cook"
+    },
+    {
+      "key": "s2",
+      "title": "James Cook, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/James_Cook"
+    },
+    {
+      "key": "s3",
+      "title": "Joseph Banks, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Joseph_Banks"
+    },
+    {
+      "key": "s4",
+      "title": "Daniel Solander, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Daniel_Solander"
+    },
+    {
+      "key": "s5",
+      "title": "Sydney Parkinson, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Sydney_Parkinson"
+    },
+    {
+      "key": "s6",
+      "title": "Charles Green (astronomer), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Charles_Green_(astronomer)"
+    },
+    {
+      "key": "s7",
+      "title": "Tupaia (navigator), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Tupaia_(navigator)"
+    },
+    {
+      "key": "s8",
+      "title": "HMS Endeavour, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/HMS_Endeavour"
+    },
+    {
+      "key": "s9",
+      "title": "Chart of New Zealand, explored in 1769 and 1770 (Royal Museums Greenwich F0293, via Wikimedia Commons)",
+      "url": "https://commons.wikimedia.org/wiki/File:Chart_of_New_Zealand,_explored_in_1769_and_1770_by_Lieut._I-_Cook,Commander_of_His_Majesty%27s_Bark_Endeavour._RMG_F0293.tiff"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1768-08-26",
+      "arrive": "1769-01-16",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: left Plymouth 26 August 1768 (s6 says 25 August). s8: reached Cape Horn 13 January, got past and anchored in the Bay of Good Success on 16 January 1769."
+    },
+    {
+      "leg": 1,
+      "depart": "1769-01-16",
+      "arrive": "1769-04-13",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "s8: sailed on from the Bay of Good Success on 21 January 1769, not 16. s1: anchored at Matavai Bay, Tahiti, 13 April 1769 (s6: arrived 11 April, anchored two days later; s8 says reached Tahiti 10 April)."
+    },
+    {
+      "leg": 2,
+      "depart": "1769-07-13",
+      "arrive": "1769-10-06",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1 and s8: left Tahiti 13 July 1769. s1: reached New Zealand 6 October 1769."
+    },
+    {
+      "leg": 3,
+      "depart": "1770-03-31",
+      "arrive": "1770-04-29",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: on 31 March 1770 Cook wrote down his decision to leave New Zealand; s9: track on the chart runs to 1 April 1770. s1: coast of Australia sighted 19 April, landing at Botany Bay 29 April."
+    },
+    {
+      "leg": 4,
+      "depart": "1770-08-23",
+      "arrive": "1771-07-12",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "s1: reached Cape York and claimed the coast at Possession Island on 22 August 1770 (one day earlier). s1: anchored in the Downs and went ashore at Deal on 12 July 1771."
+    }
+  ]
+}

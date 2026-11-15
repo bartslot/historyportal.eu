@@ -1,0 +1,533 @@
+{
+  "id": "napoleon-1796",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Napoleon",
+    "nl": "https://nl.wikipedia.org/wiki/Napoleon_Bonaparte"
+  },
+  "purpose": {
+    "en": "In 1796 the French government, the Directory, gave the young general Bonaparte command of the Army of Italy, to knock Piedmont-Sardinia and Austria out of the war in northern Italy. In 1798 it sent him on to Ottoman Egypt, to threaten Britain's trade route to India and set up a French presence in the Middle East.",
+    "nl": "In 1796 gaf de Franse regering, het Directoire, de jonge generaal Bonaparte het bevel over het Leger van Italië, om Piëmont-Sardinië en Oostenrijk in Noord-Italië uit de oorlog te slaan. In 1798 stuurde ze hem door naar het Ottomaanse Egypte, om de Britse handelsroute naar India te bedreigen en een Franse basis in het Midden-Oosten op te zetten.",
+    "src": [
+      "s1",
+      "s2",
+      "s6"
+    ]
+  },
+  "crew": {
+    "en": "When Bonaparte took over the Army of Italy in March 1796, only about 37,600 of its men were ready to fight; later it grew to almost 50,000. For Egypt about 36,000 soldiers sailed in some 300 transport ships with 13 ships of the line, Berthier as chief of staff, and 167 scientists and scholars.",
+    "nl": "Toen Bonaparte in maart 1796 het Leger van Italië overnam, waren maar zo'n 37.600 man echt inzetbaar; later groeide het tot bijna 50.000. Naar Egypte voeren ongeveer 36.000 soldaten mee op zo'n 300 transportschepen met 13 linieschepen, met Berthier als stafchef en 167 wetenschappers en geleerden.",
+    "src": [
+      "s2",
+      "s3",
+      "s6"
+    ]
+  },
+  "legacy": {
+    "en": "Italy ended with Austria suing for peace at Leoben and Venice losing its 1,100 years of independence, while Bonaparte shipped home millions in money and more than 300 paintings and sculptures. Egypt failed as a war, and for Egyptians it meant uprisings put down with force and the massacre of prisoners at Jaffa, but the scholars' work, the Rosetta Stone and the Description de l'Égypte laid the ground for modern Egyptology. Back in Paris he seized power in the coup of 18 Brumaire, which most historians see as the end of the French Revolution.",
+    "nl": "Italië eindigde met Oostenrijk dat bij Leoben om vrede vroeg en Venetië dat na 1.100 jaar zijn onafhankelijkheid verloor, terwijl Bonaparte miljoenen aan geld en meer dan 300 schilderijen en beelden naar Frankrijk liet brengen. Als oorlog mislukte Egypte, en voor de Egyptenaren betekende het opstanden die hard werden neergeslagen en de moord op gevangenen bij Jaffa. Maar het werk van de geleerden, de Steen van Rosetta en de Description de l'Égypte legden de basis voor de moderne egyptologie. Terug in Parijs greep hij de macht met de staatsgreep van 18 brumaire, volgens de meeste historici het einde van de Franse Revolutie.",
+    "src": [
+      "s1",
+      "s6",
+      "s10"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1796-04-28",
+      "precision": "day",
+      "en": "Armistice of Cherasco. In two and a half weeks of fighting from 10 April, Bonaparte drives the Piedmontese and Austrians apart and forces Sardinia out of the war.",
+      "nl": "Wapenstilstand van Cherasco. In tweeënhalve week vechten vanaf 10 april drijft Bonaparte de Piëmontezen en Oostenrijkers uit elkaar en dwingt hij Sardinië uit de oorlog.",
+      "src": [
+        "s2"
+      ]
+    },
+    {
+      "date": "1796-05-10",
+      "precision": "day",
+      "en": "At Lodi, on the river Adda, the French beat the Austrian army of General Beaulieu.",
+      "nl": "Bij Lodi, aan de rivier de Adda, verslaan de Fransen het Oostenrijkse leger van generaal Beaulieu.",
+      "src": [
+        "s3"
+      ]
+    },
+    {
+      "date": "1797-01-14",
+      "precision": "day",
+      "en": "Battle of Rivoli: Bonaparte beats another Austrian army that is trying to rescue the besieged fortress of Mantua. Mantua surrenders on 2 February.",
+      "nl": "Slag bij Rivoli: Bonaparte verslaat opnieuw een Oostenrijks leger dat het belegerde Mantua wil ontzetten. Mantua geeft zich op 2 februari over.",
+      "src": [
+        "s1",
+        "s4",
+        "s5"
+      ]
+    },
+    {
+      "date": "1798-07-21",
+      "precision": "day",
+      "en": "Battle of the Pyramids. French infantry in big hollow squares hold off the Mamluk cavalry of Murad Bey, and the road to Cairo lies open.",
+      "nl": "Slag bij de piramiden. Franse infanterie in grote holle vierkanten houdt de Mammelukse ruiterij van Murad Bey tegen, en de weg naar Caïro ligt open.",
+      "src": [
+        "s7"
+      ]
+    },
+    {
+      "date": "1798-08-01",
+      "precision": "day",
+      "en": "Battle of the Nile. Nelson's fleet surprises the French fleet at anchor in Aboukir Bay and captures or destroys all but two of its ships. Bonaparte's army is now cut off in Egypt.",
+      "nl": "Zeeslag bij de Nijl. De vloot van Nelson verrast de Franse vloot voor anker in de baai van Abukir en verovert of vernietigt op twee na alle schepen. Bonapartes leger zit nu vast in Egypte.",
+      "src": [
+        "s1",
+        "s6",
+        "s8"
+      ]
+    },
+    {
+      "date": "1799-05-21",
+      "precision": "day",
+      "en": "After two months the siege of Acre fails. Bonaparte marches back to Egypt with an army weakened by fighting and plague.",
+      "nl": "Na twee maanden mislukt het beleg van Akko. Bonaparte trekt terug naar Egypte met een leger dat verzwakt is door gevechten en de pest.",
+      "src": [
+        "s1",
+        "s9"
+      ]
+    },
+    {
+      "date": "1799-11-09",
+      "precision": "day",
+      "en": "The coup of 18 Brumaire. A day later, soldiers force the Council of Five Hundred to give way, and Bonaparte becomes one of three consuls.",
+      "nl": "De staatsgreep van 18 brumaire. Een dag later dwingen soldaten de Raad van Vijfhonderd tot overgave, en Bonaparte wordt een van de drie consuls.",
+      "src": [
+        "s1",
+        "s10"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Napoleon Bonaparte",
+      "role": {
+        "en": "Commander in chief",
+        "nl": "Opperbevelhebber"
+      },
+      "born": 1769,
+      "died": 1821,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Aged 26, he left Paris two days after marrying Joséphine in March 1796 to take command in Italy. In August 1799 he sailed home from Egypt without orders and left his army behind.",
+      "nl": "Twee dagen na zijn huwelijk met Joséphine in maart 1796 vertrok hij, 26 jaar oud, uit Parijs om het bevel in Italië op te nemen. In augustus 1799 voer hij zonder orders terug uit Egypte en liet zijn leger achter.",
+      "src": [
+        "s1"
+      ],
+      "image": {
+        "file": "people-bonaparte.webp",
+        "title": "Bonaparte at the bridge of Arcole (study for the painting shown in 1801)",
+        "creator": "Antoine-Jean Gros",
+        "year": "1796",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Antoine-Jean_Gros_-_Bonaparte_on_the_Bridge_at_Arcole_-_WGA10700.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Louis-Alexandre Berthier",
+      "role": {
+        "en": "Chief of staff",
+        "nl": "Stafchef"
+      },
+      "born": 1753,
+      "died": 1815,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He met Bonaparte in March 1796 and became chief of staff of the Army of Italy at once, a job he kept until 1814. He organised the preparations for Egypt and sailed home with Bonaparte in 1799.",
+      "nl": "Hij leerde Bonaparte in maart 1796 kennen en werd meteen stafchef van het Leger van Italië, een taak die hij tot 1814 hield. Hij regelde de voorbereidingen voor Egypte en voer in 1799 met Bonaparte mee terug.",
+      "src": [
+        "s6",
+        "s11"
+      ],
+      "image": {
+        "file": "people-berthier.webp",
+        "title": "Portrait of Louis-Alexandre Berthier",
+        "creator": "André Dutertre",
+        "year": "1798-1801",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Portrait_de_Louis-Alexandre_Berthier,_G.20828-113.jpg",
+        "licence": "CC0",
+        "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "name": "Jean-Baptiste Kléber",
+      "role": {
+        "en": "General, later commander in Egypt",
+        "nl": "Generaal, later bevelhebber in Egypte"
+      },
+      "born": 1753,
+      "died": 1800,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He landed in Egypt with Bonaparte and fought in Syria. When Bonaparte left in 1799 he took command of the army, and in 1800 he was assassinated in Cairo by Suleiman al-Halabi, a Syrian student.",
+      "nl": "Hij ging met Bonaparte in Egypte aan land en vocht mee in Syrië. Toen Bonaparte in 1799 vertrok, nam hij het leger over. In 1800 werd hij in Caïro vermoord door Suleiman al-Halabi, een Syrische student.",
+      "src": [
+        "s6",
+        "s12"
+      ],
+      "image": {
+        "file": "people-kleber.webp",
+        "title": "Portrait of General Jean-Baptiste Kléber",
+        "creator": "Louis-Léopold Boilly",
+        "year": "1800",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Louis_Léopold_Boilly_-_Portrait_du_général_Jean-Baptiste_Kléber_(1753-1800)_-_P720_-_Musée_Carnavalet.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Louis Desaix",
+      "role": {
+        "en": "General",
+        "nl": "Generaal"
+      },
+      "born": 1768,
+      "died": 1800,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "His division took the brunt of the Mamluk charge at the Pyramids, and he then chased Murad Bey through Upper Egypt, where farmers called him the 'Just Sultan'. He was killed at Marengo in 1800.",
+      "nl": "Zijn divisie ving de zwaarste Mammelukse aanval op bij de piramiden. Daarna joeg hij Murad Bey door Opper-Egypte achterna, waar de boeren hem de 'Rechtvaardige Sultan' noemden. Hij sneuvelde in 1800 bij Marengo.",
+      "src": [
+        "s13"
+      ],
+      "image": {
+        "file": "people-desaix.webp",
+        "title": "General Desaix reading an order of Bonaparte to two Egyptians",
+        "creator": "Andrea Appiani",
+        "year": "1800",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Andrea_Appiani_-_General_Desaix_-_WGA00782.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Vivant Denon",
+      "role": {
+        "en": "Artist with the scholars",
+        "nl": "Kunstenaar bij de geleerden"
+      },
+      "born": 1747,
+      "died": 1825,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He went to Egypt as one of the expedition's artists and drew the monuments of Upper Egypt. His book of 1802 helped found Egyptology, and Napoleon later made him the first director of the Louvre.",
+      "nl": "Hij ging als kunstenaar met de expeditie mee en tekende de monumenten van Opper-Egypte. Zijn boek uit 1802 hielp de egyptologie op gang, en Napoleon maakte hem later de eerste directeur van het Louvre.",
+      "src": [
+        "s14"
+      ],
+      "image": {
+        "file": "people-denon.webp",
+        "title": "Dominique Vivant, baron Denon",
+        "creator": "Robert Lefèvre",
+        "year": "1808",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Robert_Lefèvre_-_Dominique_Vivant,_baron_Denon,_directeur_général_des_musées_impériaux_-_INV_4430_-_Museum_of_the_History_of_France.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Murad Bey",
+      "role": {
+        "en": "Mamluk leader, the opponent in Egypt",
+        "nl": "Mammelukse leider, de tegenstander in Egypte"
+      },
+      "born": 1750,
+      "died": 1801,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Joint ruler of Egypt with Ibrahim Bey. He led the Mamluk cavalry at the Pyramids, fled to Upper Egypt and kept fighting, until he made peace with Kléber in 1800. His origin is disputed: Georgian or Circassian.",
+      "nl": "Samen met Ibrahim Bey heerste hij over Egypte. Hij voerde de Mammelukse ruiterij aan bij de piramiden, vluchtte naar Opper-Egypte en vocht door tot hij in 1800 vrede sloot met Kléber. Zijn afkomst is omstreden: Georgisch of Circassisch.",
+      "src": [
+        "s15"
+      ],
+      "image": {
+        "file": "people-murad-bey.webp",
+        "title": "Murad Bey, plate from the Description de l'Égypte",
+        "creator": "André Dutertre",
+        "year": "1809",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Murad_Bey_by_Dutertre_in_Description_de_l_Egypte_1809.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Horatio Nelson",
+      "role": {
+        "en": "British admiral who hunted the fleet",
+        "nl": "Britse admiraal die de vloot opjoeg"
+      },
+      "born": 1758,
+      "died": 1805,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He chased the French fleet across the Mediterranean for more than two months, sometimes missing it by hours, then destroyed it in Aboukir Bay. He was wounded in the battle.",
+      "nl": "Hij joeg ruim twee maanden achter de Franse vloot aan over de Middellandse Zee, soms maar een paar uur te laat, en vernietigde haar daarna in de baai van Abukir. Hij raakte daarbij gewond.",
+      "src": [
+        "s8",
+        "s16"
+      ],
+      "image": {
+        "file": "people-nelson.webp",
+        "title": "Rear-Admiral Sir Horatio Nelson",
+        "creator": "Lemuel Francis Abbott",
+        "year": "1799",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Rear-Admiral_Sir_Horatio_Nelson,_1758-1805_RMG_BHC2889.tiff",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    }
+  ],
+  "images": [
+    {
+      "file": "lejeune-lodi.webp",
+      "width": 1200,
+      "height": 939,
+      "title": "The Battle of Lodi, 10 May 1796",
+      "creator": "Louis-François Lejeune",
+      "year": "1804",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Battle_of_Lodi,_10_May_1796_(by_Louis-François_Lejeune).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "French troops storm the long wooden bridge over the Adda at Lodi, painted in 1804.",
+        "nl": "Franse troepen bestormen de lange houten brug over de Adda bij Lodi, geschilderd in 1804."
+      }
+    },
+    {
+      "file": "philippoteaux-rivoli.webp",
+      "width": 1200,
+      "height": 953,
+      "title": "Bonaparte at the Battle of Rivoli",
+      "creator": "Henri Félix Emmanuel Philippoteaux",
+      "year": "1844",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Philippoteaux_Felix_-_Bonaparte_a_la_bataille_de_Rivoli.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Bonaparte on horseback at Rivoli, painted almost 50 years later.",
+        "nl": "Bonaparte te paard bij Rivoli, bijna 50 jaar later geschilderd."
+      }
+    },
+    {
+      "file": "lejeune-pyramids.webp",
+      "width": 1200,
+      "height": 525,
+      "title": "General view of the Battle of the Pyramids, 21 July 1798",
+      "creator": "Louis-François Lejeune",
+      "year": "1808",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Battle_of_the_Pyramids_(by_Louis-François_Lejeune).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The Battle of the Pyramids: French squares on the plain, Mamluk horsemen charging, the pyramids far in the distance.",
+        "nl": "De slag bij de piramiden: Franse vierkanten op de vlakte, aanstormende Mammelukse ruiters, de piramiden ver op de achtergrond."
+      }
+    },
+    {
+      "file": "arnald-lorient-nile.webp",
+      "width": 1200,
+      "height": 844,
+      "title": "The Destruction of 'L'Orient' at the Battle of the Nile, 1 August 1798",
+      "creator": "George Arnald",
+      "year": "1825",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_Destruction_of_'L'Orient'_at_the_Battle_of_the_Nile,_1_August_1798_RMG_BHC0509.tiff",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The French flagship L'Orient, the ship that carried Bonaparte to Egypt, explodes in Aboukir Bay.",
+        "nl": "Het Franse vlaggenschip L'Orient, het schip dat Bonaparte naar Egypte bracht, ontploft in de baai van Abukir."
+      }
+    },
+    {
+      "file": "gros-jaffa.webp",
+      "width": 1200,
+      "height": 857,
+      "title": "Bonaparte Visiting the Plague Victims of Jaffa",
+      "creator": "Antoine-Jean Gros",
+      "year": "1804",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Antoine-Jean_Gros_-_Bonaparte_visitant_les_pestiférés_de_Jaffa.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Bonaparte visits plague-stricken soldiers in Jaffa, painted in 1804. The painting does not show that thousands of prisoners were executed at Jaffa.",
+        "nl": "Bonaparte bezoekt pestzieke soldaten in Jaffa, geschilderd in 1804. Wat het schilderij niet laat zien: in Jaffa werden duizenden gevangenen terechtgesteld."
+      }
+    },
+    {
+      "file": "bouchot-brumaire.webp",
+      "width": 1127,
+      "height": 1200,
+      "title": "General Bonaparte at the Council of Five Hundred, Saint-Cloud",
+      "creator": "François Bouchot",
+      "year": "1840",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Bouchot_-_Le_general_Bonaparte_au_Conseil_des_Cinq-Cents.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "18 Brumaire: Bonaparte surrounded by angry deputies in red robes at Saint-Cloud, painted in 1840.",
+        "nl": "18 brumaire: Bonaparte omringd door boze afgevaardigden in rode togen in Saint-Cloud, geschilderd in 1840."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Napoleon, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Napoleon"
+    },
+    {
+      "key": "s2",
+      "title": "Montenotte campaign, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Montenotte_campaign"
+    },
+    {
+      "key": "s3",
+      "title": "Italian campaigns of the French Revolutionary Wars, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Italian_campaigns_of_the_French_Revolutionary_Wars"
+    },
+    {
+      "key": "s4",
+      "title": "Battle of Rivoli, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_Rivoli"
+    },
+    {
+      "key": "s5",
+      "title": "Siege of Mantua (1796-1797), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Siege_of_Mantua_(1796%E2%80%931797)"
+    },
+    {
+      "key": "s6",
+      "title": "French invasion of Egypt and Syria, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/French_invasion_of_Egypt_and_Syria"
+    },
+    {
+      "key": "s7",
+      "title": "Battle of the Pyramids, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_the_Pyramids"
+    },
+    {
+      "key": "s8",
+      "title": "Battle of the Nile, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_the_Nile"
+    },
+    {
+      "key": "s9",
+      "title": "Siege of Acre (1799), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Siege_of_Acre_(1799)"
+    },
+    {
+      "key": "s10",
+      "title": "Coup of 18 Brumaire, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Coup_of_18_Brumaire"
+    },
+    {
+      "key": "s11",
+      "title": "Louis-Alexandre Berthier, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Louis-Alexandre_Berthier"
+    },
+    {
+      "key": "s12",
+      "title": "Jean-Baptiste Kléber, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Jean-Baptiste_Kl%C3%A9ber"
+    },
+    {
+      "key": "s13",
+      "title": "Louis Desaix, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Louis_Desaix"
+    },
+    {
+      "key": "s14",
+      "title": "Vivant Denon, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Vivant_Denon"
+    },
+    {
+      "key": "s15",
+      "title": "Murad Bey, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Murad_Bey"
+    },
+    {
+      "key": "s16",
+      "title": "Horatio Nelson, 1st Viscount Nelson, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Horatio_Nelson,_1st_Viscount_Nelson"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1796-04-09",
+      "arrive": "1796-04-28",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "s2: the campaign began on 10 April 1796 (action at Voltri), so depart should be 1796-04-10; it ended with the Armistice of Cherasco on 28 April."
+    },
+    {
+      "leg": 1,
+      "depart": "1796-05-10",
+      "arrive": "1796-05-15",
+      "depart_ok": "day",
+      "arrive_ok": "year",
+      "note": "s3: Battle of Lodi on 10 May 1796. None of the sources read gives the day Bonaparte entered Milan (s1 even says the French captured Milan on 2 June); 15 May is the usual date but is not confirmed here."
+    },
+    {
+      "leg": 2,
+      "depart": "1796-07-04",
+      "arrive": "1797-02-02",
+      "depart_ok": "wrong",
+      "arrive_ok": "day",
+      "note": "s5: the siege of Mantua ran from 4 June 1796 (break 1-27 August) to the surrender on 2 February 1797. Depart should be 1796-06-04."
+    },
+    {
+      "leg": 3,
+      "depart": "1797-01-14",
+      "arrive": "1797-04-18",
+      "depart_ok": "day",
+      "arrive_ok": "wrong",
+      "note": "s4: Rivoli was 14 January 1797. 18 April 1797 is the preliminary peace of Leoben (s1), not the return to Paris that the leg ends at: s3 says Bonaparte arrived in Paris on 5 December 1797."
+    },
+    {
+      "leg": 4,
+      "depart": "1798-05-19",
+      "arrive": "1798-07-01",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s6: the fleet sailed from Toulon on 19 May 1798 and landed near Alexandria on 1 July (s1 agrees). The lead of s6 says 28 June, which contradicts its own body text."
+    },
+    {
+      "leg": 5,
+      "depart": "1798-07-01",
+      "arrive": "1798-07-21",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s6: landing 1 July, Alexandria taken 2 July. s7: Battle of the Pyramids on 21 July 1798."
+    },
+    {
+      "leg": 6,
+      "depart": "1799-02-10",
+      "arrive": "1799-05-21",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s6: Bonaparte left Cairo for Syria on 10 February 1799. s9: the siege of Acre ran 20 March to 21 May 1799."
+    },
+    {
+      "leg": 7,
+      "depart": "1799-05-21",
+      "arrive": "1799-08-22",
+      "depart_ok": "day",
+      "arrive_ok": "month",
+      "note": "s6: back in Cairo on 14 June, Abukir won on 25 July, left Cairo in August. No source gives 22 August for reaching Alexandria."
+    },
+    {
+      "leg": 8,
+      "depart": "1799-08-23",
+      "arrive": "1799-11-09",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "Sources differ by a day: s6 says the army was told on 23 August that Kléber had command; s1 says Bonaparte set sail on 24 August 1799. He reached Paris on 16 October (s10); the coup was on 9 November 1799 (s10)."
+    }
+  ]
+}

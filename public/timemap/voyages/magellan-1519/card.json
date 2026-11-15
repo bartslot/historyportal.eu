@@ -1,0 +1,393 @@
+{
+  "id": "magellan-1519",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Magellan_expedition",
+    "nl": "https://nl.wikipedia.org/wiki/Ferdinand_Magellaan"
+  },
+  "purpose": {
+    "en": "King Charles I of Spain paid for most of the voyage. Portugal controlled the eastern route to the Moluccas, the Spice Islands, under the Treaty of Tordesillas, so the Portuguese sailor Ferdinand Magellan offered Spain a way to get there by sailing west.",
+    "nl": "Koning Karel I van Spanje betaalde het grootste deel van de reis. Portugal had volgens het Verdrag van Tordesillas de oostelijke route naar de Molukken, de Specerijeneilanden, in handen. Daarom bood de Portugese zeeman Ferdinand Magellaan Spanje een weg aan via het westen.",
+    "src": [
+      "s1"
+    ]
+  },
+  "crew": {
+    "en": "Five ships: the flagship Trinidad, the San Antonio, the Concepción, the Victoria and the Santiago. The crew came from Spain, Portugal, Italy, Greece and beyond; sources count between about 240 and 270 men.",
+    "nl": "Vijf schepen: het vlaggenschip Trinidad, de San Antonio, de Concepción, de Victoria en de Santiago. De bemanning kwam uit Spanje, Portugal, Italië, Griekenland en verder; bronnen tellen tussen de 240 en 270 man.",
+    "src": [
+      "s1",
+      "s2",
+      "s7"
+    ]
+  },
+  "legacy": {
+    "en": "It was the first voyage around the world and the first European crossing of the Pacific, and it showed how huge the Earth really is. The western route turned out far too long to be useful for trade. In the Philippines it began Spain's claim to the islands, but Lapulapu's victory at Mactan held off Spanish rule until 1565.",
+    "nl": "Het was de eerste reis rond de wereld en de eerste Europese oversteek van de Stille Oceaan, en het liet zien hoe groot de aarde echt is. De westelijke route bleek veel te lang om er handel over te drijven. Voor de Filipijnen begon hier de Spaanse claim op de eilanden, maar door de overwinning van Lapulapu bij Mactan duurde het tot 1565 voordat Spanje er echt de macht greep.",
+    "src": [
+      "s1",
+      "s5"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1519-09-20",
+      "precision": "day",
+      "en": "The five ships leave Sanlúcar de Barrameda, at the mouth of the river below Seville.",
+      "nl": "De vijf schepen vertrekken uit Sanlúcar de Barrameda, aan de monding van de rivier onder Sevilla.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1520-04-01",
+      "precision": "day",
+      "en": "Wintering at Port St Julian in Patagonia, three Spanish captains mutiny on Easter night. Magellan takes back the ships; one captain is beheaded and another is later left behind on an island. Juan Sebastián Elcano is among the mutineers put in chains.",
+      "nl": "Tijdens de overwintering in de baai van San Julián in Patagonië komen drie Spaanse kapiteins in de paasnacht in opstand. Magellaan herovert de schepen; een kapitein wordt onthoofd en een ander later op een eilandje achtergelaten. Ook Juan Sebastián Elcano zit bij de muiters die in de boeien gaan.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1520-11-28",
+      "precision": "day",
+      "en": "After weeks in the twisting strait at the tip of South America, three ships reach the open ocean. Magellan calls it the Mar Pacifico, the peaceful sea. The San Antonio has turned back to Spain.",
+      "nl": "Na weken in de bochtige zeestraat bij de zuidpunt van Zuid-Amerika bereiken drie schepen de open oceaan. Magellaan noemt hem de Mar Pacifico, de vreedzame zee. De San Antonio is teruggekeerd naar Spanje.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1521-03-16",
+      "precision": "day",
+      "en": "After crossing the Pacific, with men eating ox hides, sawdust and rats, the fleet sights Samar in the Philippines. Days later Magellan's interpreter Enrique finds he can talk to the islanders in Malay.",
+      "nl": "Na de oversteek van de Stille Oceaan, waarbij de mannen leer, zaagsel en ratten aten, ziet de vloot Samar in de Filipijnen. Een paar dagen later merkt Magellaans tolk Enrique dat hij in het Maleis met de eilanders kan praten.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1521-04-27",
+      "precision": "day",
+      "en": "Magellan attacks Mactan because its leader Lapulapu refuses to submit. Lapulapu's warriors drive the Spanish back and Magellan is killed on the beach.",
+      "nl": "Magellaan valt Mactan aan omdat de leider daar, Lapulapu, zich niet wil onderwerpen. De krijgers van Lapulapu slaan de Spanjaarden terug en Magellaan sneuvelt op het strand.",
+      "src": [
+        "s1",
+        "s4"
+      ]
+    },
+    {
+      "date": "1521-11-08",
+      "precision": "day",
+      "en": "The Trinidad and the Victoria finally reach Tidore in the Moluccas and buy huge amounts of cloves.",
+      "nl": "De Trinidad en de Victoria bereiken eindelijk Tidore in de Molukken en kopen enorme hoeveelheden kruidnagel.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1522-09-06",
+      "precision": "day",
+      "en": "The battered Victoria arrives back in Spain under Elcano with 18 men, almost exactly three years after leaving. Their logbook is one day behind the calendar.",
+      "nl": "De gehavende Victoria komt onder Elcano terug in Spanje met 18 man aan boord, bijna precies drie jaar na vertrek. Hun logboek loopt een dag achter op de kalender.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Ferdinand Magellan",
+      "role": {
+        "en": "Captain-general, leader of the expedition",
+        "nl": "Kapitein-generaal, leider van de expeditie"
+      },
+      "born": 1480,
+      "died": 1521,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A Portuguese sailor who had fought in India, Malacca and Morocco. After falling out with Portugal's king over his pay, he took his plan to Spain. He was killed in the Philippines and never saw the Spice Islands.",
+      "nl": "Een Portugese zeeman die in India, Malakka en Marokko had gevochten. Na onenigheid met de Portugese koning over zijn soldij ging hij met zijn plan naar Spanje. Hij sneuvelde in de Filipijnen en heeft de Specerijeneilanden nooit gezien.",
+      "src": [
+        "s1",
+        "s3"
+      ],
+      "image": {
+        "file": "people-magellan.webp",
+        "title": "Ferdinand Magellan (painted after his death, 1550 to 1625)",
+        "creator": "Unknown artist",
+        "year": "c. 1550-1625",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Ferdinand_Magellan.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Juan Sebastián Elcano",
+      "role": {
+        "en": "Mutineer, later captain of the Victoria",
+        "nl": "Muiter, later kapitein van de Victoria"
+      },
+      "born": 1486,
+      "died": 1526,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A Spanish merchant captain from Getaria who joined to win the king's pardon for earlier misdeeds. He took part in the mutiny at St Julian, but later became captain of the Victoria and sailed her home westwards around Africa. He died of scurvy in the Pacific on the next voyage.",
+      "nl": "Een Spaanse koopvaardijkapitein uit Getaria die meeging om gratie van de koning te krijgen voor eerdere misstappen. Hij deed mee aan de muiterij bij San Julián, maar werd later kapitein van de Victoria en zeilde haar via het westen, rond Afrika, naar huis. Op de volgende reis stierf hij aan scheurbuik in de Stille Oceaan.",
+      "src": [
+        "s1",
+        "s6"
+      ],
+      "image": {
+        "file": "people-elcano.webp",
+        "title": "Juan Sebastián de Elcano (imagined portrait, engraving of 1791)",
+        "creator": "Luis Fernández Noseret, after José López Enguídanos",
+        "year": "1791",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Juan_Sebastian_de_Elcano.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Antonio Pigafetta",
+      "role": {
+        "en": "Chronicler, Magellan's assistant",
+        "nl": "Verslaggever, assistent van Magellaan"
+      },
+      "born": 1492,
+      "died": 1534,
+      "born_approx": true,
+      "died_approx": true,
+      "en": "A scholar from Vicenza who asked to come along and kept a journal of the whole voyage. He was one of the 18 who made it home, and his journal is still the main source for what happened. He also wrote down the first known list of Cebuano words.",
+      "nl": "Een geleerde uit Vicenza die vroeg of hij mee mocht en de hele reis een dagboek bijhield. Hij was een van de 18 die thuiskwamen, en zijn verslag is nog steeds de belangrijkste bron over de reis. Hij schreef ook de eerste bekende woordenlijst van het Cebuano op.",
+      "src": [
+        "s1",
+        "s7"
+      ],
+      "image": null
+    },
+    {
+      "name": "Enrique of Malacca",
+      "role": {
+        "en": "Magellan's enslaved servant and interpreter",
+        "nl": "Tot slaaf gemaakte bediende en tolk van Magellaan"
+      },
+      "born": 1493,
+      "died": null,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A Malay man enslaved by Magellan, probably at the taking of Malacca in 1511. His Malay was understood in the Philippines. Magellan's will set him free, but the new leaders refused; after the feast of 1 May 1521 he stayed behind in Cebu and his fate is unknown. If he ever got home, he may have been the first person to go all the way around the world.",
+      "nl": "Een Maleisische man die door Magellaan tot slaaf was gemaakt, waarschijnlijk bij de verovering van Malakka in 1511. In de Filipijnen werd zijn Maleis verstaan. Magellaans testament gaf hem de vrijheid, maar de nieuwe leiders weigerden dat; na het feestmaal van 1 mei 1521 bleef hij achter op Cebu en wat er van hem werd, weet niemand. Als hij ooit thuiskwam, was hij misschien de eerste die de hele wereld rond ging.",
+      "src": [
+        "s1",
+        "s8"
+      ],
+      "image": null
+    },
+    {
+      "name": "Lapulapu",
+      "role": {
+        "en": "Datu (chief) of Mactan who defeated Magellan",
+        "nl": "Datu (leider) van Mactan die Magellaan versloeg"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "One of the chiefs of Mactan. He refused to pay tribute to the Spanish king, and his warriors defeated Magellan's men in the battle of 27 April 1521. Pigafetta's account is the only first-hand source that names him, and nobody recorded what he looked like. Today he is honoured as a national hero in the Philippines.",
+      "nl": "Een van de leiders van Mactan. Hij weigerde schatting te betalen aan de Spaanse koning, en zijn krijgers versloegen de mannen van Magellaan in de slag van 27 april 1521. Het verslag van Pigafetta is de enige bron uit eerste hand die hem bij naam noemt, en niemand schreef op hoe hij eruitzag. In de Filipijnen wordt hij nu geëerd als nationale held.",
+      "src": [
+        "s4",
+        "s5"
+      ],
+      "image": null
+    },
+    {
+      "name": "Rajah Humabon",
+      "role": {
+        "en": "Ruler of Cebu",
+        "nl": "Heerser van Cebu"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He made a blood pact with Magellan and was baptised Carlos on 14 April 1521. According to Pigafetta he asked Magellan to deal with his rival Lapulapu. After Magellan's death he turned on the Spanish: at a feast on 1 May his men killed many of the officers.",
+      "nl": "Hij sloot een bloedpact met Magellaan en werd op 14 april 1521 gedoopt als Carlos. Volgens Pigafetta vroeg hij Magellaan om zijn rivaal Lapulapu aan te pakken. Na de dood van Magellaan keerde hij zich tegen de Spanjaarden: bij een feestmaal op 1 mei doodden zijn mannen veel van de officieren.",
+      "src": [
+        "s1",
+        "s9"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "agnese-world-map-1544.webp",
+      "width": 1200,
+      "height": 821,
+      "title": "World map from a portolan atlas",
+      "creator": "Battista Agnese",
+      "year": "1544",
+      "source_url": "https://commons.wikimedia.org/wiki/File:1544_Battista_Agnese_Worldmap.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A world map from 1544. The thin line running around the globe traces the route of Magellan's ships.",
+        "nl": "Een wereldkaart uit 1544. De dunne lijn rond de aarde volgt de route van de schepen van Magellaan."
+      }
+    },
+    {
+      "file": "pigafetta-strait-map.webp",
+      "width": 860,
+      "height": 1200,
+      "title": "Map of the Strait of Magellan, after Antonio Pigafetta",
+      "creator": "Antonio Pigafetta, as printed by Carlo Amoretti",
+      "year": "1800 (after Pigafetta's drawing of the 1520s)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_First_Map_of_the_Strait_of_Magellan,_1520_WDL3972.png",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Pigafetta drew 23 maps for his journal. This is his map of the strait, as printed in 1800 from his manuscript.",
+        "nl": "Pigafetta tekende 23 kaarten bij zijn verslag. Dit is zijn kaart van de zeestraat, in 1800 gedrukt naar zijn handschrift."
+      }
+    },
+    {
+      "file": "americae-retectio-magellan.webp",
+      "width": 1200,
+      "height": 915,
+      "title": "Ferdinandes Magalanes Lusitanus, plate 4 from Americae Retectio",
+      "creator": "Jan van der Straet (Stradanus), engraved by Adriaen Collaert",
+      "year": "1580s",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Print,_Ferdinandes_Magalanes_Lusitanus,_plate_4_from_%22Americae_Retectio%22,_1580s_(CH_18382163).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A print from the 1580s that turns the voyage into a legend: Magellan sits on deck with his instruments, among gods, sea monsters and a giant swallowing an arrow.",
+        "nl": "Een prent uit de jaren 1580 die van de reis een legende maakt: Magellaan zit met zijn instrumenten aan dek, tussen goden, zeemonsters en een reus die een pijl inslikt."
+      }
+    },
+    {
+      "file": "ortelius-maris-pacifici-1589.webp",
+      "width": 1200,
+      "height": 831,
+      "title": "Maris Pacifici",
+      "creator": "Abraham Ortelius",
+      "year": "1589",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Ortelius_-_Maris_Pacifici_1589.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The first printed map of the Pacific, from 1589, with a big ship sailing across the middle.",
+        "nl": "De eerste gedrukte kaart van de Stille Oceaan, uit 1589, met een groot schip midden op zee."
+      }
+    },
+    {
+      "file": "ortelius-victoria.webp",
+      "width": 1200,
+      "height": 733,
+      "title": "Magellan's ship Victoria (detail of Maris Pacifici)",
+      "creator": "Abraham Ortelius",
+      "year": "1589",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Detail_from_a_map_of_Ortelius_-_Magellan%27s_ship_Victoria.png",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "That ship is the Victoria. The Latin verse below it says, roughly: 'I was the first to sail around the world, led by you, Magellan, through the new strait. I sailed around it, and rightly I am called Victoria.'",
+        "nl": "Dat schip is de Victoria. Het Latijnse vers eronder zegt ongeveer: 'Ik zeilde als eerste rond de wereld, onder jouw leiding, Magellaan, door de nieuwe zeestraat. Ik zeilde eromheen, en terecht heet ik Victoria.'"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Magellan expedition, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Magellan_expedition"
+    },
+    {
+      "key": "s2",
+      "title": "Ferdinand Magellaan, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Ferdinand_Magellaan"
+    },
+    {
+      "key": "s3",
+      "title": "Ferdinand Magellan, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Ferdinand_Magellan"
+    },
+    {
+      "key": "s4",
+      "title": "Battle of Mactan, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_Mactan"
+    },
+    {
+      "key": "s5",
+      "title": "Lapulapu, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Lapulapu"
+    },
+    {
+      "key": "s6",
+      "title": "Juan Sebastián Elcano, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Juan_Sebasti%C3%A1n_Elcano"
+    },
+    {
+      "key": "s7",
+      "title": "Antonio Pigafetta, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Antonio_Pigafetta"
+    },
+    {
+      "key": "s8",
+      "title": "Enrique of Malacca, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Enrique_of_Malacca"
+    },
+    {
+      "key": "s9",
+      "title": "Rajah Humabon, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Rajah_Humabon"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1519-09-20",
+      "arrive": "1520-03-31",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1, s2: left Sanlúcar de Barrameda on 20 September 1519; s1: found the harbour of Port St Julian on 31 March 1520."
+    },
+    {
+      "leg": 1,
+      "depart": "1520-10-21",
+      "arrive": "1520-11-28",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: left Santa Cruz on 18 October (s2: 17 October) and sighted Cape Virgenes at the entrance of the strait on 21 October 1520; reached the Pacific on 28 November. 21 October is right for the strait entrance."
+    },
+    {
+      "leg": 2,
+      "depart": "1520-11-28",
+      "arrive": "1521-03-16",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: entered the Pacific on 28 November 1520; stopped at Guam on 6 March; sighted Samar and landed on Homonhon on 16 March 1521 (s4: Julian calendar)."
+    },
+    {
+      "leg": 3,
+      "depart": "1521-04-27",
+      "arrive": "1521-11-08",
+      "depart_ok": "wrong",
+      "arrive_ok": "day",
+      "note": "27 April 1521 is the battle of Mactan (s1, s4), not a departure. The ships left Cebu after the massacre at the feast of 1 May and burned the Concepción on 2 May (s1); suggest depart 1521-05-01. Arrival at Tidore on 8 November 1521 is right (s1, s2)."
+    },
+    {
+      "leg": 4,
+      "depart": "1521-12-21",
+      "arrive": "1522-09-06",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: the Victoria left Tidore on 21 December 1521 and reached Sanlúcar de Barrameda on 6 September 1522 (s2 agrees on the arrival)."
+    }
+  ]
+}

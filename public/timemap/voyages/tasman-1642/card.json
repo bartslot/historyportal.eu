@@ -1,0 +1,405 @@
+{
+  "id": "tasman-1642",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Abel_Tasman",
+    "nl": "https://nl.wikipedia.org/wiki/Abel_Tasman"
+  },
+  "purpose": {
+    "en": "Governor-General Anthony van Diemen and the VOC council in Batavia sent Abel Tasman and pilot Frans Visscher to explore the unknown seas south and east of the Indies. They hoped to find the great South Land and new places to trade.",
+    "nl": "Gouverneur-generaal Antonio van Diemen en de Raad van Indië in Batavia stuurden Abel Tasman en stuurman Frans Visscher op pad om de onbekende zeeën ten zuiden en oosten van Indië te verkennen. Ze hoopten het grote Zuidland te vinden, en nieuwe plekken om handel te drijven.",
+    "src": [
+      "s1",
+      "s2",
+      "s7"
+    ]
+  },
+  "crew": {
+    "en": "Two small ships, the yacht Heemskerck and the flute Zeehaen, with 110 men on board. Tasman was commander, Visscher pilot-major, and the skippers were Yde Tjercxzen Holleman and Gerrit Janszoon. Fifteen men died on the whole voyage.",
+    "nl": "Twee kleine schepen, het jacht Heemskerck en het fluitschip Zeehaen, met 110 man aan boord. Tasman was commandeur, Visscher opperstuurman, en de schippers waren Yde Tjercxzen Holleman en Gerrit Janszoon. Op de hele reis kwamen vijftien man om.",
+    "src": [
+      "s3",
+      "s8",
+      "s2"
+    ]
+  },
+  "legacy": {
+    "en": "Tasman was the first European to reach Tasmania and New Zealand, and by sailing right around Australia, far out at sea, he showed it was not joined to a bigger southern continent. For the Ngāti Tūmatakōkiri of Golden Bay it was the first known meeting with Europeans, and it ended with deaths on both sides. The VOC found nothing to trade, and no Europeans came back to Tasmania or New Zealand for more than a century, until James Cook.",
+    "nl": "Tasman was de eerste Europeaan bij Tasmanië en Nieuw-Zeeland. Omdat hij, ver op zee, helemaal om Australië heen voer, bleek dat het niet vastzat aan een groter zuidelijk continent. Voor de Ngāti Tūmatakōkiri in Golden Bay was het de eerste bekende ontmoeting met Europeanen, en er vielen aan beide kanten doden. De VOC vond niets om mee te handelen, en pas ruim een eeuw later, met James Cook, kwamen er weer Europeanen naar Tasmanië en Nieuw-Zeeland.",
+    "src": [
+      "s1",
+      "s4"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1642-08-14",
+      "precision": "day",
+      "en": "The Heemskerck and Zeehaen sail from Batavia. That same evening the Zeehaen briefly runs aground.",
+      "nl": "De Heemskerck en de Zeehaen vertrekken uit Batavia. Dezelfde avond loopt de Zeehaen nog even vast.",
+      "src": [
+        "s3"
+      ]
+    },
+    {
+      "date": "1642-11-24",
+      "precision": "day",
+      "en": "After a cold crossing with snow and hail, the crew sights the west coast of Tasmania. Tasman names it Anthoony van Diemenslandt, after the governor-general who sent him.",
+      "nl": "Na een koude oversteek met sneeuw en hagel ziet de bemanning de westkust van Tasmanië. Tasman noemt het Anthoony van Diemenslandt, naar de gouverneur-generaal die hem stuurde.",
+      "src": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "date": "1642-12-03",
+      "precision": "day",
+      "en": "The surf is too rough for the boat, so the ship's carpenter swims ashore alone and plants a flag to claim the land. No islanders show themselves, though the Dutch suspect they are being watched.",
+      "nl": "De branding is te wild voor de sloep, dus zwemt de scheepstimmerman alleen naar de kust en plant er een vlag om het land op te eisen. Er laat zich niemand zien, al denken de Nederlanders dat ze bekeken worden.",
+      "src": [
+        "s3",
+        "s1"
+      ]
+    },
+    {
+      "date": "1642-12-13",
+      "precision": "day",
+      "en": "They sight the high west coast of New Zealand's South Island and call it Staten Landt, thinking it might join land near the tip of South America.",
+      "nl": "Ze zien de hoge westkust van het Zuidereiland van Nieuw-Zeeland en noemen het Staten Landt, omdat ze denken dat het misschien vastzit aan land bij de punt van Zuid-Amerika.",
+      "src": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "date": "1642-12-19",
+      "precision": "day",
+      "en": "In Golden Bay (Mohua), after a night of trumpet calls back and forth, a waka rams a boat from the Zeehaen and four Dutch sailors are killed. As the ships leave, the Zeehaen fires at the canoes and hits a man. Tasman calls it Murderers' Bay. One archaeologist suggests the Māori were guarding a kūmara garden where they thought the Dutch would land.",
+      "nl": "In Golden Bay (Mohua) ramt een waka, na een nacht van heen en weer trompetten, een sloep van de Zeehaen en worden vier Nederlandse matrozen gedood. Bij het wegvaren schiet de Zeehaen op de kano's en raakt een man. Tasman noemt het Moordenaarsbaai. Een archeoloog denkt dat de Māori een kūmara-tuin beschermden waar ze de Nederlanders verwachtten.",
+      "src": [
+        "s3",
+        "s1",
+        "s4",
+        "s5"
+      ]
+    },
+    {
+      "date": "1643-01-21",
+      "precision": "day",
+      "en": "The ships anchor off Tongatapu, which Tasman calls Amsterdam. Here the welcome is friendly: islanders trade pigs, chickens, coconuts and bananas for cloth, nails, mirrors and beads.",
+      "nl": "De schepen ankeren bij Tongatapu, dat Tasman Amsterdam noemt. Hier is het welkom vriendelijk: de eilanders ruilen varkens, kippen, kokosnoten en bananen tegen katoen, spijkers, spiegels en kralen.",
+      "src": [
+        "s3",
+        "s2"
+      ]
+    },
+    {
+      "date": "1643-06-15",
+      "precision": "day",
+      "en": "Back in Batavia after ten months, having passed the reefs of Fiji and the north coast of New Guinea.",
+      "nl": "Na tien maanden terug in Batavia, langs de riffen van Fiji en de noordkust van Nieuw-Guinea.",
+      "src": [
+        "s3",
+        "s1"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Abel Tasman",
+      "role": {
+        "en": "Commander",
+        "nl": "Commandeur"
+      },
+      "born": 1603,
+      "died": 1659,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Born around 1603 in Lutjegast, Groningen, he had little schooling and learned navigation on the job for the VOC. He led this voyage and the one of 1644. No portrait of him is certain; this drawing has the best claim.",
+      "nl": "Geboren rond 1603 in Lutjegast, Groningen. Hij had weinig scholing en leerde navigeren in de praktijk bij de VOC. Hij leidde deze reis en die van 1644. Er is geen zeker portret van hem; deze tekening komt het dichtst in de buurt.",
+      "src": [
+        "s1"
+      ],
+      "image": {
+        "file": "people-tasman.webp",
+        "title": "Abel Janssen Tasman, Navigateur en Australie (ink drawing; not certain it shows Tasman)",
+        "creator": "Unknown artist",
+        "year": "date uncertain (catalogued c. 1850)",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Abel_Tasman_Navigateur_en_Australie_(cropped).jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Frans Jacobszoon Visscher",
+      "role": {
+        "en": "Pilot-major",
+        "nl": "Opperstuurman"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "An experienced navigator from Vlissingen who had sailed to Japan and Cambodia. He drew up the route plans for Van Diemen and later wrote a memoir about the discovery.",
+      "nl": "Een ervaren stuurman uit Vlissingen die al in Japan en Cambodja was geweest. Hij maakte de routeplannen voor Van Diemen en schreef later een verslag over de ontdekking.",
+      "src": [
+        "s3",
+        "s7",
+        "s1"
+      ],
+      "image": null
+    },
+    {
+      "name": "Isaack Gilsemans",
+      "role": {
+        "en": "Supercargo of the Zeehaen and draughtsman",
+        "nl": "Opperkoopman op de Zeehaen en tekenaar"
+      },
+      "born": 1606,
+      "died": 1646,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A merchant from Rotterdam who could also draw. His sketches of the coasts and people are the first European pictures of Tasmania and of Māori.",
+      "nl": "Een koopman uit Rotterdam die ook kon tekenen. Zijn schetsen van kusten en mensen zijn de eerste Europese afbeeldingen van Tasmanië en van Māori.",
+      "src": [
+        "s6",
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Yde Tjercxzen Holleman",
+      "role": {
+        "en": "Skipper of the Heemskerck",
+        "nl": "Schipper van de Heemskerck"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A sailor from Jever in Oldenburg who came out to the Indies in 1640. His orders named him to take over if Tasman died.",
+      "nl": "Een zeeman uit Jever in Oldenburg die in 1640 naar Indië kwam. Volgens de instructies zou hij het overnemen als Tasman stierf.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Gerrit Janszoon",
+      "role": {
+        "en": "Skipper of the Zeehaen",
+        "nl": "Schipper van de Zeehaen"
+      },
+      "born": null,
+      "died": 1643,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "An experienced sailor from Leiden. He died near the end of the voyage, on 6 June 1643.",
+      "nl": "Een ervaren zeeman uit Leiden. Hij stierf vlak voor het einde van de reis, op 6 juni 1643.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Anthony van Diemen",
+      "role": {
+        "en": "Sent the expedition (governor-general in Batavia)",
+        "nl": "Gaf de opdracht (gouverneur-generaal in Batavia)"
+      },
+      "born": 1593,
+      "died": 1645,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Governor-general of the VOC in Asia from 1636. Tasman named Van Diemen's Land after him and Cape Maria van Diemen after his wife.",
+      "nl": "Gouverneur-generaal van de VOC in Azië vanaf 1636. Tasman noemde Van Diemensland naar hem en Kaap Maria van Diemen naar zijn vrouw.",
+      "src": [
+        "s7"
+      ],
+      "image": {
+        "file": "people-van-diemen.webp",
+        "title": "Antonio van Diemen (1593-1645), Governor-General (1636-45)",
+        "creator": "Anonymous",
+        "year": "between 1636 and 1675",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Antonio_van_Diemen_(1593-1645)._Gouverneur-generaal_(1636-45)_Rijksmuseum_SK-A-3762.jpeg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    }
+  ],
+  "images": [
+    {
+      "file": "murderers-bay-1642.webp",
+      "width": 1200,
+      "height": 780,
+      "title": "A view of the Murderers' Bay, as you are at anchor here in 15 fathom",
+      "creator": "Isaack Gilsemans",
+      "year": "1642",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Gilsemans_1642.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Golden Bay, 19 December 1642: waka come alongside, one rams the Zeehaen's boat, and the two Dutch ships at anchor.",
+        "nl": "Golden Bay, 19 december 1642: waka varen op de schepen af, één ramt de sloep van de Zeehaen, en de twee Nederlandse schepen voor anker."
+      }
+    },
+    {
+      "file": "heemskerck-zeehaen-1642.webp",
+      "width": 978,
+      "height": 1200,
+      "title": "The flute Zeehaen and the yacht Heemskerck, from Tasman's journal",
+      "creator": "Isaack Gilsemans",
+      "year": "1642",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Dutch_flute_Zeehaen_and_war_yacht_Heemskerck.png",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Stern view of the Zeehaen (left) and the Heemskerck at anchor in Frederick Hendrick Bay, Tasmania.",
+        "nl": "De Zeehaen (links) en de Heemskerck van achteren gezien, voor anker in de Frederik Hendrikbaai op Tasmanië."
+      }
+    },
+    {
+      "file": "tasmania-coast-1642.webp",
+      "width": 1200,
+      "height": 744,
+      "title": "Coastal drawings of Tasmania, Huydecoper copy of Tasman's journal",
+      "creator": "Hessel Gerritsz (as catalogued by the State Library of New South Wales)",
+      "year": "1642",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Abel_Tasman_Tasmania_1642_SLNSW_FL3174899.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Coastal profiles of Van Diemen's Land in December 1642, drawn so later sailors could recognise the land.",
+        "nl": "Kustprofielen van Van Diemensland in december 1642, getekend zodat latere zeelui het land konden herkennen."
+      }
+    },
+    {
+      "file": "tongatapu-1643.webp",
+      "width": 1200,
+      "height": 795,
+      "title": "Tongatapu, drawing in Tasman's journal",
+      "creator": "Isaack Gilsemans (attributed)",
+      "year": "1643",
+      "source_url": "https://commons.wikimedia.org/wiki/File:NL-HaNA_1.11.01.01_121_0051_Scheepsjournaal_Abel_Tasman_43.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Tongatapu, January 1643: a sailing canoe, islanders bringing gifts, and the two Dutch ships.",
+        "nl": "Tongatapu, januari 1643: een zeilkano, eilanders die geschenken brengen, en de twee Nederlandse schepen."
+      }
+    },
+    {
+      "file": "journal-page-1643.webp",
+      "width": 790,
+      "height": 1200,
+      "title": "Journal of Abel Tasman, page for January 1643",
+      "creator": "Abel Tasman (journal)",
+      "year": "1643",
+      "source_url": "https://commons.wikimedia.org/wiki/File:NL-HaNA_1.11.01.01_121_0051_Scheepsjournaal_Abel_Tasman_35.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A page from Tasman's own journal, now in the Nationaal Archief, with coastal views of the islands he called Amsterdam and Middelburgh in Tonga.",
+        "nl": "Een bladzijde uit Tasmans eigen journaal, nu in het Nationaal Archief, met kustgezichten van de eilanden die hij Amsterdam en Middelburgh noemde, in Tonga."
+      }
+    },
+    {
+      "file": "three-kings-1726.webp",
+      "width": 1024,
+      "height": 1200,
+      "title": "Staeten Landt bezylt en ontdekt ... Aldus vertoont zich het Drie Koningen Eyland",
+      "creator": "François Valentijn (Oud en Nieuw Oost-Indiën)",
+      "year": "1726",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Isaac_Gilsemans_Three_Kings_Islands_PUBL-0105-004.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Later print after the voyage drawings: the Heemskerck and Zeehaen off the Three Kings Islands, with large figures on the rocks.",
+        "nl": "Latere prent naar de reistekeningen: de Heemskerck en de Zeehaen bij de Driekoningeneilanden, met grote figuren op de rotsen."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Abel Tasman, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Abel_Tasman"
+    },
+    {
+      "key": "s2",
+      "title": "Abel Tasman, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Abel_Tasman"
+    },
+    {
+      "key": "s3",
+      "title": "Abel Janszoon Tasman's Journal, with documents on the 1644 voyage and Heeres' 'Life and Labours' (1898, English translation), Project Gutenberg Australia",
+      "url": "https://gutenberg.net.au/ebooks06/0600571h.html"
+    },
+    {
+      "key": "s4",
+      "title": "Ngāti Tūmatakōkiri, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Ng%C4%81ti_T%C5%ABmatak%C5%8Dkiri"
+    },
+    {
+      "key": "s5",
+      "title": "Golden Bay / Mohua, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Golden_Bay_/_Mohua"
+    },
+    {
+      "key": "s6",
+      "title": "Isaack Gilsemans, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Isaack_Gilsemans"
+    },
+    {
+      "key": "s7",
+      "title": "Anthony van Diemen, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Anthony_van_Diemen"
+    },
+    {
+      "key": "s8",
+      "title": "Abel Janszoon Tasman, Princeton University Library (Pacific exploration exhibit)",
+      "url": "https://static-prod.lib.princeton.edu/visual_materials/maps/websites/pacific/tasman/tasman.html"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1642-08-14",
+      "arrive": "1642-09-05",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s3 journal: sailed from the roads of Batavia 14 August 1642; s1: reached Mauritius 5 September 1642."
+    },
+    {
+      "leg": 1,
+      "depart": "1642-10-08",
+      "arrive": "1642-11-24",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1/s2: left Mauritius 8 October; s3 journal: land (west coast of Tasmania) sighted 24 November 1642."
+    },
+    {
+      "leg": 2,
+      "depart": "1642-12-04",
+      "arrive": "1642-12-13",
+      "depart_ok": "day",
+      "arrive_ok": "wrong",
+      "note": "s3 journal: weighed anchor off Tasmania 4 December, turned east 5 December. 13 December is the first sighting of New Zealand's west coast (near waypoint 13); the ships only anchored in Golden Bay (waypoint 15, where this leg ends) on 18 December 1642 (s3, s4). If the leg ends at Golden Bay, arrive should be 1642-12-18."
+    },
+    {
+      "leg": 3,
+      "depart": "1642-12-18",
+      "arrive": "1643-01-21",
+      "depart_ok": "wrong",
+      "arrive_ok": "day",
+      "note": "s3 journal: anchored in Golden Bay the evening of 18 December; the attack and departure were on 19 December 1642, so depart should be 1642-12-19. Anchored off Tongatapu ('Amsterdam') 21 January 1643 (s3); s1's 20 January is the first sighting of the islands."
+    },
+    {
+      "leg": 4,
+      "depart": "1643-02-01",
+      "arrive": "1643-06-15",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s3 journal: weighed anchor at Nomuka ('Rotterdam'), Tonga, early on 1 February 1643; 'In the morning at daybreak I went to Batavia in the pinnace', 15 June 1643."
+    }
+  ]
+}

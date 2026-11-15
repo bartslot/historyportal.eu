@@ -45,6 +45,7 @@
                 the map's attribution line, not in every card. --}}
            provenance: null,
            sourcesOpen: false,
+           voyageReq: 0,
            grades: {
                A: @js(__('Scholarly atlas')),
                B: @js(__('Specialist project')),
@@ -80,6 +81,7 @@
            {{-- Closing has to undo the whole click, not just the panel. `polity = null` hides the
                 card; without the other two the territory stays lit and the voice keeps talking. --}}
            close() {
+               this.voyageReq++;
                this.polity = null;
                this.reportContext = null;
                this.provenance = null;
@@ -95,7 +97,7 @@
        x-on:keydown.escape.window="close()"
        x-on:polity-selected.window="
             window.__timemapStopSpeak && window.__timemapStopSpeak();
-            if (!$event.detail.id) { polity = null; loading = false; reportContext = null; provenance = null; return; }
+            if (!$event.detail.id) { voyageReq++; polity = null; loading = false; reportContext = null; provenance = null; return; }
             if ($event.detail.succeeded) noteSuccession($event.detail.previousName);
             else { succeededFrom = null; }
             tab = 'summary'; selected = []; lead = null;
@@ -112,6 +114,24 @@
             {{-- A hand-authored territory's dates come from the feature. The enrichment endpoint
                  reads Cliopatria's own era table and answers '?' for a polity that is not in it,
                  which would leave every territory we drew ourselves showing '? | ?'. --}}
+            {{-- A VOYAGE carries its own story (public/timemap/voyages/<id>/card.json): what it
+                 was for, who sailed, the dated moments, the people and the pictures. Same card,
+                 same tabs; the territory lookup is skipped. A later click wins over a slow load. --}}
+            if ($event.detail.voyageId) {
+                reportContext = { ...reportContext, territory_id: 'voyage:' + $event.detail.voyageId, source: 'hand' };
+                const req = ++voyageReq;
+                loading = true; polity = null;
+                window.__timemapLoadVoyage($event.detail.voyageId)
+                    .then(v => { if (req !== voyageReq) return; polity = v; loading = false; })
+                    .catch(e => {
+                        if (req !== voyageReq) return;
+                        loading = false;
+                        polity = { label: $event.detail.name || '', voyage: true, summary: null, lookup_failed: true, inception: null, dissolution: null };
+                        console.warn('timemap: voyage card failed', e);
+                    });
+                return;
+            }
+            voyageReq++;
             const handDates = $event.detail.hand
                 ? { inception: $event.detail.inception ?? null, dissolution: $event.detail.dissolution ?? null }
                 : {};
@@ -267,10 +287,70 @@
                              clicked. Distinct from "No summary yet", which means we looked and
                              there was nothing — this means we could not look. --}}
                         <template x-if="polity.lookup_failed">
-                            <p class="text-card-muted">{{ __('We could not load the details for this region just now.') }}</p>
+                            <p class="text-card-muted" x-text="polity.voyage
+                                ? @js(__('We could not load the details for this voyage just now.'))
+                                : @js(__('We could not load the details for this region just now.'))"></p>
                         </template>
-                        <p x-show="!polity.lookup_failed" class="whitespace-pre-line"
+                        <p x-show="!polity.lookup_failed && !polity.voyage" class="whitespace-pre-line"
                            x-text="lead || polity.summary || @js(__('No summary yet.'))"></p>
+
+                        {{-- A VOYAGE: three short paragraphs, then the pictures, then where every line
+                             comes from. Each picture carries its credit under it, as its licence asks. --}}
+                        <template x-if="polity.voyage && !polity.lookup_failed">
+                            <div class="flex flex-col gap-4">
+                                <template x-for="part in polity.story" :key="part.key">
+                                    <div>
+                                        <p class="lp-card-label" x-text="({
+                                            purpose: @js(__('What it was for')),
+                                            crew: @js(__('Who sailed')),
+                                            legacy: @js(__('What it changed')),
+                                        })[part.key]"></p>
+                                        <p class="mt-1" x-text="part.text"></p>
+                                    </div>
+                                </template>
+
+                                <template x-if="polity.gallery.length">
+                                    <div class="flex flex-col gap-3">
+                                        <p class="lp-card-label">{{ __('Pictures') }}</p>
+                                        <template x-for="img in polity.gallery" :key="img.src">
+                                            <figure>
+                                                <img :src="img.src" :alt="img.caption" :width="img.width" :height="img.height"
+                                                     loading="lazy" x-on:error="$el.closest('figure').remove()"
+                                                     class="h-auto w-full rounded-md bg-card-surface-raised">
+                                                <figcaption class="mt-1.5">
+                                                    <span class="block leading-snug" x-text="img.caption"></span>
+                                                    <a :href="img.source_url" target="_blank" rel="noopener"
+                                                       class="mt-0.5 block text-xs leading-snug text-card-muted underline decoration-card-hairline underline-offset-2 hover:decoration-current"
+                                                       x-text="img.credit"></a>
+                                                </figcaption>
+                                            </figure>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <div class="border-t border-card-hairline pt-3">
+                                    <button type="button"
+                                            class="lp-card-label flex w-full cursor-pointer items-center justify-between hover:text-card-body"
+                                            :aria-expanded="sourcesOpen ? 'true' : 'false'"
+                                            x-on:click="sourcesOpen = !sourcesOpen">
+                                        <span x-text="sourcesOpen
+                                            ? @js(__('Hide the sources'))
+                                            : @js(__('Sources')) + ' (' + polity.sources.length + ')'"></span>
+                                        <x-icons.chevron-down class="h-4 w-4 transition-transform"
+                                                              ::class="sourcesOpen && 'rotate-180'" />
+                                    </button>
+                                    <ol x-show="sourcesOpen" x-transition.opacity style="display:none" class="mt-2 flex flex-col gap-1.5">
+                                        <template x-for="s in polity.sources" :key="s.key">
+                                            <li>
+                                                <a :href="s.url" target="_blank" rel="noopener"
+                                                   class="leading-snug text-card-body underline decoration-card-hairline underline-offset-2 hover:decoration-current"
+                                                   x-text="s.title"></a>
+                                            </li>
+                                        </template>
+                                    </ol>
+                                </div>
+                            </div>
+                        </template>
 
                         {{-- WHERE THIS BORDER COMES FROM — only for territories we drew ourselves.
                              A Cliopatria border has no per-feature paper trail, and the dataset
@@ -354,37 +434,70 @@
                          wizard as the protagonist, which is why the button below changes its label. --}}
                     <div x-show="tab === 'people'" class="flex flex-col gap-2">
                         <template x-if="!polity.figures || polity.figures.length === 0">
-                            <p class="text-card-muted">{{ __('No people linked yet for this territory.') }}</p>
+                            <p class="text-card-muted" x-text="polity.voyage
+                                ? @js(__('No people linked yet for this voyage.'))
+                                : @js(__('No people linked yet for this territory.'))"></p>
                         </template>
-                        <template x-for="f in (polity.figures || [])" :key="f.qid">
-                            <div class="flex items-center gap-3 rounded-md border border-card-hairline p-2">
-                                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-card-surface-raised">
-                                    <template x-if="f.image_url">
-                                        <img :src="f.image_url + '?width=80'" :alt="f.name"
-                                             class="h-full w-full object-cover" loading="lazy">
-                                    </template>
+                        {{-- A voyage's people carry no Wikidata id, so they are keyed by `key`
+                             (the QID when there is one) and add a role line, a sourced sentence
+                             and the portrait's credit. No portrait means initials, never a guess. --}}
+                        <template x-for="f in (polity.figures || [])" :key="f.key || f.qid">
+                            <div class="flex flex-col gap-2 rounded-md border border-card-hairline p-2">
+                                {{-- A voyage role is a phrase ("Captain-major, commander of the fleet"), so
+                                     there the button wraps under the name instead of squeezing it. --}}
+                                <div class="flex items-center gap-3" :class="polity.voyage && 'flex-wrap gap-y-2'">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-card-surface-raised">
+                                        <template x-if="f.image_url">
+                                            <img :src="f.image_url + '?width=80'" :alt="f.name"
+                                                 class="h-full w-full object-cover object-top" loading="lazy">
+                                        </template>
+                                        <template x-if="!f.image_url && f.initials">
+                                            <span class="text-xs font-semibold text-card-muted" aria-hidden="true" x-text="f.initials"></span>
+                                        </template>
+                                    </div>
+                                    <div class="min-w-0 flex-1" :class="polity.voyage && 'basis-44'">
+                                        <p class="wrap-break-word font-semibold leading-tight text-card-title" x-text="f.name"></p>
+                                        <p class="lp-card-label" :class="!polity.voyage && 'truncate'" x-text="[f.kind, f.era].filter(Boolean).join(' · ')"></p>
+                                    </div>
+                                    <button type="button"
+                                            x-on:click="selected.some(s => (s.key || s.qid) === (f.key || f.qid)) ? (selected = selected.filter(s => (s.key || s.qid) !== (f.key || f.qid))) : (selected = [...selected, f])"
+                                            class="btn btn-xs shrink-0 border-card-hairline bg-transparent text-card-body"
+                                            :class="selected.some(s => (s.key || s.qid) === (f.key || f.qid)) && 'bg-card-surface-raised'">
+                                        <template x-if="selected.some(s => (s.key || s.qid) === (f.key || f.qid))">
+                                            <x-icons.check-circle class="h-3.5 w-3.5" />
+                                        </template>
+                                        <span x-text="selected.some(s => (s.key || s.qid) === (f.key || f.qid)) ? @js(__('Selected')) : @js(__('Use in lesson'))"></span>
+                                    </button>
                                 </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="wrap-break-word font-semibold leading-tight text-card-title" x-text="f.name"></p>
-                                    <p class="lp-card-label truncate" x-text="[f.kind, f.era].filter(Boolean).join(' · ')"></p>
-                                </div>
-                                <button type="button"
-                                        x-on:click="selected.some(s => s.qid === f.qid) ? (selected = selected.filter(s => s.qid !== f.qid)) : (selected = [...selected, f])"
-                                        class="btn btn-xs shrink-0 border-card-hairline bg-transparent text-card-body"
-                                        :class="selected.some(s => s.qid === f.qid) && 'bg-card-surface-raised'">
-                                    <template x-if="selected.some(s => s.qid === f.qid)">
-                                        <x-icons.check-circle class="h-3.5 w-3.5" />
-                                    </template>
-                                    <span x-text="selected.some(s => s.qid === f.qid) ? @js(__('Selected')) : @js(__('Use in lesson'))"></span>
-                                </button>
+                                <template x-if="f.lines">
+                                    <p class="leading-snug" x-text="f.lines"></p>
+                                </template>
+                                <template x-if="f.credit">
+                                    <p class="text-xs leading-snug text-card-muted" x-text="@js(__('Portrait')) + ': ' + f.credit"></p>
+                                </template>
                             </div>
                         </template>
                     </div>
 
-                    <div x-show="tab === 'overtime'" class="flex flex-col gap-1">
+                    <div x-show="tab === 'overtime' && !polity.voyage" class="flex flex-col gap-1">
                         <p><span class="text-card-muted">{{ __('Preceded by') }}:</span> <span x-text="polity.predecessor || '—'"></span></p>
                         <p><span class="text-card-muted">{{ __('Succeeded by') }}:</span> <span x-text="polity.successor || '—'"></span></p>
                     </div>
+
+                    {{-- A voyage over time is its key moments, each with the date its sources allow
+                         (a day, a month or only a year). The year scrubs the map, like the era. --}}
+                    <template x-if="polity.voyage">
+                        <ol x-show="tab === 'overtime'" class="flex flex-col gap-3">
+                            <template x-for="m in (polity.moments || [])" :key="m.key">
+                                <li>
+                                    <button type="button" class="lp-card-label cursor-pointer text-card-title underline"
+                                            x-on:click="window.__setTimemapYear && window.__setTimemapYear(m.year)"
+                                            x-text="m.date"></button>
+                                    <p class="mt-0.5" x-text="m.text"></p>
+                                </li>
+                            </template>
+                        </ol>
+                    </template>
                 </div>
             </div>
 
@@ -403,7 +516,7 @@
                 {{-- polity?. because :href is an attribute binding, not a template: when the card
                      closes it re-evaluates once against a null polity before x-if tears it down,
                      and an uncaught TypeError there aborts the whole Alpine effect mid-flush. --}}
-                <a :href="'{{ route('teacher.lessons.create') }}?topic=' + encodeURIComponent(polity?.label ?? '') + (selected.length ? '&protagonist_qid=' + encodeURIComponent(selected[0].qid) + '&protagonist_name=' + encodeURIComponent(selected[0].name) : '')"
+                <a :href="'{{ route('teacher.lessons.create') }}?topic=' + encodeURIComponent(polity?.label ?? '') + (selected.length ? (selected[0].qid ? '&protagonist_qid=' + encodeURIComponent(selected[0].qid) : '') + '&protagonist_name=' + encodeURIComponent(selected[0].name) : '')"
                    wire:navigate
                    class="btn h-9 min-h-0 w-full gap-2 rounded-card-pill border-none bg-card-action text-[13px] font-bold text-card-action-label hover:bg-card-action">
                     <x-icons.academic-cap class="h-4 w-4" />

@@ -1,0 +1,393 @@
+{
+  "id": "brouwer-route",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Brouwer_Route",
+    "nl": "https://nl.wikipedia.org/wiki/Brouwerroute"
+  },
+  "purpose": {
+    "en": "In 1611 Hendrik Brouwer, taking three VOC ships to the Indies, tried something new. Instead of creeping up the coast of Africa, he left the Cape heading south into the strong westerly winds of the Roaring Forties, ran east, and only turned north near Java. The VOC wanted a faster and healthier way to its spice trade, and this was it.",
+    "nl": "In 1611 probeerde Hendrik Brouwer, met drie VOC-schepen op weg naar Indië, iets nieuws. In plaats van langs de kust van Afrika omhoog te kruipen, voer hij vanaf de Kaap naar het zuiden, de sterke westenwinden van de 'Roaring Forties' in, zeilde oostwaarts en draaide pas bij Java naar het noorden. De VOC wilde een snellere en gezondere weg naar de specerijen, en dit was hem.",
+    "src": [
+      "s3",
+      "s4",
+      "s2"
+    ]
+  },
+  "crew": {
+    "en": "Brouwer commanded the Rode Leeuw met Pijlen, the Gouda and the Ter Veere. The ship on the map is Dirk Hartog's Eendracht, a 700-ton East Indiaman that left Texel in January 1616 together with other VOC ships, among them the Trouw. When she reached Makassar about 200 men were still on board.",
+    "nl": "Brouwer voerde het bevel over de Rode Leeuw met Pijlen, de Gouda en de Ter Veere. Het schip op de kaart is de Eendracht van Dirk Hartog, een Oost-Indiëvaarder van 700 ton die in januari 1616 met andere VOC-schepen, onder meer de Trouw, van Texel vertrok. Bij aankomst in Makassar waren er nog zo'n 200 man aan boord.",
+    "src": [
+      "s4",
+      "s8",
+      "s7",
+      "s6",
+      "s12"
+    ]
+  },
+  "legacy": {
+    "en": "The route roughly halved the trip from Europe to Java, from more than a year to about six months, and cut scurvy. But nobody could measure longitude well, so ships that turned north too late ran into the unknown west coast of Australia. Hartog was the first, and wrecks such as the Batavia (1629) followed. The island where he landed is Wirruwana to its traditional custodians, the Malgana people; his crew met no one there.",
+    "nl": "De route halveerde ongeveer de reis van Europa naar Java, van meer dan een jaar naar zo'n zes maanden, en er kwam minder scheurbuik voor. Maar niemand kon de lengtegraad goed meten, dus schepen die te laat naar het noorden draaiden, liepen tegen de onbekende westkust van Australië aan. Hartog was de eerste, en wrakken als de Batavia (1629) volgden. Het eiland waar hij landde heet bij de oorspronkelijke bewoners, de Malgana, Wirruwana; zijn bemanning zag er niemand.",
+    "src": [
+      "s1",
+      "s2",
+      "s5",
+      "s11",
+      "s7"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1610-12-28",
+      "precision": "day",
+      "en": "Hendrik Brouwer sails from the Netherlands with the Rode Leeuw met Pijlen, the Gouda and the Ter Veere.",
+      "nl": "Hendrik Brouwer vertrekt uit de Republiek met de Rode Leeuw met Pijlen, de Gouda en de Ter Veere.",
+      "src": [
+        "s4",
+        "s8"
+      ]
+    },
+    {
+      "date": "1611-06-04",
+      "precision": "day",
+      "en": "The Rode Leeuw met Pijlen and the Gouda reach the Cape of Good Hope. From here Brouwer steers south into the Roaring Forties and runs east before the westerlies.",
+      "nl": "De Rode Leeuw met Pijlen en de Gouda bereiken Kaap de Goede Hoop. Vanaf hier stuurt Brouwer naar het zuiden, de Roaring Forties in, en laat zich door de westenwind naar het oosten blazen.",
+      "src": [
+        "s8",
+        "s4"
+      ]
+    },
+    {
+      "date": "1611-08-18",
+      "precision": "day",
+      "en": "The Rode Leeuw met Pijlen anchors at Bantam on Java, the Gouda six days later: about two and a half months from the Cape.",
+      "nl": "De Rode Leeuw met Pijlen ankert bij Bantam op Java, de Gouda zes dagen later: zo'n tweeënhalve maand na de Kaap.",
+      "src": [
+        "s8",
+        "s4"
+      ]
+    },
+    {
+      "date": "1616-01-23",
+      "precision": "day",
+      "en": "Dirk Hartog's Eendracht leaves Texel on her first voyage, after the crew has freed the ship from ice and snow.",
+      "nl": "De Eendracht van Dirk Hartog vertrekt van Texel op haar eerste reis, nadat de bemanning het schip uit ijs en sneeuw heeft losgekregen.",
+      "src": [
+        "s9",
+        "s6",
+        "s7"
+      ]
+    },
+    {
+      "date": "1616-08-27",
+      "precision": "day",
+      "en": "After three weeks at the Cape, the Eendracht sets off across the Indian Ocean on Brouwer's route, alone. Sources differ on whether she lost the other ships before or after the Cape.",
+      "nl": "Na drie weken aan de Kaap steekt de Eendracht via de Brouwerroute de Indische Oceaan over, alleen. Bronnen verschillen over de vraag of ze de andere schepen voor of na de Kaap kwijtraakte.",
+      "src": [
+        "s9",
+        "s7",
+        "s6"
+      ]
+    },
+    {
+      "date": "1616-10-25",
+      "precision": "day",
+      "en": "At about 26 degrees south the Eendracht comes upon unknown islands off Western Australia. Before sailing on, on the 27th, the crew leaves a pewter plate on a post recording the visit, the oldest known written object from Australia's European history.",
+      "nl": "Op zo'n 26 graden zuid stuit de Eendracht op onbekende eilanden voor West-Australië. Voor het vertrek op de 27e laat de bemanning een tinnen bord op een paal achter met een verslag van het bezoek, het oudste bekende geschreven voorwerp uit de Europese geschiedenis van Australië.",
+      "src": [
+        "s5",
+        "s7"
+      ]
+    },
+    {
+      "date": "1617-01-01",
+      "precision": "year",
+      "en": "The VOC orders its ships to take Brouwer's route. Some sources put this in 1616.",
+      "nl": "De VOC verplicht haar schepen de Brouwerroute te varen. Sommige bronnen noemen 1616.",
+      "src": [
+        "s4",
+        "s3",
+        "s6",
+        "s1"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Hendrik Brouwer",
+      "role": {
+        "en": "Commander of the 1610-1611 squadron that found the route",
+        "nl": "Commandeur van het eskader dat de route vond (1610-1611)"
+      },
+      "born": 1581,
+      "died": 1643,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Later governor-general of the Dutch East Indies (1632-1636). He died in Chile in 1643 on a VOC expedition, and Spanish soldiers later dug up and burned his body.",
+      "nl": "Later gouverneur-generaal van Nederlands-Indië (1632-1636). Hij stierf in 1643 in Chili tijdens een VOC-expeditie; Spaanse soldaten groeven zijn lichaam later op en verbrandden het.",
+      "src": [
+        "s3",
+        "s4"
+      ],
+      "image": {
+        "file": "people-brouwer.webp",
+        "title": "Hendrik Brouwer (1581-1643), Governor-General (1632-36)",
+        "creator": "Anonymous",
+        "year": "between 1632 and 1675",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Hendrik_Brouwer_(1581-1643)._Gouverneur-generaal_(1632-36),_SK-A-3761.jpg",
+        "licence": "CC0",
+        "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "name": "Dirk Hartog",
+      "role": {
+        "en": "Skipper of the Eendracht (1616)",
+        "nl": "Schipper van de Eendracht (1616)"
+      },
+      "born": 1580,
+      "died": 1621,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "An Amsterdam skipper who had traded in the Baltic and Mediterranean. Taking Brouwer's route, he became the first European known to land on Australia's west coast. No portrait of him is known.",
+      "nl": "Een Amsterdamse schipper die op de Oostzee en de Middellandse Zee had gevaren. Via de Brouwerroute werd hij de eerste bekende Europeaan die aan land ging aan de westkust van Australië. Er is geen portret van hem bekend.",
+      "src": [
+        "s5",
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Gilles Miebais",
+      "role": {
+        "en": "Supercargo (chief merchant) of the Eendracht",
+        "nl": "Opperkoopman op de Eendracht"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A merchant from Liège, named first on the pewter plate.",
+      "nl": "Een koopman uit Luik, als eerste genoemd op het tinnen bord.",
+      "src": [
+        "s5"
+      ],
+      "image": null
+    },
+    {
+      "name": "Jan Stins",
+      "role": {
+        "en": "Deputy supercargo of the Eendracht",
+        "nl": "Onderkoopman op de Eendracht"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Named on the plate. At Makassar he went ashore and found the Dutch trading post had been closed.",
+      "nl": "Genoemd op het bord. In Makassar ging hij aan land en ontdekte dat de Nederlandse handelspost was opgeheven.",
+      "src": [
+        "s5",
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Pieter Doores",
+      "role": {
+        "en": "Upper steersman (chief navigator) of the Eendracht",
+        "nl": "Opperstuurman op de Eendracht"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "From Bil, named on the plate as the ship's chief navigator.",
+      "nl": "Uit Bil, op het bord genoemd als opperstuurman.",
+      "src": [
+        "s5"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "east-indiamen-vroom.webp",
+      "width": 1200,
+      "height": 621,
+      "title": "Een aantal Oostindiëvaarders voor de kust",
+      "creator": "Hendrick Cornelisz Vroom",
+      "year": "between 1600 and 1630",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Een_aantal_Oostindi%C3%ABvaarders_voor_de_kust_Rijksmuseum_SK-A-3108.jpeg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Dutch East Indiamen off the coast, painted in the years when Brouwer and Hartog sailed.",
+        "nl": "Nederlandse Oost-Indiëvaarders voor de kust, geschilderd in de jaren dat Brouwer en Hartog voeren."
+      }
+    },
+    {
+      "file": "ships-trading-east-1614.webp",
+      "width": 1200,
+      "height": 792,
+      "title": "Ships Trading in the East",
+      "creator": "Hendrick Cornelisz Vroom",
+      "year": "1614",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Ships_Trading_in_the_East.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Dutch, English and Spanish ships in a bay, thought to be in the East Indies.",
+        "nl": "Nederlandse, Engelse en Spaanse schepen in een baai, vermoedelijk in Oost-Indië."
+      }
+    },
+    {
+      "file": "mar-di-india-1659.webp",
+      "width": 1200,
+      "height": 964,
+      "title": "Mar di India",
+      "creator": "Jan Jansson",
+      "year": "1659",
+      "source_url": "https://commons.wikimedia.org/wiki/File:B26055967G_-_Mar_di_India.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "Chart of the Indian Ocean that ships crossed on Brouwer's route, with the Dutch finds on Australia's west coast.",
+        "nl": "Kaart van de Indische Oceaan die schepen via de Brouwerroute overstaken, met de Nederlandse ontdekkingen aan de westkust van Australië."
+      }
+    },
+    {
+      "file": "hartog-plate-1616.webp",
+      "width": 1200,
+      "height": 1200,
+      "title": "Dirck Hartogh-schotel (the Hartog plate)",
+      "creator": "Dirk Hartog (inscription)",
+      "year": "1616",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Dirck_Hartogh-schotel,_NG-NM-825.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "The pewter plate Hartog's crew left on 25 October 1616, recording the ship, its officers and the dates. Now in the Rijksmuseum.",
+        "nl": "Het tinnen bord dat Hartogs bemanning op 25 oktober 1616 achterliet, met het schip, de officieren en de data. Nu in het Rijksmuseum."
+      }
+    },
+    {
+      "file": "landt-van-eendracht-1627.webp",
+      "width": 1200,
+      "height": 571,
+      "title": "Caert van't Landt van d'Eendracht",
+      "creator": "Hessel Gerritsz",
+      "year": "1627",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Caert_van%27t_Landt_van_d%27Eendracht_(NSW_balanced).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Hessel Gerritsz's chart of the 'Land of the Eendracht', the west coast of Australia named after Hartog's ship.",
+        "nl": "De kaart van Hessel Gerritsz van het 'Landt van d'Eendracht', de westkust van Australië, genoemd naar Hartogs schip."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Brouwer Route, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Brouwer_Route"
+    },
+    {
+      "key": "s2",
+      "title": "Brouwerroute, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Brouwerroute"
+    },
+    {
+      "key": "s3",
+      "title": "Hendrik Brouwer, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Hendrik_Brouwer"
+    },
+    {
+      "key": "s4",
+      "title": "Hendrik Brouwer, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Hendrik_Brouwer"
+    },
+    {
+      "key": "s5",
+      "title": "Dirk Hartog, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Dirk_Hartog"
+    },
+    {
+      "key": "s6",
+      "title": "Dirck Hartog, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Dirck_Hartog"
+    },
+    {
+      "key": "s7",
+      "title": "Eendracht (1615), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Eendracht_(1615)"
+    },
+    {
+      "key": "s8",
+      "title": "Dutch Asiatic Shipping 1595-1795 (Huygens ING): voyages 0143-0145 (Gouda, Rode Leeuw met Pijlen, Ter Veere, 1610)",
+      "url": "https://resources.huygens.knaw.nl/das/voyages?start=125"
+    },
+    {
+      "key": "s9",
+      "title": "Dutch Asiatic Shipping 1595-1795 (Huygens ING): voyage 0201.1, Eendracht, Dirk Hartog",
+      "url": "https://resources.huygens.knaw.nl/das/detailVoyage/91239"
+    },
+    {
+      "key": "s10",
+      "title": "Dutch Asiatic Shipping 1595-1795 (Huygens ING): voyages 0176-0200 (1614-1616 departures)",
+      "url": "https://resources.huygens.knaw.nl/das/voyages?start=175"
+    },
+    {
+      "key": "s12",
+      "title": "Dutch Asiatic Shipping 1595-1795 (Huygens ING): voyages 0201-0225 (1616-1618 departures)",
+      "url": "https://resources.huygens.knaw.nl/das/voyages?start=200"
+    },
+    {
+      "key": "s11",
+      "title": "Dirk Hartog Island, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Dirk_Hartog_Island"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1616-01-23",
+      "arrive": "1616-02-10",
+      "depart_ok": "day",
+      "arrive_ok": "year",
+      "note": "Depart: s9/s6/s7, Eendracht left Texel 23 January 1616. Arrive 10 Feb (Ushant): no source; s9 has her at Maio (Cape Verde) 21 Feb to 4 Mar and Cape Lopez 27 Mar to 11 May. Fleet: Hoorn and Dordrecht were not with her. s10/s12: the Hoorn (0197.1) left in June 1615 with Schouten and the Dordrecht (0223.1) in December 1618; ships leaving Texel on 23 Jan 1616 were Eendracht, Trouw and Bantam (Westfriesland 22 Jan, Gouden Leeuw 21 Jan from the Maas)."
+    },
+    {
+      "leg": 1,
+      "depart": "1616-02-10",
+      "arrive": "1616-08-05",
+      "depart_ok": "year",
+      "arrive_ok": "day",
+      "note": "Depart is a modelled date (see leg 0). s9: arrival at the Cape 5 August 1616 (s7: 'around August')."
+    },
+    {
+      "leg": 2,
+      "depart": "1616-08-27",
+      "arrive": "1616-10-10",
+      "depart_ok": "day",
+      "arrive_ok": "year",
+      "note": "s9/s7: left the Cape 27 August 1616. 10 October is a mid-ocean waypoint with no record."
+    },
+    {
+      "leg": 3,
+      "depart": "1616-10-10",
+      "arrive": "1616-11-20",
+      "depart_ok": "year",
+      "arrive_ok": "wrong",
+      "note": "The Eendracht did not reach the Sunda Strait (waypoint 17) on 20 November: she hit the Australian coast at about 26 S on 25 October, left on 27 October, charted north to about 22 S (s5, s7), and entered Indonesian waters through the Sape Strait between Sumbawa and Flores in December 1616 (Van der Haghen, quoted in s7)."
+    },
+    {
+      "leg": 4,
+      "depart": "1616-11-20",
+      "arrive": "1616-12-14",
+      "depart_ok": "wrong",
+      "arrive_ok": "day",
+      "note": "14 December 1616 is right as a date, but it is her arrival at Makassar on Sulawesi (s9, s7, s6), not Jakarta/Batavia (founded as VOC headquarters only in 1619, s2). She went on to Ambon six days later and reached Bantam only in November 1617 (s6). The 20 November departure has no source."
+    }
+  ]
+}

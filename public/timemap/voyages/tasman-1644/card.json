@@ -1,0 +1,382 @@
+{
+  "id": "tasman-1644",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Abel_Tasman#Second_major_voyage",
+    "nl": "https://nl.wikipedia.org/wiki/Abel_Tasman#Tweede_expeditie_naar_Nieuw-Guinea"
+  },
+  "purpose": {
+    "en": "Van Diemen sent Tasman out again to finish the job: find out whether New Guinea was joined to the South Land, look for a passage through to the South Sea, and chart the north and west coasts of what is now Australia.",
+    "nl": "Van Diemen stuurde Tasman er opnieuw op uit om het werk af te maken: uitzoeken of Nieuw-Guinea vastzat aan het Zuidland, zoeken naar een doorgang naar de Zuidzee, en de noord- en westkust van het huidige Australië in kaart brengen.",
+    "src": [
+      "s3",
+      "s1",
+      "s7"
+    ]
+  },
+  "crew": {
+    "en": "Three ships: the yachts Limmen (flagship, skippered by pilot-major Frans Visscher) and Zeemeeuw, and the small galiot Bracq. The orders list 111 men, 17 of them soldiers. One Dutch heritage page puts Tasman aboard the Zeemeeuw, but the orders fly his flag on the Limmen.",
+    "nl": "Drie schepen: de jachten Limmen (vlaggenschip, met opperstuurman Frans Visscher als schipper) en Zeemeeuw, en het kleine galjoot de Bracq. Volgens de instructies gingen er 111 man mee, van wie 17 soldaten. Eén Nederlandse erfgoedsite zet Tasman op de Zeemeeuw, maar volgens de instructies woei zijn vlag op de Limmen.",
+    "src": [
+      "s3",
+      "s4"
+    ]
+  },
+  "legacy": {
+    "en": "Tasman charted most of Australia's north coast and linked it to the west coast, so the Dutch could see the outline of one huge land, soon called Nova Hollandia, New Holland. He missed Torres Strait, so in his chart New Guinea and Australia were one. The VOC described the Aboriginal people the crew met as poor and hostile, saw nothing to trade and lost interest. No journal of this voyage survives; the Bonaparte map is its main record.",
+    "nl": "Tasman bracht het grootste deel van de noordkust van Australië in kaart en verbond die met de westkust, zodat de Nederlanders de omtrek van één enorm land zagen, al snel Nova Hollandia of Nieuw-Holland genoemd. Hij miste Straat Torres, dus op zijn kaart waren Nieuw-Guinea en Australië één geheel. De VOC beschreef de Aboriginals die de bemanning tegenkwam als arm en vijandig, zag niets om te verhandelen en verloor haar belangstelling. Er is geen journaal van deze reis bewaard; de Bonaparte-kaart is de belangrijkste bron.",
+    "src": [
+      "s3",
+      "s1",
+      "s2"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1644-01-29",
+      "precision": "day",
+      "en": "Tasman's orders are signed in Batavia and the three ships set out. Sources give the departure as 29 or 30 January.",
+      "nl": "In Batavia worden Tasmans instructies getekend en de drie schepen vertrekken. Bronnen noemen 29 of 30 januari als vertrekdatum.",
+      "src": [
+        "s3",
+        "s4",
+        "s1"
+      ]
+    },
+    {
+      "date": "1644-02-22",
+      "precision": "day",
+      "en": "The ships reach Ambon, and on 27 February Banda. There quartermaster Jan Jorisse joins as interpreter, hoping to find someone in Aru who speaks a New Guinea language.",
+      "nl": "De schepen bereiken Ambon, en op 27 februari Banda. Daar komt kwartiermeester Jan Jorisse aan boord als tolk; hij hoopt op Aru iemand te vinden die een taal van Nieuw-Guinea spreekt.",
+      "src": [
+        "s3"
+      ]
+    },
+    {
+      "date": "1644-08-01",
+      "precision": "month",
+      "en": "Back in Batavia. On the way Tasman followed New Guinea's south coast, took Torres Strait for a closed bay, then charted the Gulf of Carpentaria, Arnhem Land and the coast west and south as far as Eendrachtsland.",
+      "nl": "Terug in Batavia. Onderweg volgde Tasman de zuidkust van Nieuw-Guinea, hield Straat Torres voor een dichte baai, en bracht daarna de Golf van Carpentaria, Arnhemland en de kust naar het westen en zuiden tot Eendrachtsland in kaart.",
+      "src": [
+        "s3",
+        "s1"
+      ]
+    },
+    {
+      "date": "1644-09-08",
+      "precision": "day",
+      "en": "Date of the chart Tasman drew of the voyage, one of the few records that survive.",
+      "nl": "Datum van de kaart die Tasman van de reis maakte, een van de weinige bronnen die bewaard zijn gebleven.",
+      "src": [
+        "s3"
+      ]
+    },
+    {
+      "date": "1644-12-23",
+      "precision": "day",
+      "en": "In its yearly letter home the VOC says the vast South Land has now been sailed round in two voyages, but grumbles that the men only sailed along the coast and found nothing profitable.",
+      "nl": "In de jaarlijkse brief naar huis schrijft de VOC dat het grote Zuidland nu in twee reizen is rondgevaren, maar moppert dat de mannen alleen langs de kust voeren en niets winstgevends vonden.",
+      "src": [
+        "s3"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Abel Tasman",
+      "role": {
+        "en": "Commander",
+        "nl": "Commandeur"
+      },
+      "born": 1603,
+      "died": 1659,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Leader of both voyages. After this one he joined the Council of Justice in Batavia. No portrait of him is certain; this drawing has the best claim.",
+      "nl": "Leider van beide reizen. Na deze reis werd hij lid van de Raad van Justitie in Batavia. Er is geen zeker portret van hem; deze tekening komt het dichtst in de buurt.",
+      "src": [
+        "s1",
+        "s3"
+      ],
+      "image": {
+        "file": "people-tasman.webp",
+        "title": "Abel Janssen Tasman, Navigateur en Australie (ink drawing; not certain it shows Tasman)",
+        "creator": "Unknown artist",
+        "year": "date uncertain (catalogued c. 1850)",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Abel_Tasman_Navigateur_en_Australie_(cropped).jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Frans Jacobszoon Visscher",
+      "role": {
+        "en": "Skipper of the Limmen and pilot-major",
+        "nl": "Schipper van de Limmen en opperstuurman"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Tasman's navigator on both voyages. Historians think he helped draw the Bonaparte map with Gilsemans.",
+      "nl": "Tasmans stuurman op beide reizen. Historici denken dat hij samen met Gilsemans de Bonaparte-kaart tekende.",
+      "src": [
+        "s3",
+        "s1"
+      ],
+      "image": null
+    },
+    {
+      "name": "Dirk Corneliszoon Haen",
+      "role": {
+        "en": "Skipper of the Zeemeeuw",
+        "nl": "Schipper van de Zeemeeuw"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Named in the orders to take command if Tasman died.",
+      "nl": "Volgens de instructies zou hij het bevel overnemen als Tasman stierf.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Isaack Gilsemans",
+      "role": {
+        "en": "Supercargo of the Zeemeeuw",
+        "nl": "Opperkoopman op de Zeemeeuw"
+      },
+      "born": 1606,
+      "died": 1646,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "The merchant and draughtsman of the first voyage came along again.",
+      "nl": "De koopman en tekenaar van de eerste reis ging weer mee.",
+      "src": [
+        "s3",
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Jaspar Janszoon Koos",
+      "role": {
+        "en": "Skipper of the Bracq",
+        "nl": "Schipper van de Bracq"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Skipper of the small galiot that was meant to probe the bay (Torres Strait) for a passage.",
+      "nl": "Schipper van het kleine galjoot dat de baai (Straat Torres) moest verkennen op zoek naar een doorgang.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Jan Jorisse",
+      "role": {
+        "en": "Interpreter",
+        "nl": "Tolk"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A quartermaster from Banda, nicknamed 'capteyntge', who acted as interpreter there and joined the expedition to help talk with people in New Guinea.",
+      "nl": "Een kwartiermeester uit Banda, bijgenaamd 'capteyntge', die daar als tolk werkte en meeging om te helpen praten met mensen op Nieuw-Guinea.",
+      "src": [
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "Anthony van Diemen",
+      "role": {
+        "en": "Sent the expedition (governor-general in Batavia)",
+        "nl": "Gaf de opdracht (gouverneur-generaal in Batavia)"
+      },
+      "born": 1593,
+      "died": 1645,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He ordered this second voyage in 1644 and died in Batavia the next year.",
+      "nl": "Hij gaf in 1644 de opdracht voor deze tweede reis en stierf het jaar daarna in Batavia.",
+      "src": [
+        "s7"
+      ],
+      "image": {
+        "file": "people-van-diemen.webp",
+        "title": "Antonio van Diemen (1593-1645), Governor-General (1636-45)",
+        "creator": "Anonymous",
+        "year": "between 1636 and 1675",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Antonio_van_Diemen_(1593-1645)._Gouverneur-generaal_(1636-45)_Rijksmuseum_SK-A-3762.jpeg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    }
+  ],
+  "images": [
+    {
+      "file": "tasman-map-1644.webp",
+      "width": 1200,
+      "height": 931,
+      "title": "Carten dese landen zin ontdeckt bij de Compangie ontdeckers ... (the Tasman or Bonaparte map)",
+      "creator": "Unknown (thought to be Visscher and Gilsemans, after Tasman's charts)",
+      "year": "c. 1644",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Tasman_Map_SLNSWSLNSW_FL19288478.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The Bonaparte map in the State Library of New South Wales, showing the tracks of both voyages and the north coast charted in 1644.",
+        "nl": "De Bonaparte-kaart in de State Library of New South Wales, met de routes van beide reizen en de noordkust die in 1644 in kaart werd gebracht."
+      }
+    },
+    {
+      "file": "hollandia-nova-1663.webp",
+      "width": 1200,
+      "height": 951,
+      "title": "Hollandia Nova detecta 1644; Terre Australe decouverte l'an 1644",
+      "creator": "Melchisédech Thévenot",
+      "year": "1663",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Thevenot_-_Hollandia_Nova_detecta_1644.png",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A French printed map from 1663 showing New Holland as discovered by 1644, based on a Dutch map by Joan Blaeu.",
+        "nl": "Een Franse gedrukte kaart uit 1663 met Nieuw-Holland zoals het in 1644 ontdekt was, gebaseerd op een Nederlandse kaart van Joan Blaeu."
+      }
+    },
+    {
+      "file": "archipelagus-orientalis-1659.webp",
+      "width": 1200,
+      "height": 859,
+      "title": "Archipelagus Orientalis sive Asiaticus",
+      "creator": "Joan Blaeu",
+      "year": "1659",
+      "source_url": "https://commons.wikimedia.org/wiki/File:ARCHIPELAGUS_ORIENTALIS_SIVE_ASIATICUS._JOAN_BLAEU.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Blaeu's large wall chart of the East Indies, which includes the coasts Tasman charted.",
+        "nl": "Blaeus grote wandkaart van Oost-Indië, met daarop de kusten die Tasman in kaart bracht."
+      }
+    },
+    {
+      "file": "castle-of-batavia-1662.webp",
+      "width": 1200,
+      "height": 854,
+      "title": "The Castle of Batavia",
+      "creator": "Andries Beeckman",
+      "year": "1662",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Andries_Beeckman_-_The_Castle_of_Batavia.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Batavia, where both voyages began and ended: the VOC castle seen from Kali Besar West, with a market under the palm trees.",
+        "nl": "Batavia, waar beide reizen begonnen en eindigden: het VOC-kasteel gezien vanaf Kali Besar West, met een markt onder de palmbomen."
+      }
+    },
+    {
+      "file": "kaart-reyse-tasman-1726.webp",
+      "width": 1200,
+      "height": 780,
+      "title": "Kaart der Reyse van Abel Tasman volgens syn eygen opstel",
+      "creator": "Jan van Braam, for François Valentijn's Oud en Nieuw Oost-Indiën",
+      "year": "1726",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Kaart_der_Reyse_van_Abel_Tasman_volgens_syn_eygen_opstel.png",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "caption": {
+        "en": "A printed chart from 1726 of Tasman's discoveries of 1642-43 and 1644, with New Holland in the middle.",
+        "nl": "Een gedrukte kaart uit 1726 van Tasmans ontdekkingen van 1642-43 en 1644, met Nieuw-Holland in het midden."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Abel Tasman, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Abel_Tasman"
+    },
+    {
+      "key": "s2",
+      "title": "Abel Tasman, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Abel_Tasman"
+    },
+    {
+      "key": "s3",
+      "title": "Abel Janszoon Tasman's Journal, with documents on the 1644 voyage and Heeres' 'Life and Labours' (1898, English translation), Project Gutenberg Australia",
+      "url": "https://gutenberg.net.au/ebooks06/0600571h.html"
+    },
+    {
+      "key": "s4",
+      "title": "Brak (1644), Maritiem Digitaal / MASS, Rijksdienst voor het Cultureel Erfgoed",
+      "url": "https://mass.cultureelerfgoed.nl/brak"
+    },
+    {
+      "key": "s6",
+      "title": "Isaack Gilsemans, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Isaack_Gilsemans"
+    },
+    {
+      "key": "s7",
+      "title": "Anthony van Diemen, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Anthony_van_Diemen"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1644-02-01",
+      "arrive": "1644-03-05",
+      "depart_ok": "wrong",
+      "arrive_ok": "year",
+      "note": "Departure was 29 January 1644 (s4; the instructions are dated 29 January, s3) or 30 January 1644 (s1); not 1 February. No journal survives (s3), so the Aru date is unverified: the ships were off Ambon 22 February and near Banda 27 February, then called at Aru (s3)."
+    },
+    {
+      "leg": 1,
+      "depart": "1644-03-05",
+      "arrive": "1644-04-10",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No dated record: the journal is lost and the route is known only from the Bonaparte chart (s3, s1). Dates are estimates."
+    },
+    {
+      "leg": 2,
+      "depart": "1644-04-10",
+      "arrive": "1644-05-15",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No dated record for the Gulf of Carpentaria (s3). Estimates."
+    },
+    {
+      "leg": 3,
+      "depart": "1644-05-15",
+      "arrive": "1644-06-20",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No dated record for Arnhem Land (s3). Estimates."
+    },
+    {
+      "leg": 4,
+      "depart": "1644-06-20",
+      "arrive": "1644-07-20",
+      "depart_ok": "year",
+      "arrive_ok": "year",
+      "note": "No dated record for the west coast; s3 only says he sailed along the west coast as far as Eendrachtsland. Estimates."
+    },
+    {
+      "leg": 5,
+      "depart": "1644-07-20",
+      "arrive": "1644-08-04",
+      "depart_ok": "year",
+      "arrive_ok": "month",
+      "note": "s3 (citing the General Missive of 23 Dec 1644) and s1: arrived back in Batavia in August 1644, after touching again at the Kai and Aru islands; no source gives the day. Tasman was ashore in Batavia by 29 August 1644 (s3)."
+    }
+  ]
+}

@@ -1,0 +1,470 @@
+{
+  "id": "hannibal-218",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Hannibal%27s_crossing_of_the_Alps",
+    "nl": "https://nl.wikipedia.org/wiki/Tweede_Punische_Oorlog"
+  },
+  "purpose": {
+    "en": "In 219 BC Hannibal besieged and sacked Saguntum, a Spanish town allied to Rome, and in spring 218 BC Rome declared war on Carthage. Hannibal did not wait for the Romans to come to him: he marched overland from Spain, through Gaul and over the Alps, to fight the war in Italy itself and win over Rome's unhappy neighbours, above all the Gauls of the Po valley.",
+    "nl": "In 219 v.Chr. belegerde en plunderde Hannibal Saguntum, een Spaanse stad die bevriend was met Rome. In het voorjaar van 218 v.Chr. verklaarde Rome Carthago de oorlog. Hannibal wachtte niet tot de Romeinen kwamen: hij trok over land van Spanje door Gallië en over de Alpen, om de oorlog in Italië zelf uit te vechten en Romes ontevreden buren, vooral de Galliërs in de Povlakte, voor zich te winnen.",
+    "src": [
+      "s1",
+      "s7"
+    ]
+  },
+  "crew": {
+    "en": "Hannibal's army was made up of Libyans, Iberians and, later, many Gauls, with Numidian horsemen and 37 war elephants. The ancient figures for how many men left Spain differ wildly, but about 20,000 infantry and 6,000 cavalry made it to Italy.",
+    "nl": "Hannibals leger bestond uit Libiërs, Iberiërs en later veel Galliërs, met Numidische ruiters en 37 oorlogsolifanten. Hoeveel man er uit Spanje vertrok, verschilt sterk per oude bron, maar ongeveer 20.000 voetsoldaten en 6.000 ruiters haalden Italië.",
+    "src": [
+      "s1",
+      "s2",
+      "s3"
+    ]
+  },
+  "legacy": {
+    "en": "Trebia, Trasimene and Cannae were three crushing Roman defeats, and after Cannae Capua and much of southern Italy went over to Hannibal. Rome kept fighting anyway, avoided big battles and won the war in 201 BC, and Carthage lost all its lands overseas. People along the way paid a price too: the Taurini near today's Turin would not join him, so he stormed their town and massacred its people.",
+    "nl": "Trebia, het Trasimeense Meer en Cannae waren drie zware Romeinse nederlagen, en na Cannae liepen Capua en een groot deel van Zuid-Italië over naar Hannibal. Toch vocht Rome door, ging grote veldslagen uit de weg en won de oorlog in 201 v.Chr. Carthago raakte al zijn gebieden overzee kwijt. Ook de mensen onderweg betaalden: de Taurini bij het huidige Turijn wilden zich niet aansluiten, dus bestormde hij hun stad en vermoordde de inwoners.",
+    "src": [
+      "s1",
+      "s2"
+    ]
+  },
+  "moments": [
+    {
+      "date": "-000217-05-01",
+      "precision": "month",
+      "en": "The army leaves New Carthage (Cartagena) and heads north. The sources say May, or late May to early June.",
+      "nl": "Het leger vertrekt uit Nieuw-Carthago (Cartagena) naar het noorden. De bronnen zeggen mei, of eind mei tot begin juni.",
+      "src": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "-000217-09-01",
+      "precision": "month",
+      "en": "At the Rhône, Gauls of the Volcae wait on the far bank. A column under Hanno crosses upstream, attacks them from behind, and the army gets across.",
+      "nl": "Bij de Rhône wachten Galliërs van de Volcae op de overkant. Een colonne onder Hanno steekt verderop over, valt hen in de rug aan, en het leger komt erover.",
+      "src": [
+        "s3"
+      ]
+    },
+    {
+      "date": "-000217-11-01",
+      "precision": "month",
+      "en": "After 15 days in the Alps, fighting cold, steep paths and attacks by mountain tribes, Hannibal comes down into the Po valley. Sources put the crossing in October and the arrival in November, and nobody knows for sure which pass he used.",
+      "nl": "Na 15 dagen in de Alpen, tegen kou, steile paden en aanvallen van bergvolken, daalt Hannibal af naar de Povlakte. De bronnen plaatsen de tocht in oktober en de aankomst in november, en niemand weet zeker welke pas hij nam.",
+      "src": [
+        "s1",
+        "s2",
+        "s7"
+      ]
+    },
+    {
+      "date": "-000217-12-22",
+      "precision": "day",
+      "en": "Battle of the Trebia, on 22 or 23 December. Numidian horsemen lure the Romans through the icy river, and a hidden force under Hannibal's brother Mago hits them from behind.",
+      "nl": "Slag aan de Trebia, op 22 of 23 december. Numidische ruiters lokken de Romeinen door de ijskoude rivier, en een verborgen groep onder Hannibals broer Mago valt hen in de rug aan.",
+      "src": [
+        "s2"
+      ]
+    },
+    {
+      "date": "-000216-06-21",
+      "precision": "day",
+      "en": "Battle of Lake Trasimene. Hannibal ambushes the consul Flaminius on the lake shore. About 15,000 Romans are killed, Flaminius among them.",
+      "nl": "Slag bij het Trasimeense Meer. Hannibal overvalt de consul Flaminius langs de oever. Ongeveer 15.000 Romeinen sneuvelen, onder wie Flaminius zelf.",
+      "src": [
+        "s4"
+      ]
+    },
+    {
+      "date": "-000215-08-02",
+      "precision": "day",
+      "en": "Battle of Cannae. Hannibal surrounds a much bigger Roman army of around 86,000 men. Ancient writers give between about 48,000 and 70,000 Roman dead.",
+      "nl": "Slag bij Cannae. Hannibal omsingelt een veel groter Romeins leger van zo'n 86.000 man. Oude schrijvers noemen tussen ongeveer 48.000 en 70.000 Romeinse doden.",
+      "src": [
+        "s5"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Hannibal",
+      "role": {
+        "en": "Commander",
+        "nl": "Opperbevelhebber"
+      },
+      "born": -247,
+      "died": -183,
+      "born_approx": false,
+      "died_approx": true,
+      "en": "Son of Hamilcar Barca, chosen by the army in Spain as its commander at 26, in 221 BC. On the march in spring 217 BC he lost the sight in one eye to an infection. He died between 183 and 181 BC.",
+      "nl": "Zoon van Hamilcar Barkas, op zijn 26e in 221 v.Chr. door het leger in Spanje tot bevelhebber gekozen. Tijdens de mars in het voorjaar van 217 v.Chr. verloor hij door een ontsteking het zicht in één oog. Hij stierf tussen 183 en 181 v.Chr.",
+      "src": [
+        "s6"
+      ],
+      "image": {
+        "file": "people-hannibal.webp",
+        "title": "The Capuan bust, traditionally said to show Hannibal (identification uncertain); photograph c. 1900",
+        "creator": "Fratelli Alinari (photograph)",
+        "year": "c. 1900",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Mommsen_p265.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Hasdrubal Barca",
+      "role": {
+        "en": "Brother, left in command in Spain",
+        "nl": "Broer, bleef achter als bevelhebber in Spanje"
+      },
+      "born": -245,
+      "died": -207,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Hannibal left him in Spain in 218 BC with 13,000 infantry, 2,550 cavalry and 21 elephants. Years later he finally marched to Italy to help his brother and was killed at the Metaurus in 207 BC.",
+      "nl": "Hannibal liet hem in 218 v.Chr. in Spanje achter met 13.000 voetsoldaten, 2.550 ruiters en 21 olifanten. Jaren later trok hij alsnog naar Italië om zijn broer te helpen en sneuvelde in 207 v.Chr. aan de Metaurus.",
+      "src": [
+        "s8"
+      ],
+      "image": {
+        "file": "people-hasdrubal.webp",
+        "title": "Carthaginian coin said to show Hasdrubal Barca (identification uncertain)",
+        "creator": "Carthaginian mint in Spain",
+        "year": "late 3rd century BC",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Hasdrubal_coin.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Maharbal",
+      "role": {
+        "en": "Cavalry commander, second in command",
+        "nl": "Bevelhebber van de ruiterij, tweede man"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "He led Hannibal's Numidian cavalry. Livy says that after Cannae he begged Hannibal to march on Rome and told him he knew how to win a victory but not how to use one. Polybius, the more reliable source, does not even mention him at Cannae.",
+      "nl": "Hij voerde Hannibals Numidische ruiterij aan. Volgens Livius smeekte hij Hannibal na Cannae om naar Rome op te rukken en zei hij dat Hannibal wel wist hoe je een overwinning behaalt, maar niet hoe je haar gebruikt. Polybius, de betrouwbaardere bron, noemt hem bij Cannae niet eens.",
+      "src": [
+        "s9"
+      ],
+      "image": null
+    },
+    {
+      "name": "Publius Cornelius Scipio",
+      "role": {
+        "en": "Roman consul sent to stop him",
+        "nl": "Romeinse consul die hem moest tegenhouden"
+      },
+      "born": null,
+      "died": -211,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Consul in 218 BC. He reached the Rhône too late to catch Hannibal, was badly wounded in a cavalry fight at the Ticinus and was saved by his 16-year-old son, the later Scipio Africanus.",
+      "nl": "Consul in 218 v.Chr. Hij kwam te laat bij de Rhône om Hannibal te onderscheppen, raakte zwaar gewond in een ruitergevecht bij de Ticinus en werd gered door zijn zoon van 16, de latere Scipio Africanus.",
+      "src": [
+        "s2",
+        "s10"
+      ],
+      "image": null
+    },
+    {
+      "name": "Quintus Fabius Maximus",
+      "role": {
+        "en": "Roman dictator in 217 BC",
+        "nl": "Romeinse dictator in 217 v.Chr."
+      },
+      "born": -280,
+      "died": -203,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Made dictator after Trasimene, he refused to fight Hannibal in open battle and shadowed him instead. That earned him the nickname Cunctator, 'the delayer', and his way of wearing Hannibal down became Rome's strategy after Cannae.",
+      "nl": "Na het Trasimeense Meer werd hij dictator. Hij weigerde een open veldslag en schaduwde Hannibal in plaats daarvan. Dat leverde hem de bijnaam Cunctator op, 'de treuzelaar', en na Cannae werd zijn manier om Hannibal uit te putten de strategie van Rome.",
+      "src": [
+        "s6",
+        "s11"
+      ],
+      "image": {
+        "file": "people-fabius.webp",
+        "title": "Fabius Cunctator, an imagined likeness: garden statue by Johann Baptist Hagenauer, 1777, Schönbrunn, Vienna",
+        "creator": "Johann Baptist Hagenauer (statue); photo Yair Haklai",
+        "year": "1777",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Statue_of_Fabius_Cunctator_at_Great_Parterre,_Schönbrunn.jpg",
+        "licence": "CC BY-SA 4.0",
+        "licence_url": "https://creativecommons.org/licenses/by-sa/4.0"
+      }
+    },
+    {
+      "name": "Gaius Terentius Varro",
+      "role": {
+        "en": "Roman consul at Cannae",
+        "nl": "Romeinse consul bij Cannae"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Consul in 216 BC with Paullus. Roman writers blame his rashness for Cannae, but their main source, Polybius, was a client of Paullus's family, so that picture may be unfair. He escaped from the battle with about 70 horsemen.",
+      "nl": "Consul in 216 v.Chr., samen met Paullus. Romeinse schrijvers geven zijn roekeloosheid de schuld van Cannae, maar hun belangrijkste bron, Polybius, was verbonden aan de familie van Paullus, dus dat beeld is misschien oneerlijk. Hij ontsnapte met ongeveer 70 ruiters.",
+      "src": [
+        "s5",
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Lucius Aemilius Paullus",
+      "role": {
+        "en": "Roman consul at Cannae",
+        "nl": "Romeinse consul bij Cannae"
+      },
+      "born": null,
+      "died": -216,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "The more cautious of the two consuls, who did not want to fight on the open plain. He was killed at Cannae, along with some 80 senators.",
+      "nl": "De voorzichtigste van de twee consuls, die liever niet op de open vlakte vocht. Hij sneuvelde bij Cannae, samen met zo'n 80 senatoren.",
+      "src": [
+        "s5",
+        "s6"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "motte-rhone.webp",
+      "width": 1200,
+      "height": 786,
+      "title": "Hannibal traverse le Rhône",
+      "creator": "Henri-Paul Motte",
+      "year": "1878",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hannibal_traverse_le_Rhône_Henri_Motte_1878.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Elephants being ferried over the Rhône on rafts, as a painter imagined it in 1878.",
+        "nl": "Olifanten worden op vlotten over de Rhône gezet, zoals een schilder het zich in 1878 voorstelde."
+      }
+    },
+    {
+      "file": "leutemann-alps.webp",
+      "width": 1040,
+      "height": 1200,
+      "title": "Hannibal's crossing of the Alps",
+      "creator": "Heinrich Leutemann",
+      "year": "19th century",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Leutemann,_Heinrich_-_Hannibal's_crossing_of_the_Alps.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Mountain tribesmen hurl rocks down on the column and an elephant tumbles over the edge: a 19th-century print.",
+        "nl": "Bergbewoners gooien stenen op de colonne en een olifant stort in de diepte: een prent uit de 19e eeuw."
+      }
+    },
+    {
+      "file": "turner-snow-storm.webp",
+      "width": 1200,
+      "height": 742,
+      "title": "Snow Storm: Hannibal and his Army Crossing the Alps",
+      "creator": "J. M. W. Turner",
+      "year": "1812",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Joseph_Mallord_William_Turner_-_Snow_Storm,_Hannibal_and_his_Army_Crossing_the_Alps_-_WGA23167.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Turner's snowstorm (1812): the army is tiny under a huge swirl of cloud and snow.",
+        "nl": "Turners sneeuwstorm (1812): het leger is piepklein onder een enorme draaikolk van wolken en sneeuw."
+      }
+    },
+    {
+      "file": "goya-italy-from-alps.webp",
+      "width": 1200,
+      "height": 794,
+      "title": "Aníbal vencedor que por primera vez mira Italia desde los Alpes",
+      "creator": "Francisco Goya",
+      "year": "1771",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Aníbal_vencedor_que_por_primera_vez_mira_Italia_desde_los_Alpes_-_Francisco_Goya.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Goya's Hannibal sees Italy from the Alps for the first time (1771).",
+        "nl": "Goya's Hannibal ziet vanaf de Alpen voor het eerst Italië liggen (1771)."
+      }
+    },
+    {
+      "file": "sylvestre-trasimene.webp",
+      "width": 504,
+      "height": 654,
+      "title": "Ducar décapite Flaminius",
+      "creator": "Joseph-Noël Sylvestre",
+      "year": "1882",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Sylvestre_Ducar_decapite_Flaminius_(Trasimene).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Lake Trasimene: the Gaul Ducarius cuts down the consul Flaminius, as Livy tells it (painted 1882).",
+        "nl": "Trasimeense Meer: de Galliër Ducarius doodt de consul Flaminius, zoals Livius het vertelt (geschilderd in 1882)."
+      }
+    },
+    {
+      "file": "trumbull-cannae.webp",
+      "width": 1200,
+      "height": 840,
+      "title": "The Death of Paulus Aemilius at the Battle of Cannae",
+      "creator": "John Trumbull",
+      "year": "1773",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_Death_of_Paulus_Aemilius_at_the_Battle_of_Cannae_(Yale_University_Art_Gallery_scan).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The consul Paullus dying at Cannae, painted by John Trumbull in 1773.",
+        "nl": "De consul Paullus sterft bij Cannae, geschilderd door John Trumbull in 1773."
+      }
+    },
+    {
+      "file": "barcid-quarter-shekel.webp",
+      "width": 800,
+      "height": 380,
+      "title": "Carthage, quarter shekel, Punic Spain",
+      "creator": "Carthaginian mint in Spain (photo: CNG)",
+      "year": "c. 237-209 BC",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Carthage,_quarter_shekel,_237-209_BC,_SNG_BM_Spain_102.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A silver coin struck in Carthaginian Spain in these years, with a war elephant on the back. Who the head on the front shows is uncertain.",
+        "nl": "Een zilveren munt uit het Carthaagse Spanje van deze jaren, met een oorlogsolifant op de achterkant. Wie het hoofd op de voorkant voorstelt, is onzeker."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Second Punic War, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Second_Punic_War"
+    },
+    {
+      "key": "s2",
+      "title": "Battle of the Trebia, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_the_Trebia"
+    },
+    {
+      "key": "s3",
+      "title": "Battle of the Rhône Crossing, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_the_Rh%C3%B4ne_Crossing"
+    },
+    {
+      "key": "s4",
+      "title": "Battle of Lake Trasimene, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_Lake_Trasimene"
+    },
+    {
+      "key": "s5",
+      "title": "Battle of Cannae, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Battle_of_Cannae"
+    },
+    {
+      "key": "s6",
+      "title": "Hannibal, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Hannibal"
+    },
+    {
+      "key": "s7",
+      "title": "Hannibal's crossing of the Alps, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Hannibal%27s_crossing_of_the_Alps"
+    },
+    {
+      "key": "s8",
+      "title": "Hasdrubal Barca, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Hasdrubal_Barca"
+    },
+    {
+      "key": "s9",
+      "title": "Maharbal, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Maharbal"
+    },
+    {
+      "key": "s10",
+      "title": "Publius Cornelius Scipio (consul 218 BC), Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Publius_Cornelius_Scipio_(consul_218_BC)"
+    },
+    {
+      "key": "s11",
+      "title": "Quintus Fabius Maximus Verrucosus, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Quintus_Fabius_Maximus_Verrucosus"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "-000217-05-01",
+      "arrive": "-000217-06-05",
+      "depart_ok": "month",
+      "arrive_ok": "year",
+      "note": "s2: the army marched north in May 218 BC; s1 says May or June, s3 late May or early June. No source dates the arrival at the Ebro."
+    },
+    {
+      "leg": 1,
+      "depart": "-000217-06-05",
+      "arrive": "-000217-07-25",
+      "depart_ok": "year",
+      "arrive_ok": "wrong",
+      "note": "No source dates the Ebro departure. s3: after the Pyrenees the army regrouped at Illiberis (Gaul) in early September 218 BC, so arrival in Gaul is better set to -000217-09-01 (month)."
+    },
+    {
+      "leg": 2,
+      "depart": "-000217-07-25",
+      "arrive": "-000217-09-05",
+      "depart_ok": "wrong",
+      "arrive_ok": "month",
+      "note": "Depart: see leg 1, early September 218 BC (s3). s3 puts the Rhône crossing in September (mid to late September), so the month is right, the day is not sourced."
+    },
+    {
+      "leg": 3,
+      "depart": "-000217-09-05",
+      "arrive": "-000217-09-28",
+      "depart_ok": "month",
+      "arrive_ok": "year",
+      "note": "Depart follows the September Rhône crossing (s3). No source dates the arrival at the foot of the Alps; s1 only says the army reached them by late autumn."
+    },
+    {
+      "leg": 4,
+      "depart": "-000217-10-01",
+      "arrive": "-000217-11-10",
+      "depart_ok": "month",
+      "arrive_ok": "month",
+      "note": "s2: the Alps were crossed in October; s1: crossed in 15 days and arrived in Cisalpine Gaul some time in November. The leg's 40 days is longer than the 15 days in s1. Exact days unknown."
+    },
+    {
+      "leg": 5,
+      "depart": "-000217-11-15",
+      "arrive": "-000217-12-22",
+      "depart_ok": "year",
+      "arrive_ok": "day",
+      "note": "Departure day not in the sources (Ticinus and the move to Placentia came first, s2). s2: the Trebia was fought on 22 or 23 December 218 BC."
+    },
+    {
+      "leg": 6,
+      "depart": "-000216-04-01",
+      "arrive": "-000216-06-21",
+      "depart_ok": "year",
+      "arrive_ok": "day",
+      "note": "Sources disagree on the start: s1 says early spring 217 BC, s2 says the Apennines were crossed probably in early May. s4: Lake Trasimene was fought on 21 June 217 BC."
+    },
+    {
+      "leg": 7,
+      "depart": "-000215-05-01",
+      "arrive": "-000215-08-02",
+      "depart_ok": "year",
+      "arrive_ok": "day",
+      "note": "s6: in the spring of 216 BC Hannibal seized the depot at Cannae; no month given. s5: Cannae was fought on 2 August 216 BC (Macrobius, citing Quadrigarius)."
+    }
+  ]
+}

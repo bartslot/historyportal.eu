@@ -1,0 +1,361 @@
+{
+  "id": "columbus-1492",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Voyages_of_Christopher_Columbus",
+    "nl": "https://nl.wikipedia.org/wiki/Christoffel_Columbus"
+  },
+  "purpose": {
+    "en": "Columbus sailed for the Catholic Monarchs of Spain, Ferdinand and Isabella. He wanted to reach India, China, Japan and the Spice Islands by sailing west, instead of taking the long overland routes.",
+    "nl": "Columbus voer in dienst van de Spaanse koning en koningin, Ferdinand en Isabella. Hij wilde Indië, China, Japan en de Specerijeneilanden bereiken door naar het westen te varen, in plaats van over de lange landroutes.",
+    "src": [
+      "s1"
+    ]
+  },
+  "crew": {
+    "en": "Three ships: the Santa María, owned by Juan de la Cosa and commanded by Columbus himself, and two smaller caravels, the Pinta under Martín Alonso Pinzón and the Niña under his brother Vicente Yáñez Pinzón. On board were about 90 men; historian Alice Bache Gould could name 87 of them.",
+    "nl": "Drie schepen: de Santa María, eigendom van Juan de la Cosa, met Columbus zelf als bevelhebber, en twee kleinere karvelen, de Pinta onder Martín Alonso Pinzón en de Niña onder zijn broer Vicente Yáñez Pinzón. Aan boord waren ongeveer negentig man; de historica Alice Bache Gould kon er 87 bij naam noemen.",
+    "src": [
+      "s1",
+      "s2"
+    ]
+  },
+  "legacy": {
+    "en": "Columbus thought he had reached Asia, which is why the islands are still called the West Indies. His voyage opened the Americas to European conquest: Spain and Portugal soon split the newly found lands between them in the Treaty of Tordesillas (1494). For the Taíno it was a disaster. Columbus already took captives back to Spain, and in the years that followed Spaniards enslaved Taíno people and put down resistance with force.",
+    "nl": "Columbus dacht dat hij in Azië was, en daarom heten de eilanden nog altijd West-Indië. Zijn reis opende Amerika voor Europese verovering: Spanje en Portugal verdeelden de nieuwe landen al snel onder elkaar in het Verdrag van Tordesillas (1494). Voor de Taíno was het een ramp. Columbus nam al gevangenen mee naar Spanje, en in de jaren daarna maakten Spanjaarden Taíno tot slaaf en sloegen ze verzet met geweld neer.",
+    "src": [
+      "s1",
+      "s2"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1492-08-03",
+      "precision": "day",
+      "en": "The three ships leave the port of Palos and sail down the Río Tinto into the Atlantic.",
+      "nl": "De drie schepen vertrekken uit de haven van Palos en varen via de Río Tinto de Atlantische Oceaan op.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1492-09-06",
+      "precision": "day",
+      "en": "After repairs in the Canary Islands, the fleet leaves La Gomera and heads west across open ocean. It will take five weeks.",
+      "nl": "Na reparaties op de Canarische Eilanden vertrekt de vloot vanaf La Gomera recht naar het westen over open zee. Dat gaat vijf weken duren.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1492-10-12",
+      "precision": "day",
+      "en": "In the early hours a sailor on the Pinta, Rodrigo de Triana, shouts that he sees land. That morning Columbus goes ashore on an island the Lucayans call Guanahani and names it San Salvador. Columbus later claimed the reward for seeing land first for himself.",
+      "nl": "Midden in de nacht roept een matroos op de Pinta, Rodrigo de Triana, dat hij land ziet. Die ochtend gaat Columbus aan land op een eiland dat de Lucayanen Guanahani noemen. Hij doopt het San Salvador. De beloning voor wie als eerste land zag, eiste Columbus later zelf op.",
+      "src": [
+        "s1",
+        "s2",
+        "s5"
+      ]
+    },
+    {
+      "date": "1492-10-28",
+      "precision": "day",
+      "en": "The fleet reaches Cuba. Columbus thinks it might be Japan, but his scouts find no rich cities or trade. They do find tobacco, cotton and parrots.",
+      "nl": "De vloot bereikt Cuba. Columbus denkt dat het Japan kan zijn, maar zijn verkenners vinden geen rijke steden of handel. Wel tabak, katoen en papegaaien.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1492-12-25",
+      "precision": "day",
+      "en": "On Christmas Day the Santa María runs aground off Hispaniola. The Taíno cacique Guacanagarí helps save the crew and cargo, and Columbus builds a fort, La Navidad, from the wreck. He leaves 39 men behind.",
+      "nl": "Op eerste kerstdag loopt de Santa María vast voor de kust van Hispaniola. De Taíno-leider Guacanagarí helpt de bemanning en de lading te redden, en van het wrak bouwt Columbus een fort, La Navidad. Hij laat er 39 man achter.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1493-01-16",
+      "precision": "day",
+      "en": "The Niña and the Pinta start the journey home. On the way a heavy storm separates them, and Columbus is forced to put in at the Azores and then at Lisbon.",
+      "nl": "De Niña en de Pinta beginnen aan de thuisreis. Onderweg raken ze elkaar kwijt in een zware storm, en Columbus moet uitwijken naar de Azoren en daarna naar Lissabon.",
+      "src": [
+        "s1"
+      ]
+    },
+    {
+      "date": "1493-03-15",
+      "precision": "day",
+      "en": "Columbus is back in Palos. Later, in Barcelona, he shows the king and queen gold, a hammock, tobacco, pineapples, turkeys and Taíno people he has kidnapped.",
+      "nl": "Columbus is terug in Palos. Later, in Barcelona, laat hij de koning en koningin goud zien, een hangmat, tabak, ananassen, kalkoenen en Taíno die hij heeft ontvoerd.",
+      "src": [
+        "s1"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Christopher Columbus",
+      "role": {
+        "en": "Admiral, commander of the fleet",
+        "nl": "Admiraal, bevelhebber van de vloot"
+      },
+      "born": 1451,
+      "died": 1506,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "A navigator from Genoa sailing for Spain. In his letter about the voyage he insisted he had reached Asia, and he made the riches he found sound much bigger than they were.",
+      "nl": "Een zeevaarder uit Genua in Spaanse dienst. In zijn brief over de reis hield hij vol dat hij Azië had bereikt, en hij maakte de rijkdommen die hij vond veel groter dan ze waren.",
+      "src": [
+        "s1",
+        "s3"
+      ],
+      "image": {
+        "file": "people-columbus.webp",
+        "title": "Portrait of a Man, Said to be Christopher Columbus (painted 1519, after his death; the sitter is not certain)",
+        "creator": "Sebastiano del Piombo",
+        "year": "1519",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Portrait_of_a_Man,_Said_to_be_Christopher_Columbus.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Martín Alonso Pinzón",
+      "role": {
+        "en": "Captain of the Pinta",
+        "nl": "Kapitein van de Pinta"
+      },
+      "born": 1441,
+      "died": 1493,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A respected seaman from Palos who found most of the crew. He sailed off on his own with the Pinta from 21 November to 6 January, which made Columbus furious. He fell ill and died soon after coming home.",
+      "nl": "Een gerespecteerde zeeman uit Palos die het grootste deel van de bemanning ronselde. Van 21 november tot 6 januari voer hij met de Pinta zijn eigen weg, tot woede van Columbus. Hij werd ziek en stierf kort na thuiskomst.",
+      "src": [
+        "s1",
+        "s2",
+        "s4"
+      ],
+      "image": null
+    },
+    {
+      "name": "Vicente Yáñez Pinzón",
+      "role": {
+        "en": "Captain of the Niña",
+        "nl": "Kapitein van de Niña"
+      },
+      "born": 1462,
+      "died": null,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "The youngest of the Pinzón brothers. When the Santa María was wrecked, he and the Niña played a key part in rescuing the sailors and Columbus. He was still alive in 1514; the year of his death is unknown.",
+      "nl": "De jongste van de gebroeders Pinzón. Toen de Santa María verging, speelden hij en de Niña een grote rol bij het redden van de matrozen en Columbus. In 1514 leefde hij nog; wanneer hij stierf, is niet bekend.",
+      "src": [
+        "s4",
+        "s6"
+      ],
+      "image": null
+    },
+    {
+      "name": "Guacanagarí",
+      "role": {
+        "en": "Taíno cacique (chief) of Marién on Hispaniola",
+        "nl": "Taíno-cacique (leider) van Marién op Hispaniola"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "One of five Taíno chiefs on Hispaniola. After the wreck he helped rescue the crew, gave Columbus gifts including gold, and allowed him to build La Navidad. The men left there were killed by a rival group before Columbus came back.",
+      "nl": "Een van de vijf Taíno-leiders op Hispaniola. Na de schipbreuk hielp hij de bemanning te redden, gaf hij Columbus geschenken, ook goud, en liet hij hem La Navidad bouwen. De mannen die daar achterbleven, werden door een rivaliserende groep gedood voordat Columbus terugkwam.",
+      "src": [
+        "s1",
+        "s7"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "basel-1493-insula-hyspana.webp",
+      "width": 556,
+      "height": 808,
+      "title": "Insula hyspana (woodcut from the Basel edition of Columbus's letter)",
+      "creator": "Unknown artist",
+      "year": "1493",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Columbus_Letter_(Basel_1493)_Illustration_1.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A woodcut from a 1493 printing of Columbus's letter: Spaniards row ashore to meet islanders on 'Insula hyspana', Hispaniola. The artist never saw the islands.",
+        "nl": "Een houtsnede uit een druk van de brief van Columbus uit 1493: Spanjaarden roeien naar de kust van 'Insula hyspana', Hispaniola, waar eilanders staan. De maker heeft de eilanden nooit gezien."
+      }
+    },
+    {
+      "file": "basel-1493-islands.webp",
+      "width": 579,
+      "height": 827,
+      "title": "The islands (woodcut from the Basel edition of Columbus's letter)",
+      "creator": "Unknown artist",
+      "year": "1493",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Columbus_Letter_(Basel_1493)_Illustration_2.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The same book shows the islands with the names Columbus gave them, such as Salvatorie (San Salvador), Isabella and Hyspana.",
+        "nl": "Hetzelfde boekje toont de eilanden met de namen die Columbus ze gaf, zoals Salvatorie (San Salvador), Isabella en Hyspana."
+      }
+    },
+    {
+      "file": "basel-1493-ship.webp",
+      "width": 742,
+      "height": 1077,
+      "title": "Oceanica Classis (woodcut from the Basel edition of Columbus's letter)",
+      "creator": "Unknown artist",
+      "year": "1493",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Columbus_Letter_(Basel_1493)_Illustration_3.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "'Oceanica Classis', the ocean fleet: a printer's picture of a ship of the time, not a drawing of the Santa María itself.",
+        "nl": "'Oceanica Classis', de oceaanvloot: een prent van een schip uit die tijd, geen tekening van de Santa María zelf."
+      }
+    },
+    {
+      "file": "hispaniola-sketch-1493.webp",
+      "width": 563,
+      "height": 355,
+      "title": "Sketch of the northwest coast of Hispaniola",
+      "creator": "Possibly Christopher Columbus or one of his crew",
+      "year": "c. 1493",
+      "source_url": "https://commons.wikimedia.org/wiki/File:La_Espa%C3%B1ola_1493.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A pen sketch of the north-west coast of Hispaniola, with 'la spañola' written across it. It may have been drawn by Columbus or one of his crew at the end of the voyage.",
+        "nl": "Een pentekening van de noordwestkust van Hispaniola, met 'la spañola' erover geschreven. Mogelijk getekend door Columbus of iemand van zijn bemanning aan het eind van de reis."
+      }
+    },
+    {
+      "file": "juan-de-la-cosa-map-1500.webp",
+      "width": 1200,
+      "height": 657,
+      "title": "Map of Juan de la Cosa",
+      "creator": "Juan de la Cosa",
+      "year": "1500",
+      "source_url": "https://commons.wikimedia.org/wiki/File:1500_map_by_Juan_de_la_Cosa_rotated.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A world chart drawn in 1500 by the Spanish navigator Juan de la Cosa. The newly found coasts across the Atlantic are the green lands on the left.",
+        "nl": "Een wereldkaart uit 1500 van de Spaanse zeevaarder Juan de la Cosa. De pas ontdekte kusten aan de overkant van de oceaan zijn het groene land links."
+      }
+    },
+    {
+      "file": "vanderlyn-landing-1847.webp",
+      "width": 1200,
+      "height": 789,
+      "title": "Landing of Columbus",
+      "creator": "John Vanderlyn",
+      "year": "1847",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Landing_of_Columbus_(2).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Painted 350 years later for the US Capitol: Columbus claims the island with the royal banner while islanders watch from the trees. A hero picture, not an eyewitness view.",
+        "nl": "Ruim 350 jaar later geschilderd voor het Capitool in Washington: Columbus neemt het eiland in bezit met de koninklijke vlag, terwijl eilanders vanuit de bomen toekijken. Een heldenplaat, geen ooggetuigenverslag."
+      }
+    },
+    {
+      "file": "puebla-landing-1862.webp",
+      "width": 1200,
+      "height": 726,
+      "title": "Primer desembarco de Cristóbal Colón en América",
+      "creator": "Dióscoro Puebla",
+      "year": "1862",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Desembarco_de_Col%C3%B3n_de_Di%C3%B3scoro_Puebla.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A Spanish painting from 1862 of the first landing: Columbus kneels with the flag while the Taíno look on from the left.",
+        "nl": "Een Spaans schilderij uit 1862 van de eerste landing: Columbus knielt met de vlag, terwijl links de Taíno toekijken."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Voyages of Christopher Columbus, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Voyages_of_Christopher_Columbus"
+    },
+    {
+      "key": "s2",
+      "title": "Christoffel Columbus, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Christoffel_Columbus"
+    },
+    {
+      "key": "s3",
+      "title": "Christopher Columbus, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Christopher_Columbus"
+    },
+    {
+      "key": "s4",
+      "title": "Martín Alonso Pinzón, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Mart%C3%ADn_Alonso_Pinz%C3%B3n"
+    },
+    {
+      "key": "s5",
+      "title": "Guanahani, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Guanahani"
+    },
+    {
+      "key": "s6",
+      "title": "Vicente Yáñez Pinzón, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Vicente_Y%C3%A1%C3%B1ez_Pinz%C3%B3n"
+    },
+    {
+      "key": "s7",
+      "title": "Guacanagaríx, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Guacanagar%C3%ADx"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1492-08-03",
+      "arrive": "1492-08-12",
+      "depart_ok": "day",
+      "arrive_ok": "month",
+      "note": "s1: left Palos on 3 August; reached the Canary Islands on 9 August (Pinta repaired on Gran Canaria, ships regrouped at La Gomera by 2 September). 12 August is not in our sources; 1492-08-09 is the sourced arrival in the Canaries."
+    },
+    {
+      "leg": 1,
+      "depart": "1492-09-06",
+      "arrive": "1492-10-12",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s1: left San Sebastián de La Gomera on 6 September; land sighted about 2 a.m. and landing on the morning of 12 October."
+    },
+    {
+      "leg": 2,
+      "depart": "1492-10-14",
+      "arrive": "1492-10-28",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s5: left Guanahani late on 14 October; s1: landed on Cuba on 28 October."
+    },
+    {
+      "leg": 3,
+      "depart": "1492-12-05",
+      "arrive": "1492-12-06",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "s1: Columbus sailed east along Cuba and sighted Hispaniola 'on 5 or 6 December'. The exact day he left the Cuban coast is not given; arrival on 6 December fits the source."
+    }
+  ]
+}

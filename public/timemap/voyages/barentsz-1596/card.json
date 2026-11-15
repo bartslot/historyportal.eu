@@ -1,0 +1,375 @@
+{
+  "id": "barentsz-1596",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Willem_Barentsz",
+    "nl": "https://nl.wikipedia.org/wiki/Willem_Barentsz"
+  },
+  "purpose": {
+    "en": "After two failed tries, the States-General stopped paying for voyages to the north, but offered a big reward to whoever found the Northeast Passage: a sea route over the top of Asia to China. The town of Amsterdam bought and fitted out two small ships for a third attempt, pushed on by the preacher and mapmaker Petrus Plancius.",
+    "nl": "Na twee mislukte pogingen betaalden de Staten-Generaal niet meer mee aan tochten naar het noorden. Wel loofden ze een flinke beloning uit voor wie de Noordoostelijke Doorvaart vond, een zeeweg boven Azië langs naar China. De stad Amsterdam kocht en rustte twee kleine schepen uit voor een derde poging; dominee en kaartenmaker Petrus Plancius was de grote aanjager.",
+    "src": [
+      "s1",
+      "s2"
+    ]
+  },
+  "crew": {
+    "en": "Two small ships, captained by Jacob van Heemskerck and Jan Cornelisz Rijp, with Willem Barentsz on Heemskerck's ship. Sources disagree on who was really in charge: some call Barentsz the leader, others say Heemskerck led and Barentsz was the pilot. The ship that froze in carried 16 or 17 men, depending on the source.",
+    "nl": "Twee kleine schepen onder Jacob van Heemskerck en Jan Cornelisz Rijp; Willem Barentsz voer mee op het schip van Heemskerck. Wie er de baas was, verschilt per bron: de een noemt Barentsz de leider, de ander Heemskerck, met Barentsz als stuurman. Op het schip dat vastvroor zaten 16 of 17 man, ook dat verschilt per bron.",
+    "src": [
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s8"
+    ]
+  },
+  "legacy": {
+    "en": "No passage was found, and once Dutch ships reached Asia around the Cape, merchants lost interest in the northern route. Still, it was the first time a European crew got through an Arctic winter, and it set off a boom in Dutch whaling around Spitsbergen. The Saved House was found in 1871 with many objects still inside, and the Barents Sea has carried his name since 1853.",
+    "nl": "Een doorvaart vonden ze niet, en toen Nederlandse schepen Azië via de Kaap bereikten, verloren kooplieden hun interesse in de route door het noorden. Toch kwam hier voor het eerst een Europese bemanning een poolwinter door, en de tocht leidde tot een bloei van de Nederlandse walvisvaart bij Spitsbergen. Het Behouden Huys werd in 1871 teruggevonden met veel spullen er nog in, en de Barentszzee draagt sinds 1853 zijn naam.",
+    "src": [
+      "s1",
+      "s2",
+      "s3"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1596-05-01",
+      "precision": "month",
+      "en": "Two ships leave Amsterdam. The sources give 10 or 15 May.",
+      "nl": "Twee schepen vertrekken uit Amsterdam. De bronnen noemen 10 of 15 mei.",
+      "src": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "date": "1596-06-17",
+      "precision": "day",
+      "en": "After finding Bear Island on 9 June, the crew sights a snowy, mountainous coast at about 80 degrees north: Spitsbergen. They think it is part of Greenland.",
+      "nl": "Na Bereneiland (9 juni) zien ze een besneeuwde, bergachtige kust op zo'n 80 graden noorderbreedte: Spitsbergen. Ze denken dat het bij Groenland hoort.",
+      "src": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "date": "1596-07-01",
+      "precision": "day",
+      "en": "Back at Bear Island the leaders disagree. Rijp goes his own way to the north; Barentsz and Heemskerck head north-east for Novaya Zemlya.",
+      "nl": "Terug bij Bereneiland worden de leiders het niet eens. Rijp gaat zijn eigen weg naar het noorden, Barentsz en Heemskerck zetten koers naar Nova Zembla.",
+      "src": [
+        "s1",
+        "s3",
+        "s5"
+      ]
+    },
+    {
+      "date": "1596-08-26",
+      "precision": "day",
+      "en": "After rounding the northern tip of Novaya Zemlya, the ship reaches Ice Haven and freezes in. In September the men start building a cabin from driftwood and ship's planks: Het Behouden Huys, the Saved House.",
+      "nl": "Na de noordpunt van Nova Zembla bereikt het schip de IJshaven en vriest vast. In september beginnen de mannen met een hut van drijfhout en scheepsplanken: Het Behouden Huys.",
+      "src": [
+        "s3",
+        "s8"
+      ]
+    },
+    {
+      "date": "1597-01-24",
+      "precision": "day",
+      "en": "Gerrit de Veer sees the sun come back about two weeks earlier than expected. Back home his teacher said it was impossible, but it was real: a polar mirage now called the Novaya Zemlya effect.",
+      "nl": "Gerrit de Veer ziet de zon zo'n twee weken te vroeg terugkomen. Zijn leermeester vond dat later onmogelijk, maar het klopte: het was een poolluchtspiegeling, nu het Nova Zembla-effect genoemd.",
+      "src": [
+        "s7",
+        "s1"
+      ]
+    },
+    {
+      "date": "1597-06-13",
+      "precision": "day",
+      "en": "The ice still holds the ship, so the survivors set off in two open boats. Barentsz dies a week later, on 20 June.",
+      "nl": "Het schip zit nog steeds vast, dus de overlevenden vertrekken in twee open sloepen. Barentsz sterft een week later, op 20 juni.",
+      "src": [
+        "s3",
+        "s1"
+      ]
+    },
+    {
+      "date": "1597-11-01",
+      "precision": "day",
+      "en": "On the Kola Peninsula the survivors are picked up, by chance, by Rijp's merchant ship. Twelve men get back to Amsterdam on 1 November.",
+      "nl": "Op het schiereiland Kola worden de overlevenden toevallig opgepikt door het handelsschip van Rijp. Op 1 november komen twaalf mannen terug in Amsterdam.",
+      "src": [
+        "s1",
+        "s5"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Willem Barentsz",
+      "role": {
+        "en": "Navigator and leader (some sources: pilot)",
+        "nl": "Navigator en leider (volgens sommige bronnen stuurman)"
+      },
+      "born": 1550,
+      "died": 1597,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Born around 1550 on Terschelling, a mapmaker who had sailed north twice before looking for the passage. He died in one of the open boats on 20 June 1597; nobody knows where he was buried.",
+      "nl": "Geboren rond 1550 op Terschelling, kaartenmaker, en al twee keer eerder naar het noorden gevaren op zoek naar de doorvaart. Hij stierf op 20 juni 1597 in een van de open sloepen; waar hij begraven ligt, weet niemand.",
+      "src": [
+        "s1"
+      ],
+      "image": {
+        "file": "people-barentsz.webp",
+        "title": "Willem Barents (1883 enlarged copy of a tiny early 17th-century engraved portrait)",
+        "creator": "Unidentified engraver",
+        "year": "1883",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Willem_Barents_(1883).png",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Jacob van Heemskerck",
+      "role": {
+        "en": "Captain of Barentsz's ship (some sources: leader)",
+        "nl": "Kapitein van het schip van Barentsz (volgens sommige bronnen de leider)"
+      },
+      "born": 1567,
+      "died": 1607,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "Born in Amsterdam. He and Barentsz wrote the note left behind in the Saved House, found again in 1876. Later a vice admiral, he was killed in 1607 at the Battle of Gibraltar, which the Dutch won.",
+      "nl": "Geboren in Amsterdam. Samen met Barentsz schreef hij het briefje dat in Het Behouden Huys achterbleef en in 1876 werd teruggevonden. Later werd hij viceadmiraal; hij sneuvelde in 1607 bij de Slag bij Gibraltar, die de Nederlanders wonnen.",
+      "src": [
+        "s3",
+        "s1"
+      ],
+      "image": {
+        "file": "people-heemskerck.webp",
+        "title": "Portret van Jacob van Heemskerck",
+        "creator": "Christoffel van Sichem (I)",
+        "year": "in or after 1607",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Portret_van_Jacob_van_Heemskerck,_RP-P-OB-15.594.jpg",
+        "licence": "CC0",
+        "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "name": "Jan Cornelisz Rijp",
+      "role": {
+        "en": "Captain of the second ship",
+        "nl": "Kapitein van het tweede schip"
+      },
+      "born": 1570,
+      "died": 1613,
+      "born_approx": true,
+      "died_approx": true,
+      "en": "He split off at Bear Island and was back in the Netherlands the same year. In 1597, on an ordinary trading trip, he found Barentsz's survivors on the Kola Peninsula and brought them home.",
+      "nl": "Hij ging bij Bereneiland zijn eigen weg en was nog hetzelfde jaar terug in Nederland. In 1597 vond hij tijdens een gewone handelsreis de overlevenden op het schiereiland Kola en nam ze mee naar huis.",
+      "src": [
+        "s4",
+        "s5"
+      ],
+      "image": null
+    },
+    {
+      "name": "Gerrit de Veer",
+      "role": {
+        "en": "Crew member who kept the journal",
+        "nl": "Bemanningslid en schrijver van het dagboek"
+      },
+      "born": 1570,
+      "died": null,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Sources call him the ship's carpenter, a mate or a junior officer. His day-by-day journal, published in 1598, is the only detailed account of the voyage and the winter. He was still alive after 1598.",
+      "nl": "De bronnen noemen hem scheepstimmerman, stuurmansmaat of lagere officier. Zijn dagboek, in 1598 uitgegeven, is het enige uitgebreide verslag van de tocht en de overwintering. Na 1598 leefde hij nog.",
+      "src": [
+        "s1",
+        "s3",
+        "s6",
+        "s7",
+        "s8"
+      ],
+      "image": null
+    }
+  ],
+  "images": [
+    {
+      "file": "barentsz-map-1598.webp",
+      "width": 1200,
+      "height": 889,
+      "title": "1598 map of the Polar Regions by Willem Barentsz",
+      "creator": "Willem Barentsz (charts), Cornelis Claesz (map), Baptista van Doetecum (engraving)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:1598_map_of_the_Polar_Regions_by_Willem_Barentsz.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Map of the Arctic built on Barentsz's own charts, printed in 1598, the year after he died.",
+        "nl": "Kaart van het noordpoolgebied op basis van Barentsz' eigen kaarten, gedrukt in 1598, een jaar na zijn dood."
+      }
+    },
+    {
+      "file": "two-ships-1596.webp",
+      "width": 1200,
+      "height": 947,
+      "title": "De twee schepen en een hemelverschijnsel, 1596",
+      "creator": "Anonymous engraver, possibly after drawings by Gerrit de Veer (published by Levinus Hulsius, Nuremberg)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:De_twee_schepen_en_een_hemelverschijnsel,_1596,_NG-1979-564-13.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "The ships of Barentsz and Heemskerck under a strange light in the sky, 4 June 1596. From a 1598 edition of De Veer's journal.",
+        "nl": "De schepen van Barentsz en Heemskerck onder een vreemd verschijnsel aan de hemel, 4 juni 1596. Uit een uitgave van het dagboek van De Veer uit 1598."
+      }
+    },
+    {
+      "file": "ship-in-ice-1596.webp",
+      "width": 1200,
+      "height": 929,
+      "title": "Het schip raakt vast in het ijs, 1596",
+      "creator": "Anonymous engraver, possibly after drawings by Gerrit de Veer (published by Levinus Hulsius, Nuremberg)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Het_schip_raakt_vast_in_het_ijs,_1596,_NG-1979-564-17.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "Men climb overboard to hack the ice away; behind them the ship is already stuck fast in Ice Haven.",
+        "nl": "Mannen klimmen overboord om het ijs los te hakken; achter hen zit het schip al vast in de IJshaven."
+      }
+    },
+    {
+      "file": "building-the-house-1596.webp",
+      "width": 1200,
+      "height": 913,
+      "title": "Slepen van hout op sledes en bouw van het Behouden Huys, 1596",
+      "creator": "Anonymous engraver, possibly after drawings by Gerrit de Veer (published by Levinus Hulsius, Nuremberg)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Slepen_van_hout_op_sledes_en_bouw_van_het_Behouden_Huys,_1596,_NG-1979-564-20.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "Hauling wood on sledges, from mid-September 1596. Behind them the frame of the Saved House goes up.",
+        "nl": "Hout slepen op sleden, vanaf half september 1596. Achter hen verrijst het geraamte van Het Behouden Huys."
+      }
+    },
+    {
+      "file": "inside-the-house-1597.webp",
+      "width": 1200,
+      "height": 929,
+      "title": "Binnen in het Behouden Huys, 1596-1597",
+      "creator": "Anonymous engraver, possibly after drawings by Gerrit de Veer (published by Levinus Hulsius, Nuremberg)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Binnen_in_het_Behouden_Huys,_1596-1597,_NG-1979-564-22.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "Polar night inside the Saved House: bunks along the wall, a fox roasting over the fire, a sick man in blankets and a clock on the wall.",
+        "nl": "Poolnacht in Het Behouden Huys: kooien langs de wand, een vos aan het spit boven het vuur, een zieke in dekens en een klok aan de muur."
+      }
+    },
+    {
+      "file": "boats-launched-1597.webp",
+      "width": 1200,
+      "height": 828,
+      "title": "De sloepen worden te water gelaten, 1597",
+      "creator": "Anonymous engraver, possibly after drawings by Gerrit de Veer (published by Levinus Hulsius, Nuremberg)",
+      "year": "1598",
+      "source_url": "https://commons.wikimedia.org/wiki/File:De_sloepen_worden_te_water_gelaten,_1597,_NG-1979-564-28.jpg",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "caption": {
+        "en": "13 June 1597: the boats go into the water for the trip home, while two sick men lie wrapped in blankets on the ice.",
+        "nl": "13 juni 1597: de sloepen gaan te water voor de terugreis, terwijl twee zieken in dekens op het ijs liggen."
+      }
+    },
+    {
+      "file": "death-of-barentsz-1836.webp",
+      "width": 1200,
+      "height": 903,
+      "title": "The Death of Willem Barentsz",
+      "creator": "Christiaan Julius Lodewijk Portman",
+      "year": "1836",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Death_of_Wiliam_Barents.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Painted almost 240 years later: an artist imagines the death of Barentsz among his men.",
+        "nl": "Bijna 240 jaar later geschilderd: een kunstenaar verbeeldt de dood van Barentsz tussen zijn mannen."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Willem Barentsz, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Willem_Barentsz"
+    },
+    {
+      "key": "s2",
+      "title": "Willem Barentsz, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Willem_Barentsz"
+    },
+    {
+      "key": "s3",
+      "title": "Jacob van Heemskerck, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Jacob_van_Heemskerck"
+    },
+    {
+      "key": "s4",
+      "title": "Jan Rijp, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Jan_Rijp"
+    },
+    {
+      "key": "s5",
+      "title": "Jan Corneliszoon Rijp, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Jan_Corneliszoon_Rijp"
+    },
+    {
+      "key": "s6",
+      "title": "Gerrit de Veer, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Gerrit_de_Veer"
+    },
+    {
+      "key": "s7",
+      "title": "Gerrit de Veer, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Gerrit_de_Veer"
+    },
+    {
+      "key": "s8",
+      "title": "Het Behouden Huys, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Het_Behouden_Huys"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1596-05-13",
+      "arrive": "1596-06-17",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "s1: left on 10 or 15 May; s3: 10 May. 13 May is in neither. s1: Spitsbergen sighted 17 June."
+    },
+    {
+      "leg": 1,
+      "depart": "1596-06-17",
+      "arrive": "1596-08-26",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s3: reached Ice Haven on 26 August, after rounding the north tip of Novaya Zemlya. s1: first reached Novaya Zemlya on 17 July."
+    },
+    {
+      "leg": 2,
+      "depart": "1596-08-26",
+      "arrive": "1597-06-20",
+      "depart_ok": "day",
+      "arrive_ok": "month",
+      "note": "s3: the survivors left in two open boats on 13 June 1597; 20 June is the day Barentsz died (s1, s3), not an arrival. s1: survivors reached Amsterdam 1 November 1597. Side note: s8 puts the house at about 76 deg 12 min N, 68 deg E, while the last waypoint sits at 59.1 E."
+    }
+  ]
+}

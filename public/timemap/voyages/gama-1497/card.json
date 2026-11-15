@@ -1,0 +1,398 @@
+{
+  "id": "gama-1497",
+  "wikipedia": {
+    "en": "https://en.wikipedia.org/wiki/Portuguese_discovery_of_the_sea_route_to_India",
+    "nl": "https://nl.wikipedia.org/wiki/Vasco_da_Gama"
+  },
+  "purpose": {
+    "en": "King Manuel I of Portugal sent Vasco da Gama to find a sea route to India around Africa, a plan first made by King John II. Spices like pepper and cinnamon reached Europe only through costly middlemen, and Portugal wanted to buy them at the source. In Calicut the crew said they had come 'in search of Christians and spices'.",
+    "nl": "Koning Manuel I van Portugal stuurde Vasco da Gama eropuit om rond Afrika een zeeroute naar Indië te vinden, een plan dat al van koning João II was. Specerijen als peper en kaneel kwamen alleen via dure tussenhandel in Europa, en Portugal wilde ze zelf bij de bron kopen. In Calicut zeiden de Portugezen dat ze kwamen 'op zoek naar christenen en specerijen'.",
+    "src": [
+      "s1",
+      "s2",
+      "s3"
+    ]
+  },
+  "crew": {
+    "en": "Four ships with about 170 men: the São Gabriel under da Gama, the São Rafael under his brother Paulo, the caravel Berrio under Nicolau Coelho, and a supply ship under Gonçalo Nunes. Only about 55 to 60 men came home.",
+    "nl": "Vier schepen met zo'n 170 man: de São Gabriel onder Da Gama, de São Rafael onder zijn broer Paulo, het karveel Berrio onder Nicolau Coelho en een bevoorradingsschip onder Gonçalo Nunes. Maar ongeveer 55 tot 60 man kwamen terug.",
+    "src": [
+      "s2",
+      "s3"
+    ]
+  },
+  "legacy": {
+    "en": "Da Gama opened the first direct sea route from Europe to Asia, and from then on Portuguese fleets sailed to India every year. The deal he wanted in Calicut never came, but the few spices he brought home showed how much money there was to be made. For the people along the Indian Ocean it meant violence: da Gama fired on Mozambique, raided ships and carried people off from Calicut, and later Portuguese fleets fought the Zamorin for control of the trade.",
+    "nl": "Da Gama vond de eerste rechtstreekse zeeroute van Europa naar Azië, en daarna voeren er elk jaar Portugese vloten naar Indië. Het handelsverdrag dat hij in Calicut wilde, kwam er niet, maar de paar specerijen die hij meebracht lieten zien hoeveel er te verdienen viel. Voor de mensen langs de Indische Oceaan betekende het geweld: Da Gama beschoot Mozambique, plunderde schepen en nam in Calicut mensen met geweld mee, en latere Portugese vloten vochten met de samorin om de handel.",
+    "src": [
+      "s1",
+      "s2",
+      "s7"
+    ]
+  },
+  "moments": [
+    {
+      "date": "1497-07-08",
+      "precision": "day",
+      "en": "The fleet sails from Lisbon, past the Canary Islands and the Cape Verde Islands.",
+      "nl": "De vloot vertrekt uit Lissabon, langs de Canarische en de Kaapverdische Eilanden.",
+      "src": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "date": "1497-11-04",
+      "precision": "day",
+      "en": "After more than three months out of sight of land, in a wide loop through the South Atlantic, the ships anchor in St Helena Bay, north of the Cape of Good Hope. Contact with the local Khoikhoi starts friendly but ends in a fight.",
+      "nl": "Na meer dan drie maanden zonder land in zicht, in een grote boog over de zuidelijke Atlantische Oceaan, gaan de schepen voor anker in de Sint-Helenabaai, ten noorden van Kaap de Goede Hoop. Het contact met de Khoikhoi begint vriendelijk, maar eindigt in een gevecht.",
+      "src": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "1497-12-16",
+      "precision": "day",
+      "en": "The fleet passes the Great Fish River, where Bartolomeu Dias had stopped on his voyage of 1488. From here on no European ship had sailed these waters.",
+      "nl": "De vloot vaart langs de Grote Visrivier, waar Bartolomeu Dias in 1488 was gestopt. Verder had nog geen Europees schip gevaren.",
+      "src": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "1498-03-02",
+      "precision": "day",
+      "en": "At Mozambique Island da Gama's cheap gifts fail to impress the sultan. The mood turns hostile and he leaves firing his cannons at the town.",
+      "nl": "Op het eiland Mozambique maken Da Gama's goedkope geschenken geen indruk op de sultan. De sfeer slaat om en hij vertrekt terwijl hij de stad met kanonnen beschiet.",
+      "src": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "1498-04-14",
+      "precision": "day",
+      "en": "At Malindi the ruler, a rival of Mombasa, is friendly and gives da Gama a pilot who knows the monsoon winds.",
+      "nl": "In Malindi is de heerser, een rivaal van Mombassa, vriendelijk. Hij geeft Da Gama een loods die de moessonwinden kent.",
+      "src": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "1498-05-20",
+      "precision": "day",
+      "en": "After only 23 days across the Arabian Sea the fleet reaches the coast near Calicut in India. One of our sources gives 17 May instead.",
+      "nl": "Na maar 23 dagen over de Arabische Zee bereikt de vloot de kust bij Calicut in India. Een van onze bronnen noemt 17 mei.",
+      "src": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "date": "1499-07-10",
+      "precision": "day",
+      "en": "Nicolau Coelho and the Berrio are the first back in Lisbon with the news. Da Gama stays behind with his dying brother Paulo and only reaches Lisbon at the end of August or in September. One source dates Coelho's return to 12 July.",
+      "nl": "Nicolau Coelho komt met de Berrio als eerste terug in Lissabon met het nieuws. Da Gama blijft bij zijn stervende broer Paulo en is pas eind augustus of in september in Lissabon. Een bron noemt 12 juli voor de terugkeer van Coelho.",
+      "src": [
+        "s1",
+        "s2",
+        "s3",
+        "s5"
+      ]
+    }
+  ],
+  "people": [
+    {
+      "name": "Vasco da Gama",
+      "role": {
+        "en": "Captain-major, commander of the fleet",
+        "nl": "Kapitein-majoor, bevelhebber van de vloot"
+      },
+      "born": 1460,
+      "died": 1524,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "A Portuguese nobleman chosen by King Manuel to lead the fleet. He was rewarded with the title Dom, a big pension and, in 1502, the title of admiral of the seas of Arabia, Persia and India.",
+      "nl": "Een Portugese edelman die koning Manuel uitkoos om de vloot te leiden. Hij werd beloond met de titel Dom, een flink pensioen en in 1502 de titel admiraal van de zeeën van Arabië, Perzië en Indië.",
+      "src": [
+        "s1",
+        "s2"
+      ],
+      "image": {
+        "file": "people-gama.webp",
+        "title": "D. Vasco da Gama, from the Livro de Lisuarte de Abreu (about 1560, painted after his death)",
+        "creator": "Lisuarte de Abreu",
+        "year": "c. 1560",
+        "source_url": "https://commons.wikimedia.org/wiki/File:D._Vasco_da_Gama_(Livro_de_Lisuarte_de_Abreu).jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Paulo da Gama",
+      "role": {
+        "en": "Captain of the São Rafael",
+        "nl": "Kapitein van de São Rafael"
+      },
+      "born": 1465,
+      "died": 1499,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "Vasco's older brother. His ship was burnt on the way home because too few men were left to sail it. He fell ill and died on the way home; he is buried on Terceira in the Azores.",
+      "nl": "De oudere broer van Vasco. Zijn schip werd op de terugweg verbrand, omdat er te weinig mannen over waren om het te bemannen. Hij werd ziek en stierf onderweg naar huis; hij ligt begraven op Terceira op de Azoren.",
+      "src": [
+        "s2",
+        "s4"
+      ],
+      "image": {
+        "file": "people-paulo-da-gama.webp",
+        "title": "Paulo da Gama (imagined portrait, 1897)",
+        "creator": "Francisco Pastor",
+        "year": "1897",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Paulo_da_Gama_-_Diario_Illustrado_(30Jun1897).png",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    },
+    {
+      "name": "Nicolau Coelho",
+      "role": {
+        "en": "Captain of the Berrio",
+        "nl": "Kapitein van de Berrio"
+      },
+      "born": 1460,
+      "died": 1504,
+      "born_approx": true,
+      "died_approx": false,
+      "en": "An experienced navigator whose caravel was the first ship home, on 10 July 1499. The king gave him a pension and a coat of arms. A year later he sailed again, with Cabral, and saw Brazil.",
+      "nl": "Een ervaren zeevaarder wiens karveel op 10 juli 1499 als eerste thuiskwam. De koning gaf hem een pensioen en een familiewapen. Een jaar later voer hij opnieuw uit, met Cabral, en zag hij Brazilië.",
+      "src": [
+        "s5"
+      ],
+      "image": null
+    },
+    {
+      "name": "Bartolomeu Dias",
+      "role": {
+        "en": "Shipbuilder; sailed along as far as the Cape Verde Islands",
+        "nl": "Scheepsbouwer; voer mee tot de Kaapverdische Eilanden"
+      },
+      "born": null,
+      "died": 1500,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "The first European to round the southern tip of Africa, in 1488. He oversaw the building of the São Gabriel and São Rafael and sailed with the fleet, but only to the Cape Verde Islands. From there he went on to São Jorge da Mina.",
+      "nl": "De eerste Europeaan die de zuidpunt van Afrika rondde, in 1488. Hij hield toezicht op de bouw van de São Gabriel en de São Rafael en voer met de vloot mee, maar alleen tot de Kaapverdische Eilanden. Van daar ging hij door naar São Jorge da Mina.",
+      "src": [
+        "s6",
+        "s3"
+      ],
+      "image": null
+    },
+    {
+      "name": "The pilot from Malindi",
+      "role": {
+        "en": "Pilot across the Arabian Sea",
+        "nl": "Loods over de Arabische Zee"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "The ruler of Malindi gave da Gama a pilot, described at the time as a Christian, a Muslim or a Gujarati, who brought the ships to India in 23 days. He is often named as the famous Arab navigator Ahmad ibn Majid, but historians now think that is very unlikely: Ibn Majid was in his seventies, and other accounts place him elsewhere.",
+      "nl": "De heerser van Malindi gaf Da Gama een loods, die in bronnen uit die tijd christen, moslim of Gujarati wordt genoemd. Hij bracht de schepen in 23 dagen naar India. Vaak wordt gezegd dat het de beroemde Arabische zeevaarder Ahmad ibn Majid was, maar historici vinden dat nu zeer onwaarschijnlijk: Ibn Majid was toen al in de zeventig, en andere verslagen plaatsen hem ergens anders.",
+      "src": [
+        "s2",
+        "s3",
+        "s8"
+      ],
+      "image": null
+    },
+    {
+      "name": "The Zamorin of Calicut",
+      "role": {
+        "en": "Ruler of Calicut who received da Gama",
+        "nl": "Heerser van Calicut die Da Gama ontving"
+      },
+      "born": null,
+      "died": null,
+      "born_approx": false,
+      "died_approx": false,
+      "en": "The Hindu ruler of Calicut, a great trading port. He came back from Ponnani to receive da Gama with a grand procession, but cloth, hats, coral, sugar, oil and honey were poor gifts for a king, and he wanted customs paid like any trader. Our sources name him Manavikrama, a name every Zamorin bore.",
+      "nl": "De hindoeïstische heerser van Calicut, een grote handelshaven. Hij kwam terug uit Ponnani om Da Gama met een groots gevolg te ontvangen, maar stof, hoeden, koraal, suiker, olie en honing waren armzalige geschenken voor een vorst, en hij wilde dat Da Gama tol betaalde zoals elke koopman. Onze bronnen noemen hem Manavikrama, een naam die elke samorin droeg.",
+      "src": [
+        "s1",
+        "s2",
+        "s7"
+      ],
+      "image": {
+        "file": "people-zamorin.webp",
+        "title": "The Zamorin of Calicut, detail of a painting by Veloso Salgado (imagined, 1898)",
+        "creator": "Veloso Salgado",
+        "year": "1898",
+        "source_url": "https://commons.wikimedia.org/wiki/File:Zamorin_of_Calicut.jpg",
+        "licence": "Public domain",
+        "licence_url": ""
+      }
+    }
+  ],
+  "images": [
+    {
+      "file": "armada-1497-livro-das-armadas.webp",
+      "width": 275,
+      "height": 413,
+      "title": "The 1497 fleet of Vasco da Gama (Memória das Armadas)",
+      "creator": "Unknown artist",
+      "year": "c. 1568",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Gama_armada_of_1497_(Livro_das_Armadas).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "The four ships of 1497, each labelled with its captain, painted about 70 years later. The supply ship of Gonçalo Nunes is shown in flames: it was given up in Mossel Bay.",
+        "nl": "De vier schepen van 1497, elk met de naam van de kapitein, zo'n zeventig jaar later geschilderd. Het bevoorradingsschip van Gonçalo Nunes staat in brand: het werd in de Mosselbaai achtergelaten."
+      }
+    },
+    {
+      "file": "cantino-planisphere-1502.webp",
+      "width": 1200,
+      "height": 564,
+      "title": "Cantino planisphere",
+      "creator": "Unknown Portuguese mapmaker",
+      "year": "1502",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Cantino_planisphere_(1502).jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "A Portuguese world chart made in 1502, three years after da Gama came home. The whole coast of Africa is drawn, with India to the east.",
+        "nl": "Een Portugese wereldkaart uit 1502, drie jaar na de terugkeer van Da Gama. De hele kust van Afrika staat erop, met India in het oosten."
+      }
+    },
+    {
+      "file": "calicut-1572.webp",
+      "width": 1200,
+      "height": 475,
+      "title": "Calechut celeberrimum Indiae emporium",
+      "creator": "Georg Braun and Frans Hogenberg",
+      "year": "1572",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Probably_the_earliest_depiction_of_Calicut,_from_1572_Huge_Scan.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Calicut, 'the most famous market of India', in a print from 1572: ships in the harbour, the town behind the beach and an elephant on the shore.",
+        "nl": "Calicut, 'de beroemdste markt van India', op een prent uit 1572: schepen in de haven, de stad achter het strand en een olifant op de kust."
+      }
+    },
+    {
+      "file": "gama-departure-gameiro-1917.webp",
+      "width": 1200,
+      "height": 794,
+      "title": "Partida de Vasco da Gama para a Índia",
+      "creator": "Alfredo Roque Gameiro",
+      "year": "1917",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Partida_de_Vasco_da_Gama_para_a_%C3%8Dndia.jpg",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Crowds on the Lisbon waterfront as the fleet leaves, as a Portuguese artist imagined it four centuries later.",
+        "nl": "Een menigte aan de kade van Lissabon bij het vertrek van de vloot, zoals een Portugese kunstenaar het zich vier eeuwen later voorstelde."
+      }
+    },
+    {
+      "file": "gama-zamorin-salgado-1898.webp",
+      "width": 1200,
+      "height": 965,
+      "title": "Vasco da Gama perante o Samorim de Calecute",
+      "creator": "Veloso Salgado",
+      "year": "1898",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Vasco_da_Gama_perante_o_Samorim_de_Calecute.png",
+      "licence": "Public domain",
+      "licence_url": "",
+      "caption": {
+        "en": "Da Gama before the Zamorin of Calicut, painted 400 years after the event and now at the Lisbon Geographical Society. The scene is imagined.",
+        "nl": "Da Gama staat voor de samorin van Calicut, 400 jaar later geschilderd en nu in het bezit van het Aardrijkskundig Genootschap van Lissabon. De scène is verbeeld, niet gezien."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "key": "s1",
+      "title": "Portuguese discovery of the sea route to India, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Portuguese_discovery_of_the_sea_route_to_India"
+    },
+    {
+      "key": "s2",
+      "title": "Vasco da Gama, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Vasco_da_Gama"
+    },
+    {
+      "key": "s3",
+      "title": "Vasco da Gama, Wikipedia (NL)",
+      "url": "https://nl.wikipedia.org/wiki/Vasco_da_Gama"
+    },
+    {
+      "key": "s4",
+      "title": "Paulo da Gama, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Paulo_da_Gama"
+    },
+    {
+      "key": "s5",
+      "title": "Nicolau Coelho, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Nicolau_Coelho"
+    },
+    {
+      "key": "s6",
+      "title": "Bartolomeu Dias, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Bartolomeu_Dias"
+    },
+    {
+      "key": "s7",
+      "title": "Zamorin, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Zamorin"
+    },
+    {
+      "key": "s8",
+      "title": "Ahmad ibn Majid, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Ahmad_ibn_Majid"
+    },
+    {
+      "key": "s9",
+      "title": "Mossel Bay, Wikipedia (EN)",
+      "url": "https://en.wikipedia.org/wiki/Mossel_Bay"
+    },
+    {
+      "key": "s10",
+      "title": "Gama, Vasco da, Encyclopaedia Britannica 1911 (Wikisource)",
+      "url": "https://en.wikisource.org/wiki/1911_Encyclop%C3%A6dia_Britannica/Gama,_Vasco_da"
+    }
+  ],
+  "date_check": [
+    {
+      "leg": 0,
+      "depart": "1497-07-08",
+      "arrive": "1497-11-22",
+      "depart_ok": "day",
+      "arrive_ok": "month",
+      "note": "s1, s2, s3: sailed from Lisbon on 8 July 1497 (s10, the 1911 Britannica, says 9 July). s3: anchored in St Helena Bay on 4 November, fight with the Khoikhoi on 16 November, then a week fighting headwinds to round the Cape before anchoring in Mossel Bay. None of our sources gives 22 November as a day, so only the month is confirmed."
+    },
+    {
+      "leg": 1,
+      "depart": "1497-11-25",
+      "arrive": "1498-04-14",
+      "depart_ok": "month",
+      "arrive_ok": "day",
+      "note": "Departure: s3 and s9 put the fleet in Mossel Bay in late 1497 but give no day; 25 November is not confirmed. Arrival: s2, s3 say Malindi on 14 April 1498."
+    },
+    {
+      "leg": 2,
+      "depart": "1498-04-24",
+      "arrive": "1498-05-20",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "s2: left Malindi on 24 April 1498; s2, s3, s10: reached the coast near Calicut on 20 May. s1 gives 17 May for reaching Kappakadavu near Calicut, so sources differ by three days."
+    }
+  ]
+}
