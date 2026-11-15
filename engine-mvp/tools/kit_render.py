@@ -53,6 +53,8 @@ if KIT_PEN:
 FIGURE = {'ref': 1024, 'soften': 0, 'warp': 0, 'levels': 5, 'edge': 0.06, 'edge_px': 4,
           'bloom_share': 0.12, 'bloom_light': 0.10, 'bloom_rim': 0.05, 'bloom_scale': 14, 'bloom_soft': 6,
           'reserve_share': 0.0, 'reserve_px': 2, 'sliver_share': 0.02}
+OUTFIT_CLOTH = ('tunic', 'shawl', 'rope', 'apron', 'ochre')               # the kinds a garment is painted in
+CLOTH_MIN_PX = 600                                                        # 1x px: the least patch of them that is a garment
 KINDS = {'skin': (250, 190, 120), 'tunic': (252, 222, 172), 'shawl': (222, 92, 62), 'hair': (112, 50, 20), 'rope': (158, 90, 40),
          'tie': (240, 180, 40), 'white': (252, 252, 250), 'grey': (196, 196, 194),
          'apron': (70, 96, 122), 'ochre': (201, 162, 78), 'mouth': (90, 42, 34)}
@@ -197,6 +199,49 @@ def rejoin(lines, reach, min_len):
         lines = [l for k, l in enumerate(lines) if k not in (ia, ib)] + [merged]
     length = lambda p: float(np.hypot(*np.diff(p, axis=0).T).sum()) if len(p) > 1 else 0.0
     return [(p, w) for p, w in lines if length(p) >= min_len]
+
+
+MEET_PX = 8.0                                                            # 1x px: a line end this close to another line runs on to it
+MEET_AIM_PX = 8.0                                                        # 1x px of a line's end its direction is read over
+MEET_MIN_LEN = 40.0                                                     # 1x px: only long lines (a jaw, a neck), never lashes or hair ticks
+
+
+def meet(lines, reach, min_len):
+    """A long line that stops just short of another long line, pointing at it, runs on to touch it: the skeleton splits a
+    T-junction (a jaw meeting the neck, the back of the neck meeting a shoulder) and leaves a gap the paint showed through
+    as a little unlined wedge (Bart 11-15). Points are figure px."""
+    length = lambda p: float(np.hypot(*np.diff(p, axis=0).T).sum()) if len(p) > 1 else 0.0
+    long_ = [i for i, (p, _) in enumerate(lines) if length(p) >= min_len]
+    if len(long_) < 2:
+        return lines
+    pts = np.concatenate([lines[i][0] for i in long_])
+    owner = np.concatenate([np.full(len(lines[i][0]), i) for i in long_])
+    tree = cKDTree(pts)
+    out = list(lines)
+    for i in long_:
+        p, w = out[i]
+        for end in (0, 1):
+            run = p if end == 0 else p[::-1]
+            tip = run[0]
+            gone = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(run, axis=0).T))])
+            back = run[min(len(run) - 1, int(np.searchsorted(gone, MEET_AIM_PX)))]   # the way it runs over its last few px
+            v = tip - back
+            v = v / (np.linalg.norm(v) or 1)
+            best = None
+            for k in tree.query_ball_point(tip, reach):
+                if owner[k] == i:
+                    continue
+                gap = pts[k] - tip
+                d = float(np.linalg.norm(gap))
+                if d < 0.5:                                               # already touching
+                    best = None
+                    break
+                if float(v @ gap) / d > 0.5 and (best is None or d < best[0]):
+                    best = (d, pts[k])
+            if best is not None:
+                p = np.concatenate([best[1][None], p]) if end == 0 else np.concatenate([p, best[1][None]])
+        out[i] = (p, w)
+    return out
 
 
 def tidy(l):
@@ -353,6 +398,15 @@ if os.environ.get('KIT') == '1':
     below = np.zeros_like(cloth); below[560:] = True                      # only under the chin
     cloth = ndimage.binary_dilation(cloth & below, iterations=5) & below & ~added & ~np.isin(Hd['kind'], [names.index('skin')])
     head_lab &= ~cloth
+    # under the chin the outfit's own cloth shows (Bart 11-15, "a flat step in the neckline"): the head sheet is a bust with
+    # a neckline of its own, which a wrap's edge or a necklace's tunic need not follow. Where the body sheet has cloth the
+    # head sheet's skin stops; the lines next to cloth there are the body sheet's alone (below, at the line cut)
+    # (a garment is a big patch: the body sheet's own red-brown lips, under row 560 on a longer face, are not cloth)
+    body_cloth = kp_keep_big(ndimage.binary_opening(np.isin(F['kind'], [names.index(n) for n in OUTFIT_CLOTH]), iterations=2), CLOTH_MIN_PX)
+    bcloth_h = cv2.resize(body_cloth[y0b:y1b, x0b:x1b].astype(np.uint8), (1024, 1024), interpolation=cv2.INTER_NEAREST) > 0
+    bcloth_h &= below & ~added
+    head_lab &= ~bcloth_h
+    HEAD_SHEET_CLOTH = cloth | bcloth_h
     unpainted = ~Hd['alpha']; unpainted[:560] = False                     # below the chin the head is only where its sheet has paint:
     head_lab &= ~(unpainted & ~added)                                     # an adult's longer neck comes from the body sheet
     # the top of the neck: where the map's head part narrows
@@ -429,19 +483,38 @@ if os.environ.get('KIT') == '1':
     F['lines'] = rejoin(F['lines'], 12, 9)
 at = lambda arr, x, y: arr[np.clip(y.astype(int), 0, arr.shape[0] - 1), np.clip(x.astype(int), 0, arr.shape[1] - 1)]
 BORDER_SMOOTH = 12 if os.environ.get('KIT') == '1' else 0
-head_lines = [(pts * HK + (x0b, y0b), wd * HK) for pts, wd in cut_lines(Hd['lines'], lambda x, y: at(head_lab, x, y), BORDER_SMOOTH)]
+LINE_R = 4                                                               # 1x px: a line this close to cloth is that cloth's edge
+head_keep = head_lab
+NEAR_CLOTH = np.zeros((H, W), bool)
+if os.environ.get('KIT') == '1':
+    # an edge of cloth under the chin is drawn by the body sheet only: the head sheet's own bust neckline (it runs off the
+    # sheet's bottom edge, a flat run there) never, the body sheet's neckline or wrap edge always, even inside the map's head
+    near_h = ndimage.binary_dilation(HEAD_SHEET_CLOTH, iterations=int(round(LINE_R / HK)))
+    near_h[-int(round(3 * LINE_R / HK)):] = True                          # and at its bottom edge, where that neckline runs off
+    # a neckline lies inside the figure; the neck's own outline against the air stays the head's, wherever it runs to
+    near_h &= ~ndimage.binary_dilation(~Hd['alpha'], iterations=int(round(LINE_R / HK)))
+    # and only where the body sheet paints, well inside its outline (it draws that edge itself): next to cloth the body sheet
+    # leaves as air (the girl's head sheet has a shawl on the shoulder) the head's line is the outline
+    _paint = cv2.resize(F['alpha'][y0b:y1b, x0b:x1b].astype(np.uint8), (1024, 1024), interpolation=cv2.INTER_NEAREST) > 0
+    near_h &= ndimage.binary_erosion(_paint, iterations=int(round(LINE_R / HK)), border_value=1)   # (the body goes on past the crop)
+    head_keep = head_lab & ~(near_h & ~_added)
+    _bc = body_cloth.copy(); _bc[:int(y0b + 560 * HK)] = False
+    NEAR_CLOTH = ndimage.binary_dilation(_bc, iterations=LINE_R)
+head_lines = [(pts * HK + (x0b, y0b), wd * HK) for pts, wd in cut_lines(Hd['lines'], lambda x, y: at(head_keep, x, y), BORDER_SMOOTH)]
 others_core = np.zeros((H, W), bool)
 for i in range(len(PARTS)):
     if i != BRAID:
         others_core |= ndimage.binary_erosion(raw_part == i, iterations=2)
 braid_zone = ndimage.binary_dilation(raw_part == BRAID, iterations=8) & ~others_core
-body_lines = cut_lines(F['lines'], lambda x, y: (at(part_all, x, y) != HEAD) & ~(DROP_BRAID & at(braid_zone, x, y)), BORDER_SMOOTH // 2)
+body_lines = cut_lines(F['lines'], lambda x, y: ((at(part_all, x, y) != HEAD) | at(NEAR_CLOTH, x, y)) & ~(DROP_BRAID & at(braid_zone, x, y)), BORDER_SMOOTH // 2)
 if DROP_BRAID:
     F['blob'] &= ~braid_zone
 if os.environ.get('KIT') == '1':   # what the head/body cut left of a line near the border is a dot: join it on, or drop it
     body_lines = rejoin(body_lines, 6, 8)
     head_lines = rejoin(head_lines, 4, 4)
 lines = body_lines + head_lines
+if os.environ.get('KIT') == '1':
+    lines = meet(lines, MEET_PX, MEET_MIN_LEN)
 names = names + ['iris', 'brow']
 IH, IG, II, IB = names.index('hair'), names.index('grey'), names.index('iris'), names.index('brow')
 hair_head = np.asarray(Image.open(os.environ['HAIR_MASK']).convert('L')) > 127 if os.environ.get('HAIR_MASK') else head_lab
@@ -516,6 +589,96 @@ def svg_text(palette, box, fills=True, with_lines=True, only_kind=None, blobs_on
 
 (OUT / f'{NAME}-parts.svg').write_text(svg_text(colour_of, (0, 0, W, H)))
 print('ana-parts.svg', (OUT / f'{NAME}-parts.svg').stat().st_size // 1024, 'KB')
+
+
+OWN_SIDE_PX = 2.5                                                         # 1x px either side of a drawn line that is re-read
+SLIVER_PX = 60                                                            # 1x px²: a patch smaller than this along a line may go
+SPECK_PX = 4                                                              # 1x px²: a patch this small is a stray antialiased speck
+SLIVER_SHARE = 0.3                                                        # of its edge on another paint (not ink): a sliver
+
+
+def kinds_of(fill: np.ndarray, keys: np.ndarray) -> np.ndarray:
+    """Each pixel's kind: 0 air, 1 + the nearest key colour (worked out once per distinct colour)."""
+    rgb = fill[..., :3].astype(np.int64)
+    packed = (rgb[..., 0] << 16) | (rgb[..., 1] << 8) | rgb[..., 2]
+    uniq, inv = np.unique(packed, return_inverse=True)
+    cols = np.stack([uniq >> 16, (uniq >> 8) & 255, uniq & 255], 1).astype(np.float32)
+    near = 1 + ((cols[:, None] - keys[None]) ** 2).sum(-1).argmin(1)
+    return np.where(fill[..., 3] > 127, near[inv.reshape(packed.shape)], 0)
+
+
+def walk_in(val: np.ndarray, todo: np.ndarray, steps: int) -> np.ndarray:
+    """The -1 pixels of `todo` take a 4-neighbour's value, ring by ring, never from ink (-2) or another unknown."""
+    for _ in range(steps):
+        open_ = todo & (val == -1)
+        if not open_.any():
+            break
+        got = np.full(val.shape, -1)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = np.roll(val, (dy, dx), (0, 1))
+            got = np.where((got == -1) & (nb >= 0), nb, got)
+        val = np.where(open_ & (got >= 0), got, val)
+    return val
+
+
+def own_side(fill: np.ndarray, cover: np.ndarray, scale: float, keys: list, keep: list) -> np.ndarray:
+    """Every fill pixel next to a drawn line takes the paint (or the air) of its own side of that line (Bart 11-15, "a thin
+    skin rim outside the contours"). Each kind's shape is grown under the sheet's line, and the pen redraws that line
+    slimmer (tapered, jittered), so a grown shape showed past it: skin outside the outer contour, one cloth across a seam.
+    Near the line a pixel takes the value of the nearest pixel beyond its reach on the same side (a walk that never
+    crosses ink); a pixel with no such neighbour (a cord between two lines) keeps its paint. Then a small patch of one
+    paint left along a line, edged mostly by another paint rather than ink (a wider sliver), goes to its neighbours; a
+    shape the ink rings all round (a bead) stays. Round the `keep` kinds (the eyes and the mouth: drawn shapes, a lower
+    lid has no line to walk round) nothing changes."""
+    key = np.array(keys, np.float32)
+    ink = cover > 0.5
+    reach = max(1, int(round(OWN_SIDE_PX * scale)))
+    kind = kinds_of(fill, key)
+    shape_px = np.isin(kind, [k + 1 for k in keep])
+    guard = ndimage.binary_dilation(shape_px, iterations=2 * reach)
+    band = ~ink & ndimage.binary_dilation(ink, iterations=reach) & ~guard
+    val = np.where(ink, -2, np.where(band, -1, kind))                     # -2 ink, -1 not known yet
+    # a stray speck of a kind (an antialiased pixel the trace kept) is no paint to walk from: it would spread over the band
+    specks = np.zeros(band.shape, bool)
+    for k in np.unique(val[val > 0]):
+        lab_, n_ = ndimage.label(val == k)
+        if n_:
+            idx = np.arange(1, n_ + 1)
+            tiny = ndimage.sum(np.ones_like(lab_), lab_, idx) < SPECK_PX * scale * scale
+            specks |= np.isin(lab_, idx[tiny])
+    specks &= ~guard
+    val = np.where(specks, -1, val)
+    val = walk_in(val, band | specks, reach + 3)
+    # slivers: small patches of a kind touching the band, edged more by another paint than by ink
+    lined = ndimage.binary_dilation(band, iterations=1)
+    gone = np.zeros(val.shape, bool)
+    for k in np.unique(val[band & (val > 0)]):
+        lab_, n_ = ndimage.label(val == k)
+        if not n_:
+            continue
+        idx = np.arange(1, n_ + 1)
+        small = (ndimage.sum(np.ones_like(lab_), lab_, idx) < SLIVER_PX * scale * scale) & ndimage.maximum(lined, lab_, idx).astype(bool)
+        if not small.any():
+            continue
+        ring = ndimage.grey_dilation(lab_, size=3) * (lab_ == 0)          # an edge pixel names the patch beside it
+        other = np.bincount(ring[(val >= 0) & (val != k)], minlength=n_ + 1)[1:]
+        inked = np.bincount(ring[val == -2], minlength=n_ + 1)[1:]
+        sliver = small & (other > SLIVER_SHARE * (other + inked))
+        gone |= np.isin(lab_, idx[sliver]) & ~guard
+    if gone.any():                                                         # each takes the paint most of its surround has
+        glab, _ = ndimage.label(gone)
+        for j, sl in enumerate(ndimage.find_objects(glab), 1):
+            win = (slice(max(0, sl[0].start - 3), sl[0].stop + 3), slice(max(0, sl[1].start - 3), sl[1].stop + 3))
+            me = glab[win] == j
+            ring = ndimage.binary_dilation(me, iterations=2) & ~me & (val[win] >= 0) & ~gone[win]
+            if ring.any():
+                val[win][me] = np.bincount(val[win][ring]).argmax()
+    fix = (band | gone | specks) & (val >= 0)
+    lut = np.concatenate([np.zeros((1, 3), np.float32), key])
+    out = fill.copy()
+    out[..., :3] = np.where(fix[..., None], lut[np.clip(val, 0, None)], fill[..., :3])
+    out[..., 3] = np.where(fix, np.where(val > 0, 255, 0), fill[..., 3])
+    return out
 
 
 # ── render a window of the figure at a scale ────────────────────────────────────────────────────────────────────
@@ -680,6 +843,8 @@ def render(box, scale, palette, seed=7, name=None, lossless=False):
     a = np.clip(np.maximum(sil, cover), 0, 1)
     on_paper = lambda im, al: (im * al[..., None] + np.array(PAPER, np.float32) * (1 - al[..., None])).clip(0, 255).astype(np.uint8)
     if name and PIECES:   # the character creator's bake (kit_bake.py): fill, ink and shade apart, so the browser restacks them
+        if KIT_PEN:
+            f = own_side(f, cover, scale, [palette[n] for n in names], [names.index(n) for n in ('white', 'iris', 'mouth')])
         save_image(f.clip(0, 255).astype(np.uint8), OUT / f'{name}-fill.webp', lossless=True)
         save_image((cover * 255).clip(0, 255).astype(np.uint8), OUT / f'{name}-ink.webp', lossless=True)
         mask = np.dstack([shade_amount * (1 - cover), eyes_up, face_up])

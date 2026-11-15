@@ -31,3 +31,25 @@ def test_kinds_in_ignores_a_few_stray_pixels():
     fill[:, :] = key('tunic')
     fill[0, 0] = key('apron')
     assert kb.kinds_in(fill, np.ones((40, 40), bool)) == ['tunic']
+
+
+def test_edge_clean_drops_crumbs_along_the_cut_and_keeps_lines_that_cross_it():
+    keep = np.zeros((60, 60), bool)
+    keep[:, :40] = True                       # the piece keeps the left 40 columns
+    ink = np.zeros((60, 60), np.uint8)
+    ink[10:12, 37:39] = 255                   # a crumb in the band along the cut
+    ink[30:34, 0:40] = 255                    # a line running into the cut
+    ink[50:52, 10:12] = 255                   # a small mark well inside the piece
+    out = kb.edge_clean(ink, keep)
+    assert out[10:12, 37:39].max() == 0
+    assert out[30:34, 0:40].min() == 255
+    assert out[50:52, 10:12].min() == 255
+
+
+def test_no_white_gives_a_glint_the_paint_round_it_not_a_stray_pixels():
+    fill = np.zeros((20, 20, 4), np.uint8)
+    fill[:, :] = key('skin')
+    fill[8:11, 8:11] = key('white')            # a nail's glint
+    fill[8, 11] = key('apron')                 # one antialiased pixel of a band beside it
+    out = kb.no_white(fill)
+    assert {tuple(v) for v in out[8:11, 8:11].reshape(-1, 4).tolist()} == {tuple(key('skin'))}

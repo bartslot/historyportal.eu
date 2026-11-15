@@ -105,7 +105,12 @@ UNDER_SHIN_PX = 70              # 1x px: a shin goes on this far up under the sk
 CAST_REACH = 30                 # 2x px: how far from a piece the shade it casts can fall
 CONTOUR_KEEP = 6                # 2x px either side of the head's outline that only the face piece draws (a line's half width)
 OWN_LINE = 6                    # 2x px round a part's mask its own contour can lie
-COLLAR_GAP = 8                  # 1x px of the head next to the body that the outfit piece draws (its neckline)
+OUTFIT_CLOTH = ('tunic', 'shawl', 'rope', 'apron', 'ochre')   # kit_render.OUTFIT_CLOTH: the kinds a garment is painted in
+CHIN_AT = 0.70                  # of the head box's height: below it cloth is a garment's (a neckline), never the face
+NECKLINE_CLEAR = 8              # 2x px the face piece keeps clear of a garment: a line's width
+EDGE_BAND = 6                   # 2x px along a piece's keep edge where cut-off crumbs of ink are looked for
+CRUMB_PX = 60                   # 2x px²: a bit of ink smaller than this, wholly in that band, is a crumb
+COLLAR_GAP = 8                 # 1x px of the head next to the body that the outfit piece draws (its neckline)
 
 
 def rgb_hex(h: str) -> list[int]:
@@ -302,18 +307,32 @@ def one_cloth(fill: np.ndarray) -> np.ndarray:
 
 
 def no_white(fill: np.ndarray, keep_near: str | None = None) -> np.ndarray:
-    """The 'white' kind painted over by the nearest other kind (eyes are the face piece's; on a body white is a speck).
-    `keep_near`: white within reach of this kind stays (the eye white round an iris)."""
+    """The 'white' kind painted over by the paint round it (eyes are the face piece's; on a body white is a speck, a nail's
+    glint). Each speck takes the kind most of its surround has, never one stray pixel's (a glint on a thumbnail took the
+    band colour of an antialiased pixel on the line beside it, Bart 11-15). `keep_near`: white within reach of this kind
+    stays (the eye white round an iris)."""
     r = fill[..., 0].astype(int)
     white = (fill[..., 3] > 0) & (r == 10 + 18 * KINDS.index('white'))
     if keep_near:
         white &= ~ndimage.binary_dilation(kind_of(fill) == KINDS.index(keep_near), iterations=40)
     if not white.any():
         return fill
-    other = (fill[..., 3] > 0) & ~white
-    _, (jy, jx) = ndimage.distance_transform_edt(~other, return_indices=True)
+    other = (fill[..., 3] > 127) & (r != 10 + 18 * KINDS.index('white'))
+    kinds = kind_of(fill)
+    lab, n = ndimage.label(white)
     out = fill.copy()
-    out[white, :3] = fill[jy[white], jx[white], :3]
+    for j, sl in enumerate(ndimage.find_objects(lab), 1):
+        y0, x0 = max(0, sl[0].start - 4), max(0, sl[1].start - 4)
+        win = (slice(y0, sl[0].stop + 4), slice(x0, sl[1].stop + 4))
+        me = lab[win] == j
+        ring = ndimage.binary_dilation(me, iterations=3) & ~me & other[win]
+        if not ring.any():                                                 # nothing painted round it: the nearest paint
+            _, (jy, jx) = ndimage.distance_transform_edt(~other, return_indices=True)
+            m = lab == j
+            out[m, :3] = fill[jy[m], jx[m], :3]
+            continue
+        k = int(np.bincount(kinds[win][ring], minlength=len(KINDS)).argmax())
+        out[win][me, 0], out[win][me, 1], out[win][me, 2] = 10 + 18 * k, 250 - 18 * k, 128
     return out
 
 
@@ -325,6 +344,36 @@ def kinds_in(fill: np.ndarray, mask: np.ndarray, share: float = 0.0) -> list[str
     idx = np.clip(np.round((fill[..., 0][sel].astype(np.float32) - 10) / 18), 0, len(KINDS) - 1).astype(int)
     counts = np.bincount(idx, minlength=len(KINDS))
     return [KINDS[i] for i in range(len(KINDS)) if counts[i] >= max(share * sel.sum(), min(400, max(60, 0.01 * sel.sum())))]
+
+
+def neckline_zone(body: str, fills: list[np.ndarray]) -> np.ndarray:
+    """Where any of a body's outfits shows cloth under the chin, grown by a line's width (2x canvas): the face piece stays
+    out of it, so each outfit's neckline is drawn whole by the outfit piece."""
+    x0, y0, x1, y1 = P.BODIES[body]['box']
+    chin = int((y0 + CHIN_AT * (y1 - y0)) * SCALE)
+    cloth = np.zeros(fills[0].shape[:2], bool)
+    for f in fills:
+        cloth |= (f[..., 3] > 0) & np.isin(kind_of(f), [KINDS.index(n) for n in OUTFIT_CLOTH])
+    cloth = ndimage.binary_opening(cloth, iterations=2)
+    cloth[:chin] = False
+    return ndimage.binary_dilation(cloth, iterations=NECKLINE_CLEAR)
+
+
+def edge_clean(ink: np.ndarray, keep: np.ndarray) -> np.ndarray:
+    """A piece's ink without the crumbs its cut leaves: where the keep mask (stair-stepped, from the 1x map) runs along a
+    stroke that another piece draws whole (the neckline, under the face piece's edge), the cut leaves a row of dots over
+    that stroke (Bart 11-15). Small bits of ink in the band along the keep edge go; a line crossing the edge stays."""
+    band = keep & ~ndimage.binary_erosion(keep, iterations=EDGE_BAND)
+    lab, n = ndimage.label(ink > 96)
+    if not n:
+        return ink
+    idx = np.arange(1, n + 1)
+    small = ndimage.sum(np.ones_like(lab), lab, idx) < CRUMB_PX
+    inside = ndimage.minimum(band, lab, idx).astype(bool)                 # every pixel of it in the band
+    crumbs = ndimage.binary_dilation(np.isin(lab, idx[small & inside]), iterations=2) & band
+    out = ink.copy()
+    out[crumbs] = 0
+    return out
 
 
 def save_piece(folder: Path, name: str, fill: np.ndarray, ink: np.ndarray, shade: np.ndarray, cast: np.ndarray | None, keep: np.ndarray) -> dict:
@@ -343,6 +392,8 @@ def save_piece(folder: Path, name: str, fill: np.ndarray, ink: np.ndarray, shade
     if name.split('-', 1)[0] in ('hair', 'headwear'):   # 'white' in hair is the air between a strand and the neck: see-through
         f[f[..., 0] == 10 + 18 * KINDS.index('white')] = 0
     i = np.where(k, crop(ink), 0).astype(np.uint8)
+    if name.startswith('face-'):   # the one piece cut along another's stroke (its neckline edge)
+        i = edge_clean(i, k)
     s = crop(shade).copy()
     s[~k] = 0
     folder.mkdir(parents=True, exist_ok=True)
@@ -380,6 +431,9 @@ def bake_body(body: str, pool: ThreadPoolExecutor, tmp: Path) -> dict:
     # the head, short of where it meets the body: the neckline and collar are the outfit's own lines, never two pieces' at once
     below = (lab != names.index('head')) & (lab != names.index('braid')) & (lab != 255)
     head_region = big((lab == names.index('head')) & ~ndimage.binary_dilation(below, iterations=COLLAR_GAP))
+    # and short of every outfit's cloth under the chin (Bart 11-15): a tunic or wrap whose neckline sits higher than the
+    # base body's would otherwise lie under the face piece's skin, its line half covered by a stepped edge
+    head_region &= ~neckline_zone(body, [done[f'outfit/{o}']['fill'] for o in kit['outfits']])
     base = done['base']
     shape = base['ink'].shape
     folder = OUT / body
