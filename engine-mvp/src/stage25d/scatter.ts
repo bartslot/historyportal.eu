@@ -1,11 +1,13 @@
 // Strewn ground, pure parts: grass clumps over the floor and bushes on the horizon, as upright sprites (billboards).
 // Which sprites stand on a ground follows that ground's tags (grass on a grass floor, nothing on ice); where they
 // stand is seeded per scene, so the same scene always looks the same. The GL side is scatter-gl.ts.
-import { isBandPicture, viewWidthAt } from './layout'
+import { isBandPicture, sharpWidth, viewWidthAt } from './layout'
 import type { Asset, Library } from './types'
 
 /** One picture to strew: a library plant, or one cell of a sprite sheet (cell: uv [u0, v0, du, dv], v 0 at the top). */
-export interface Sprite { asset: string; file: string; tags: string[]; height_m: number; aspect: number; cell: [number, number, number, number] }
+/** px: the picture's own height in px (a sheet cell's), so a clump is never drawn taller than its px allow (layout.ts
+ *  sharpWidth). lod: the far, low-detail copy of its file (Asset.lod), the same layout. */
+export interface Sprite { asset: string; file: string; tags: string[]; height_m: number; aspect: number; cell: [number, number, number, number]; px?: number; lod?: string }
 /** One strewn sprite: where it stands (metres), how tall, which pick, its sway phase. */
 export interface Clump { x: number; z: number; h: number; pick: number; phase: number }
 
@@ -50,9 +52,9 @@ const isPlant = (a: Asset) => a.layer !== 'ground' && a.layer !== 'sky' && a.lay
 export function spritesOf(lib: Library): Sprite[] {
   const sheets = lib.assets.filter((a) => a.kind === 'sheet')
   if (sheets.length) {
-    return sheets.flatMap((a) => (a.cells ?? []).map((c): Sprite => ({ asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect })))
+    return sheets.flatMap((a) => (a.cells ?? []).map((c): Sprite => ({ asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect, px: c.rect[3] * a.h, lod: a.lod })))
   }
-  return lib.assets.filter(isPlant).map((a) => ({ asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1] }))
+  return lib.assets.filter(isPlant).map((a) => ({ asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1], px: a.h, lod: a.lod }))
 }
 
 const shares = (s: Sprite, groundTags: string[]) => s.tags.some((t) => !PLAIN.includes(t) && groundTags.includes(t))
@@ -86,7 +88,10 @@ export function scatter(spec: ScatterSpec): Clump[] {
   for (let i = 0; i < n; i++) {
     const z = z0 * Math.pow(z1 / z0, r())
     const pick = Math.floor(r() * spec.picks.length)
-    out.push({ z, x: (r() * 2 - 1) * ACROSS * viewWidthAt(z), h: spec.picks[pick].height_m * (0.7 + 0.6 * r()) * (spec.size ?? 1), pick, phase: r() * Math.PI * 2 })
+    const s = spec.picks[pick], x = (r() * 2 - 1) * ACROSS * viewWidthAt(z)
+    // never taller than its px allow from the house camera: near the lens a 360 px tuft was blown up to 1.5 m (Bart 11-15)
+    const h = Math.min(s.height_m * (0.7 + 0.6 * r()) * (spec.size ?? 1), s.px ? sharpWidth(s.px, z) : Infinity)
+    out.push({ z, x, h, pick, phase: r() * Math.PI * 2 })
   }
   return out.sort((a, b) => b.z - a.z)
 }

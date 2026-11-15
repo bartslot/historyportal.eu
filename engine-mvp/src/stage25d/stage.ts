@@ -24,7 +24,7 @@ import { createLookChain, PRESETS } from '../engine/look-chain.js'
 import { aliveOf, aquarelOf, houseProjection, inkScale, lineOf, lookNum, paperOf, type Line, type Paper, pxPerMetre, pxUV, STAGE_SHEET } from './look'
 import { makeSheet } from './sheet'
 import { libraryUrlFor, loadLibrary, resolveAsset } from './library'
-import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt, faceAt } from './layout'
+import { STAIN_SLOT_GAP, castSlot, skyCover, distanceOf, ADAPT_STALL_MS, ADAPT_WINDOW_MS, autoHorizon, bandBottom, cameraWobble, bandPose, bandHeight, cameraFront, bandSlot, bandWidth, bandCopyWidth, BAND_REPEAT, tileU, DECAL_LIFT_M, DECAL_SLOT, groundHeight, isGroundStrip, LAND_TARGET, landHeight, liesFlat, stripBottom, breathe, cameraAt, nextTier, shotAt, stainIndex, TIER0, type Tier, DEPTH_Z, fovRad, HOUSE, HOUSE_PITCH_DEG, layerAt, motionOf, placeLayer, renderScale, sceneDuration, viewWidthAt, bonesAt, faceAt } from './layout'
 import { uvsUnder } from './pick'
 import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
@@ -41,6 +41,7 @@ import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSp
 import { makeSky } from './sky-gl'
 import { isSoil, NO_RECOLOUR, soilRecolour } from './soil'
 import { farEdgeOf, farPieceScale } from './far-edge'
+import { lodLow } from './lod'
 import { Timeline, type InteractionHandler, type Mode } from './timeline'
 import type { Asset, Depth, GroundBand, Lesson, Library, Scene, SceneLayer } from './types'
 
@@ -56,8 +57,10 @@ const HORIZON_SQUASH = 0.12
 const FAR_PIECE = -2
 const FAR_PIECE_SQUASH = 1
 const FAR_PIECE_Z = 880   // just in front of a terrain's far edge (900 m): that hazy strip rises above the horizon and hid a low piece
-interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
+interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null; copyAt: (z: number) => number; n: number; lod?: Lod }   // index: in set.groundBands; z: where it stands now; copyAt: one copy's width at z; n: copies side by side now
+/** A far picture's two copies (lod.ts): the painting and its low-detail copy, and which one it draws now. */
+interface Lod { high: RawTexture; low: RawTexture; isLow: boolean }
+interface Built { lod?: Lod; layer: SceneLayer; index: number; builtScale: number; builtZ: number; uRepeat: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -265,6 +268,11 @@ export class Stage {
       const shade = flatFigure ? await shadeMask(layer.src ?? puppet!.atlas, this.scene).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, shade })
+      if (p.uRepeat !== 1 && !asset.tileable_x) tex.wrapU = nearWrapU(false)   // a far strip repeated to stay sharp: mirrored, no seam
+      // far vegetation's low-detail copy (lod.ts); not for the teacher's edited picture or a figure that bends
+      const low = asset.lod && !layer.src && !puppet && !bent ? await loadPremultiplied(lib.base + asset.lod, this.scene).catch(() => null) : null
+      if (token !== this.buildToken) return
+      if (low) low.wrapU = tex.wrapU
       const atlas = tex.getSize()
       const uvFit: readonly [number, number] = puppet ? [puppet.width / atlas.width, puppet.height / atlas.height] : [1, 1]
       handle.setUvFit(uvFit)
@@ -282,7 +290,7 @@ export class Stage {
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, handle, uvFit, asset, order, stain, stainDepth, aquarel: !!(wash && shade), ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
+      next.push({ lod: low ? { high: tex, low, isLow: false } : undefined, layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, uRepeat: p.uRepeat, handle, uvFit, asset, order, stain, stainDepth, aquarel: !!(wash && shade), ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -314,7 +322,7 @@ export class Stage {
     const bandTags = s.set.groundBands?.length ? [...new Set(s.set.groundBands.flatMap((g) => resolveAsset(lib, { asset: g.asset }, 'ground_band')?.tags ?? []))] : null
     const sprites = spritesOf(lib), front = cameraFront(s)
     const slotsOf = slotsNext.map((sl) => ({ asset: sl.asset, from: sl.from }))
-    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front }).flatMap((p) => p.picks.map((pk) => pk.file)))]
+    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front }).flatMap((p) => p.picks.flatMap((pk) => pk.lod ? [pk.file, pk.lod] : [pk.file])))]
     const strewTex = new Map<string, RawTexture>()
     await Promise.all(wantFiles.map(async (f) => { const t = await loadPremultiplied(lib.base + f, this.scene).catch(() => null); if (t) strewTex.set(f, t) }))
     // the clouds an own sky can show, loaded now so a change of cloud or Amount never waits on a file
@@ -511,7 +519,8 @@ export class Stage {
       for (const file of new Set(plan.picks.map((p) => p.file))) {
         const tex = src.tex.get(file)
         const clumps = plan.clumps.filter((c) => plan.picks[c.pick].file === file)
-        if (tex && clumps.length) this.strewn.push(makeStrewn(this.scene, tex, plan.picks, clumps, foot, this.hazeTint, file))
+        const lod = plan.picks.find((p) => p.file === file)?.lod
+        if (tex && clumps.length) this.strewn.push(makeStrewn(this.scene, tex, plan.picks, clumps, foot, this.hazeTint, file, lod ? src.tex.get(lod) : undefined))
       }
     }
   }
@@ -532,6 +541,10 @@ export class Stage {
     const tex = url ? await pictureTexture(url, this.scene) : await loadPremultiplied(own, this.scene)
     if (token !== this.pictureToken) { if (url) tex.dispose(); return }
     handle.material.setTexture('tex', tex)
+    const lod = band?.lod ?? built?.lod
+    if (lod) lod.isLow = false   // the picture being edited, never its far copy
+    if (band) band.lod = url ? undefined : band.lod
+    if (built) built.lod = url ? undefined : built.lod
     this.shownPictures.get(handle)?.dispose()
     if (url) this.shownPictures.set(handle, tex); else this.shownPictures.delete(handle)
   }
@@ -573,9 +586,9 @@ export class Stage {
       const uv = hit.getTextureCoordinates()
       if (!uv) return []
       const band = bandOf(hit.pickedMesh)
-      if (band) return [{ band: band.index, asset: band.asset, u: tileU(uv.x, BAND_REPEAT, !band.asset.tileable_x), v: uv.y }]
+      if (band) return [{ band: band.index, asset: band.asset, u: tileU(uv.x, band.n, !band.asset.tileable_x), v: uv.y }]
       const strip = stripOf(hit.pickedMesh)!
-      return [{ index: strip.index, asset: strip.asset, u: uv.x, v: uv.y }]
+      return [{ index: strip.index, asset: strip.asset, u: tileU(uv.x, strip.uRepeat, true), v: uv.y }]
     })
   }
 
@@ -731,24 +744,29 @@ export class Stage {
   /** The paper every picture is painted on (PAPER_GLSL), from the look sliders. */
   paper(): Paper { return paperOf(this.look) }
 
-  /** The scene's ground bands: painted strips at their metres, three views wide, drawn by distance (height: pose). */
+  /** The scene's ground bands: painted strips at their metres, at their own size (bandCopyWidth), repeated sideways,
+   *  drawn by distance (size: pose). */
   private async loadBands(s: Scene, lib: Library & { base: string }): Promise<Band[]> {
     const out: Band[] = []
     const build = async (found: Asset, g: GroundBand, index: number) => {
       const tex = await loadPremultiplied(urlOf(lib, found, g), this.scene).catch(() => null)
       if (!tex) { console.warn(`stage25d: ${s.id}: ground band ${g.src ?? found.file} did not load`); return }
       const asset = editedAsset(found, g, tex.getSize())
-      // the picture keeps its own proportions: its width is three views, its height follows its aspect
-      // repeated sideways (BAND_REPEAT), mirrored where the picture does not tile: w stays one copy's width
+      // built three views wide, its height from its aspect, repeated sideways (BAND_REPEAT), mirrored where the
+      // picture does not tile: w stays one copy's width. pose() sizes it: a band at its own size (bandCopyWidth), a
+      // terrain's far edge (index < 0) three views wide as it was made for
       const w = bandWidth(g.z), h = (w * asset.h) / asset.w
+      const copyAt = index >= 0 ? (z: number) => bandCopyWidth(asset, z) : bandWidth
       const handle = makeLayer(asset, tex, w * BAND_REPEAT, h, BAND_REPEAT, this.scene)
       tex.wrapU = nearWrapU(!!asset.tileable_x)
+      const low = found.lod && !g.src ? await loadPremultiplied(lib.base + found.lod, this.scene).catch(() => null) : null
+      if (low) low.wrapU = tex.wrapU
       handle.material.depthFunction = Constants.ALWAYS   // a band is drawn over the floor: the floor never cuts its body
       handle.mesh.position.set(0, 0, g.z)
       handle.mesh.alphaIndex = bandSlot(g.z)
       handle.mesh.isPickable = index >= 0
       const rows = (bandColours.get(urlOf(lib, found, g)) ?? []).filter((c): c is RGB => !!c)
-      out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g, colour: rows.length ? mean3(rows) : null })
+      out.push({ handle, z: g.z, w, h, skyline: skylines.get(urlOf(lib, asset, g)) ?? 0.5, index, asset, band: g, colour: rows.length ? mean3(rows) : null, copyAt, n: BAND_REPEAT, lod: low ? { high: tex, low, isLow: false } : undefined })
     }
     for (const [index, g] of (s.set.groundBands ?? []).entries()) {
       const found = resolveAsset(lib, { asset: g.asset }, 'ground_band')
@@ -813,8 +831,10 @@ export class Stage {
     const front = cameraFront(s)   // a band stands in front of the farthest-forward camera of the scene
     this.bands.forEach((b) => {
       // the teacher's values (Distance, Size, X, Opacity, keys): layout.ts bandPose
-      const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front)   // its skyline on the crest, k x z up, never off the floor
+      const p = bandPose(b.band, t, bandK, b.w, b.h, b.skyline, front, b.copyAt)   // its skyline on the crest, k x z up, never off the floor
       b.z = p.z
+      if (p.n !== b.n) { b.n = p.n; b.handle.material.setFloat('uRepeat', p.n) }
+      if (b.lod) pickLod(b.lod, b.handle, p.z - c.z)
       const edge = b.index < 0   // the terrain's horizon or the world's far piece: low, on the floor
       b.handle.mesh.scaling.set(p.sx, edge ? p.sy * (b.index === FAR_PIECE ? FAR_PIECE_SQUASH : HORIZON_SQUASH) : p.sy, 1)
       b.handle.mesh.position.set(p.x, edge ? 0 : p.y, p.z)
@@ -838,6 +858,7 @@ export class Stage {
       const k = layerAt(b.layer, t)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: 1, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
       b.handle.mesh.position.x = p.x
+      if (b.lod) pickLod(b.lod, b.handle, p.z - c.z)
       // a far strip moved to another distance looks the same from the house camera (it grows with the distance, about
       // the eye): what changes is what stands in front of it. Its own Y and Size still move and size it.
       const far = b.asset.layer === 'bg' && !b.asset.tileable_x ? (p.z - HOUSE.z) / Math.max(0.1, b.builtZ - HOUSE.z) : 1
@@ -891,6 +912,14 @@ export class Stage {
       if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, frameT)))   // the scene's time: a seek shows the same frame
     }
   }
+}
+
+/** Draw a far picture's low copy or its painting, as its distance from the camera says (lod.ts). */
+function pickLod(lod: Lod, handle: LayerHandle, distance: number) {
+  const low = lodLow(lod.isLow, distance)
+  if (low === lod.isLow) return
+  lod.isLow = low
+  handle.material.setTexture('tex', low ? lod.low : lod.high)
 }
 
 /** A picture's file: the teacher's edited copy (layer.src, written by the app's image editor) or the library's own. */

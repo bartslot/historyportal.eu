@@ -27,6 +27,23 @@ export function tileU(u: number, n: number, mirror: boolean): number {
   const t = u * n, i = Math.floor(t), f = t - i
   return mirror && i % 2 === 1 ? 1 - f : f
 }
+/** The frame the stage's terrain is made sharp for (px wide, 16:9): the default camera in the editor and the player.
+ *  A terrain picture (far strip, tiled screen, ground strip, ground band) is never drawn wider than its own px at this
+ *  frame from the house camera (Bart 11-15: "with every layer the terrain is bloated"): blown up, a 1536 px far strip
+ *  stretched over 1.6 views went soft, a 1530 px band over three views showed each px three screen px wide. */
+export const REF_FRAME_W = 1440
+/** The widest a picture `px` px wide may stand at distance z (metres) and still show at least one px per screen px. */
+export const sharpWidth = (px: number, z: number): number => (px / REF_FRAME_W) * viewWidthAt(z)
+/** How many copies side by side make at least `span` wide: odd, so one copy stands centred on the picture's x. */
+export const copiesToCover = (copy: number, span: number): number => {
+  const n = Math.max(1, Math.ceil(span / Math.max(copy, 1e-6) - 1e-9))
+  return n % 2 ? n : n + 1
+}
+/** One copy of a ground band at distance z, before the teacher's Size: the picture at its own size (height_m tall, its
+ *  aspect wide), never wider than BAND_VIEWS views, nor than its px allow (sharpWidth). A 6 m verge strip stood 27 m
+ *  tall as three views; now it is 6 m, and the floor in front of it shows. No height_m: the old three views. */
+export const bandCopyWidth = (a: Pick<Asset, 'w' | 'h' | 'height_m'>, z: number): number =>
+  Math.min(bandWidth(z), sharpWidth(a.w, z), a.height_m > 0 ? (a.height_m * a.w) / Math.max(1, a.h) : Infinity)
 /** A band's height in metres: the look's band height (k, a share of its distance) times its distance. Stands the hill
  *  crest a little above the one behind (k ~0.15), so the hunebed at 22 m shows and the 40 m crest sits near the horizon. */
 export const bandHeight = (z: number, k: number) => k * z
@@ -116,14 +133,16 @@ export const cameraFront = (s: Pick<Scene, 'camera' | 'camera_more'>): number =>
  * front: the scene's cameraFront. Its plane stands at least BAND_NEAR_M in front of that camera, so it is always in the
  * frame; its draw slot stays at the teacher's distance, so it still covers what stands behind that.
  */
-export function bandPose(band: GroundBand, t: number, k: number, w0: number, h0: number, skyline: number, front = HOUSE.z) {
+export function bandPose(band: GroundBand, t: number, k: number, w0: number, h0: number, skyline: number, front = HOUSE.z, copyAt: (z: number) => number = bandWidth, n0 = BAND_REPEAT) {
   const now = layerAt({ ...band, depth: 'bg' }, t)
   const set = Math.min(BAND_Z[1], Math.max(BAND_Z[0], now.z ?? band.z))
   const z = Math.max(set, front + BAND_NEAR_M)
-  const across = bandWidth(z) / w0
-  const h = h0 * across * now.scale
+  // one copy at its size here (copyAt: bandCopyWidth for a band, three views for a terrain's far edge) times Size; as
+  // many copies side by side as cover BAND_REPEAT x three views, whatever the Size: the band's edge never shows
+  const w = copyAt(z) * now.scale, h = (h0 * w) / w0
+  const n = copiesToCover(w, BAND_REPEAT * bandWidth(z))
   return {
-    z, h, w: w0 * across * now.scale, sx: across * now.scale, sy: across * now.scale,
+    z, h, w, n, sx: (w * n) / (w0 * n0), sy: h / h0,
     x: (now.x - 0.5) * viewWidthAt(z), y: stripBottom(z, k, h, skyline), alphaIndex: bandSlot(set), opacity: now.opacity,
   }
 }
@@ -156,10 +175,16 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   }
   // an untiled bg STRIP (asset layer bg, not a prop placed at depth bg) is one painting that must cover its depth's
   // view (COVER_MARGIN wide); never narrower
-  const coverH = asset.layer === 'bg' && !asset.tileable_x ? (span * skyCoverK * asset.h) / asset.w : 0
-  const h = Math.max(asset.height_m * (layer.scale ?? 1), coverH)
+  const strip = asset.layer === 'bg' && !asset.tileable_x
+  const coverH = strip ? (span * skyCoverK * asset.h) / asset.w : 0
+  // a terrain picture is never drawn larger than its px allow (sharpWidth): a far strip too small to cover the view
+  // sharp repeats sideways instead, mirrored (stage.ts), one copy centred; props and figures keep their own height
+  const terrain = strip || !!asset.tileable_x || isGroundStrip(asset)
+  const sharpH = terrain ? (sharpWidth(asset.w, z) * asset.h) / asset.w : Infinity
+  const h = Math.min(Math.max(asset.height_m * (layer.scale ?? 1), coverH), sharpH * (layer.scale ?? 1))
   const natW = h * (asset.w / asset.h)
-  const w = asset.tileable_x ? Math.max(natW, span * skyCoverK) : natW
+  const copies = strip ? copiesToCover(natW, span * skyCoverK) : 1
+  const w = asset.tileable_x ? Math.max(natW, span * skyCoverK) : natW * copies
   const x = asset.tileable_x ? 0 : ((layer.x ?? 0.5) - 0.5) * span
   // sky-depth props (clouds) float: their anchor sits at 30-60 % of the view height at that distance; the far landscape
   // strip stands `horizon` higher, and a picture on the ground stands on the ground there (groundHeight): rising onto
@@ -167,7 +192,7 @@ export function placeLayer(asset: Asset, layer: Pick<SceneLayer, 'depth' | 'x' |
   // stands from there like a ground band (stripBottom): lifted, its crest would stand up into the sky.
   const ground = asset.layer === 'bg' ? (depth === 'bg' ? horizon : 0) : isGroundStrip(asset) ? 0 : groundHeight(distanceOf(layer), land)
   const y = depth === 'sky' ? z * Math.tan(fovRad(HOUSE.fov) / 2) * 0.45 : ground
-  return { x, y: y + (layer.y ?? 0), z, w, h, uRepeat: asset.tileable_x ? w / natW : 1, alphaIndex, rotation: layer.rotation ?? 0 }
+  return { x, y: y + (layer.y ?? 0), z, w, h, uRepeat: asset.tileable_x ? w / natW : copies, alphaIndex, rotation: layer.rotation ?? 0 }
 }
 
 /** set.horizon for 'auto': metres the far strip moves up (down if negative) so its land line (landTop: share of the

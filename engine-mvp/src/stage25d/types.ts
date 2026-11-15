@@ -22,6 +22,9 @@ export interface Asset {
   /** A terrain's own far edge: the id of a low hazy strip the stage stands far out over the terrain's horizon */
   horizon?: string
   motion?: MotionKind
+  /** the far, low-detail copy beside `file` (tools/lod_svg.py: a simplified watercolour SVG with an ink outline, its
+   *  bottom faded out; same layout, so a sheet's cells still fit): drawn instead of `file` far from the camera (lod.ts) */
+  lod?: string
   /** a close-up's blink (blink.ts): a pixel-aligned closed-eye picture beside `file`, and its eyes */
   blink?: { file: string; eyes: BlinkEye[] }
   placeholder?: boolean

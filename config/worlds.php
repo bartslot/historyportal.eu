@@ -49,7 +49,7 @@ return [
         'set' => [
             'sky' => 'sky-summer-01',
             'groundSlots' => [['asset' => 'terrain-woodland-floor-02', 'from_m' => 0]],
-            'groundBands' => [['asset' => 'trb-woodland-grass-band-01', 'z' => 30, 'scale' => 0.4]],
+            'groundBands' => [['asset' => 'trb-woodland-grass-band-01', 'z' => 30]],
             'layers' => [
                 ['asset' => 'trb-forest-backdrop-01', 'depth' => 'bg', 'x' => 0.5, 'scale' => 0.764],
                 ['asset' => 'trb-woodland-screen-01', 'depth' => 'mid', 'x' => 0.5, 'z' => 32],

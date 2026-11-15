@@ -12,6 +12,7 @@ import type { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
 import type { Scene } from '@babylonjs/core/scene'
 import { BUCKET_EDGES, bucketOf, type Clump, type Sprite } from './scatter'
 import { bandSlot } from './layout'
+import { lodLow } from './lod'
 
 Effect.ShadersStore.stageStrewnVertexShader = `
   precision highp float;
@@ -64,18 +65,25 @@ Effect.ShadersStore.stageStrewnFragmentShader = `
 export interface Strewn { meshes: Mesh[]; update(time: number, sway: number, land: number, cam: Vector3, opacity: number, ambient?: readonly number[]): void; dispose(): void }
 
 /** Quads for the clumps of one picture (picks[c.pick] whose file is `tex`), one mesh per distance bucket. foot(z):
- *  the ground colour at that distance. */
-export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clumps: Clump[], foot: (z: number) => [number, number, number], haze: [number, number, number], name: string): Strewn {
-  const mat = new ShaderMaterial(`strewn:${name}`, scene, 'stageStrewn', {
-    attributes: ['position', 'quad', 'uv', 'extra'],
-    uniforms: ['viewProjection', 'camPos', 'time', 'sway', 'land', 'haze', 'opacity', 'ambient'],
-    samplers: ['tex'],
-    needAlphaBlending: true,
-  })
-  mat.alphaMode = Constants.ALPHA_PREMULTIPLIED
-  mat.disableDepthWrite = true
-  mat.backFaceCulling = false
-  mat.setTexture('tex', tex).setVector3('haze', Vector3.FromArray(haze))
+ *  the ground colour at that distance. low: the sheet's far copy (lod.ts), drawn by the buckets far from the camera. */
+export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clumps: Clump[], foot: (z: number) => [number, number, number], haze: [number, number, number], name: string, low?: RawTexture): Strewn {
+  const material = (t: RawTexture, tag: string) => {
+    const m = new ShaderMaterial(`strewn:${name}${tag}`, scene, 'stageStrewn', {
+      attributes: ['position', 'quad', 'uv', 'extra'],
+      uniforms: ['viewProjection', 'camPos', 'time', 'sway', 'land', 'haze', 'opacity', 'ambient'],
+      samplers: ['tex'],
+      needAlphaBlending: true,
+    })
+    m.alphaMode = Constants.ALPHA_PREMULTIPLIED
+    m.disableDepthWrite = true
+    m.backFaceCulling = false
+    m.setTexture('tex', t).setVector3('haze', Vector3.FromArray(haze))
+    return m
+  }
+  const mat = material(tex, '')
+  const mats = low ? [mat, material(low, ':low')] : [mat]
+  /** a bucket's middle distance (metres): where it changes copy */
+  const middle = (b: number) => Math.sqrt((BUCKET_EDGES[b - 1] ?? 2.5) * (Number.isFinite(BUCKET_EDGES[b]) ? BUCKET_EDGES[b] : 2 * (BUCKET_EDGES[b - 1] ?? 2.5)))
   const byBucket = new Map<number, Clump[]>()
   for (const c of clumps) byBucket.set(bucketOf(c.z), [...(byBucket.get(bucketOf(c.z)) ?? []), c])
   const meshes = [...byBucket].map(([b, list]) => {
@@ -98,16 +106,23 @@ export function makeStrewn(scene: Scene, tex: RawTexture, picks: Sprite[], clump
     mesh.alphaIndex = bandSlot(Math.min(BUCKET_EDGES[b], 2000))   // drawn as if at its far edge: what stands in it covers it
     mesh.alwaysSelectAsActiveMesh = true   // the shader moves the quads up and to the camera: the CPU box is wrong
     mesh.isPickable = false
-    mesh.metadata = { noGBuffer: true }
+    mesh.metadata = { noGBuffer: true, middle: middle(b), low: false }
     return mesh
   })
   return {
     meshes,
     update(time, sway, land, cam, opacity, ambient = [1, 1, 1]) {
-      mat.setFloat('time', time).setFloat('sway', sway).setFloat('land', land).setFloat('opacity', opacity)
-        .setVector3('camPos', cam).setVector3('ambient', Vector3.FromArray(ambient))
-      meshes.forEach((m) => { m.isVisible = opacity > 0.001 })
+      for (const m of mats) {
+        m.setFloat('time', time).setFloat('sway', sway).setFloat('land', land).setFloat('opacity', opacity)
+          .setVector3('camPos', cam).setVector3('ambient', Vector3.FromArray(ambient))
+      }
+      meshes.forEach((m) => {
+        m.isVisible = opacity > 0.001
+        if (!low) return
+        const isLow = lodLow(m.metadata.low, m.metadata.middle - cam.z)
+        if (isLow !== m.metadata.low) { m.metadata.low = isLow; m.material = mats[isLow ? 1 : 0] }
+      })
     },
-    dispose() { meshes.forEach((m) => m.dispose()); mat.dispose() },
+    dispose() { meshes.forEach((m) => m.dispose()); mats.forEach((m) => m.dispose()) },
   }
 }
