@@ -116,8 +116,8 @@ final class LayerKeys
         return $out === [] ? null : $out;
     }
 
-    /** What a key may say besides numbers: `ease` 'smooth' (an animation preset's poses run through it, layout.ts keyedAt)
-     *  and `face`, an expression id (layout.ts faceAt). @param array<string,mixed> $key @return array<string,string> */
+    /** What a key may say besides numbers: `ease` 'smooth' (an animation preset's poses run through it, layout.ts keyedAt),
+     *  `face`, an expression id (layout.ts faceAt), and `contact`, which feet stand (foot-lock.ts). @param array<string,mixed> $key @return array<string,string> */
     private static function marks(array $key): array
     {
         $out = [];
@@ -126,6 +126,9 @@ final class LayerKeys
         }
         if (is_string($key['face'] ?? null) && preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $key['face']) === 1) {
             $out['face'] = $key['face'];
+        }
+        if (in_array($key['contact'] ?? null, ['n', 'f', 'both', 'none'], true)) {
+            $out['contact'] = $key['contact'];   // which feet stand (an animation preset's): the stage's foot lock
         }
 
         return $out;

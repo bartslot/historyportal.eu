@@ -93,6 +93,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       if (bobs) key.y = round3(y0 + (k.bob ?? 0) * (k.bob < 0 ? room.sink : 1) * yPerHeight)   // a jump's lift stays
       if (tips) key.rotation = round3(r0 + (k.rot ?? 0) * facing)
       if (k.face && k.face !== face) key.face = face = k.face   // a face steps: only where it changes
+      if (k.contact) key.contact = k.contact   // which feet stand: the stage keeps them on their spots (foot-lock.ts)
       out.push(key)
     })
   }
@@ -103,6 +104,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
     if (moves) settle.x = last.x
     if (bobs) settle.y = round3(y0)
     if (tips) settle.rotation = round3(r0)
+    if (clip.keys.some((k) => k.contact)) settle.contact = 'both'
     out.push(settle)
   }
   if (out.length) delete out[out.length - 1].ease   // from its last pose the figure eases into whatever comes next

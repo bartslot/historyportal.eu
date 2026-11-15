@@ -251,6 +251,9 @@ export interface BentPuppet extends BentPicture {
   limit(name: string, deg: number): number
   /** The mesh uvs with the head part showing this expression (Puppet.faces); the rest uvs for none or an unknown one. */
   uvsFor(face?: string): number[]
+  /** Where each ankle stands (puppet px) with these turns, as this rig really bends them (its limits and guards):
+   *  the foot lock (foot-lock.ts) holds a standing foot on its spot with it. Leaves that pose placed. */
+  ankles(bones: Record<string, number>): Partial<Record<'n' | 'f', [number, number]>>
   /** For each part, how far (puppet px) it has come off the part that holds it (the nearest part up its chain covering its
    *  joint in the drawing), in the pose bend() last placed: 0 while every part stays on. A check. */
   partGaps(): Record<string, number>
@@ -528,6 +531,12 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     partGaps() {
       if (!last.length) this.bend({})
       return gapsNow()
+    },
+    ankles(bones) {
+      keepHeld(safe(bones))
+      const out: Partial<Record<'n' | 'f', [number, number]>> = {}
+      for (const side of ['n', 'f'] as const) if (indexOf.has(`foot_${side}`)) out[side] = carriedBy(`foot_${side}`, from(`foot_${side}`) as [number, number])
+      return out
     },
     joints() {
       if (!last.length) this.bend({})

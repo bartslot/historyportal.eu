@@ -44,7 +44,8 @@
    "bone:upperarm_n": -25,
    "x": 0.6,
    "y": 0.054,
-   "face": "calm"
+   "face": "calm",
+   "contact": "both"
   },
   {
    "t": 0.514,
@@ -62,7 +63,8 @@
    "bone:upperarm_f": 20,
    "bone:upperarm_n": -25,
    "x": 0.598,
-   "y": 0.055
+   "y": 0.055,
+   "contact": "n"
   },
   {
    "t": 0.537,
@@ -80,7 +82,8 @@
    "bone:upperarm_f": 20,
    "bone:upperarm_n": -24.2,
    "x": 0.596,
-   "y": 0.059
+   "y": 0.059,
+   "contact": "n"
   },
   {
    "t": 0.612,
@@ -98,7 +101,8 @@
    "bone:upperarm_f": 20,
    "bone:upperarm_n": -18,
    "x": 0.589,
-   "y": 0.077
+   "y": 0.077,
+   "contact": "n"
   },
   {
    "t": 0.687,
@@ -116,7 +120,8 @@
    "bone:upperarm_f": 5.9,
    "bone:upperarm_n": -5.1,
    "x": 0.583,
-   "y": 0.088
+   "y": 0.088,
+   "contact": "n"
   },
   {
    "t": 0.724,
@@ -134,7 +139,8 @@
    "bone:upperarm_f": -3,
    "bone:upperarm_n": 2,
    "x": 0.58,
-   "y": 0.093
+   "y": 0.093,
+   "contact": "n"
   },
   {
    "t": 0.836,
@@ -152,7 +158,8 @@
    "bone:upperarm_f": -20,
    "bone:upperarm_n": 24,
    "x": 0.562,
-   "y": 0.106
+   "y": 0.106,
+   "contact": "n"
   },
   {
    "t": 0.879,
@@ -170,7 +177,8 @@
    "bone:upperarm_f": -20,
    "bone:upperarm_n": 27.7,
    "x": 0.559,
-   "y": 0.082
+   "y": 0.082,
+   "contact": "n"
   },
   {
    "t": 0.9,
@@ -188,7 +196,8 @@
    "bone:upperarm_f": -20,
    "bone:upperarm_n": 28,
    "x": 0.559,
-   "y": 0.074
+   "y": 0.074,
+   "contact": "both"
   },
   {
    "t": 0.937,
@@ -206,7 +215,8 @@
    "bone:upperarm_f": -19.9,
    "bone:upperarm_n": 27.1,
    "x": 0.557,
-   "y": 0.079
+   "y": 0.079,
+   "contact": "f"
   },
   {
    "t": 1.012,
@@ -224,7 +234,8 @@
    "bone:upperarm_f": -18,
    "bone:upperarm_n": 20,
    "x": 0.553,
-   "y": 0.095
+   "y": 0.095,
+   "contact": "f"
   },
   {
    "t": 1.092,
@@ -242,7 +253,8 @@
    "bone:upperarm_f": -3.9,
    "bone:upperarm_n": 3.4,
    "x": 0.546,
-   "y": 0.093
+   "y": 0.093,
+   "contact": "f"
   },
   {
    "t": 1.119,
@@ -260,7 +272,8 @@
    "bone:upperarm_f": 1.4,
    "bone:upperarm_n": -2.3,
    "x": 0.544,
-   "y": 0.091
+   "y": 0.091,
+   "contact": "f"
   },
   {
    "t": 1.132,
@@ -278,7 +291,8 @@
    "bone:upperarm_f": 4,
    "bone:upperarm_n": -5,
    "x": 0.542,
-   "y": 0.089
+   "y": 0.089,
+   "contact": "f"
   },
   {
    "t": 1.151,
@@ -296,7 +310,8 @@
    "bone:upperarm_f": 6.7,
    "bone:upperarm_n": -8.2,
    "x": 0.54,
-   "y": 0.085
+   "y": 0.085,
+   "contact": "f"
   },
   {
    "t": 1.206,
@@ -314,7 +329,8 @@
    "bone:upperarm_f": 13.6,
    "bone:upperarm_n": -16.8,
    "x": 0.534,
-   "y": 0.071
+   "y": 0.071,
+   "contact": "f"
   },
   {
    "t": 1.237,
@@ -332,7 +348,8 @@
    "bone:upperarm_f": 16.9,
    "bone:upperarm_n": -21,
    "x": 0.53,
-   "y": 0.063
+   "y": 0.063,
+   "contact": "f"
   },
   {
    "t": 1.282,
@@ -350,7 +367,8 @@
    "bone:upperarm_f": 19.7,
    "bone:upperarm_n": -24.6,
    "x": 0.524,
-   "y": 0.056
+   "y": 0.056,
+   "contact": "f"
   },
   {
    "t": 1.3,
@@ -368,7 +386,8 @@
    "bone:upperarm_f": 20,
    "bone:upperarm_n": -25,
    "x": 0.522,
-   "y": 0.054
+   "y": 0.054,
+   "contact": "both"
   },
   {
    "t": 1.7,
@@ -385,7 +404,8 @@
    "bone:upperarm_f": 0,
    "bone:upperarm_n": 0,
    "x": 0.522,
-   "y": 0.1
+   "y": 0.1,
+   "contact": "both"
   }
  ]
 }

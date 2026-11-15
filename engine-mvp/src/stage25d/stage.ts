@@ -30,6 +30,7 @@ import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
+import { contactKeys, footLockOffset, type Side } from './foot-lock'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -57,7 +58,7 @@ const FAR_PIECE = -2
 const FAR_PIECE_SQUASH = 1
 const FAR_PIECE_Z = 880   // just in front of a terrain's far edge (900 m): that hazy strip rises above the horizon and hid a low piece
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null }   // index: in set.groundBands; z: where it stands now
-interface Built { layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
+interface Built { lock?: { keys: SceneLayer['keys']; size: string; ankle: Map<string, number> }; layer: SceneLayer; index: number; builtScale: number; builtZ: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -624,6 +625,33 @@ export class Stage {
     return { mirrored, joints: (bent as BentPuppet).joints().map((j) => ({ name: j.name, at: on(j.at), tip: on(j.tip) })) }
   }
 
+  /** World metres a figure moves sideways at t so that the foot its keys say is standing stays on its spot, however this
+   *  rig bends (its limits, a robe holding its legs, other proportions than the clip's): 0 for keys without contact. The
+   *  ankles at the keys' times are kept per key set and size; the one at t is read fresh. */
+  private footLock(b: Built, t: number, z: number): number {
+    const bent = b.bent as BentPuppet | null | undefined
+    const keys = b.layer.keys
+    if (!bent || !('ankles' in bent) || contactKeys(keys).length < 2) return 0
+    const mesh = b.handle.mesh
+    mesh.computeWorldMatrix(true)
+    const size = `${mesh.scaling.x}:${mesh.rotation.z}`
+    if (!b.lock || b.lock.keys !== keys || b.lock.size !== size) b.lock = { keys, size, ankle: new Map() }
+    const cache = b.lock.ankle
+    const span = viewWidthAt(z)
+    const ankleX = (bones: Record<string, number>, side: Side) => {
+      const a = bent.ankles(bones)[side]
+      return a ? b.handle.worldOf(bent, a[0], a[1]).x - mesh.position.x : 0
+    }
+    const foot = (time: number, side: Side) => {
+      const root = (layerAt(b.layer, time).x - 0.5) * span
+      if (Math.abs(time - t) < 1e-9) return root + ankleX(bonesAt(b.layer, t), side)
+      const key = `${time}:${side}`
+      if (!cache.has(key)) cache.set(key, ankleX(bonesAt(b.layer, time), side))
+      return root + cache.get(key)!
+    }
+    return footLockOffset(keys!, t, foot)
+  }
+
   /** How far each part's joint stands outside its parent part now (BentPuppet.partGaps); null for no figure of parts. */
   partGaps(index: number): Record<string, number> | null {
     const bent = this.built.find((n) => n.index === index)?.bent
@@ -852,6 +880,7 @@ export class Stage {
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll((k.scale / b.builtScale) * far)   // grows from the ground point
+      b.handle.mesh.position.x += this.footLock(b, t, p.z)   // a standing foot stays where it stood (foot-lock.ts)
       const opacity = k.opacity * (this.faded.has(b.index) ? this.fadedTo : 1)
       b.handle.setOpacity(opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
