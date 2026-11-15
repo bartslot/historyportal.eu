@@ -135,6 +135,13 @@ class LessonProblemsTest extends TestCase
         $this->assertSame([], LessonProblems::for($lesson));
     }
 
+    public function test_a_3d_scenes_missing_still_is_no_problem_the_editor_redraws_it(): void
+    {
+        $lesson = $this->lesson();
+        $this->scene($lesson, 1, ['kind' => 'stage25d', 'image_path' => 'lessons/1/scenes/1/still-gone.jpg', 'audio_path' => null, 'audio_script_hash' => null]);
+        $this->assertSame([], array_values(array_filter(LessonProblems::for($lesson), fn (array $p) => $p['kind'] === 'stage25d' && $p['step'] === 'image')));
+    }
+
     public function test_a_scene_of_voice_lines_and_a_map_need_no_single_voice_or_picture(): void
     {
         $lesson = $this->lesson();

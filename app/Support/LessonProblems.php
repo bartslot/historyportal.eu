@@ -67,7 +67,10 @@ final class LessonProblems
         // As the publish gate has always read it: the default black background_color is no picture.
         if ($narrated && $scene->image_path === null && empty($scene->shots) && ! $scene->drawsOwnBackdrop()) {
             $out[] = $problem('image', __('This scene has no picture yet.'), self::BLOCKS, 'image');
-        } elseif (self::missingFile($scene->image_path)) {
+        } elseif ($scene->kind !== 'stage25d' && self::missingFile($scene->image_path)) {
+            // A 3D scene's image_path is only its still (SceneStill), which the editor re-renders by itself when it is
+            // stale or gone (an undo can point back at a pruned one). Never a teacher's problem, and "Regenerate" would
+            // try to paint a picture the scene does not use.
             $out[] = $problem('image', __('The picture file is missing.'), self::BLOCKS, 'image');
         }
         if ($spoken && $scene->audio_path === null && trim((string) $scene->script_segment) !== '') {
