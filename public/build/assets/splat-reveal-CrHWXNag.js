@@ -1,4 +1,4 @@
-import{k as r}from"./babylon-BN1RBZWF.js";import{W as l}from"./engine-Ck0LeCPL.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-B_I4Qh7S.js";import"./load-image-DngxJD_v.js";import"./presets-C0vx2b5T.js";import"./draw-options-D-a8RLUv.js";import"./easing-HS2C6-zA.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-kuSUkpW_.js";import"./i18n-DoByrmTl.js";import"./big-countdown-BTEJ1FlK.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
+import{k as r}from"./babylon-BN1RBZWF.js";import{W as l}from"./engine-qMyIBoJn.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-B_I4Qh7S.js";import"./load-image-DngxJD_v.js";import"./presets-C0vx2b5T.js";import"./draw-options-D-a8RLUv.js";import"./easing-HS2C6-zA.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-CD-j82Gk.js";import"./i18n-DoByrmTl.js";import"./big-countdown-oh8N53pB.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
 {
   float t = revealT;
   vec3 p = splat.center.xyz;
