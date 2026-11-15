@@ -97,17 +97,6 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
   return out
 }
 
-/** A field's value at t along the keys that name it, straight between them (the stage eases; close enough for a base). */
-const valueAt = (keys, field, t) => {
-  const named = keys.filter((k) => Number.isFinite(k[field])).sort((a, b) => a.t - b.t)
-  if (!named.length) return null
-  const i = named.findIndex((k) => k.t > t)
-  if (i === 0) return named[0][field]
-  if (i < 0) return named[named.length - 1][field]
-  const a = named[i - 1], b = named[i]
-  return a[field] + (b[field] - a[field]) * ((t - a.t) / (b.t - a.t))
-}
-
 /** The fields the clip writes: its keys' bones and root, never a field it leaves alone. */
 const fieldsOf = (keys) => new Set(keys.flatMap((k) => Object.keys(k)).filter((f) => f !== 't' && f !== 'ease'))
 
@@ -116,7 +105,9 @@ const fieldsOf = (keys) => new Set(keys.flatMap((k) => Object.keys(k)).filter((f
  * older key there loses those fields, and goes when nothing is left on it); every other field and every key outside
  * that stretch stays as the teacher left it. Pure: a new list.
  */
-export function applyClip (keys, added) {
+export function applyClip (keys, added, { inPlace = false } = {}) {
+  // a clip that stays in place shifts the hips a little; where the teacher moves the figure themselves, their x wins
+  if (inPlace && (keys ?? []).some((k) => Number.isFinite(k.x))) added = added.map(({ x, ...rest }) => rest)
   if (!added.length) return [...(keys ?? [])]
   const fields = fieldsOf(added)
   const from = added[0].t - 1e-6
@@ -126,9 +117,6 @@ export function applyClip (keys, added) {
     const rest = Object.fromEntries(Object.entries(k).filter(([f]) => !fields.has(f)))
     return Object.keys(rest).some((f) => f !== 't' && f !== 'ease') ? [rest] : []
   })
-  // the clip's root move adds to where the teacher moves the figure: their x keys go on under it
-  const own = (keys ?? []).some((k) => Number.isFinite(k.x)) && added.some((k) => Number.isFinite(k.x))
-  if (own) added = added.map((a) => (Number.isFinite(a.x) ? { ...a, x: round3(valueAt(keys, 'x', a.t) + a.x - added[0].x) } : a))
   const out = kept.map((k) => ({ ...k }))
   for (const a of added) {
     const same = out.find((k) => sameTime(k.t, a.t))

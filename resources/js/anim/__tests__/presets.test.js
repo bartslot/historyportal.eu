@@ -43,11 +43,12 @@ describe('applyClip', () => {
     const keys = [{ t: 0, 'bone:head': 1 }, { t: 1.5, 'bone:head': 9, scale: 2 }, { t: 1.8, 'bone:head': 3 }, { t: 3, 'bone:head': 0 }]
     expect(applyClip(keys, added)).toEqual([{ t: 0, 'bone:head': 1 }, { t: 1, ease: 'smooth', 'bone:head': 5 }, { t: 1.5, scale: 2 }, { t: 2, 'bone:head': -5 }, { t: 3, 'bone:head': 0 }])
   })
-  it('its root move adds to the teacher\'s own x keys instead of wiping them', () => {
+  it('a clip in place leaves the teacher\'s own x keys exactly as they are; a walk replaces them', () => {
     const slide = [{ t: 0, x: 0.2 }, { t: 4, x: 0.6 }]
-    const out = applyClip(slide, [{ t: 1, x: 0.5, 'bone:head': 1, ease: 'smooth' }, { t: 2, x: 0.55, 'bone:head': 0 }])
-    expect(out.find((k) => k.t === 1).x).toBeCloseTo(0.3)
-    expect(out.find((k) => k.t === 2).x).toBeCloseTo(0.45)
+    const clip = [{ t: 1, x: 0.5, 'bone:head': 1, ease: 'smooth' }, { t: 2, x: 0.55, 'bone:head': 0 }]
+    expect(applyClip(slide, clip, { inPlace: true }).filter((k) => 'x' in k)).toEqual(slide)
+    expect(applyClip(slide, clip).filter((k) => 'x' in k).map((k) => k.x)).toEqual([0.2, 0.5, 0.55, 0.6])
+    expect(applyClip(applyClip([], clip), clip).filter((k) => 'x' in k).map((k) => k.x)).toEqual([0.5, 0.55])   // added twice: no double distance
   })
   it('when it ends the figure shows the face it had before, not the clip\'s last one', () => {
     const faced = [{ t: 1, 'bone:head': 5, face: 'amazed' }, { t: 2, 'bone:head': 0 }]

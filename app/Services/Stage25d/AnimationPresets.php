@@ -211,25 +211,6 @@ final class AnimationPresets
         return $legs > 0 && $tall > 0 ? $legs / $tall : null;
     }
 
-    /** A field's value at t along the keys that name it, straight between them. @param list<array<string,mixed>> $keys */
-    private static function valueAt(array $keys, string $field, float $t): ?float
-    {
-        $named = collect($keys)->filter(fn ($k) => isset($k[$field]) && is_numeric($k[$field]))->sortBy('t')->values();
-        if ($named->isEmpty()) {
-            return null;
-        }
-        $i = $named->search(fn ($k) => $k['t'] > $t);
-        if ($i === 0) {
-            return (float) $named[0][$field];
-        }
-        if ($i === false) {
-            return (float) $named->last()[$field];
-        }
-        [$a, $b] = [$named[$i - 1], $named[$i]];
-
-        return $a[$field] + ($b[$field] - $a[$field]) * (($t - $a['t']) / ($b['t'] - $a['t']));
-    }
-
     /**
      * The figure's keys with the clip's over them (presets.js applyClip): in the clip's stretch of time the fields it
      * moves are its own; every other field and every key outside that stretch stays.
@@ -238,18 +219,17 @@ final class AnimationPresets
      * @param  list<array<string,mixed>>  $added
      * @return list<array<string,mixed>>
      */
-    public static function apply(array $keys, array $added): array
+    public static function apply(array $keys, array $added, bool $inPlace = false): array
     {
+        // a clip that stays in place shifts the hips a little; where the teacher moves the figure themselves, their x wins
+        if ($inPlace && collect($keys)->contains(fn ($k) => isset($k['x']))) {
+            $added = array_map(fn ($a) => array_diff_key($a, ['x' => true]), $added);
+        }
         if ($added === []) {
             return $keys;
         }
         $fields = array_diff(array_unique(array_merge(...array_map('array_keys', $added))), ['t', 'ease']);
         [$from, $to] = [$added[0]['t'] - 1e-6, $added[array_key_last($added)]['t'] + 1e-6];
-        // the clip's root move adds to where the teacher moves the figure: their x keys go on under it
-        if (collect($keys)->contains(fn ($k) => isset($k['x'])) && isset($added[0]['x'])) {
-            $x0 = (float) $added[0]['x'];
-            $added = array_map(fn ($a) => isset($a['x']) ? [...$a, 'x' => round(self::valueAt($keys, 'x', (float) $a['t']) + $a['x'] - $x0, 3)] : $a, $added);
-        }
         $out = [];
         foreach ($keys as $k) {
             if ($k['t'] < $from || $k['t'] > $to) {
@@ -321,7 +301,7 @@ final class AnimationPresets
                 self::expand($clip, [...$spec, 'length' => $length, ...self::sizeOf($layer, $asset, $puppet)]),
                 fn ($k) => $k['t'] <= $duration + 1e-6,
             ));
-            $layers[$i] = [...$layer, 'keys' => LayerKeys::sanitize(self::apply((array) ($layer['keys'] ?? []), $added), $duration)];
+            $layers[$i] = [...$layer, 'keys' => LayerKeys::sanitize(self::apply((array) ($layer['keys'] ?? []), $added, empty($clip['travel'])), $duration)];
             $report['animated']++;
         }
         $stage['set']['layers'] = $layers;

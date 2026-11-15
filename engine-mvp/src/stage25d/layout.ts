@@ -278,17 +278,24 @@ function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): nu
   const i = keys.findIndex((k) => k.t > t)
   const a = keys[i - 1], b = keys[i]
   const k = (t - a.t) / (b.t - a.t)
-  if (a.ease === 'smooth') return through(keys[i - 2] ?? a, a, b, keys[i + 1] ?? b, field, k)
+  if (a.ease === 'smooth') return through(keys[i - 2], a, b, keys[i + 1], field, k)
   return lerp(a[field] as number, b[field] as number, ease('inOut', k))
 }
 
 /** From a to b through the keys either side (Hermite, each slope from its neighbours over their time): a walk's poses
- *  flow into each other without a stop at every key. */
-function through(prev: LayerKey, a: LayerKey, b: LayerKey, next: LayerKey, field: keyof LayerKey, k: number): number {
+ *  flow into each other without a stop at every key. Monotone (Fritsch-Carlson): it never overshoots a key, so a root
+ *  that only goes forward never steps back between keys (fresh tester 11-15), and it starts and ends at rest where no
+ *  key comes before or after. */
+function through(prev: LayerKey | undefined, a: LayerKey, b: LayerKey, next: LayerKey | undefined, field: keyof LayerKey, k: number): number {
   const v = (key: LayerKey) => key[field] as number
   const h = b.t - a.t
-  const slope = (p: LayerKey, q: LayerKey) => (q.t > p.t ? ((v(q) - v(p)) / (q.t - p.t)) * h : 0)
-  const ma = slope(prev, b), mb = slope(a, next)
+  const d = v(b) - v(a)
+  const slope = (p: LayerKey | undefined, q: LayerKey | undefined) => (p && q && q.t > p.t ? ((v(q) - v(p)) / (q.t - p.t)) * h : 0)
+  let ma = slope(prev, b), mb = slope(a, next)
+  if (d === 0 || Math.sign(ma) !== Math.sign(d)) ma = 0
+  if (d === 0 || Math.sign(mb) !== Math.sign(d)) mb = 0
+  const r = Math.hypot(ma / (d || 1), mb / (d || 1))
+  if (r > 3) { ma *= 3 / r; mb *= 3 / r }
   const k2 = k * k, k3 = k2 * k
   return (2 * k3 - 3 * k2 + 1) * v(a) + (k3 - 2 * k2 + k) * ma + (-2 * k3 + 3 * k2) * v(b) + (k3 - k2) * mb
 }

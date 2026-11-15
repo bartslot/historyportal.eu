@@ -93,11 +93,12 @@ class AnimationPresetsTest extends TestCase
         $this->assertEqualsWithDelta(abs(end($full)['x'] - 0.6) * 12 / 45, abs(end($robed)['x'] - 0.6), 0.002);
     }
 
-    public function test_a_clips_root_move_adds_to_the_teachers_x_keys_and_longer_legs_drop_further(): void
+    public function test_a_clip_in_place_keeps_the_teachers_x_and_longer_legs_drop_further(): void
     {
-        $out = AnimationPresets::apply([['t' => 0.0, 'x' => 0.2], ['t' => 4.0, 'x' => 0.6]], [['t' => 1.0, 'x' => 0.5, 'bone:head' => 1.0], ['t' => 2.0, 'x' => 0.55, 'bone:head' => 0.0]]);
-        $this->assertEqualsWithDelta(0.3, collect($out)->firstWhere('t', 1.0)['x'], 1e-6);
-        $this->assertEqualsWithDelta(0.45, collect($out)->firstWhere('t', 2.0)['x'], 1e-6);
+        $slide = [['t' => 0.0, 'x' => 0.2], ['t' => 4.0, 'x' => 0.6]];
+        $clip = [['t' => 1.0, 'x' => 0.5, 'bone:head' => 1.0], ['t' => 2.0, 'x' => 0.55, 'bone:head' => 0.0]];
+        $this->assertSame([0.2, 0.6], array_column(AnimationPresets::apply($slide, $clip, inPlace: true), 'x'), 'in place: the teacher\'s x stays as it is');
+        $this->assertSame([0.2, 0.5, 0.55, 0.6], array_column(AnimationPresets::apply($slide, $clip), 'x'), 'a walk is a move: it replaces x');
         $kit = [['name' => 'head', 'from' => [260, 258], 'to' => [301, 9]], ['name' => 'thigh_n', 'from' => [160, 607], 'to' => [165, 984]], ['name' => 'shin_n', 'from' => [165, 984], 'to' => [170, 1362]], ['name' => 'foot_n', 'from' => [170, 1362], 'to' => [285, 1470]]];
         $this->assertEqualsWithDelta(755 / 1461, AnimationPresets::legShareOf($kit), 0.005);
     }

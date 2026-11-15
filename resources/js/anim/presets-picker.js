@@ -27,7 +27,7 @@ export function animationPresets (layerId, presets) {
     /** What Add will do, in a few words. */
     get hint () {
       if (!this.clip) return ''
-      return this.clip.loop ? (this.clip.travel ? this.hints.travelHint : this.hints.loopHint) : (this.hints.onceHint ?? '').replace(':s', (this.clip.duration / this.speed).toFixed(1))
+      return this.clip.loop ? (this.clip.travel ? this.hints.travelHint : this.hints.loopHint) : (this.hints.onceHint ?? '').replace(':s', String(Math.round((this.clip.duration / this.speed) * 100) / 100))
     },
 
     init () {
@@ -64,7 +64,7 @@ export function animationPresets (layerId, presets) {
       const span = (this.clip.loop ? PREVIEW_CYCLES : cycles) * cycle
       const keys = this.keysFrom(from, this.clip.loop ? span : null)
       if (!keys) return
-      stage.setLayerKeys(layerId, applyClip(keying.layerKeys(target), keys))
+      stage.setLayerKeys(layerId, applyClip(keying.layerKeys(target), keys, { inPlace: !this.clip.travel }))
       this.previewing = true
       const began = performance.now()
       const tick = (now) => {
@@ -101,7 +101,7 @@ export function animationPresets (layerId, presets) {
       const rest = Math.max(cycle, end - from)
       const length = !this.clip.loop ? null : this.clip.travel ? Math.min(rest, TRAVEL_CYCLES * cycle) : rest
       const keys = this.keysFrom(from, length)?.filter((k) => k.t <= end + 1e-6)
-      if (keys?.length) keying.setLayerKeys(target, applyClip(keying.layerKeys(target), keys))
+      if (keys?.length) keying.setLayerKeys(target, applyClip(keying.layerKeys(target), keys, { inPlace: !this.clip.travel }))
     },
   }
 }

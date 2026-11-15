@@ -557,6 +557,19 @@ describe('smooth keys (animation presets)', () => {
     expect(at(1.05) - at(0.95)).toBeCloseTo(1, 1)   // a steady 10 a second runs on through the key at 1
     expect(at(1.5)).toBeCloseTo(15)
   })
+  it('never overshoots: a root that only goes forward never steps back between keys', () => {
+    const flat = [{ t: 0, x: 0, ease: 'smooth' as const }, { t: 1, x: 0.5, ease: 'smooth' as const }, { t: 1.2, x: 0.5, ease: 'smooth' as const }, { t: 2, x: 1 }]
+    let last = -Infinity
+    for (let t = 0; t <= 2; t += 0.01) {
+      const x = layerAt({ depth: 'fg', keys: flat }, t).x
+      expect(x).toBeGreaterThanOrEqual(last - 1e-9)
+      last = x
+    }
+  })
+  it('comes to rest at the last key instead of stopping dead', () => {
+    const at = (t: number) => bonesAt({ depth: 'fg', keys }, t).thigh_n
+    expect(at(3) - at(2.99)).toBeLessThan(0.05)
+  })
   it('a key without ease still eases in and out, so old lessons play as before', () => {
     const plain = [{ t: 0, x: 0 }, { t: 1, x: 1 }, { t: 2, x: 2 }]
     expect(layerAt({ depth: 'fg', keys: plain }, 0.99).x - layerAt({ depth: 'fg', keys: plain }, 0.97).x).toBeLessThan(0.002)
