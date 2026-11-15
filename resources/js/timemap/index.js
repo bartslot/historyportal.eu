@@ -3,6 +3,7 @@ import { mapLocale } from '../map-locale.js';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatReadout } from './era.js';
 import { mountTimeSlider } from './slider.js';
+import voyagesData from './voyages.json';
 import { mountYearFlash } from './year-flash.js';
 import { mountScrubTick } from './scrub-tick.js';
 import { addMountainLayer } from '../map-mountains.js';
@@ -2355,6 +2356,7 @@ window.mountAtlasSlider = function (el, mapEl, initialYear, labels) {
   };
   const slider = mountTimeSlider(el, {
     min: -4000, max: 2010, value: initialYear, labels,
+    spans: voyageSpans(),
     onYear: (year) => pushYear(year),
     onPlay: (playing) => { if (mapEl._setFadeMode) mapEl._setFadeMode(playing); },
   });
@@ -2429,3 +2431,15 @@ window.__timemapPanelReadMore = (scope, p) => {
     scope.leadLoading = false;
   });
 };
+
+/**
+ * The voyages as bars on the scrubber, so a teacher sees when each one sailed (Bart 11-15). A trade route that ran
+ * for centuries (the Brouwer route) is a period, not a voyage, and would cover the ruler: only journeys of at most
+ * VOYAGE_SPAN_MAX_YEARS. No em dash in UI text: "Abel Tasman — the second voyage" reads "Abel Tasman: the second voyage".
+ */
+function voyageSpans() {
+  const VOYAGE_SPAN_MAX_YEARS = 50;   // inside: a const at file end is not set yet if the map mounts during module load
+  return (voyagesData.voyages ?? [])
+    .filter((v) => Number.isFinite(v.year_start) && Number.isFinite(v.year_end) && v.year_end - v.year_start <= VOYAGE_SPAN_MAX_YEARS)
+    .map((v) => ({ start: v.year_start, end: v.year_end, label: String(v.name).replace(/\s+—\s+/g, ': ') }));
+}

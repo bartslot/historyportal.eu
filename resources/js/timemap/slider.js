@@ -102,7 +102,42 @@ const DEFAULT_LABELS = {
   year: 'Year (negative for BCE)',
 };
 
-export function mountTimeSlider(el, { min, max, value, onYear, onPlay, labels }) {
+/** A voyage bar's height and the gap between stacked lanes (px). */
+const SPAN_BAR_PX = 4;
+const SPAN_LANE_GAP_PX = 1;
+const SPAN_MAX_LANES = 3;
+/** 12px Inter SemiBold averages about this wide per character; labels are placed without measuring. */
+const SPAN_CHAR_PX = 6.6;
+const SPAN_LABEL_GAP_PX = 8;
+/** Labels sit in two rows under the bars, clear of the century numbers below (--scrubber-label-top is 36px). */
+const SPAN_LABEL_TOPS_PX = [8, 22];
+
+/**
+ * Where each span sits on the strip (Bart 11-15: "highlight when the voyages have been taken"). Bars stack into the
+ * first lane free at their start, up to SPAN_MAX_LANES (more share the last one). A label takes the first of two rows
+ * where it does not run into the label before it, and is left out when neither has room: never text over text.
+ * spans: [{ start, end, label }] in years; returns a new list with x and w in strip px from year `min`, lane, showLabel.
+ */
+export function layoutSpans(spans, { min, pxPerYear }) {
+  const laneEnd = []      // per lane: strip x where its last bar ends
+  const labelEnd = SPAN_LABEL_TOPS_PX.map(() => -Infinity)   // per label row: strip x where its last label ends
+  return [...spans]
+    .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end))
+    .sort((a, b) => a.start - b.start)
+    .map((s) => {
+      const x = (s.start - min) * pxPerYear
+      const w = Math.max(2, (s.end - s.start + 1) * pxPerYear)
+      let lane = laneEnd.findIndex((end) => end <= x)
+      if (lane < 0) lane = Math.min(laneEnd.length, SPAN_MAX_LANES - 1)
+      laneEnd[lane] = Math.max(laneEnd[lane] ?? -Infinity, x + w)
+      const labelW = String(s.label ?? '').length * SPAN_CHAR_PX
+      const labelRow = s.label ? labelEnd.findIndex((end) => end <= x) : -1
+      if (labelRow >= 0) labelEnd[labelRow] = x + labelW + SPAN_LABEL_GAP_PX
+      return { ...s, x, w, lane, labelRow, showLabel: labelRow >= 0 }
+    })
+}
+
+export function mountTimeSlider(el, { min, max, value, onYear, onPlay, labels, spans = [] }) {
   const t = { ...DEFAULT_LABELS, ...(labels ?? {}) };
   const clamp = (y) => Math.min(max, Math.max(min, y));
   let current = clamp(Math.round(value));
@@ -164,6 +199,7 @@ export function mountTimeSlider(el, { min, max, value, onYear, onPlay, labels })
   // brighter, half a pixel wider, and labelled. Strip is half-viewport padded so the endpoints can
   // reach the centre.
   const centuryLabels = new Map(); // year → its label element, for the playhead clearance below
+  const spanEls = [];             // the voyage bars and labels, for paintSpans
   const ticks = [];                // every decade tick, ascending — the magnifier walks this
   const firstTickYear = Math.ceil(min / 10) * 10;
   const yearTicks = el.querySelector('.tm-years');
@@ -228,6 +264,33 @@ export function mountTimeSlider(el, { min, max, value, onYear, onPlay, labels })
       label.textContent = fmtTick(y);
       strip.appendChild(label);
       centuryLabels.set(y, label);
+    }
+    spanEls.length = 0;
+    for (const sp of layoutSpans(spans, { min, pxPerYear })) {
+      const top = sp.lane * (SPAN_BAR_PX + SPAN_LANE_GAP_PX);
+      const bar = document.createElement('div');
+      bar.className = 'pointer-events-none absolute rounded-[1px] bg-primary transition-opacity duration-200';
+      Object.assign(bar.style, { left: `${pad + sp.x}px`, width: `${sp.w}px`, top: `${top}px`, height: `${SPAN_BAR_PX}px` });
+      strip.appendChild(bar);
+      let text = null;
+      if (sp.showLabel) {
+        text = document.createElement('span');
+        text.className = 'pointer-events-none absolute whitespace-nowrap text-xs leading-none text-scrubber-tick-major transition-opacity duration-200';
+        Object.assign(text.style, { left: `${pad + sp.x}px`, top: `${SPAN_LABEL_TOPS_PX[sp.labelRow]}px` });
+        text.textContent = sp.label;
+        strip.appendChild(text);
+      }
+      spanEls.push({ start: sp.start, end: sp.end, bar, text });
+    }
+    paintSpans();
+  };
+
+  /** The voyage under the playhead shows at full strength, the rest stay quieter. */
+  const paintSpans = () => {
+    for (const { start, end, bar, text } of spanEls) {
+      const on = current >= start && current <= end;
+      bar.style.opacity = on ? '1' : '0.55';
+      if (text) text.style.opacity = on ? '1' : '0.7';
     }
   };
 
@@ -452,6 +515,7 @@ export function mountTimeSlider(el, { min, max, value, onYear, onPlay, labels })
     track.setAttribute('aria-valuenow', String(current));
     track.setAttribute('aria-valuetext', fmtEra(current));
     clearPlayhead();
+    paintSpans();
   };
 
   // Move the timeline (and UI) to `y`. fireYear=false suppresses the onYear callback (used when
