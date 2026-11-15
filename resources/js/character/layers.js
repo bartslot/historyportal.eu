@@ -130,23 +130,31 @@ export function slotAt (layers, x, y) {
   return null
 }
 
-/** A piece's pixels of one colour kind as a silhouette canvas (made once): the bare skin of an outfit is the body. */
-function kindSilhouette (layer, kindIndexWanted, kindsCount) {
+/** A piece's pixels of one colour kind as a silhouette canvas (made once): the bare skin of an outfit is the body.
+ *  `outside`: { labels, part } leaves out the pixels the body's label map gives that part (the head). */
+function kindSilhouette (layer, kindIndexWanted, kindsCount, outside = null) {
   layer.sil ??= {}
-  if (!layer.sil[kindIndexWanted]) {
+  const key = `${kindIndexWanted}:${outside?.part ?? ''}`
+  if (!layer.sil[key]) {
     const { width: w, height: h, data } = layer.raw.fill
+    const [bx, by] = layer.box
     const out = new Uint8ClampedArray(w * h * 4)
     for (let i = 0; i < w * h; i++) {
-      if (data[i * 4 + 3] > 100 && kindIndex(data[i * 4], kindsCount) === kindIndexWanted) out[i * 4 + 3] = 255
+      if (data[i * 4 + 3] <= 100 || kindIndex(data[i * 4], kindsCount) !== kindIndexWanted) continue
+      if (outside) {
+        const x = bx + (i % w), y = by + Math.floor(i / w)
+        if (outside.labels.data[(y * outside.labels.width + x) * 4] === outside.part) continue
+      }
+      out[i * 4 + 3] = 255
     }
-    layer.sil[kindIndexWanted] = put(out, w, h)
+    layer.sil[key] = put(out, w, h)
   }
-  return layer.sil[kindIndexWanted]
+  return layer.sil[key]
 }
 
 /** An amber edge round the pieces of the slots given, on `ctx` (cleared first), in the same frame as drawLayers.
  *  `kind`: [index, count] to edge only that colour kind of them (the body: an outfit's bare skin). */
-export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', width = 3, kind = null) {
+export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', width = 3, kind = null, outside = null) {
   const { width: W, height: H } = ctx.canvas
   ctx.clearRect(0, 0, W, H)
   const picked = layers.filter((l) => slots.includes(l.slot))
@@ -155,13 +163,11 @@ export function drawEdge (ctx, layers, slots, src, dst, colour = '#f59e0b', widt
   const g = sil.getContext('2d')
   if (kind) {
     const k = dst[2] / src[2]
-    for (const l of picked) g.drawImage(kindSilhouette(l, kind[0], kind[1]), dst[0] + (l.box[0] - src[0]) * k, dst[1] + (l.box[1] - src[1]) * k, l.box[2] * k, l.box[3] * k)
-    // only what shows: everything drawn above it (the face, the hair) takes its part out, scalp and eye holes with it
-    const above = layers.slice(layers.indexOf(picked.at(-1)) + 1)
+    for (const l of picked) g.drawImage(kindSilhouette(l, kind[0], kind[1], outside), dst[0] + (l.box[0] - src[0]) * k, dst[1] + (l.box[1] - src[1]) * k, l.box[2] * k, l.box[3] * k)
+    // only what shows: hair hanging over a shoulder takes its part out
+    const above = layers.slice(layers.indexOf(picked.at(-1)) + 1).filter((l) => l.slot !== 'face')
     g.globalCompositeOperation = 'destination-out'
-    for (const [ox, oy] of [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2], [2, 2], [-2, -2], [2, -2], [-2, 2]]) {   // grown a little: no hairline left round them
-      drawLayers(g, above, src, [dst[0] + ox * width / 3, dst[1] + oy * width / 3, dst[2], dst[3]], 'colour')
-    }
+    drawLayers(g, above, src, dst, 'colour')
     g.globalCompositeOperation = 'source-over'
   } else drawLayers(g, picked, src, dst, 'colour')
   g.globalCompositeOperation = 'source-in'

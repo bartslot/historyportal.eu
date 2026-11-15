@@ -116,7 +116,9 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     if (!frame || !hover) { g.clearRect(0, 0, edge.width, edge.height); return }
     const d = frame.dst.map((v) => v * frame.dpr)
     const body = hover === 'body'
-    drawEdge(g, layers, body ? ['outfit'] : PART_SLOTS[hover] ?? [], frame.src, d, '#f59e0b', 3 * frame.dpr, body ? [kit.kinds.indexOf('skin'), kit.kinds.length] : null)
+    // the body is the bare skin below the head (the face and its neck are Face)
+    drawEdge(g, layers, body ? ['outfit'] : PART_SLOTS[hover] ?? [], frame.src, d, '#f59e0b', 3 * frame.dpr,
+      body ? [kit.kinds.indexOf('skin'), kit.kinds.length] : null, body && labelsImg ? { labels: labelsImg, part: rig.parts.indexOf('head') + 1 } : null)
   }
   /** The part under a point of the view: the slot painted there, bare skin of the outfit being the body. */
   const partAt = (x, y) => {

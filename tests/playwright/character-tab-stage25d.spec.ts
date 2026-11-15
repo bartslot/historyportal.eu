@@ -14,7 +14,7 @@ import { readFileSync, mkdirSync } from 'node:fs'
  * Screenshots go to tests/playwright/results-stage25d/character-tab (never committed). The characters it saves leave the
  * teacher's shelf again in the last test (scenes keep showing them, Characters::remove).
  */
-const [LESSON, SCENE] = (process.env.PW_CHARACTER_TAB ?? process.env.PW_EDITOR_WALK ?? '').split('/')
+const [LESSON, SCENE, OTHER_SCENE] = (process.env.PW_CHARACTER_TAB ?? process.env.PW_EDITOR_WALK ?? '').split('/')
 test.skip(!LESSON, 'set PW_CHARACTER_TAB')
 test.setTimeout(300_000)
 test.use({ viewport: { width: 1280, height: 900 } })
@@ -46,9 +46,9 @@ test.afterEach(async ({}, info) => {
 })
 
 // ── page ────────────────────────────────────────────────────────────────────────────────────────────────────────────
-const load = async (page: Page) => {
+const load = async (page: Page, scene = SCENE) => {
   await page.addInitScript(SILENT)
-  await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${SCENE}`, { waitUntil: 'load' })
+  await page.goto(`/teacher/lessons/${LESSON}/wizard?step=4&scene=${scene}`, { waitUntil: 'load' })
   await page.waitForFunction(() => document.querySelector('[data-stage25d-ready="1"]') && (window as any).__stage25d?.config, undefined, { timeout: 180_000 })
   await page.waitForTimeout(800)
 }
@@ -162,12 +162,50 @@ const leaveDiscard = async (page: Page) => {
 }
 /** Characters this run saved: the last test takes them off the shelf again. */
 const CREATED = new Set<string>()
+/** Where each layer stands now: x (share of the view) and z (metres), and whether it is a figure. */
+const spots = (page: Page) => page.evaluate(() => {
+  const s = (window as any).__stage25d
+  const lib = new Map(s.library().assets.map((a: any) => [a.id, a]))
+  return s.config.set.layers.map((l: any, k: number) => ({ k, asset: l.asset, figure: (lib.get(l.asset) as any)?.layer === 'figure' || /^(chr|fig)-/.test(String(l.asset)), x: s.readLayerProp(`layer-${k}`, 'x'), z: s.readLayerProp(`layer-${k}`, 'z') }))
+})
+/** A layer stands on its own spot: no other figure at about the same x and distance. */
+const OWN_SPOT_X = 0.05, OWN_SPOT_Z = 1
+const othersUnder = async (page: Page, i: number) => {
+  const all = await spots(page)
+  const me = all[i]
+  return { me, under: all.filter((o: any) => o.k !== i && o.figure && Math.abs(o.x - me.x) < OWN_SPOT_X && Math.abs(o.z - me.z) < OWN_SPOT_Z) }
+}
 const saveWindow = async (page: Page) => {
   const before = new Set((await shelf(page)).map((a: any) => a.id))
+  const count = (await layers(page)).length
   await page.locator('[data-cut-save]').click()
   await expect(page.locator('[data-cutout]')).toHaveCount(0, { timeout: 60_000 })
   await page.waitForTimeout(1500)
   for (const a of await shelf(page)) if (!before.has(a.id)) CREATED.add(a.id)
+  // every new person joins the scene on a spot of its own, in view (tester 11-15: the second and third landed on another
+  // figure; round 3: the third stood outside the view). Judged on screen: the boxes the stage draws.
+  const now = (await layers(page)).length
+  if (now > count) {
+    const i = now - 1
+    const all = await spots(page)
+    const me = await layerBox(page, i)
+    const c = await stageCanvas(page)
+    if (me) {
+      const inside = Math.max(0, Math.min(me.x + me.w, c.x + c.width) - Math.max(me.x, c.x)) / me.w
+      expect.soft(inside, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)}: in view (share of its width on the stage)`).toBeGreaterThan(0.8)
+      const on: string[] = []
+      for (const o of all) {
+        if (o.k === i || !o.figure) continue
+        const b = await layerBox(page, o.k)
+        if (!b || Math.abs(o.z - all[i].z) > OWN_SPOT_Z * 2) continue
+        const overlap = Math.max(0, Math.min(me.x + me.w, b.x + b.w) - Math.max(me.x, b.x)) / Math.min(me.w, b.w)
+        if (overlap > 0.5) on.push(`layer-${o.k} ${o.asset} (${Math.round(overlap * 100)}% overlap)`)
+      }
+      expect.soft(on, `new ${all[i].asset} at x ${all[i].x?.toFixed(2)} z ${all[i].z?.toFixed(2)} stands on no other figure`).toEqual([])
+    }
+    await page.evaluate((i) => (window as any).__stage25d.select(`layer-${i}`), i)   // the new one stays the selection, as Save left it
+    await page.waitForTimeout(400)
+  }
 }
 /** A character on the stage: the one there, else one made and saved now (Weaver). */
 const ensureCharacter = async (page: Page) => {
@@ -1030,8 +1068,7 @@ test('12. expressions on the timeline: Sad at 0, Amazed later; face keys shown; 
       return [...el.options].map((o) => ({ word: o.text, need: Math.ceil(g.measureText(o.text).width), room }))
     })
     expect.soft(fits.filter((f: any) => f.need > f.room).map((f: any) => `${f.word} ${f.need}>${f.room}px`), 'every expression word fits the select').toEqual([])
-    await picker.click()
-    await picker.selectOption('curious')
+    await picker.selectOption('curious')   // a native select: its popup is the browser's own, no page element to click
     await page.waitForTimeout(1500)
     const keys4 = await page.evaluate((i) => (window as any).__timelineKeying.layerKeys(`s25:layer-${i}`), i)
     expect.soft(keys4.filter((k: any) => k.face).map((k: any) => [k.t, k.face]), 'picking Curious keys it at 3 s').toEqual([[0, 'sad'], [2, 'amazed'], [3, 'curious']])
@@ -1337,10 +1374,41 @@ test('17. Dutch: every new string is in lang/nl.json, and with the teacher on nl
   }
 })
 
+test('9d. five new characters in a row: each lands on a spot of its own, none on another figure', async ({ page }) => {
+  test.setTimeout(480_000)
+  // the lesson's second scene: three villagers close together at 7 m, room either side (the first scene's saves are
+  // checked one by one in 9, 11b and 13b through saveWindow)
+  test.skip(!OTHER_SCENE, 'PW_CHARACTER_TAB has no second scene')
+  await load(page, OTHER_SCENE)
+  const placed: string[] = []
+  for (const [body, preset] of [['Girl', 'miller-girl'], ['Woman', 'weaver'], ['Man', 'merchant'], ['Woman', 'grandmother'], ['Man', 'soldier']] as const) {
+    await openNew(page)
+    await pickBody(page, body)
+    await page.locator(`${P} [data-chr-preset="${preset}"]`).click()
+    await settle(page)
+    await saveWindow(page)   // checks the new one's spot
+    const i = (await layers(page)).length - 1
+    const { me } = await othersUnder(page, i)
+    placed.push(`${preset} x ${me.x?.toFixed(2)} z ${me.z?.toFixed(2)}`)
+  }
+  test.info().annotations.push({ type: 'placed', description: placed.join(', ') })
+  console.log('placed:', placed.join(', '))
+  // and at the end every figure still stands apart from every other
+  const all = (await spots(page)).filter((o: any) => o.figure)
+  const pairs: string[] = []
+  // (the scene's own villagers stand close on purpose: only pairs with a new person count)
+  for (const a of all) for (const b of all) if (a.k < b.k && (/^chr-/.test(a.asset) || /^chr-/.test(b.asset)) && Math.abs(a.x - b.x) < OWN_SPOT_X && Math.abs(a.z - b.z) < OWN_SPOT_Z) pairs.push(`layer-${a.k} ${a.asset} / layer-${b.k} ${b.asset} at x ${a.x.toFixed(2)}`)
+  expect.soft(pairs, 'no two figures on one spot').toEqual([])
+  await shot(page, '09d-five-placed', await stageCanvas(page))
+})
+
 test('99. clean up: the characters this spec saved leave the shelf (scenes keep showing them)', async ({ page }) => {
-  await load(page)
-  // what this throwaway lesson's scene shows was made by this spec (character-tab-lesson.php makes the lesson fresh)
-  const mine = new Set((await layers(page)).map((l: any) => l.asset).filter((a: string) => /^chr-\d+$/.test(String(a))))
+  // what this throwaway lesson's scenes show was made by this spec (character-tab-lesson.php makes the lesson fresh)
+  const mine = new Set<string>()
+  for (const scene of [OTHER_SCENE, SCENE].filter(Boolean)) {
+    await load(page, scene)
+    for (const l of await layers(page)) if (/^chr-\d+$/.test(String(l.asset))) mine.add(l.asset)
+  }
   for (const id of CREATED) mine.add(id)
   await page.getByRole('tab', { name: 'Assets', exact: true }).click()
   const kinds = page.locator('[data-stage25d-assets] button.btn-xs', { hasText: 'My characters' })

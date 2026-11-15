@@ -956,18 +956,25 @@ export async function createStage25d (host, opts = {}) {
     /** A new layer from a library picture, standing on the ground where it was dropped (snapped to the grid), else
      *  mid-view at its own band's distance. Saved at the end of the layers. */
     async addLayer (assetId, at = null) {
-      /** The x beside `x0` where no figure stands at about this distance (tester 11-15: the second and third new person
-       *  landed on another figure): the nearest spot with FREE_GAP of room, else the one with the most room. */
-      const freeX = (x0, z) => {
-        const taken = layers.flatMap((l, i) => (assets.get(l.asset)?.layer === 'figure' && Math.abs(zNow(i) - z) < 2.5 ? [layerAt(l, nowT()).x] : []))
+      /** Where a new person stands beside the figure `seen` (tester 11-15: the second and third landed on another figure,
+       *  then one landed off the camera's view): a spot the camera shows at its feet, at its distance, the nearest with
+       *  FREE_GAP of room from every figure (an x is a share of the view, so a figure further back at the same x is right
+       *  behind it on screen); with none, the spot with the most room. */
+      const freeSpot = (x0, z, seen) => {
+        const box = stage.layerBox(seen), r = canvas.getBoundingClientRect()
+        const feetY = box ? box.y1 * r.height - 2 : r.height * 0.8
+        const xAt = (fx) => { const hit = groundUnderRay(stage.pointerRay(fx * r.width, feetY), (h) => stage.groundHeightAt(h)); return hit ? layerOf(settle(hit)).x : null }
+        const a = xAt(0.1), b = xAt(0.9)
+        const [lo, hi] = Number.isFinite(a) && Number.isFinite(b) && a !== b ? [Math.min(a, b), Math.max(a, b)] : [0.2, 0.8]
+        const taken = layers.flatMap((l, i) => (assets.get(l.asset)?.layer === 'figure' && !hidden.has(`layer-${i}`) ? [layerAt(l, nowT()).x] : []))
         const room = (x) => Math.min(1, ...taken.map((t) => Math.abs(t - x)))
-        let best = 0.5, bestRoom = -1, bestNear = Infinity
-        for (let x = 0.1; x <= 0.9001; x += 0.02) {
-          const r = Math.min(room(x), FREE_GAP), near = Math.abs(x - x0)
-          // enough room wins; among those the nearest to the figure in view (same height on screen, beside it)
-          if (r > bestRoom + 1e-9 || (Math.abs(r - bestRoom) < 1e-9 && near < bestNear)) { best = x; bestRoom = r; bestNear = near }
+        let best = null, roomiest = null
+        for (let k = 0; k <= 40; k++) {
+          const x = lo + ((hi - lo) * k) / 40, rx = room(x), near = Math.abs(x - x0)
+          if (rx >= FREE_GAP && (!best || near < best.near)) best = { x, near }
+          if (!roomiest || rx > roomiest.room) roomiest = { x, room: rx }
         }
-        return Math.round(best * 100) / 100
+        return { x: Math.round((best ?? roomiest).x * 100) / 100, z }
       }
       const a = assets.get(assetId)
       if (!a) return
@@ -998,8 +1005,8 @@ export async function createStage25d (host, opts = {}) {
           const now = layerAt(layers[seen], nowT())
           // a new person from the Character tab stands beside that one, never on top of it (tester 11-15: it hid the other
           // figure and took its clicks)
-          const x = a.character ? freeX(now.x, zNow(seen)) : now.x
-          layer = { asset: assetId, depth: layers[seen].depth, x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: zNow(seen), scale: now.scale ?? 1 }
+          const spot = a.character ? freeSpot(now.x, zNow(seen), seen) : { x: now.x, z: zNow(seen) }
+          layer = { asset: assetId, depth: spot.z === zNow(seen) ? layers[seen].depth : bandOf(spot.z), x: spot.x, ...(Number.isFinite(now.y) ? { y: now.y } : {}), z: spot.z, scale: now.scale ?? 1 }
         }
       }
       layers = [...layers, layer]
