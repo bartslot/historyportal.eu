@@ -30,6 +30,7 @@ import { cellOf, editedAsset, frameAt, isAnimation } from './sprite'
 import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, figureWash, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
+import { contactKeys, footLockOffset, heldBones, heldY, type Side } from './foot-lock'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { spritesOf } from './scatter'
@@ -60,7 +61,7 @@ const FAR_PIECE_Z = 880   // just in front of a terrain's far edge (900 m): that
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null; copyAt: (z: number) => number; n: number; lod?: Lod }   // index: in set.groundBands; z: where it stands now; copyAt: one copy's width at z; n: copies side by side now
 /** A far picture's two copies (lod.ts): the painting and its low-detail copy, and which one it draws now. */
 interface Lod { high: RawTexture; low: RawTexture; isLow: boolean }
-interface Built { lod?: Lod; layer: SceneLayer; index: number; builtScale: number; builtZ: number; uRepeat: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
+interface Built { lod?: Lod; lock?: { keys: SceneLayer['keys']; size: string; ankle: Map<string, number> }; layer: SceneLayer; index: number; builtScale: number; builtZ: number; uRepeat: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -638,6 +639,50 @@ export class Stage {
     return { mirrored, joints: (bent as BentPuppet).joints().map((j) => ({ name: j.name, at: on(j.at), tip: on(j.tip) })) }
   }
 
+  /** World metres a figure moves sideways at t so that the foot its keys say is standing stays on its spot, however this
+   *  rig bends (its limits, a robe holding its legs, other proportions than the clip's): 0 for keys without contact. The
+   *  ankles at the keys' times are kept per key set and size; the one at t is read fresh. */
+  private footLock(b: Built, t: number, z: number): number {
+    const bent = b.bent as BentPuppet | null | undefined
+    const keys = b.layer.keys
+    if (!bent || !('ankles' in bent) || contactKeys(keys).length < 2) return 0
+    const mesh = b.handle.mesh
+    mesh.computeWorldMatrix(true)
+    const size = `${mesh.scaling.x}:${mesh.rotation.z}`
+    if (!b.lock || b.lock.keys !== keys || b.lock.size !== size) b.lock = { keys, size, ankle: new Map() }
+    const cache = b.lock.ankle
+    const span = viewWidthAt(z)
+    const ankleX = (bones: Record<string, number>, side: Side) => {
+      const a = bent.ankles(bones)[side]
+      return a ? b.handle.worldOf(bent, a[0], a[1]).x - mesh.position.x : 0
+    }
+    const foot = (time: number, side: Side) => {
+      const root = (layerAt(b.layer, time).x - 0.5) * span
+      if (Math.abs(time - t) < 1e-9) return root + ankleX(this.posed(b, t), side)
+      const key = `${time}:${side}`
+      if (!cache.has(key)) cache.set(key, ankleX(this.posed(b, time), side))
+      return root + cache.get(key)!
+    }
+    return footLockOffset(keys!, t, foot)
+  }
+
+  /** How far a preset's legs are held back on this figure (BentPuppet.legHold): 1 unless its keys say which feet stand
+   *  and a skirt or robe keeps its legs from bending as deep as the clip asks. */
+  private heldBy(b: Built): number {
+    const bent = b.bent as BentPuppet | null | undefined
+    return bent && 'legHold' in bent && contactKeys(b.layer.keys).length > 1 ? bent.legHold : 1
+  }
+
+  /** The turns at t, a held-back figure's leg turns scaled by how deep its legs can go, so both legs bend alike. */
+  private posed(b: Built, t: number): Record<string, number> {
+    return heldBones(bonesAt(b.layer, t), this.heldBy(b))
+  }
+
+  /** A held-back figure sinks only as deep as its legs bend (foot-lock.ts heldY). */
+  private heldSink<T extends { y: number }>(b: Built, k: T): T {
+    return { ...k, y: heldY(k.y, b.layer.y ?? 0, this.heldBy(b)) }
+  }
+
   /** How far each part's joint stands outside its parent part now (BentPuppet.partGaps); null for no figure of parts. */
   partGaps(index: number): Record<string, number> | null {
     const bent = this.built.find((n) => n.index === index)?.bent
@@ -858,7 +903,7 @@ export class Stage {
     if (!this.paused) this.blinkTime += dt
     for (const b of this.built) {
       if (b.blink) b.handle.setBlink(b.blink(this.blinkTime))
-      const k = layerAt(b.layer, t)
+      const k = this.heldSink(b, layerAt(b.layer, t))
       // placed at its built Size, then scaled by ks: a terrain picture's px cap does not shrink with its Size (placeLayer)
       const p = placeLayer(b.asset, { ...b.layer, x: k.x, y: k.y, z: k.z, scale: b.builtScale, rotation: k.rotation }, b.order, horizon, land, skyCover(s, k.z ?? distanceOf(b.layer)))
       const ks = k.scale / (b.builtScale || 1)
@@ -878,6 +923,7 @@ export class Stage {
       }
       b.handle.mesh.rotation.z = (-p.rotation * Math.PI) / 180   // clockwise on screen
       b.handle.mesh.scaling.setAll(ks * far)   // grows from the ground point
+      b.handle.mesh.position.x += this.footLock(b, t, p.z)   // a standing foot stays where it stood (foot-lock.ts)
       const opacity = k.opacity * (this.faded.has(b.index) ? this.fadedTo : 1)
       b.handle.setOpacity(opacity)
       b.handle.setFeather(featherOf(b.asset, b.layer), this.horizonTint)
@@ -890,7 +936,7 @@ export class Stage {
       b.handle.setLine(line, b.ink === undefined ? 1 : inkScale(b.ink, line.ink, line.norm), fitted(pxUV(p.w * ks, p.h * ks, p.uRepeat, ppm, renderH), b.uvFit), this.hazeTint)
       b.handle.setInk(b.layer.outline ?? 0, b.layer.etch ?? 0)
       if (b.bent) {
-        b.handle.setBent(b.bent, bonesAt(b.layer, t))
+        b.handle.setBent(b.bent, this.posed(b, t))
         if ('uvsFor' in b.bent) b.handle.setUvs(b.bent, (b.bent as BentPuppet).uvsFor(faceAt(b.layer, t) ?? undefined))
       }
       const drawn = puppetOf(b.asset, b.layer)

@@ -20,7 +20,44 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
+  },
+  {
+   "t": 0.16,
+   "bone:chest": 5.9,
+   "bone:foot_f": -24.4,
+   "bone:foot_n": -16.1,
+   "bone:forearm_f": -3.5,
+   "bone:forearm_n": -6.0,
+   "bone:head": -4.6,
+   "bone:shin_f": 44.8,
+   "bone:shin_n": 29.8,
+   "bone:thigh_f": -20.4,
+   "bone:thigh_n": -13.7,
+   "bone:upperarm_f": -3.2,
+   "bone:upperarm_n": -5.4,
+   "dx": -0.0025,
+   "bob": -0.02,
+   "contact": "both"
+  },
+  {
+   "t": 0.2133,
+   "bone:chest": 7.7,
+   "bone:foot_f": -29.0,
+   "bone:foot_n": -20.3,
+   "bone:forearm_f": -6.1,
+   "bone:forearm_n": -9.6,
+   "bone:head": -6.8,
+   "bone:shin_f": 53.0,
+   "bone:shin_n": 37.6,
+   "bone:thigh_f": -24.0,
+   "bone:thigh_n": -17.3,
+   "bone:upperarm_f": -5.0,
+   "bone:upperarm_n": -8.3,
+   "dx": -0.0033,
+   "bob": -0.0296,
+   "contact": "both"
   },
   {
    "t": 0.24,
@@ -38,7 +75,44 @@
    "bone:upperarm_n": -10.0,
    "dx": -0.0034,
    "bob": -0.0326,
+   "contact": "both",
    "face": "calm"
+  },
+  {
+   "t": 0.2711,
+   "bone:chest": 8.0,
+   "bone:foot_f": -30.0,
+   "bone:foot_n": -28.4,
+   "bone:forearm_f": -12.0,
+   "bone:forearm_n": -16.3,
+   "bone:head": -9.4,
+   "bone:shin_f": 62.3,
+   "bone:shin_n": 47.4,
+   "bone:thigh_f": -25.0,
+   "bone:thigh_n": -19.0,
+   "bone:upperarm_f": -7.6,
+   "bone:upperarm_n": -12.8,
+   "dx": 0.0135,
+   "bob": -0.0331,
+   "contact": "both"
+  },
+  {
+   "t": 0.3333,
+   "bone:chest": 8.0,
+   "bone:foot_f": -30.0,
+   "bone:foot_n": -30.0,
+   "bone:forearm_f": -22.4,
+   "bone:forearm_n": -26.8,
+   "bone:head": -12.0,
+   "bone:shin_f": 72.2,
+   "bone:shin_n": 57.8,
+   "bone:thigh_f": -25.0,
+   "bone:thigh_n": -19.9,
+   "bone:upperarm_f": -11.2,
+   "bone:upperarm_n": -18.9,
+   "dx": 0.0343,
+   "bob": -0.0388,
+   "contact": "both"
   },
   {
    "t": 0.52,
@@ -56,6 +130,7 @@
    "bone:upperarm_n": -34.0,
    "dx": 0.0649,
    "bob": -0.0695,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -74,6 +149,7 @@
    "bone:upperarm_n": -16.0,
    "dx": 0.0744,
    "bob": -0.1067,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -92,6 +168,7 @@
    "bone:upperarm_n": -5.0,
    "dx": 0.0705,
    "bob": -0.0844,
+   "contact": "both",
    "face": "calm"
   }
  ]

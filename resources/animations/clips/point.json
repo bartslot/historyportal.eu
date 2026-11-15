@@ -16,6 +16,7 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -30,6 +31,7 @@
    "bone:upperarm_n": -94.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -44,6 +46,7 @@
    "bone:upperarm_n": -93.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   },
   {
@@ -58,6 +61,7 @@
    "bone:upperarm_n": 0.0,
    "dx": 0.0,
    "bob": -0.0,
+   "contact": "both",
    "face": "calm"
   }
  ]

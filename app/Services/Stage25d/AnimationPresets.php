@@ -29,8 +29,8 @@ final class AnimationPresets
 
     private const SPEED = [0.25, 4.0];
 
-    /** A clip that stays in place moves its root less than this (body heights): its x keys are left alone (presets.js MOVE_MIN). */
-    private const MOVE_MIN = 0.01;
+    /** A root move smaller than this (body heights) is rounding: no x keys for it (presets.js MOVE_MIN). */
+    private const MOVE_MIN = 0.0005;
 
     /** A walk or a run with no length of its own crosses the shot this many cycles (presets.js TRAVEL_CYCLES). */
     private const TRAVEL_CYCLES = 3;
@@ -138,31 +138,34 @@ final class AnimationPresets
                 if ($c > 0 && $i === 0) {
                     continue;   // the seam: a loop's first key is the last one of the cycle before
                 }
-                $key = ['t' => round($start + ($c + (float) $k['t']) * $cycle, 3), 'ease' => 'smooth'];
+                $key = ['t' => self::r3($start + ($c + (float) $k['t']) * $cycle), 'ease' => 'smooth'];
                 foreach ($k as $field => $deg) {
                     if (str_starts_with((string) $field, 'bone:') && isset($bones[substr((string) $field, 5)])) {
-                        $key[$field] = round((float) $deg * $facing, 3);
+                        $key[$field] = self::r3((float) $deg * $facing);
                     }
                 }
                 if ($moves) {
-                    $key['x'] = round($x0 + $facing * ($c * $travel + (float) ($k['dx'] ?? 0)) * $roomTravel * (float) ($o['xPerHeight'] ?? 0), 3);
+                    $key['x'] = self::r3($x0 + $facing * ($c * $travel + (float) ($k['dx'] ?? 0)) * $roomTravel * (float) ($o['xPerHeight'] ?? 0));
                 }
                 if ($bobs) {
                     $bob = (float) ($k['bob'] ?? 0);
-                    $key['y'] = round($y0 + $bob * ($bob < 0 ? $roomSink : 1.0) * (float) ($o['yPerHeight'] ?? 0), 3);   // a jump's lift stays
+                    $key['y'] = self::r3($y0 + $bob * ($bob < 0 ? $roomSink : 1.0) * (float) ($o['yPerHeight'] ?? 0));   // a jump's lift stays
                 }
                 if ($tips) {
-                    $key['rotation'] = round($r0 + (float) ($k['rot'] ?? 0) * $facing, 3);
+                    $key['rotation'] = self::r3($r0 + (float) ($k['rot'] ?? 0) * $facing);
                 }
                 if (is_string($k['face'] ?? null) && $k['face'] !== '' && $k['face'] !== $face) {
                     $key['face'] = $face = $k['face'];   // a face steps: only where it changes
+                }
+                if (is_string($k['contact'] ?? null)) {
+                    $key['contact'] = $k['contact'];   // which feet stand: the stage keeps them on their spots (foot-lock.ts)
                 }
                 $out[] = $key;
             }
         }
         if (! empty($clip['loop']) && $out !== []) {   // a loop settles into the drawn pose where it stops, never frozen mid-stride
             $last = $out[array_key_last($out)];
-            $settle = ['t' => round($last['t'] + min(self::SETTLE_S, $cycle / 2), 3)];
+            $settle = ['t' => self::r3($last['t'] + min(self::SETTLE_S, $cycle / 2))];
             foreach (array_keys($last) as $field) {
                 if (str_starts_with((string) $field, 'bone:')) {
                     $settle[$field] = 0;
@@ -172,10 +175,13 @@ final class AnimationPresets
                 $settle['x'] = $last['x'];
             }
             if ($bobs) {
-                $settle['y'] = round($y0, 3);
+                $settle['y'] = self::r3($y0);
             }
             if ($tips) {
-                $settle['rotation'] = round($r0, 3);
+                $settle['rotation'] = self::r3($r0);
+            }
+            if (collect($keys)->contains(fn ($k) => isset($k['contact']))) {
+                $settle['contact'] = 'none';   // the feet step into the drawn stance: nothing to hold
             }
             $out[] = $settle;
         }
@@ -217,6 +223,12 @@ final class AnimationPresets
         $tall = isset($foot['to'], $head['to']) ? max($foot['to'][1], $foot['from'][1]) - $head['to'][1] : 0.0;
 
         return $legs > 0 && $tall > 0 ? $legs / $tall : null;
+    }
+
+    /** Rounded to 3 decimals as presets.js does (Math.round: halves up), so editor and server agree to the last ms. */
+    private static function r3(float $v): float
+    {
+        return floor($v * 1000 + 0.5) / 1000 + 0.0;
     }
 
     /**

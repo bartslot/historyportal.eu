@@ -11,12 +11,16 @@ export const LAYER_KEY_FIELDS = ['x', 'z', 'y', 'scale', 'opacity', 'rotation', 
 
 /** A figure's expression (a string that steps, layout.ts faceAt): its own row, next to the numbers. */
 export const FACE_FIELD = 'face'
+/** Which feet stand at a key (an animation preset's; the stage's foot lock, foot-lock.ts): a string row like the face. */
+export const CONTACT_FIELD = 'contact'
+/** The key fields that are words, not numbers: they step, never blend, and carry no ease. */
+export const WORD_FIELDS = [FACE_FIELD, CONTACT_FIELD]
 
-const valueOk = (property, v) => (property === FACE_FIELD ? typeof v === 'string' && v !== '' : Number.isFinite(v))
+const valueOk = (property, v) => (WORD_FIELDS.includes(property) ? typeof v === 'string' && v !== '' : Number.isFinite(v))
 
 /** Layers' keys → timeline tracks. `items`: `[{ id: 'layer-3', keys: [...] }]` (stage.items()). A key's `ease`
  *  ('smooth', an animation preset's) rides on each of its keyframes, so it comes back with them. */
-export const tracksFromKeys = (items) => items.flatMap((item) => [...LAYER_KEY_FIELDS, FACE_FIELD].flatMap((property) => {
+export const tracksFromKeys = (items) => items.flatMap((item) => [...LAYER_KEY_FIELDS, ...WORD_FIELDS].flatMap((property) => {
   const keyframes = (item.keys ?? [])
     .filter((k) => valueOk(property, k[property]))
     .map((k) => ({ time: k.t, value: k[property], ...(k.ease ? { ease: k.ease } : {}) }))
@@ -29,14 +33,14 @@ export const keysFromTracks = (tracks) => {
   const byLayer = {}
   for (const track of tracks ?? []) {
     const [kind, id] = String(track.target).split(':')
-    if (kind !== 's25' || !(LAYER_KEY_FIELDS.includes(track.property) || track.property === FACE_FIELD)) continue
+    if (kind !== 's25' || !(LAYER_KEY_FIELDS.includes(track.property) || WORD_FIELDS.includes(track.property))) continue
     const keys = (byLayer[id] ??= [])
     for (const { time, value, ease } of track.keyframes ?? []) {
       if (!Number.isFinite(time) || !valueOk(track.property, value)) continue
       let key = keys.find((k) => sameTime(k.t, time))
       if (!key) keys.push(key = { t: time })
       key[track.property] = value
-      if (ease && track.property !== FACE_FIELD) key.ease = ease
+      if (ease && !WORD_FIELDS.includes(track.property)) key.ease = ease
     }
   }
   for (const keys of Object.values(byLayer)) keys.sort((a, b) => a.t - b.t)

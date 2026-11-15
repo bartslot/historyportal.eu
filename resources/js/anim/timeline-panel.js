@@ -16,10 +16,10 @@ import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
-import { FACE_FIELD, LAYER_KEY_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
+import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
 
 /** A track the stage keeps on a layer's keys (stage25d-keys.js), not one of the timeline's own. */
-const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || t.property === FACE_FIELD
+const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */

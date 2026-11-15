@@ -63,7 +63,10 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
 /** ease 'smooth': the run from this key to the next passes through the keys round it (an animation preset's poses,
  *  resources/animations) instead of stopping at each one; absent: eased in and out. face: an expression id, held until the next. */
-export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number; ease?: 'smooth'; face?: string; [bone: `bone:${string}`]: number | undefined }
+export interface LayerKey { t: number; x?: number; y?: number; z?: number; scale?: number; opacity?: number; rotation?: number; ease?: 'smooth'; face?: string
+  /** which feet stand at this key (an animation preset's): n, f, both or none. The stage keeps a standing foot on its spot between two keys (foot-lock.ts). */
+  contact?: 'n' | 'f' | 'both' | 'none'
+  [bone: `bone:${string}`]: number | undefined }
 
 /** The values a backdrop (a ground band, the sky picture) takes from a layer. */
 export type GroundBandProps = Partial<Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'motion' | 'keys' | 'src'>>

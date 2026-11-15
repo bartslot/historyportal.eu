@@ -258,6 +258,12 @@ describe('partGaps: a part never comes off the part that holds it', () => {
     robed.bend({ thigh_n: 15, shin_n: 110 })
     expect(robed.partGaps().foot_n).toBeLessThan(2)
   })
+  it('legHold: free legs take a deep crouch, legs under a robe only a shallow one', () => {
+    expect(figure(false).legHold).toBe(1)
+    const held = figure(true).legHold
+    expect(held).toBeGreaterThan(0)
+    expect(held).toBeLessThan(1)
+  })
   it('a foot under a robe stays under its hem: the leg turns only as far as the robe still holds the foot', () => {
     const robed = figure(true)
     robed.bend({ thigh_n: -20, shin_n: 40 })

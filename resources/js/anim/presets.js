@@ -22,10 +22,11 @@ export function loadClips () {
   return loading
 }
 
-const round3 = (v) => Math.round(v * 1000) / 1000
+const round3 = (v) => Math.round(v * 1000) / 1000 + 0   // + 0: a mirrored 0 is 0, not -0
 const BONE = 'bone:'
-/** A clip that stays in place moves its root less than this (body heights): its x keys are left to the teacher. */
-export const MOVE_MIN = 0.01
+/** A root move smaller than this (body heights) is rounding: no x keys for it. A clip in place that moves the hips does
+ *  write them, so its planted feet stay put; where the teacher keys x themselves, theirs win (applyClip inPlace). */
+export const MOVE_MIN = 0.0005
 /** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
 export const TRAVEL_CYCLES = 3
 /** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend;
@@ -92,6 +93,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       if (bobs) key.y = round3(y0 + (k.bob ?? 0) * (k.bob < 0 ? room.sink : 1) * yPerHeight)   // a jump's lift stays
       if (tips) key.rotation = round3(r0 + (k.rot ?? 0) * facing)
       if (k.face && k.face !== face) key.face = face = k.face   // a face steps: only where it changes
+      if (k.contact) key.contact = k.contact   // which feet stand: the stage keeps them on their spots (foot-lock.ts)
       out.push(key)
     })
   }
@@ -102,6 +104,7 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
     if (moves) settle.x = last.x
     if (bobs) settle.y = round3(y0)
     if (tips) settle.rotation = round3(r0)
+    if (clip.keys.some((k) => k.contact)) settle.contact = 'none'   // the feet step into the drawn stance: nothing to hold
     out.push(settle)
   }
   if (out.length) delete out[out.length - 1].ease   // from its last pose the figure eases into whatever comes next

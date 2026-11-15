@@ -251,6 +251,13 @@ export interface BentPuppet extends BentPicture {
   limit(name: string, deg: number): number
   /** The mesh uvs with the head part showing this expression (Puppet.faces); the rest uvs for none or an unknown one. */
   uvsFor(face?: string): number[]
+  /** How deep a crouch this rig's legs take before a part would come off its holder (a skirt holding the legs back): 1
+   *  for legs that bend freely, less for held ones. The stage scales a preset's leg turns and its sink by it, so both
+   *  legs bend alike and the standing feet keep together (PM 11-15, kit girl 368). */
+  legHold: number
+  /** Where each ankle stands (puppet px) with these turns, as this rig really bends them (its limits and guards):
+   *  the foot lock (foot-lock.ts) holds a standing foot on its spot with it. Leaves that pose placed. */
+  ankles(bones: Record<string, number>): Partial<Record<'n' | 'f', [number, number]>>
   /** For each part, how far (puppet px) it has come off the part that holds it (the nearest part up its chain covering its
    *  joint in the drawing), in the pose bend() last placed: 0 while every part stays on. A check. */
   partGaps(): Record<string, number>
@@ -262,6 +269,7 @@ export interface BentPuppet extends BentPicture {
 const HOLD_PX = 2          // px a joint may stand outside the part holding it (outline anti-aliasing)
 const HOLD_TRIES = 12      // rounds of easing a loose part's chain back
 const HOLD_EASE = 0.8      // each round keeps this share of those turns
+const LEG_HOLD_STEPS = 10  // halvings in finding how deep a crouch a rig's legs take
 const TIP_REACH = 1.6   // a last bone's handle: this far from its joint, in steps of joint-to-middle-of-its-part
 const GUARD_STEP = 3      // degrees a forearm is taken back at a time until it is clear of the body
 const ALONG_FOREARM = [0.25, 0.5, 0.75, 1]   // the points of a forearm, elbow to hand, that have to stay out of it
@@ -486,6 +494,29 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     return out
   }
   let lastBones: Record<string, number> = {}   // the turns bend() placed last
+  // the deepest crouch the rig's own limits allow (thigh forward, knee folded, toes up as far as each goes), scaled until
+  // no part comes off its holder (keepHeld changes nothing): any crouch within the limits, scaled the same, holds
+  const legHold = (() => {
+    const crouch: Record<string, number> = {}
+    for (const side of ['n', 'f']) {
+      for (const [bone, deg] of [['thigh', -180], ['shin', 180], ['foot', -180]] as const) {
+        const name = `${bone}_${side}`
+        if (indexOf.has(name)) crouch[name] = limitBone(name, deg, puppet.facing, limits.get(name))
+      }
+    }
+    if (!Object.keys(crouch).length) return 1
+    const holds = (k: number) => {
+      const asked = Object.fromEntries(Object.entries(crouch).map(([b, d]) => [b, d * k]))
+      place(asked)
+      const got = keepHeld(asked)
+      return Object.keys(asked).every((b) => Math.abs((got[b] ?? 0) - asked[b]) < 0.5)
+    }
+    if (holds(1)) { place({}); return 1 }
+    let lo = 0, hi = 1
+    for (let n = 0; n < LEG_HOLD_STEPS; n++) { const mid = (lo + hi) / 2; if (holds(mid)) lo = mid; else hi = mid }
+    place({})
+    return lo
+  })()
   const handClear = (): boolean => gaps().every((gap, i) => gap === null || gap >= room[i])
   /** Also leaves the pose placed for what it returns, so bend() needs no second place(). */
   const safe = (bones: Record<string, number>): Record<string, number> => {
@@ -528,6 +559,13 @@ export function bindPuppet(puppet: Puppet): BentPuppet {
     partGaps() {
       if (!last.length) this.bend({})
       return gapsNow()
+    },
+    legHold,
+    ankles(bones) {
+      keepHeld(safe(bones))
+      const out: Partial<Record<'n' | 'f', [number, number]>> = {}
+      for (const side of ['n', 'f'] as const) if (indexOf.has(`foot_${side}`)) out[side] = carriedBy(`foot_${side}`, from(`foot_${side}`) as [number, number])
+      return out
     },
     joints() {
       if (!last.length) this.bend({})

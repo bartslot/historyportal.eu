@@ -20,6 +20,7 @@ import { resolveAnchorTime, pickShotIndex } from './scene/shot-sync.js'
 import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, formatMinutes, chapterProgress, pointInChapter, chapterCardFor, chapterCardHoldMs } from './scene/chapter-timeline.js'
 import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
+import { whenStageReady } from './stage-hold.js'
 import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
@@ -1577,6 +1578,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _stopAudio () {
       const a = this._audio
       this._audio = null
+      this._voiceToken++   // a voice still waiting for its stage (_voiceWhenSet) belongs to a scene nobody is on
       // A pending no-audio scene hold is the same kind of stale timer — cancel it too, along with
       // a scene waiting on its layers to leave: if the student jumps, that wait is now for a scene
       // nobody is looking at, and letting it fire would advance them a second time.
@@ -1758,8 +1760,9 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Swap background. Default scenes are a still flat picture (2D); skybox is opt-in per
       // scene; no image at all = the scene's solid backdrop (brand navy by default).
+      let stageShown = null   // the voice waits for this (stage-hold.js)
       if (isStage25d(scene)) {
-        this._showStage25d(scene)                             // Babylon 2.5D stage, set from config.stage25d
+        stageShown = this._showStage25d(scene)                // Babylon 2.5D stage, set from config.stage25d
       } else if (scene.config?.diorama) {
         this._showDiorama(scene)                              // plate + occluders + items on floor grids
       } else if (scene.image_url || scene.shots?.length) {
@@ -1779,9 +1782,25 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // The first scene of a new chapter opens on its chapter card; the voice starts as the card fades.
       const card = chapterCardFor(this.chapters, index, { from: cameFrom, at: this._seekOnStart })
-      if (card) this._showChapterCard(card, scene, () => this._beginSceneVoice(index, scene))
-      else this._beginSceneVoice(index, scene)
+      const voice = () => this._voiceWhenSet(index, scene, stageShown)
+      if (card) this._showChapterCard(card, scene, voice)
+      else voice()
     },
+
+    /**
+     * A stage scene's voice (the stage's clock) starts once its set is shown, or after STAGE_HOLD_MS; any other scene's
+     * at once. A jump meanwhile (_stopAudio) drops the wait; a class that paused meanwhile stays paused.
+     */
+    _voiceWhenSet (index, scene, shown) {
+      if (!shown) { this._beginSceneVoice(index, scene); return }
+      const token = this._voiceToken
+      whenStageReady(shown).then(() => {
+        if (this._voiceToken !== token) return   // the class moved on
+        this._beginSceneVoice(index, scene)
+        if (this.playbackPaused) this._audio?.pause()
+      })
+    },
+    _voiceToken: 0,
 
     _beginSceneVoice (index, scene) {
       // No narration audio (e.g. a not-yet-narrated scene): hold on the visual for its set duration
