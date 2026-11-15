@@ -53,7 +53,8 @@
     <div class="lp-panel-content">
     {{-- Which tab the dock is showing. Lives in $store.view alongside the panel toggles, so it
          survives a scene change (this component is rebuilt per scene) and a reload. --}}
-    <div role="tablist" class="tabs tabs-box tabs-sm mt-1">
+    {{-- One full-width bar like the inspector's Selection / Lesson tabs: no tray padding or border (Bart 11-15). --}}
+    <div role="tablist" class="tabs tabs-box tabs-sm w-full shrink-0 rounded-none! border-x-0! border-t-0! border-b! border-panel-hairline! p-0! [&>.tab]:h-11! [&>.tab]:flex-1 [&>.tab]:rounded-none!">
         <button type="button" role="tab" x-on:click="$store.view.showTab('timeline')"
                 :aria-selected="$store.view.bottomTab === 'timeline'"
                 :class="$store.view.bottomTab === 'timeline' ? 'tab-active' : ''"
