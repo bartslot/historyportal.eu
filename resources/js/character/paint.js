@@ -93,3 +93,48 @@ export function partLabels (layers, labels, rig, kinds) {
   }
   return out
 }
+
+/** A head cloth that covers the crown (Bart 11-16: the braid's hair showed above and behind the shawl). */
+export const isHood = (pieceId) => /shawl-over-head$/.test(pieceId)
+
+/**
+ * The hair a hood covers, as 1s over the hair piece's own pixels: whatever lies above the cloth in its column, and, above
+ * `tieY` (the braid's tie: it covers the cut), whatever lies behind the cloth in its row. Kit sheets face right, so behind
+ * is left. Boxes are [x, y, w, h] on the baked canvas; `cloth` carries fill and ink.
+ */
+export function hoodMask (hairBox, cloth, clothBox, tieY = -Infinity) {
+  const [hx, hy, hw, hh] = hairBox, [cx, cy, cw, ch] = clothBox
+  const top = new Map(), left = new Map()
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      const p = (y * cw + x) * 4
+      if (cloth.fill.data[p + 3] < 128 && cloth.ink.data[p] < 128) continue
+      const X = cx + x, Y = cy + y
+      if (!top.has(X) || Y < top.get(X)) top.set(X, Y)
+      if (!left.has(Y) || X < left.get(Y)) left.set(Y, X)
+    }
+  }
+  const out = new Uint8Array(hw * hh)
+  for (let y = 0; y < hh; y++) {
+    const Y = hy + y
+    for (let x = 0; x < hw; x++) {
+      const X = hx + x
+      const above = top.has(X) && Y < top.get(X)
+      const behind = Y < tieY && X < (left.get(Y) ?? Infinity)
+      if (above || behind) out[y * hw + x] = 1
+    }
+  }
+  return out
+}
+
+/** The top of a piece's paint of one kind, on the baked canvas; -Infinity when it has none. */
+export function kindTop (piece, box, kindIndexWanted, kindsCount) {
+  const [, by, bw, bh] = box
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      const p = (y * bw + x) * 4
+      if (piece.fill.data[p + 3] >= 128 && kindIndex(piece.fill.data[p], kindsCount) === kindIndexWanted) return by + y
+    }
+  }
+  return -Infinity
+}

@@ -2,7 +2,7 @@
  * The kit's pictures in the browser: loaded once, recoloured once per colour set (paint.js), stacked on canvases with
  * drawImage. A preview draws at screen size; Save draws at the rig's size (1 canvas px per puppet px) and cuts.
  */
-import { recolour, shadeLayer, castLayer, partLabels, kindIndex } from './paint.js'
+import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood, kindTop } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
 
 const loaded = new Map()      // url -> Promise<ImageData>
@@ -88,10 +88,49 @@ export async function layersOf (kit, recipe, expression = 'calm') {
   const body = bodyOf(kit, recipe)
   const palette = paletteOf(kit, recipe)
   const ids = stackOf(kit, recipe, expression)
-  return Promise.all(ids.map(async (id) => {
+  const layers = await Promise.all(ids.map(async (id) => {
     const piece = pieceOf(body, id)
     return { id, slot: piece.slot, box: piece.box, ...(await paintedOf(kit, body, piece, palette)) }
   }))
+  const hood = layers.find((l) => l.slot === 'headwear' && isHood(l.id))
+  return hood ? layers.map((l) => (l.slot === 'hair' ? underHood(kit, body, l, hood) : l)) : layers
+}
+
+const hoods = new Map()       // body + hair + hood -> the hair's covered pixels
+const HOODS_MAX = 24
+
+/** A hair layer under a hood: the pixels it covers taken out of every canvas and of the raw fill and ink, so the preview,
+ *  the edge, Save and the rig all agree (paint.js hoodMask). */
+function underHood (kit, body, hair, hood) {
+  const key = `${body.id}:${hair.id}:${hood.id}`
+  if (!hoods.has(key)) {
+    const tieY = kindTop(hair.raw, hair.box, kit.kinds.indexOf('tie'), kit.kinds.length)
+    hoods.set(key, hoodMask(hair.box, hood.raw, hood.box, tieY))
+    if (hoods.size > HOODS_MAX) hoods.delete(hoods.keys().next().value)
+  }
+  const mask = hoods.get(key)
+  const cut = (data) => {
+    const out = new Uint8ClampedArray(data)
+    for (let i = 0; i < mask.length; i++) if (mask[i]) out[i * 4 + 3] = 0
+    return out
+  }
+  const cutRaw = (img, channel) => {
+    if (!img) return img
+    const out = new Uint8ClampedArray(img.data)
+    for (let i = 0; i < mask.length; i++) if (mask[i]) out[i * 4 + channel] = 0
+    return { width: img.width, height: img.height, data: out }
+  }
+  const { width: w, height: h } = hair.raw.fill
+  const canvasCut = (c) => {
+    if (!c) return c
+    const g = c.getContext('2d', { willReadFrequently: true })
+    return put(cut(g.getImageData(0, 0, w, h).data), w, h)
+  }
+  return {
+    ...hair,
+    raw: { ...hair.raw, fill: cutRaw(hair.raw.fill, 3), ink: cutRaw(hair.raw.ink, 0) },
+    colour: canvasCut(hair.colour), flat: canvasCut(hair.flat), shade: canvasCut(hair.shade), cast: canvasCut(hair.cast),
+  }
 }
 
 /**

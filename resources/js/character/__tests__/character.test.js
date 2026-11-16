@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { stackOf, paletteOf, wear, colour, randomRecipe, cleanRecipe, zonesOf, onBody, presetRecipe } from '../recipe.js'
-import { kindIndex, recolour, shadeLayer, castLayer, partLabels, INK } from '../paint.js'
+import { kindIndex, recolour, shadeLayer, castLayer, partLabels, INK, hoodMask, isHood } from '../paint.js'
 import { cutPuppet, pack, fillFrom, robeLimits } from '../rig.js'
 import { withFace } from '../face-keys.js'
 
@@ -227,5 +227,26 @@ describe('robe limits', () => {
   })
   it('a kilt to the knee leaves the legs free', () => {
     expect(robeLimits(bones, 1050)).toBe(bones)
+  })
+})
+
+describe('a hood over the hair (Bart 11-16)', () => {
+  const img = (w, h, on) => ({ width: w, height: h, data: Uint8ClampedArray.from({ length: w * h * 4 }, (_, i) => (i % 4 === 3 && on(Math.floor(i / 4) % w, Math.floor(i / 4 / w)) ? 255 : 0)) })
+  // a 6 x 6 canvas: the cloth covers columns 2-5 from row 2 down; the hair fills it all
+  const cloth = { fill: img(4, 4, () => true), ink: img(4, 4, () => false) }
+
+  it('hides the hair above the cloth and, above the tie, behind it; the rest shows', () => {
+    const m = hoodMask([0, 0, 6, 6], cloth, [2, 2, 4, 4], 4)
+    const at = (x, y) => m[y * 6 + x]
+    expect(at(3, 1)).toBe(1)   // above the cloth
+    expect(at(0, 3)).toBe(1)   // behind it, above the tie
+    expect(at(0, 5)).toBe(0)   // the braid below the tie hangs free
+    expect(at(3, 4)).toBe(0)   // under the cloth: the cloth draws over it anyway
+  })
+
+  it('names only a cloth over the head a hood', () => {
+    expect(isHood('headwear/shawl-over-head')).toBe(true)
+    expect(isHood('headwear/woman-shawl-over-head')).toBe(true)
+    expect(isHood('headwear/headband')).toBe(false)
   })
 })
