@@ -521,3 +521,21 @@ describe('picturePoint', () => {
   })
 })
 
+
+describe('how far a figure has moved from its saved spot', () => {
+  it('reports the timeline moving a figure, in px of the stage, for the balloon it speaks (Bart 11-16)', () => {
+    const el = host()
+    Object.defineProperty(el, 'clientWidth', { value: 1000 })
+    Object.defineProperty(el, 'clientHeight', { value: 500 })
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ x: 50, y: 58 })])
+    expect(overlay.shiftPx(1)).toEqual([0, 0])
+
+    overlay.setLayerProp(1, 'x', 60)   // a keyframe moves him 10% right
+    overlay.setLayerProp(1, 'y', 54)
+    expect(overlay.shiftPx(1).map((v) => Math.round(v))).toEqual([100, -20])
+
+    overlay.setLayers([layer({ x: 60, y: 54 })])   // saved there: that is his spot now
+    expect(overlay.shiftPx(1)).toEqual([0, 0])
+  })
+})

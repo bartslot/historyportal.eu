@@ -162,6 +162,9 @@ const defaultFigureBox = (assetId, figure = null) => {
   return img ? img.getBoundingClientRect() : null
 }
 
+/** How far a figure layer stands from its saved spot now, px (ArtworkOverlay.shiftPx through its node), or null. */
+const defaultFigureShift = (assetId) => document.querySelector(`[data-layer-id="art_${assetId}"]`)?._shiftPx?.() ?? null
+
 /** A stored point [x, y] as fractions of the host (0..1), or null when it is not one. */
 export const fractionPoint = (p) => (Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) ? p : null)
 
@@ -281,6 +284,7 @@ export class BalloonLayer {
   constructor (host, figureBox = defaultFigureBox, opts = {}) {
     this.host = host
     this.figureBox = figureBox
+    this.figureShift = opts.figureShift ?? defaultFigureShift
     this.editable = !!opts.editable
     this.opts = opts
     this._raf = 0
@@ -441,17 +445,34 @@ export class BalloonLayer {
    * its tail tip counted from the speaker's mouth, so the two move as one; any other point is the stage's own.
    */
   _fromMouth (line, p, mouth) {
-    if (!p || !line.group) return p
+    if (!p) return p
+    if (!line.group) {
+      // Its speaker walked (a keyframe, a map pan): the balloon walks along, bubble and tip together.
+      const [dx, dy] = this._speakerShift(line)
+      return dx || dy ? [p[0] + dx, p[1] + dy] : p
+    }
     if (!mouth) return null
     return [mouth[0] / (this.host.clientWidth || 1) + p[0], mouth[1] / (this.host.clientHeight || 1) + p[1]]
+  }
+
+  /** How far the balloon's speaker stands from its saved spot now, as host fractions; [0, 0] without one. */
+  _speakerShift (line) {
+    const s = line.figure ? this.figureShift(line.figure.asset_id) : null
+    if (!s) return [0, 0]
+    return [s[0] / (this.host.clientWidth || 1), s[1] / (this.host.clientHeight || 1)]
   }
 
   /** The other way round: a point on the stage (host fractions) as the line stores it. */
   storedPoint (id, p) {
     const line = this.lines[this.indexOf(id)]
+    const r = (v) => Math.round(v * 1e4) / 1e4
+    if (line && !line.group) {
+      // saved where it sits when its speaker stands on his saved spot, so it does not jump on reload
+      const [dx, dy] = this._speakerShift(line)
+      return dx || dy ? [r(p[0] - dx), r(p[1] - dy)] : p
+    }
     const mouth = line?.group ? this._mouth(line) : null
     if (!mouth) return p
-    const r = (v) => Math.round(v * 1e4) / 1e4
     return [r(p[0] - mouth[0] / (this.host.clientWidth || 1)), r(p[1] - mouth[1] / (this.host.clientHeight || 1))]
   }
 
@@ -459,7 +480,7 @@ export class BalloonLayer {
   middleOf (id) {
     const i = this.indexOf(id)
     if (i < 0) return null
-    return this.lines[i].group ? (this.shown.get(i)?._drawn?.center ?? null) : fractionPoint(this.lines[i].at)
+    return this.lines[i].group ? (this.shown.get(i)?._drawn?.center ?? null) : this._fromMouth(this.lines[i], fractionPoint(this.lines[i].at), null)
   }
 
   /**

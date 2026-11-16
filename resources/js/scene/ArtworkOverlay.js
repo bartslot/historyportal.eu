@@ -386,7 +386,23 @@ export class ArtworkOverlay {
       .filter(l => l && (l.url || l.embed || l.kind === 'arrow') && (l.asset_id != null))
       .map(normalizeLayer)
     this._projectPinned()
+    this._keepRest()
     this._render()
+  }
+
+  /** Each figure's saved spot, before the timeline or a map pan moves it: what shiftPx() counts from. */
+  _keepRest() {
+    for (const l of this._layers) l._rest = [l.x, l.y]
+  }
+
+  /**
+   * How far a figure stands from its saved spot now, px of the stage: the timeline moves it, a pinned one moves with the
+   * map. The balloon it speaks moves the same way (Bart 11-16: a balloon stayed put while its speaker walked away).
+   */
+  shiftPx(assetId) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    if (!item?._rest) return null
+    return [((item.x - item._rest[0]) / 100) * (this.host.clientWidth || 0), ((item.y - item._rest[1]) / 100) * (this.host.clientHeight || 0)]
   }
 
   /**
@@ -397,6 +413,7 @@ export class ArtworkOverlay {
   setProjector(projector) {
     this._projector = projector || null
     this._projectPinned()
+    this._keepRest()
     this._render()
   }
 
@@ -1035,6 +1052,7 @@ export class ArtworkOverlay {
     if (item.kind === 'arrow') return this._arrowNode(item)
     const node = document.createElement('div')
     node.dataset.layerId = artObjId(item.asset_id)
+    node._shiftPx = () => this.shiftPx(item.asset_id)   // read by the balloon this figure speaks (BalloonLayer)
     // width:max-content so the node sizes to the image's natural aspect at the given height.
     // (A plain shrink-to-fit box collapses to a wrong tall/narrow shape when the child img
     // uses percentage height — that distorted the selection box.)

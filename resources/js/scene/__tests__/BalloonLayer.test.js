@@ -195,3 +195,22 @@ describe('patchLine', () => {
     expect(layer._place).toHaveBeenCalledWith(el, expect.objectContaining({ text: 'new' }))
   })
 })
+
+describe('a balloon whose speaker moves', () => {
+  it('moves with its speaker: bubble and tail tip shift by how far the figure moved (Bart 11-16)', () => {
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { value: 1000 })
+    Object.defineProperty(host, 'clientHeight', { value: 500 })
+    let shift = [0, 0]
+    const layer = new BalloonLayer(host, () => null, { figureShift: () => shift })
+    const line = { id: 'bal_0', speaker: 'visscher', text: 'x', figure: { asset_id: 111, mouth: [0.5, 0.1] }, at: [0.5, 0.2], tail: { tip: [0.88, 0.48] } }
+    layer.setLines([line])
+
+    expect(layer._fromMouth(layer.lines[0], [0.88, 0.48], null)).toEqual([0.88, 0.48])
+    shift = [100, -20]
+    expect(layer._fromMouth(layer.lines[0], [0.88, 0.48], null).map((v) => +v.toFixed(3))).toEqual([0.98, 0.44])
+    // a tip dragged while he stands there is saved at his saved spot, so it does not jump on reload
+    expect(layer.storedPoint('bal_0', [0.98, 0.44]).map((v) => +v.toFixed(3))).toEqual([0.88, 0.48])
+  })
+})
+
