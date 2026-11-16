@@ -5,8 +5,8 @@
     "src": "../../../../../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
     "isDynamicEntry": true
   },
-  "_BalloonLayer-B9pxwGZ7.js": {
-    "file": "assets/BalloonLayer-B9pxwGZ7.js",
+  "_BalloonLayer-D_ieEcVk.js": {
+    "file": "assets/BalloonLayer-D_ieEcVk.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
@@ -373,7 +373,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DTiqQS_b.css",
+    "file": "assets/app-CtnPNNHE.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -382,7 +382,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Wk547R4I.js",
+    "file": "assets/app-3XAofSAi.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -392,7 +392,7 @@
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
       "_draw-options-D-a8RLUv.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "_clip-W780-tgz.js",
       "_presets-BNozUYiv.js",
       "_tuner-CTMYYJl-.js",
@@ -433,7 +433,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-C6QvzS2L.js",
+    "file": "assets/cutout-dialog-B4yMUfWy.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -447,7 +447,7 @@
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
       "_draw-options-D-a8RLUv.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "_clip-W780-tgz.js",
       "_presets-BNozUYiv.js",
       "_tuner-CTMYYJl-.js",
@@ -483,7 +483,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BP818FzQ.js",
+    "file": "assets/lesson-player-uFIuJ6ZV.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -512,7 +512,7 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "_TeamGame-C10aU5JA.js",
@@ -588,7 +588,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-BCc1C4Re.js",
+    "file": "assets/SplitStage-CSiD0_KD.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -596,7 +596,7 @@
       "resources/js/scene/ParallaxScene.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "_big-countdown-BuVT1ZWe.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
@@ -644,7 +644,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DknqDN2y.js",
+    "file": "assets/index-BamLKwwF.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -657,7 +657,7 @@
       "_vite-helpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
       "_camera-CXw28nPp.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "resources/js/app.js",
       "../../../../../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
       "_ambient-CEzLlAaX.js",
@@ -771,7 +771,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-DVM8jFm0.js",
+    "file": "assets/recorder-CxKtbPtS.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -782,7 +782,7 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_draw-options-D-a8RLUv.js",
-      "_BalloonLayer-B9pxwGZ7.js",
+      "_BalloonLayer-D_ieEcVk.js",
       "_clip-W780-tgz.js",
       "_presets-BNozUYiv.js",
       "_tuner-CTMYYJl-.js",
