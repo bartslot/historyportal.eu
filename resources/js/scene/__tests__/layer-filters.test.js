@@ -41,7 +41,18 @@ describe('layer colour treatment', () => {
 
     expect(svg).not.toContain('feFlood')
     expect(svg).toContain('type="saturate" values="0"')      // to luminance first
-    expect(svg).toContain('1 0 0 0 0 0 0 0 0 0 0 0 0 0 0')   // then scaled by pure red
+    // then luminance runs from pure red (black ink) to white (paper)
+    expect(svg).toContain('0.0000 0 0 0 1.0000 1.0000 0 0 0 0.0000 1.0000 0 0 0 0.0000')
+  })
+
+  it('colours black ink and keeps white paper white (Bart 11-16: a black shape stayed black)', () => {
+    const svg = filterMarkup({ tint: '#ff8000' })
+    const rows = svg.match(/type="matrix" values="([^"]+)"/)[1].trim().split(/\s+/).map(Number)
+    // after the saturate step R = G = B = luminance; apply the tint matrix to one grey
+    const tinted = (lum) => [0, 1, 2].map((r) => rows[r * 5] * lum + rows[r * 5 + 1] * lum + rows[r * 5 + 2] * lum + rows[r * 5 + 4])
+
+    expect(tinted(0).map((v) => +v.toFixed(3))).toEqual([1, 0.502, 0])   // the shape's black stroke takes the colour
+    expect(tinted(1).map((v) => +v.toFixed(3))).toEqual([1, 1, 1])       // paper and highlights stay white
   })
 
   it('keeps the keyed transparency when a tint is applied on top of it', () => {

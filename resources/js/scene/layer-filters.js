@@ -91,14 +91,15 @@ export function filterMarkup({ white_key = 0, grayscale = false, tint = null, ti
     const mix = Math.min(1, Math.max(0, tint_opacity ?? 1))
     // A DUOTONE, not a flood. Flooding the colour through the alpha painted the whole layer one
     // flat block, because a photograph is opaque everywhere — the artwork simply disappeared.
-    // Mapping luminance onto the colour instead keeps every line and shadow, and just changes
-    // what colour the ink is.
+    // Luminance runs from the colour (black ink) to white (paper): every line and shadow stays,
+    // and the INK takes the colour. It used to run from black to the colour, so a black shape or
+    // line drawing stayed black whatever was picked (Bart 11-16: "vormen doesn't change color").
+    // After the saturate step R = G = B, so each row reads the red channel only.
+    const row = (c) => `${(1 - c).toFixed(4)} 0 0 0 ${c.toFixed(4)} `
     steps.push('<feColorMatrix type="saturate" values="0"/>')
     steps.push(
       '<feColorMatrix type="matrix" values="' +
-      `${r} 0 0 0 0 ` +
-      `0 ${g} 0 0 0 ` +
-      `0 0 ${b} 0 0 ` +
+      row(r) + row(g) + row(b) +
       '0 0 0 1 0"/>' +
       (mix < 1 ? ' ' : '')
     )
