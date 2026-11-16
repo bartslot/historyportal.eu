@@ -17,7 +17,8 @@ Schedule::command('elevenlabs:warm')->cron('*/50 * * * *');
 // The overlap lock expires after 15 minutes, not Laravel's default 24 hours: when SiteGround kills a
 // worker the lock stays behind, and lesson generation used to stop for a day (infra audit 2026-10-17).
 // 15 minutes is above the longest job (the WorldLabs skybox, 720 s), so a live worker is never doubled.
-Schedule::command('queue:work --stop-when-empty --max-time=55 --tries=2')
+// A teacher's re-narrate goes on 'narrate' and is served first (Step3SceneConfigurator::regenerate).
+Schedule::command('queue:work --queue=narrate,default --stop-when-empty --max-time=55 --tries=2')
     ->everyMinute()
     ->withoutOverlapping(15)
     ->runInBackground();

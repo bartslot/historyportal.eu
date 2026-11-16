@@ -5293,7 +5293,8 @@ class Step3SceneConfigurator extends Component
             'script' => GenerateSceneScript::dispatch($scene->id),
             // Multi-shot storyboard when enabled; the job itself falls back to the single image.
             'image' => \App\Jobs\GenerateSceneShots::dispatch($scene->id),
-            'audio' => GenerateSceneAudio::dispatch($scene->id),
+            // its own queue: the pass below takes THIS narration, not the oldest job of a lesson being made
+            'audio' => GenerateSceneAudio::dispatch($scene->id)->onQueue('narrate'),
             'world' => $this->generateWorld($scene->id),
             default => null,
         };
@@ -5303,7 +5304,7 @@ class Step3SceneConfigurator extends Component
         // stays queued, so its retries and timeout still hold; one worker pass starts as this request
         // ends, after the response has gone. Cut off by the host, the queue retries it as before.
         if ($asset === 'audio') {
-            app()->terminating(fn () => \Illuminate\Support\Facades\Artisan::call('queue:work', ['--once' => true, '--tries' => 3]));
+            app()->terminating(fn () => \Illuminate\Support\Facades\Artisan::call('queue:work', ['--once' => true, '--queue' => 'narrate', '--tries' => 3]));
         }
 
         // Re-select so scene:load fires and the panel shows the scene as it now is — generating,

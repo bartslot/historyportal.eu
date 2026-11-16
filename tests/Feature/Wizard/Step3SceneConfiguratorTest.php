@@ -245,14 +245,15 @@ class Step3SceneConfiguratorTest extends TestCase
         // retries and timeout are the safety net); one worker pass now starts as the request ends.
         Bus::fake();
         \Illuminate\Support\Facades\Artisan::shouldReceive('call')->once()
-            ->with('queue:work', \Mockery::subset(['--once' => true]));
+            ->with('queue:work', \Mockery::subset(['--once' => true, '--queue' => 'narrate']));
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->dispatch('scene:renarrate', sceneId: $this->s1->id);
 
-        // the Livewire test request ends the app itself, which runs the terminating callback
-        Bus::assertDispatched(GenerateSceneAudio::class, fn ($j) => $j->sceneId === $this->s1->id);
+        // the Livewire test request ends the app itself, which runs the terminating callback; the job is on its
+        // own queue, so the pass takes this narration and not the oldest job of a lesson being generated
+        Bus::assertDispatched(GenerateSceneAudio::class, fn ($j) => $j->sceneId === $this->s1->id && $j->queue === 'narrate');
     }
 
     public function test_scene_renarrate_ignores_a_foreign_scene(): void
