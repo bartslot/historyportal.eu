@@ -323,6 +323,23 @@ describe('the canvas and the timeline agree on which layer is active', () => {
     expect(p.targetFromObjectId('')).toBeNull()        // background: nothing active
   })
 
+  it('lights the 3D sky row and the background row they select (sweep 11-16)', () => {
+    const p = panel()
+    expect(p.targetFromObjectId('s25_sky')).toBe('s25sky:sky')
+    expect(p.targetFromObjectId('s25_layer-2')).toBe('s25:layer-2')
+    expect(p.targetFromObjectId('bg_1')).toBe('bg:1')
+  })
+
+  it('selects the sky on the 3D stage from its row', () => {
+    const p = panel()
+    const picked = []
+    window.__stage25d = { select: (id) => picked.push(id) }
+    p.selectObject('s25sky:sky')
+    expect(picked).toEqual(['sky'])
+    expect(p.activeTarget).toBe('s25sky:sky')
+    delete window.__stage25d
+  })
+
   it('a row name selects the layer on the canvas and NO keys, so Delete removes what the row names; a canvas click selects no keys', () => {
     const select = vi.fn()
     window.__lessonTextLayer.select = select

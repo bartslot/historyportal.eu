@@ -7,7 +7,7 @@
  * selection bridge read the selection there too.
  */
 import { BalloonLayer, withBalloonIds } from './BalloonLayer.js'
-import { editableBalloons, editBalloon, patchBalloon, readBalloon, selectBalloon, selectedBalloon, setBalloonText } from './balloon-edit.js'
+import { editableBalloons, editBalloon, hideBalloon, patchBalloon, readBalloon, selectBalloon, selectedBalloon, setBalloonText } from './balloon-edit.js'
 import { panelForLine } from './split-layout.js'
 
 /** One finished gesture on a balloon → one save (one undo step). */
@@ -76,7 +76,7 @@ export function hideStageBalloons () {
 if (typeof window !== 'undefined') {
   window.__balloons = {
     list: balloonRows, select: selectBalloon, selected: selectedBalloon, edit: editBalloon,
-    patch: patchBalloon, text: setBalloonText, value: readBalloon,
+    patch: patchBalloon, text: setBalloonText, value: readBalloon, hide: hideBalloon,
     /** The playhead moved: each balloon shows during its own time. */
     time: (t) => { lastTime = t; layer?.update(t) },
   }

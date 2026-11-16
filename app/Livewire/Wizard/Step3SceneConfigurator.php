@@ -1067,7 +1067,8 @@ class Step3SceneConfigurator extends Component
             $exists = match (true) {
                 $m[1] === 'camera', $m[1] === 'world' => isset($this->selectedScene['config']['stage25d']),
                 $m[1] === 'sky' => isset($set['sky']) || \App\Services\Stage25d\Daylight::isOwn($set),
-                $m[1] === 'terrain' => ! empty($set['groundSlots']) || ! str_starts_with((string) ($set['ground'] ?? '#'), '#'),
+                // Strips alone are terrain too: the stage builds its slot from them (engine.js terrainSlot).
+                $m[1] === 'terrain' => ! empty($set['groundSlots']) || ! empty($set['groundBands']) || ! str_starts_with((string) ($set['ground'] ?? '#'), '#'),
                 str_starts_with($m[1], 'band-') => isset($set['groundBands'][(int) $m[3]]),
                 default => isset($set['layers'][(int) $m[2]]),
             };

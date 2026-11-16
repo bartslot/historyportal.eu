@@ -1489,7 +1489,10 @@ export const animationTimeline = (config = {}) => ({
     }
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
     if (id === 's25_camera') return 's25cam'
+    // The sky's row is its own kind (scene-objects.js): 's25:sky' matched no row and lit none.
+    if (id === 's25_sky') return 's25sky:sky'
     if (String(id).startsWith('s25_')) return `s25:${String(id).slice(4)}`
+    if (String(id).startsWith('bg_')) return `bg:${String(id).slice(3)}`
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
@@ -1532,6 +1535,7 @@ export const animationTimeline = (config = {}) => ({
     else if (kind === 'dio') window.__diorama?.select?.(id)
     else if (kind === 's25') window.__stage25d?.select?.(id)
     else if (kind === 's25cam') window.__stage25d?.select?.('camera')
+    else if (kind === 's25sky') window.__stage25d?.select?.('sky')
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
     // the background has no selection of its own: choosing its row lets go of whatever was selected on the stage
     else if (kind === 'bg') window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `bg_${id}` } }))

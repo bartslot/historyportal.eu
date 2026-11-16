@@ -392,6 +392,16 @@
 /* The bottom dock clips its overflow, so its top handle's zone grows down into the dock instead. */
 /* It stops just above the tab buttons, which sit mt-1 lower to make room. */
 .lp-resize[data-dock-resize]::before { top: 0; margin-top: 0; height: calc(var(--editor-gap) + 8px); }
+/* A split scene's divider on the stage (SplitStage.js): it kept the .lp-grip class when the
+   drawer handles became .lp-resize (8183548d), lost its rules, and read as a plain line with no
+   resize cursor and no grip (sweep 11-16). */
+.lp-grip { display: grid; place-items: center; touch-action: none; }
+.lp-grip[aria-orientation='horizontal'] { cursor: row-resize; }
+.lp-grip[aria-orientation='vertical'] { cursor: col-resize; }
+.lp-grip > .lp-grip-pill { display: block; border-radius: 9999px; background: var(--color-panel-label); }
+.lp-grip[aria-orientation='horizontal'] > .lp-grip-pill { width: 2.5rem; height: 0.25rem; }
+.lp-grip[aria-orientation='vertical'] > .lp-grip-pill { width: 0.25rem; height: 2.5rem; }
+.lp-grip:hover > .lp-grip-pill, .lp-grip:focus-visible > .lp-grip-pill, .lp-grip[data-dragging] > .lp-grip-pill { background: var(--color-info); }
 .lp-resize > .lp-resize-line { display: block; background: transparent; }
 .lp-resize[aria-orientation='vertical'] > .lp-resize-line { width: 1px; align-self: stretch; }
 .lp-resize[aria-orientation='horizontal'] > .lp-resize-line { height: 1px; align-self: stretch; }

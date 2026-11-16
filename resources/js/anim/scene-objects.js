@@ -150,6 +150,7 @@ export const setObjectHidden = (target, hidden) => {
   // The background: fade it right out rather than leave the stage blank behind a hidden node.
   if (kind === 'bg') return void window.__backgrounds?.hide?.(id, hidden)
   if (kind === 's25') return void window.__stage25d?.setHidden?.(id, hidden)
+  if (kind === 'bal') return void window.__balloons?.hide?.(`bal_${id}`, hidden)
   const selector = kind === 'art' || kind === 'arw'
     ? `[data-layer-id="art_${id}"], [data-layer-chrome="art_${id}"]`
     : kind === 'bal' ? `[data-balloon-id="bal_${id}"]` : `[data-text-id="${id}"]`

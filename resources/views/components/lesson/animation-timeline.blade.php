@@ -356,12 +356,14 @@
                                     </button>
                                     {{-- Drag the label to scrub, click it to type, double-click to reset
                                          (a gesture rather than a button: the button took the room the
-                                         value needs, Bart 2026-10-16). --}}
+                                         value needs, Bart 2026-10-16). The double-click lets go of the
+                                         field its first click focused, so Cmd-Z undoes the reset, not
+                                         the field's text (sweep 11-16). --}}
                                     <span data-scrub class="cursor-col-resize select-none whitespace-nowrap text-xs uppercase tracking-wide text-panel-label"
                                           x-show="property.type !== 'face'"
                                           x-text="propertyLabel(property)"
                                           x-on:click="$el.closest('[data-timeline-row]').querySelector('[data-timeline-value]')?.focus()"
-                                          x-on:dblclick.prevent="canReset(object.target, property.key) && resetProperty(object.target, property.key)"
+                                          x-on:dblclick.prevent="document.activeElement?.blur(); canReset(object.target, property.key) && resetProperty(object.target, property.key)"
                                           :data-tooltip="canReset(object.target, property.key) ? @js(__('Double-click to reset')) : null"
                                           :data-timeline-label="object.target + ':' + property.key"></span>
                                     <template x-if="property.type === 'color'">

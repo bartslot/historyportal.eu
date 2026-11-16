@@ -287,6 +287,7 @@ export class BalloonLayer {
     this.lines = []
     this.shown = new Map() // line index → element
     this._selectedId = null
+    this._hidden = new Set()   // balloon ids the timeline's eye has switched off
     this._t = 0
     if (typeof ResizeObserver === 'function') {
       this._ro = new ResizeObserver(() => this._relayout())
@@ -347,6 +348,13 @@ export class BalloonLayer {
     if (i < 0) return undefined
 
     return balloonValue(this.lines[i], property, this.shown.get(i)?._drawn)
+  }
+
+  /** The timeline's eye: hide or show one balloon (by editor id) until it is switched back. */
+  setHidden (id, hidden) {
+    if (hidden) this._hidden.add(id)
+    else this._hidden.delete(id)
+    this._relayout()
   }
 
   /** The editor's selection: ring the balloon (and show its tail handle); null clears it. */
@@ -509,7 +517,9 @@ export class BalloonLayer {
     const mouth = this._mouth(line)
     const at = this._fromMouth(line, fractionPoint(line.at), mouth)
     // A grouped balloon whose speaker is out of frame has nowhere to be.
-    el.style.visibility = line.group && !mouth ? 'hidden' : ''
+    // ...and one the timeline's eye switched off is not drawn either. Set here, where the layout
+    // writes visibility every frame: an inline style from outside was wiped at once (sweep 11-16).
+    el.style.visibility = this._hidden.has(line.id) || (line.group && !mouth) ? 'hidden' : ''
     const { side, room } = mouth && !at ? balloonSide(mouth, line.figure?.facing || 0, { w, h }, view) : { side: null, room: Infinity }
     // Narrower (more lines) rather than off the face's side.
     bubble.style.maxWidth = `${Math.max(MIN_ROOM_EM * font, Math.min(parseFloat(bubble.style.maxWidth), room))}px`

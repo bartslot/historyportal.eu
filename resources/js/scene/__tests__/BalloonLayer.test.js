@@ -129,6 +129,18 @@ describe('BalloonLayer: balloons added in the editor', () => {
     expect(layer.lines.map(l => l.id)).toEqual(['bal_1'])
   })
 
+  it('keeps a balloon the timeline eye switched off hidden through every relayout, and shows it again', () => {
+    // Sweep 11-16: the eye set visibility from outside and the next layout wiped it.
+    const layer = new BalloonLayer(document.createElement('div'), () => null)
+    layer.setLines([balloon])
+    const el = layer.shown.get(0)
+    layer.setHidden('bal_0', true)
+    layer._relayout()
+    expect(el.style.visibility).toBe('hidden')
+    layer.setHidden('bal_0', false)
+    expect(el.style.visibility).toBe('')
+  })
+
   it('draws a thought as a cloud, with no speech tail', () => {
     const host = document.createElement('div')
     const layer = new BalloonLayer(host, () => null)

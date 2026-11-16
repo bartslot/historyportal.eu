@@ -67,6 +67,11 @@ export function patchBalloon (id, values) {
   for (const l of live()) l.applyValues(id, values)
 }
 
+/** The timeline's eye on a balloon, in every layer that holds it. */
+export function hideBalloon (id, hidden) {
+  for (const l of live()) l.setHidden(id, hidden)
+}
+
 /** The words on the stage as they are typed in the panel; the panel saves them after a pause. */
 export function setBalloonText (id, text) {
   for (const l of live()) l.patchLine(id, { text })

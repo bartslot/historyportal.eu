@@ -1306,7 +1306,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         onChange: (assetId, t) => {
                             // An arrow's values (end, bend, width, head) save as one; a picture moves.
                             if (t.end_x !== undefined) return window.Livewire?.dispatch('artwork:arrow', { assetId, fields: t })
-                            window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale })
+                            window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation })
                         },
                     })
                 }

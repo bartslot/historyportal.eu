@@ -455,6 +455,19 @@ class StageEditingTest extends TestCase
         $this->assertSame('ground-grass-heather-01', $scene->fresh()->config['stage25d']['set']['groundSlots'][0]['asset'], 'never copied or deleted');
     }
 
+    public function test_a_terrain_of_strips_alone_opens_its_panel(): void
+    {
+        // Sweep 11-16: a scene with only groundBands rejected the pick and showed an empty panel.
+        $scene = $this->scene();
+        $config = $scene->config;
+        $config['stage25d']['set']['ground'] = '#ddccbb';
+        unset($config['stage25d']['set']['groundSlots']);
+        $config['stage25d']['set']['groundBands'] = [['asset' => 'ground-grass-heather-01', 'from_m' => 0]];
+        $scene->update(['config' => $config]);
+
+        $this->editor($scene)->call('selectInspectorTarget', 's25_terrain')->assertSet('activeStage25dLayer', 'terrain');
+    }
+
     public function test_look_sliders_save_inside_their_range_and_only_the_known_ones(): void
     {
         $scene = $this->scene();
