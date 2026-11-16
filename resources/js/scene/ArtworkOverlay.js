@@ -933,6 +933,13 @@ export class ArtworkOverlay {
     window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id } }))
   }
 
+  /** Ring a layer again after the stage was rebuilt, without a selection event (nothing changed hands). */
+  restoreSelection(id) {
+    if (!this._layers.some(item => artObjId(item.asset_id) === id)) return
+    this._selectedId = id
+    this._applySelection()
+  }
+
   _applySelection() {
     for (const item of this._layers) {
       const chrome = this._chromeEl(item)

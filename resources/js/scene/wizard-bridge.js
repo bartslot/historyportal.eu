@@ -872,6 +872,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             _stageBackgrounds = _splitStage.backgrounds()
             return
         }
+        // A figure's value changed (depth, a tint): the stage is rebuilt, and its new overlays held no
+        // selection, so the handles went while the inspector still showed the figure (sweep 11-16).
+        // Same scene: carry the active panel's selection over, silently (the inspector never let go).
+        const sameScene = _splitSig && JSON.parse(_splitSig)[0] === payload.sceneId
+        const keepSelected = sameScene ? _splitStage?.overlay(panel)?._selectedId ?? null : null
         destroyWizardLayers()
         const parent = canvasEl.parentElement
         if (!parent) return
@@ -913,6 +918,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         })
         _splitSig = sig
         _splitLinesSig = linesSig
+        if (keepSelected) _splitStage.overlay(panel)?.restoreSelection?.(keepSelected)
         // The layer list, the inspector and the timeline talk to the active panel's figures.
         window.__lessonArtworkLayer = _splitStage.overlay(panel)
         _stageBackgrounds = _splitStage.backgrounds()
