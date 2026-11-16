@@ -657,6 +657,11 @@
 .lp-balloon[data-editable] .lp-balloon__bubble[contenteditable="plaintext-only"] { cursor: text; user-select: text; outline: none; }
 .lp-balloon[data-selected] .lp-balloon__bubble { outline: 2px solid var(--color-primary); outline-offset: 4px; }
 .lp-balloon[data-kind="thought"][data-selected] .lp-balloon__bubble { outline-offset: 0; }
+/* Selected but outside its time (BalloonLayer.update): only the selection outline shows where it sits. */
+.lp-balloon[data-ghost] .lp-balloon__bubble { background: transparent; border-color: transparent; color: transparent; box-shadow: none;
+    outline-color: color-mix(in oklab, var(--color-primary) 45%, transparent); }   /* a ghost of the selection orange */
+.lp-balloon[data-ghost] .lp-balloon__tail,
+.lp-balloon[data-ghost] .lp-balloon__cloud { visibility: hidden; }
 
 /* ─── Fields: flat, focus in amber ───────────────────────────────────
    Keyboard focus stays plainly visible (WCAG 2.4.7) and flat: the field's border turns amber,

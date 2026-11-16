@@ -165,6 +165,19 @@ describe('BalloonLayer: balloons added in the editor', () => {
     layer.update(9)
     expect(layer.shown.size).toBe(0)
   })
+
+  it('a selected balloon outside its time is only its selection outline, so the stage agrees with its bar (Bart 11-16)', () => {
+    const layer = new BalloonLayer(document.createElement('div'), () => null, { editable: true })
+    layer.setLines([{ ...balloon, id: 'bal_0', start: 1.15, end: 2.95 }])
+    layer.markSelected('bal_0')
+    layer.update(0)
+    const el = layer.shown.get(0)
+    // data-ghost: app.css hides the balloon and keeps the selection outline where it sits
+    expect(el.hasAttribute('data-ghost')).toBe(true)
+
+    layer.update(2)   // inside its bar: the class sees it, so it is drawn in full
+    expect(el.hasAttribute('data-ghost')).toBe(false)
+  })
 })
 
 describe('patchLine', () => {

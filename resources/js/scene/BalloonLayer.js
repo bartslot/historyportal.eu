@@ -308,9 +308,13 @@ export class BalloonLayer {
     this._t = Number(t) || 0
     this.lines.forEach((line, i) => {
       // No end = up to the scene's end. In the editor too (Bart 11-05), only the selected one stays, to be worked on.
-      const on = (this._t >= (Number(line.start) || 0) && this._t < (line.end ?? Infinity)) || (this.editable && line.id === this._selectedId)
+      const inTime = this._t >= (Number(line.start) || 0) && this._t < (line.end ?? Infinity)
+      const on = inTime || (this.editable && line.id === this._selectedId)
       if (on && !this.shown.has(i)) this._show(i, line)
       else if (!on && this.shown.has(i)) this._hide(i)
+      // ...but outside its bar it is only its selection outline, not the balloon (Bart 11-16: "outline, not
+      // the balloon itself"): the stage agrees with the timeline and the teacher can still take hold of it.
+      this.shown.get(i)?.toggleAttribute('data-ghost', on && !inTime)
     })
   }
 
