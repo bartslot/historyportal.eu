@@ -5298,6 +5298,14 @@ class Step3SceneConfigurator extends Component
             default => null,
         };
 
+        // A narration is a few seconds of Azure, but prod's queue runs from a once-a-minute cron, so a
+        // click waited up to a minute before it began (Bart 11-16: "forever going on prod"). The job
+        // stays queued, so its retries and timeout still hold; one worker pass starts as this request
+        // ends, after the response has gone. Cut off by the host, the queue retries it as before.
+        if ($asset === 'audio') {
+            app()->terminating(fn () => \Illuminate\Support\Facades\Artisan::call('queue:work', ['--once' => true, '--tries' => 3]));
+        }
+
         // Re-select so scene:load fires and the panel shows the scene as it now is — generating,
         // with no stale Play button offering to play the clip that is being replaced. generateWorld
         // below already did this; regenerate did not, so pressing Regenerate left the editor holding

@@ -238,6 +238,23 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertSame('generating', $this->s1->fresh()->status);
     }
 
+    public function test_a_renarrate_starts_a_queue_pass_right_after_the_response(): void
+    {
+        // Bart 11-16: "forever going on prod". Prod's queue runs from a once-a-minute cron, so a
+        // click waited up to a minute before Azure (about 7 s) even began. The job stays queued (its
+        // retries and timeout are the safety net); one worker pass now starts as the request ends.
+        Bus::fake();
+        \Illuminate\Support\Facades\Artisan::shouldReceive('call')->once()
+            ->with('queue:work', \Mockery::subset(['--once' => true]));
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->dispatch('scene:renarrate', sceneId: $this->s1->id);
+
+        // the Livewire test request ends the app itself, which runs the terminating callback
+        Bus::assertDispatched(GenerateSceneAudio::class, fn ($j) => $j->sceneId === $this->s1->id);
+    }
+
     public function test_scene_renarrate_ignores_a_foreign_scene(): void
     {
         Bus::fake();
