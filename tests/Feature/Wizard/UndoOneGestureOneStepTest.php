@@ -109,4 +109,20 @@ class UndoOneGestureOneStepTest extends TestCase
         $editor->call('setTimeline', $timeline([['t' => 0, 'bone:upperarm_n' => -80]], $text));
         $this->assertNotEmpty($editor->effects['html'] ?? null, 'a track of the timeline itself still renders');
     }
+
+    public function test_the_step_marker_skips_the_redraw_only_when_it_is_the_whole_request(): void
+    {
+        $part = fn (array $calls, array $updates = []): array => [
+            'snapshot' => json_encode(['memo' => ['id' => 'c1']]), 'updates' => $updates,
+            'calls' => array_map(fn (string $m): array => ['path' => '', 'method' => $m, 'params' => []], $calls),
+        ];
+        $only = fn (array $c): bool => Step3SceneConfigurator::onlyEditSteps([$c], 'c1');
+
+        $this->assertTrue($only($part(['startEditStep'])));
+        // Bart 11-16: a figure picked on the stage rode in the same request and its inspector never drew.
+        $this->assertFalse($only($part(['startEditStep', '__dispatch'])));
+        $this->assertFalse($only($part(['startEditStep'], ['zoom' => 2])));
+        $this->assertFalse($only($part([])));
+        $this->assertFalse(Step3SceneConfigurator::onlyEditSteps([$part(['startEditStep'])], 'other'));
+    }
 }

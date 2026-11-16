@@ -958,6 +958,9 @@ export const animationTimeline = (config = {}) => ({
     this.pause()
     const span0 = this.barOf(target)
     if (!span0) return
+    // The bar you take is the layer you work on: selected, so a balloon stays on the stage while
+    // its time moves past the playhead (Bart 11-16: it vanished when its bar was dragged).
+    if (this.activeTarget !== target) this.selectObject(target)
     const keys0 = [{ t: span0.from }, { t: span0.to }]
     const bar = event.currentTarget.getBoundingClientRect()
     const EDGE_PX = 8

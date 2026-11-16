@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Services\Editor\SceneHistory;
-use Livewire\Attributes\Renderless;
 
 /**
  * Cmd-Z / Cmd-Shift-Z for the selected scene's own edits (SceneHistory). The editor switches
@@ -19,10 +18,36 @@ trait UndoesSceneEdits
     }
 
     /** The editor's client: a new gesture started, so the next save is its own undo step (resources/js/editor/edit-steps.js). */
-    #[Renderless]
     public function startEditStep(): void
     {
         SceneHistory::startStep();
+        // Livewire sends this in ONE request with whatever the same press did (a selection, a save), and
+        // #[Renderless] skipped the redraw of all of it: a figure picked on the stage never reached the
+        // inspector (Bart 11-16). Skip it only when the marker is all this request asks for.
+        if (self::onlyEditSteps((array) request()->input('components', []), $this->getId())) {
+            $this->skipRender();
+        }
+    }
+
+    /**
+     * Does a Livewire update ask component $id for nothing but startEditStep: no property updates, no
+     * other call? `$components`: the request's `components` payload.
+     *
+     * @param  array<int, mixed>  $components
+     */
+    public static function onlyEditSteps(array $components, string $id): bool
+    {
+        foreach ($components as $c) {
+            $snapshot = json_decode((string) ($c['snapshot'] ?? ''), true);
+            if (($snapshot['memo']['id'] ?? null) !== $id) {
+                continue;
+            }
+            $methods = array_column((array) ($c['calls'] ?? []), 'method');
+
+            return empty($c['updates']) && $methods !== [] && array_unique($methods) === ['startEditStep'];
+        }
+
+        return false;
     }
 
     /** Undo the selected scene's last edit; the stage redraws from the restored scene. */
