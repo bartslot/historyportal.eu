@@ -39,6 +39,7 @@ const HIT_PAD_PX = 8
 const layers = new Set()
 let selected = null
 let pendingEdit = null
+let clock = 0   // the timeline's playhead, s
 
 const live = () => {
   for (const l of layers) if (!l.host.isConnected) layers.delete(l)
@@ -68,6 +69,16 @@ export function patchBalloon (id, values) {
 }
 
 /** The timeline's eye on a balloon, in every layer that holds it. */
+/**
+ * The playhead moved: every balloon on the stage shows during its own time, a split scene's panels
+ * as well as a standard slide's layer (Bart 11-16: the panels stayed at 0, so a balloon starting
+ * later never showed and its eye had nothing to hide).
+ */
+export function timeBalloons (t) {
+  clock = Number(t) || 0
+  for (const l of live()) l.update(clock)
+}
+
 export function hideBalloon (id, hidden) {
   for (const l of live()) l.setHidden(id, hidden)
 }
@@ -102,6 +113,8 @@ export function editableBalloons (onChange) {
     onPlace: placeHandles,
     onLines: (layer) => {
       layers.add(layer)
+      // A panel rebuilt after a save joins at the playhead, not at 0.
+      if (layer._t !== clock) layer.update(clock)
       layer.markSelected(selected)
       if (pendingEdit) startTyping(layer, pendingEdit)
     },
