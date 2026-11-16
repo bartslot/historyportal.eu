@@ -193,6 +193,24 @@ def far_point(mask: np.ndarray, frm: list[float]) -> list[float]:
     return [float(xs[i]), float(ys[i])]
 
 
+def arm_under_shawl(lab: np.ndarray, names: list[str], bone: dict, arm: str) -> np.ndarray:
+    """The upper arm a map paints over with a shawl, given back to the arm. The girl's map is Ana's, who wore a shawl
+    over her far shoulder: as chest it held the top of that sleeve still while the arm swung (Bart 11-16, torn sleeve).
+    Shawl pixels along the bone, no further from it than the arm's own visible pixels, become the arm."""
+    own, shawl = lab == names.index(arm), lab == names.index('shawl')
+    if not own.any() or not shawl.any():
+        return lab
+    a, b = np.array(bone['frm']), np.array(bone['to'])
+    ab = b - a
+    ys, xs = np.mgrid[0:lab.shape[0], 0:lab.shape[1]]
+    t = ((xs - a[0]) * ab[0] + (ys - a[1]) * ab[1]) / (ab @ ab)
+    dist = np.abs((xs - a[0]) * ab[1] - (ys - a[1]) * ab[0]) / np.sqrt(ab @ ab)
+    reach = np.percentile(dist[own & (t >= 0) & (t <= 1)], 95)
+    out = lab.copy()
+    out[shawl & (t >= 0) & (t <= 1) & (dist <= reach)] = names.index(arm)
+    return out
+
+
 def rig_of(body: str) -> tuple[dict, np.ndarray]:
     """The body's bones (1x px) and its label map (2x): R the bone part, G the torso part outside, B the part under."""
     lab, names = map_parts(body)
@@ -217,6 +235,8 @@ def rig_of(body: str) -> tuple[dict, np.ndarray]:
         bones[f'thigh_{s}'] = dict(frm=hip_s, to=knee)
         bones[f'shin_{s}'] = dict(frm=knee, to=ankle, width=float(np.ptp(xs[ys <= ys.min() + 6]) + 1))
         bones[f'foot_{s}'] = dict(frm=ankle, to=far_point(part[f'foot_{s}'], ankle), width=aw)
+    for s in 'nf':
+        lab = arm_under_shawl(lab, names, bones[f'upperarm_{s}'], f'upperarm_{s}')
     toe, ankle = bones['foot_n']['to'], bones['foot_n']['frm']
     facing = 1 if toe[0] >= ankle[0] else -1
     out = []

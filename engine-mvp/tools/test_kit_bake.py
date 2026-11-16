@@ -63,3 +63,16 @@ def test_expression_sets_name_each_face_and_eyes_set(monkeypatch):
     assert sets[('old-woman-n', None)]['sad'] == 'expressions/old-woman-n-sad'
     assert sets[('old-woman-n', 'eyes/woman-hooded')]['amazed'] == 'expressions/old-woman-n_woman-hooded-amazed'
     assert len(sets) == len(kb.BODY_KIT['woman']['faces']) * (1 + len(kb.BODY_KIT['woman']['parts']['eyes']))
+
+
+def test_a_shawl_over_the_upper_arm_follows_the_arm_and_the_rest_stays_with_the_chest():
+    # Ana's map, which the girl borrows, paints a shawl over her far shoulder: Bart 11-16 saw that sleeve tear off
+    names = ['chest', 'shawl', 'upperarm_f']
+    lab = np.zeros((10, 10), np.uint8)              # chest everywhere
+    lab[6:9, 4:7] = 2                               # the arm shows below the shawl
+    lab[1:6, 4:7] = 1                               # the shawl covers the top of the arm ...
+    lab[1:3, 0:3] = 1                               # ... and lies on the chest away from it
+    bone = {'frm': [5.0, 1.0], 'to': [5.0, 8.0]}
+    out = kb.arm_under_shawl(lab, names, bone, 'upperarm_f')
+    assert (out[1:6, 4:7] == 2).all()
+    assert (out[1:3, 0:3] == 1).all()
