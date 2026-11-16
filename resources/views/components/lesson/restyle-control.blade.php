@@ -12,7 +12,7 @@
 <div class="space-y-2" data-restyle="{{ $row?->status ?? 'idle' }}" @if ($active || $unseen) wire:poll.3s="pollRestyle({{ $row->id }})" @endif>
     @if ($active)
         <span class="inline-flex items-center gap-1.5 text-xs text-panel-hint">
-            <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ $row->step >= 2 ? __('Restyling 2/2: colour…') : __('Restyling 1/2: ink…') }}</span>
+            <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ $row->step >= 2 ? __('Restyling 2/2: colour…') : __('Restyling 1/2: ink…') }}</span><x-ui.elapsed />
         </span>
     @elseif ($ready)
         <div class="grid gap-2 {{ $compact ? 'grid-cols-3' : 'grid-cols-1' }}">

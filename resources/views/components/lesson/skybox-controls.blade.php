@@ -259,7 +259,7 @@
                             @disabled($isBusy)
                             class="inline-flex items-center gap-1.5 text-xs text-slate-300 transition hover:text-base-content disabled:opacity-50">
                         @if ($isGenerating)
-                            <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ __('Generating…') }}</span>
+                            <x-icons.spinner class="h-3.5 w-3.5 animate-spin" /><span>{{ __('Generating…') }}</span><x-ui.elapsed />
                         @else
                             <x-icons.regenerate class="h-3.5 w-3.5" /><span>{{ $scene->image_path ? __('Regenerate') : __('Generate') }}</span>
                         @endif

@@ -20,6 +20,7 @@ import { clampToViewport, restorePosition, savePosition, defaultPosition, isView
 import './dev/tuner.js';
 import { settingsPanelTuner } from './dev/settings-panel-tuner.js';
 import { layerSizeRow } from './ui/layer-size-row.js';
+import { elapsed } from './ui/elapsed.js';
 import { resizeHandle, onResize } from './ui/resize-handle.js';
 import { layerAngleRow } from './ui/angle-dial.js';
 import { initScrub } from './ui/scrub.js';
@@ -111,6 +112,8 @@ window.settingsPanelTuner = settingsPanelTuner;
 // holds it — a lock that recomputes its ratio from the rounded fields drifts a square out of
 // square with every individual step still looking right, so it is not left in a template.
 window.layerSizeRow = layerSizeRow;
+// A generation's running time beside its spinner: <x-ui.elapsed when="..." />.
+window.elapsed = elapsed;
 
 // Every picture grid a teacher browses: x-data="imageGrid({ id, kind })" owns the size slider,
 // and ONE delegated listener zooms any [data-zoom] tile at the cursor (long press on touch opens

@@ -82,6 +82,7 @@
                             @if ($isGenerating)
                                 <x-icons.spinner class="h-3 w-3 animate-spin" />
                                 <span>{{ $scene->audio_path ? __('Re-narrating…') : __('Narrating…') }}</span>
+                                <x-ui.elapsed class="opacity-70" />
                             @else
                                 <x-icons.regenerate class="h-3 w-3" />
                                 <span>{{ $scene->audio_path ? __('Re-narrate') : __('Narrate') }}</span>

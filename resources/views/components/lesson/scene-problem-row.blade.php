@@ -29,7 +29,7 @@
         @endif
     </div>
     @if ($busy)
-        <span class="flex shrink-0 items-center gap-1 text-2xs text-panel-hint"><x-icons.spinner class="h-3.5 w-3.5 animate-spin" />{{ __('Generating…') }}</span>
+        <span class="flex shrink-0 items-center gap-1 text-2xs text-panel-hint"><x-icons.spinner class="h-3.5 w-3.5 animate-spin" />{{ __('Generating…') }}<x-ui.elapsed /></span>
     @elseif ($label)
         <button type="button" wire:click="fixProblem({{ $problem['scene_id'] }}, '{{ $problem['fix'] }}')"
                 wire:loading.attr="disabled" class="btn btn-ghost btn-xs shrink-0">{{ $label }}</button>

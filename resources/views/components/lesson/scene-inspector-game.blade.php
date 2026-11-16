@@ -319,6 +319,7 @@
                     @if ($isGenerating)
                         <x-icons.spinner class="w-3 h-3 animate-spin" />
                         <span>{{ __('Re-narrating…') }}</span>
+                        <x-ui.elapsed class="opacity-70" />
                     @else
                         <x-icons.regenerate class="w-3 h-3" />
                         <span>{{ __('Re-narrate') }}</span>

@@ -216,6 +216,7 @@
                     {{-- "Regenerate" read as "make the audio again" and teachers avoided it for fear
                          of losing the words they had just written. It rewrites TEXT; it says so. --}}
                     <span x-text="regenPara ? @js(__('rewriting…')) : @js(__('Rewrite text'))"></span>
+                    <x-ui.elapsed when="regenPara" class="opacity-70" />
                 </button>
             </div>
             <div class="flex min-w-0 flex-1 items-center gap-1" x-show="promptOpen" x-cloak>
@@ -236,6 +237,7 @@
                 <svg x-show="!summarizing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
                 <svg x-show="summarizing" x-cloak class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"/></svg>
                 <span x-text="summarizing ? @js(__('summarizing…')) : @js(__('Summarize to list'))"></span>
+                <x-ui.elapsed when="summarizing" class="opacity-70" />
             </button>
         </div>
 
@@ -253,6 +255,7 @@
                 {{-- Microphone: this makes a recording, it does not touch the words. --}}
                 <svg x-show="!regenerating" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
                 <span x-text="regenerating ? @js(__('Narrating…')) : (hasAudio ? @js(__('Re-narrate')) : @js(__('Narrate')))"></span>
+                <x-ui.elapsed when="regenerating" class="opacity-70" />
             </button>
 
             <button type="button" x-show="hasAudio && !dirty" x-on:click="toggle()" :disabled="!ready"
