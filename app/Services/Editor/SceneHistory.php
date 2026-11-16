@@ -21,8 +21,9 @@ final class SceneHistory
     public const DEPTH = 30;
 
     /**
-     * Saves this close together AND inside one gesture are one step: a drag or a burst of typing undoes in one go.
-     * The gesture is what keeps quick separate edits apart (three bone drags a second apart were one undo, 11-13).
+     * Without gesture marks (startStep never called: a test, a client that sends none), saves this close together are
+     * one step. With them the gesture alone decides: three bone drags a second apart are three steps (11-13), and one
+     * slow drag whose saves arrive seconds apart, each queued behind the last request, is one (11-16).
      */
     public const MERGE_SECONDS = 1.5;
 
@@ -62,8 +63,10 @@ final class SceneHistory
         }
         $history = self::load($scene->id);
         $now = now()->getTimestampMs() / 1000;
+        $marked = session()->has(self::STEP_KEY);
         $step = (int) session()->get(self::STEP_KEY, 0);
-        $merges = $history['undo'] !== [] && ($history['step'] ?? null) === $step && $now - $history['at'] <= self::MERGE_SECONDS;
+        $merges = $history['undo'] !== [] && ($history['step'] ?? null) === $step
+            && ($marked ? $history['at'] > 0 : $now - $history['at'] <= self::MERGE_SECONDS);
         if (! $merges) {
             $history['undo'][] = self::stateOf($scene, original: true);
             $history['undo'] = array_slice($history['undo'], -self::DEPTH);

@@ -95,6 +95,39 @@ class UndoOneGestureOneStepTest extends TestCase
         $this->assertSame(0.1, $this->x(), 'and there was nothing before it');
     }
 
+    public function test_a_slow_drags_saves_seconds_apart_are_still_one_undo_step(): void
+    {
+        $editor = $this->editor();
+
+        // Tester 11-16: a stage25d drag saves as it moves, and on a busy server those saves arrive seconds apart
+        // (each queues behind the last request). Cmd-Z then stepped back sample by sample.
+        $editor->call('startEditStep');
+        foreach ([0.2, 0.3, 0.4] as $x) {
+            $this->move($editor, $x);
+            $this->travel(3)->seconds();
+        }
+
+        $editor->call('undoLastEdit');
+        $this->assertSame(0.1, $this->x(), 'one undo takes the whole gesture back');
+    }
+
+    public function test_after_an_undo_the_next_save_of_the_same_gesture_is_its_own_step(): void
+    {
+        $editor = $this->editor();
+
+        $editor->call('startEditStep');
+        $this->move($editor, 0.3);
+        $this->move($editor, 0.5);
+        $editor->call('undoLastEdit');
+        $this->assertSame(0.1, $this->x());
+
+        $this->move($editor, 0.7);   // no new marker in between
+        $editor->call('undoLastEdit');
+        $this->assertSame(0.1, $this->x(), 'the undo is not folded into the save after it');
+        $editor->call('redoLastEdit');
+        $this->assertSame(0.7, $this->x());
+    }
+
     public function test_a_bone_keyed_at_the_playhead_saves_without_a_render_so_the_undo_after_it_does_not_wait(): void
     {
         $editor = $this->editor();
