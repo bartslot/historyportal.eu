@@ -31,7 +31,7 @@ const makeLabel = (container) => {
   const names = document.createElement('p');
   names.className = 'text-xs font-medium leading-snug text-card-muted';
   const date = document.createElement('p');
-  date.className = 'text-[13px] font-semibold leading-snug text-card-title';
+  date.className = 'text-prose font-semibold leading-snug text-card-title';
   el.append(names, date);
   container.appendChild(el);
   return { el, names, date };
