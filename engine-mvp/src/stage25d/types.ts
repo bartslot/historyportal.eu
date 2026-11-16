@@ -107,6 +107,8 @@ export interface SceneLayer {
   need?: string | string[]
   /** the teacher's edited copy of the picture (a URL), drawn instead of the library file */
   src?: string
+  /** that copy's crop to its paint (editor/trim.js): its offset in the library file and its own anchor */
+  edit_state?: { crop?: [number, number]; anchor?: [number, number] } | null
   asset?: string | null
   depth: Depth
   x?: number

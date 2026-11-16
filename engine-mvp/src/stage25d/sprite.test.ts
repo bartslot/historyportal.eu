@@ -84,6 +84,12 @@ describe('a layer with its own file', () => {
     expect(asset.height_m).toBeCloseTo(1.573 / 2)
   })
 
+  it('a copy cropped to its paint stands on the anchor its save worked out (editor/trim.js)', () => {
+    const asset = editedAsset({ ...(figure as object), anchor: [0.5, 0.97] } as never, { src: 'c.webp', edit_state: { crop: [0, 0], anchor: [0.4, 1] } }, { width: 135, height: 230 })
+    expect(asset.anchor).toEqual([0.4, 1])
+    expect(asset.height_m).toBeCloseTo(1.573 / 2)
+  })
+
   it('no file of its own: the asset as it is', () => {
     expect(editedAsset(figure, {}, { width: 1, height: 1 })).toBe(figure)
   })

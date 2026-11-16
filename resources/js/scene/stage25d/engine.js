@@ -534,6 +534,12 @@ export async function createStage25d (host, opts = {}) {
         // an edited copy has its own pixel size: no metres from the library's
         from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
         edited: !!row.src,
+        // a picture on the ground is cropped to its paint on save (editor/trim.js); a figure's sheet and an animation keep their grid
+        trim: layerIndex(id) >= 0 && !puppet && !isAnimation(asset) ? {
+          crop: row.edit_state?.crop ?? [0, 0],
+          anchorPx: [(asset.anchor?.[0] ?? 0.5) * asset.w, (asset.anchor?.[1] ?? 1) * asset.h],
+          state: row.edit_state ?? null,
+        } : null,
         el: host,
         stage: api,
         stageId: id,

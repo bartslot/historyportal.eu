@@ -907,13 +907,15 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         setBrush(next) { brush = { ...brush, ...next }; },
         /** How far a press with the colour tool reaches before any drag: a plain click takes this much. */
         setTolerance(tol) { wandTol = Number(tol); },
-        /** A picture reopened after a save: Bring back reaches past it to this one. A different size (a crop) cannot line up, so it is left. */
-        async setSource(from) {
+        /** A picture reopened after a save: Bring back reaches past it to this one. `crop`: where the reopened picture sits
+         *  in it (a save crops a stage picture to its paint, editor/trim.js); a size that cannot line up is left. */
+        async setSource(from, crop = [0, 0]) {
             const image = await loadImage(from);
-            if (image.naturalWidth !== w || image.naturalHeight !== h) return;
+            if (image.naturalWidth < crop[0] + w || image.naturalHeight < crop[1] + h) return;
+            if (!crop[0] && !crop[1] && (image.naturalWidth !== w || image.naturalHeight !== h)) return;
             const c = document.createElement('canvas'); c.width = w; c.height = h;
             const g = c.getContext('2d', { willReadFrequently: true });
-            g.drawImage(image, 0, 0);
+            g.drawImage(image, -crop[0], -crop[1]);
             source = g.getImageData(0, 0, w, h).data;
         },
         /** Held: the picture exactly as it came in, whatever was done to it. */
@@ -928,7 +930,14 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         /** The clean-up's three strengths (white holes, white edges, soft bottom), live. */
         setClean(next) { clean = { ...clean, ...next }; paint(); },
         /** The whole picture as it is on screen now (the item's new picture), as a WebP data URL. */
-        resultDataURL: (quality = 0.85) => canvas.toDataURL('image/webp', quality),
+        resultDataURL: (quality = 0.85, box = null) => {
+            if (!box) return canvas.toDataURL('image/webp', quality);
+            const c = document.createElement('canvas'); c.width = box.w; c.height = box.h;
+            c.getContext('2d').drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+            return c.toDataURL('image/webp', quality);
+        },
+        /** Where the picture has paint now ({ x, y, w, h }), null when none is left. */
+        opaque: () => opaqueBox(ctx.getImageData(0, 0, w, h).data, w, h),
         /** The pixels it opened on and the pixels now: what a save onto a figure's sheet compares (puppet-sheet.js). */
         pixels: () => ({ opened: original, edited: shown.data }),
         cancelPress,

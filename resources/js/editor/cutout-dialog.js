@@ -39,6 +39,7 @@ import { mountPanZoom } from './pan-zoom.js'
 import { markup, syncSlider, TOOLS, TOLERANCE, SOFTNESS } from './cutout-markup.js'
 import { mountFrames } from './frames-tab.js'
 import { mountCharacter } from './character-tab.js'
+import { cropOf, trimState } from './trim.js'
 import { figureFromSheet, writeBack, sheetDataUrl } from './puppet-sheet.js'
 import { mountScenePeek } from './scene-peek.js'
 
@@ -323,8 +324,11 @@ export async function openCutout (target) {
       const work = mask && (pictureWork() || opensCleaned)
       const back = work && figure ? sheetNow() : null
       const picture = work && (!figure || back.touched > 0)   // a figure's work may not reach its sheet: a selection, paint outside every part
-      const url = picture ? pictureUrl(back) : null
-      if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, {})))) return
+      // a picture on the ground loses its empty edges, so what is left stands where its paint ends (editor/trim.js)
+      const crop = picture && target.trim && !figure ? cropOf(mask.opaque(), mask.size.w, mask.size.h) : null
+      const url = picture ? pictureUrl(back, crop) : null
+      const state = crop ? trimState(target.trim, crop) : target.trim?.state ?? {}
+      if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, state)))) return
       if (!picture && modesChanged) say('success', t('Saved.'))
       if (back?.lost) say('error', t('Some paint lies outside the parts of this figure and was left out.'))
       close({ saved: true, pictureSaved: !!picture })
@@ -412,7 +416,7 @@ export async function openCutout (target) {
           setTool(tool)
           mask.setClean(clean)   // opens already cleaned: the teacher only nudges
           // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
-          if (target.edited && !target.puppet) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url)).catch(() => {})
+          if (target.edited && !target.puppet) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url, target.trim?.crop)).catch(() => {})
           peek?.pictureChanged()
         })
         .catch(() => {
@@ -425,8 +429,8 @@ export async function openCutout (target) {
     /** The picture as the stage loads it. A boned figure: its sheet, with the figure's edits written back. */
     const sheetNow = () => { const { opened, edited } = mask.pixels(); return writeBack(figure.sheet, opened, edited, target.puppet, figure.first) }
     // WebP, a little compressed; a picture the server would still refuse steps down until it fits (fits() says so if not)
-    const pictureUrl = (back = figure ? sheetNow() : null) => {
-      const at = (q) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height, q) : mask.resultDataURL(q))
+    const pictureUrl = (back = figure ? sheetNow() : null, crop = null) => {
+      const at = (q) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height, q) : mask.resultDataURL(q, crop))
       let url = null
       for (const q of SAVE_QUALITIES) if ((url = at(q)).length <= limitBytes()) break
       return url
