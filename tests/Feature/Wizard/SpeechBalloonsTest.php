@@ -147,7 +147,8 @@ class SpeechBalloonsTest extends TestCase
         $this->travel(2)->seconds();   // past the history's merge window: the delete is its own step
 
         $wizard->dispatch('scene:delete-object', objectId: 'bal_1')
-            ->assertSet('activeBalloonId', null);
+            ->assertSet('activeBalloonId', null)
+            ->assertDispatched('balloon:deleted', id: 'bal_1');   // the stage drops its ring too (balloon-edit.js)
         $this->assertCount(1, $this->lines());
 
         $wizard->call('undoLastEdit');

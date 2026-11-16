@@ -100,6 +100,8 @@ trait EditsSceneBalloons
         }
         $scene->update(['config' => $config]);
         $this->activeBalloonId = null;
+        // The stage drops its ring too (balloon-edit.js): ids are indexes, so a kept one would ring another balloon.
+        $this->dispatch('balloon:deleted', id: $id);
         $this->selectSceneInternal($scene->id);
         // The Timeline tab keeps its own copy of the tracks: hand it the re-keyed ones.
         $this->dispatch('timeline-restored', timeline: $config['timeline'] ?? []);

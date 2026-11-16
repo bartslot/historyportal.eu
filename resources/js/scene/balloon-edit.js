@@ -110,6 +110,9 @@ if (typeof window !== 'undefined' && !window.__balloonSelectionMounted) {
     const id = e.detail?.id
     if (selected && !(typeof id === 'string' && id.startsWith('bal_'))) selectBalloon(null, { silent: true })
   })
+  // A deleted balloon is no selection (the server forgot it too). Kept, an undo that brought it back
+  // ringed it again and the next Delete removed a balloon the inspector did not show as selected.
+  window.addEventListener('balloon:deleted', () => selectBalloon(null, { silent: true }))
 }
 
 function startTyping (layer, id) {
