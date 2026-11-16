@@ -2,7 +2,7 @@
  * The kit's pictures in the browser: loaded once, recoloured once per colour set (paint.js), stacked on canvases with
  * drawImage. A preview draws at screen size; Save draws at the rig's size (1 canvas px per puppet px) and cuts.
  */
-import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood, kindTop } from './paint.js'
+import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
 
 const loaded = new Map()      // url -> Promise<ImageData>
@@ -93,7 +93,7 @@ export async function layersOf (kit, recipe, expression = 'calm') {
     return { id, slot: piece.slot, box: piece.box, ...(await paintedOf(kit, body, piece, palette)) }
   }))
   const hood = layers.find((l) => l.slot === 'headwear' && isHood(l.id))
-  return hood ? layers.map((l) => (l.slot === 'hair' ? underHood(kit, body, l, hood) : l)) : layers
+  return hood ? layers.map((l) => (l.slot === 'hair' ? underHood(body, l, hood) : l)) : layers
 }
 
 const hoods = new Map()       // body + hair + hood -> the hair's covered pixels
@@ -101,11 +101,10 @@ const HOODS_MAX = 24
 
 /** A hair layer under a hood: the pixels it covers taken out of every canvas and of the raw fill and ink, so the preview,
  *  the edge, Save and the rig all agree (paint.js hoodMask). */
-function underHood (kit, body, hair, hood) {
+function underHood (body, hair, hood) {
   const key = `${body.id}:${hair.id}:${hood.id}`
   if (!hoods.has(key)) {
-    const tieY = kindTop(hair.raw, hair.box, kit.kinds.indexOf('tie'), kit.kinds.length)
-    hoods.set(key, hoodMask(hair.box, hood.raw, hood.box, tieY))
+    hoods.set(key, hoodMask(hair.box, hood.raw, hood.box))
     if (hoods.size > HOODS_MAX) hoods.delete(hoods.keys().next().value)
   }
   const mask = hoods.get(key)
