@@ -53,3 +53,13 @@ def test_no_white_gives_a_glint_the_paint_round_it_not_a_stray_pixels():
     fill[8, 11] = key('apron')                 # one antialiased pixel of a band beside it
     out = kb.no_white(fill)
     assert {tuple(v) for v in out[8:11, 8:11].reshape(-1, 4).tolist()} == {tuple(key('skin'))}
+
+
+def test_expression_sets_name_each_face_and_eyes_set(monkeypatch):
+    monkeypatch.setattr(kb, 'find_or_none', lambda p: p)          # every patch file there
+    sets = kb.expression_sets('woman')
+    assert sets[('woman-n', None)]['sad'] == 'expressions/woman-sad'                      # the first face keeps its names
+    assert sets[('woman-n', 'eyes/woman-round')]['sad'] == 'expressions/woman-round-sad'
+    assert sets[('old-woman-n', None)]['sad'] == 'expressions/old-woman-n-sad'
+    assert sets[('old-woman-n', 'eyes/woman-hooded')]['amazed'] == 'expressions/old-woman-n_woman-hooded-amazed'
+    assert len(sets) == len(kb.BODY_KIT['woman']['faces']) * (1 + len(kb.BODY_KIT['woman']['parts']['eyes']))

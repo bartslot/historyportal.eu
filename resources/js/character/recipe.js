@@ -21,7 +21,10 @@ export const piecesIn = (body, slot) => body.pieces.filter((p) => p.slot === slo
 export function stackOf (kit, recipe, expression = 'calm') {
   const body = bodyOf(kit, recipe)
   const ids = [`outfit/${recipe.outfit}`, `face/${recipe.face}`]
-  const expr = expression !== 'calm' ? body.expressions?.[expression] : null
+  // an emotion changes only brows, lids and mouth: each chosen face and eyes has its own painted set (kit_bake
+  // expressionSets, Bart 11-15); the body's plain set only where the kit has none for them
+  const set = body.expressionSets?.[`${recipe.face}/${recipe.eyes ? `eyes/${recipe.eyes}` : ''}`]
+  const expr = expression === 'calm' ? null : set?.[expression] || body.expressions?.[expression] || null
   // an expression repaints eyes, brows and mouth: the person's own chosen ones would show beside it (a double mouth)
   if (recipe.eyes && !expr) ids.push(`eyes/${recipe.eyes}`)
   if (recipe.mouth && !expr) ids.push(`mouths/${recipe.mouth}`)
