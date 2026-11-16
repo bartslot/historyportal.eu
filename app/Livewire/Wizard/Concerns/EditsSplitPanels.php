@@ -123,8 +123,7 @@ trait EditsSplitPanels
     #[On('split:panel')]
     public function selectPanel(int $panel): void
     {
-        $panes = SceneSplit::panes($this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId)?->config['split'] ?? null : null);
-        $panel = max(0, min(max(0, $panes - 1), $panel));
+        $panel = $this->panelInLayout($panel);
         if ($panel === $this->activePanel || ! $this->selectedSceneId) {
             return;
         }
@@ -210,5 +209,13 @@ trait EditsSplitPanels
         }
 
         return $shots;
+    }
+
+    /** A panel index the open scene's layout has (0 for a scene that is not split). */
+    private function panelInLayout(int $panel): int
+    {
+        $panes = SceneSplit::panes($this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId)?->config['split'] ?? null : null);
+
+        return max(0, min(max(0, $panes - 1), $panel));
     }
 }

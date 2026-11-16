@@ -428,6 +428,20 @@ export class SplitStage {
     })
   }
 
+  /**
+   * The panel under a point (client px) and the point in % of that panel's box, the units its
+   * figures' x / y are in; null off every panel. Hit-tested, so a diagonal panel's slant counts.
+   */
+  panelAt (clientX, clientY) {
+    const hit = document.elementsFromPoint?.(clientX, clientY) ?? []
+    const i = this.panels.findIndex((p) => hit.includes(p.el))
+    if (i < 0) return null
+    const r = this.panels[i].el.getBoundingClientRect()
+    if (!r.width || !r.height) return null
+
+    return { panel: i, x: ((clientX - r.left) / r.width) * 100, y: ((clientY - r.top) / r.height) * 100 }
+  }
+
   /** The figures overlay of panel i (the editor's layer list and inspector work on it). */
   overlay (i) {
     return this.panels[i]?.overlay ?? null

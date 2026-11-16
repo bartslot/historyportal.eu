@@ -536,8 +536,10 @@
                 return
             }
 
-            const x = clientX === null ? 50 : ((clientX - r.left) / r.width) * 100
-            const y = clientY === null ? 58 : ((clientY - r.top) / r.height) * 100
+            // A split scene: the panel under the point takes it, at the point in THAT panel's units.
+            const pane = clientX === null ? null : window.__splitPanelAt?.(clientX, clientY)
+            const x = pane ? pane.x : clientX === null ? 50 : ((clientX - r.left) / r.width) * 100
+            const y = pane ? pane.y : clientY === null ? 58 : ((clientY - r.top) / r.height) * 100
             // Over a live map the icon belongs to the PLACE under that point, not to the pixel,
             // so it stays on it through every pan and zoom.
             const artHost = voyageArtHost()
@@ -546,8 +548,17 @@
                 : null
 
             window.Livewire.dispatch('svg-asset:attach', {
-                assetId, x, y, lng: ll ? ll.lng : null, lat: ll ? ll.lat : null,
+                assetId, x, y, lng: ll ? ll.lng : null, lat: ll ? ll.lat : null, panel: pane ? pane.panel : null,
             })
+            // What was just put on the stage is what the teacher works on next: select it once the
+            // stage has drawn it, so the Selection panel shows it (sweep 11-16: it stayed on the scene).
+            const id = `art_${assetId}`
+            let tries = 0
+            const pick = () => {
+                if (document.querySelector(`#lesson-canvas-root [data-layer-id="${id}"]`)) return window.__artOverlay?.()?.select?.(id)
+                if (++tries < 20) setTimeout(pick, 150)
+            }
+            setTimeout(pick, 150)
         }
 
         // A picture dragged in from the desktop, as opposed to an icon from the panel. The two never

@@ -838,6 +838,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     function destroySplitStage() {
         if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
         _splitStage = null
+        window.__splitPanelAt = null
         _splitHost?.remove()
         _splitHost = null
         _splitSig = null
@@ -883,6 +884,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         host.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;'
         parent.appendChild(host)
         _splitHost = host
+        // A drop on the stage lands in the panel under it, in that panel's own units (__placeIcon).
+        window.__splitPanelAt = (x, y) => _splitStage?.panelAt?.(x, y) ?? null
         _splitStage = new _splitMod.SplitStage(host, {
             editable: true,
             onSelect: (i) => window.Livewire?.dispatch('split:panel', { panel: i }),

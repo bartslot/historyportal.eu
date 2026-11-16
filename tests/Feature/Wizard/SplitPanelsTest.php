@@ -339,6 +339,35 @@ class SplitPanelsTest extends TestCase
         $this->assertSame(3, $wizard->get('activePanel'), 'never a panel the layout does not have');
     }
 
+    public function test_a_drop_on_panel_two_lands_there_while_panel_one_is_active(): void
+    {
+        $other = SvgAsset::create([
+            'user_id' => $this->teacher->id, 'source' => 'commons', 'source_ref' => 'boy-2',
+            'source_url' => 'https://example.com/boy.png', 'title' => 'Boy', 'license' => 'CC0', 'svg_path' => 'assets/boy.png',
+        ]);
+        // Sweep 11-16: a drop went to the active panel, at the point measured on the whole stage.
+        $wizard = $this->split()->call('selectPanel', 0)->call('onSvgAssetAttach', $other->id, 40.0, 60.0, null, null, 1);
+
+        $shots = $this->scene->refresh()->shots;
+        $this->assertNotContains($other->id, array_column($shots[0]['layers'], 'asset_id'));
+        $layer = collect($shots[1]['layers'])->firstWhere('asset_id', $other->id);
+        $this->assertSame([40.0, 60.0], [(float) $layer['x'], (float) $layer['y']]);
+        $this->assertSame(1, $wizard->get('activePanel'));
+    }
+
+    public function test_a_drag_in_panel_four_is_saved_on_panel_four(): void
+    {
+        // Sweep 11-16: the drag handler clamped the panel to 0..1, so a move in panel 3 or 4 was lost.
+        $wizard = $this->wizard()->call('setSplitLayout', 'grid4')->call('selectPanel', 3)->call('attachArtwork', $this->asset->id);
+        $wizard->call('selectPanel', 0)->call('moveArtworkLayer', $this->asset->id, 70.0, 40.0, 1.0, null, null, null, null, 3);
+
+        $this->assertSame(3, $wizard->get('activePanel'));
+        $this->assertSame(70.0, (float) collect($this->scene->refresh()->shots[3]['layers'])->firstWhere('asset_id', $this->asset->id)['x']);
+
+        $wizard->call('moveArtworkLayer', $this->asset->id, 10.0, 10.0, 1.0, null, null, null, null, 9);
+        $this->assertSame(3, $wizard->get('activePanel'), 'never a panel the layout does not have');
+    }
+
     public function test_fewer_panels_keep_the_others_and_single_drops_only_empty_ones(): void
     {
         $wizard = $this->wizard()->call('setSplitLayout', 'rows3')->call('selectPanel', 2)->call('setPanelFocus', 'y', 10.0);

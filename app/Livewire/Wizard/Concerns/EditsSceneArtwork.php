@@ -29,8 +29,12 @@ trait EditsSceneArtwork
      * live map it also carries the place under the cursor so the icon is pinned there.
      */
     #[On('svg-asset:attach')]
-    public function onSvgAssetAttach(int $assetId, ?float $x = null, ?float $y = null, ?float $lng = null, ?float $lat = null): void
+    public function onSvgAssetAttach(int $assetId, ?float $x = null, ?float $y = null, ?float $lng = null, ?float $lat = null, ?int $panel = null): void
     {
+        // A drop on a split stage names the panel under it: the figure goes there, not on the active one.
+        if ($panel !== null && $panel !== $this->activePanel) {
+            $this->selectPanel($panel);
+        }
         $this->attachArtwork($assetId, $x, $y, $lng, $lat);
     }
 
@@ -729,7 +733,7 @@ trait EditsSceneArtwork
             return;
         }
         if ($panel !== null) {
-            $this->activePanel = max(0, min(1, $panel));
+            $this->activePanel = $this->panelInLayout($panel);
         }
 
         $clean = SceneArrow::clamp($fields);
@@ -753,7 +757,7 @@ trait EditsSceneArtwork
         // A split stage says which panel the drag happened in; it may be quicker than the click
         // that made that panel the active one.
         if ($panel !== null) {
-            $this->activePanel = max(0, min(1, $panel));
+            $this->activePanel = $this->panelInLayout($panel);
         }
 
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
