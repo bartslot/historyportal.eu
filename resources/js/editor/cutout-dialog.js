@@ -321,7 +321,9 @@ export async function openCutout (target) {
     const save = async (button) => {
       const modesChanged = Object.values(others).some((other) => other.dirty())
       if (!await saveOthers(button)) return
-      const work = mask && (pictureWork() || opensCleaned)
+      // the teacher's own copy saved before pictures were cropped: Save alone crops it, no stroke needed
+      const uncropped = !!mask && !!target.trim && target.edited && !figure && !!cropOf(mask.opaque(), mask.size.w, mask.size.h)
+      const work = mask && (pictureWork() || opensCleaned || uncropped)
       const back = work && figure ? sheetNow() : null
       const picture = work && (!figure || back.touched > 0)   // a figure's work may not reach its sheet: a selection, paint outside every part
       // a picture on the ground loses its empty edges, so what is left stands where its paint ends (editor/trim.js)
