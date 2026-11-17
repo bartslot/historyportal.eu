@@ -55,12 +55,14 @@ class LessonTypesTest extends TestCase
         $this->assertSame([], LessonTypes::of($this->lesson([['script_segment' => 'Eens.'], ['config' => ['lines' => [['speaker' => 'narrator', 'text' => 'Eens.']]]]])));
     }
 
-    public function test_interactive_is_any_game_story_game_or_switched_on_moment(): void
+    public function test_interactive_is_any_game_decision_point_or_switched_on_moment(): void
     {
         $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['kind' => 'game', 'game_type' => 'quiz']])));
         $this->assertSame(['interactive'], LessonTypes::of($this->lesson([$this->moment()])));
         $this->assertSame([], LessonTypes::of($this->lesson([$this->moment(['enabled' => false])])));
-        $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['script_segment' => 'Eens.']], ['game_type' => 'story_game'])));
+        $this->assertSame(['interactive'], LessonTypes::of($this->lesson([['script_segment' => 'Eens.', 'branch_group' => 1, 'branch_role' => 'question']])));
+        // The type a lesson was created as says nothing: a story_game without a Decision point has nothing to choose.
+        $this->assertSame([], LessonTypes::of($this->lesson([['script_segment' => 'Eens.']], ['game_type' => 'story_game'])));
     }
 
     public function test_a_slideshow_of_voyage_legs_galleries_and_stories_is_not_interactive(): void

@@ -591,18 +591,49 @@ class Lesson extends Model
         return $choices;
     }
 
+    /*
+     * What the lesson CONTAINS decides how it behaves, never a type picked up front (Bart
+     * 2026-11-17: choices, class meters and a voyage are things any lesson can take). game_type and
+     * narrative_framework stay on the row for generation prompts and old data; they gate nothing.
+     */
+
+    /** The lesson holds a Decision point: a scene with a branch role. */
+    public function hasChoices(): bool
+    {
+        return $this->relationLoaded('scenes')
+            ? $this->scenes->contains(fn (Scene $s): bool => $s->branch_role !== null)
+            : $this->scenes()->whereNotNull('branch_role')->exists();
+    }
+
+    /** The class plays with meters that choices push up and down (game_config.meters). */
+    public function hasMeters(): bool
+    {
+        $meters = ($this->game_config ?? [])['meters'] ?? [];
+
+        return is_array($meters) && $meters !== [];
+    }
+
+    /** The lesson sails somewhere: it holds a voyage scene (a route leg or the itinerary). */
+    public function hasVoyage(): bool
+    {
+        return $this->relationLoaded('scenes')
+            ? $this->scenes->contains(fn (Scene $s): bool => $s->kind === 'voyage')
+            : $this->scenes()->where('kind', 'voyage')->exists();
+    }
+
     /**
      * Story-game publish gate: every branch OPTION must carry meter deltas
      * (config.branch_effects.deltas) before the lesson can go live, or the player would show a
      * choice with no consequences. An option may be a run of scenes with the same role (an
      * imported 3D lesson plays 1-3 shots per option); one scene of the run carrying deltas is
-     * enough, the player applies them once when the run ends. A lesson that is not a story game has none.
+     * enough, the player applies them once when the run ends. A lesson without meters has none:
+     * its choices play both options in a row, so there is nothing for an effect to change.
      *
      * @return list<int> incomplete branch group numbers, ascending
      */
     public function incompleteStoryGameGroups(): array
     {
-        if ($this->game_type !== 'story_game') {
+        if (! $this->hasMeters()) {
             return [];
         }
 

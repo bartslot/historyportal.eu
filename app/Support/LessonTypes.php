@@ -32,12 +32,13 @@ final class LessonTypes
     /** @return list<string> */
     public static function of(Lesson $lesson): array
     {
-        $scenes = $lesson->relationLoaded('scenes') ? $lesson->scenes : $lesson->scenes()->get(['id', 'kind', 'game_type', 'config']);
+        $scenes = $lesson->relationLoaded('scenes') ? $lesson->scenes : $lesson->scenes()->get(['id', 'kind', 'game_type', 'branch_role', 'config']);
 
         $found = [
             // An older lesson's quiz is no scene: it plays at the end from the lesson's own questions.
             self::INTERACTIVE => $scenes->contains(fn (Scene $s): bool => self::isInteractive($s))
-                || $lesson->game_type === 'story_game'
+                // A Decision point lets the class choose: interactive, whatever the lesson was created as.
+                || $scenes->contains(fn (Scene $s): bool => $s->branch_role !== null)
                 || ($lesson->include_game && $lesson->game_type === 'quiz' && $lesson->quizQuestions->whereNull('scene_id')->isNotEmpty()),
             self::COMIC => $scenes->contains(fn (Scene $s): bool => self::isComic($s)),
             self::TEAMS => $scenes->contains(fn (Scene $s): bool => self::isTeams($s)),
