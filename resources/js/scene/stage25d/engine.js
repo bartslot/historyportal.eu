@@ -214,7 +214,7 @@ export async function createStage25d (host, opts = {}) {
         const t = nowT()
         if (clock && t === heldAt) framesAhead += step
         heldAt = t
-        stage.pose(scene, t, motionClock, undefined, t + framesAhead)
+        stage.pose(solo ? soloScene(scene, solo) : scene, t, motionClock, undefined, t + framesAhead)
         // the world builds itself while the scene plays; paused in the editor it stands whole, so a teacher sees what they line up
         const building = !pointer || !!window.__timelineKeying?.playing?.()
         world?.at(t, building ? lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldReveal') : 0, cfg?.world?.painted ? 0 : lookNum({ ...STAGE_LOOK, ...lookNow }, 'worldPaint'))   // build-up 0: there at once; a world lifted from our own painting is already ours
@@ -326,6 +326,15 @@ export async function createStage25d (host, opts = {}) {
     else opts.onCommit?.(0, saved, api.sceneId)
   }
   const nowT = () => (clock ? clock() : manualT)
+  // An animation preset previewing on one figure (presets-picker.js): only that layer runs ahead by dt, the rest of the
+  // scene (camera, other figures, balloons) stays at the playhead (Bart 11-17: the whole scene played along).
+  let solo = null   // { i, dt }
+  const soloScene = (sc, { i, dt }) => {
+    const l = sc?.set?.layers?.[i]
+    if (!l) return sc
+    const ahead = { ...l, keys: (l.keys ?? []).map((k) => ({ ...k, t: k.t - dt })), ...(l.play ? { play: { ...l.play, offset: (l.play.offset ?? 0) + dt } } : {}) }
+    return { ...sc, set: { ...sc.set, layers: sc.set.layers.map((x, n) => (n === i ? ahead : x)) } }
+  }
   /** The scene's splat world: loaded when its block changes, dropped when it goes; a failed load leaves the set as it is. */
   const syncWorld = async (w) => {
     const key = w?.src ?? null
@@ -626,6 +635,8 @@ export async function createStage25d (host, opts = {}) {
     update (t) {
       clock = null; isPaused = null; manualT = Math.max(0, t)
     },
+    /** One figure dt seconds ahead of the playhead while the rest stays put (a preset's preview); null ends it. */
+    soloLayer (id, dt = 0) { solo = id && layerIndex(id) >= 0 ? { i: layerIndex(id), dt: Math.max(0, dt) } : null },
     /** The player follows a clock (the narration's currentTime); `paused` says when the class paused the lesson. */
     play (getT, paused = null) { clock = () => lead + getT(); isPaused = paused },
     /** A drag on the canvas changed a layer's x, scale or angle: through the timeline when it is keyed, else on the layer.

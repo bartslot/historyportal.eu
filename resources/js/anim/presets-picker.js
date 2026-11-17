@@ -70,7 +70,7 @@ export function animationPresets (layerId, presets) {
       const began = performance.now()
       const tick = (now) => {
         if (Math.abs(keying.time() - from) > 1e-3) { this.stop(); return }   // the teacher moved the playhead
-        stage.update(from + (((now - began) / 1000) % span))
+        stage.soloLayer ? stage.soloLayer(layerId, ((now - began) / 1000) % span) : stage.update(from + (((now - began) / 1000) % span))
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
@@ -82,6 +82,7 @@ export function animationPresets (layerId, presets) {
       raf = 0
       if (!this.previewing) return
       this.previewing = false
+      window.__stage25d?.soloLayer?.(null)
       window.__timelineKeying?.refresh?.()
     },
 
