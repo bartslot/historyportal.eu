@@ -70,13 +70,24 @@ function place (el, pointerX = null) {
  * A control can disappear while its tooltip is up (a scene change, a Livewire morph) and nothing
  * else would ever hide it — it would hang over the page pointing at nothing. Watching the one
  * parent it lives in is enough; watching the whole document would fire on every map frame.
+ *
+ * It can also change its words while they are up: a toggle that says "Hide" says "Show" the
+ * moment it is pressed (the Object list's icon, the timeline eye). The press focused it, which
+ * showed the old words, so the control's own data-tooltip is watched too and re-read.
  */
 function watchRemoval (el) {
   unwatchRemoval()
   const parent = el.parentElement
   if (!parent) return
-  watcher = new MutationObserver(() => { if (current && !current.isConnected) hide() })
+  watcher = new MutationObserver(() => {
+    if (current && !current.isConnected) return hide()
+    // a follow tooltip re-reads its words on pointermove, at the pointer: left to that
+    if (!current || 'tooltipFollow' in current.dataset || !tip?.classList.contains('is-visible') || label.textContent === (current.dataset.tooltip || '')) return
+    if (current.dataset.tooltip) show(current)
+    else hide()
+  })
   watcher.observe(parent, { childList: true })
+  watcher.observe(el, { attributes: true, attributeFilter: ['data-tooltip', 'data-tooltip-key'] })
 }
 
 function unwatchRemoval () {
@@ -104,6 +115,26 @@ function show (el) {
   place(el)
   tip.classList.remove('is-measuring')
   tip.classList.add('is-visible')
+}
+
+/**
+ * The control under the pointer, watched for new words. A press hides the tooltip (see
+ * initTooltips), but a toggle's words change with that press ("Hide" becomes "Show"), and the
+ * pointer is still on it: those new words are shown at once, without moving the pointer.
+ */
+let hovered = null
+let hoverWatcher = null
+
+function watchHovered (el) {
+  if (hovered === el) return
+  hoverWatcher?.disconnect()
+  hoverWatcher = null
+  hovered = el
+  if (!el) return
+  hoverWatcher = new MutationObserver(() => {
+    if (hovered?.isConnected && !('tooltipFollow' in hovered.dataset) && hovered.dataset.tooltip && hovered.dataset.tooltip !== (current === hovered ? label.textContent : null)) show(hovered)
+  })
+  hoverWatcher.observe(el, { attributes: true, attributeFilter: ['data-tooltip', 'data-tooltip-key'] })
 }
 
 function hide () {
@@ -142,6 +173,7 @@ export function initTooltips () {
   document.addEventListener('pointerover', (e) => {
     if (e.pointerType && e.pointerType !== 'mouse') return
     const el = targetFrom(e)
+    watchHovered(el)
     if (!el || el === current) return
     show(el)
   })
@@ -154,6 +186,7 @@ export function initTooltips () {
 
   document.addEventListener('pointerout', (e) => {
     const el = targetFrom(e)
+    if (el && el === hovered) watchHovered(null)
     if (el && el === current) hide()
   })
 
