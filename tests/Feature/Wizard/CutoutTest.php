@@ -120,6 +120,51 @@ class CutoutTest extends TestCase
         $this->assertSame('cut-'.$mine->id, $layers[0]['asset']);
     }
 
+    public function test_editing_my_own_cut_out_on_stage_updates_the_cut_out_everywhere_and_keeps_its_metres(): void
+    {
+        // Bart 11-17: saved to his own, it is that asset for every scene; and the birch must not shrink
+        $teacher = User::factory()->create();
+        $mine = Cutouts::save($teacher, self::png(4, 10), 'Birch');
+        $mine->update(['height_m' => 15.0]);
+        $layers = [['asset' => 'cut-'.$mine->id, 'depth' => 'mid', 'src' => '/storage/old.webp', 'edit_state' => ['crop' => [0, 0]]]];
+        $scene = $this->scene($teacher, ['kind' => 'stage25d', 'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => $layers]]]]);
+        $other = Scene::create(['lesson_id' => $scene->lesson_id, 'order' => 2, 'kind' => 'stage25d', 'script_segment' => 'y', 'status' => 'ready',
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'cut-'.$mine->id, 'depth' => 'mid']]]]]]);
+        $oldPath = $mine->svg_path;
+
+        Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveEditedImage', 's25_layer-0', self::png(4, 6))   // the bottom 4 px cropped off
+            ->assertReturned(fn ($r) => $r['ok'] === true)
+            ->assertDispatched('cutouts-changed');
+
+        $mine->refresh();
+        $this->assertNotSame($oldPath, $mine->svg_path, 'a new file');
+        $this->assertSame(6, $mine->height);
+        $this->assertSame(9.0, $mine->height_m, 'metres per pixel kept: 6 of 10 px of 15 m');
+        $layer = $scene->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertArrayNotHasKey('src', $layer, 'the scene draws the cut-out itself again');
+        $this->assertSame('cut-'.$mine->id, $other->fresh()->config['stage25d']['set']['layers'][0]['asset']);
+        $this->assertSame(1, SvgAsset::where('source', Cutouts::SOURCE)->count(), 'no second cut-out');
+    }
+
+    public function test_someone_elses_cut_out_is_edited_as_a_copy_in_the_scene(): void
+    {
+        $teacher = User::factory()->create();
+        $theirs = Cutouts::save(User::factory()->create(), self::png(4, 10), 'Rocks');
+        $scene = $this->scene($teacher, ['kind' => 'stage25d', 'config' => ['stage25d' => ['bundle' => 'nl-prehistory',
+            'set' => ['layers' => [['asset' => 'cut-'.$theirs->id, 'depth' => 'mid']]]]]]);
+        $before = $theirs->svg_path;
+
+        Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id)
+            ->call('saveEditedImage', 's25_layer-0', self::png(4, 6))
+            ->assertReturned(fn ($r) => $r['ok'] === true);
+
+        $this->assertSame($before, $theirs->fresh()->svg_path);
+        $this->assertArrayHasKey('src', $scene->fresh()->config['stage25d']['set']['layers'][0]);
+    }
+
     public function test_the_player_knows_every_cut_out_its_3d_scenes_use(): void
     {
         $teacher = User::factory()->create();

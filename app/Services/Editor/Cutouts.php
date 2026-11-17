@@ -59,6 +59,26 @@ final class Cutouts
         ]);
     }
 
+    /**
+     * The teacher's own cut-out, edited: its new picture everywhere it is used (Bart 11-17: "when you save an asset to
+     * your own it should update that version for your asset list globally"). The edit keeps the file's pixels, so
+     * metres per pixel stay: a crop to its paint keeps the same tree the same size (he saw his birch shrink to 1.4 m).
+     * The old file stays on disk. Null: not theirs, or a bad picture.
+     */
+    public static function replace(User $user, int $id, string $dataUrl): ?SvgAsset
+    {
+        $asset = SvgAsset::query()->whereKey($id)->where('user_id', $user->id)->where('source', self::SOURCE)->first();
+        $path = $asset ? EditedImages::storeIn("cutouts/{$user->id}", $dataUrl) : null;
+        if ($asset === null || $path === null) {
+            return null;
+        }
+        [$w, $h] = @getimagesizefromstring((string) Storage::disk('public')->get($path)) ?: [0, 0];
+        $metres = ($asset->height_m ?: self::DEFAULT_HEIGHT_M) * ($asset->height && $h ? $h / $asset->height : 1);
+        $asset->update(['svg_path' => $path, 'width' => $w ?: $asset->width, 'height' => $h ?: $asset->height, 'height_m' => round($metres, 3)]);
+
+        return $asset;
+    }
+
     /** Metres: the source asset's metres per pixel times the cut-out's height in its pixels; null when unknown. */
     public static function heightM(array $from): ?float
     {

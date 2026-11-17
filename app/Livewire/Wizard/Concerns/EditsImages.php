@@ -72,6 +72,9 @@ trait EditsImages
         if ($at === null || $scene === null) {
             return ['ok' => false];
         }
+        if (($cut = $this->ownCutoutOfRow($scene, $at)) !== null) {
+            return $this->applyEditedCutout($scene, $at[1], $cut, $image);
+        }
         $path = EditedImages::store($this->lesson, $image);
         if ($path === null) {
             return ['ok' => false];
@@ -91,6 +94,35 @@ trait EditsImages
         }
 
         return $saved ? ['ok' => true, 'url' => parse_url(Storage::disk('public')->url($path), PHP_URL_PATH)] : ['ok' => false];
+    }
+
+    /**
+     * The cut-out id of a 3D layer that shows one of this teacher's own cut-outs, or null.
+     *
+     * @param  array{0: string, 1: string|int}  $at
+     */
+    private function ownCutoutOfRow(Scene $scene, array $at): ?int
+    {
+        if ($at[0] === 'art' || ! str_starts_with((string) $at[1], 'layer-')) {
+            return null;
+        }
+        $asset = $scene->config['stage25d']['set']['layers'][(int) substr((string) $at[1], 6)]['asset'] ?? null;
+
+        return is_string($asset) && Cutouts::layerOf($asset, (int) auth()->id()) !== null ? Cutouts::idOf($asset) : null;
+    }
+
+    /** @return array{ok: bool, url?: string} the cut-out itself takes the picture; the scene's own copy, if any, goes */
+    private function applyEditedCutout(Scene $scene, string $row, int $id, string $image): array
+    {
+        $asset = Cutouts::replace(auth()->user(), $id, $image);
+        if ($asset === null) {
+            return ['ok' => false];
+        }
+        $this->dispatch('cutouts-changed', id: $asset->id, stage: Cutouts::stageRow($asset));
+        $this->editStageRow($scene, $row, ['src' => null, 'edit_state' => null, 'original_src' => null]);
+        $this->dispatch('toast', type: 'success', message: __('Saved in My cut-outs.'));
+
+        return ['ok' => true, 'url' => parse_url(Storage::disk('public')->url($asset->svg_path), PHP_URL_PATH)];
     }
 
     /**
