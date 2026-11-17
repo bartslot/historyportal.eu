@@ -9,7 +9,7 @@
  * properties.js. There is no fixed list anywhere.
  */
 
-import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf } from './keyframes.js'
+import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf, cameraValueMoves } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
@@ -497,9 +497,28 @@ export const animationTimeline = (config = {}) => ({
    * on → off takes its keys away and returns it to what it was (Reset), which the next undo gives back.
    */
   toggleAnimated (target, property) {
-    if (this.canReset(target, property)) this.resetProperty(target, property)
+    if (kindOfTarget(target) === 's25cam') this.toggleCameraValue(property)
+    else if (this.canReset(target, property)) this.resetProperty(target, property)
     else this.toggleKey(target, property)
     this.announce()
+  },
+
+  /**
+   * A camera key holds the whole pose, so one value is "animated" when it differs between keys (cameraValueMoves).
+   * On: a key at the playhead, and the value waits there for the teacher to change it at another time. Off: the
+   * value on screen holds for the whole shot (Bart 11-17: the stopwatch did nothing on the camera).
+   */
+  cameraOn: {},
+  toggleCameraValue (property) {
+    const stage = window.__stage25d
+    if (this.isAnimated('s25cam', property)) {
+      stage?.holdCameraValue?.(property)
+      this.cameraOn = { ...this.cameraOn, [property]: false }
+    } else {
+      stage?.keyCameraHere?.()
+      this.cameraOn = { ...this.cameraOn, [property]: true }
+    }
+    this.canvasTick++
   },
 
   /** Are any groups open? Drives whether the collapse-all button collapses or expands. */
@@ -1269,7 +1288,11 @@ export const animationTimeline = (config = {}) => ({
    * nobody asked for, and leaves no way to simply POSITION something. The diamond is what starts
    * an animation; from the first key onwards, the timeline records what you do.
    */
-  isAnimated (target, property) { return this.keysOf(target, property).length > 0 },
+  isAnimated (target, property) {
+    const keys = this.keysOf(target, property)
+    if (kindOfTarget(target) === 's25cam') return cameraValueMoves(keys) || (this.cameraOn[property] === true && keys.length > 0)
+    return keys.length > 0
+  },
 
   /**
    * Typing a number moves the object, and records it at the playhead.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   sortedKeys, segmentAt, sampleNumber,
-  addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration, sameTime, TIME_EPSILON,
+  addKeyframe, removeKeyframe, updateKeyframe, setDuration, trackDuration, sameTime, TIME_EPSILON, cameraValueMoves,
 } from '../keyframes.js'
 
 /**
@@ -240,5 +240,14 @@ describe('custom cubic-bezier easing', () => {
     expect(parseBezier('cubic-bezier(0.1, -0.2, 0.3, 1.4)')).toEqual([0.1, -0.2, 0.3, 1.4])
     expect(formatBezier([0.1, -0.2, 0.3, 1.4])).toBe('cubic-bezier(0.1, -0.2, 0.3, 1.4)')
     expect(parseBezier('easeInCubic')).toBeNull()
+  })
+})
+
+describe('cameraValueMoves (Bart 11-17: the camera stopwatch did nothing)', () => {
+  it('is on only when the value differs between camera keys', () => {
+    expect(cameraValueMoves([{ time: 0, value: -1.95 }, { time: 6, value: 0.01 }])).toBe(true)
+    expect(cameraValueMoves([{ time: 0, value: 1.6 }, { time: 6, value: 1.6 }])).toBe(false)
+    expect(cameraValueMoves([{ time: 0, value: 50 }])).toBe(false)
+    expect(cameraValueMoves([])).toBe(false)
   })
 })

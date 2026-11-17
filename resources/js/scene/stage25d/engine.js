@@ -757,6 +757,18 @@ export async function createStage25d (host, opts = {}) {
       storeCameraKeys(keys)
       return t
     },
+    /** The stopwatch of one camera value switched off (Bart 11-17: it did nothing): every key takes the value on screen,
+     *  so that value holds still for the whole shot while the others keep moving. */
+    holdCameraValue (property) {
+      const value = camPoseNow()[property]
+      if (value === undefined) return
+      storeCameraKeys(camKeysNow().map((k) => ({ ...k, pose: { ...k.pose, [property]: value } })))
+    },
+    /** A key under the playhead with the pose on screen, never taking one away (the stopwatch switched on). */
+    keyCameraHere () {
+      const t = nowT()
+      if (!camKeysNow().some((k) => Math.abs(k.t - t) < 1e-3)) storeCameraKeys(withCameraKey(camKeysNow(), t, camPoseNow()))
+    },
     /** Another pose on the camera key at t (Paste values). */
     setCameraKeyPose (t, pose) { storeCameraKeys(withCameraKey(camKeysNow(), t, pose)) },
     removeCameraKey (t) { storeCameraKeys(withoutCameraKey(camKeysNow(), t)) },

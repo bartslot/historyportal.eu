@@ -348,8 +348,8 @@
                                             :aria-pressed="isAnimated(object.target, property.key) ? 'true' : 'false'"
                                             :aria-label="isAnimated(object.target, property.key) ? @js(__('Stop animating')) : @js(__('Animate'))"
                                             :data-tooltip="isAnimated(object.target, property.key) ? @js(__('Stop animating')) : @js(__('Animate'))"
-                                            :class="isAnimated(object.target, property.key) ? 'bg-white/10 text-panel-value' : 'text-panel-label'"
-                                            class="grid h-8 w-5 cursor-pointer place-items-center rounded hover:text-white">
+                                            :class="isAnimated(object.target, property.key) ? 'text-info' : 'text-panel-label hover:text-base-content'"
+                                            class="grid h-8 w-5 cursor-pointer place-items-center rounded bg-transparent transition-colors">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                                         </svg>

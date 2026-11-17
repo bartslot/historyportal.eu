@@ -199,3 +199,6 @@ export const toggleKeyframe = (track, time, value) => {
   const base = track?.base ?? (sortedKeys(track).length ? baseOf(track) : value)
   return addKeyframe({ ...track, base }, { time, value })
 }
+
+/** A camera value moves when it differs between the camera's keys (each key holds the whole pose, timeline-panel.js). */
+export const cameraValueMoves = (keys) => (keys ?? []).some((k) => Math.abs(Number(k.value) - Number(keys[0].value)) > 1e-6)
