@@ -1,0 +1,1 @@
+const n="lp-comic-america";function a(t){const e=document.createElement("span");e.className=n,e.dataset.t=t;const c=document.createElement("span");return c.textContent=t,e.appendChild(c),e}function o(t,e){t.replaceChildren(a(e))}export{o as l};
