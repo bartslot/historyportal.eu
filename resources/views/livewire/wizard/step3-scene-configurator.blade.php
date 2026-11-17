@@ -84,6 +84,10 @@
         </div>
         {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
         <div class="lp-grain pointer-events-none absolute inset-0 z-3"></div>
+        {{-- The scene's edge, over every asset (Bart 11-17: "frame of scene should always be visible, also over
+             overlapping assets"): a picture hanging past the edge no longer hides where the class's view stops.
+             A hairline only, and clicks pass through it. --}}
+        <div aria-hidden="true" data-scene-frame class="pointer-events-none absolute inset-0 z-[45] ring-1 ring-inset ring-base-content/50"></div>
         {{-- Scene overlay (flag + territory title). z-[6] so it sits ABOVE the map preview (z-[5]),
              not hidden behind the globe. pointer-events-none keeps the map interactive.
              NO vertical padding: SceneOverlay sets container-type:size on this host, and padding
