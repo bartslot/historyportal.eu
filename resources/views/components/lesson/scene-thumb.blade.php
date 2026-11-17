@@ -135,27 +135,10 @@
 </button>
 
 @if ($canDelete)
-    {{-- Hover (or keyboard focus) reveals a "..." that opens Duplicate / Delete (Bart 11-03: "not delete but a
-         little menu"). A native popover: it sits in the top layer, so the rail's overflow never clips it, and
-         Escape / a click outside close it for free. data-no-drag so grabbing it doesn't start a reorder.
-         Delete has no confirm: its toast offers Undo, which is the gentler version of asking. --}}
-    <button type="button"
-            data-no-drag
-            data-scene-menu="{{ $scene->id }}"
-            popovertarget="scene-menu-{{ $scene->id }}"
-            title="{{ __('Scene options') }}"
-            aria-label="{{ __('Scene options') }}"
-            class="absolute -right-2 -top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full
-                   border border-slate-600 bg-slate-900 text-slate-300 opacity-0 transition
-                   hover:border-primary hover:text-white
-                   focus-visible:opacity-100 group-hover/thumb:opacity-100">
-        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><use href="#rail-more"/></svg>
-    </button>
-    <ul id="scene-menu-{{ $scene->id }}" popover data-no-drag
-        x-data
-        x-on:beforetoggle="if ($event.newState === 'open') { const r = document.querySelector('[data-scene-menu=&quot;{{ $scene->id }}&quot;]').getBoundingClientRect(); $el.style.left = (r.right + 6) + 'px'; $el.style.top = r.top + 'px' }"
-        class="menu m-0 hidden w-44 open:flex rounded-box border border-slate-700 bg-base-200 p-1 text-sm shadow-none"
-        style="position: fixed; inset: auto;">
+    {{-- Hover (or keyboard focus) reveals the "..." menu (components/ui/more-menu). Delete has no confirm: its
+         toast offers Undo, which is the gentler version of asking. --}}
+    <x-ui.more-menu id="scene-menu-{{ $scene->id }}" :label="__('Scene options')" data-scene-menu="{{ $scene->id }}"
+                    class="absolute -right-2 -top-2 z-10 flex opacity-0 focus-visible:opacity-100 group-hover/thumb:opacity-100">
         <li>
             <button type="button" data-scene-duplicate="{{ $scene->id }}"
                     wire:click.stop="{{ $call }}duplicateScene({{ $scene->id }})" wire:loading.attr="disabled"
@@ -172,6 +155,6 @@
                 {{ __('Delete scene') }}
             </button>
         </li>
-    </ul>
+    </x-ui.more-menu>
 </div>
 @endif

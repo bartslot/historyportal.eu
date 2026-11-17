@@ -160,6 +160,16 @@ export const setObjectHidden = (target, hidden) => {
   }
 }
 
+/**
+ * Whether setObjectHidden can take this target off the canvas. The stage hides only its layers and
+ * ground bands; a diorama item, the sky, the terrain and a camera have nothing it can hide.
+ */
+export const canHide = (target) => {
+  const [kind, id = ''] = String(target ?? '').split(':')
+  if (kind === 's25') return /^(layer|band)-\d+$/.test(id)
+  return ['text', 'rect', 'art', 'arw', 'bal', 'bg'].includes(kind)
+}
+
 /** Put one property back on the live layer. */
 export const writeObjectProperty = (target, property, value) => {
   const [kind, id] = String(target).split(':')

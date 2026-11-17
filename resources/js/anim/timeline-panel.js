@@ -13,7 +13,7 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
@@ -228,7 +228,12 @@ export const animationTimeline = (config = {}) => ({
       layerKeys: (target) => keysFromTracks(this.tracks)[String(target).slice(4)] ?? [],
       setLayerKeys: (target, keys) => this.replaceLayerKeys(target, keys),
       refresh: () => this.applyFrame(),
+      // the Object list's type icon: the same hidden state as this panel's eye
+      hideTarget: (id) => this.hideTargetOf(id),
+      isHidden: (target) => this.isHidden(target),
+      toggleHidden: (target) => this.toggleHidden(target),
     }
+    window.dispatchEvent(new CustomEvent('timeline-keying'))   // the Object list re-reads its hide icons
 
     // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
     // not the copy this panel remembered (which is exactly what the undo took back).
@@ -579,6 +584,17 @@ export const animationTimeline = (config = {}) => ({
     this.hiddenObjects[target] = !this.hiddenObjects[target]
     setObjectHidden(target, this.hiddenObjects[target])
     this.remember()
+  },
+
+  /**
+   * The row an Object list id hides, or null where the eye has nothing to hide. The list's type icon
+   * toggles THIS state (window.__timelineKeying), so the icon and the eye always agree. Its single
+   * Background row is the background only while the scene has one (a split has one per panel).
+   */
+  hideTargetOf (id) {
+    const backgrounds = this.objects.filter((o) => o.kind === 'bg')
+    const target = id === '__bg__' ? (backgrounds.length === 1 ? backgrounds[0].target : null) : this.targetFromObjectId(id)
+    return canHide(target) && this.objects.some((o) => o.target === target) ? target : null
   },
 
   removeObject (target) {
