@@ -13,6 +13,7 @@ use App\Services\Stage25d\Daylight;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
+use App\Services\Stage25d\StageWorlds;
 use App\Services\Support\SpeechBalloons;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -262,14 +263,8 @@ trait EditsStage25d
         }
     }
 
-    /** The scene look sliders the panel offers, with the range each may take (engine-mvp stage25d/look.ts LOOK_RANGE). */
-    private const LOOK_RANGES = [
-        'sheetGrain' => [0, 1], 'groundDetail' => [0, 1], 'sunLight' => [0, 1], 'castShadow' => [0, 1], 'edgeSoft' => [0, 1],
-        'cloudDrift' => [0, 1], 'housePitch' => [-6, 12],
-        'groundWash' => [0, 1], 'groundGrain' => [0.5, 3], 'grass' => [0, 1], 'grassSway' => [0, 1], 'horizonBushes' => [0, 1],
-        'worldReveal' => [0, 20], 'worldPaint' => [0, 1],
-        'figureWash' => [0, 1], 'figureShade' => [0, 1], 'figurePigment' => [1, 8],
-    ];
+    /** The scene look sliders the panel offers, with their ranges (StageWorlds, shared with imports). */
+    private const LOOK_RANGES = StageWorlds::LOOK_RANGES;
 
     /**
      * Put a ready-made world (config/worlds.php) under the scene, or take the world away (''). A world brings its sky,
@@ -292,27 +287,13 @@ trait EditsStage25d
         if ($preset !== null && ($preset['bundle'] ?? '') !== ($stage['bundle'] ?? '') && $own !== []) {
             return;
         }
-        unset($stage['world']);   // a splat world (no longer offered) goes too
         if ($preset === null) {
-            unset($set['groundBands'], $stage['world_id']);
+            unset($stage['world'], $set['groundBands'], $stage['world_id']);   // a splat world (no longer offered) goes too
             $set['layers'] = $own;
+            $stage['set'] = $set;
         } else {
-            $parts = $preset['set'];
-            $stage['bundle'] = $preset['bundle'];
-            $stage['world_id'] = $world;
-            unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight'], $set['soil']);   // the world's sky and soil, not the scene's own
-            $set = ['sky' => $parts['sky'] ?? null, 'groundSlots' => $parts['groundSlots']]
-                + (is_array($parts['daylight'] ?? null) ? ['daylight' => $parts['daylight']] : [])
-                + (is_string($parts['soil'] ?? null) ? ['soil' => $parts['soil']] : [])
-                + (empty($parts['groundBands']) ? [] : ['groundBands' => $parts['groundBands']]) + $set;
-            $set['layers'] = [...array_map(fn ($l) => $l + ['world' => true], $parts['layers'] ?? []), ...$own];
-            // a world may set a look value it needs (calm water strews no foam): only keys the panel offers, in range
-            foreach (array_intersect_key((array) ($preset['look'] ?? []), self::LOOK_RANGES) as $key => $value) {
-                [$min, $max] = self::LOOK_RANGES[$key];
-                $stage['look'][$key] = max($min, min($max, (float) $value));
-            }
+            $stage = StageWorlds::apply($stage, $world, $preset);
         }
-        $stage['set'] = $set;
         $config['stage25d'] = $stage;
         $this->storeStage25dConfig($scene, $config);
         $this->selectSceneInternal($scene->id);   // the stage rebuilds from the scene as saved (scene:load)
@@ -321,14 +302,7 @@ trait EditsStage25d
     /** A world by its picker key: a ready-made one (config/worlds.php) or one this teacher saved ('mine:<id>'). */
     private function worldPreset(string $key): ?array
     {
-        if (str_starts_with($key, StageWorld::KEY_PREFIX)) {
-            $own = StageWorld::where('user_id', auth()->id())->find((int) substr($key, strlen(StageWorld::KEY_PREFIX)));
-
-            return $own?->preset();
-        }
-        $preset = config('worlds', [])[$key] ?? null;   // the exact key: a dotted one must not reach inside
-
-        return is_array($preset) ? $preset : null;
+        return StageWorlds::preset($key, auth()->id());
     }
 
     /** A saved world's picture: a small JPEG the stage grabbed (engine still()), at most this many bytes. */
