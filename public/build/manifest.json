@@ -1,4 +1,10 @@
 {
+  "node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "_BalloonLayer-1BwPMpTN.js": {
     "file": "assets/BalloonLayer-1BwPMpTN.js",
     "name": "BalloonLayer",
@@ -64,8 +70,8 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-Cm9RTn4u.js": {
-    "file": "assets/big-countdown-Cm9RTn4u.js",
+  "_big-countdown-BS1u7pR4.js": {
+    "file": "assets/big-countdown-BS1u7pR4.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -73,7 +79,7 @@
       "_easing-HS2C6-zA.js"
     ],
     "dynamicImports": [
-      "_engine-CtA1FL9c.js"
+      "_engine-BtHgQGP9.js"
     ]
   },
   "_border-sweep-FqbLTVaG.js": {
@@ -117,8 +123,8 @@
     "file": "assets/easing-HS2C6-zA.js",
     "name": "easing"
   },
-  "_engine-CtA1FL9c.js": {
-    "file": "assets/engine-CtA1FL9c.js",
+  "_engine-BtHgQGP9.js": {
+    "file": "assets/engine-BtHgQGP9.js",
     "name": "engine",
     "isDynamicEntry": true,
     "imports": [
@@ -214,12 +220,6 @@
     "src": "engine-mvp/src/sound/player.ts",
     "isDynamicEntry": true
   },
-  "node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
   "resources/css/app.css": {
     "file": "assets/app-BAAEmbAG.css",
     "src": "resources/css/app.css",
@@ -230,7 +230,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CTlDw1l5.js",
+    "file": "assets/app-4cy1uNbI.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -282,7 +282,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-tjhrCWy7.js",
+    "file": "assets/cutout-dialog-BxB5ZG4X.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -333,7 +333,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-B7jxxEu8.js",
+    "file": "assets/lesson-player-BJFD8LT5.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -343,7 +343,7 @@
       "_pausable-clock-B6VRcHlA.js",
       "_draw-options-5VKCko38.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_config-DwQUN7uY.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
@@ -395,14 +395,14 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-X47IWEhW.js",
+    "file": "assets/ArtworkOverlay-SLkCwtI0.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
       "_draw-options-5VKCko38.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_alpha-mask-C1RIm4VB.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
@@ -410,12 +410,12 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-BGgSscTb.js",
+    "file": "assets/ParallaxScene-mxQroY3w.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-BOChOyuU.js",
@@ -425,12 +425,12 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-B8Ad_TLh.js",
+    "file": "assets/QuizOverlay-D0XHpmow.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CEzLlAaX.js",
@@ -438,7 +438,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-CgU79poc.js",
+    "file": "assets/SplitStage-Bc5MENRD.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -447,7 +447,7 @@
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-1BwPMpTN.js",
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
       "_camera-BOChOyuU.js",
@@ -496,12 +496,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-0EbWfS7d.js",
+    "file": "assets/index-Bq7KE8GA.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -586,13 +586,13 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/splat-reveal.js": {
-    "file": "assets/splat-reveal-Cv264Xin.js",
+    "file": "assets/splat-reveal-Cg_wKfD5.js",
     "name": "splat-reveal",
     "src": "resources/js/scene/stage25d/splat-reveal.js",
     "isDynamicEntry": true,
     "imports": [
       "_babylon-BN1RBZWF.js",
-      "_engine-CtA1FL9c.js",
+      "_engine-BtHgQGP9.js",
       "_vite-helpers-DqutJMZx.js",
       "_puppet-sheet-B0KaX9MG.js",
       "_load-image-DngxJD_v.js",
@@ -602,7 +602,7 @@
       "_config-DwQUN7uY.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-Cm9RTn4u.js",
+      "_big-countdown-BS1u7pR4.js",
       "_ambient-CEzLlAaX.js",
       "_alpha-mask-C1RIm4VB.js",
       "_projection-CL24asTn.js"
@@ -624,7 +624,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BNVHc_ui.js",
+    "file": "assets/recorder-CGHNxfyk.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
