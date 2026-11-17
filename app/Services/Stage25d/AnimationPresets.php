@@ -54,6 +54,17 @@ final class AnimationPresets
         return once(fn () => json_decode((string) file_get_contents(resource_path(self::CATALOGUE)), true, flags: JSON_THROW_ON_ERROR)['presets']);
     }
 
+    /**
+     * The presets a teacher picks from in the figure inspector. None for now (Bart 11-17): the walk will be drawn, 8
+     * frames, not bent bones, so the bone walk is no longer offered there; the section hides until drawn walks come.
+     *
+     * @return list<array{id:string,label:string,group:string}>
+     */
+    public static function picker(): array
+    {
+        return [];
+    }
+
     /** @return list<string> */
     public static function ids(): array
     {

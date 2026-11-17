@@ -769,7 +769,8 @@ class StageEditingTest extends TestCase
         $scene = $this->scene();
         $editor = $this->editor($scene);
         $editor->call('selectInspectorTarget', 's25_layer-0')->assertSet('activeStage25dLayer', 'layer-0')
-            ->assertSeeHtml('data-stage25d-inspector="layer-0"');
+            ->assertSeeHtml('data-stage25d-inspector="layer-0"')
+            ->assertDontSeeHtml('data-stage25d-animation-section');   // no preset to pick (drawn walks come later): no empty menu
         $editor->call('selectInspectorTarget', 's25_layer-9')->assertSet('activeStage25dLayer', null);
         $editor->call('selectInspectorTarget', '')->assertDontSeeHtml('data-stage25d-look')
             ->assertDontSeeHtml('data-scene-mode')->assertSee('Scene details');   // a scene is 2D or 3D for good (Bart, 2026-11-07)

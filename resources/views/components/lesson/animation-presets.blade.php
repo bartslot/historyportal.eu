@@ -4,9 +4,11 @@
      clicked plays on the figure, over and over, until it is clicked again or another one is; Add lays it into the
      figure's keys at the playhead, where every key stays the teacher's to change, and one undo takes it back. --}}
 @php
-    $presets = collect(\App\Services\Stage25d\AnimationPresets::catalogue())
+    $presets = collect(\App\Services\Stage25d\AnimationPresets::picker())
         ->map(fn ($p) => ['id' => $p['id'], 'label' => __($p['label'])])->values()->all();
 @endphp
+{{-- No presets to pick: no section (an empty menu says nothing). --}}
+@if ($presets !== [])
 <x-ui.settings-section :title="__('Animation')" :open="false" class="-mx-4 mt-3 w-auto!" x-show="info?.puppet" data-stage25d-animation-section>
     <div x-data="animationPresets(@js($layerId), @js($presets))" x-effect="open || stop()" class="space-y-3"
          data-loop-hint="{{ __('Repeats to the end of the scene') }}" data-travel-hint="{{ __('Walks a few steps, up to the end of the scene') }}" data-once-hint="{{ __('Plays once, :s s') }}">
@@ -40,3 +42,4 @@
         </div>
     </div>
 </x-ui.settings-section>
+@endif
