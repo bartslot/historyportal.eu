@@ -438,13 +438,19 @@
          As playback enters a new chapter: its name and year over the stage, a smaller copy of the plain
          lesson title (same History font, same place, same cinematic shade; no QR, code or Start). It holds
          for its reading time and fades; the narration starts as it fades (lesson-player.js _showChapterCard).
-         A CSS fade, not an Alpine leave transition: a hidden document never finishes those (see the title screen). --}}
+         A CSS fade, not an Alpine leave transition: a hidden document never finishes those (see the title screen).
+         Two layers: the shade under the scene's own art and texts, the words over them (z-34: above the
+         voyage art 30/32, texts 31 and balloons 33, below the subtitles 40), so no figure or prop ever
+         covers the chapter's name. --}}
     <div class="lp-chapter-card pointer-events-none absolute inset-0 z-12 transition-opacity duration-500 ease-out"
-         :class="chapterCardOn && phase === 'INTRO' ? 'opacity-100' : 'opacity-0'" aria-live="polite">
+         :class="chapterCardOn && phase === 'INTRO' ? 'opacity-100' : 'opacity-0'">
         <div class="absolute inset-0"
              style="background:
                  linear-gradient(to top,  rgba(2,6,23,0.85) 0%, rgba(2,6,23,0.45) 30%, transparent 60%),
                  linear-gradient(to right, rgba(2,6,23,0.55) 0%, transparent 40%)"></div>
+    </div>
+    <div class="lp-chapter-card-words pointer-events-none absolute inset-0 transition-opacity duration-500 ease-out" style="z-index:34"
+         :class="chapterCardOn && phase === 'INTRO' ? 'opacity-100' : 'opacity-0'" aria-live="polite">
         <div @class(['title-gutter-x absolute flex', $titleBar])>
             <h2 lang="{{ $contentLang }}" class="min-w-0 max-w-4xl" x-show="chapterCard">
                 {{-- In ComicAmerica, every lesson (Bart, 2026-11-17). --}}
