@@ -33,7 +33,7 @@ import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
 import { gameFlowFor, playsPredict } from './scene/game-flow.js'
-import { hasVoyage, playsStoryGame } from './scene/lesson-content.js'
+import { hasChoices, hasMeters, hasVoyage } from './scene/lesson-content.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -676,10 +676,10 @@ Alpine.data('lessonGame', (lesson) => ({
         this._showBgScene()
       }
 
-      // Story game (Spel-verhaal): lazy-load the branch/meter engine once, for any lesson whose
-      // Decision points have class meters to push. Without meters the engine never constructs —
-      // plain branching keeps its pre-existing behaviour (both options play sequentially).
-      if (playsStoryGame(lesson) && !this._storyGame) {
+      // Decision points: lazy-load the branch engine once for any lesson that has them. The class taps an
+      // option and only that option plays. Class meters are an add-on: with none, there is no meter bar,
+      // no game over and no closing summary, just the choice.
+      if (hasChoices(lesson) && !this._storyGame) {
         try {
           const { StoryGameEngine } = await import('./scene/StoryGameEngine.js')
           const host = document.createElement('div')
@@ -687,8 +687,8 @@ Alpine.data('lessonGame', (lesson) => ({
           host.className = 'absolute inset-0 z-40 pointer-events-none'
           document.getElementById('lesson-stage')?.appendChild(host)
           this._storyGame = new StoryGameEngine(host, {
-            meters: lesson.game_config.meters,
-            failThreshold: lesson.game_config.fail_threshold ?? 0,
+            meters: hasMeters(lesson) ? lesson.game_config.meters : [],
+            failThreshold: lesson.game_config?.fail_threshold ?? 0,
             scenes: _sceneQueue,
             onAdvanceTo: (i) => { this._sceneIndex = i; this._playScene(i) },
             onOverrideContinue: () => this._advanceScene(this._sceneIndex),
@@ -2993,9 +2993,9 @@ Alpine.data('lessonGame', (lesson) => ({
       try { this._teardownStageScene(true) } catch (_) { /* tear down the persistent voyage map */ }
       this.phase = 'ENDED'
       this.audioPlaying = false
-      // Story game: the blade has no ENDED markup (everything x-hides), so the run
-      // summary rendered into the engine's overlay host IS the finale screen.
-      if (this._storyGame) this._storyGame.showSummaryInto(document.getElementById('story-game-overlay'))
+      // Class meters: the run summary rendered into the engine's overlay host is the finale screen.
+      // Choices without meters end like any lesson (no meters to sum up, no game to survive).
+      if (this._storyGame && hasMeters(lesson)) this._storyGame.showSummaryInto(document.getElementById('story-game-overlay'))
     },
 
     // ── Timer ──────────────────────────────────────────────────────────

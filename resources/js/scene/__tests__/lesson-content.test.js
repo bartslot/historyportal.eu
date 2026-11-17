@@ -1,24 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { hasVoyage, playsStoryGame } from '../lesson-content.js'
+import { hasChoices, hasMeters, hasVoyage } from '../lesson-content.js'
 
 // A lesson behaves by what it contains, never by the game_type it was created with (Bart 2026-11-17).
 const meters = [{ key: 'food', label: 'Food', start: 50 }]
 const choice = { kind: 'narration', branch_group: 1, branch_role: 'question' }
 
-describe('playsStoryGame', () => {
-  it('runs the meters engine for choices with meters, whatever the lesson type', () => {
-    expect(playsStoryGame({ game_type: 'quiz', game_config: { meters }, scenes: [choice] })).toBe(true)
-    expect(playsStoryGame({ game_type: null, game_config: { meters }, scenes: [choice] })).toBe(true)
+describe('hasChoices', () => {
+  it('asks the class at a Decision point with or without meters, whatever the lesson type', () => {
+    expect(hasChoices({ game_type: 'quiz', game_config: { meters }, scenes: [choice] })).toBe(true)
+    expect(hasChoices({ game_type: null, game_config: { meters: [] }, scenes: [choice] })).toBe(true)
+    expect(hasChoices({ game_type: 'story_game', game_config: null, scenes: [choice] })).toBe(true)
   })
 
-  it('leaves choices without meters to play both options in a row', () => {
-    expect(playsStoryGame({ game_type: 'story_game', game_config: { meters: [] }, scenes: [choice] })).toBe(false)
-    expect(playsStoryGame({ game_type: 'story_game', game_config: null, scenes: [choice] })).toBe(false)
+  it('is false without a Decision point, meters or not', () => {
+    expect(hasChoices({ game_type: 'story_game', game_config: { meters }, scenes: [{ kind: 'narration' }] })).toBe(false)
+    expect(hasChoices({ game_config: { meters } })).toBe(false)
   })
+})
 
-  it('needs a Decision point to apply meters to', () => {
-    expect(playsStoryGame({ game_type: 'story_game', game_config: { meters }, scenes: [{ kind: 'narration' }] })).toBe(false)
-    expect(playsStoryGame({ game_config: { meters } })).toBe(false)
+describe('hasMeters', () => {
+  it('is the add-on: true only when the lesson has class meters', () => {
+    expect(hasMeters({ game_config: { meters } })).toBe(true)
+    expect(hasMeters({ game_config: { meters: [] } })).toBe(false)
+    expect(hasMeters({ game_config: null })).toBe(false)
+    expect(hasMeters({})).toBe(false)
   })
 })
 

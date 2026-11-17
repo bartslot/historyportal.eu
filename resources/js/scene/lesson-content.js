@@ -4,10 +4,18 @@
 
 const scenesOf = (lesson) => (Array.isArray(lesson?.scenes) ? lesson.scenes : [])
 
-/** The class meters engine runs when a Decision point has meters to push (else both options play in a row). */
-export function playsStoryGame (lesson) {
+/**
+ * The lesson has Decision points: the player asks the class at the question and plays only the option it taps, then
+ * goes on where the options meet again (PM 2026-11-17, Twine interactivity). Meters are not needed for that.
+ */
+export function hasChoices (lesson) {
+  return scenesOf(lesson).some((s) => !!s?.branch_role)
+}
+
+/** Class meters the options push up and down: an add-on to choices, never a condition for them. */
+export function hasMeters (lesson) {
   const meters = lesson?.game_config?.meters
-  return Array.isArray(meters) && meters.length > 0 && scenesOf(lesson).some((s) => !!s?.branch_role)
+  return Array.isArray(meters) && meters.length > 0
 }
 
 /** The lesson sails: one persistent map across its legs, the deck's voyage navigation and A/B keys. */

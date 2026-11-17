@@ -379,3 +379,30 @@ describe('StoryGameEngine option runs', () => {
     expect(onAdvanceTo).toHaveBeenLastCalledWith(7) // no consequence line: straight on
   })
 })
+
+describe('StoryGameEngine without class meters (choices alone)', () => {
+  // The imported Twine shape: Venice asks, Destination | Cargo, both go on to Embark.
+  const scenes = () => [
+    questionScene(1),                                       // 0 Venice
+    optionScene(1, 'option_a', 'Ask Niccolò'),              // 1 Destination
+    optionScene(1, 'option_b', 'Watch the sailors'),        // 2 Cargo
+    { kind: 'scene' },                                      // 3 Embark
+  ]
+
+  it('asks at the question, plays only the picked option, then goes on at the join', () => {
+    const queue = scenes()
+    const { engine, onAdvanceTo } = makeEngine({ meters: [], scenes: queue })
+
+    expect(document.querySelector('[data-sg-hud]')).toBeNull()   // no meter bar
+    expect(engine.handleSceneEnd(0, queue[0])).toBe(true)
+    expect([...engine.host.querySelectorAll('[data-sg-option]')].map((b) => b.textContent)).toEqual(['Ask Niccolò', 'Watch the sailors'])
+
+    engine.host.querySelector('[data-sg-option="option_b"]').click()
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(2)              // Cargo, Destination skipped
+
+    expect(engine.handleSceneEnd(2, queue[2])).toBe(true)
+    expect(onAdvanceTo).toHaveBeenLastCalledWith(3)              // Embark
+    expect(engine.state.survived).toBe(true)
+    expect(engine.state.meters).toEqual({})
+  })
+})

@@ -184,4 +184,20 @@ class TwineImportTest extends TestCase
             ->assertDontSee('Imported from Twine');
         $this->assertTrue($lesson->refresh()->import_report['seen']);
     }
+
+    public function test_the_player_gets_the_decision_points_without_meters(): void
+    {
+        $lesson = $this->marcoPolo();
+
+        $html = $this->actingAs($this->teacher)->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
+        preg_match('/window\.LESSON = (\{.*?\});\n/s', $html, $m);
+        $data = json_decode($m[1], true);
+        $scenes = collect($data['scenes']);
+
+        // lesson-content.js hasChoices: a branch_role is enough, the player asks; no meters, no meter game
+        $this->assertSame(['question', 'option_a', 'option_b', null], $scenes->take(4)->pluck('branch_role')->all());
+        $this->assertSame('Watch the sailors loading the ship', $scenes[2]['branch_choice_label']);
+        $this->assertSame([1, 1, 1], $scenes->take(3)->pluck('branch_group')->all());
+        $this->assertEmpty($data['game_config']['meters'] ?? []);
+    }
 }
