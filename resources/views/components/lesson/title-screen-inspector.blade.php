@@ -21,7 +21,8 @@
                     <button type="button" wire:click="resetTitleStyle" class="text-2xs text-panel-hint transition-colors hover:text-primary">{{ __('Reset to default') }}</button>
                 @endif
             </div>
-            <div class="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="{{ __('Title style') }}">
+            {{-- Two a row: three left a name like "ComicAmerica" no room at the 12px floor. --}}
+            <div class="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="{{ __('Title style') }}">
                 @foreach ($choices as $choice)
                     @php $isOn = $choice['key'] === $style; @endphp
                     <button type="button" role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}"

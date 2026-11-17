@@ -3,6 +3,13 @@
 @php
     $id = (string) $balloon['id'];
     $kind = in_array($balloon['kind'] ?? null, \App\Services\Support\SpeechBalloons::KINDS, true) ? $balloon['kind'] : 'speech';
+    // The type row: one icon each (Heroicons outline: chat bubble, cloud, megaphone), the name as its
+    // tooltip and the heading above, so the three stay on one row in the narrow panel.
+    $kindIcons = [
+        'speech' => 'M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z',
+        'thought' => 'M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z',
+        'sound' => 'M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 0 1 0 3.46',
+    ];
     $layerName = match ($kind) { 'thought' => __('Thought balloon'), 'sound' => __('Sound word'), default => __('Speech balloon') };
     $speaker = $balloon['figure']['asset_id'] ?? null;
     // The timeline's name for this balloon: bal_3 → bal:3 (resources/js/anim/properties.js `bal`).
@@ -25,7 +32,7 @@
 
     <x-ui.segmented panel name="balloon-kind-{{ $id }}" class="w-full" tab-class="flex-1"
                     :value="$kind"
-                    :options="[['speech', __('Speech')], ['thought', __('Thought')], ['sound', __('Sound word')]]"
+                    :options="[['speech', __('Speech'), $kindIcons['speech']], ['thought', __('Thought'), $kindIcons['thought']], ['sound', __('Sound word'), $kindIcons['sound']]]"
                     on-change="$wire.updateBalloon({{ \Illuminate\Support\Js::from($id) }}, 'kind', $event.target.value)" />
 
     <label class="form-control">
