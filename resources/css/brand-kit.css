@@ -261,6 +261,16 @@
   --color-brand-ink: #0a0a0a;
 }
 
+/* ─── Luckiest Guy (Astigmatic, Apache 2.0; LICENSE.txt beside it): the ComicAmerica letters.
+   Self-hosted, never Google's CDN (school firewalls block it). */
+@font-face {
+  font-family: 'Luckiest Guy';
+  src: url('/fonts/luckiest-guy/LuckiestGuy-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /**
  * MUST stay inside @layer components — the same trap `.form-control` fell into in app.css.
  *
@@ -327,6 +337,60 @@
     letter-spacing: 0.5px;
     line-height: 1;
     text-transform: uppercase;
+  }
+
+  /**
+   * ComicAmerica (Bart, 2026-11-17): heavy slanted capitals, a white-to-grey fill, a thick black
+   * outline and a hard black drop. Content, not UI chrome: the title screen, the chapter titles,
+   * stage text and sound words all wear this one class.
+   *
+   * Markup: <span class="lp-comic-america" data-t="WORDS"><span>WORDS</span></span>
+   * (resources/js/comic-america.js builds it). The fill is the inner span; the outline and the
+   * drop are the same words again from data-t, behind it. The stroke never sits on the gradient
+   * fill itself: there it eats into the letters. No blur anywhere, the drop is hard ink.
+   */
+  .lp-comic-america {
+    --lp-ca-outline: 0.11em;
+    position: relative;
+    display: inline-block;
+    font-family: 'Luckiest Guy', var(--font-history), sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    transform: skewX(-8deg);
+    text-shadow: none;
+  }
+
+  .lp-comic-america > span {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(#fff 50%, #aeb5c0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    caret-color: #fff;
+  }
+
+  .lp-comic-america::before,
+  .lp-comic-america::after {
+    content: attr(data-t);
+    position: absolute;
+    inset: 0;
+    padding: inherit;
+    overflow: inherit;
+    text-overflow: inherit;
+    color: #000;
+    -webkit-text-stroke: var(--lp-ca-outline) #000;
+    pointer-events: none;
+  }
+
+  .lp-comic-america::before {
+    z-index: 0;
+    transform: translate(0.04em, 0.1em);
+  }
+
+  .lp-comic-america::after {
+    z-index: 1;
   }
 }
 
