@@ -15,8 +15,7 @@ export const FIGS = [
   { id: 'layer-7', mesh: null as string | null, name: 'scribe' },
 ]
 export const BONES = ['head', 'chest', 'braid', 'upperarm_n', 'forearm_n', 'upperarm_f', 'forearm_f', 'thigh_n', 'shin_n', 'foot_n', 'thigh_f', 'shin_f', 'foot_f']
-export const PRESETS = ['idle', 'walk', 'run', 'carry', 'pick_up', 'sit_down', 'stand_up', 'look_around', 'wave', 'point', 'talk', 'think',
-  'nod_yes', 'shake_no', 'clap', 'bow', 'cheer', 'shiver', 'jump', 'dance_sway', 'dance_hop', 'fall_get_up']
+export const PRESETS = ['walk']
 export const OUT = `${process.env.HOME}/BartsMedia/historyportal/topics/character-bones/animations/tester`
 // not under tests/playwright/results: Playwright empties that folder at the start of every run
 export const LOG = process.env.PW_TESTER_LOG ?? `${tmpdir()}/animation-presets-tester.jsonl`
@@ -65,7 +64,7 @@ export async function selectFigure (page: Page, id: string) {
   await section.waitFor({ state: 'visible', timeout: 20_000 })
   const header = section.locator('> button').first()
   if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await section.locator('[data-animation-preset="idle"]').waitFor({ state: 'visible' })
+  await section.locator('[data-animation-preset="walk"]').waitFor({ state: 'visible' })
   return section
 }
 

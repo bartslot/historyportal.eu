@@ -30,15 +30,8 @@ final class StageSet
 
     private const BARE_FLOOR = '#d8cfbc';
 
-    /** Words (English, Dutch) that ask a figure with bones to play an animation preset (AnimationPresets); it idles otherwise. */
-    private const ANIMATION_WORDS = [
-        'walk' => ['walk', 'walking', 'loopt', 'lopen', 'wandelt'], 'run' => ['run', 'running', 'rent', 'rennen'],
-        'wave' => ['wave', 'waves', 'zwaait', 'zwaaien'], 'point' => ['point', 'points', 'wijst', 'wijzen'],
-        'dance_sway' => ['dance', 'dancing', 'danst', 'dansen'], 'jump' => ['jump', 'jumps', 'springt', 'springen'],
-        'clap' => ['clap', 'claps', 'klapt', 'klappen'], 'bow' => ['bow', 'bows', 'buigt'],
-        'cheer' => ['cheer', 'cheers', 'juicht', 'juichen'], 'shiver' => ['shiver', 'cold', 'rilt', 'koud'],
-        'carry' => ['carry', 'carries', 'draagt', 'dragen'], 'talk' => ['say', 'says', 'tell', 'zegt', 'vertelt'],
-    ];
+    /** Words (English, Dutch) that ask a figure with bones to play an animation preset (AnimationPresets); it stands otherwise. */
+    private const ANIMATION_WORDS = ['walk' => ['walk', 'walking', 'walks', 'loopt', 'lopen', 'wandelt']];
 
     /** How long a scene the pipeline plans runs at most (writer-brief est_s): a loop runs this far, the player stops it sooner. */
     private const SCENE_MAX_S = 12.0;
@@ -78,7 +71,7 @@ final class StageSet
             $layers[] = ['asset' => $building['id'], 'depth' => 'mid', 'x' => 0.64];
         }
         foreach (self::figures($assets, $words, $seed) as $i => $figure) {
-            $layers[] = ['asset' => $figure['id'], 'depth' => 'fg', 'x' => $i === 0 ? 0.42 : 0.56, 'figure' => self::char($figure), 'animation' => self::animation($words)];
+            $layers[] = ['asset' => $figure['id'], 'depth' => 'fg', 'x' => $i === 0 ? 0.42 : 0.56, 'figure' => self::char($figure)] + array_filter(['animation' => self::animation($words)]);
         }
         if ($prop = self::best($assets->where('layer', 'prop'), $words)) {
             $layers[] = ['asset' => $prop['id'], 'depth' => 'near', 'x' => 0.7];
@@ -100,9 +93,9 @@ final class StageSet
     }
 
     /** @param  list<string>  $words */
-    private static function animation(array $words): string
+    private static function animation(array $words): ?string
     {
-        return collect(self::ANIMATION_WORDS)->search(fn (array $asks) => array_intersect($asks, $words) !== []) ?: 'idle';
+        return collect(self::ANIMATION_WORDS)->search(fn (array $asks) => array_intersect($asks, $words) !== []) ?: null;
     }
 
     /**

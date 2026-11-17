@@ -20,9 +20,6 @@ export function animationPresets (layerId, presets) {
     speed: 1,
     previewing: false,
 
-    get groups () {
-      return [...new Set(this.presets.map((p) => p.group))].map((name) => ({ name, items: this.presets.filter((p) => p.group === name) }))
-    },
     get clip () { return CLIPS[this.chosen] ?? null },
     /** What Add will do, in a few words. */
     get hint () {

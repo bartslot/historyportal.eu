@@ -1,27 +1,6 @@
 {
- "_": "The animation presets, in the order the picker and the agents' schema list them. Each id has a clip in clips/ (engine-mvp/tools/anim_director.md) and its label in lang/*.json.",
+ "_": "The animation presets the picker and the agents' schema offer. Each id has a clip in clips/ and its label in lang/*.json. Bart 11-17: the old library was thrown away; the walk is drawn as an 8-drawing cycle (engine-mvp/tools/walk8.py).",
  "presets": [
-  {"id": "idle", "label": "Idle", "group": "Everyday"},
-  {"id": "walk", "label": "Walk", "group": "Everyday"},
-  {"id": "run", "label": "Run", "group": "Everyday"},
-  {"id": "carry", "label": "Carry", "group": "Everyday"},
-  {"id": "pick_up", "label": "Pick up", "group": "Everyday"},
-  {"id": "sit_down", "label": "Sit down", "group": "Everyday"},
-  {"id": "stand_up", "label": "Stand up", "group": "Everyday"},
-  {"id": "look_around", "label": "Look around", "group": "Everyday"},
-  {"id": "wave", "label": "Wave", "group": "Gestures"},
-  {"id": "point", "label": "Point", "group": "Gestures"},
-  {"id": "talk", "label": "Talk", "group": "Gestures"},
-  {"id": "think", "label": "Think", "group": "Gestures"},
-  {"id": "nod_yes", "label": "Nod yes", "group": "Gestures"},
-  {"id": "shake_no", "label": "Shake head no", "group": "Gestures"},
-  {"id": "clap", "label": "Clap", "group": "Gestures"},
-  {"id": "bow", "label": "Bow", "group": "Gestures"},
-  {"id": "cheer", "label": "Cheer", "group": "Feelings"},
-  {"id": "shiver", "label": "Shiver", "group": "Feelings"},
-  {"id": "jump", "label": "Jump", "group": "Action"},
-  {"id": "dance_sway", "label": "Dance (sway)", "group": "Action"},
-  {"id": "dance_hop", "label": "Dance (hop)", "group": "Action"},
-  {"id": "fall_get_up", "label": "Fall and get up", "group": "Action"}
+  {"id": "walk", "label": "Walk"}
  ]
 }

@@ -469,30 +469,7 @@
                 "description": "An animation preset the figure plays (resources/animations/presets.json): a bare id, or {id, start s into the scene, length s (a loop runs to the scene's end without it), speed 0.25-4}. Only figures with bones play one.",
                 "oneOf": [
                   {
-                    "enum": [
-                      "idle",
-                      "walk",
-                      "run",
-                      "carry",
-                      "pick_up",
-                      "sit_down",
-                      "stand_up",
-                      "look_around",
-                      "wave",
-                      "point",
-                      "talk",
-                      "think",
-                      "nod_yes",
-                      "shake_no",
-                      "clap",
-                      "bow",
-                      "cheer",
-                      "shiver",
-                      "jump",
-                      "dance_sway",
-                      "dance_hop",
-                      "fall_get_up"
-                    ]
+                    "enum": ["walk"]
                   },
                   {
                     "type": "object",
@@ -502,30 +479,7 @@
                     "additionalProperties": false,
                     "properties": {
                       "id": {
-                        "enum": [
-                          "idle",
-                          "walk",
-                          "run",
-                          "carry",
-                          "pick_up",
-                          "sit_down",
-                          "stand_up",
-                          "look_around",
-                          "wave",
-                          "point",
-                          "talk",
-                          "think",
-                          "nod_yes",
-                          "shake_no",
-                          "clap",
-                          "bow",
-                          "cheer",
-                          "shiver",
-                          "jump",
-                          "dance_sway",
-                          "dance_hop",
-                          "fall_get_up"
-                        ]
+                        "enum": ["walk"]
                       },
                       "start": {
                         "type": "number",
