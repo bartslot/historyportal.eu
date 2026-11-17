@@ -260,6 +260,7 @@ final class TwineImporter
             'group' => true,
         ], array_filter($timed, fn ($l) => $l['speaker'] !== 'narrator')));
         $end = $timed === [] ? 0 : max(array_map(fn ($l) => $l['end'], $timed));
+        $length = max(self::MIN_SCENE_SECONDS, (int) ceil($end));
 
         Scene::create([
             'lesson_id' => $lesson->id,
@@ -269,11 +270,12 @@ final class TwineImporter
             'script_segment' => implode("\n\n", array_column(array_filter($lines, fn ($l) => $l['speaker'] === 'narrator'), 'text')),
             'image_style' => ImageStyleTemplate::STAGE,
             'status' => 'ready',
-            'duration_seconds' => max(self::MIN_SCENE_SECONDS, (int) ceil($end)),
+            'duration_seconds' => $length,
             'branch_group' => $step['group'],
             'branch_role' => $step['role'],
             'branch_choice_label' => $step['label'] !== null ? Str::limit($step['label'], 120, '') : null,
-            'config' => ['stage25d' => $stage]
+            // the timeline runs as long as the lines, so every balloon is on it (the editor's default is 8 s)
+            'config' => ['stage25d' => $stage, 'timeline' => ['duration' => (float) $length, 'targets' => [], 'tracks' => []]]
                 + ($balloons !== [] ? ['lines' => $balloons] : [])
                 + ($part['shot'] !== '' ? ['shot_note' => $part['shot']] : []),
         ]);

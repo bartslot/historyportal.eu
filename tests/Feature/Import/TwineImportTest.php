@@ -91,6 +91,8 @@ class TwineImportTest extends TestCase
             $scenes['Cargo']->script_segment,
         );
         $this->assertSame(6, count(explode("\n\n", $scenes['Destination']->script_segment)));
+        $this->assertSame(35, $scenes['Venice']->duration_seconds);   // the lines on one clock: 3 narrated sentences, 3 balloons
+        $this->assertEquals(35, $scenes['Venice']->config['timeline']['duration']);
         $this->assertStringStartsWith("A bird's-eye panoramic shot of the port of Venice in 1271.", $scenes['Venice']->config['shot_note']);
     }
 
