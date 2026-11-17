@@ -90,13 +90,16 @@
             @foreach ($scenes as $scene)
                 {{-- No gap inside a Decision point: its question and two choices stay together. --}}
                 @if ($editable && ! in_array($scene->branch_role, ['option_a', 'option_b'], true))
-                    {{-- Insert here: after the scene above, or first (0) above scene 1. --}}
+                    {{-- Insert here: after the scene above, or first (0) above scene 1. Closed until the pointer is
+                         between two scenes (Bart 11-17); its before: reaches over the margins round it so that strip
+                         is the hover target. Opening springs past 32 px and settles (elastic, his ask); closing is plain. --}}
                     <button type="button"
                             data-no-drag data-rail-gap
                             wire:click="{{ $call }}openAddSceneAfter({{ $loop->first ? 0 : $scenes->values()[$loop->index - 1]->id }})"
-                            class="flex h-8 w-full items-center justify-center text-white/30 transition-colors hover:text-primary"
+                            class="group/gap relative flex h-0 w-full items-center justify-center text-white/40 transition-[height] duration-200 ease-out before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] hover:h-8 hover:text-primary hover:duration-500 hover:ease-[cubic-bezier(0.34,1.8,0.64,1)] focus-visible:h-8 motion-reduce:transition-none"
                             data-tooltip="{{ __('Add scene here') }}" aria-label="{{ __('Add scene here') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
+                             class="h-3.5 w-3.5 scale-50 opacity-0 transition duration-150 group-hover/gap:scale-100 group-hover/gap:opacity-100 group-hover/gap:delay-75 group-focus-visible/gap:scale-100 group-focus-visible/gap:opacity-100">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                         </svg>
                     </button>
