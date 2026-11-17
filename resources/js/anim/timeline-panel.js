@@ -465,7 +465,14 @@ export const animationTimeline = (config = {}) => ({
 
   // ── The value field: what the teacher reads, in the unit the Format panel uses ─────────────
 
-  displayFor (target, property) { return displayOf(kindOfTarget(target), property) },
+  displayFor (target, property) { return displayOf(kindOfTarget(target), property, { baseM: this.baseMOf(target, property) }) },
+
+  /** A 3D layer's own height in metres, so its size reads as a height (null: the sky, or not a 3D layer). */
+  baseMOf (target, property) {
+    if (property !== 'scale' || kindOfTarget(target) !== 's25' || target === 's25:sky') return null
+    void this.canvasTick
+    return window.__stage25d?.layerInfo?.(String(target).slice(4))?.baseM ?? null
+  },
 
   /** The number shown for a property at the playhead (opacity 0.5 reads 50). */
   shownValue (target, property) {
@@ -1260,7 +1267,10 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A registry label in the teacher's language. */
-  propertyLabel (property) { return config.propertyLabels?.[property.key] ?? property.label },
+  propertyLabel (property, target = null) {
+    if (target && this.baseMOf(target, property.key)) return config.propertyLabels?.height ?? 'Height'
+    return config.propertyLabels?.[property.key] ?? property.label
+  },
 
   /** Is there a key exactly under the playhead? Drives the diamond's pressed state. */
   hasKeyHere (target, property) {

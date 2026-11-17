@@ -1536,11 +1536,14 @@
                 this.series = stage.seriesOfLayer?.(id) ?? null;
                 for (const p of Object.keys(SHOWN)) {
                     const v = window.__timelineKeying?.value?.('s25:' + id, p);
-                    if (Number.isFinite(v)) this.values[p] = round(v * SHOWN[p]);
+                    if (Number.isFinite(v)) this.values[p] = round(v * this.factorOf(p, SHOWN[p]));
                 }
             },
+            /** The size of a picture with a known height reads as that height in metres (Bart 11-17: "170 is 1 meter 70"). */
+            get inMetres() { return id !== 'sky' && this.info?.baseM > 0; },
+            factorOf(prop, factor) { return prop === 'scale' && this.inMetres ? this.info.baseM : factor; },
             set(prop, shown, factor) {
-                const v = Number(shown) / factor;
+                const v = Number(shown) / this.factorOf(prop, factor);
                 if (!Number.isFinite(v)) return;
                 const target = 's25:' + id;
                 if (!window.__timelineKeying?.edit?.(target, prop, v, { flush: false })) {

@@ -65,7 +65,9 @@ const AS_PERCENT = new Set(['opacity', 'colorOpacity', 'tint_opacity', 'scale'])
  * press and the unit of a scrub; `decimals` caps what the field shows so float noise never reaches
  * the screen.
  */
-export const displayOf = (kind, key) => {
+export const displayOf = (kind, key, { baseM = null } = {}) => {
+  // A 3D layer's size as its height in metres (Bart 11-17: "170 is 1 meter 70"): baseM is the picture's own height
+  if (kind === 's25' && key === 'scale' && baseM > 0) return { scale: baseM, unit: 'm', step: 0.05, decimals: 2 }
   if (AS_PERCENT.has(key)) return { scale: 100, unit: '%', step: 1, decimals: 2 }
   const registry = propertyFor(kind, key)
   if (kind === 'camera') return { scale: 1, unit: registry?.unit ?? '', step: key === 'zoom' ? 0.1 : 0.01, decimals: 3 }

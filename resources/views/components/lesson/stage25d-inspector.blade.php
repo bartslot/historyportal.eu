@@ -260,14 +260,20 @@
             @foreach ([['x', __('X'), 0.01, 100], ['z', __('Distance'), 0.25, 1], ['y', $layerId === 'sky' ? __('Height') : __('Y'), 0.05, 1], ['scale', __('Size'), 0.05, 100], ['rotation', __('Angle'), 1, 1], ['opacity', __('Opacity'), 0.05, 100]] as [$prop, $glyph, $step, $factor])
                 <div x-show="info?.fields?.includes('{{ $prop }}')">
                 <x-ui.panel-row :label="$glyph" keyframe :keyframe-target="'s25:'.$layerId" :keyframe-property="$prop">
+                    @if ($prop === 'scale')
+                        {{-- a picture with a known height: its size IS that height in metres (Bart 11-17); the sky keeps a percent --}}
+                        <x-slot:label><span x-text="inMetres ? @js(__('Height')) : @js(__('Size'))"></span></x-slot:label>
+                    @endif
                     <label class="input input-xs flex w-full items-center gap-1.5 px-2" style="height: var(--settings-panel-row-h, 2rem)">
-                        <input type="number" step="{{ $step * $factor }}" aria-label="{{ $glyph }}"
+                        <input type="number" :step="{{ $prop === 'scale' ? 'inMetres ? 0.05 : '.($step * $factor) : $step * $factor }}" aria-label="{{ $glyph }}"
                                data-stage25d-field="{{ $prop }}"
                                :value="values.{{ $prop }}" x-on:change="set('{{ $prop }}', $event.target.value, {{ $factor }})"
                                class="w-full min-w-0 border-0 bg-transparent p-0 text-xs outline-none
                                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
                         @if ($prop === 'z')
                             <span class="text-xs text-panel-hint">m</span>
+                        @elseif ($prop === 'scale')
+                            <span class="text-xs text-panel-hint" x-show="inMetres">m</span>
                         @endif
                     </label>
                 </x-ui.panel-row>

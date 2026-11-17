@@ -195,3 +195,12 @@ describe('twirling groups', () => {
     expect(p.sectionKeyTimes('text:1', 'appearance')).toEqual([])
   })
 })
+
+describe('a 3D layer size in metres (Bart 11-17: "everything should be in metres, 170 is 1 meter 70")', () => {
+  it('shows a picture with a known height as metres, stepping 5 cm', () => {
+    expect(displayOf('s25', 'scale', { baseM: 1.42 })).toEqual({ scale: 1.42, unit: 'm', step: 0.05, decimals: 2 })
+  })
+  it('keeps a percent when the height is unknown (the sky)', () => {
+    expect(displayOf('s25', 'scale').unit).toBe('%')
+  })
+})

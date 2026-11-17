@@ -835,6 +835,8 @@ export async function createStage25d (host, opts = {}) {
         limits: Object.fromEntries((puppet?.bones ?? []).filter((b) => b.limit).map((b) => [b.name, b.limit])),
         legShare: legShareOf(puppet?.bones ?? []),
         heightM: (asset?.height_m ?? FIGURE_M) * (l.scale ?? 1),
+        // its own height at size 1: the inspector and the timeline show the size as metres (Bart 11-17)
+        baseM: asset?.height_m ?? FIGURE_M,
         viewWidth: viewWidthAt(zNow(layerIndex(id))),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },

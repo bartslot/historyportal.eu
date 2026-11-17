@@ -61,7 +61,7 @@
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),
             'bone:thigh_n' => __('Near thigh'), 'bone:shin_n' => __('Near knee'), 'bone:foot_n' => __('Near foot'),
             'bone:thigh_f' => __('Far thigh'), 'bone:shin_f' => __('Far knee'), 'bone:foot_f' => __('Far foot'),
-            'face' => __('Expression'),
+            'face' => __('Expression'), 'height' => __('Height'),
             'x' => __('Position').' X', 'y' => __('Position').' Y', 'z' => 'Z',
             'w' => __('Width'), 'width' => __('Width'), 'height' => __('Height'),
             'scale' => __('Scale'), 'rotation' => __('Rotate'), 'blur' => __('Blur'),
@@ -361,7 +361,7 @@
                                          the field's text (sweep 11-16). --}}
                                     <span data-scrub class="cursor-col-resize select-none whitespace-nowrap text-xs uppercase tracking-wide text-panel-label"
                                           x-show="property.type !== 'face'"
-                                          x-text="propertyLabel(property)"
+                                          x-text="propertyLabel(property, object.target)"
                                           x-on:click="$el.closest('[data-timeline-row]').querySelector('[data-timeline-value]')?.focus()"
                                           x-on:dblclick.prevent="document.activeElement?.blur(); canReset(object.target, property.key) && resetProperty(object.target, property.key)"
                                           :data-tooltip="canReset(object.target, property.key) ? @js(__('Double-click to reset')) : null"
