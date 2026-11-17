@@ -391,6 +391,8 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 
         // K-12 agentic creation chat — goal → chips → configured lesson in ~1 min.
         Route::get('/lessons/chat', \App\Livewire\Teacher\LessonChat::class)->name('lessons.chat');
+        Route::post('/lessons/import/twine', \App\Http\Controllers\Teacher\TwineImportController::class)
+            ->middleware('throttle:10,1')->name('lessons.import-twine');
 
         Route::get('/lessons/{lesson}/wizard', LessonWizard::class)->name('lessons.wizard');
 

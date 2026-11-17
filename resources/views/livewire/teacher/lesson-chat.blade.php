@@ -557,4 +557,8 @@
             @endif
         </div>
     </section>
+
+    @if ($state === 'goal')
+        <x-teacher.twine-import />
+    @endif
 </div>

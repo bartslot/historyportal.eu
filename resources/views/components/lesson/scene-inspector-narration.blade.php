@@ -44,6 +44,14 @@
         </summary>
     @endif
         <div class="mt-3 space-y-3">
+            {{-- An imported scene's shot description (Twine): what the writer saw, to build the scene by. Read only. --}}
+            @if (filled($scene->config['shot_note'] ?? null))
+                <div data-shot-note>
+                    <p class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Shot') }}</p>
+                    <p class="mt-1 whitespace-pre-line text-sm text-base-content/80">{{ $scene->config['shot_note'] }}</p>
+                </div>
+            @endif
+
             <label class="form-control">
                 <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Chapter name') }}</span>
                 <input type="text" wire:model.blur="selectedScene.chapter_name" wire:change="saveSelected"

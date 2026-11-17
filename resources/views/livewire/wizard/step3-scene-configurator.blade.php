@@ -1362,6 +1362,11 @@
     {{-- Bottom CTA removed: the Play button (top toolbar) opens the player, and the back
          arrow (top-left) exits to the dashboard. --}}
 
+    {{-- An imported lesson's notes (Twine), once. --}}
+    @if (! empty($lesson->import_report))
+        <livewire:wizard.import-notes :lesson="$lesson" :key="'import-notes-'.$lesson->id" />
+    @endif
+
     {{-- Publish feedback banner (no global toast system yet) — auto-clears after 5s. Bottom-centre
          so it clears the top toolbar, step indicator and inspector. --}}
     @if ($publishNotice)
