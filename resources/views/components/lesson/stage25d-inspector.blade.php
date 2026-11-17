@@ -297,15 +297,18 @@
         </template>
 
         {{-- The terrain's strips (Bart 11-12: the ground bands live in the Terrain, not as rows of the World): a click opens
-             one; on the canvas a strip drags up and down for its distance. --}}
+             one; on the canvas a strip drags up and down for its distance. Bart 11-17 read them as locked ("you can't change
+             anything of this"): the row says it opens, like every other row that does (chevron, hover, pointer). --}}
         <template x-if="info?.role === 'terrain' && info?.strips?.length">
             <x-ui.settings-section :title="__('Strips')" :open="true" class="-mx-4 w-auto!" data-stage25d-strips>
                 <div class="space-y-2">
                     <template x-for="strip in info.strips" :key="strip.id">
-                        <button type="button" class="flex w-full items-center gap-2 rounded-md border border-panel-hairline bg-base-200 p-1 text-left"
-                                :data-stage25d-strip="strip.id" x-on:click="window.__clearLayerGuard?.(); window.__stage25d?.select(strip.id)">
+                        <button type="button" class="group flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md border border-panel-hairline bg-base-200 p-1 pe-2 text-left transition-colors hover:border-base-content/40 hover:bg-base-300 focus-visible:border-base-content"
+                                :data-stage25d-strip="strip.id" :aria-label="strip.label" data-tooltip="{{ __('Edit strip') }}"
+                                x-on:click="window.__clearLayerGuard?.(); window.__stage25d?.select(strip.id)">
                             <img :src="strip.file" alt="" class="h-8 w-24 shrink-0 rounded-xs object-cover" loading="lazy" />
                             <span class="min-w-0 flex-1 truncate text-xs font-semibold text-base-content" x-text="strip.label"></span>
+                            <x-icons.chevron-right class="h-4 w-4 shrink-0 text-panel-hint transition-colors group-hover:text-base-content" />
                         </button>
                     </template>
                 </div>

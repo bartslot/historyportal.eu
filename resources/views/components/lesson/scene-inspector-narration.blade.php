@@ -23,13 +23,26 @@
          receive normal Livewire updates, and switching scenes replaces this keyed inspector. --}}
     {{-- Blade has @checked/@selected/@disabled but NO @open directive — it would emit a literal
          `@open(...)` attribute and the disclosure would stay shut. --}}
-    <details wire:ignore.self @if ($needsScript) open @endif class="border-t border-slate-700/50 pt-2">
-        <summary class="flex h-8 cursor-pointer list-none items-center text-2xs font-semibold uppercase tracking-widest text-panel-hint transition hover:text-slate-300">
+    {{-- Bart 11-17: in a 3D scene this is the only section, and folded there was nothing left to see. Alone, it is
+         always open and has a plain heading; where it can fold (next to the view controls), an arrow says so. --}}
+    @if (! $showView)
+    <section class="border-t border-slate-700/50 pt-2" data-scene-details>
+        <h3 class="flex h-8 items-center text-2xs font-semibold uppercase tracking-widest text-panel-hint">
+            {{ __('Scene details') }}
+            @if ($needsScript)
+                <span class="ml-1 normal-case tracking-normal text-primary/80">{{ __('add the story text') }}</span>
+            @endif
+        </h3>
+    @else
+    <details wire:ignore.self @if ($needsScript) open @endif class="group/details border-t border-slate-700/50 pt-2" data-scene-details>
+        <summary class="flex h-8 cursor-pointer list-none items-center gap-1 text-2xs font-semibold uppercase tracking-widest text-panel-hint transition hover:text-base-content [&::-webkit-details-marker]:hidden">
+            <x-icons.chevron-right class="h-4 w-4 shrink-0 transition-transform group-open/details:rotate-90" />
             {{ __('Scene details') }}
             @if ($needsScript)
                 <span class="ml-1 normal-case tracking-normal text-primary/80">{{ __('add the story text') }}</span>
             @endif
         </summary>
+    @endif
         <div class="mt-3 space-y-3">
             <label class="form-control">
                 <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Chapter name') }}</span>
@@ -114,5 +127,9 @@
                     wire:confirm="{{ __('Delete this scene?') }}"
                     class="h-8 text-xs text-error/80 underline transition hover:text-error">{{ __('Delete scene') }}</button>
         </div>
+    @if (! $showView)
+    </section>
+    @else
     </details>
+    @endif
 </div>
