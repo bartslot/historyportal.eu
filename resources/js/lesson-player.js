@@ -33,6 +33,7 @@ import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
 import { gameFlowFor, playsPredict } from './scene/game-flow.js'
+import { hasVoyage, playsStoryGame } from './scene/lesson-content.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -195,6 +196,9 @@ Alpine.data('lessonGame', (lesson) => ({
     canResumeAfterGame: false,  // shows the "Continue the lesson" button on the TIME_UP screen
     lesson: lesson,             // exposed to templates (title screen meta, etc.)
     prevPhase: null,            // phase before INTEL_DROP, to return to
+    // The lesson sails (holds a voyage scene, whatever it was created as): one persistent map
+    // across its legs, voyage navigation on the deck, A/B keys. Content decides (lesson-content.js).
+    _sails: hasVoyage(lesson),
 
     /** The title's series (before ": ") and episode (after it). */
     get titleSplit () { return splitTitle(this.lesson.title) },
@@ -670,10 +674,10 @@ Alpine.data('lessonGame', (lesson) => ({
         this._showBgScene()
       }
 
-      // Story game (Spel-verhaal): lazy-load the branch/meter engine once. Without
-      // meters the engine never constructs — plain branching keeps its pre-existing
-      // behaviour (both options play sequentially; branching was never wired before).
-      if (lesson.game_type === 'story_game' && lesson.game_config?.meters?.length && !this._storyGame) {
+      // Story game (Spel-verhaal): lazy-load the branch/meter engine once, for any lesson whose
+      // Decision points have class meters to push. Without meters the engine never constructs —
+      // plain branching keeps its pre-existing behaviour (both options play sequentially).
+      if (playsStoryGame(lesson) && !this._storyGame) {
         try {
           const { StoryGameEngine } = await import('./scene/StoryGameEngine.js')
           const host = document.createElement('div')
@@ -2213,7 +2217,7 @@ Alpine.data('lessonGame', (lesson) => ({
     get hasNextSlide () {
       if (this.chapterCardOn) return true   // Next skips the chapter card
       if (this._sceneIndex >= _sceneQueue.length - 1) return false
-      return this.showMapContinue || lesson.game_type === 'voyage' || this.mayEnter(this._sceneIndex + 1)
+      return this.showMapContinue || this._sails || this.mayEnter(this._sceneIndex + 1)
     },
 
     // Next slide (→). A stage slide leaves through its own exits (Build Out, the voyage's persistent
@@ -2221,7 +2225,7 @@ Alpine.data('lessonGame', (lesson) => ({
     nextSlide () {
       if (this.chapterCardOn) { this.skipChapterCard(); return }
       if (!this.canSkip) return
-      if (this.showMapContinue || lesson.game_type === 'voyage') { this.advanceMap(); return }
+      if (this.showMapContinue || this._sails) { this.advanceMap(); return }
       this.goToChapter(this._sceneIndex + 1)
     },
 
@@ -2245,10 +2249,10 @@ Alpine.data('lessonGame', (lesson) => ({
         this.showMapContinue = false
         return
       }
-      // Voyage lessons keep ONE persistent map across all legs — between scenes we only stop the
+      // A lesson that sails keeps ONE persistent map across all legs — between scenes we only stop the
       // sail (playLeg re-drives it) and keep the map alive. Full teardown runs at lesson end /
       // player unmount (below), or when leaving voyage for a different scene kind.
-      if (_voyageInstance && lesson.game_type === 'voyage' && !full) { this.showMapContinue = false; return }
+      if (_voyageInstance && this._sails && !full) { this.showMapContinue = false; return }
       if (_galleryInstance) { try { _galleryInstance.destroy() } catch (_) {} _galleryInstance = null }
       this._textLayer?.setProjector(null)   // map gone — pinned labels fall back to screen spots
       if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} _mapInstance = null; _mapKey = null }
@@ -3074,7 +3078,7 @@ Alpine.data('lessonGame', (lesson) => ({
     get isPlaying () {
       if (this.playbackPaused || this.showMapContinue) return false
       if (this.audioPlaying || this.chapterCardOn) return true
-      return lesson.game_type === 'voyage'
+      return this._sails
         && (this.phase === 'INTRO' || this.phase === 'GAME_ACTIVE')
         && !this.showMapContinue
     },
@@ -3565,7 +3569,7 @@ Alpine.data('lessonGame', (lesson) => ({
         // The Audio & Subtitles panel owns the arrows, Enter and Esc while it is open (ccKeydown).
         if (this.ccOpen) { this.ccKeydown(e); return }
 
-        const isVoyage = lesson.game_type === 'voyage'
+        const isVoyage = this._sails
         if (e.code === 'ArrowRight' || (isVoyage && e.code === 'KeyB')) {
           e.preventDefault()
           this.nextSlide()
