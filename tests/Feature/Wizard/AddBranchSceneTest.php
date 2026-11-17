@@ -51,6 +51,13 @@ class AddBranchSceneTest extends TestCase
             ->call('addScene', 'branch');
     }
 
+    private function addMeters(): void
+    {
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson->fresh()])
+            ->call('addStoryMeters');
+    }
+
     public function test_adding_a_branch_creates_a_question_and_two_options_in_one_group(): void
     {
         $this->addBranch();
@@ -78,20 +85,20 @@ class AddBranchSceneTest extends TestCase
     }
 
     /**
-     * The effects panel only opens for option scenes of a story_game, and the deltas it edits are
-     * keyed on lesson-level meters. Without both, the teacher gets option scenes whose effects can
-     * never be set — and the publish gate demands deltas on every option, so the lesson would be
-     * permanently unpublishable. This is the trap the hand-added quiz scene fell into before.
+     * A Decision point is content: the lesson keeps the type it was made as and brings no meters
+     * along (Bart 2026-11-17). Meters are the teacher's own "Add class meters"; once added they
+     * are well-formed, and choices without them are publishable (both options simply play).
      */
-    public function test_adding_a_branch_promotes_the_lesson_and_seeds_meters(): void
+    public function test_adding_a_branch_leaves_the_lesson_type_and_meters_to_the_teacher(): void
     {
-        $this->assertNotSame('story_game', $this->lesson->game_type);
-
         $this->addBranch();
         $lesson = $this->lesson->fresh();
 
-        $this->assertSame('story_game', $lesson->game_type);
-        $this->assertTrue((bool) $lesson->include_game);
+        $this->assertNull($lesson->game_type);
+        $this->assertFalse($lesson->hasMeters());
+
+        $this->addMeters();
+        $lesson = $this->lesson->fresh();
         $this->assertNotEmpty($lesson->game_config['meters'] ?? []);
 
         foreach ($lesson->game_config['meters'] as $meter) {
@@ -114,13 +121,15 @@ class AddBranchSceneTest extends TestCase
 
         $this->assertTrue($component->instance()->showsGameEffectsPanel($option));
         $this->assertFalse($component->instance()->showsGameEffectsPanel($question));
-        $this->assertTrue($component->instance()->showsMetersPanel());
+        // No meters until the teacher adds them: the panel offers "Add class meters" instead.
+        $this->assertFalse($component->instance()->showsMetersPanel());
     }
 
     /** Effects saved on a hand-made option persist — the panel is wired end to end. */
     public function test_effects_can_be_saved_on_a_hand_made_option(): void
     {
         $this->addBranch();
+        $this->addMeters();
         $option = $this->lesson->scenes()->where('branch_role', 'option_a')->firstOrFail();
         $meterKey = $this->lesson->fresh()->game_config['meters'][0]['key'];
 
@@ -180,6 +189,7 @@ class AddBranchSceneTest extends TestCase
     public function test_a_hand_built_branching_lesson_can_be_published(): void
     {
         $this->addBranch();
+        $this->addMeters();
         $lesson = $this->lesson->fresh();
         $meterKey = $lesson->game_config['meters'][0]['key'];
 
@@ -214,8 +224,8 @@ class AddBranchSceneTest extends TestCase
         $this->assertSame(LessonStatus::Published, $lesson->fresh()->status);
     }
 
-    /** Branching makes no sense on a voyage lesson, whose spine is the route. */
-    public function test_branch_is_refused_on_a_voyage_lesson(): void
+    /** A voyage lesson takes a Decision point like any other lesson, and keeps its type. */
+    public function test_a_voyage_lesson_takes_a_branch(): void
     {
         $this->lesson->update(['game_type' => 'voyage']);
 
@@ -223,7 +233,7 @@ class AddBranchSceneTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson->fresh()])
             ->call('addScene', 'branch');
 
-        $this->assertSame(0, $this->lesson->scenes()->whereNotNull('branch_group')->count());
+        $this->assertSame(3, $this->lesson->scenes()->whereNotNull('branch_group')->count());
         $this->assertSame('voyage', $this->lesson->fresh()->game_type);
     }
 }

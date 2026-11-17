@@ -1,7 +1,7 @@
 @props(['scene', 'meters' => []])
 
-{{-- Story-game "Game effects" panel — shown only for branch OPTION scenes of a
-     story_game lesson. All fields autosave via EditsStoryGame::saveStoryEffectsDraft(). --}}
+{{-- Story-game "Game effects" panel — shown for every branch OPTION scene; the meter
+     deltas only once the teacher added class meters. All fields autosave via EditsStoryGame::saveStoryEffectsDraft(). --}}
 <div class="mt-4 space-y-3 rounded-box border border-primary/30 bg-base-200/60 p-3">
     <div>
         <h4 class="text-xs font-semibold uppercase tracking-widest text-primary">{{ __('Game effects') }}</h4>
@@ -17,6 +17,9 @@
                class="input input-sm input-bordered mt-1 bg-slate-900" />
     </label>
 
+    @if ($meters === [])
+        <x-lesson.story-meters-add />
+    @else
     <div class="space-y-2">
         <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Meter effects (−25 to +25)') }}</span>
         @foreach ($meters as $meter)
@@ -30,6 +33,7 @@
             </label>
         @endforeach
     </div>
+    @endif
 
     <label class="form-control">
         <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Consequence line') }}</span>

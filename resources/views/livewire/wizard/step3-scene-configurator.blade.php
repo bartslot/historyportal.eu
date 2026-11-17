@@ -5,8 +5,9 @@
          game_type === 'voyage' left window.renderGallery undefined in a normal lesson, and selecting
          a gallery scene died with "renderer unavailable". --}}
     @vite('resources/js/gallery-scene.js')
-    {{-- voyage-tour stays gated: it drags in ships/fog/etch, which only a voyage lesson needs. --}}
-    @if (($lesson->game_type ?? null) === 'voyage')
+    {{-- voyage-tour stays gated: it drags in ships/fog/etch, which only a lesson that sails needs.
+         insertVoyage reloads the editor, so a voyage added to a story lesson gets it too. --}}
+    @if ($lesson->hasVoyage())
         @vite('resources/js/voyage-tour.js')
     @endif
 @endpush
@@ -1225,6 +1226,10 @@
             @if ($this->showsMetersPanel())
                 <div class="mb-6">
                     <x-lesson.story-meters-panel :meters-draft="$metersDraft" />
+                </div>
+            @elseif ($lesson->hasChoices())
+                <div class="mb-6">
+                    <x-lesson.story-meters-add />
                 </div>
             @endif
 
@@ -3144,22 +3149,48 @@
                     <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
                 </button>
                 {{-- A 3D scene: whenever there is a painted stage bundle to build it from. --}}
-                @if ($this->eraStageBundle && ($lesson->game_type ?? null) !== 'voyage')
+                @if ($this->eraStageBundle)
                     <button type="button" wire:click="addScene('stage25d')" data-add-stage25d
                             class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                         <x-lesson.scene-type-thumb kind="stage25d" />
                         <span class="text-sm font-medium text-slate-200">{{ __('3D scene') }}</span>
                     </button>
                 @endif
-                {{-- Branching is meaningless on a voyage lesson, whose spine is the route. --}}
-                @if (($lesson->game_type ?? null) !== 'voyage')
-                    <button type="button" wire:click="addScene('branch')"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                        <x-lesson.scene-type-thumb kind="branch" />
-                        <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
-                    </button>
+                {{-- Every lesson takes a Decision point and a voyage: things a teacher adds for
+                     immersion, never a form chosen when the lesson was made. --}}
+                <button type="button" wire:click="addScene('branch')"
+                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                    <x-lesson.scene-type-thumb kind="branch" />
+                    <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
+                </button>
+                {{-- A historical voyage from the catalogue, inserted here as its itinerary and legs
+                     (insertVoyage). The pick stays in Alpine so choosing never re-renders the modal. --}}
+                @if (count($this->voyageOptions))
+                    <div class="contents" x-data="{ pick: false, voyage: '' }">
+                        <button type="button" data-add-voyage x-show="!pick" @click="pick = true"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="voyage" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Voyage') }}</span>
+                        </button>
+                        <div x-show="pick" x-cloak class="col-span-2 flex flex-col gap-2 rounded-box border border-primary bg-base-200 p-3 sm:col-span-3">
+                            <label for="add-voyage-pick" class="text-xs text-panel-hint">{{ __('Which voyage do you want to sail here?') }}</label>
+                            <select id="add-voyage-pick" x-model="voyage" class="select select-sm select-bordered w-full">
+                                <option value="">{{ __('Choose a voyage…') }}</option>
+                                @foreach ($this->voyageOptions as $id => $name)
+                                    <option value="{{ $id }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
+                                <button type="button" class="btn btn-primary btn-sm" data-insert-voyage :disabled="!voyage"
+                                        @click="$wire.insertVoyage(voyage)" wire:loading.attr="disabled" wire:target="insertVoyage">
+                                    {{ __('Add voyage') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 @endif
-                @if (($lesson->game_type ?? null) === 'voyage')
+                @if ($lesson->hasVoyage())
                     {{-- Drop the new leg's destination at the current map centre (fallback in PHP if none). --}}
                     <button type="button"
                             @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"

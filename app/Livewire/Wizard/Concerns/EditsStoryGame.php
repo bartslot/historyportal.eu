@@ -36,6 +36,17 @@ trait EditsStoryGame
 
     private const STORY_OPTION_ROLES = ['option_a', 'option_b'];
 
+    /**
+     * What "Add class meters" starts a lesson with. The generator invents topic-specific meters;
+     * authoring by hand has no LLM to invent anything, and meter KEYS are immutable once set, so
+     * these are deliberately generic: the teacher renames the labels/icons in the Meters panel.
+     */
+    private const DEFAULT_STORY_METERS = [
+        ['key' => 'support', 'label' => 'Support', 'icon' => '🤝', 'start' => 50],
+        ['key' => 'resources', 'label' => 'Resources', 'icon' => '💰', 'start' => 50],
+        ['key' => 'risk', 'label' => 'Risk', 'icon' => '⚠️', 'start' => 20],
+    ];
+
     /** @var array{deltas?: array<string,int>, consequence_line?: string, historical_note?: string, branch_choice_label?: string} */
     public array $storyEffectsDraft = [];
 
@@ -48,20 +59,20 @@ trait EditsStoryGame
     /** Lazy-load the meters draft once the lesson is mounted (runs before every render). */
     public function renderingEditsStoryGame(mixed $view = null, mixed $data = null): void
     {
-        if (isset($this->lesson) && $this->isStoryGame() && $this->metersDraft === []) {
+        if (isset($this->lesson) && $this->hasStoryChoices() && $this->metersDraft === []) {
             $this->loadMetersDraft();
         }
     }
 
     public function showsMetersPanel(): bool
     {
-        return $this->isStoryGame() && $this->storyMeters() !== [];
+        return $this->hasStoryChoices() && $this->storyMeters() !== [];
     }
 
     public function showsGameEffectsPanel(?Scene $scene): bool
     {
         return $scene !== null
-            && $this->isStoryGame()
+            && $this->hasStoryChoices()
             && in_array($scene->branch_role, self::STORY_OPTION_ROLES, true);
     }
 
@@ -93,7 +104,7 @@ trait EditsStoryGame
      */
     public function syncStoryGameDraftFor(Scene $scene): void
     {
-        if (! $this->isStoryGame()) {
+        if (! $this->hasStoryChoices()) {
             return;
         }
 
@@ -131,7 +142,7 @@ trait EditsStoryGame
      */
     public function saveBranchEffects(int $sceneId, array $payload): void
     {
-        if (! $this->isStoryGame()) {
+        if (! $this->hasStoryChoices()) {
             return;
         }
 
@@ -184,7 +195,7 @@ trait EditsStoryGame
      */
     public function saveMeters(array $payload): void
     {
-        if (! $this->isStoryGame()) {
+        if (! $this->hasStoryChoices()) {
             return;
         }
 
@@ -217,9 +228,47 @@ trait EditsStoryGame
         $this->loadMetersDraft();
     }
 
-    private function isStoryGame(): bool
+    /** Any lesson with a Decision point edits choices, whatever it was created as (Lesson::hasChoices). */
+    private function hasStoryChoices(): bool
     {
-        return $this->lesson->game_type === 'story_game';
+        return $this->lesson->hasChoices();
+    }
+
+    /**
+     * The teacher's own switch for class meters: choices no longer bring them along, so a lesson
+     * whose Decision points should push something up and down gets them here, and can drop them again.
+     */
+    public function addStoryMeters(): void
+    {
+        if (! $this->hasStoryChoices() || $this->lesson->hasMeters()) {
+            return;
+        }
+        $this->writeStoryMeters(self::DEFAULT_STORY_METERS);
+        $this->dispatch('toast', message: __('Class meters added. Set what each choice changes.'));
+    }
+
+    public function removeStoryMeters(): void
+    {
+        if (! $this->lesson->hasMeters()) {
+            return;
+        }
+        $this->writeStoryMeters([]);
+        $this->dispatch('toast', message: __('Class meters removed.'));
+    }
+
+    /** @param  list<array{key: string, label: string, icon: string, start: int}>  $meters */
+    private function writeStoryMeters(array $meters): void
+    {
+        $this->lesson->update([
+            'game_config' => array_merge($this->lesson->game_config ?? [], ['meters' => $meters]),
+        ]);
+        $this->lesson->refresh();
+        $this->loadMetersDraft();
+        // The open option's effects draft lists one delta per meter: rebuild it for the new set.
+        $option = $this->storyEffectsSceneId ? $this->lesson->scenes()->find($this->storyEffectsSceneId) : null;
+        if ($option) {
+            $this->loadStoryEffectsDraft($option);
+        }
     }
 
     private function loadStoryEffectsDraft(Scene $scene): void

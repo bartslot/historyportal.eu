@@ -54,6 +54,7 @@ use App\Services\Support\SpeechBalloons;
 use App\Services\Support\TextLayerStyle;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
+use App\Services\VoyageLessonBuilder;
 use App\Support\LayerEntrances;
 use App\Support\MediaUrl;
 use App\Support\NarrationBudget;
@@ -122,17 +123,6 @@ class Step3SceneConfigurator extends Component
     private const ESTIMATE_MIN_SECONDS = 10;
 
     private const ESTIMATE_MAX_SECONDS = 3600;
-
-    /**
-     * Meters seeded on the first hand-authored branch. The generator invents topic-specific meters;
-     * authoring by hand has no LLM to invent anything, and meter KEYS are immutable once set, so
-     * these are deliberately generic — the teacher renames the labels/icons in the Meters panel.
-     */
-    private const DEFAULT_STORY_METERS = [
-        ['key' => 'support', 'label' => 'Support', 'icon' => '🤝', 'start' => 50],
-        ['key' => 'resources', 'label' => 'Resources', 'icon' => '💰', 'start' => 50],
-        ['key' => 'risk', 'label' => 'Risk', 'icon' => '⚠️', 'start' => 20],
-    ];
 
     public Lesson $lesson;
 
@@ -1539,9 +1529,26 @@ class Step3SceneConfigurator extends Component
     private function selectedVoyageId(): ?string
     {
         $id = $this->selectedScene['config']['voyage']
-            ?? ($this->lesson->game_config['voyage'] ?? null);
+            ?? ($this->lesson->game_config['voyage'] ?? null)
+            ?? $this->nearestVoyageId();
 
         return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
+     * A voyage inserted into a story lesson sets no lesson-level hint, so "Route" from a story
+     * scene extends the voyage sailed last before it (or the first one, when none comes before).
+     */
+    private function nearestVoyageId(): ?string
+    {
+        $voyages = $this->lesson->scenes()->where('kind', 'voyage')->ordered()->get(['id', 'order', 'config']);
+        if ($voyages->isEmpty()) {
+            return null;
+        }
+        $at = (int) ($this->selectedScene['order'] ?? PHP_INT_MAX);
+        $scene = $voyages->last(fn (Scene $s) => (int) $s->order <= $at) ?? $voyages->first();
+
+        return $scene->config['voyage'] ?? null;
     }
 
     public function voyageDef(): ?array
@@ -1655,27 +1662,21 @@ class Step3SceneConfigurator extends Component
      */
     private function ensureUniqueVoyageLegs(): void
     {
-        if (($this->lesson->game_type ?? null) !== 'voyage') {
-            return;
-        }
         // The itinerary sails nothing — its `leg` is only a seed for the map's era and style, so it
         // is NOT a claim on leg 0. Counting it as one made it collide with the first real leg, and
         // the repair below dutifully pushed that leg's scene to the end of the voyage.
         $scenes = $this->lesson->scenes()->where('kind', 'voyage')->orderBy('order')->get()
             ->reject(fn ($s) => ! empty($s->config['overview']))
             ->values();
-
-        // Cheap scan first — bail (no catalog clone) unless a leg index is genuinely shared.
-        $seen = [];
-        $hasDupe = false;
-        foreach ($scenes as $s) {
-            $leg = (int) ($s->config['leg'] ?? 0);
-            if (isset($seen[$leg])) {
-                $hasDupe = true;
-                break;
-            }
-            $seen[$leg] = true;
+        if ($scenes->isEmpty()) {
+            return;
         }
+
+        // Cheap scan first — bail (no catalog clone) unless a leg index is genuinely shared WITHIN
+        // one voyage. Tasman's 1642 and 1644 voyages both have a leg 0; that is no duplicate.
+        $voyageOf = fn (Scene $s) => $s->config['voyage'] ?? ($this->lesson->game_config['voyage'] ?? null);
+        $hasDupe = $scenes->groupBy($voyageOf)
+            ->contains(fn ($run) => $run->map(fn (Scene $s) => (int) ($s->config['leg'] ?? 0))->duplicates()->isNotEmpty());
         if (! $hasDupe) {
             return;
         }
@@ -1684,6 +1685,9 @@ class Step3SceneConfigurator extends Component
         if (empty($gc['voyage_def']['waypoints']) || empty($gc['voyage_def']['legs'])) {
             return;
         }
+        // Repair only the voyage whose route copy is loaded: another voyage's legs index another route.
+        $loaded = $gc['voyage_def']['id'] ?? $this->selectedVoyageId();
+        $scenes = $scenes->filter(fn (Scene $s) => $voyageOf($s) === $loaded)->values();
         $wps = array_values($gc['voyage_def']['waypoints']);
         $legs = array_values($gc['voyage_def']['legs']);
 
@@ -5342,16 +5346,15 @@ class Step3SceneConfigurator extends Component
     public function addScene(string $kind = 'narration', ?string $gameType = null, $destLng = null, $destLat = null): void
     {
         $this->addSceneOpen = false;
-        $isVoyageLesson = ($this->lesson->game_type ?? null) === 'voyage';
         // The itinerary is not its own kind — it is a route scene that stops nowhere, flagged with
         // `overview`. Adding it from the picker is the one place that distinction has a name.
         $wantsOverview = $kind === 'voyage-overview';
         if ($wantsOverview) {
             $kind = 'voyage';
         }
-        $allowed = $isVoyageLesson
-            ? ['game', 'map', 'voyage', 'gallery', 'video']
-            : ['game', 'map', 'gallery', 'branch', 'video', 'stage25d'];
+        // Every lesson takes every kind: a voyage, a Decision point and a 3D scene are things a
+        // teacher adds to make it more immersive, never a form the lesson was locked into at birth.
+        $allowed = ['game', 'map', 'voyage', 'gallery', 'branch', 'video', 'stage25d'];
         $kind = in_array($kind, $allowed, true) ? $kind : 'narration';
         if ($wantsOverview && $kind === 'voyage') {
             $this->addVoyageOverviewScene();
@@ -5486,7 +5489,8 @@ class Step3SceneConfigurator extends Component
 
         if ($kind === 'game') {
             $gameCount = $this->lesson->scenes()->where('kind', 'game')->count();
-            $gameType ??= $this->lesson->game_type ?: 'quiz';
+            // The scene carries its own game type; the lesson's is never read or written for it.
+            $gameType ??= 'quiz';
 
             $payload += [
                 'game_type' => $gameType,
@@ -5506,12 +5510,7 @@ class Step3SceneConfigurator extends Component
                 $payload['background_color'] = '#0f172a';
             }
 
-            $this->lesson->fill([
-                'include_game' => true,
-                // A predict moment is a moment, not the lesson's game: it never names the lesson's type.
-                'game_type' => $this->lesson->game_type ?: ($gameType === 'predict' ? null : $gameType),
-                'game_split_count' => $gameCount + 1,
-            ])->save();
+            $this->lesson->update(['game_split_count' => $gameCount + 1]);
             $this->lesson->refresh();
         }
 
@@ -5547,22 +5546,9 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        // The effects panel only opens for option scenes of a story_game, and the meters it edits
-        // are lesson-level. Promote the lesson and seed meters here or the teacher would be left
-        // with option scenes whose effects can never be set — and the publish gate demands every
-        // option carry deltas, so the lesson would be permanently unpublishable.
-        $this->lesson->fill([
-            'include_game' => true,
-            'game_type' => 'story_game',
-            'narrative_framework' => 'branching',
-        ]);
-        if (($this->lesson->game_config['meters'] ?? []) === []) {
-            $this->lesson->game_config = array_merge($this->lesson->game_config ?? [], [
-                'meters' => self::DEFAULT_STORY_METERS,
-            ]);
-        }
-        $this->lesson->save();
-        $this->lesson->refresh();
+        // The lesson's arc and type stay as they are: a Decision point is content, and the scenes
+        // it adds are what make the lesson branch (Lesson::hasChoices). Class meters are the
+        // teacher's own choice (EditsStoryGame::addStoryMeters), so none are seeded here.
 
         $insertAfterSceneId = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
@@ -5598,6 +5584,64 @@ class Step3SceneConfigurator extends Component
 
         $this->selectSceneInternal($created[0]->id);
         $this->dispatch('toast', message: __('Decision point added. Write the question, then set what each choice changes.'));
+    }
+
+    /** @return array<string,string> catalog voyages that can be sailed (have legs), as [id => name] */
+    #[Computed]
+    public function voyageOptions(): array
+    {
+        return app(VoyageLessonBuilder::class)->playableVoyages();
+    }
+
+    /**
+     * Insert a historical voyage at the chosen spot of THIS lesson: its itinerary and one scene per
+     * leg, the same run "Start from a historical voyage" builds a voyage lesson from. The route is
+     * filed under its own id in game_config.voyage_defs, so several voyages live side by side, and
+     * the lesson's type and arc are left alone. Reloads the editor on the first leg: the voyage
+     * renderer only loads on a page whose lesson sails (step3 head-scripts).
+     */
+    public function insertVoyage(string $voyageId = ''): void
+    {
+        $this->addSceneOpen = false;
+        if (! array_key_exists($voyageId, $this->voyageOptions)) {
+            $this->dispatch('toast', type: 'error', message: __('Choose a voyage from the list.'));
+
+            return;
+        }
+        $holds = $this->lesson->scenes()->where('kind', 'voyage')->get(['config'])
+            ->contains(fn (Scene $s) => ($s->config['voyage'] ?? null) === $voyageId);
+        if ($holds) {
+            $this->dispatch('toast', type: 'error', message: __('This voyage is already in the lesson.'));
+
+            return;
+        }
+        $def = $this->catalogVoyage($voyageId);
+        if (! $def) {
+            return;
+        }
+
+        $gc = $this->lesson->game_config ?? [];
+        $gc['voyage_defs'][$voyageId] = ['id' => $voyageId] + $def;
+        if (empty($gc['voyage_fog']) && ! empty($def['unknown']) && is_array($def['unknown'])) {
+            $gc['voyage_fog'] = array_values($def['unknown']);
+        }
+        $this->lesson->update(['game_config' => $gc]);
+
+        $after = $this->takeInsertionPoint();
+        $next = ((int) $this->lesson->scenes()->max('order')) + 1;
+        $created = [];
+        foreach (app(VoyageLessonBuilder::class)->routeScenes($voyageId) as $i => $payload) {
+            $created[] = Scene::create(['lesson_id' => $this->lesson->id, 'order' => $next + $i, ...$payload]);
+        }
+        // Keep the run together, in order, after whatever was selected (as a Decision point does).
+        foreach ($created as $scene) {
+            $this->placeSceneAfterSelected($scene, $after);
+            $after = $after === null ? null : $scene->id;
+        }
+
+        $this->redirect(route('teacher.lessons.wizard', [
+            'lesson' => $this->lesson->id, 'step' => 4, 'scene' => $created[0]->id,
+        ]));
     }
 
     private function placeSceneAfterSelected(Scene $scene, ?int $afterSceneId): void

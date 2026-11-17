@@ -2881,5 +2881,15 @@
     "What it was for": "Pourquoi ce voyage",
     "Who sailed": "Qui est parti",
     "What it changed": "Ce que cela a changé",
-    "No people linked yet for this voyage.": "Aucune personne n'est encore liée à ce voyage."
+    "No people linked yet for this voyage.": "Aucune personne n'est encore liée à ce voyage.",
+    "Class meters added. Set what each choice changes.": "Jauges de classe ajoutées. Indiquez ce que change chaque choix.",
+    "Class meters removed.": "Jauges de classe supprimées.",
+    "Let each choice push a few meters up or down, so the class sees what its decisions cost.": "Chaque choix fait monter ou baisser quelques jauges, pour que la classe voie ce que coûtent ses décisions.",
+    "Add class meters": "Ajouter des jauges de classe",
+    "Icon (emoji), label and start value (0 to 100).": "Icône (emoji), nom et valeur de départ (0 à 100).",
+    "Remove the class meters? Choices then play without them.": "Supprimer les jauges de classe ? Les choix se joueront alors sans elles.",
+    "Remove class meters": "Supprimer les jauges de classe",
+    "This voyage is already in the lesson.": "Ce voyage est déjà dans la leçon.",
+    "Which voyage do you want to sail here?": "Quel voyage voulez-vous faire ici ?",
+    "Add voyage": "Ajouter le voyage"
 }

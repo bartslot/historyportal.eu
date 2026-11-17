@@ -1,6 +1,6 @@
 @props(['metersDraft' => []])
 
-{{-- Lesson-level class meters editor (story_game only). Keys are immutable in v1 —
+{{-- Lesson-level class meters editor (a lesson with choices and meters). Keys are immutable in v1 —
      teachers rename labels, swap the emoji icon, and tune start values (0–100). --}}
 <div class="collapse collapse-arrow mt-6 rounded-box border border-slate-700/50 bg-base-200/60">
     <input type="checkbox" aria-label="{{ __('Toggle class meters panel') }}" />
@@ -27,6 +27,10 @@
                        class="input input-sm input-bordered w-20 shrink-0 bg-slate-900 text-right" />
             </div>
         @endforeach
-        <p class="text-prose text-panel-hint">{{ __('Icon (emoji), label and start value (0–100). Meters can’t be added or removed.') }}</p>
+        <p class="text-prose text-panel-hint">{{ __('Icon (emoji), label and start value (0 to 100).') }}</p>
+        <button type="button" wire:click="removeStoryMeters" wire:confirm="{{ __('Remove the class meters? Choices then play without them.') }}"
+                class="btn btn-ghost btn-sm">
+            {{ __('Remove class meters') }}
+        </button>
     </div>
 </div>

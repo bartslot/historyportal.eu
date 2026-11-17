@@ -83,11 +83,37 @@ class VoyageLessonBuilder
             $lesson->scenes()->create($this->galleryScenePayload($pack['intro'], $voyageId, 'intro', $order++));
         }
 
+        foreach ($this->routeScenes($voyageId) as $payload) {
+            $lesson->scenes()->create(['order' => $order++, ...$payload]);
+        }
+
+        // A "real end" context slide after the landfalls (the return + consequences).
+        if (is_array($pack['outro'] ?? null)) {
+            $lesson->scenes()->create($this->galleryScenePayload($pack['outro'], $voyageId, 'outro', $order++));
+        }
+
+        return $lesson->refresh();
+    }
+
+    /**
+     * The voyage as scenes, without a lesson or an order: the itinerary first, then one leg per
+     * catalog leg. build() lays them into a voyage lesson; the editor's "Voyage" inserts the same
+     * run anywhere in any lesson (Step3SceneConfigurator::insertVoyage).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function routeScenes(string $voyageId): array
+    {
+        $catalog = $this->catalogEntry($voyageId);
+        if (empty($catalog['legs'])) {
+            throw new RuntimeException("Voyage '{$voyageId}' has no legs in voyages.json — add legs (and a fleet) before it can become a lesson.");
+        }
+        $pack = $this->tourPack($voyageId);
+
         // The itinerary: the whole voyage on one screen before anyone sets off, so a class can see
         // where they are going. It carries no geometry of its own — the renderer derives the route
         // and every stop from voyage_def — so adding, moving or deleting a leg updates it for free.
-        $lesson->scenes()->create([
-            'order' => $order++,
+        $scenes = [[
             'kind' => 'voyage',
             'status' => 'ready',
             'title' => __('The whole voyage'),
@@ -98,15 +124,14 @@ class VoyageLessonBuilder
                 'view' => 'flat',
                 'intro' => false,
             ],
-        ]);
+        ]];
 
         foreach ($catalog['legs'] as $i => $leg) {
             $stop = $pack['legs'][$i]['stop'] ?? [];
             $images = $this->resolveImages($stop['images'] ?? [], $voyageId, "leg{$i}");
             $pins = array_slice(array_column($images, 'url'), 0, self::MAX_PINS);
 
-            $lesson->scenes()->create([
-                'order' => $order++,
+            $scenes[] = [
                 'kind' => 'voyage',
                 'status' => 'ready',
                 'location' => $stop['place'] ?? null,
@@ -123,15 +148,10 @@ class VoyageLessonBuilder
                         'images' => $images,
                     ],
                 ],
-            ]);
+            ];
         }
 
-        // A "real end" context slide after the landfalls (the return + consequences).
-        if (is_array($pack['outro'] ?? null)) {
-            $lesson->scenes()->create($this->galleryScenePayload($pack['outro'], $voyageId, 'outro', $order++));
-        }
-
-        return $lesson->refresh();
+        return $scenes;
     }
 
     /** True when the catalog voyage is lesson-ready (has legs). Used to populate UI pickers. */

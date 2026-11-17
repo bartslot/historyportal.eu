@@ -2923,5 +2923,15 @@
     "What it was for": "Waarom ze gingen",
     "Who sailed": "Wie er voeren",
     "What it changed": "Wat het veranderde",
-    "No people linked yet for this voyage.": "Nog geen personen gekoppeld aan deze reis."
+    "No people linked yet for this voyage.": "Nog geen personen gekoppeld aan deze reis.",
+    "Class meters added. Set what each choice changes.": "Klasmeters toegevoegd. Stel in wat elke keuze verandert.",
+    "Class meters removed.": "Klasmeters verwijderd.",
+    "Let each choice push a few meters up or down, so the class sees what its decisions cost.": "Laat elke keuze een paar meters omhoog of omlaag duwen, zodat de klas ziet wat haar beslissingen kosten.",
+    "Add class meters": "Klasmeters toevoegen",
+    "Icon (emoji), label and start value (0 to 100).": "Pictogram (emoji), naam en startwaarde (0 tot 100).",
+    "Remove the class meters? Choices then play without them.": "Klasmeters verwijderen? Keuzes spelen dan zonder meters.",
+    "Remove class meters": "Klasmeters verwijderen",
+    "This voyage is already in the lesson.": "Deze reis zit al in de les.",
+    "Which voyage do you want to sail here?": "Welke reis wil je hier varen?",
+    "Add voyage": "Reis toevoegen"
 }

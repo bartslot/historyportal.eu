@@ -222,14 +222,15 @@ class TeacherStageLessonTest extends TestCase
             ->filter(fn ($j) => $j instanceof GenerateSceneImage || $j instanceof GenerateSceneShots)->isEmpty());
     }
 
-    public function test_no_3d_tile_in_a_voyage_lesson(): void
+    /** Every lesson takes a 3D scene, a voyage lesson too (Bart 2026-11-17: no lesson forms). */
+    public function test_a_voyage_lesson_offers_the_3d_tile(): void
     {
         $lesson = $this->lesson(['game_type' => 'voyage']);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'map', 'status' => 'ready']);
 
         Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
             ->set('addSceneOpen', true)
-            ->assertDontSeeHtml('data-add-stage25d');
+            ->assertSeeHtml('data-add-stage25d');
     }
 
     public function test_step_1_drops_3d_when_the_era_loses_its_bundle(): void

@@ -141,9 +141,23 @@ class StoryGameAuthoringTest extends TestCase
         $this->assertArrayNotHasKey('branch_effects', $this->question->fresh()->config ?? []);
     }
 
-    public function test_save_branch_effects_ignores_non_story_game_lessons(): void
+    /** The lesson's type says nothing: its Decision point is what takes effects (Bart 2026-11-17). */
+    public function test_save_branch_effects_works_whatever_the_lesson_type(): void
     {
         $this->lesson->update(['game_type' => 'quiz']);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('saveBranchEffects', $this->optionA->id, [
+                'deltas' => ['morale' => 5],
+            ]);
+
+        $this->assertSame(5, $this->optionA->fresh()->config['branch_effects']['deltas']['morale'] ?? null);
+    }
+
+    public function test_save_branch_effects_ignores_a_lesson_without_choices(): void
+    {
+        $this->lesson->scenes()->update(['branch_group' => null, 'branch_role' => null]);
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
@@ -223,9 +237,9 @@ class StoryGameAuthoringTest extends TestCase
         $this->assertSame(50, $config['meters'][0]['start']);
     }
 
-    public function test_save_meters_ignores_non_story_game_lessons(): void
+    public function test_save_meters_ignores_a_lesson_without_choices(): void
     {
-        $this->lesson->update(['game_type' => 'quiz']);
+        $this->lesson->scenes()->update(['branch_group' => null, 'branch_role' => null]);
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
@@ -270,10 +284,10 @@ class StoryGameAuthoringTest extends TestCase
         $this->assertSame(LessonStatus::Published, $this->lesson->fresh()->status);
     }
 
-    public function test_publish_ignores_the_guard_for_non_story_game_lessons(): void
+    public function test_publish_ignores_the_guard_for_choices_without_meters(): void
     {
-        // Same incomplete branch scenes, but a plain quiz lesson — guard must not fire.
-        $this->lesson->update(['game_type' => 'quiz']);
+        // Same incomplete branch scenes, but no class meters: both options play, nothing to set.
+        $this->lesson->update(['game_config' => array_merge($this->lesson->game_config, ['meters' => []])]);
 
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
