@@ -23,7 +23,7 @@
         </div>
 
         <div class="space-y-2 border-t border-panel-hairline pt-3" x-show="chosen" x-cloak>
-            <x-ui.panel-row :label="__('Speed')">
+            <x-ui.panel-row :label="__('Speed')" stacked>
                 <div class="join w-full" role="radiogroup" aria-label="{{ __('Speed') }}">
                     @foreach ([[0.75, __('Slow')], [1, __('Normal')], [1.5, __('Fast')]] as [$value, $label])
                         <button type="button" role="radio" class="btn btn-sm join-item flex-1 px-2 text-xs font-normal whitespace-nowrap" data-animation-speed="{{ $value }}"
