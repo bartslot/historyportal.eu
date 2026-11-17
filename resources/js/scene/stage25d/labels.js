@@ -62,6 +62,9 @@ export const characterOf = (asset) => {
 export function layerLabel (layer, asset, lang = 'en') {
   const picture = asset ?? (layer.asset ? { id: layer.asset } : null)
   const character = (picture?.layer === 'figure' || /^fig-/.test(String(picture?.id ?? ''))) && characterOf(picture)
+  // a person from the Character tab has its own name as typed ("Marco Polo", not "Marco polo" from its tag)
+  const named = picture?.name?.[lang] ?? picture?.name?.en
+  if (character && named) return named
   if (character) return characterName(character)
   if (layer.figure) return characterName(layer.figure)
   if (picture) return assetLabel(picture, lang)

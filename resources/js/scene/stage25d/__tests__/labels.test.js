@@ -40,3 +40,9 @@ describe('assetIcon', () => {
     expect(assetIcon(undefined)).toBe('photo')
   })
 })
+
+describe('a Character-tab person keeps the name as typed (Twine import 11-17: "Marco polo")', () => {
+  it('uses the asset name over the char tag', () => {
+    expect(layerLabel({}, { id: 'chr-516', layer: 'figure', tags: ['char:marco-polo'], name: { en: 'Marco Polo' } })).toBe('Marco Polo')
+  })
+})
