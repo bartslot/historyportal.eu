@@ -176,6 +176,19 @@ class GamePackPdfTest extends TestCase
         Bus::assertNotDispatched(GenerateGamePack::class);
     }
 
+    /** The pack prints the lesson's choices: a lesson without a Decision point has none to print. */
+    public function test_script_job_does_not_dispatch_game_pack_without_a_decision_point(): void
+    {
+        $lesson = $this->makeScriptStageLesson(['print_pack' => true]);
+        $lesson->scenes()->update(['branch_group' => null, 'branch_role' => null]);
+        $this->mockScriptGeneration();
+        Bus::fake();
+
+        (new GenerateLessonScript($lesson->id))->handle(app(OpenAiLlmService::class));
+
+        Bus::assertNotDispatched(GenerateGamePack::class);
+    }
+
     private function makeScriptStageLesson(array $gameConfig): Lesson
     {
         $lesson = Lesson::create([
@@ -201,7 +214,8 @@ class GamePackPdfTest extends TestCase
             'extracted_text' => 'Napoleon Bonaparte was a French statesman…',
         ]);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration', 'status' => 'pending']);
-        Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending']);
+        Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'narration', 'status' => 'pending',
+            'branch_group' => 1, 'branch_role' => 'question']);
 
         return $lesson;
     }
