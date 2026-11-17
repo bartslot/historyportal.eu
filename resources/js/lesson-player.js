@@ -205,6 +205,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
     /** The lettered title (ComicRoma) is drawn: chosen, and every series character is in the font. */
     get titleLettered () { return this.lesson.title_style === 'letters' && canLetter(this.lesson.title) },
+    /** The title in ComicAmerica (brand-kit.css .lp-comic-america): the teacher's pick, never a default. */
+    get titleComicAmerica () { return this.lesson.title_style === 'comic-america' },
 
     // Can the lesson start yet? Narration is still being made for a fresh lesson, but a scene that
     // carries itself — a map, a voyage leg, a gallery, a film — needs no audio to be playable.
@@ -3494,13 +3496,17 @@ Alpine.data('lessonGame', (lesson) => ({
      * phone): its size steps down from the CSS clamp until it does (title-letters.js fitLines).
      */
     _fitLetters (host) {
-      const el = host.querySelector('[data-title-series].title-letters')
+      const el = host.querySelector('[data-title-series].title-letters, [data-title-series].title-comic-america')
       if (!el?.offsetWidth) return
       el.style.fontSize = ''
+      const comic = el.querySelector('.lp-comic-america')
       const base = parseFloat(getComputedStyle(el).fontSize)
       const size = fitLines((px) => {
         el.style.fontSize = `${px}px`
-        return { lines: Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight)), overflow: el.scrollWidth > el.clientWidth + 1 }
+        // ComicAmerica's slant, outline and drop spill past the box by design (scrollWidth counts
+        // them): its letters overflow only when their own box is wider than the title's.
+        const wide = comic ? comic.offsetWidth : el.scrollWidth
+        return { lines: Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight)), overflow: wide > el.clientWidth + 1 }
       }, base, LETTERS_MIN_PX)
       el.style.fontSize = size === base ? '' : `${Math.floor(size)}px`
     },

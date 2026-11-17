@@ -40,6 +40,9 @@
         <link rel="preload" href="{{ asset('fonts/comicroma/ComicRoma.woff2') }}" as="font" type="font/woff2" crossorigin>
         <link rel="preload" href="{{ asset('fonts/comic-lettering/ComicRomaLettering-Bold.woff2') }}" as="font" type="font/woff2" crossorigin>
     @endif
+    {{-- ComicAmerica (brand-kit.css .lp-comic-america): the chapter titles of every lesson, and
+         the title screen when the teacher picked it. --}}
+    <link rel="preload" href="{{ asset('fonts/luckiest-guy/LuckiestGuy-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
     @if ($lesson->hasBalloons())
         {{-- Speech balloon lettering (app.css @font-face 'ComicRoma Balloon'). --}}
         <link rel="preload" href="{{ asset('fonts/balloon/ComicRomaBalloon-SemiBold.woff2') }}" as="font" type="font/woff2" crossorigin>
@@ -444,7 +447,10 @@
                  linear-gradient(to right, rgba(2,6,23,0.55) 0%, transparent 40%)"></div>
         <div @class(['title-gutter-x absolute flex', $titleBar])>
             <h2 lang="{{ $contentLang }}" class="min-w-0 max-w-4xl" x-show="chapterCard">
-                <span class="lp-chapter-card-title block font-history font-bold leading-history tracking-tight text-white" x-text="chapterCard?.name"></span>
+                {{-- In ComicAmerica, every lesson (Bart, 2026-11-17). --}}
+                <span class="lp-chapter-card-title block leading-tight">
+                    <span class="lp-comic-america" :data-t="chapterCard?.name ?? ''"><span x-text="chapterCard?.name"></span></span>
+                </span>
                 <span x-show="chapterCard?.year" x-text="chapterCard?.year" class="title-episode mt-2 block font-light text-white/80"></span>
             </h2>
         </div>
@@ -686,8 +692,9 @@
                              viewBox="0 0 21 26" fill="currentColor" aria-hidden="true">
                             <path d="M10.3329 0C4.63543 0 0 4.63543 0 10.3329C0 19.3812 9.58334 25.4792 9.9913 25.735L10.334 25.9493L10.6767 25.735C11.0848 25.4795 20.668 19.3812 20.668 10.3329C20.668 4.63543 16.0326 0 10.3351 0H10.3329ZM10.3329 15.5C7.47996 15.5 5.16584 13.1871 5.16584 10.3329C5.16584 7.47996 7.47872 5.16584 10.3329 5.16584C13.1859 5.16584 15.5 7.47872 15.5 10.3329C15.5 13.1859 13.1871 15.5 10.3329 15.5Z"/>
                         </svg>
-                        <span lang="{{ $contentLang }}" class="truncate text-sm font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-                              x-text="infoPlace || sceneCaption?.place"></span>
+                        {{-- The chapter bar's title in ComicAmerica: a hard ink drop, no blur. --}}
+                        <span lang="{{ $contentLang }}" class="lp-comic-america lp-chapter-line-title min-w-0 truncate text-sm"
+                              :data-t="infoPlace || sceneCaption?.place || ''"><span x-text="infoPlace || sceneCaption?.place"></span></span>
                         <span x-show="infoPlace ? infoDate : sceneCaption?.year" class="h-1 w-1 shrink-0 rounded-full bg-slate-400"></span>
                         <span x-show="infoPlace ? infoDate : sceneCaption?.year"
                               class="shrink-0 text-sm font-medium text-panel-hint drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
@@ -917,8 +924,14 @@
             <div x-show="!lesson.title_logo_url && !lesson.title_poster" @class(['title-gutter-x pointer-events-none absolute flex', $titleBar])
                  data-title-position="{{ $titlePos->value }}" style="z-index: 10;">
                 <h1 lang="{{ $contentLang }}" class="min-w-0 max-w-5xl" data-title-avoid data-title-bar>
-                    <span class="block text-white" x-text="titleSplit.series" data-title-series
-                          :class="titleLettered ? 'title-letters' : 'title-plain font-history font-bold leading-history tracking-tight'"></span>
+                    {{-- ComicAmerica (TitlePoster::COMIC_AMERICA): the series in the shared lettering, brand-kit.css .lp-comic-america. --}}
+                    <span class="block text-white" data-title-series
+                          :class="titleComicAmerica ? 'title-comic-america' : (titleLettered ? 'title-letters' : 'title-plain font-history font-bold leading-history tracking-tight')">
+                        <template x-if="titleComicAmerica">
+                            <span class="lp-comic-america" :data-t="titleSplit.series"><span x-text="titleSplit.series"></span></span>
+                        </template>
+                        <template x-if="!titleComicAmerica"><span x-text="titleSplit.series"></span></template>
+                    </span>
                     <span x-show="titleSplit.episode" x-text="titleSplit.episode" data-title-subtitle
                           :class="titleLettered ? 'title-letters-episode' : 'font-light'" class="title-episode mt-3 block text-white/80"></span>
                 </h1>

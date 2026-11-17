@@ -650,6 +650,11 @@
 /* A thought: the words sit on a cloud (balloon-shape.js cloudPath) instead of the rounded box. */
 .lp-balloon__cloud { position: absolute; overflow: visible; }
 .lp-balloon[data-kind="thought"] .lp-balloon__bubble { background: transparent; border-color: transparent; box-shadow: none; }
+/* A sound word (BalloonLayer kind 'sound'): the words alone, in ComicAmerica (.lp-comic-america). */
+.lp-balloon[data-kind="sound"] .lp-balloon__bubble { background: transparent; border-color: transparent; box-shadow: none; border-radius: 0; line-height: 1.1; font-family: 'Luckiest Guy', sans-serif; font-weight: 400; color: #fff; text-transform: uppercase; }
+/* While its words are typed they are plain text (balloon-edit.js): an ink edge keeps them readable on light art. */
+.lp-balloon[data-kind="sound"] .lp-balloon__bubble[contenteditable="true"],
+.lp-balloon[data-kind="sound"] .lp-balloon__bubble[contenteditable="plaintext-only"] { -webkit-text-stroke: 0.04em #000; }
 /* The editor's stage (balloon-edit.js): a balloon is grabbed and ringed when selected; its handles
    are the layer handles (ArtworkOverlay handleCss). Flat, the theme's own colours. */
 .lp-balloon[data-editable] .lp-balloon__bubble { pointer-events: auto; cursor: move; user-select: none; }
@@ -1322,6 +1327,10 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     background-color: rgb(255 255 255 / 0.14);
     background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.32) 0 2px, transparent 2px 5px);
 }
+
+/* The chapter line's title in ComicAmerica (.lp-comic-america): it truncates, so the box keeps room
+   for the outline and the drop or the ellipsis box would clip them. */
+.lp-chapter-line-title { padding: 0.06em 0.12em 0.16em 0.06em; color: #fff; }
 
 /* ─── Player chapter line ───────────────────────────────────────────────
    Pin, place and date. The design puts it in the stage's bottom-left corner,
@@ -2255,6 +2264,15 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 }
 @media (max-width: 639.98px) { .title-letters { max-width: none; } }
 .title-letters-episode { font-family: 'ComicRoma Lettering', var(--font-comic); font-weight: 700; }
+/* ComicAmerica (TitlePoster::COMIC_AMERICA; the letters are brand-kit.css .lp-comic-america): wide
+   heavy capitals, at most two balanced lines (lesson-player.js _fitLetters). */
+.title-comic-america {
+  font-size: clamp(2.25rem, 5.4vw, 6.25rem);
+  line-height: 1.08;
+  text-wrap: balance;
+  max-width: 52vw;
+}
+@media (max-width: 639.98px) { .title-comic-america { max-width: none; } }
 .title-logo { left: var(--title-gutter); top: calc(var(--title-gutter) + 4rem); width: clamp(16rem, 40vw, 40rem); }
 
 /* The bottom rail: every piece's bottom on the bottom gutter. It fades in once the lettering has

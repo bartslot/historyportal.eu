@@ -570,8 +570,8 @@ class Lesson extends Model
     /**
      * The title styles this lesson can show, in the picker's order: the series' comic candidates
      * (public/lesson-titles/{group}/{candidate}/, by their `order`), then the logo when the series
-     * has one, then the lettered title (ComicRoma) and the plain title, which always work. The
-     * first is the default.
+     * has one, then the lettered title (ComicRoma), ComicAmerica and the plain title, which always
+     * work. The first is the default, so ComicAmerica is only ever the teacher's own pick.
      *
      * @return list<array{key: string, label: string, thumb_url: ?string}>
      */
@@ -586,6 +586,7 @@ class Lesson extends Model
             $choices[] = ['key' => TitlePoster::LOGO, 'label' => __('Logo'), 'thumb_url' => $logo];
         }
         $choices[] = ['key' => TitlePoster::LETTERS, 'label' => __('Letters'), 'thumb_url' => $this->titleBgUrl()];
+        $choices[] = ['key' => TitlePoster::COMIC_AMERICA, 'label' => __('ComicAmerica'), 'thumb_url' => $this->titleBgUrl()];
         $choices[] = ['key' => TitlePoster::PLAIN, 'label' => __('Plain title'), 'thumb_url' => $this->titleBgUrl()];
 
         return $choices;

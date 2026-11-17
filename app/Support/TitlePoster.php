@@ -25,14 +25,17 @@ final class TitlePoster
     private const DIR = 'lesson-titles';
 
     /** The title styles that are not a candidate folder: the series wordmark, the lettered title
-     *  (ComicRoma, resources/js/title-letters.js) and the plain title (the History font). */
+     *  (ComicRoma, resources/js/title-letters.js), ComicAmerica (Luckiest Guy, brand-kit.css
+     *  .lp-comic-america) and the plain title (the History font). */
     public const LOGO = 'logo';
 
     public const LETTERS = 'letters';
 
+    public const COMIC_AMERICA = 'comic-america';
+
     public const PLAIN = 'plain';
 
-    public const BUILT_IN = [self::LOGO, self::LETTERS, self::PLAIN];
+    public const BUILT_IN = [self::LOGO, self::LETTERS, self::COMIC_AMERICA, self::PLAIN];
 
     /** title_style values from before candidates (the TitleStyle enum) and the candidate each became. */
     public const LEGACY = ['comic' => 'poster'];

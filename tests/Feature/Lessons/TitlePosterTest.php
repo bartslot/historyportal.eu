@@ -179,12 +179,12 @@ class TitlePosterTest extends TestCase
         }
 
         $tasman = $this->lesson('tasman-standard');
-        $this->assertSame(['poster', 'cover', 'banner', 'logo', 'letters', 'plain'], array_column($tasman->titleChoices(), 'key'));
+        $this->assertSame(['poster', 'cover', 'banner', 'logo', 'letters', 'comic-america', 'plain'], array_column($tasman->titleChoices(), 'key'));
         $this->assertSame('poster', $tasman->titleStyle());
 
         // No candidate, no logo: the lettered title (ComicRoma) by default, the plain one on offer.
         $plain = $this->lesson(null);
-        $this->assertSame(['letters', 'plain'], array_column($plain->titleChoices(), 'key'));
+        $this->assertSame(['letters', 'comic-america', 'plain'], array_column($plain->titleChoices(), 'key'));
         $this->assertSame('letters', $plain->titleStyle());
         $this->assertNull($plain->titlePoster());
 
@@ -397,5 +397,31 @@ class TitlePosterTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $composer->build($spec + ['title_style' => 'Not A Key'], $this->teacher, false);
+    }
+
+    public function test_comic_america_is_a_title_style_the_teacher_picks_and_never_the_default(): void
+    {
+        // Existing lessons keep their look: neither a series with posters nor a plain lesson starts in it.
+        $this->assertSame('poster', $this->lesson('tasman-standard')->titleStyle());
+        $lesson = $this->lesson(null);
+        $this->assertSame('letters', $lesson->titleStyle());
+
+        app()->setLocale('en');
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->assertSee('data-title-choice="comic-america"', false)
+            ->assertSeeText('ComicAmerica')
+            ->call('setTitleStyle', TitlePoster::COMIC_AMERICA);
+        $this->assertSame('comic-america', $lesson->fresh()->title_style);
+        $this->assertSame('comic-america', $lesson->fresh()->titleStyle());
+        $this->assertNull($lesson->fresh()->titlePoster());
+
+        $html = $this->get(route('lesson.play', ['lessonCode' => $lesson->lesson_code]))->assertOk()->getContent();
+        $this->assertStringContainsString('"title_style":"comic-america"', $html);
+        $this->assertMatchesRegularExpression('#<link rel="preload" href="[^"]*fonts/luckiest-guy/LuckiestGuy-Regular\.woff2"#', $html);
+        $this->assertStringNotContainsString('ComicRoma.woff2', $html);
+        $this->assertStringContainsString('lp-comic-america', $html);
+        $this->assertFileExists(public_path('fonts/luckiest-guy/LuckiestGuy-Regular.woff2'));
+        $this->assertFileExists(public_path('fonts/luckiest-guy/LICENSE.txt'));
     }
 }
