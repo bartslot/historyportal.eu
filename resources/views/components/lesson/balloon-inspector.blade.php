@@ -2,7 +2,8 @@
 
 @php
     $id = (string) $balloon['id'];
-    $kind = ($balloon['kind'] ?? 'speech') === 'thought' ? 'thought' : 'speech';
+    $kind = in_array($balloon['kind'] ?? null, \App\Services\Support\SpeechBalloons::KINDS, true) ? $balloon['kind'] : 'speech';
+    $layerName = match ($kind) { 'thought' => __('Thought balloon'), 'sound' => __('Sound word'), default => __('Speech balloon') };
     $speaker = $balloon['figure']['asset_id'] ?? null;
     // The timeline's name for this balloon: bal_3 → bal:3 (resources/js/anim/properties.js `bal`).
     $target = 'bal:'.substr($id, 4);
@@ -13,18 +14,18 @@
     $save = fn (string $field) => "updateBalloon({$jsId}, '{$field}', \$event.target.value)";
 @endphp
 
-{{-- A speech or thought balloon (EditsSceneBalloons). Its words are typed on the stage too; the
+{{-- A speech or thought balloon, or a sound word (EditsSceneBalloons). Its words are typed on the stage too; the
      tail is pulled from the balloon's edge there. Silent text: the narrator is the only voice. --}}
 <div class="space-y-3 text-sm" wire:key="balloon-inspector-{{ $id }}">
     <x-ui.panel-breadcrumb :label="__('Scene')"
                            wire:click="clearActiveBalloon"
                            x-on:click="window.__balloons?.select(null); window.__clearLayerGuard?.()" />
 
-    <h3 class="font-semibold text-base-content">{{ $kind === 'thought' ? __('Thought balloon') : __('Speech balloon') }}</h3>
+    <h3 class="font-semibold text-base-content">{{ $layerName }}</h3>
 
     <x-ui.segmented panel name="balloon-kind-{{ $id }}" class="w-full" tab-class="flex-1"
                     :value="$kind"
-                    :options="[['speech', __('Speech')], ['thought', __('Thought')]]"
+                    :options="[['speech', __('Speech')], ['thought', __('Thought')], ['sound', __('Sound word')]]"
                     on-change="$wire.updateBalloon({{ \Illuminate\Support\Js::from($id) }}, 'kind', $event.target.value)" />
 
     <label class="form-control">
@@ -70,7 +71,6 @@
 
     {{-- One action, named after the layer (Bart, 2026-10-16). "Remove tail" sat here and deleted the
          whole balloon, so it read as the wrong button doing the wrong thing. --}}
-    @php $layerName = $kind === 'thought' ? __('Thought balloon') : __('Speech balloon'); @endphp
     <div class="flex items-center gap-2">
         <button type="button" class="btn btn-ghost btn-sm text-error"
                 wire:click="deleteBalloon(@js($id))"

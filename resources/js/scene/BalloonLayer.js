@@ -10,7 +10,9 @@
  *               facing: the side the face looks to (1 = right), where the balloon goes, so the
  *               tail comes in at an angle from in front of the face; 0 = unknown, toward the middle.
  *               null, or a figure not on stage = off-frame (a letter, a voice): no tail.
- *   kind      — 'speech' (default) or 'thought': a cloud with a trail of circles, no tail.
+ *   kind      — 'speech' (default) or 'thought': a cloud with a trail of circles, no tail; or
+ *               'sound': a sound word or a shouted word, the words alone in ComicAmerica (no
+ *               bubble, no tail; brand-kit.css .lp-comic-america).
  *   at        — [x, y] 0..1 of the host: where the teacher put the balloon's middle. Without it
  *               the balloon sits above its speaker's mouth (or top middle, off-frame).
  *   tail      — { tip: [x, y] 0..1 of the host, bend }: where the tail points, dragged out in the
@@ -24,6 +26,7 @@
 import { EASE } from '../easing.js'
 import { DEFAULT_BEND, clampToView, cloudPath, outlinePoint, outlineT, tailRoot, tailShape, thoughtRoot, thoughtTrail, tipShortOf } from './balloon-shape.js'
 import { playEntrance } from './animations.js'
+import { letterComicAmerica } from '../comic-america.js'
 
 /** Reference width the house rules are measured at. */
 const REF_WIDTH = 1920
@@ -58,6 +61,18 @@ export const MIN_FONT_PX = 13
 /** The widest bubble and the narrowest one kept on the face's side, in ems of its own words. */
 const MAX_WIDTH_EM = MAX_WIDTH_REF / FONT_REF
 const MIN_ROOM_EM = 140 / FONT_REF
+
+/** A sound word's letters against a balloon's words: big, it is shouted. */
+const SOUND_SCALE = 1.8
+
+const KINDS = ['speech', 'thought', 'sound']
+const kindOf = (line) => (KINDS.includes(line?.kind) ? line.kind : 'speech')
+
+/** A balloon's words into its bubble: a sound word lettered, the others as plain text (lesson copy). */
+function setWords (bubble, line) {
+  if (kindOf(line) === 'sound') letterComicAmerica(bubble, line.text)
+  else bubble.textContent = line.text
+}
 
 const ENTER_MS = 260
 const EXIT_MS = 180
@@ -339,7 +354,7 @@ export class BalloonLayer {
     this.lines = this.lines.map((l, j) => (j === i ? { ...l, ...patch } : l))
     const el = this.shown.get(i)
     if (!el) return
-    if ('text' in patch) el.querySelector('.lp-balloon__bubble').textContent = patch.text   // textContent: lesson copy
+    if ('text' in patch) setWords(el.querySelector('.lp-balloon__bubble'), this.lines[i])
     this._place(el, this.lines[i])
   }
 
@@ -379,7 +394,7 @@ export class BalloonLayer {
     const el = document.createElement('div')
     el.className = 'lp-balloon'
     el.dataset.speaker = line.speaker
-    el.dataset.kind = line.kind === 'thought' ? 'thought' : 'speech'
+    el.dataset.kind = kindOf(line)
     el.dataset.balloonId = line.id
     // The cloud of a thought sits under the words. The tail is painted OVER the bubble: under it,
     // the bubble's shadow greyed the tail. Its fill also covers the bubble's outline where they
@@ -390,7 +405,7 @@ export class BalloonLayer {
       + '<path class="ink" fill="none" stroke="#1b1712" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
       + '<g class="trail" fill="#fffdf7" stroke="#1b1712" stroke-width="2"></g></svg>'
     // textContent, never innerHTML: the words are lesson copy.
-    el.querySelector('.lp-balloon__bubble').textContent = line.text
+    setWords(el.querySelector('.lp-balloon__bubble'), line)
     if (this._selectedId === line.id) el.setAttribute('data-selected', '')
     this.host.appendChild(el)
     this.shown.set(i, el)
@@ -518,10 +533,11 @@ export class BalloonLayer {
     const h = this.host.clientHeight
     const k = w / REF_WIDTH
     const view = this._view()
-    const thought = line.kind === 'thought'
+    const thought = kindOf(line) === 'thought'
+    const sound = kindOf(line) === 'sound'
     // Scale grows the words, the box, the tail root and the circles; the ink line stays one pencil.
     const scale = Number.isFinite(line.scale) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, line.scale)) : 1
-    const font = this._font(k, scale, w)
+    const font = this._font(k, scale, w) * (sound ? SOUND_SCALE : 1)
     const ink = `${INK_PX}px`
     el.style.opacity = Number.isFinite(line.opacity) ? String(line.opacity) : ''
     for (const node of el.querySelectorAll('.lp-balloon__cloud path, .lp-balloon__tail .ink, .lp-balloon__tail .trail')) node.setAttribute('stroke-width', ink)
@@ -531,7 +547,8 @@ export class BalloonLayer {
       borderWidth: ink,
       maxWidth: `${Math.min(0.8 * (view.x1 - view.x0), MAX_WIDTH_EM * font)}px`,
       // A cloud's scallops eat into its box: the words get more room from the edge.
-      padding: thought ? `${0.95 * font}px ${1.3 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
+      // A sound word has no box: only room for its outline and its drop.
+      padding: thought ? `${0.95 * font}px ${1.3 * font}px` : sound ? `${0.1 * font}px ${0.2 * font}px ${0.2 * font}px` : `${0.55 * font}px ${0.9 * font}px`,
       left: '0px',
       top: '0px',
       // Its own width: an absolutely placed box otherwise shrinks to the room left before its
@@ -559,7 +576,7 @@ export class BalloonLayer {
     const rect = { left, top, w: bubble.offsetWidth || box.w, h: bubble.offsetHeight || box.h }
     this._drawCloud(el, rect, thought)
 
-    const tip = this._tip(line, rect, mouth, view, w, h, font)
+    const tip = sound ? null : this._tip(line, rect, mouth, view, w, h, font)
     const shape = tip ? this._drawTail(el, rect, tip, line, thought, font) : this._drawTail(el, rect, null)
     // What is drawn, as fractions of the host: the timeline reads a balloon nobody keyed from this.
     el._drawn = {

@@ -141,6 +141,8 @@ function startTyping (layer, id) {
   selectBalloon(id)
   const bubble = el.querySelector('.lp-balloon__bubble')
   const before = layer.lines[i].text
+  // Typed as plain words: a sound word's layered letters (ComicAmerica) come back when it is done.
+  bubble.textContent = before
   try { bubble.contentEditable = 'plaintext-only' } catch (_) { bubble.contentEditable = 'true' }
   if (bubble.contentEditable !== 'plaintext-only') bubble.contentEditable = 'true'
   bubble.focus()
@@ -156,7 +158,7 @@ function startTyping (layer, id) {
     bubble.contentEditable = 'false'
     const text = bubble.textContent.replace(/\s+/g, ' ').trim()
     if (!keep || !text || text === before) {
-      bubble.textContent = before
+      layer.patchLine(id, { text: before })
       return
     }
     layer.patchLine(id, { text })

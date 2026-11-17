@@ -23,7 +23,9 @@ class SceneTextLabelsTest extends TestCase
     use RefreshDatabase;
 
     private User $teacher;
+
     private Lesson $lesson;
+
     private Scene $scene;
 
     protected function setUp(): void
@@ -183,5 +185,23 @@ class SceneTextLabelsTest extends TestCase
             ])
             ->assertSet('activeTextId', 'txt_rome')
             ->assertSeeHtml('data-text-inspector');
+    }
+
+    public function test_comic_america_is_a_stage_text_font_from_the_canvas_and_the_format_panel(): void
+    {
+        $texts = $this->saveTexts([[
+            'id' => 'txt_bam', 'text' => 'Land!', 'x' => 40, 'y' => 40, 'font' => 'comic-america', 'size' => 'xl',
+        ]]);
+        $this->assertSame('comic-america', $texts[0]['font']);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->dispatch('scene:selection-changed', objectId: 'txt_bam')
+            ->assertSeeHtml('value="comic-america"')
+            ->call('updateSceneText', 'txt_bam', 'font', 'sans')
+            ->call('updateSceneText', 'txt_bam', 'font', 'comic-america')
+            ->call('updateSceneText', 'txt_bam', 'font', 'comic-america"><b>');
+
+        $this->assertSame('comic-america', $this->scene->fresh()->config['texts'][0]['font'], 'an unknown font keeps the one it had');
     }
 }

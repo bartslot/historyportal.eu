@@ -116,6 +116,9 @@ class Step3SceneConfigurator extends Component
     /** Brand deep-navy — the solid backdrop a scene falls back to when its image is removed. */
     public const BRAND_BACKGROUND = '#0f172a';
 
+    /** A stage text's fonts (resources/js/scene/TextOverlayLayer.js FONTS); anything else falls back. */
+    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic-america'];
+
     /** Mirrors BuildLessonOutline::MAX_BRANCH_GROUPS — hand-authored branches obey the same ceiling. */
     private const MAX_BRANCH_GROUPS = 3;
 
@@ -1142,7 +1145,7 @@ class Step3SceneConfigurator extends Component
         $next = ! $isPanel && in_array($field, TextLayerStyle::FIELDS, true)
             ? TextLayerStyle::value($field, $value)
             : match ($field) {
-                'font' => in_array($value, ['sans', 'history', 'cinzel'], true) ? $value : $text['font'] ?? 'sans',
+                'font' => in_array($value, self::TEXT_FONTS, true) ? $value : $text['font'] ?? 'sans',
                 'size' => in_array($value, ['sm', 'md', 'lg', 'xl'], true) ? $value : $text['size'] ?? 'md',
                 'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
                 'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
@@ -1296,7 +1299,7 @@ class Step3SceneConfigurator extends Component
                     'y' => max(0, min(100, (float) ($t['y'] ?? 40))),
                     // Optional resized width (% of host); null = auto (default max-width).
                     'w' => (isset($t['w']) && is_numeric($t['w'])) ? max(5.0, min(95.0, (float) $t['w'])) : null,
-                    'font' => in_array($font, ['sans', 'history', 'cinzel'], true) ? $font : 'sans',
+                    'font' => in_array($font, self::TEXT_FONTS, true) ? $font : 'sans',
                     'size' => in_array($size, ['sm', 'md', 'lg', 'xl'], true) ? $size : 'md',
                     'list' => in_array($list, ['bullet', 'number'], true) ? $list : 'none',
                     'align' => in_array($align, ['center', 'right'], true) ? $align : 'left',

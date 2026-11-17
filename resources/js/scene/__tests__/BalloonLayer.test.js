@@ -151,6 +151,29 @@ describe('BalloonLayer: balloons added in the editor', () => {
     expect(el.querySelector('.lp-balloon__tail .ink').getAttribute('d')).toBe('')
   })
 
+  it('draws a sound word as ComicAmerica letters alone: no cloud, no tail, plain balloons untouched', () => {
+    const host = document.createElement('div')
+    const layer = new BalloonLayer(host, () => null)
+    layer.setLines([
+      { ...balloon, kind: 'sound', text: 'Land!', tail: { tip: [0.5, 0.9] } },
+      { ...balloon, text: 'Gewoon praten' },
+    ])
+    const [sound, speech] = host.querySelectorAll('.lp-balloon')
+    expect(sound.dataset.kind).toBe('sound')
+    const letters = sound.querySelector('.lp-balloon__bubble > .lp-comic-america')
+    expect(letters.dataset.t).toBe('Land!')
+    expect(letters.textContent).toBe('Land!')
+    expect(sound.querySelector('.lp-balloon__cloud path').getAttribute('d')).toBe('')
+    expect(sound.querySelector('.lp-balloon__tail .ink').getAttribute('d')).toBe('')
+
+    layer.patchLine('bal_0', { text: 'Boem' })
+    expect(sound.querySelector('.lp-comic-america').dataset.t).toBe('Boem')
+
+    expect(speech.dataset.kind).toBe('speech')
+    expect(speech.querySelector('.lp-comic-america')).toBeNull()
+    expect(speech.querySelector('.lp-balloon__bubble').textContent).toBe('Gewoon praten')
+  })
+
   it('in the editor a balloon shows during its own time, and stays while it is selected', () => {
     const layer = new BalloonLayer(document.createElement('div'), () => null, { editable: true })
     layer.setLines([{ ...balloon, id: 'bal_0', start: 5, end: 6 }])

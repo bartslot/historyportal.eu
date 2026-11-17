@@ -83,7 +83,7 @@
                     <div class="min-w-0 flex-1">
                         <select wire:change="{{ $save('font') }}" aria-label="{{ __('Font type') }}"
                                 style="height: var(--settings-panel-row-h, 2rem)" class="select select-xs w-full text-2xs">
-                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display')] as $fv => $fl)
+                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display'), 'comic-america' => __('ComicAmerica')] as $fv => $fl)
                                 <option value="{{ $fv }}" @selected($val('font', 'sans') === $fv)>{{ $fl }}</option>
                             @endforeach
                         </select>

@@ -13,7 +13,8 @@ use App\Support\LayerEntrances;
  *
  * The editor addresses a line as `bal_<index in config.lines>`. What it adds beside the
  * SceneDialogue shape (speaker, text, start, end, figure):
- *   kind   'speech' | 'thought' (a cloud with a trail of circles)
+ *   kind   'speech' | 'thought' (a cloud with a trail of circles) | 'sound' (a sound word or a
+ *          shouted word: no bubble, no tail, the words in ComicAmerica)
  *   at     [x, y] 0..1 of the stage (a split scene: of its panel), the balloon's middle
  *   tail   {tip: [x, y], bend} where the tail points, dragged out on the stage (past the panel is fine)
  *   panel  0|1 on a split scene, the panel it sits in
@@ -27,7 +28,7 @@ final class SpeechBalloons
     /** The speaker of a balloon added in the editor: not the narrator, not a cast member. */
     public const SPEAKER = 'balloon';
 
-    public const KINDS = ['speech', 'thought'];
+    public const KINDS = ['speech', 'thought', 'sound'];
 
     /** What a new balloon says until the teacher types: no words to translate, plainly a stand-in. */
     public const PLACEHOLDER = '…';

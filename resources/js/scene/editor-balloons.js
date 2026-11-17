@@ -31,7 +31,7 @@ export function balloonRows () {
     .map(l => ({
       id: l.id,
       text: l.text,
-      kind: l.kind === 'thought' ? 'thought' : 'speech',
+      kind: ['thought', 'sound'].includes(l.kind) ? l.kind : 'speech',
       start: Number(l.start) || 0,
       end: Number.isFinite(l.end) ? l.end : null,
     }))

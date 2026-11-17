@@ -12,7 +12,8 @@
  * texts: [{ id, text, x, y, w, font, size, list, anchor, lng, lat }]
  *   x/y    — 0-100 percentages of the host (always kept; the screen position).
  *   w      — optional width as a % of the host (from the resize handle); text wraps to it.
- *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps).
+ *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps) |
+ *            'comic-america' (ComicAmerica letters, brand-kit.css .lp-comic-america).
  *   size   — 'sm' | 'md' | 'lg' | 'xl'.
  *   list   — 'none' (default) | 'bullet' | 'number': each \n line is one list item.
  *   align  — 'left' (default) | 'center' | 'right' text alignment inside the box.
@@ -28,6 +29,7 @@
  * move. Without a projector, map-anchored labels fall back to their stored x/y.
  */
 import { t } from '../i18n.js'
+import { letterComicAmerica } from '../comic-america.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -40,6 +42,7 @@ const FONTS = {
   sans:    { label: 'Clean',   stack: "'Inter', ui-sans-serif, sans-serif", weight: 600 },
   history: { label: 'History', stack: "'History', serif",                   weight: 700 },
   cinzel:  { label: 'Classic', stack: "'Cinzel', serif",                    weight: 700 },
+  'comic-america': { label: 'ComicAmerica', stack: "'Luckiest Guy', sans-serif", weight: 400 },
 }
 const SIZES = {
   sm: { label: 'S',  css: 'clamp(12px, 1.4vw, 18px)' },
@@ -49,6 +52,31 @@ const SIZES = {
 }
 const fontOf = (item) => FONTS[item.font] || FONTS.sans
 const sizeOf = (item) => SIZES[item.size] || SIZES.md
+const isComicAmerica = (item) => item.font === 'comic-america'
+
+/**
+ * Letter a text box's words in ComicAmerica (each list item on its own), or put them back as plain
+ * text for typing: a caret in the layered letters would land in the copy behind the fill.
+ */
+function letterBox (edit, comic, text) {
+  const list = edit.tagName === 'UL' || edit.tagName === 'OL'
+  for (const part of list ? [...edit.children] : [edit]) {
+    // A plain box's words come from the item: typed line breaks are <div>/<br>, lost in textContent.
+    const words = list ? part.textContent : text
+    if (comic) letterComicAmerica(part, words)
+    else part.textContent = words
+  }
+}
+
+/** Put the caret after the last word (the words were just rebuilt under it). */
+function caretToEnd (el) {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  range.collapse(false)
+  const sel = window.getSelection()
+  sel?.removeAllRanges()
+  sel?.addRange(range)
+}
 
 const TEXT_WHITE = '#f8fafc'
 const BLENDS = ['multiply', 'screen', 'overlay', 'darken', 'lighten']
@@ -402,7 +430,7 @@ export class TextOverlayLayer {
     node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; max-width:46%;
       pointer-events:auto; color:#f8fafc; font-size:${sizeOf(item).css};
       font-family:${fontOf(item).stack}; font-weight:${fontOf(item).weight};
-      line-height:1.3; text-shadow:0 2px 12px rgba(0,0,0,0.75);`
+      line-height:1.3; text-shadow:${isComicAmerica(item) ? 'none' : '0 2px 12px rgba(0,0,0,0.75)'};`
     // Frosted-glass card: blurs the moving scene image behind the text.
     if (item.bg === 'glass') {
       node.style.background = glassFill(item)
@@ -487,10 +515,17 @@ export class TextOverlayLayer {
     node.style.touchAction = 'none'
 
     const edit = this._makeEditEl(item)
-    edit.addEventListener('focus', () => { edit.style.borderColor = '#f59e0b' })
+    if (isComicAmerica(item)) letterBox(edit, true, item.text)
+    edit.addEventListener('focus', () => {
+      edit.style.borderColor = '#f59e0b'
+      if (!isComicAmerica(item)) return
+      letterBox(edit, false, item.text)
+      caretToEnd(edit)
+    })
     edit.addEventListener('blur', () => {
       edit.style.borderColor = 'rgba(245,158,11,0.6)'
       item.text = this._readEditText(edit)
+      if (isComicAmerica(item)) letterBox(edit, true, item.text)
       if (item.text === '') {
         this._texts = this._texts.filter(text => text.id !== item.id)
         this._render()
@@ -753,6 +788,7 @@ export class TextOverlayLayer {
         li.textContent = line
         el.appendChild(li)
       }
+      if (isComicAmerica(item)) letterBox(el, true, t)
       node.appendChild(el)
     } else if (URL_PATTERN.test(t)) {
       const url = t
@@ -767,7 +803,8 @@ export class TextOverlayLayer {
       node.appendChild(chip)
     } else {
       node.style.whiteSpace = 'pre-wrap'
-      node.textContent = item.text
+      if (isComicAmerica(item)) letterComicAmerica(node, item.text)
+      else node.textContent = item.text
     }
 
     return node

@@ -250,4 +250,19 @@ class SpeechBalloonsTest extends TestCase
         $this->assertEquals([-4.0, 5.0], $line['at']);
         $this->assertEquals([5.0, -4.0], $line['tail']['tip']);
     }
+
+    public function test_a_sound_word_is_a_balloon_kind_added_and_switched_like_the_others(): void
+    {
+        $this->wizard()->call('addBalloon', 'sound')
+            ->assertSeeHtml('balloon-inspector-bal_1')
+            ->assertSeeText('Sound word');
+        $this->assertSame('sound', $this->lines()[1]['kind']);
+
+        $this->wizard()->call('updateBalloon', 'bal_1', 'kind', 'speech');
+        $this->assertSame('speech', $this->lines()[1]['kind']);
+        $this->wizard()->call('updateBalloon', 'bal_1', 'kind', 'sound');
+        $this->assertSame('sound', $this->lines()[1]['kind']);
+        $this->wizard()->call('updateBalloon', 'bal_1', 'kind', 'shout"><b>');
+        $this->assertSame('sound', $this->lines()[1]['kind'], 'an unknown kind leaves it as it was');
+    }
 }
