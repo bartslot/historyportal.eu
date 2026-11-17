@@ -2889,7 +2889,9 @@
     "Icon (emoji), label and start value (0 to 100).": "Icona (emoji), nome e valore iniziale (da 0 a 100).",
     "Remove the class meters? Choices then play without them.": "Rimuovere gli indicatori di classe? Le scelte si giocheranno senza.",
     "Remove class meters": "Rimuovi indicatori di classe",
-    "This voyage is already in the lesson.": "Questo viaggio è già nella lezione.",
     "Which voyage do you want to sail here?": "Quale viaggio vuoi fare qui?",
-    "Add voyage": "Aggiungi viaggio"
+    "Add voyage": "Aggiungi viaggio",
+    "A lesson sails one voyage. Delete its voyage scenes first to sail another.": "Una lezione segue un solo viaggio. Elimina prima le sue scene di viaggio per seguirne un altro.",
+    "This lesson already sails a voyage. Use Route to add a leg.": "Questa lezione segue già un viaggio. Usa Rotta per aggiungere una tappa.",
+    "Voyage taken back.": "Viaggio annullato."
 }

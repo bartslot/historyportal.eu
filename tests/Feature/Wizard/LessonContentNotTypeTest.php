@@ -102,11 +102,22 @@ class LessonContentNotTypeTest extends TestCase
     {
         foreach ([$this->lesson(), $this->voyageLesson()] as $lesson) {
             $editor = $this->editor($lesson)->set('addSceneOpen', true);
-            $editor->assertSeeHtml('data-add-voyage')->assertSeeHtml("addScene('branch')");
+            $editor->assertSeeHtml("addScene('branch')");
             if ($editor->instance()->eraStageBundle !== null) {
                 $editor->assertSeeHtml('data-add-stage25d');
             }
         }
+        $this->editor($this->lesson())->set('addSceneOpen', true)
+            ->assertSeeHtml('data-add-voyage')->assertDontSeeHtml('data-voyage-taken');
+    }
+
+    /** One voyage per lesson: the tile stays in the menu, switched off, and says why. */
+    public function test_a_lesson_that_sails_shows_the_voyage_tile_off_with_its_reason(): void
+    {
+        $this->editor($this->voyageLesson())->set('addSceneOpen', true)
+            ->assertDontSeeHtml('data-add-voyage')
+            ->assertSeeHtml('data-voyage-taken')
+            ->assertSee(__('This lesson already sails a voyage. Use Route to add a leg.'));
     }
 
     public function test_adding_a_decision_point_leaves_the_type_arc_and_meters_alone(): void
@@ -196,23 +207,70 @@ class LessonContentNotTypeTest extends TestCase
         $this->assertTrue($fresh->hasVoyage());
     }
 
-    public function test_two_voyages_coexist_in_one_lesson_each_with_its_own_route(): void
+    /** PM 11-17: one voyage per lesson, so the structure stays easy to read. */
+    public function test_a_lesson_refuses_a_second_voyage(): void
     {
         $lesson = $this->lesson();
-
-        $this->editor($lesson)->call('insertVoyage', 'tasman-1642');
         $this->editor($lesson)->call('insertVoyage', 'columbus-1492');
+        $count = $lesson->scenes()->count();
 
-        $defs = $lesson->fresh()->game_config['voyage_defs'] ?? [];
-        $this->assertArrayHasKey('tasman-1642', $defs);
-        $this->assertArrayHasKey('columbus-1492', $defs);
-        $this->assertSame(
-            ['columbus-1492', 'tasman-1642'],
-            $lesson->scenes()->where('kind', 'voyage')->get()->pluck('config.voyage')->unique()->sort()->values()->all(),
-        );
+        $this->editor($lesson)->call('insertVoyage', 'magellan-1519')
+            ->assertDispatched('toast', type: 'error', message: __('A lesson sails one voyage. Delete its voyage scenes first to sail another.'));
+
+        $this->assertSame($count, $lesson->scenes()->count());
+        $this->assertSame(['columbus-1492'], array_keys($lesson->fresh()->game_config['voyage_defs'] ?? []));
     }
 
-    public function test_a_voyage_already_in_the_lesson_is_not_inserted_twice(): void
+    /** One Cmd-Z on the landing scene takes the whole insert back: every scene and the route. */
+    public function test_one_undo_takes_an_inserted_voyage_back(): void
+    {
+        $lesson = $this->lesson(['game_config' => ['meters' => [['key' => 'food', 'label' => 'Food', 'start' => 50]]]]);
+        $before = $lesson->scenes()->ordered()->pluck('id')->all();
+        $this->editor($lesson)->call('openAddSceneAfter', $before[0])->call('insertVoyage', 'tasman-1642');
+        $landing = $lesson->scenes()->where('kind', 'voyage')->ordered()->first();
+
+        // The insert reloads the editor on its landing scene: a fresh component, as in the browser.
+        $this->editor($lesson)->call('selectScene', $landing->id)->call('undoLastEdit')
+            ->assertDispatched('toast', type: 'info', message: __('Voyage taken back.'));
+
+        $fresh = $lesson->fresh();
+        $this->assertSame($before, $fresh->scenes()->ordered()->pluck('id')->all());
+        $this->assertSame([1, 2, 3], $fresh->scenes()->ordered()->pluck('order')->map(fn ($o) => (int) $o)->all());
+        $this->assertFalse($fresh->hasVoyage());
+        $this->assertArrayNotHasKey('voyage_defs', $fresh->game_config ?? []);
+        $this->assertArrayNotHasKey('voyage_fog', $fresh->game_config ?? []);
+        $this->assertTrue($fresh->hasMeters(), 'the rest of game_config stays');
+        $this->assertSame(0, Scene::withTrashed()->where('lesson_id', $lesson->id)->where('kind', 'voyage')->count());
+    }
+
+    public function test_a_route_edit_after_the_insert_is_undone_before_the_insert(): void
+    {
+        $lesson = $this->lesson();
+        $this->editor($lesson)->call('insertVoyage', 'tasman-1642');
+        $landing = $lesson->scenes()->where('kind', 'voyage')->ordered()->first();
+        $gc = $lesson->fresh()->game_config;
+        $lesson->update(['game_config' => $gc + ['voyage_undo' => [null]]]);   // one route edit on the stack
+
+        $this->editor($lesson)->call('selectScene', $landing->id)->call('undoLastEdit');
+
+        $this->assertTrue($lesson->fresh()->hasVoyage(), 'the first Cmd-Z takes back the route edit');
+        $this->editor($lesson)->call('selectScene', $landing->id)->call('undoLastEdit');
+        $this->assertFalse($lesson->fresh()->hasVoyage(), 'the next one takes back the insert');
+    }
+
+    public function test_a_newer_structural_edit_drops_the_voyage_undo(): void
+    {
+        $lesson = $this->lesson();
+        $this->editor($lesson)->call('insertVoyage', 'tasman-1642');
+        $landing = $lesson->scenes()->where('kind', 'voyage')->ordered()->first();
+
+        $this->editor($lesson)->call('selectScene', $landing->id)->call('addScene', 'gallery')
+            ->call('selectScene', $landing->id)->call('undoLastEdit');
+
+        $this->assertTrue($lesson->fresh()->hasVoyage());
+    }
+
+    public function test_the_same_voyage_is_not_inserted_twice(): void
     {
         $lesson = $this->lesson();
         $this->editor($lesson)->call('insertVoyage', 'tasman-1642');

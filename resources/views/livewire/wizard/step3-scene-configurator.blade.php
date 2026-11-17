@@ -3164,8 +3164,16 @@
                     <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
                 </button>
                 {{-- A historical voyage from the catalogue, inserted here as its itinerary and legs
-                     (insertVoyage). The pick stays in Alpine so choosing never re-renders the modal. --}}
-                @if (count($this->voyageOptions))
+                     (insertVoyage). The pick stays in Alpine so choosing never re-renders the modal.
+                     One voyage per lesson: once it sails, the tile says why it is off. --}}
+                @if ($lesson->hasVoyage())
+                    <div data-voyage-taken aria-disabled="true"
+                         class="flex flex-col gap-2 rounded-box border border-base-300 bg-base-200/40 p-2 text-left opacity-80">
+                        <x-lesson.scene-type-thumb kind="voyage" />
+                        <span class="text-sm font-medium text-base-content/70">{{ __('Voyage') }}</span>
+                        <span class="text-xs text-panel-hint">{{ __('This lesson already sails a voyage. Use Route to add a leg.') }}</span>
+                    </div>
+                @elseif (count($this->voyageOptions))
                     <div class="contents" x-data="{ pick: false, voyage: '' }">
                         <button type="button" data-add-voyage x-show="!pick" @click="pick = true"
                                 class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">

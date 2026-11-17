@@ -5346,6 +5346,7 @@ class Step3SceneConfigurator extends Component
     public function addScene(string $kind = 'narration', ?string $gameType = null, $destLng = null, $destLat = null): void
     {
         $this->addSceneOpen = false;
+        session()->forget($this->voyageInsertKey());   // the insert is no longer the last structural edit
         // The itinerary is not its own kind — it is a route scene that stops nowhere, flagged with
         // `overview`. Adding it from the picker is the one place that distinction has a name.
         $wantsOverview = $kind === 'voyage-overview';
@@ -5596,9 +5597,10 @@ class Step3SceneConfigurator extends Component
     /**
      * Insert a historical voyage at the chosen spot of THIS lesson: its itinerary and one scene per
      * leg, the same run "Start from a historical voyage" builds a voyage lesson from. The route is
-     * filed under its own id in game_config.voyage_defs, so several voyages live side by side, and
-     * the lesson's type and arc are left alone. Reloads the editor on the first leg: the voyage
-     * renderer only loads on a page whose lesson sails (step3 head-scripts).
+     * filed under its own id in game_config.voyage_defs, and the lesson's type and arc are left alone.
+     * ONE voyage per lesson (PM 11-17: "creative freedom with limitations, easy to understand the
+     * structure"). Reloads the editor on the first leg: the voyage renderer only loads on a page
+     * whose lesson sails (step3 head-scripts). One Cmd-Z there takes the whole insert back.
      */
     public function insertVoyage(string $voyageId = ''): void
     {
@@ -5608,10 +5610,8 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
-        $holds = $this->lesson->scenes()->where('kind', 'voyage')->get(['config'])
-            ->contains(fn (Scene $s) => ($s->config['voyage'] ?? null) === $voyageId);
-        if ($holds) {
-            $this->dispatch('toast', type: 'error', message: __('This voyage is already in the lesson.'));
+        if ($this->lesson->hasVoyage()) {
+            $this->dispatch('toast', type: 'error', message: __('A lesson sails one voyage. Delete its voyage scenes first to sail another.'));
 
             return;
         }
@@ -5621,6 +5621,9 @@ class Step3SceneConfigurator extends Component
         }
 
         $gc = $this->lesson->game_config ?? [];
+        $before = array_intersect_key($gc, array_flip(self::VOYAGE_INSERT_KEYS));
+        // A route-edit history or working copy left from a voyage the teacher deleted is not this one's.
+        unset($gc['voyage_undo'], $gc['voyage_def']);
         $gc['voyage_defs'][$voyageId] = ['id' => $voyageId] + $def;
         if (empty($gc['voyage_fog']) && ! empty($def['unknown']) && is_array($def['unknown'])) {
             $gc['voyage_fog'] = array_values($def['unknown']);
@@ -5639,9 +5642,64 @@ class Step3SceneConfigurator extends Component
             $after = $after === null ? null : $scene->id;
         }
 
+        // The undo slot outlives the reload below, so it lives in the session, one deep like deletedScene.
+        $this->deletedScene = null;
+        session()->put($this->voyageInsertKey(), [
+            'voyage' => $voyageId,
+            'scenes' => array_map(fn (Scene $s) => $s->id, $created),
+            'before' => $before,
+        ]);
+
         $this->redirect(route('teacher.lessons.wizard', [
             'lesson' => $this->lesson->id, 'step' => 4, 'scene' => $created[0]->id,
         ]));
+    }
+
+    /** The game_config keys an inserted voyage writes, and its undo puts back. */
+    private const VOYAGE_INSERT_KEYS = ['voyage_defs', 'voyage_fog', 'voyage_undo', 'voyage_def'];
+
+    private function voyageInsertKey(): string
+    {
+        return 'voyage-insert-undo.'.$this->lesson->id;
+    }
+
+    /**
+     * Take the last inserted voyage back in one step: every scene it added and its route. Only from
+     * one of its own scenes, and only while nothing structural happened since (addScene and
+     * deleteScene drop the slot). Returns false when there is no such insert to take back.
+     */
+    private function undoVoyageInsert(): bool
+    {
+        $slot = session($this->voyageInsertKey());
+        if (! is_array($slot) || ! in_array($this->selectedSceneId, $slot['scenes'] ?? [], true)) {
+            return false;
+        }
+        session()->forget($this->voyageInsertKey());
+
+        DB::transaction(function () use ($slot): void {
+            $this->lesson->scenes()->whereIn('id', $slot['scenes'])->forceDelete();
+            $remaining = $this->lesson->scenes()->ordered()->get();
+            foreach ($remaining as $idx => $s) {
+                $s->update(['order' => -1 * ($idx + 1)]);
+            }
+            foreach ($remaining as $idx => $s) {
+                $s->update(['order' => $idx + 1]);
+            }
+            $gc = array_diff_key($this->lesson->game_config ?? [], array_flip(self::VOYAGE_INSERT_KEYS));
+            $this->lesson->update(['game_config' => $gc + (array) ($slot['before'] ?? [])]);
+        });
+        $this->lesson->refresh();
+
+        $first = $this->lesson->scenes()->ordered()->first();
+        if ($first) {
+            $this->selectSceneInternal($first->id);
+        } else {
+            $this->selectedSceneId = null;
+            $this->selectedScene = null;
+        }
+        $this->dispatch('toast', type: 'info', message: __('Voyage taken back.'));
+
+        return true;
     }
 
     private function placeSceneAfterSelected(Scene $scene, ?int $afterSceneId): void
@@ -5692,6 +5750,7 @@ class Step3SceneConfigurator extends Component
         $scene->update(['order' => $this->parkingOrder()]);
         $scene->delete();
         $this->deletedScene = ['id' => $sceneId, 'order' => $wasOrder];
+        session()->forget($this->voyageInsertKey());   // a newer structural edit: Cmd-Z means the delete now
 
         $remaining = $this->lesson->scenes()->ordered()->get();
         DB::transaction(function () use ($remaining) {
@@ -5774,8 +5833,11 @@ class Step3SceneConfigurator extends Component
         }
 
         // The route only on the voyage scene: anywhere else Cmd-Z silently took back a route edit.
+        // A route edit made after inserting the voyage goes first; then the insert itself.
         if ($this->selectedScene && ($this->selectedScene['kind'] ?? null) === 'voyage') {
-            $this->undoVoyage();
+            if ($this->canUndoVoyage || ! $this->undoVoyageInsert()) {
+                $this->undoVoyage();
+            }
 
             return;
         }

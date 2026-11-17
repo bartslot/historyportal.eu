@@ -2931,7 +2931,9 @@
     "Icon (emoji), label and start value (0 to 100).": "Pictogram (emoji), naam en startwaarde (0 tot 100).",
     "Remove the class meters? Choices then play without them.": "Klasmeters verwijderen? Keuzes spelen dan zonder meters.",
     "Remove class meters": "Klasmeters verwijderen",
-    "This voyage is already in the lesson.": "Deze reis zit al in de les.",
     "Which voyage do you want to sail here?": "Welke reis wil je hier varen?",
-    "Add voyage": "Reis toevoegen"
+    "Add voyage": "Reis toevoegen",
+    "A lesson sails one voyage. Delete its voyage scenes first to sail another.": "Een les vaart één reis. Verwijder eerst de reisscènes om een andere te varen.",
+    "This lesson already sails a voyage. Use Route to add a leg.": "Deze les vaart al een reis. Gebruik Route om een etappe toe te voegen.",
+    "Voyage taken back.": "Reis teruggedraaid."
 }
