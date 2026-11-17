@@ -3,7 +3,7 @@ import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import walkFixture from '../../../../tests/Fixtures/animations/expand-walk.json'
 import walkClip from '../../../animations/clips/walk.json'
 import catalogue from '../../../animations/presets.json'
-import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf, loadClips } from '../presets.js'
+import { CLIPS, FITTED_LEGS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf, loadClips } from '../presets.js'
 
 beforeAll(() => loadClips())
 
@@ -14,17 +14,25 @@ describe('expandClip', () => {
   })
   it('a figure whose legs are held to a shuffle (a long robe) travels and sinks only as far as its legs carry it', () => {
     const robe = { thigh_n: [-6, 6], shin_n: [0, 8] }
-    expect(legRoom(robe)).toEqual({ travel: 12 / 45, sink: 8 / 120 })
+    expect(legRoom(robe)).toEqual({ travel: 6 / 25, sink: 8 / 120 })
     expect(legRoom({ thigh_n: [-25, 20], shin_n: [0, 120] })).toEqual({ travel: 1, sink: 1 })
     const full = expandClip(fixture.clip, fixture.options)
     const robed = expandClip(fixture.clip, { ...fixture.options, limits: robe })
-    expect(Math.abs(robed.at(-1).x - 0.6)).toBeCloseTo(Math.abs(full.at(-1).x - 0.6) * 12 / 45, 3)
+    expect(Math.abs(robed.at(-1).x - 0.6)).toBeCloseTo(Math.abs(full.at(-1).x - 0.6) * 6 / 25, 3)
+  })
+  it('a robe scales the walk\'s leg swing into its limits, smoothly, never clamped flat at them', () => {
+    const robe = { thigh_n: [-6, 6], shin_n: [0, 8] }
+    const keys = expandClip(walkClip, { bones: ['thigh_n', 'shin_n'], limits: robe, length: 1 })
+    const thighs = keys.map((k) => k['bone:thigh_n'])
+    expect(Math.min(...thighs)).toBeCloseTo(-6, 1)
+    expect(Math.max(...keys.map((k) => k['bone:shin_n']))).toBeLessThanOrEqual(8)
+    expect(new Set(thighs.map((t) => t.toFixed(2))).size).toBeGreaterThan(6)   // every drawing its own, no flat holds
   })
   it('longer legs for the body travel further and sink deeper for the same turns', () => {
     const kit = [{ name: 'head', from: [260, 258], to: [301, 9] }, { name: 'thigh_n', from: [160, 607], to: [165, 984] }, { name: 'shin_n', from: [165, 984], to: [170, 1362] }, { name: 'foot_n', from: [170, 1362], to: [285, 1470] }]
     const share = legShareOf(kit)
     expect(share).toBeCloseTo(755 / 1461, 2)
-    expect(legRoom({}, share).sink).toBeCloseTo(share / (607 / 1475), 3)
+    expect(legRoom({}, share).sink).toBeCloseTo(share / FITTED_LEGS.share, 3)
     expect(legShareOf([])).toBe(null)
   })
   it('a loop ends by settling into the drawn pose, not frozen mid-stride', () => {
@@ -38,7 +46,7 @@ describe('expandClip', () => {
     expect(expandClip(fall, { facing: -1 }).map((k) => k.rotation)).toEqual([0, 70, 0])
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'rotation' in k)).toBe(false)
   })
-  it('the shipped walk lays out the same as the server (planted-foot keys and all)', () => {
+  it('the shipped walk lays out the same as the server, on a kit body (shared fixture)', () => {
     expect(expandClip(walkClip, walkFixture.options)).toEqual(walkFixture.expected)
   })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
@@ -80,8 +88,15 @@ describe('applyClip', () => {
 })
 
 describe('the shipped presets', () => {
-  it('every preset the picker lists has its clip', () => {
-    expect(Object.keys(CLIPS).sort()).toEqual(catalogue.presets.map((p) => p.id).sort())
+  it('the picker offers the walk only (Bart 11-17: the old library went), and it has its clip', () => {
+    expect(catalogue.presets.map((p) => p.id)).toEqual(['walk'])
+    expect(Object.keys(CLIPS)).toEqual(['walk'])
+  })
+  it('the walk is 8 even drawings a cycle, one standing foot each, and never changes the face', () => {
+    expect(walkClip.keys.map((k) => k.t)).toEqual([0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1])
+    expect(walkClip.keys.map((k) => k.contact).join('')).toBe('nnnnffffn')
+    expect(walkClip.keys.some((k) => 'face' in k)).toBe(false)
+    expect(walkClip.duration).toBe(1)
   })
   it('each is a clip the stage can play: keys from 0 to 1, turns in degrees, a loop closing on itself', () => {
     for (const clip of Object.values(CLIPS)) {

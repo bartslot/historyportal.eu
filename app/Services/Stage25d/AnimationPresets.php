@@ -6,10 +6,12 @@ namespace App\Services\Stage25d;
 
 use App\Models\SvgAsset;
 use App\Services\Editor\Characters;
+use Illuminate\Support\Facades\Log;
 
 /**
- * The animation preset library (resources/animations): walk, wave, dance and the rest, one clip each, shared by every
- * rig by bone name. Agents and the composer name a preset on a figure (`animation: 'walk'` or
+ * The animation preset library (resources/animations): one clip each, shared by every rig by bone name. Since Bart
+ * 11-17 only the walk (an 8-drawing cycle, engine-mvp/tools/walk8.py); a lesson naming a preset that is gone is logged
+ * and plays nothing. Agents and the composer name a preset on a figure (`animation: 'walk'` or
  * `animation: {id, start?, length?, speed?}`); here it becomes ordinary keys on the figure's layer, exactly as the
  * editor's picker writes them (resources/js/anim/presets.js, held to the same answer by tests/Fixtures/animations/expand.json).
  */
@@ -35,8 +37,8 @@ final class AnimationPresets
     /** A walk or a run with no length of its own crosses the shot this many cycles (presets.js TRAVEL_CYCLES). */
     private const TRAVEL_CYCLES = 3;
 
-    /** The leg room a clip is fitted for (presets.js FITTED_LEGS): thigh swing and knee bend in degrees. */
-    private const FITTED_LEGS = ['thigh' => 45.0, 'shin' => 120.0, 'share' => 607 / 1475];
+    /** The leg room a clip is fitted for (presets.js FITTED_LEGS): thigh forward and back, knee bend in degrees, leg share of height. */
+    private const FITTED_LEGS = ['thigh' => [-25.0, 20.0], 'shin' => 120.0, 'share' => 0.5282];
 
     /** A loop settles into the drawn pose this long after its last cycle, at most half a cycle (presets.js SETTLE_S). */
     private const SETTLE_S = 0.5;
@@ -131,6 +133,7 @@ final class AnimationPresets
         $facing = ($o['facing'] ?? 1) < 0 ? -1 : 1;
         [$start, $x0, $y0] = [(float) ($o['start'] ?? 0), (float) ($o['x0'] ?? 0.5), (float) ($o['y0'] ?? 0)];
         [$roomTravel, $roomSink] = self::legRoom($o['limits'] ?? [], $o['legShare'] ?? null);
+        $scale = self::legScale($o['limits'] ?? []);
         $out = [];
         $face = null;
         for ($c = 0; $c < $cycles; $c++) {
@@ -140,8 +143,9 @@ final class AnimationPresets
                 }
                 $key = ['t' => self::r3($start + ($c + (float) $k['t']) * $cycle), 'ease' => 'smooth'];
                 foreach ($k as $field => $deg) {
-                    if (str_starts_with((string) $field, 'bone:') && isset($bones[substr((string) $field, 5)])) {
-                        $key[$field] = self::r3((float) $deg * $facing);
+                    $bone = substr((string) $field, 5);
+                    if (str_starts_with((string) $field, 'bone:') && isset($bones[$bone])) {
+                        $key[$field] = self::r3((float) $deg * $facing * (preg_match('/^(thigh|shin)_/', $bone) ? $scale[explode('_', $bone)[0]] : 1.0));
                     }
                 }
                 if ($moves) {
@@ -200,12 +204,27 @@ final class AnimationPresets
      */
     public static function legRoom(array $limits, ?float $legShare = null): array
     {
-        $swing = isset($limits['thigh_n']) ? ((float) $limits['thigh_n'][1] - (float) $limits['thigh_n'][0]) / self::FITTED_LEGS['thigh'] : 1.0;
-        $bend = isset($limits['shin_n']) ? (float) $limits['shin_n'][1] / self::FITTED_LEGS['shin'] : 1.0;
+        $scale = self::legScale($limits);
         // longer legs for the body cover more ground and drop further for the same turns
         $legs = $legShare !== null && $legShare > 0 ? $legShare / self::FITTED_LEGS['share'] : 1.0;
 
-        return [min(1.0, max(0.0, $swing)) * $legs, min(1.0, max(0.0, $bend)) * $legs];
+        return [$scale['thigh'] * $legs, $scale['shin'] * $legs];
+    }
+
+    /**
+     * How much of the clip's leg turns the figure's own limits hold (presets.js legScale): scaled, not clamped flat.
+     *
+     * @param  array<string,array{0:float,1:float}>  $limits
+     * @return array{thigh:float,shin:float}
+     */
+    public static function legScale(array $limits): array
+    {
+        $clamp = fn (float $v): float => min(1.0, max(0.0, $v));
+
+        return [
+            'thigh' => isset($limits['thigh_n']) ? $clamp(min((float) $limits['thigh_n'][0] / self::FITTED_LEGS['thigh'][0], (float) $limits['thigh_n'][1] / self::FITTED_LEGS['thigh'][1])) : 1.0,
+            'shin' => isset($limits['shin_n']) ? $clamp((float) $limits['shin_n'][1] / self::FITTED_LEGS['shin']) : 1.0,
+        ];
     }
 
     /**
@@ -308,6 +327,9 @@ final class AnimationPresets
             $bones = is_array($puppet) ? array_values(array_filter(array_column((array) ($puppet['bones'] ?? []), 'name'), 'is_string')) : [];
             $clip = $spec ? self::clip($spec['id']) : null;
             if ($clip === null || $bones === []) {
+                if ($spec === null) {
+                    Log::info('stage25d: animation preset ignored (not in the library)', ['layer' => $layer['asset'] ?? null, 'animation' => $layers[$i]['animation']]);
+                }
                 $layers[$i] = $layer;
                 $report['dropped']++;
 

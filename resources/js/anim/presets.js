@@ -1,5 +1,5 @@
 /**
- * presets.js: the animation preset library (resources/animations/clips/*.json, made by engine-mvp/tools/anim_fit.py)
+ * presets.js: the animation preset library (resources/animations/clips/*.json; the walk is made by engine-mvp/tools/walk8.py)
  * turned into ordinary layer keys, the ones a teacher edits on the timeline and the stage plays.
  *
  * A clip's keys are `{ t (0..1), 'bone:<name>': deg, dx, bob, face? }`: turns for a figure facing right, dx and bob in
@@ -9,7 +9,7 @@
  */
 import { sameTime } from './keyframes.js'
 
-// Lazy: 88 KB of clips stay out of app.js until a figure's Animation section opens (the chunk budget).
+// Lazy: the clips stay out of app.js until a figure's Animation section opens (the chunk budget).
 const files = import.meta.glob('../../animations/clips/*.json', { import: 'default' })
 
 /** Every preset, by id, in the order the picker lists them. Empty until loadClips() resolves. */
@@ -29,9 +29,9 @@ const BONE = 'bone:'
 export const MOVE_MIN = 0.0005
 /** A walk or a run with no length of its own crosses the shot this many cycles, not the whole scene off screen. */
 export const TRAVEL_CYCLES = 3
-/** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT, anim_fit RIG_LIMIT): thigh swing, knee bend;
- *  share: the standard skeleton's leg (thigh and shin) as a share of its height (anim_fit SKELETON, Ana). */
-export const FITTED_LEGS = { thigh: 45, shin: 120, share: 607 / 1475 }
+/** The leg room a clip is fitted for (engine-mvp/tools/rig_parts.py LIMIT): thigh forward and back, knee bend; share: the fitted
+ *  body's leg (thigh and shin) as a share of its height (walk8.py SKELETON, the Character tab's girl: LEG_SHARE). */
+export const FITTED_LEGS = { thigh: [-25, 20], shin: 120, share: 0.5282 }
 /** A loop ends by settling into the drawn pose this long after its last cycle, at most half a cycle, never mid-stride. */
 export const SETTLE_S = 0.5
 
@@ -41,12 +41,23 @@ export const SETTLE_S = 0.5
  * and the hem goes into the floor. `limits`: the figure's bone limits by name. 1 and 1 for a figure with the full room.
  */
 export function legRoom (limits = {}, legShare = null) {
-  const swing = limits.thigh_n ? (limits.thigh_n[1] - limits.thigh_n[0]) / FITTED_LEGS.thigh : 1
-  const bend = limits.shin_n ? limits.shin_n[1] / FITTED_LEGS.shin : 1
-  // longer legs for the body cover more ground and drop further for the same turns (the kits' 0.52 against Ana's 0.41)
+  const { thigh, shin } = legScale(limits)
+  // longer legs for the body cover more ground and drop further for the same turns (Ana's 0.41 against the kits' 0.53)
   const legs = legShare > 0 ? legShare / FITTED_LEGS.share : 1
-  return { travel: Math.min(1, Math.max(0, swing)) * legs, sink: Math.min(1, Math.max(0, bend)) * legs }
+  return { travel: thigh * legs, sink: shin * legs }
 }
+
+/** How much of the clip's leg turns the figure's own limits hold (1: all): a robe's thigh +-6 swings a walk's thighs at
+ *  at 6/25 of their size (the forward end binds) and its knee 0..8 bends them at 8/120, scaled smoothly rather than clamped flat at the limit
+ *  (a clamped walk holds still at the end of each swing: a robot shuffle). */
+export function legScale (limits = {}) {
+  const clamp01 = (v) => Math.min(1, Math.max(0, v))
+  return {
+    thigh: limits.thigh_n ? clamp01(Math.min(limits.thigh_n[0] / FITTED_LEGS.thigh[0], limits.thigh_n[1] / FITTED_LEGS.thigh[1])) : 1,
+    shin: limits.shin_n ? clamp01(limits.shin_n[1] / FITTED_LEGS.shin) : 1,
+  }
+}
+const LEG_BONE = /^(thigh|shin)_/
 
 /** A puppet's leg (thigh and shin) as a share of its body's height (head top to foot), or null when it cannot say. */
 export function legShareOf (bones = []) {
@@ -75,6 +86,7 @@ export const clipSpan = (clip, { length = null, speed = 1 } = {}) => {
  */
 export function expandClip (clip, { start = 0, length = null, speed = 1, bones = [], facing = 1, x0 = 0.5, y0 = 0, r0 = 0, xPerHeight = 0, yPerHeight = 0, limits = {}, legShare = null } = {}) {
   const room = legRoom(limits, legShare)
+  const scale = legScale(limits)
   const { cycles, cycle } = clipSpan(clip, { length, speed })
   const moves = clip.keys.some((k) => Math.abs(k.dx ?? 0) > MOVE_MIN) || Math.abs(clip.travel ?? 0) > 1e-6
   const bobs = clip.keys.some((k) => Math.abs(k.bob ?? 0) > 1e-6)
@@ -87,7 +99,8 @@ export function expandClip (clip, { start = 0, length = null, speed = 1, bones =
       if (c > 0 && i === 0) return   // the seam: a loop's first key is the last one of the cycle before
       const key = { t: round3(start + (c + k.t) * cycle), ease: 'smooth' }
       for (const [field, deg] of Object.entries(k)) {
-        if (field.startsWith(BONE) && has.has(field.slice(BONE.length))) key[field] = round3(deg * facing)
+        const bone = field.slice(BONE.length)
+        if (field.startsWith(BONE) && has.has(bone)) key[field] = round3(deg * facing * (LEG_BONE.test(bone) ? scale[bone.split('_')[0]] : 1))
       }
       if (moves) key.x = round3(x0 + facing * (c * (clip.travel ?? 0) + (k.dx ?? 0)) * room.travel * xPerHeight)
       if (bobs) key.y = round3(y0 + (k.bob ?? 0) * (k.bob < 0 ? room.sink : 1) * yPerHeight)   // a jump's lift stays
