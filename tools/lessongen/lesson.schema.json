@@ -466,37 +466,7 @@
                 "type": "string"
               },
               "animation": {
-                "description": "An animation preset the figure plays (resources/animations/presets.json): a bare id, or {id, start s into the scene, length s (a loop runs to the scene's end without it), speed 0.25-4}. Only figures with bones play one.",
-                "oneOf": [
-                  {
-                    "enum": ["walk"]
-                  },
-                  {
-                    "type": "object",
-                    "required": [
-                      "id"
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                      "id": {
-                        "enum": ["walk"]
-                      },
-                      "start": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "length": {
-                        "type": "number",
-                        "exclusiveMinimum": 0
-                      },
-                      "speed": {
-                        "type": "number",
-                        "minimum": 0.25,
-                        "maximum": 4
-                      }
-                    }
-                  }
-                ]
+                "description": "No animation presets are offered (Bart 11-17: the bone animations went; drawn walks come later). Leave it out; a value here is ignored on import."
               }
             }
           }

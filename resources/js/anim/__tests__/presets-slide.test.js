@@ -5,6 +5,7 @@ import { bonesAt, layerAt } from '@stage25d/stage25d/layout'
 import { bindPuppet } from '@stage25d/stage25d/bones'
 import { footLockOffset, heldBones } from '@stage25d/stage25d/foot-lock'
 import kitGirl from '../../../../tests/Fixtures/animations/kit-girl-368.json'
+import walkFixtureClip from '../../../../tests/Fixtures/animations/walk-clip.json'
 
 // The standard skeleton the clips are fitted on (engine-mvp/tools/anim_fit.py SKELETON, Ana's flat rig), picture px.
 const SKELETON = {
@@ -33,7 +34,8 @@ function ankle (bones, side) {
   return at[`foot_${side}`].p
 }
 
-const clips = Object.values(import.meta.glob('../../../animations/clips/*.json', { eager: true, import: 'default' }))
+// No preset ships now (Bart 11-17): the foot checks run on the old walk, kept as a fixture for the clip machinery.
+const clips = [walkFixtureClip]
 const bones = Object.keys(SKELETON)
 
 /** The worst slide (cm) of a foot that stands at two keys in a row, between them, as the stage plays the clip. */

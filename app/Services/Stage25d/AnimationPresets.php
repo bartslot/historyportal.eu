@@ -6,6 +6,7 @@ namespace App\Services\Stage25d;
 
 use App\Models\SvgAsset;
 use App\Services\Editor\Characters;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The animation preset library (resources/animations): walk, wave, dance and the rest, one clip each, shared by every
@@ -318,6 +319,9 @@ final class AnimationPresets
             $puppet = $layer['puppet'] ?? $asset['puppet'] ?? null;
             $bones = is_array($puppet) ? array_values(array_filter(array_column((array) ($puppet['bones'] ?? []), 'name'), 'is_string')) : [];
             $clip = $spec ? self::clip($spec['id']) : null;
+            if ($clip === null) {   // a preset that is not offered (any more): the figure stands, its own keys stay
+                Log::info('animation preset ignored', ['animation' => $layers[$i]['animation'], 'asset' => $layer['asset'] ?? null]);
+            }
             if ($clip === null || $bones === []) {
                 $layers[$i] = $layer;
                 $report['dropped']++;

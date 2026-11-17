@@ -1,6 +1,4 @@
 {
- "_": "The animation presets the picker and the agents' schema offer. Each id has a clip in clips/ and its label in lang/*.json. Bart 11-17: the old library was thrown away; the walk is drawn as an 8-drawing cycle (engine-mvp/tools/walk8.py).",
- "presets": [
-  {"id": "walk", "label": "Walk"}
- ]
+ "_": "The animation presets the picker and the agents' schema offer: none (Bart 11-17: every bone animation went; drawn 8-frame walks come later). Each id would have a clip in clips/ and its label in lang/*.json. A lesson that names a preset that is not here is imported without it, and the server logs it.",
+ "presets": []
 }

@@ -11,6 +11,7 @@ use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LessonImporter;
 use App\Services\Stage25d\StageSet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -34,45 +35,37 @@ class AnimationPresetsTest extends TestCase
         $this->assertEquals($fixture['expected'], AnimationPresets::expand($fixture['clip'], $fixture['options']));
     }
 
-    public function test_the_server_lays_the_shipped_walk_out_as_the_editor_does(): void
+    public function test_the_server_lays_the_old_walk_clip_out_as_the_editor_does(): void
     {
         $fixture = json_decode((string) file_get_contents(base_path('tests/Fixtures/animations/expand-walk.json')), true);
+        $clip = json_decode((string) file_get_contents(base_path('tests/Fixtures/animations/walk-clip.json')), true);
 
-        $this->assertEquals($fixture['expected'], AnimationPresets::expand(AnimationPresets::clip($fixture['clip']), $fixture['options']));
+        $this->assertEquals($fixture['expected'], AnimationPresets::expand($clip, $fixture['options']));
     }
 
-    public function test_every_preset_in_the_catalogue_has_a_clip_and_a_label_in_every_language(): void
+    public function test_no_preset_is_offered_until_drawn_walks_come(): void
     {
-        $this->assertSame(['walk'], AnimationPresets::ids(), 'Bart 11-17: the old library went');
-        foreach (AnimationPresets::catalogue() as $p) {
-            $this->assertNotNull(AnimationPresets::clip($p['id']), "clip for {$p['id']}");
-            foreach (['nl', 'de', 'fr', 'es', 'it'] as $lang) {
-                $labels = json_decode((string) file_get_contents(lang_path("{$lang}.json")), true);
-                $this->assertArrayHasKey($p['label'], $labels, "{$lang} label for {$p['id']}");
-            }
-        }
+        $this->assertSame([], AnimationPresets::ids(), 'Bart 11-17: every bone animation went, the walk too');
+        $this->assertSame([], AnimationPresets::picker());
+        $this->assertNull(AnimationPresets::clip('walk'));
     }
 
-    public function test_the_writers_schema_and_brief_offer_exactly_the_presets_there_are(): void
+    public function test_the_writers_schema_and_brief_offer_no_preset(): void
     {
         $schema = json_decode((string) file_get_contents(base_path('tools/lessongen/lesson.schema.json')), true);
         $figure = data_get($schema, 'properties.scenes.items.properties.figures.items.properties.animation')
             ?? collect(data_get($schema, '$defs', []))->pluck('properties.figures.items.properties.animation')->filter()->first();
-        $this->assertNotNull($figure, 'figures[].animation in lesson.schema.json');
-        $this->assertSame(AnimationPresets::ids(), $figure['oneOf'][0]['enum']);
-        $this->assertSame(AnimationPresets::ids(), $figure['oneOf'][1]['properties']['id']['enum']);
-        $brief = (string) file_get_contents(base_path('tools/lessongen/writer-brief.md'));
-        foreach (AnimationPresets::ids() as $id) {
-            $this->assertStringContainsString($id, $brief);
-        }
+        $this->assertNotNull($figure, 'figures[].animation stays allowed, so an older lesson still validates');
+        $this->assertArrayNotHasKey('oneOf', $figure);
+        $this->assertArrayNotHasKey('enum', $figure);
+        $this->assertStringNotContainsString('Presets: walk', (string) file_get_contents(base_path('tools/lessongen/writer-brief.md')));
     }
 
-    public function test_an_animation_names_a_known_preset_and_its_timing_is_held_to_range(): void
+    public function test_an_animation_names_no_preset_now(): void
     {
-        $this->assertSame(['id' => 'walk', 'start' => 0.0, 'length' => null, 'speed' => 1.0], AnimationPresets::spec('walk'));
-        $this->assertSame(['id' => 'walk', 'start' => 0.0, 'length' => 3.0, 'speed' => 4.0], AnimationPresets::spec(['id' => 'walk', 'start' => -2, 'length' => 3, 'speed' => 99]));
-        $this->assertNull(AnimationPresets::spec('moonwalk'));
-        $this->assertNull(AnimationPresets::spec('wave'), 'a preset that was removed names nothing');
+        $this->assertNull(AnimationPresets::spec('walk'), 'the bone walk went');
+        $this->assertNull(AnimationPresets::spec(['id' => 'walk', 'start' => 1]));
+        $this->assertNull(AnimationPresets::spec('wave'));
         $this->assertNull(AnimationPresets::spec(['start' => 1]));
     }
 
@@ -118,18 +111,6 @@ class AnimationPresetsTest extends TestCase
         $this->assertEquals([0, 70, 0], array_column(AnimationPresets::expand($fall, ['facing' => -1]), 'rotation'));
     }
 
-    public function test_a_move_near_the_end_of_the_scene_is_cut_there(): void
-    {
-        Storage::fake('public');
-        $stage = ['bundle' => 'none', 'set' => ['layers' => [['asset' => 'f', 'depth' => 'fg', 'z' => 7.0, 'puppet' => $this->puppet(), 'animation' => ['id' => 'walk', 'start' => 7.5]]]]];
-
-        [$out] = AnimationPresets::fill($stage, 8.0);
-
-        $times = array_column($out['set']['layers'][0]['keys'], 't');
-        $this->assertLessThanOrEqual(8.0, max($times));
-        $this->assertSame(count($times), count(array_unique(array_map('strval', $times))), 'no keys squeezed onto one moment');
-    }
-
     public function test_a_saved_key_keeps_its_smooth_ease_and_its_face_and_nothing_else_that_is_not_a_number(): void
     {
         $keys = LayerKeys::sanitize([
@@ -141,32 +122,26 @@ class AnimationPresetsTest extends TestCase
         $this->assertSame([['t' => 1.0, 'bone:head' => 4.0, 'ease' => 'smooth', 'face' => 'smile'], ['t' => 2.0, 'bone:head' => 0.0]], $keys);
     }
 
-    public function test_a_figure_with_a_walk_gets_walk_keys_on_its_bones_and_crosses_the_ground(): void
+    public function test_a_figure_asking_for_a_walk_stands_keeps_its_own_keys_and_it_is_logged(): void
     {
         Storage::fake('public');
+        Log::spy();
+        $own = [['t' => 0.0, 'x' => 0.3], ['t' => 2.0, 'x' => 0.5, 'bone:head' => 4.0]];
         $stage = ['bundle' => 'none', 'set' => ['layers' => [
-            ['asset' => 'fig-a', 'depth' => 'fg', 'z' => 7.0, 'x' => 0.3, 'figure' => 'ana', 'puppet' => $this->puppet(), 'animation' => ['id' => 'walk', 'start' => 1]],
-            ['asset' => 'fig-b', 'depth' => 'fg', 'x' => 0.7, 'figure' => 'bo', 'animation' => 'walk'],
+            ['asset' => 'fig-a', 'depth' => 'fg', 'z' => 7.0, 'x' => 0.3, 'figure' => 'ana', 'puppet' => $this->puppet(), 'keys' => $own, 'animation' => ['id' => 'walk', 'start' => 1]],
             ['asset' => 'tree', 'depth' => 'mid'],
         ]]];
 
         [$out, $report] = AnimationPresets::fill($stage, 9.0);
 
-        $this->assertSame(['animated' => 1, 'dropped' => 1], $report, 'the figure without bones cannot walk');
-        $keys = $out['set']['layers'][0]['keys'];
-        $this->assertSame(1.0, $keys[0]['t']);
-        $this->assertSame('smooth', $keys[0]['ease']);
-        $this->assertArrayHasKey('bone:thigh_n', $keys[0]);
-        $this->assertGreaterThan(0.3, end($keys)['x'], 'facing right, a walk goes right');
-        $cycle = AnimationPresets::clip('walk')['duration'];
-        $this->assertEqualsWithDelta(1.0 + 3 * $cycle + min(0.5, $cycle / 2), end($keys)['t'], 0.01, 'a walk crosses the shot for a few steps, then settles, not the whole scene off screen');
-        $this->assertEquals(0, end($keys)['bone:thigh_n'], 'it stops standing, not mid-stride');
+        $this->assertSame(['animated' => 0, 'dropped' => 1], $report);
+        $this->assertSame($own, $out['set']['layers'][0]['keys'], 'the keys a figure already has stay as they are');
         $this->assertArrayNotHasKey('animation', $out['set']['layers'][0]);
-        $this->assertArrayNotHasKey('animation', $out['set']['layers'][1]);
-        $this->assertArrayNotHasKey('keys', $out['set']['layers'][2]);
+        $this->assertArrayNotHasKey('keys', $out['set']['layers'][1]);
+        Log::shouldHaveReceived('info')->withArgs(fn ($msg, $ctx) => $msg === 'animation preset ignored' && $ctx['animation']['id'] === 'walk');
     }
 
-    public function test_a_planned_scene_gives_a_figure_with_bones_the_preset_its_words_ask_for(): void
+    public function test_a_planned_scene_never_animates_a_figure_from_its_words(): void
     {
         Storage::fake('public');
         Storage::disk('public')->put('library/anim-test/library.json', json_encode(['assets' => [
@@ -178,25 +153,25 @@ class AnimationPresetsTest extends TestCase
         $layers = collect(StageSet::forScene('anim-test', 's1', 'Ana loopt naar Bo.')['set']['layers']);
 
         $ana = $layers->firstWhere('figure', 'ana');
-        $this->assertArrayHasKey('bone:thigh_n', $ana['keys'][0], 'Ana walks: the words say she does');
+        $this->assertNotNull($ana);
+        $this->assertArrayNotHasKey('keys', $ana, 'no walk from the words: she stands');
         $this->assertArrayNotHasKey('animation', $ana);
-        $this->assertArrayNotHasKey('keys', $layers->firstWhere('figure', 'bo'), 'Bo has no bones: nothing to play');
     }
 
-    public function test_a_composed_lesson_with_a_walk_imports_a_figure_that_walks(): void
+    public function test_a_composed_lesson_asking_for_a_walk_still_imports_and_the_figure_stands(): void
     {
         Storage::fake('public');
+        Log::spy();
         $lesson = json_decode((string) file_get_contents(base_path('tests/Fixtures/stage25d/mini-lesson.json')), true);
         $lesson['scenes'][0]['figures'][0]['animation'] = 'walk';
         $lesson['scenes'][0]['set']['layers'][1] = [...$lesson['scenes'][0]['set']['layers'][1], 'puppet' => $this->puppet(-1), 'animation' => 'walk'];
 
         $r = app(LessonImporter::class)->import($lesson, User::factory()->create());
 
-        $scene = Scene::where('lesson_id', $r['lesson_id'])->orderBy('order')->first();
-        $figure = $scene->config['stage25d']['set']['layers'][1];
+        $figure = Scene::where('lesson_id', $r['lesson_id'])->orderBy('order')->first()->config['stage25d']['set']['layers'][1];
         $this->assertArrayNotHasKey('animation', $figure);
-        $thigh = array_values(array_filter(array_column($figure['keys'], 'bone:thigh_n'), fn ($v) => $v !== null));
-        $this->assertGreaterThan(10, max(array_map('abs', $thigh)), 'the legs swing');
-        $this->assertSame([], array_values(array_filter($r['warnings'], fn ($w) => str_contains($w, 'animation'))));
+        $this->assertArrayNotHasKey('keys', $figure);
+        $this->assertNotEmpty(array_filter($r['warnings'], fn ($w) => str_contains($w, 'animation')));
+        Log::shouldHaveReceived('info')->withArgs(fn ($msg, $ctx) => $msg === 'animation preset ignored' && $ctx['animation'] === 'walk');
     }
 }

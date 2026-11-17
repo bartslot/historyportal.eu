@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import fixture from '../../../../tests/Fixtures/animations/expand.json'
 import walkFixture from '../../../../tests/Fixtures/animations/expand-walk.json'
-import walkClip from '../../../animations/clips/walk.json'
+import walkClip from '../../../../tests/Fixtures/animations/walk-clip.json'   // the old bone walk, kept as a fixture: the clip machinery stays for later
 import catalogue from '../../../animations/presets.json'
 import { CLIPS, MOVE_MIN, applyClip, clipSpan, expandClip, legRoom, legShareOf, loadClips } from '../presets.js'
 
@@ -38,7 +38,7 @@ describe('expandClip', () => {
     expect(expandClip(fall, { facing: -1 }).map((k) => k.rotation)).toEqual([0, 70, 0])
     expect(expandClip(fixture.clip, fixture.options).some((k) => 'rotation' in k)).toBe(false)
   })
-  it('the shipped walk lays out the same as the server (planted-foot keys and all)', () => {
+  it('the old walk clip lays out the same as the server (planted-foot keys and all)', () => {
     expect(expandClip(walkClip, walkFixture.options)).toEqual(walkFixture.expected)
   })
   it('a bone the rig does not have is skipped, so one clip fits every rig', () => {
@@ -80,12 +80,12 @@ describe('applyClip', () => {
 })
 
 describe('the shipped presets', () => {
-  it('the catalogue holds the walk only (Bart 11-17: the old library went), and it has its clip', () => {
-    expect(catalogue.presets.map((p) => p.id)).toEqual(['walk'])
-    expect(Object.keys(CLIPS)).toEqual(['walk'])
+  it('no preset is offered until drawn walks come (Bart 11-17: every bone animation went)', () => {
+    expect(catalogue.presets).toEqual([])
+    expect(Object.keys(CLIPS)).toEqual([])
   })
   it('each is a clip the stage can play: keys from 0 to 1, turns in degrees, a loop closing on itself', () => {
-    for (const clip of Object.values(CLIPS)) {
+    for (const clip of [walkClip, ...Object.values(CLIPS)]) {
       expect(clip.keys[0].t).toBe(0)
       expect(clip.keys[clip.keys.length - 1].t).toBe(1)
       expect(clip.duration).toBeGreaterThan(0)
