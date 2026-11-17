@@ -69,10 +69,16 @@ final class Cutouts
         if ($bundle === null || $assetId === null || $boxH <= 0 || $picH <= 0) {
             return null;
         }
-        try {
-            $asset = LibraryBundle::asset($bundle, $assetId);
-        } catch (\Throwable) {
-            return null;
+        if (($cut = self::idOf($assetId)) !== null) {
+            // cut from a cut-out: its own metres (or the default it stands at on the stage)
+            $own = SvgAsset::query()->whereKey($cut)->whereIn('source', [self::SOURCE, self::REMOVED])->first();
+            $asset = $own ? ['height_m' => $own->height_m ?: self::DEFAULT_HEIGHT_M] : null;
+        } else {
+            try {
+                $asset = LibraryBundle::asset($bundle, $assetId);
+            } catch (\Throwable) {
+                return null;
+            }
         }
         $m = (float) ($asset['height_m'] ?? 0);
 

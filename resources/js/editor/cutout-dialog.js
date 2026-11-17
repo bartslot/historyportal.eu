@@ -348,7 +348,7 @@ export async function openCutout (target) {
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
       if (!cut || !fits(cut.dataUrl)) return
-      const from = target.from ? { ...target.from, box_h: cut.box.h, height: cut.height } : {}
+      const from = target.from ? { ...target.from, box_h: cut.box.h, height: target.from.height ?? cut.height } : {}
       // an asset of its own, the picture itself untouched: the editor stays, with the work in it
       saving(e.currentTarget, () => wire.saveCutout(cut.dataUrl, target.title || '', from))
     })

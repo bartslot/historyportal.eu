@@ -69,6 +69,17 @@ class CutoutTest extends TestCase
         $this->assertStringStartsWith("cutouts/{$teacher->id}/", $asset->svg_path);
     }
 
+    public function test_a_cut_out_of_a_cut_out_keeps_metres_from_the_one_it_was_cut_from(): void
+    {
+        // Bart 11-17: a birch cut from his own cut-out came out 2 m, the size of a cut-out with no known height
+        $teacher = User::factory()->create();
+        $first = SvgAsset::create(['user_id' => $teacher->id, 'source' => Cutouts::SOURCE, 'source_ref' => 'a', 'source_url' => '',
+            'title' => 'Cut-out of Birch', 'license' => 'x', 'svg_path' => 'cutouts/a.webp', 'width' => 300, 'height' => 800, 'height_m' => 14.0]);
+
+        $this->assertSame(7.0, Cutouts::heightM(['bundle' => 'nl-prehistory', 'asset' => 'cut-'.$first->id, 'box_h' => 400, 'height' => 800]));
+        $this->assertNull(Cutouts::heightM(['bundle' => 'nl-prehistory', 'asset' => 'cut-999999', 'box_h' => 400, 'height' => 800]));
+    }
+
     public function test_a_bad_picture_saves_nothing(): void
     {
         $teacher = User::factory()->create();

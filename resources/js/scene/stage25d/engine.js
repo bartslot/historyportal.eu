@@ -531,8 +531,10 @@ export async function createStage25d (host, opts = {}) {
         // a person from the Character tab is called by its own name (the row label adds "(bones)")
         title: asset.character ? (asset.name?.[(document.documentElement.lang || 'en').slice(0, 2)] ?? asset.name?.en ?? '') : api.items().find((r) => r.id === id)?.label ?? layerLabel({}, asset, (document.documentElement.lang || 'en').slice(0, 2)),
         original: row.src ? new URL(row.src, location.href).href : puppet ? new URL(puppet.atlas, location.href).href : libData.base + asset.file,
-        // an edited copy has its own pixel size: no metres from the library's
-        from: row.src ? null : { bundle: libData.bundle, asset: asset.id },
+        // an edited copy keeps the library file's pixels (cropped or not: sprite.ts editedAsset), so its metres per pixel
+        // are the library's: height is the library px a cut's box_h is measured against (Bart 11-17: a birch cut from
+        // his edited birch came out 2 m, the size of a cut-out with no metres at all)
+        from: { bundle: libData.bundle, asset: asset.id, ...(row.src ? { height: asset.h } : {}) },
         edited: !!row.src,
         // a picture on the ground is cropped to its paint on save (editor/trim.js); a figure's sheet and an animation keep their grid
         trim: layerIndex(id) >= 0 && !puppet && !isAnimation(asset) ? {

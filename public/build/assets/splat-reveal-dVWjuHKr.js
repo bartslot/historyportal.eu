@@ -1,4 +1,4 @@
-import{k as r}from"./babylon-BN1RBZWF.js";import{W as l}from"./engine-5seUwOip.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-B0KaX9MG.js";import"./load-image-DngxJD_v.js";import"./presets-BNozUYiv.js";import"./draw-options-D-a8RLUv.js";import"./easing-HS2C6-zA.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-DDg5BuN8.js";import"./i18n-DoByrmTl.js";import"./big-countdown-ClaUuyTg.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
+import{k as r}from"./babylon-BN1RBZWF.js";import{W as l}from"./engine-CxonU105.js";import"./vite-helpers-DqutJMZx.js";import"./puppet-sheet-B0KaX9MG.js";import"./load-image-DngxJD_v.js";import"./presets-BNozUYiv.js";import"./draw-options-D-a8RLUv.js";import"./easing-HS2C6-zA.js";import"./config-DwQUN7uY.js";import"./ArtworkOverlay-DzhUKI_d.js";import"./i18n-DoByrmTl.js";import"./big-countdown-qJ2UnnzH.js";import"./ambient-CEzLlAaX.js";import"./alpha-mask-C1RIm4VB.js";import"./projection-CL24asTn.js";const a=`
 {
   float t = revealT;
   vec3 p = splat.center.xyz;
