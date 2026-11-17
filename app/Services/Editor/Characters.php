@@ -131,6 +131,31 @@ final class Characters
         ]);
     }
 
+    /** One saved person per kit body (atlas, shade, thumb, puppet + recipe): what a made-for-you character starts as. */
+    public const STARTERS = 'character-kits/babylonia-old-babylonian/v1/starters';
+
+    public const BODIES = ['man', 'woman', 'girl'];
+
+    /**
+     * A plain person of a kit body for a name the teacher has no character for yet (an import's cast): the body's
+     * starter look under that name, marked `auto` so the teacher knows to dress it. Saving it in the Character tab
+     * keeps the id and drops the mark. Goes through save(), so it is checked like any character.
+     */
+    public static function starter(User $user, string $name, string $body, ?float $heightM = null): ?SvgAsset
+    {
+        $dir = public_path(self::STARTERS);
+        $spec = in_array($body, self::BODIES, true) ? json_decode((string) @file_get_contents("{$dir}/{$body}.json"), true) : null;
+        if (! is_array($spec) || ! is_array($spec['recipe'] ?? null) || ! is_array($spec['puppet'] ?? null)) {
+            return null;
+        }
+        $url = fn (string $file) => is_file("{$dir}/{$file}") ? 'data:image/webp;base64,'.base64_encode((string) file_get_contents("{$dir}/{$file}")) : '';
+        $recipe = ['role' => $name] + ($heightM !== null ? ['height_m' => $heightM] : []) + $spec['recipe'];
+        $asset = self::save($user, null, $url("{$body}.webp"), $url("{$body}-shade.webp"), $spec['puppet'], $recipe, $name, $url("{$body}-thumb.webp"));
+        $asset?->update(['character' => ['auto' => true] + $asset->character]);
+
+        return $asset;
+    }
+
     /** The shade mask's file beside an atlas (stage25d layer.ts shadeMaskUrl). */
     public static function shadePath(string $atlas): string
     {
