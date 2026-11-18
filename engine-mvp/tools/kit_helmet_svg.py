@@ -51,4 +51,15 @@ svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{
 </svg>
 '''
 OUT.write_text(svg)
+# point kit.json at it with its content in the URL (the SVG is cached for a month), as kit_bake.svg_pieces does on a bake
+import json  # noqa: E402
+import hashlib  # noqa: E402
+kit_path = OUT.parents[1] / 'kit.json'
+kit = json.loads(kit_path.read_text())
+for b in kit['bodies']:
+    for pc in b['pieces']:
+        if pc['id'] == 'headwear/man-helmet':
+            pc['files'] = {'svg': f'{OUT.name}?v={hashlib.sha256(svg.encode()).hexdigest()[:10]}'}
+            pc['box'] = [OX, OY, W, H]
+kit_path.write_text(json.dumps(kit, indent=1))
 print(OUT)

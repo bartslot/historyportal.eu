@@ -17,6 +17,7 @@ JOBS at a time.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import os
@@ -532,8 +533,10 @@ def svg_pieces(body: str, pieces: list[dict]) -> None:
         src = OUT / body / (pc['id'].replace('/', '-') + '.svg')
         if not src.exists():
             continue
-        box = re.search(r'data-box="([\d. ]+)"', src.read_text())
-        pc['files'] = {'svg': src.name}
+        text = src.read_text()
+        box = re.search(r'data-box="([\d. ]+)"', text)
+        # the SVG is cached for a month: its URL carries its content, so a changed shape reaches every browser
+        pc['files'] = {'svg': f'{src.name}?v={hashlib.sha256(text.encode()).hexdigest()[:10]}'}
         pc['box'] = [int(float(v)) for v in box.group(1).split()]
 
 
