@@ -1975,6 +1975,57 @@
      }
     },
     {
+     "id": "hair/man-curly-short",
+     "slot": "hair",
+     "label": "Curly short",
+     "kinds": [
+      "hair"
+     ],
+     "box": [
+      799,
+      53,
+      397,
+      348
+     ],
+     "files": {
+      "svg": "hair-man-curly-short.svg?v=6252f78198"
+     }
+    },
+    {
+     "id": "hair/man-curly-long",
+     "slot": "hair",
+     "label": "Curly long",
+     "kinds": [
+      "hair"
+     ],
+     "box": [
+      787,
+      41,
+      420,
+      465
+     ],
+     "files": {
+      "svg": "hair-man-curly-long.svg?v=36613b538e"
+     }
+    },
+    {
+     "id": "hair/man-straight-bowl",
+     "slot": "hair",
+     "label": "Straight bowl",
+     "kinds": [
+      "hair"
+     ],
+     "box": [
+      816,
+      70,
+      363,
+      310
+     ],
+     "files": {
+      "svg": "hair-man-straight-bowl.svg?v=a43827a766"
+     }
+    },
+    {
      "id": "hair/man-beard",
      "slot": "beard",
      "label": "Beard",
