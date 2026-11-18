@@ -18,6 +18,7 @@ JOBS at a time.
 from __future__ import annotations
 
 import json
+import re
 import os
 import subprocess
 import sys
@@ -524,6 +525,18 @@ def find_or_none(p: Path) -> Path | None:
     return f if f.is_file() and m.is_file() else None
 
 
+def svg_pieces(body: str, pieces: list[dict]) -> None:
+    """A piece with an SVG beside the baked files (<body>/<piece>.svg, e.g. kit_helmet_svg.py) is drawn from that SVG in
+    the browser (resources/js/character/svg-piece.js): a re-bake keeps it, with the box the SVG names."""
+    for pc in pieces:
+        src = OUT / body / (pc['id'].replace('/', '-') + '.svg')
+        if not src.exists():
+            continue
+        box = re.search(r'data-box="([\d. ]+)"', src.read_text())
+        pc['files'] = {'svg': src.name}
+        pc['box'] = [int(float(v)) for v in box.group(1).split()]
+
+
 def presets() -> list[dict]:
     out = []
     for pid, p in P.PRESETS.items():
@@ -550,6 +563,8 @@ def main() -> None:
         kit = json.loads((OUT / 'kit.json').read_text())
         for b in kit['bodies']:
             for pc in b['pieces']:
+                if 'fill' not in pc['files']:   # an SVG piece: nothing baked to snap
+                    continue
                 path = OUT / b['id'] / pc['files']['fill']
                 f = snap(np.asarray(Image.open(path).convert('RGBA')))
                 if pc['slot'] == 'outfit':   # eye-white on a body is a nail glint or a collar speck: the colour beside it
@@ -576,6 +591,8 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as t, ThreadPoolExecutor(JOBS) as pool:
         made = {b: bake_body(b, pool, Path(t)) for b in bodies}
     kept = {b['id']: b for b in old.get('bodies', []) if b['id'] not in made}
+    for b, made_body in made.items():
+        svg_pieces(b, made_body['pieces'])
     kit = {
         'id': KIT_ID, 'version': 1, 'view': 'front34', 'paper': '#f6f5ee', 'ink': '#191410',
         'kinds': KINDS, 'kindDefaults': KIND_DEFAULT,

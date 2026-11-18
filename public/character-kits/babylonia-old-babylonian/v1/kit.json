@@ -2003,16 +2003,13 @@
       "ochre"
      ],
      "box": [
-      837,
-      54,
-      346,
-      299
+      790,
+      4,
+      412,
+      340
      ],
      "files": {
-      "fill": "headwear-man-helmet.webp",
-      "ink": "headwear-man-helmet-ink.webp",
-      "shade": "headwear-man-helmet-shade.webp",
-      "cast": "headwear-man-helmet-cast.webp"
+      "svg": "headwear-man-helmet.svg"
      }
     },
     {
