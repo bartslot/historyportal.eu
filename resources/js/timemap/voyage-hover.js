@@ -1,4 +1,5 @@
 import { arcTable, SAMPLES_PER_SEGMENT } from './voyages.js';
+import transportCatalog from './transports.json';
 
 // Where along a route the pointer is, and what day the fleet was there.
 //
@@ -132,4 +133,25 @@ export const nearestOnRoute = (coords, lng, lat) => {
     if (!best || distance < best.distance) best = { sample: i - 1 + t, lng: qx, lat: qy, distance };
   }
   return best;
+};
+
+const LAND = new Set((transportCatalog?.transports ?? []).filter((t) => t?.terrain === 'land').map((t) => t.id));
+
+/**
+ * The overland transport at a point on the route ('horse', 'camel'), or null on a sea leg.
+ * The hover label names this instead of the fleet: Marco Polo crossed Persia by camel, not in the
+ * galley he sailed from Venice in.
+ *
+ * @param {{ legs?: Array<object> }} voyage  a voyages.json entry
+ * @param {number} sample  fractional index into smooth(voyage.waypoints)
+ * @returns {string|null}
+ */
+export const landTransportAtSample = (voyage, sample) => {
+  const wp = sample / SAMPLES_PER_SEGMENT;
+  const leg = (voyage?.legs ?? []).find((l) => {
+    const a = Number(l?.wp?.[0]);
+    const b = Number(l?.wp?.[1] ?? a);
+    return wp >= Math.min(a, b) - 1e-6 && wp <= Math.max(a, b) + 1e-6;
+  });
+  return leg && LAND.has(leg.transport) ? leg.transport : null;
 };

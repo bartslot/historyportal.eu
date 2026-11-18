@@ -8,7 +8,7 @@
     {{-- Map canvas fills the full viewport (below the navbar). Use h-full/w-full (not absolute
          inset-0): MapLibre's own CSS forces position:relative on the container, which cancels
          inset-0 and collapses it to 0 height. --}}
-    <div x-ref="map" class="h-full w-full" wire:ignore></div>
+    <div x-ref="map" class="h-full w-full" wire:ignore data-transport-names="{{ json_encode($transportNames) }}"></div>
 
     {{-- Papery overlay: a tileable parchment grain blended over the whole map for an old-paper feel.
          pointer-events-none so it never blocks map interaction. Swap public/timemap/parchment.png

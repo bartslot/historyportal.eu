@@ -1,6 +1,6 @@
 import voyagesData from './voyages.json';
 import { smooth, setVoyageHighlight } from './voyages.js';
-import { dateAtSample, formatVoyageDate, nearestOnRoute } from './voyage-hover.js';
+import { dateAtSample, formatVoyageDate, landTransportAtSample, nearestOnRoute } from './voyage-hover.js';
 
 // Pointer behaviour on the voyage routes: the cursor, the selection highlight, and the hover that
 // brings the fleet to the point under the pointer with the date it was there.
@@ -39,10 +39,11 @@ const makeLabel = (container) => {
 
 /**
  * @param {import('maplibre-gl').Map} map
- * @param {{ ships: () => any, locale?: string }} options  ships() returns the voyage-ships handle
- *   once its lazy chunk has loaded (null before)
+ * @param {{ ships: () => any, locale?: string, transportNames?: Record<string, string> }} options  ships()
+ *   returns the voyage-ships handle once its lazy chunk has loaded (null before); transportNames are the
+ *   overland transports' names in the page language ({ camel: 'Kameel' }), from the Blade view
  */
-export function initVoyageInteraction(map, { ships, locale = 'en' } = {}) {
+export function initVoyageInteraction(map, { ships, locale = 'en', transportNames = {} } = {}) {
   // Into the map's WRAPPER, not the map: MapLibre's canvas paints over anything inside its own
   // container, and the map element itself is shifted to centre the globe above the deck.
   const host = map.getContainer().parentElement || map.getContainer();
@@ -72,7 +73,9 @@ export function initVoyageInteraction(map, { ships, locale = 'en' } = {}) {
     }
 
     const date = dateAtSample(route.voyage, route.coords, hit.sample);
-    label.names.textContent = fleetNames(route.voyage) || route.voyage.name;
+    // Over land the traveller is on a camel or a horse, not on the fleet's ships.
+    const overland = landTransportAtSample(route.voyage, hit.sample);
+    label.names.textContent = (overland && transportNames[overland]) || fleetNames(route.voyage) || route.voyage.name;
     // No dated point covers this stretch: say only what we know, the voyage's years.
     label.date.textContent = date
       ? formatVoyageDate(date, locale)

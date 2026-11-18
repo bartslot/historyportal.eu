@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dateAtSample, datedPoints, formatVoyageDate, nearestOnRoute } from '../voyage-hover.js'
+import { dateAtSample, datedPoints, formatVoyageDate, landTransportAtSample, nearestOnRoute } from '../voyage-hover.js'
 import { smooth, SAMPLES_PER_SEGMENT } from '../voyages.js'
 import voyagesDoc from '../voyages.json'
 
@@ -84,5 +84,23 @@ describe('nearestOnRoute', () => {
     const hit = nearestOnRoute(pacific, -175, -10.2)
     expect(hit.lng).toBeCloseTo(185, 6)
     expect(hit.sample).toBeCloseTo(0.75, 6)
+  })
+})
+
+describe('landTransportAtSample', () => {
+  const marco = voyage('marco-polo-1271')
+
+  it('names the mount on Marco Polo\'s land legs, so the label never says galley over Persia', () => {
+    expect(landTransportAtSample(marco, 8 * S)).toBe('camel')    // Persian desert, wp 7-10
+    expect(landTransportAtSample(marco, 5.5 * S)).toBe('horse')  // Anatolian highlands, wp 4-7
+  })
+
+  it('stays null at sea, where the fleet names belong', () => {
+    expect(landTransportAtSample(marco, 1.5 * S)).toBeNull()     // Venice to Acre
+    expect(landTransportAtSample(marco, 25 * S)).toBeNull()      // the sea road home
+  })
+
+  it('stays null on a route without legs', () => {
+    expect(landTransportAtSample({ waypoints: [[0, 0], [1, 1]] }, 3)).toBeNull()
   })
 })

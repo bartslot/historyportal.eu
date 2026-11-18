@@ -2107,6 +2107,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     voyageInteract = initVoyageInteraction(map, {
       ships: () => voyageShips,
       locale: document.documentElement.lang || 'en',
+      transportNames: JSON.parse(el.dataset.transportNames || '{}'),
     });
     // The sailing tall ship (three.js custom layer) rides in its own lazy chunk — same
     // below-the-clouds placement, same era window as the routes.
