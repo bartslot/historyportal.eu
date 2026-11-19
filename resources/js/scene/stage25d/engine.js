@@ -551,6 +551,7 @@ export async function createStage25d (host, opts = {}) {
         trim: layerIndex(id) >= 0 && !puppet && !isAnimation(asset) ? {
           crop: row.edit_state?.crop ?? [0, 0],
           anchorPx: [(asset.anchor?.[0] ?? 0.5) * asset.w, (asset.anchor?.[1] ?? 1) * asset.h],
+          size: [asset.w, asset.h],
           state: row.edit_state ?? null,
         } : null,
         el: host,

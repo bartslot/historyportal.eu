@@ -33,4 +33,11 @@ describe('a stage picture cropped to its paint on save (Bart 11-16)', () => {
     expect(cropOf(null, 400, 300)).toBeNull()
     expect(cropOf({ x: 0, y: 0, w: 400, h: 150 }, 400, 300)).toEqual({ x: 0, y: 0, w: 400, h: 150 })
   })
+
+  it('paint reaching past the library picture (another picture saved on the row, or paint below the foot) stands on the ground', () => {
+    // Bart 11-19: a 653 x 2057 figure saved on a 400 x 445 axe row had its foot at 21% of its height and sank into the floor
+    const axe = { crop: [0, 0], anchorPx: [146.4, 445], state: null, size: [400, 445] }
+    expect(trimState(axe, { x: 31, y: 15, w: 653, h: 2057 }).anchor).toEqual([0.5, 1])
+    expect(trimState(axe, { x: 0, y: 0, w: 400, h: 600 }).anchor[1]).toBe(1)
+  })
 })
