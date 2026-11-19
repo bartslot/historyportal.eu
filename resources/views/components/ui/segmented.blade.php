@@ -2,8 +2,8 @@
     /** Radio-group name. Must be unique on the page — two groups sharing a name share a selection. */
     'name',
     /**
-     * [[value, label], …] — labels already translated by the caller. A third item is an icon: the
-     * `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
+     * [[value, label], …] — labels already translated by the caller. A third item is an icon: ['ui' => name] for a file in
+     * resources/ui-icons (App\Support\UiIcon), the `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
      * for a filled glyph (App\Support\TabIcons), ['motion' => ms, 'factor' => f] for a
      * movement's own curve that plays on hover, or ['moves' => kind] for a picture that moves that
      * way while it shows (.motion-preview in app.css). The tab then shows the icon, and the label becomes
@@ -57,7 +57,9 @@
                        @if ($model) x-model="{{ $model }}" @endif
                        @if ($onChange) x-on:change="{{ $onChange }}" @endif
                        @checked($value !== null && (string) $value === (string) $optValue) />
-                @if (is_array($optIcon) && isset($optIcon['mask']))
+                @if (is_array($optIcon) && isset($optIcon['ui']))
+                    <x-ui.icon :name="$optIcon['ui']" class="h-5 w-5" />
+                @elseif (is_array($optIcon) && isset($optIcon['mask']))
                     <span class="{{ $optIcon['class'] ?? 'h-5 w-5' }} bg-current" aria-hidden="true"
                           style="mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat; -webkit-mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat"></span>
                 @elseif (is_array($optIcon) && isset($optIcon['fill']))

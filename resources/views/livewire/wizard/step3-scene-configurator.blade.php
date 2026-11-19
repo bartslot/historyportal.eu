@@ -1399,25 +1399,24 @@
          Internal notes. Persisted to localStorage; the rail also syncs its Scenes checkbox. --}}
     @push('scripts')
     <script>
-    // Object-list row icons (from the shared ui_icons pack). Type glyphs replace the old
-    // TEXT/PANEL/BG text tags. `currentColor` lets each inherit the row's text colour.
+    // Object-list row icons: a glyph per kind, in the row's text colour (currentColor).
     window.__objIcons = {
-        text:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.25 19.5H3.75C3.35218 19.5 2.97064 19.342 2.68934 19.0607C2.40804 18.7794 2.25 18.3978 2.25 18V6C2.25 5.60218 2.40804 5.22064 2.68934 4.93934C2.97064 4.65804 3.35218 4.5 3.75 4.5H20.25C20.6478 4.5 21.0294 4.65804 21.3107 4.93934C21.592 5.22064 21.75 5.60218 21.75 6V18C21.75 18.3978 21.592 18.7794 21.3107 19.0607C21.0294 19.342 20.6478 19.5 20.25 19.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.18335 9.3667C8.80595 9.3667 8.5 9.06075 8.5 8.68335C8.5 8.30595 8.80595 8 9.18335 8H14.8167C15.1941 8 15.5 8.30595 15.5 8.68335C15.5 9.06075 15.1941 9.3667 14.8167 9.3667H12.7882V16.2118C12.7882 16.6471 12.4353 17 12 17C11.5647 17 11.2118 16.6471 11.2118 16.2118V9.3667H9.18335Z" fill="currentColor"/></svg>',
-        panelL: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0122 3.86951C21.1166 3.86977 22.0122 4.7651 22.0122 5.86951V18.475L22.0015 18.6791C21.899 19.6874 21.0475 20.4738 20.0122 20.474L20.0112 20.475H3.98779L3.78369 20.4642C2.84228 20.3688 2.0942 19.6204 1.99854 18.6791L1.98779 18.475V5.86951C1.98779 4.76494 2.88322 3.86951 3.98779 3.86951H20.0122ZM10.5522 18.975H20.0122C20.288 18.9747 20.5119 18.7507 20.5122 18.475V5.86951C20.5122 5.59353 20.2881 5.36977 20.0122 5.36951H10.5522V18.975Z" fill="currentColor"/></svg>',
-        panelR: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0122 3.86951C21.1168 3.86951 22.0122 4.76494 22.0122 5.86951V18.475C22.0122 19.5796 21.1168 20.475 20.0122 20.475H3.98779L3.78369 20.4642C2.84228 20.3688 2.0942 19.6204 1.99854 18.6791L1.98779 18.475V5.86951C1.98779 4.76494 2.88322 3.86951 3.98779 3.86951H20.0122ZM3.98779 5.36951C3.71165 5.36951 3.48779 5.59336 3.48779 5.86951V18.475C3.48806 18.7509 3.71181 18.975 3.98779 18.975H13.4478V5.36951H3.98779Z" fill="currentColor"/></svg>',
-        photo:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15.75L7.409 10.591C7.61793 10.3821 7.86597 10.2163 8.13896 10.1033C8.41194 9.99018 8.70452 9.93198 9 9.93198C9.29548 9.93198 9.58806 9.99018 9.86104 10.1033C10.134 10.2163 10.3821 10.3821 10.591 10.591L15.75 15.75M14.25 14.25L15.659 12.841C15.8679 12.6321 16.116 12.4663 16.389 12.3533C16.6619 12.2402 16.9545 12.182 17.25 12.182C17.5455 12.182 17.8381 12.2402 18.111 12.3533C18.384 12.4663 18.6321 12.6321 18.841 12.841L21.75 15.75M3.75 19.5H20.25C20.6478 19.5 21.0294 19.342 21.3107 19.0607C21.592 18.7794 21.75 18.3978 21.75 18V6C21.75 5.60218 21.592 5.22064 21.3107 4.93934C21.0294 4.65804 20.6478 4.5 20.25 4.5H3.75C3.35218 4.5 2.97064 4.65804 2.68934 4.93934C2.40804 5.22064 2.25 5.60218 2.25 6V18C2.25 18.3978 2.40804 18.7794 2.68934 19.0607C2.97064 19.342 3.35218 19.5 3.75 19.5ZM14.625 8.25C14.625 8.66421 14.2892 9 13.875 9C13.4608 9 13.125 8.66421 13.125 8.25C13.125 7.83579 13.4608 7.5 13.875 7.5C14.2892 7.5 14.625 7.83579 14.625 8.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        solid:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M20.0049 19.6379H9.00488C8.73967 19.6379 8.48531 19.5325 8.29778 19.345C8.11024 19.1574 8.00488 18.9031 8.00488 18.6379V10.6379C8.00488 10.3727 8.11024 10.1183 8.29778 9.93077C8.48531 9.74324 8.73967 9.63788 9.00488 9.63788H20.0049C20.2701 9.63788 20.5245 9.74324 20.712 9.93077C20.8995 10.1183 21.0049 10.3727 21.0049 10.6379V18.6379C21.0049 18.9031 20.8995 19.1574 20.712 19.345C20.5245 19.5325 20.2701 19.6379 20.0049 19.6379Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.1345 9.6989C14.1345 6.75148 11.7451 4.36212 8.79772 4.36212C5.8503 4.36212 3.46095 6.75148 3.46095 9.6989C3.44224 11.3303 4.45651 14.5767 8.41688 14.5767" stroke="currentColor" stroke-width="1.5"/></svg>',
-        map:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 6.75 3.75 4.5v12.75L9 19.5m0-12.75 6 2.25m-6-2.25v12.75m6-10.5 5.25-2.25V15L15 17.25m0-10.5v10.5m0 0-6-2.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        person: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        cloud:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        vfx:    '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        leaf:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M5.25 18.75C5.25 10.5 10.5 4.5 19.5 4.5c0 9-6 14.25-14.25 14.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.75 20.25 13.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        balloon: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        camera: '<svg viewBox="0 0 100 100" fill="currentColor" class="h-4 w-4"><path d="m10 83.375h52.25c5.5195-0.007812 9.9922-4.4805 10-10v-4.8438l0.070312 0.03125 17.168 8.4609c2.5391 1.25 5.1797 1.2266 7.2539-0.066407 2.0703-1.2852 3.2578-3.6445 3.2578-6.4727v-40.969c0-2.8281-1.1875-5.1875-3.2656-6.4766-2.0742-1.2891-4.7188-1.3125-7.2539-0.066406l-17.234 8.4922v-4.8438l0.003906 0.003906c-0.007812-5.5195-4.4805-9.9922-10-10h-52.25c-5.5195 0.007812-9.9922 4.4805-10 10v46.75c0.0078125 5.5195 4.4805 9.9922 10 10zm-2.7539-56.75c0.019531-1.5117 1.2422-2.7344 2.7539-2.7539h52.25c1.5195 0.003906 2.75 1.2344 2.75 2.7539v16.492l5.2227-2.5703 4.4727-2.2031 17.984-8.8672 0.070312-0.03125v0.074219 40.965 0.074219l-0.066406-0.03125-17.172-8.4609-2.5938-1.2773-2.6992-1.3281-5.2227-2.5703v16.492l0.003906-0.007812c0 1.5195-1.2305 2.75-2.75 2.7539h-52.25c-1.5117-0.019531-2.7344-1.2422-2.7539-2.7539z"/></svg>',
-        // a floor in perspective (the terrain): Heroicons outline weight, 24 px, stroke 1.5
-        terrain: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M7.5 6.75h9l5.25 12.75H2.25L7.5 6.75ZM6.12 10.1h11.76M4.56 13.9h14.88M12 6.75V19.5M9.75 6.75 7.5 19.5M14.25 6.75l2.25 12.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        group:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        // Each kind's icon is a file in resources/ui-icons (App\Support\UiIcon), named for the kind.
+        text: @js(\App\Support\UiIcon::svg('layer-text', ['class' => 'h-4 w-4'])),
+        panelL: @js(\App\Support\UiIcon::svg('layer-panel-left', ['class' => 'h-4 w-4'])),
+        panelR: @js(\App\Support\UiIcon::svg('layer-panel-right', ['class' => 'h-4 w-4'])),
+        photo: @js(\App\Support\UiIcon::svg('layer-picture', ['class' => 'h-4 w-4'])),
+        solid: @js(\App\Support\UiIcon::svg('layer-solid', ['class' => 'h-4 w-4'])),
+        map: @js(\App\Support\UiIcon::svg('layer-map', ['class' => 'h-4 w-4'])),
+        person: @js(\App\Support\UiIcon::svg('layer-person', ['class' => 'h-4 w-4'])),
+        cloud: @js(\App\Support\UiIcon::svg('layer-sky', ['class' => 'h-4 w-4'])),
+        vfx: @js(\App\Support\UiIcon::svg('layer-effect', ['class' => 'h-4 w-4'])),
+        leaf: @js(\App\Support\UiIcon::svg('layer-plant', ['class' => 'h-4 w-4'])),
+        balloon: @js(\App\Support\UiIcon::svg('layer-balloon', ['class' => 'h-4 w-4'])),
+        camera: @js(\App\Support\UiIcon::svg('layer-camera', ['class' => 'h-4 w-4'])),
+        terrain: @js(\App\Support\UiIcon::svg('layer-terrain', ['class' => 'h-4 w-4'])),
+        group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
+        quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
     // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
@@ -2174,9 +2173,7 @@
         <a href="{{ $isGuestDemo ? route('home') : route('teacher.lessons.index') }}" wire:navigate data-editor-exit
            class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
            data-tooltip="{{ $wizardExitLabel }}" aria-label="{{ $wizardExitLabel }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
+            <x-ui.icon name="exit" class="h-6 w-6" />
         </a>
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
@@ -2184,9 +2181,7 @@
                     class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
                     :class="viewOpen && 'bg-sky-500/15 text-panel-link'"
                     data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
-                </svg>
+                <x-ui.icon name="panels" class="h-6 w-6" />
             </button>
             <div x-show="viewOpen" x-cloak @click.outside="viewOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-slate-900 p-1.5">
@@ -2203,9 +2198,7 @@
                             @click="(item.k === 'scenes' ? $store.view.toggleScenes() : $store.view.toggle(item.k)); viewOpen = false"
                             class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800">
                         <span class="flex h-4 w-4 shrink-0 items-center justify-center text-primary">
-                            <svg x-show="$store.view[item.k]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
+                            <x-ui.icon name="check" class="h-3.5 w-3.5" x-show="$store.view[item.k]" stroke-width="2.5" />
                         </span>
                         <span x-text="item.label"></span>
                     </button>
@@ -2220,9 +2213,7 @@
                 onclick="Livewire.dispatch('lesson:play')"
                 class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                 data-tour="play" data-tooltip="{{ __('Play the lesson') }}" aria-label="{{ __('Play the lesson') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z" />
-            </svg>
+            <x-ui.icon name="play" class="h-6 w-6" />
         </button>
 
         {{-- Add, with the draw tool under Tools: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
@@ -2232,14 +2223,14 @@
                     :class="addOpen && 'bg-sky-500/15 text-panel-link'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
                     data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
-                <x-icons.plus class="h-6 w-6" />
+                <x-ui.icon name="add" class="h-6 w-6" />
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
                 <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Scene') }}</p>
                 <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.plus class="h-4 w-4 shrink-0 text-primary" />
+                    <x-ui.icon name="add" class="h-4 w-4 shrink-0 text-primary" />
                     <span class="flex-1 font-medium">{{ __('Add Scene') }}</span>
                     <span class="text-xs text-panel-hint">{{ __('Below current') }}</span>
                 </button>
@@ -2247,30 +2238,30 @@
                 <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Layer') }}</p>
                 <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-text')); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.pencil class="h-4 w-4 shrink-0 text-panel-hint" />
+                    <x-ui.icon name="text" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Text') }}</span>
                 </button>
                 <button type="button" @click="$wire.addBalloon(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z"/></svg>
+                    <x-ui.icon name="balloon" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Speech balloon') }}</span>
                 </button>
                 {{-- A sound word or a shouted word (ComicAmerica): a balloon kind with no bubble and no tail. --}}
                 <button type="button" @click="$wire.addBalloon('sound'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.megaphone class="h-4 w-4 shrink-0 text-panel-hint" />
+                    <x-ui.icon name="sound-word" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Sound word') }}</span>
                 </button>
                 <button type="button" @click="Livewire.dispatch('open-image-library'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.photo class="h-4 w-4 shrink-0 text-panel-hint" />
+                    <x-ui.icon name="image" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Image') }}</span>
                 </button>
                 {{-- Icons open the dock's Icons tab rather than a modal: the whole point of the
                      panel is that the scene stays visible while you pick and drag. --}}
                 <button type="button" @click="$store.view.showTab('icons'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-icons.puzzle-piece class="h-4 w-4 shrink-0 text-panel-hint" />
+                    <x-ui.icon name="assets" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Assets') }}</span>
                 </button>
                 {{-- 3D model / video AS A LAYER (an iframe layer on top of the scene, like clipart). --}}
@@ -2278,18 +2269,16 @@
                      prompt that asked the teacher to go and find a link somewhere else. --}}
                 <button type="button" @click="$wire.openModelPicker(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                    <x-ui.icon name="model-3d" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('3D model') }}</span>
                 </button>
                 <button type="button" @click="const l = window.prompt(@js(__('Paste a YouTube / Vimeo link'))); if (l) $wire.addEmbedLayer(l, 'video'); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h8.25a2.25 2.25 0 0 0 2.25-2.25V7.5a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+                    <x-ui.icon name="video" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Video') }}</span>
                 </button>
                 <div class="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-200 hover:bg-base-200" role="group" aria-label="{{ __('Add panel') }}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m-4.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z" />
-                    </svg>
+                    <x-ui.icon name="panel-half" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span class="flex-1">{{ __('Panel') }}</span>
                     <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-rect', { detail: { side: 'left' } })); addOpen = false"
                             class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-primary hover:text-primary">{{ __('Left') }}</button>
@@ -2301,7 +2290,7 @@
                 {{-- It draws on the 2D stage's artwork; elsewhere it says so instead of doing nothing. --}}
                 <button type="button" x-on:click="toggle(); addOpen = false" :aria-pressed="on.toString()" data-draw-toggle :disabled="addOpen && !host()"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200 disabled:pointer-events-none disabled:opacity-50" role="menuitem">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 shrink-0 text-panel-hint" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                    <x-ui.icon name="draw" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span class="flex-1">{{ __('Draw') }}</span>
                     <span class="text-xs text-panel-hint" x-show="addOpen && !host()">{{ __('2D scenes') }}</span>
                 </button>
@@ -2346,15 +2335,13 @@
                     @class(['flex h-11 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
                             'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
                             'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
-                <x-icons.exclamation-triangle class="h-6 w-6" /><span>{{ $problemCount }}</span>
+                <x-ui.icon name="problem" class="h-6 w-6" /><span>{{ $problemCount }}</span>
             </button>
         @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
            class="grid h-11 w-11 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-slate-800 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-            </svg>
+            <x-ui.icon name="help" class="h-6 w-6" />
                     </a>
         <div class="mx-1 my-1.5 w-px bg-slate-700"></div>
         {{-- Settings — the one panel. What it shows is picked by the tabs at its top: the
@@ -2366,10 +2353,7 @@
                 data-tour="settings"
                 :class="fmtOpen && 'bg-sky-500/15 text-panel-link'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </svg>
+            <x-ui.icon name="inspector" class="h-6 w-6" />
                     </button>
 
         {{-- Publishing belongs to account holders. A landing-page demo guest is editing a
@@ -2379,9 +2363,7 @@
         <a href="{{ route('login') }}"
            class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-primary transition hover:bg-slate-800"
            data-tooltip="{{ __('Create an account to keep this lesson') }}" aria-label="{{ __('Create an account') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-            </svg>
+            <x-ui.icon name="account-add" class="h-6 w-6" />
             <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
         </a>
         @else
@@ -2396,20 +2378,20 @@
                     :class="open && 'bg-primary/15'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-6 w-6" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-                    @php
-                        $statusColor = match (true) {
-                            $lesson->status === \App\Enums\LessonStatus::Published => 'fill-success',
-                            $lesson->scheduled_publish_at !== null => 'fill-primary',
-                            default => 'fill-purple-500',
-                        };
-                    @endphp
-
-                    <circle cx="20" cy="4" r="4"
-                            class="{{ $statusColor }} stroke-slate-900"
-                            stroke-width="1.5" />
-                </svg>
+                @php
+                    $statusColor = match (true) {
+                        $lesson->status === \App\Enums\LessonStatus::Published => 'fill-success',
+                        $lesson->scheduled_publish_at !== null => 'fill-primary',
+                        default => 'fill-purple-500',
+                    };
+                @endphp
+                {{-- The icon, with the lesson's state as a dot over its top-right corner. --}}
+                <span class="relative block h-6 w-6">
+                    <x-ui.icon name="publish" class="h-6 w-6" />
+                    <svg viewBox="0 0 24 24" class="pointer-events-none absolute inset-0 h-6 w-6" overflow="visible" aria-hidden="true">
+                        <circle cx="20" cy="4" r="4" class="{{ $statusColor }} stroke-slate-900" stroke-width="1.5" />
+                    </svg>
+                </span>
                             </button>
             <div x-show="open" x-transition x-cloak
                  class="absolute right-0 top-full z-70 mt-1 w-64 rounded-xl border border-slate-700 bg-base-300 p-2 text-left">
@@ -2420,7 +2402,7 @@
                 </label>
                 <button type="button" @click="open = false; Livewire.dispatch('lesson:publish')"
                         class="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
+                    <x-ui.icon name="publish" class="h-4 w-4" stroke-width="2" />
                     {{ __('Publish now') }}
                 </button>
                 <div class="mt-2 border-t border-slate-700/50 pt-2">
@@ -2430,7 +2412,7 @@
                     <button type="button" x-bind:disabled="!when"
                             @click="if (when) { $wire.schedulePublish(when); open = false }"
                             class="mt-1.5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-700 disabled:opacity-40">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                        <x-ui.icon name="schedule" class="h-4 w-4" />
                         {{ __('Schedule') }}
                     </button>
                 </div>
