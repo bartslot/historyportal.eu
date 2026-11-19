@@ -208,6 +208,8 @@ export function drawTool () {
     on: false, tool: 'pen', colour: COLOURS[0], width: WIDTHS[1], busy: 0,
     tools: TOOLS, colours: COLOURS, widths: WIDTHS,
     surface: null,
+    /** Whether this scene has something to draw on: the bar's Draw button greys out when it has not. */
+    available: true,
     /** What the pen lies on: the 2D scene's layers, or its stage until the first line makes them. The 3D stage has none. */
     host () {
       if (document.querySelector('.wizard-stage25d-host')) return null
@@ -216,7 +218,8 @@ export function drawTool () {
     toggle () { this.on ? this.stop() : this.start() },
     init () {
       // a save re-renders the stage and replaces the element the surface lies on: put it back, same pen
-      this._keep = () => this.remount()
+      this._keep = () => { this.available = !!this.host(); this.remount() }
+      this._keep()
       window.addEventListener('objscene-changed', this._keep)
       this._watch = setInterval(this._keep, 400)   // cheap: a check, nothing drawn
     },

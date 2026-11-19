@@ -2178,8 +2178,8 @@
         {{-- View menu — show/hide workspace surfaces (Keynote's View) --}}
         <div class="relative">
             <button type="button" @click="viewOpen = !viewOpen"
-                    class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
-                    :class="viewOpen && 'bg-sky-500/15 text-panel-link'"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
+                    :class="viewOpen && 'bg-base-200 text-base-content'"
                     data-tour="view" data-tooltip="{{ __('Show or hide workspace panels') }}" aria-label="{{ __('View') }}">
                 <x-ui.icon name="panels" class="h-6 w-6" />
             </button>
@@ -2188,7 +2188,7 @@
                 <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Show') }}</p>
                 <template x-for="item in [
                     { k: 'scenes',  label: @js(__('Scenes')) },
-                    { k: 'script',  label: @js(__('Assets & Script')) },
+                    { k: 'script',  label: @js(__('Bottom panel')) },
                     { k: 'objects', label: @js(__('Object list')) },
                     { k: 'rulers',  label: @js(__('Rulers')) },
                     { k: 'notes',   label: @js(__('Internal notes')) },
@@ -2196,7 +2196,7 @@
                 ]" :key="item.k">
                     <button type="button" x-show="item.k !== 'layers' || $store.view.mapScene"
                             @click="(item.k === 'scenes' ? $store.view.toggleScenes() : $store.view.toggle(item.k)); viewOpen = false"
-                            class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800">
+                            class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-base-200">
                         <span class="flex h-4 w-4 shrink-0 items-center justify-center text-primary">
                             <x-ui.icon name="check" class="h-3.5 w-3.5" x-show="$store.view[item.k]" stroke-width="2.5" />
                         </span>
@@ -2216,26 +2216,20 @@
             <x-ui.icon name="play" class="h-6 w-6" />
         </button>
 
-        {{-- Add, with the draw tool under Tools: pen, line and arrow over the scene; each line is its own layer (resources/js/editor/draw-layer.js). --}}
-        <div class="relative" x-data="drawTool()" x-on:keydown.escape.window="on && stop()" data-draw-tool>
+        {{-- Add and Draw: two buttons, because adding a layer and drawing are different acts. Add puts a
+             layer on the scene (scenes are added in the rail, where they live); Draw is a mode you switch
+             on and off: pen, line and arrow over the scene, each line its own layer (editor/draw-layer.js). --}}
+        <div class="flex items-stretch gap-0.5" x-data="drawTool()" x-on:keydown.escape.window="on && stop()" data-draw-tool>
+        <div class="relative">
             <button type="button" @click="addOpen = !addOpen"
                     class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
-                    :class="addOpen && 'bg-sky-500/15 text-panel-link'"
+                    :class="addOpen && 'bg-base-200 text-base-content'"
                     aria-haspopup="menu" :aria-expanded="addOpen.toString()"
-                    data-tour="add" data-tooltip="{{ __('Add a scene, text, image, or icon') }}" aria-label="{{ __('Add') }}">
+                    data-tour="add" data-tooltip="{{ __('Add text, a picture, a balloon or a video') }}" aria-label="{{ __('Add') }}">
                 <x-ui.icon name="add" class="h-6 w-6" />
             </button>
             <div x-show="addOpen" x-cloak @click.outside="addOpen = false" x-transition.opacity.duration.150ms
                  class="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-700 bg-base-300 p-1.5" role="menu">
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Scene') }}</p>
-                <button type="button" @click="Livewire.dispatch('scene:add'); addOpen = false"
-                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
-                    <x-ui.icon name="add" class="h-4 w-4 shrink-0 text-primary" />
-                    <span class="flex-1 font-medium">{{ __('Add Scene') }}</span>
-                    <span class="text-xs text-panel-hint">{{ __('Below current') }}</span>
-                </button>
-                <div class="my-1 border-t border-slate-700" role="separator"></div>
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Add Layer') }}</p>
                 <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-text')); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-ui.icon name="text" class="h-4 w-4 shrink-0 text-panel-hint" />
@@ -2285,16 +2279,16 @@
                     <button type="button" @click="window.dispatchEvent(new CustomEvent('lesson:add-rect', { detail: { side: 'right' } })); addOpen = false"
                             class="rounded border border-slate-600 px-1.5 py-0.5 text-xs text-slate-300 transition hover:border-primary hover:text-primary">{{ __('Right') }}</button>
                 </div>
-                <div class="my-1 border-t border-slate-700" role="separator"></div>
-                <p class="px-2 py-1 text-prose uppercase tracking-widest text-panel-hint">{{ __('Tools') }}</p>
-                {{-- It draws on the 2D stage's artwork; elsewhere it says so instead of doing nothing. --}}
-                <button type="button" x-on:click="toggle(); addOpen = false" :aria-pressed="on.toString()" data-draw-toggle :disabled="addOpen && !host()"
-                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200 disabled:pointer-events-none disabled:opacity-50" role="menuitem">
-                    <x-ui.icon name="draw" class="h-4 w-4 shrink-0 text-panel-hint" />
-                    <span class="flex-1">{{ __('Draw') }}</span>
-                    <span class="text-xs text-panel-hint" x-show="addOpen && !host()">{{ __('2D scenes') }}</span>
-                </button>
             </div>
+        </div>
+        {{-- Draw works on the 2D stage's artwork. Where there is none (a 3D scene) the button is greyed and says why. --}}
+        <button type="button" x-on:click="toggle()" :aria-pressed="on.toString()" data-draw-toggle :disabled="!available"
+                class="grid h-11 w-11 place-items-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                :class="on && 'bg-base-200 text-primary'"
+                :data-tooltip="available ? @js(__('Draw on the scene')) : @js(__('Drawing works on 2D scenes'))"
+                aria-label="{{ __('Draw') }}">
+            <x-ui.icon name="draw" class="h-6 w-6" />
+        </button>
             <div x-show="on" x-cloak class="fixed left-1/2 top-16 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-box border border-base-300 bg-base-200 px-3 py-2" data-draw-strip>
                 <div class="join">
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
@@ -2332,14 +2326,14 @@
                     data-problems-count="{{ $problemCount }}" data-severity="{{ $problemSeverity }}"
                     data-tooltip="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
                     aria-label="{{ trans_choice('{1} 1 problem in this lesson|[2,*] :count problems in this lesson', $problemCount, ['count' => $problemCount]) }}"
-                    @class(['flex h-11 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-slate-800',
+                    @class(['flex h-11 items-center gap-1 self-center rounded-xl px-2 text-sm font-semibold transition hover:bg-base-200',
                             'text-error' => $problemSeverity === \App\Support\LessonProblems::BLOCKS,
                             'text-warning' => $problemSeverity !== \App\Support\LessonProblems::BLOCKS])>
                 <x-ui.icon name="problem" class="h-6 w-6" /><span>{{ $problemCount }}</span>
             </button>
         @endif
         <a href="{{ route('help.index') }}#edit" target="_blank" rel="noopener"
-           class="grid h-11 w-11 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-slate-800 hover:text-primary"
+           class="grid h-11 w-11 place-items-center self-center rounded-xl text-panel-hint transition hover:bg-base-200 hover:text-primary"
            data-tooltip="{{ __('How the editor works') }}" aria-label="{{ __('Help') }}">
             <x-ui.icon name="help" class="h-6 w-6" />
                     </a>
@@ -2349,9 +2343,9 @@
              used to be two buttons, Format and Settings, for one panel. --}}
         <button type="button"
                 @click="window.dispatchEvent(new CustomEvent('inspector-toggle'))"
-                class="grid h-11 w-11 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-primary"
+                class="grid h-11 w-11 place-items-center self-center rounded-xl text-slate-300 transition hover:bg-base-200 hover:text-primary"
                 data-tour="settings"
-                :class="fmtOpen && 'bg-sky-500/15 text-panel-link'"
+                :class="fmtOpen && 'bg-base-200 text-base-content'"
                 data-tooltip="{{ __('Settings') }}" aria-label="{{ __('Settings') }}">
             <x-ui.icon name="inspector" class="h-6 w-6" />
                     </button>
@@ -2361,7 +2355,7 @@
              the one thing that would make their edits keepable. --}}
         @if (auth()->user()?->isGuestDemo())
         <a href="{{ route('login') }}"
-           class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-primary transition hover:bg-slate-800"
+           class="flex min-w-14 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-1.5 py-1.5 text-primary transition hover:bg-base-200"
            data-tooltip="{{ __('Create an account to keep this lesson') }}" aria-label="{{ __('Create an account') }}">
             <x-ui.icon name="account-add" class="h-6 w-6" />
             <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
@@ -2374,7 +2368,7 @@
              re-renders; it takes the server's answer, since sharing can be refused. --}}
         <div x-data="{ open: false, when: '', shared: @js((bool) $lesson->is_public) }" class="relative self-center" @click.outside="open = false" @keydown.escape.window="open = false">
             <button type="button" @click="open = !open"
-                    class="grid h-11 w-11 place-items-center rounded-xl text-primary transition hover:bg-slate-800"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-primary transition hover:bg-base-200"
                     :class="open && 'bg-primary/15'"
                     data-tour="publish"
                     data-tooltip="{{ __('Publish') }}" aria-label="{{ __('Publish') }}">
