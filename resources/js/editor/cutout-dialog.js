@@ -189,8 +189,8 @@ export async function openCutout (target) {
       $('[data-cut-redo]').disabled = !(active()?.canRedo() ?? state.canRedo)
       peek?.pictureChanged()
     }
-    const undo = () => (active() ?? mask)?.undo()
-    const redo = () => (active() ?? mask)?.redo()
+    const undo = () => { (active() ?? mask)?.undo(); showClone(null, null, 0) }
+    const redo = () => { (active() ?? mask)?.redo(); showClone(null, null, 0) }
 
     // the eraser's size on the picture, round the pointer
     const viewport = $('[data-cut-view]')
@@ -199,13 +199,44 @@ export async function openCutout (target) {
       if (tool === 'brush') return Number($('[data-cut-size]').value)
       return ['erase', 'restore', 'paint', 'clone'].includes(tool) ? Number($('[data-cut-esize]').value) * (view?.view.z ?? 1) : 0
     }
+    const ringPreview = $('[data-cut-ring-preview]')
+    const sourceMark = $('[data-cut-source]')
+    const art = $('[data-cut-art]')
+    /**
+     * The clone stamp, the way Photoshop shows it: the source as a crisp cross at screen size (on the picture's own
+     * pixels it blurred on a small picture), and inside the ring the pixels the next dab would lay (the picture around
+     * the source, at the ring's own size). Ring position `x, y` is viewport px.
+     */
+    const showClone = (x, y, px) => {
+      const st = tool === 'clone' ? mask?.cloneState?.() : null
+      const r = art.getBoundingClientRect(), v = viewport.getBoundingClientRect()
+      const scale = art.width / Math.max(1, r.width)   // picture px per screen px
+      sourceMark.hidden = !st
+      if (st) {
+        sourceMark.style.left = `${r.left - v.left + st.cross[0] / scale}px`
+        sourceMark.style.top = `${r.top - v.top + st.cross[1] / scale}px`
+      }
+      ringPreview.hidden = !st || x === null
+      if (ringPreview.hidden) return
+      const at = [(x + v.left - r.left) * scale, (y + v.top - r.top) * scale]   // the picture px under the ring's centre
+      const [cx, cy] = st.offset ? [at[0] + st.offset[0], at[1] + st.offset[1]] : st.from
+      const rad = (px / 2) * scale
+      const dpr = window.devicePixelRatio || 1
+      const size = Math.max(1, Math.round(px * dpr))
+      if (ringPreview.width !== size) { ringPreview.width = size; ringPreview.height = size }
+      const g = ringPreview.getContext('2d')
+      g.clearRect(0, 0, size, size)
+      g.imageSmoothingEnabled = true
+      g.drawImage(art, cx - rad, cy - rad, rad * 2, rad * 2, 0, 0, size, size)
+    }
     const showRing = (x, y) => {
       const px = ringPx()
       ring.hidden = px < MIN_RING_PX || !!view?.panning
-      if (ring.hidden) return
+      if (ring.hidden) { showClone(null, null, 0); return }
       ring.style.width = ring.style.height = `${px}px`
       ring.style.left = `${x}px`
       ring.style.top = `${y}px`
+      showClone(x, y, px)
     }
     let pointer = null
     viewport.addEventListener('pointermove', (e) => {
@@ -213,7 +244,9 @@ export async function openCutout (target) {
       pointer = [e.clientX - r.left, e.clientY - r.top]
       showRing(...pointer)
     })
-    viewport.addEventListener('pointerleave', () => { pointer = null; ring.hidden = true })
+    viewport.addEventListener('pointerleave', () => { pointer = null; ring.hidden = true; showClone(null, null, 0) })
+    // an Alt-click sets the source, a stroke moves it, undo takes it back: the cross and the preview follow at once
+    viewport.addEventListener('pointerup', () => requestAnimationFrame(() => (pointer ? showRing(...pointer) : showClone(null, null, 0))))
     viewport.addEventListener('wheel', () => { if (pointer) requestAnimationFrame(() => showRing(...pointer)) }, { passive: true })
     let ringTimer = 0
     /** A size slider moved: show the new size in the middle of the picture for a moment. */
@@ -232,6 +265,7 @@ export async function openCutout (target) {
       for (const el of root.querySelectorAll('[data-cut-for]')) el.hidden = !el.dataset.cutFor.split(' ').includes(next)
       $('[data-cut-tool-name]').textContent = t(TOOLS.find(([value]) => value === next)[1])
       ring.hidden = true
+      showClone(null, null, 0)   // the source cross shows with the clone stamp only, and comes back with it
     }
     for (const input of root.querySelectorAll('[name="cut-tool"]')) input.addEventListener('change', () => setTool(input.value))
     // Add / Remove: what the brush does, without a key to hold (Alt still works)
@@ -263,7 +297,8 @@ export async function openCutout (target) {
       setTool('paint')
     }
     // the clone stamp pressed before it knows where to copy from: its tool says how, instead of painting nothing
-    const needSource = () => setTimeout(() => flashTooltip(root.querySelector('[data-cut-tool="clone"]'), t('Option/Alt-click where to copy from first.')))
+    // after the press has ended: the release hides every tooltip, so a hint shown on the press never stayed up
+    const needSource = () => window.addEventListener('pointerup', () => setTimeout(() => flashTooltip(root.querySelector('[data-cut-tool="clone"]'), t('Option/Alt-click where to copy from first.'))), { once: true })
     let frame = 0
     const live = (name, group, apply) => onSlide(name, (v) => {
       group[name] = v

@@ -232,7 +232,7 @@ test.describe('paint, pipette and clone stamp', () => {
 
     await page.keyboard.press('k')
     await page.mouse.click(mid[0], mid[1])
-    await expect(page.locator('.lp-tip.is-visible')).toContainText(/Alt/)
+    await expect(page.locator('.lp-tip.is-visible', { hasText: /Alt/ })).toBeVisible()   // several tips can be up at once
     expect(await pixelAt(page, mid[0], mid[1]), 'nothing painted without a source').toEqual(before)
 
     const from = [art.x + art.width * 0.5, art.y + art.height * 0.3]
@@ -244,12 +244,17 @@ test.describe('paint, pipette and clone stamp', () => {
     await stroke(page, to, [to[0] + 1, to[1]])
     const got = await pixelAt(page, to[0], to[1])
     expect(Math.hypot(got[0] - want[0], got[1] - want[1], got[2] - want[2]), 'the copy matches its source').toBeLessThan(30)
+    // the ring shows the source inside it: what the next dab lays (Bart 11-19: "inside of the ring you should see a preview")
+    await page.mouse.move(to[0] + 30, to[1] + 30, { steps: 4 })
+    await expect(page.locator('[data-cut-ring-preview]')).toBeVisible()
+    expect(await painted(page, '[data-cut-ring-preview]'), 'the preview has the source in it').toBeGreaterThan(50)
     await page.locator('[data-cut-undo]').click()
-    expect(await painted(page, '[data-cut-film]'), 'the cross stays while there is a source').toBeGreaterThan(0)
+    // the source cross is drawn at screen size, not on the picture's pixels (it blurred on a small picture)
+    await expect(page.locator('[data-cut-source]'), 'the cross stays while there is a source').toBeVisible()
     await page.keyboard.press('e')
-    expect(await painted(page, '[data-cut-film]'), 'and goes with the tool').toBe(0)
+    await expect(page.locator('[data-cut-source]'), 'and goes with the tool').toBeHidden()
     await page.keyboard.press('k')
-    expect(await painted(page, '[data-cut-film]'), 'and comes back with it').toBeGreaterThan(0)
+    await expect(page.locator('[data-cut-source]'), 'and comes back with it').toBeVisible()
     await discard(page)
   })
 

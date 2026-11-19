@@ -183,11 +183,12 @@ describe('the eraser and its tools', () => {
     $('[data-cut-back]').click()
   })
 
-  it('the clone stamp without a source says so on its tool, a moment after the press', async () => {
+  it('the clone stamp without a source says so on its tool, once the press is released', async () => {
     const { mountQuickMask } = await import('../../scene/quick-mask.js')
     const { $ } = await open()
     vi.useFakeTimers()
-    mountQuickMask.mock.lastCall[4].onNeedSource()
+    mountQuickMask.mock.lastCall[4].onNeedSource()   // called on the press
+    window.dispatchEvent(new Event('pointerup'))     // the release hides tooltips, so the hint comes after it
     vi.runOnlyPendingTimers()
     const tip = document.querySelector('.lp-tip')
     expect(tip?.textContent).toContain('Option/Alt-click where to copy from first.')

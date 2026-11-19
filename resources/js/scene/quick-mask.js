@@ -703,8 +703,6 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
     /** Outside the selection the picture is dimmed; the patches a stroke is taking show amber. */
     const showSelection = (taking = null) => {
         octx.clearRect(0, 0, w, h);
-        // the clone stamp's cross shows as long as it has a source: after an undo, back from another tool
-        if (mode === 'clone' && cloneFrom && crossAt) drawCross(...crossAt);
         if (!selectedAny() && !taking) return;
         const film = new ImageData(ww, wh);
         for (let p = 0; p < ww * wh; p++) {
@@ -717,19 +715,6 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         octx.drawImage(c, 0, 0, w, h);
     };
 
-    /** A small cross on the film at a point of the picture: where the clone stamp copies from. */
-    const drawCross = (x, y) => {
-        const s = w / canvas.getBoundingClientRect().width;   // picture px per screen px: the cross stays one size on screen
-        const arm = 7 * s;
-        for (const [colour, width] of [['#000', 3 * s], ['#fff', 1.5 * s]]) {
-            octx.strokeStyle = colour;
-            octx.lineWidth = width;
-            octx.beginPath();
-            octx.moveTo(x - arm, y); octx.lineTo(x + arm, y);
-            octx.moveTo(x, y - arm); octx.lineTo(x, y + arm);
-            octx.stroke();
-        }
-    };
     /** While the clone stamp paints, the cross follows where it copies from; after, it stays there. */
     const showCloneSource = (point) => {
         if (point && cloneOffset) crossAt = [point[0] + cloneOffset[0], point[1] + cloneOffset[1]];
@@ -941,6 +926,12 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         /** The pixels it opened on and the pixels now: what a save onto a figure's sheet compares (puppet-sheet.js). */
         pixels: () => ({ opened: original, edited: shown.data }),
         cancelPress,
+        /**
+         * The clone stamp's source, for the editor to draw at screen size (a mark on the picture's own pixels blurs
+         * on a small picture): `cross` where the next dab copies from, `offset` source minus brush once a stroke has
+         * fixed it (null before: the next stroke copies from `from`). null when the stamp has no source or is not on.
+         */
+        cloneState() { return mode === 'clone' && cloneFrom ? { cross: crossAt ?? cloneFrom, offset: cloneOffset, from: cloneFrom } : null; },
         setMode(next) {
             cancelPress();
             mode = ['brush', 'erase', 'restore', 'paint', 'pipette', 'clone'].includes(next) ? next : 'colour';

@@ -96,8 +96,7 @@ function unwatchRemoval () {
   watcher = null
 }
 
-function show (el) {
-  const text = el.dataset.tooltip
+function show (el, text = el.dataset.tooltip) {
   if (!text) return
 
   build()
@@ -157,11 +156,9 @@ let flashTimer = 0
  */
 export function flashTooltip (el, text) {
   if (!el) return
-  const was = el.dataset.tooltip
-  el.dataset.tooltip = text
-  show(el)
-  if (was === undefined) delete el.dataset.tooltip
-  else el.dataset.tooltip = was
+  // the words go straight to the tip: putting them on the control and back made the attribute watcher
+  // (watchRemoval) see "new words" and show the control's own label over them at once
+  show(el, text)
   clearTimeout(flashTimer)
   flashTimer = setTimeout(() => { if (current === el) hide() }, FLASH_MS)
 }

@@ -110,7 +110,8 @@ export function markup (t, clean, modes = ['picture']) {
         <canvas data-cut-art class="block h-full w-full"></canvas>
         <canvas data-cut-film class="pointer-events-none absolute inset-0 h-full w-full"></canvas>
       </div>
-      <div class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full" style="border: 1px solid #fff; outline: 1px solid #000;" data-cut-ring hidden></div>
+      <div class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full" style="border: 1px solid #fff; outline: 1px solid #000;" data-cut-ring hidden><canvas class="block h-full w-full" data-cut-ring-preview hidden></canvas></div>
+      <div class="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2" data-cut-source hidden><svg viewBox="0 0 16 16" class="size-4 overflow-visible"><path d="M8 0v16M0 8h16" stroke="#000" stroke-width="3"/><path d="M8 0v16M0 8h16" stroke="#fff" stroke-width="1.25"/></svg></div>
       <span class="loading loading-spinner loading-md absolute left-1/2 top-1/2" data-cut-loading></span>
     </div>
     ${extra.map((m) => `<div class="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border" data-mode-for="${m}" data-slot-view="${m}" style="${CHECKERS}" hidden></div>`).join('')}
