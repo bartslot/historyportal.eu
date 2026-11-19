@@ -2623,6 +2623,7 @@
     <style>
         [data-objlist-col][data-compact] [data-obj-label] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-adjust] { display: none !important; }
+        [data-objlist-col][data-compact] [data-obj-eye] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-row] { justify-content: center; padding-left: 0.25rem; padding-right: 0.25rem; gap: 0; }
     </style>
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
@@ -2647,30 +2648,25 @@
                         obj.inGroup ? 'pl-6' : '', obj.group ? 'cursor-default! hover:bg-transparent' : '',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
-                    {{-- The type icon: a click hides the object, a second click shows it (Bart 2026-11-17). It is the
-                         timeline eye's own state (window.__timelineKeying, anim/timeline-panel.js), so the two always
-                         agree; a working state, never saved. NOT data-nodrag: a press that moves still drags the row
-                         (Sortable starts after 4 px), only a click without movement toggles. 32 px to hit, the
-                         negative margins keep the row as tall and the icon where it was. Kinds the eye cannot hide
-                         (camera, World, sky, terrain, diorama items) keep a plain icon. --}}
+                    {{-- The kind icon names the row; it does nothing. Hiding is the eye after the label. --}}
+                    <span class="shrink-0 text-panel-hint" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
+                    <span data-obj-label class="flex-1 truncate" :class="isHidden(obj) && 'opacity-70'" x-text="obj.label"></span>
+                    {{-- Hide and show, as an eye (Bart 2026-11-17 put it on the kind icon, where nobody looked for it). It is the
+                         timeline eye's own state (window.__timelineKeying, anim/timeline-panel.js), so the two always agree; a
+                         working state, never saved. Shown on hover, and always while the object is hidden so a hidden row says so.
+                         NOT data-nodrag: a press that moves still drags the row (Sortable starts after 4 px). Kinds the eye
+                         cannot hide (camera, World, sky, terrain, diorama items) have none. --}}
                     <template x-if="hideTarget(obj)">
-                        <button type="button" @click.stop="toggleHidden(obj)"
+                        <button type="button" @click.stop="toggleHidden(obj)" data-obj-eye
                                 :aria-pressed="isHidden(obj) ? 'true' : 'false'"
                                 :aria-label="isHidden(obj) ? @js(__('Show')) : @js(__('Hide'))"
                                 :data-tooltip="isHidden(obj) ? @js(__('Show')) : @js(__('Hide'))"
-                                :class="isHidden(obj) && 'opacity-70'"
-                                class="relative -mx-2 -my-1.5 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
-                            <span class="grid" x-html="iconSvg(obj)"></span>
-                            {{-- hidden: a diagonal line across the icon --}}
-                            <svg x-show="isHidden(obj)" viewBox="0 0 16 16" class="pointer-events-none absolute h-4 w-4" aria-hidden="true">
-                                <line x1="1" y1="1" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
+                                :class="isHidden(obj) ? 'grid' : 'hidden group-hover:grid group-focus-within:grid'"
+                                class="-my-1.5 h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
+                            <span x-show="!isHidden(obj)">{!! \App\Support\UiIcon::svg('visible', ['class' => 'h-4 w-4']) !!}</span>
+                            <span x-show="isHidden(obj)" x-cloak>{!! \App\Support\UiIcon::svg('hidden', ['class' => 'h-4 w-4']) !!}</span>
                         </button>
                     </template>
-                    <template x-if="!hideTarget(obj)">
-                        <span class="shrink-0 text-panel-hint" x-html="iconSvg(obj)" aria-hidden="true" :title="obj.label"></span>
-                    </template>
-                    <span data-obj-label class="flex-1 truncate" :class="isHidden(obj) && 'opacity-70'" x-text="obj.label"></span>
                     {{-- Duplicate and Delete in the scene thumbs' "..." menu (components/ui/more-menu; Bart 2026-11-17),
                          hover-revealed. HIDDEN until hover, not transparent: an invisible button still took the label's
                          room, so a wide list read "Be...". data-nodrag stops a press here from starting a Sortable drag;

@@ -21,5 +21,6 @@
      No padding and no bleed: the row is the panel's content width, edge to edge with the controls under it. --}}
 <div {{ $attributes->class(['flex items-center gap-1 py-1.5']) }}>
     {{ $breadcrumb }}
-    <x-ui.segmented :name="$name" :options="$tabs" :model="$model" class="tabs-sm flex-1" tab-class="flex-1" />
+    {{-- Labelled: three look-alike icons (a brush, a star with speed lines, a note) are guessed at; a word is read. --}}
+    <x-ui.segmented :name="$name" :options="$tabs" :model="$model" class="tabs-sm flex-1" tab-class="flex-1" labelled />
 </div>
