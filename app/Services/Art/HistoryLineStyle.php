@@ -116,8 +116,10 @@ final class HistoryLineStyle
     public const CLOUD_ADDENDUM = 'Keep clouds primarily the white of the paper, with 80–90% of each cloud untouched. Add only an extremely pale transparent cool blue-grey wash beneath selected lower edges and overlaps. Surround them with a very pale blue watercolor sky. Preserve thin cloud contours. No solid white or grey fill, detailed internal texture, heavy shadows, airbrushed gradients, photographic clouds or 3D rendering.';
 
     /** Bart 2026-10-20 ("I would like more watercolour texture. that's history lines"): overrides the old "very low texture". */
-    public const TEXTURE = 'Show real watercolor texture in the washes: blooms, backruns, granulation, tide-lines, paper tooth and uneven glazes. '
-        .'No blur and no speckle noise. Reference images after the first show the watercolor look and texture only, never their content.';
+    public const TEXTURE_LOOK = 'Show real watercolor texture in the washes: blooms, backruns, granulation, tide-lines, paper tooth and uneven glazes. '
+        .'No blur and no speckle noise.';
+
+    public const TEXTURE = self::TEXTURE_LOOK.' Reference images after the first show the watercolor look and texture only, never their content.';
 
     /** Material and geometry lock (framework "practical addendum"). */
     public const GEOMETRY_LOCK = 'Color only things already drawn. Keep dry ground almost white; never introduce water or wave marks. Keep every part of a sculpture—including face, hair and hands—the same stone or metal material. Preserve counted ropes, flag bands, objects, attachments and openings. Use quiet broad washes without added surface patterns.';
@@ -160,6 +162,34 @@ final class HistoryLineStyle
         $eraLine = $era !== '' ? " Keep everything correct for {$era}; add nothing that does not belong to that time." : '';
 
         return self::INK_PASS.$eraLine.self::figureClause($figure).' '.self::SAFETY;
+    }
+
+    /**
+     * A new cut-out from a teacher's words, both passes in one ChatGPT run (the editor's Draw, LocalChatGpt::draw).
+     * Attach order: the pass-1 figure ink refs, then the pass-2 figure colour refs ({@see self::drawAnchors()}).
+     * The ink is drawn on white, as pass 1 always is; the colour pass puts it on #00FF00 to be keyed out (CLAUDE.md,
+     * Bart 2026-11-05), never on white paper.
+     */
+    public static function draw(string $what, string $era, string $green, string $ink, string $result): string
+    {
+        $eraLine = $era !== '' ? " Keep everything correct for {$era}; add nothing that does not belong to that time." : '';
+
+        return "Make one picture for a history lesson in two steps. The subject: {$what}\n\n"
+            .'Step 1, the ink. Draw the subject as a clean black-and-white educational comic illustration. Reference images 1 and 2 '
+            .'show the History Lines line quality and hatching only: take their style, never their subjects. Use crisp black contours '
+            .'and controlled hatching, with '.self::HATCHING_RULE.' No solid black fills on anything that will need colour: colour goes '
+            .'under the ink. No colour, no grey washes.'.$eraLine
+            .' This is an isolated cut-out asset: show the complete subject, head to feet, nothing cropped at the edges, alone on plain '
+            ."white paper with no ground, no floor, no cast shadow and no other props. Save it in the current folder as {$ink}.\n\n"
+            ."Step 2, the colour. Edit {$ink}. ".self::EDIT_LOCK.' '.self::COLOUR_PROMPT.' '.self::TEXTURE_LOOK.' '.self::GEOMETRY_LOCK
+            .' Reference images 3, 4 and 5 show the watercolour look and texture only, never their content. '
+            ."{$green} Save it in the current folder as {$result}.\n\n".self::SAFETY;
+    }
+
+    /** @return list<string> the anchor files draw() refers to, in attach order */
+    public static function drawAnchors(): array
+    {
+        return [...self::anchors(1, true), ...self::anchors(2, true)];
     }
 
     /** Pass 2: the pass-1 ink + colour refs + texture ref → watercolour edited from that ink. */

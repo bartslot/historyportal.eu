@@ -68,6 +68,33 @@ final class FitEditedPicture
         return (string) ob_get_clean();
     }
 
+    /**
+     * A new picture made on #00FF00 (the editor's Draw) as a cut-out: the green keyed out (white paper cleared if it came
+     * back on white after all), cropped to what is painted, so its feet are the bottom edge the stage stands it on.
+     *
+     * @return string PNG bytes
+     */
+    public static function cutOut(string $path): string
+    {
+        $im = self::open($path);
+        if (! self::isCutOut($im)) {
+            self::keyGreen($im);
+            if (! self::isCutOut($im)) {
+                self::clearPaper($im);
+            }
+        }
+        [$x0, $y0, $x1, $y1] = self::box($im);
+        $crop = imagecrop($im, ['x' => $x0, 'y' => $y0, 'width' => $x1 - $x0 + 1, 'height' => $y1 - $y0 + 1]);
+        if (! $crop instanceof GdImage) {
+            throw new RuntimeException("Could not crop: {$path}");
+        }
+        imagesavealpha($crop, true);
+        ob_start();
+        imagepng($crop);
+
+        return (string) ob_get_clean();
+    }
+
     /** Is the picture's border see-through? Then it is a cut-out, not a painting that fills its frame. */
     public static function isCutOut(GdImage $im): bool
     {

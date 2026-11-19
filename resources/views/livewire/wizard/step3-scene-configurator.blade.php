@@ -1207,6 +1207,10 @@
                     <x-lesson.scene-inspector-moment :draft="$momentDraft" :is-default="$this->momentIsDefault()" :layers="$this->momentLayers()" />
                 @endif
 
+                @unless (in_array($sceneModel->kind, ['game', 'video'], true))
+                    <x-lesson.draw-picture :scene="$sceneModel" />
+                @endunless
+
                 @if ($sceneModel->takesTeacherEstimate())
                     <x-lesson.scene-estimate :scene="$sceneModel" />
                 @endif
@@ -1395,6 +1399,59 @@
          sit in the bottom bar. Kept clear of the bottom-left scene caption (flag/year/location). --}}
     {{-- wire:ignore: the tools are static, so the 3s status poll must not morph this strip —
          that would re-init Alpine and snap the rectangle popover shut mid-interaction. --}}
+    {{-- Draw with ChatGPT (components/lesson/draw-picture, DrawsWithChatGpt). --}}
+    @push('scripts')
+    <script>
+        /** One Draw at a time per scene, kept in a store so it survives the scene inspector being rebuilt. */
+        window.drawPicture = (sceneId) => ({
+            text: '',
+            get busy() { return !!window.Alpine.store('drawBusy')?.[sceneId]; },
+            async draw() {
+                const what = this.text.trim();
+                if (!what || this.busy) return;
+                const wire = this.$wire;
+                if (!window.Alpine.store('drawBusy')) window.Alpine.store('drawBusy', {});
+                const store = window.Alpine.store('drawBusy');
+                store[sceneId] = true;
+                const started = await wire.drawPicture(what).catch(() => null);
+                if (!started?.ok) {
+                    store[sceneId] = false;
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: @js(__('ChatGPT could not draw this. Is the ChatGPT app open?')) } }));
+                    return;
+                }
+                this.text = '';
+                for (;;) {
+                    await new Promise((r) => setTimeout(r, 4000));
+                    const now = await wire.drawStatus(started.job).catch(() => ({ status: 'running' }));
+                    if (now.status === 'running') continue;
+                    store[sceneId] = false;
+                    if (now.status === 'done') window.placeDrawnPicture(wire, now);
+                    return;
+                }
+            },
+        });
+
+        /** A finished Draw: a layer of the scene it was asked for, if that scene is still the one open; else in My cut-outs only. */
+        window.placeDrawnPicture = (wire, done) => {
+            const stage = window.__stage25d;
+            const onStage = stage && Number(stage.sceneId) === done.scene;
+            // a 3D scene draws only its stage's layers: when its stage is not up, a picture layer would never show there
+            if (Number(wire.selectedSceneId) !== done.scene || (done.stage25d && !onStage)) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: @js(__('Drawn and saved in My cut-outs.')) } }));
+                return;
+            }
+            if (onStage) {
+                // the stage takes the row now, so the layer can be added before the server's own event has arrived
+                window.dispatchEvent(new CustomEvent('cutouts-changed', { detail: { id: done.id, stage: done.stage } }));
+                stage.addLayer('cut-' + done.id);
+            } else if (window.__placeIcon) {
+                window.__placeIcon(done.id);
+            } else {
+                wire.attachArtwork(done.id);
+            }
+        };
+    </script>
+    @endpush
     {{-- View state store — drives the View menu toggles: Scenes (rail), Object list, Rulers,
          Internal notes. Persisted to localStorage; the rail also syncs its Scenes checkbox. --}}
     @push('scripts')

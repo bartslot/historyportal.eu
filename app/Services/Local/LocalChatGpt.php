@@ -18,7 +18,7 @@ final class LocalChatGpt
     private const IMAGE_SUFFIXES = ['png', 'jpg', 'jpeg', 'webp'];
 
     /** A picture that needs transparency is made on this and keyed out (FitEditedPicture; Bart 11-05, CLAUDE.md). */
-    private const GREEN_BACKGROUND = 'Put the subject on a solid, flat, pure #00FF00 green background that fills every part of the picture around it, '
+    public const GREEN_BACKGROUND = 'Put the subject on a solid, flat, pure #00FF00 green background that fills every part of the picture around it, '
         .'including the gaps between arms and body: no shadow on it, no gradient, no texture, no white border around the subject, and no green anywhere in the subject itself.';
 
     public static function available(): bool
@@ -50,16 +50,43 @@ final class LocalChatGpt
             $prompt = 'Edit image 1. Change only what is asked below and keep everything else (composition, camera, style, '
                 ."colours, every object and person) exactly as it is.\n\n{$instruction}\n\n"
                 ."Generate the image and save it in the current folder as {$name}.".($transparent ? ' '.self::GREEN_BACKGROUND : '');
-            $reply = $this->run($prompt, [$source], $dir, $timeout);
-            $made = collect(File::allFiles($dir))->first(fn ($f) => in_array(strtolower($f->getExtension()), self::IMAGE_SUFFIXES, true));
-            if ($made === null) {
-                throw new RuntimeException('ChatGPT made no picture: '.mb_substr($reply, 0, 300));
-            }
-            File::ensureDirectoryExists(dirname($out));
-            File::copy($made->getPathname(), $out);
+            $this->keep($dir, $this->run($prompt, [$source], $dir, $timeout), $name, $out);
         } finally {
             File::deleteDirectory($dir);
         }
+    }
+
+    /**
+     * A new picture, made as `$prompt` asks with `$images` attached, saved at `$out`. The prompt names the file it wants
+     * kept ({@see self::DRAWN}); a run that makes several (an ink, then its colour) keeps that one.
+     *
+     * @param  list<string>  $images
+     *
+     * @throws RuntimeException when ChatGPT is closed, over its limit, or makes no picture
+     */
+    public function draw(string $prompt, array $images, string $out, int $timeout = 900): void
+    {
+        $dir = $this->workdir();
+        try {
+            $this->keep($dir, $this->run($prompt, $images, $dir, $timeout), self::DRAWN, $out);
+        } finally {
+            File::deleteDirectory($dir);
+        }
+    }
+
+    /** The name draw() asks the finished picture to be saved under. */
+    public const DRAWN = 'result.png';
+
+    /** The picture named `$name`, else the only one made, copied to `$out`. */
+    private function keep(string $dir, string $reply, string $name, string $out): void
+    {
+        $made = collect(File::allFiles($dir))->filter(fn ($f) => in_array(strtolower($f->getExtension()), self::IMAGE_SUFFIXES, true));
+        $file = $made->first(fn ($f) => $f->getFilename() === $name) ?? ($made->count() === 1 ? $made->first() : null);
+        if ($file === null) {
+            throw new RuntimeException('ChatGPT made no picture: '.mb_substr($reply, 0, 300));
+        }
+        File::ensureDirectoryExists(dirname($out));
+        File::copy($file->getPathname(), $out);
     }
 
     /** The answer of one `codex exec`: the prompt goes on stdin, because -i takes several values and would swallow it. */

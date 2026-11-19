@@ -100,7 +100,7 @@ trait EditsWithSpark
 
         return collect(SparkJobs::ids())
             ->map(fn (string $id) => [$id, SparkJobs::read($id)])
-            ->filter(fn (array $j) => in_array($j[1]['scene'] ?? null, $scenes, true))
+            ->filter(fn (array $j) => ! ($j[1]['draw'] ?? false) && in_array($j[1]['scene'] ?? null, $scenes, true))   // a Draw is followed by its own form
             ->map(fn (array $j) => ['job' => $j[0], 'key' => $j[1]['scene'].':'.$j[1]['target']])
             ->values()->all();
     }

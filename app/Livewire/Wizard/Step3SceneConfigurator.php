@@ -12,6 +12,7 @@ use App\Jobs\GenerateSkyboxCandidates;
 use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
+use App\Livewire\Wizard\Concerns\DrawsWithChatGpt;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsCharacters;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
@@ -80,6 +81,7 @@ use Livewire\WithFileUploads;
 class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
+    use DrawsWithChatGpt;
     use DuplicatesSceneObjects;
     use EditsCharacters;
     use EditsDiorama;
