@@ -16,6 +16,6 @@
             <span>{{ __('Draw') }}</span>
         </button>
     </div>
-    <p class="mt-1 text-2xs text-panel-hint" x-show="busy" x-cloak>{{ __('A few minutes: ink first, then the watercolour. You can keep working.') }}</p>
+    <p class="mt-1 text-2xs text-panel-hint" x-show="busy" x-cloak>{{ __('About 2 minutes: ink first, then the watercolour. You can keep working.') }}</p>
 </form>
 @endif

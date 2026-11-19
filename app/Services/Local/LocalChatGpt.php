@@ -68,7 +68,8 @@ final class LocalChatGpt
     {
         $dir = $this->workdir();
         try {
-            $this->keep($dir, $this->run($prompt, $images, $dir, $timeout), self::DRAWN, $out);
+            // low effort: the prompt is complete, there is nothing to think through, only two pictures to make
+            $this->keep($dir, $this->run($prompt, $images, $dir, $timeout, 'low'), self::DRAWN, $out);
         } finally {
             File::deleteDirectory($dir);
         }
@@ -90,9 +91,9 @@ final class LocalChatGpt
     }
 
     /** The answer of one `codex exec`: the prompt goes on stdin, because -i takes several values and would swallow it. */
-    private function run(string $prompt, array $images, string $dir, int $timeout): string
+    private function run(string $prompt, array $images, string $dir, int $timeout, string $effort = ''): string
     {
-        $cmd = [self::bin(), 'exec', '--skip-git-repo-check', '-s', 'workspace-write', '-C', $dir];
+        $cmd = [self::bin(), 'exec', '--skip-git-repo-check', '-s', 'workspace-write', '-C', $dir, ...($effort !== '' ? ['-c', "model_reasoning_effort={$effort}"] : [])];
         foreach ($images as $image) {
             array_push($cmd, '-i', $image);
         }
