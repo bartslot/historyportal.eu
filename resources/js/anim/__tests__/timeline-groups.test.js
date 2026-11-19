@@ -21,7 +21,7 @@ describe('groupsFor', () => {
     const groups = groupsFor('text')
     expect(groups.map((g) => g.id)).toEqual(['transform', 'appearance'])
     expect(groups[0].props.map((p) => p.key)).toEqual(['x', 'y', 'w', 'scale', 'rotation'])
-    expect(groups[1].props.map((p) => p.key)).toEqual(['blur', 'opacity', 'color', 'colorOpacity'])
+    expect(groups[1].props.map((p) => p.key)).toEqual(['blur', 'opacity', 'color', 'colorOpacity', 'reveal', 'revealWords'])
   })
 
   it('keeps the kind-specific shapes as their own groups: Arrow and Tail', () => {

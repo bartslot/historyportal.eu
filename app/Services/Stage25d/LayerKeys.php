@@ -76,6 +76,34 @@ final class LayerKeys
         return ['kind' => $m['kind'], 'amount' => $n($m['amount'] ?? 1), 'speed' => $n($m['speed'] ?? 1)];
     }
 
+    /** Water on a picture (engine-mvp stage25d/water.ts WATER_RANGE): each value's range. */
+    public const WATER_RANGE = ['amount' => [0.0, 3.0], 'speed' => [0.0, 3.0], 'glints' => [0.0, 3.0], 'loop' => [2.0, 12.0]];
+
+    /**
+     * A layer's water as the stage reads it: on, the values held to their range, and its mask, a file of this lesson's
+     * own water folder (EditsStage25d::saveStage25dWaterMask). Null when the patch carries no water.
+     *
+     * @return array{on: bool, amount?: float, speed?: float, glints?: float, loop?: float, mask?: string}|null
+     */
+    public static function water(mixed $w, int $lessonId): ?array
+    {
+        if (! is_array($w)) {
+            return null;
+        }
+        $out = ['on' => ($w['on'] ?? true) !== false];
+        foreach (self::WATER_RANGE as $key => [$min, $max]) {
+            if (isset($w[$key]) && is_numeric($w[$key]) && is_finite((float) $w[$key])) {
+                $out[$key] = round(max($min, min($max, (float) $w[$key])), 3);
+            }
+        }
+        $mask = $w['mask'] ?? null;
+        if (is_string($mask) && preg_match('#^/storage/lessons/'.$lessonId.'/water/[0-9a-f-]{36}\.(webp|png)$#', $mask) === 1) {
+            $out['mask'] = $mask;
+        }
+
+        return $out;
+    }
+
     /** The longest start offset into an animation, in seconds (a sheet is seconds long; this only stops a runaway). */
     private const PLAY_OFFSET_MAX = 600.0;
 

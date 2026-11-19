@@ -124,7 +124,7 @@ export const readObjectProperty = (target, property) => {
 }
 
 /** What TextOverlayLayer draws a text with when the field is not set. */
-const TEXT_LOOK = { color: '#f8fafc', colorOpacity: 1, scale: 1, rotation: 0, blur: 0, opacity: 1 }
+const TEXT_LOOK = { color: '#f8fafc', colorOpacity: 1, scale: 1, rotation: 0, blur: 0, opacity: 1, reveal: 1, revealWords: 1 }
 
 /** A text box's drawn width, as a % of the stage, or null while it is not on screen. */
 const measuredWidth = (id) => {

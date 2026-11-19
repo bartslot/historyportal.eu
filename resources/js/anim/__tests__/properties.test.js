@@ -22,7 +22,7 @@ describe('propertiesFor', () => {
     // Since 2026-10-16 a text has a look of its own (TextLayerStyle): every one of these is a
     // real field TextOverlayLayer draws. `size` is still the string "xl", so it gets no row.
     expect(propertiesFor('text').map((p) => p.key))
-      .toEqual(['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity'])
+      .toEqual(['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity', 'reveal', 'revealWords'])
     expect(propertiesFor('text').map((p) => p.key)).not.toContain('size')
     expect(propertiesFor('rect').map((p) => p.key)).toEqual(['opacity'])
   })

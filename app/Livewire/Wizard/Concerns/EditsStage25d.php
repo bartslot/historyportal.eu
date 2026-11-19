@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Models\StageWorld;
 use App\Services\Editor\Characters;
 use App\Services\Editor\Cutouts;
+use App\Services\Editor\EditedImages;
 use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\Daylight;
 use App\Services\Stage25d\LayerKeys;
@@ -110,6 +111,9 @@ trait EditsStage25d
         if (($motion = LayerKeys::motion($patch['motion'] ?? null)) !== null) {
             $values['motion'] = $motion;
         }
+        if (($water = LayerKeys::water($patch['water'] ?? null, $this->lesson->id)) !== null) {
+            $values['water'] = $water;
+        }
         $sheet = LibraryBundle::asset($bundle, (string) ($layers[$index]['asset'] ?? ''));
         $cells = is_array($sheet) && ($sheet['kind'] ?? null) === 'animation' ? (int) ($sheet['frames'] ?? ((int) ($sheet['cols'] ?? 1) * (int) ($sheet['rows'] ?? 1))) : null;
         if (($play = LayerKeys::play($patch['play'] ?? null, $cells)) !== null) {   // an animation's speed, start and own order of frames
@@ -136,6 +140,28 @@ trait EditsStage25d
         // next poll must not draw it either. Anything else (a picture, a depth, keys, motion) renders as before.
         $this->skipQuietRender();
         $this->renderedFingerprint = $this->lessonFingerprint();
+    }
+
+    /**
+     * The Paint the water brush's mask for one layer (a grey webp or png, white = water), stored with the lesson's media.
+     * The page saves its url onto the layer's water itself (stage25d:layer), so an undo takes it back like any value.
+     *
+     * @return array{ok: bool, url?: string}
+     */
+    public function saveStage25dWaterMask(int $sceneId, int $index, string $image): array
+    {
+        $scene = $this->stage25dScene();
+        if ($scene?->id !== $sceneId || ! isset($scene->config['stage25d']['set']['layers'][$index])) {
+            return ['ok' => false];
+        }
+        if (! str_starts_with($image, 'data:image/webp;') && ! str_starts_with($image, 'data:image/png;')) {
+            return ['ok' => false];
+        }
+        // ponytail: an old mask stays on disk after a new one is saved (undo points back at it); sweep with the lesson's media
+        $path = EditedImages::storeIn("lessons/{$this->lesson->id}/water", $image);
+        $this->skipRender();   // the stage already shows the mask
+
+        return $path === null ? ['ok' => false] : ['ok' => true, 'url' => (string) parse_url(Storage::disk('public')->url($path), PHP_URL_PATH)];
     }
 
     /** From the middle of the head to the nose, as a share of the figure's height. */

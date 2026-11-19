@@ -28,7 +28,7 @@ export const GROUP_LABEL_KEYS = {
   face: 'Expression',
 }
 
-const APPEARANCE = new Set(['blur', 'opacity', 'color', 'colorOpacity', 'tint', 'tint_opacity'])
+const APPEARANCE = new Set(['blur', 'opacity', 'color', 'colorOpacity', 'tint', 'tint_opacity', 'reveal', 'revealWords'])
 const CAMERA_VIEW = new Set(['heading', 'tilt'])
 
 /** Which group a property sits in. A registry `group` (a tail, an arrow) wins: it is one shape. */
@@ -56,7 +56,7 @@ export const groupsFor = (kind) => {
 export const sectionKey = (target, groupId) => `${target}#${groupId}`
 
 /** Properties stored as a 0..1 fraction (or a multiplier of 1) that the teacher reads as a percent. */
-const AS_PERCENT = new Set(['opacity', 'colorOpacity', 'tint_opacity', 'scale'])
+const AS_PERCENT = new Set(['opacity', 'colorOpacity', 'tint_opacity', 'scale', 'reveal', 'revealWords'])
 
 /**
  * How a property's stored number is SHOWN and stepped.

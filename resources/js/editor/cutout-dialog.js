@@ -42,6 +42,7 @@ import { mountCharacter } from './character-tab.js'
 import { cropOf, trimState } from './trim.js'
 import { figureFromSheet, writeBack, sheetDataUrl } from './puppet-sheet.js'
 import { mountScenePeek } from './scene-peek.js'
+import { fillBehind } from '../scene/fill-behind.js'
 
 const ZOOM_STEP = 1.5
 const RING_MS = 700           // how long the eraser's size shows after its slider moved
@@ -89,11 +90,21 @@ const say = (type, message) => window.dispatchEvent(new CustomEvent('toast', { d
 /** The biggest picture the server takes in one save, in bytes of its data URL (Cutouts::maxPictureBytes). */
 /** WebP quality a saved picture is tried at, best first. */
 const SAVE_QUALITIES = [0.85, 0.75, 0.6]
+/** The filled picture: lossless first (Chrome encodes WebP at 1 without loss), so the rest of it stays pixel for pixel. */
+const FILL_QUALITIES = [1, 0.95, ...SAVE_QUALITIES]
 const limitBytes = () => Number(document.querySelector('[data-cutout-limit]')?.dataset.cutoutLimit) || Infinity
 const MB = 1024 * 1024
 const megabytes = (bytes) => (Math.ceil((bytes / MB) * 10) / 10).toLocaleString(document.documentElement.lang || undefined)
 
 let open = null
+
+const SELECT_WAIT_MS = 8000
+const HALF_ALPHA = 128
+/** Select a stage row once the stage has built it (the server's new scene reaches it a moment after the call). */
+const selectWhenBuilt = (stage, id, until = Date.now() + SELECT_WAIT_MS) => {
+  if (stage?.editTarget?.(id)) stage.select(id)
+  else if (Date.now() < until) setTimeout(() => selectWhenBuilt(stage, id, until), 100)
+}
 
 /** Open the picture editor for one picture. Resolves when it closes (saved or not). */
 export async function openCutout (target) {
@@ -132,6 +143,7 @@ export async function openCutout (target) {
   let figure = null      // a boned figure: its sheet, and the whole figure the editor works on (puppet-sheet.js)
   let figureUrls = []
   let state = { canUndo: false, canRedo: false, selected: false }
+  let making = false     // Make a layer is on its way to the server
   let tool = 'erase'
   let slid = false       // a clean-up or edge slider moved: there is something to lose
   const edges = { feather: 0, shift: 0 }
@@ -187,6 +199,13 @@ export async function openCutout (target) {
       state = { ...state, ...s }
       $('[data-cut-undo]').disabled = !(active()?.canUndo() ?? state.canUndo)
       $('[data-cut-redo]').disabled = !(active()?.canRedo() ?? state.canRedo)
+      // one primary action: Make a layer once a part is selected, else Save
+      if (target.layerable) {
+        const lead = !!state.selected && !active()
+        $('[data-cut-layer]').disabled = !lead || making
+        $('[data-cut-layer]').classList.toggle('btn-primary', lead)
+        $('[data-cut-save]').classList.toggle('btn-primary', !lead)
+      }
       peek?.pictureChanged()
     }
     const undo = () => { (active() ?? mask)?.undo(); showClone(null, null, 0) }
@@ -380,6 +399,27 @@ export async function openCutout (target) {
       const button = e.currentTarget
       if (await saveOthers(button) && await saving(button, () => wire.resetEditedImage(target.id))) close({ saved: true })
     })
+    // Make a layer: the selection as the teacher's cut-out AND a new layer over its own pixels, the picture behind
+    // filled where it was (Fill behind, in a copy: the original is kept). One server write, one Cmd-Z.
+    $('[data-cut-layer-box]').hidden = !target.layerable
+    $('[data-cut-layer]').addEventListener('click', async (e) => {
+      const cut = state.selected ? mask?.cutout() : null
+      if (!cut || !fits(cut.dataUrl)) return
+      const at = target.stage.cutPlacement(target.stageId, cut.box, cut.width, cut.height)
+      if (!at) { say('error', t('This part cannot be made into a layer here.')); return }
+      const from = target.from ? { ...target.from, box_h: cut.box.h, height: target.from.height ?? cut.height } : {}
+      const filled = $('[data-cut-fill]').checked ? filledUrl(cut) : null
+      if (filled && !fits(filled)) return
+      const button = e.currentTarget
+      making = true
+      let made = null
+      const ok = await saving(button, async () => (made = await wire.makeCutoutLayer(cut.dataUrl, target.title || '', from, target.stage.sceneId, target.stageId, at, filled)))
+      making = false
+      refresh()
+      if (!ok) return
+      close({ saved: true, pictureSaved: !!filled })
+      selectWhenBuilt(target.stage, `layer-${made.index}`)
+    })
     $('[data-cut-asset]').addEventListener('click', (e) => {
       const cut = mask?.cutout()
       if (!cut || !fits(cut.dataUrl)) return
@@ -470,6 +510,18 @@ export async function openCutout (target) {
       const at = (q) => (figure ? sheetDataUrl(back.pixels, figure.sheet.width, figure.sheet.height, q) : mask.resultDataURL(q, crop))
       let url = null
       for (const q of SAVE_QUALITIES) if ((url = at(q)).length <= limitBytes()) break
+      return url
+    }
+    /** Where the cut is more than half there: under its soft outer edge the picture keeps its own pixels, so the layer
+     *  standing still looks exactly like the picture did (a filled ring there showed as a halo round the subject). */
+    const holeOf = (alpha) => alpha.map((a) => (a >= HALF_ALPHA ? 1 : 0))
+    /** The picture as it opened, the hole under the cut painted from round it (scene/fill-behind.js), as WebP. */
+    const filledUrl = (cut) => {
+      const { w, h } = mask.size
+      const c = document.createElement('canvas'); c.width = w; c.height = h
+      c.getContext('2d').putImageData(new ImageData(fillBehind(mask.pixels().opened, w, h, holeOf(cut.alpha), { growPx: 1 }), w, h), 0, 0)
+      let url = null
+      for (const q of FILL_QUALITIES) if ((url = c.toDataURL('image/webp', q)).length <= limitBytes()) break
       return url
     }
     /** What Save would put on the stage: nothing yet when the picture has no work on it, unless it opened cleaned. */

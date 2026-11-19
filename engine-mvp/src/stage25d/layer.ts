@@ -17,6 +17,7 @@ import { BOMB_SEAM, BOMB_SPAN, MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
+import { WATER_GLSL, glintRate, waterOmega, type Water } from './water'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
  *  it is ink (inkOf), and the depth's values; returns the colour. Defines lum, inkOf and LINE_BROWN. */
@@ -152,6 +153,7 @@ Effect.ShadersStore.stageLayerFragmentShader = `
     return texture2D(tex, p);
   }
   ${HATCH_GLSL}
+  ${WATER_GLSL}
   // past the image's own border counts as air, so a picture cut off by its border gets a line there too
   bool past(vec2 p) { return p.x < 0.0 || p.y < 0.0 || p.x > uRepeat || p.y > 1.0; }
   #ifdef REST
@@ -241,6 +243,13 @@ Effect.ShadersStore.stageLayerFragmentShader = `
       float k = amount * (0.3 + 0.7 * (1.0 - vH));
       uv.x += k * 0.004 * sin(uv.y * 70.0 + time * speed * 2.2 + phase);
       uv.y += k * 0.002 * sin(uv.x * 45.0 / uRepeat + time * speed * 1.6);
+    }
+    // water (water.ts): the painting wobbles inside the teacher's mask only, on a loop of waterLoop seconds
+    vec2 still = uv;
+    float tl = mod(time, max(waterLoop, 0.1));
+    if (water > 0.0 && waterCalm < 0.5) {
+      float wm = maskAt(uv);
+      if (wm > 0.002) uv += waterOff(uv, waterW * tl, wm);
     }
     vec4 c = tap(uv);                       // premultiplied
     c.rgb *= recolour;
@@ -357,6 +366,11 @@ Effect.ShadersStore.stageLayerFragmentShader = `
         soft += around(uv, vec2(cos(a), sin(a)) * reach).a;
       }
       c *= mix(1.0, smoothstep(0.15, 0.95, soft / 8.0), edgeSoft);
+    }
+    // water's light: glints cycling like highlight cels and a few twinkles, warm white, lit by the time of day
+    if (water > 0.0 && c.a > 0.004) {
+      float glow = glintAt(still, tl) + (waterCalm > 0.5 ? 0.0 : twinkleAt(still, tl));
+      c.rgb = mix(c.rgb, vec3(1.0, 0.97, 0.9) * ambient * c.a, clamp(glow * 1.4, 0.0, 1.0));
     }
     // the lower edge is painted over into the ground's own colour along a ragged line (not a blur, not see-through:
     // behind a far strip's lower part is sky, not floor), so the far landscape meets the floor without a seam. Opaque
@@ -592,6 +606,9 @@ export interface LayerHandle {
   setCell(c: readonly [number, number, number, number]): void
   /** a close-up's lid: 0 open .. 1 closed (no-op on a layer built without a blink) */
   setBlink(t: number): void
+  /** water on this picture (water.ts): its values, its mask (grey, white = water) and the glint sheet; null: none.
+   *  calm: someone asked for less motion (no ripple, no twinkles, the glints held) */
+  setWater(w: Water | null, calm: boolean, mask?: Texture, glints?: Texture): void
   /** a flat figure's watercolour and shading (look.ts aquarelOf) and its drawing's size in px; no-op unless built with one */
   setAquarel(a: Aquarel, drawSize: readonly [number, number]): void
 }
@@ -667,9 +684,9 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', 'bomb', 'texPx', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', 'bomb', 'texPx', 'water', 'waterAmt', 'waterW', 'waterLoop', 'waterRate', 'waterGlints', 'waterCalm', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
       ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeTint', 'drawPx'] : [])],
-    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
+    samplers: [...(rest ? ['tex', 'rest'] : ['tex']), 'waterMask', 'glintTex', ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
     needAlphaBlending: true,
   })
@@ -705,6 +722,9 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setVector4('cell', new Vector4(0, 0, 1, 1))
   mat.setVector2('uvFit', new Vector2(1, 1))
   mat.setFloat('bomb', 0).setVector2('texPx', new Vector2(tex.getSize().width, tex.getSize().height))
+  mat.setFloat('water', 0).setFloat('waterAmt', 0).setFloat('waterW', 0).setFloat('waterLoop', 4).setFloat('waterRate', 8).setFloat('waterGlints', 0).setFloat('waterCalm', 0)
+  mat.setTexture('waterMask', tex).setTexture('glintTex', tex)   // bound to something valid; read only with water on
+  let waterOn = false
   mesh.material = mat
   mesh.metadata = { noGBuffer: true, painted: true } // the look draws no ink on its edges: the art has its own
   mesh.isPickable = false
@@ -758,6 +778,18 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
     setCell: (c) => { for (const x of cast ? [mat, cast.mat] : [mat]) x.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setBlink: (t) => { if (blink) mat.setFloat('blinkT', t) },
+    setWater: (w, calm, mask, glints) => {
+      if (!w || !mask || !glints) {
+        if (waterOn) mat.setFloat('water', 0)
+        waterOn = false
+        return
+      }
+      waterOn = true
+      mask.wrapU = tex.wrapU
+      mat.setTexture('waterMask', mask).setTexture('glintTex', glints)
+      mat.setFloat('water', 1).setFloat('waterAmt', w.amount).setFloat('waterW', waterOmega(w.loop, w.speed)).setFloat('waterLoop', w.loop)
+        .setFloat('waterRate', glintRate(w.loop)).setFloat('waterGlints', w.glints).setFloat('waterCalm', calm ? 1 : 0)
+    },
     setAquarel: (a, size) => {
       if (!aquarel) return
       mat.setFloat('figureWash', a.wash).setFloat('figureShade', a.shade).setFloat('shadeDepth', a.depth).setFloat('shadeSat', a.sat)

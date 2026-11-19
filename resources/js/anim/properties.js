@@ -84,6 +84,9 @@ const REGISTRY = {
     P('opacity', 'Opacity', 'linear', ''),
     P('color', 'Colour', 'color', ''),
     P('colorOpacity', 'Colour %', 'linear', ''),
+    // The share of its letters / words shown, 0..1 (scene/text-reveal.js): the Typewriter and Word by word presets.
+    P('reveal', 'Letters shown', 'linear', ''),
+    P('revealWords', 'Words shown', 'linear', ''),
   ],
   /** The half-panel behind a caption. `opacity` is a number on these and only on these. */
   rect: [

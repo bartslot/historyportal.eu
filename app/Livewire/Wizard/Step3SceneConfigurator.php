@@ -2311,7 +2311,7 @@ class Step3SceneConfigurator extends Component
             $allowed = match (strtok($target, ':')) {
                 'camera' => ['lng', 'lat', 'zoom', 'heading', 'tilt'],
                 // Every row the timeline offers a text (properties.js): X and Y alone dropped its look.
-                'text' => ['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity'],
+                'text' => ['x', 'y', 'w', 'scale', 'rotation', 'blur', 'opacity', 'color', 'colorOpacity', 'reveal', 'revealWords'],
                 // A background picture, or a split panel's: its crop and opacity (background-crop.js).
                 'bg' => ['x', 'y', 'zoom', 'opacity'],
                 'rect' => ['opacity'],
@@ -4666,7 +4666,7 @@ class Step3SceneConfigurator extends Component
             return array_diff(array_keys($band), ['index', 'x', 'z', 'scale', 'opacity']) === [];
         }
 
-        return array_diff(array_keys($patch), LayerKeys::FIELDS) === [];
+        return array_diff(array_keys($patch), [...LayerKeys::FIELDS, 'water']) === [];   // water: the stage shows it already
     }
 
     /**

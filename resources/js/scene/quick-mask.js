@@ -875,7 +875,10 @@ export async function mountQuickMask(canvas, overlay, url, onChange = () => {}, 
         const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
         tmp.getContext('2d').putImageData(full, 0, 0);
         c.getContext('2d').drawImage(tmp, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
-        return { dataUrl: c.toDataURL('image/webp', 0.9), box, width: w, height: h };
+        // alpha: where the cut-out has paint, picture px (Make a layer fills the picture behind it there)
+        const alpha = new Uint8Array(w * h);
+        for (let p = 0; p < w * h; p++) alpha[p] = out[p * 4 + 3];
+        return { dataUrl: c.toDataURL('image/webp', 0.9), box, width: w, height: h, alpha };
     };
 
     surface.addEventListener('pointerdown', down);

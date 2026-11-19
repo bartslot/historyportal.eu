@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Models\SvgAsset;
 use App\Services\Editor\Cutouts;
 use App\Services\Editor\EditedImages;
+use App\Services\Editor\SceneHistory;
+use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Renderless;
@@ -32,15 +35,101 @@ trait EditsImages
     #[Renderless] // the picture is untouched, and a render would pull the inspector off the selected layer
     public function saveCutout(string $image, string $title = '', array $from = []): array
     {
-        $asset = Cutouts::save(auth()->user(), $image, $title, $from);
+        $asset = $this->storeCutout($image, $title, $from);
         if ($asset === null) {
             return ['ok' => false];
         }
-        // the Assets panels follow: the icon panel opens its "My cut-outs" tab, the 3D library takes the new row
-        $this->dispatch('cutouts-changed', id: $asset->id, stage: Cutouts::stageRow($asset));
         $this->dispatch('toast', type: 'success', message: __('Saved in My cut-outs.'));
 
         return ['ok' => true, 'id' => $asset->id];
+    }
+
+    /** @param  array<string,mixed>  $from */
+    private function storeCutout(string $image, string $title, array $from): ?SvgAsset
+    {
+        $asset = Cutouts::save(auth()->user(), $image, $title, $from);
+        // the Assets panels follow: the icon panel opens its "My cut-outs" tab, the 3D library takes the new row
+        if ($asset !== null) {
+            $this->dispatch('cutouts-changed', id: $asset->id, stage: Cutouts::stageRow($asset));
+        }
+
+        return $asset;
+    }
+
+    /**
+     * Make a layer (Bart 11-19: "from 1 image, slightly animate the boats"): the selection saved as the teacher's cut-out
+     * (saveCutout's own save), and added to the open stage25d scene as a new layer over the row it was cut from ('sky' or
+     * 'layer-3'), at the place the stage worked out (scene/stage25d/cut-layer.js: x, y, z, depth, rotation and its height
+     * in metres, which becomes Size here against the cut-out's own metres). `$filled`: that row's picture with the hole
+     * painted (Fill behind), a new file the row draws instead; its original stays, so Back to the original still works.
+     * One scene write: one Cmd-Z takes it all back.
+     *
+     * @param  array<string,mixed>  $from
+     * @param  array<string,mixed>  $at
+     * @return array{ok: bool, id?: int, index?: int, url?: string}
+     */
+    public function makeCutoutLayer(string $image, string $title, array $from, int $sceneId, string $row, array $at, ?string $filled = null): array
+    {
+        $scene = $this->stage25dScene();
+        $set = $scene?->config['stage25d']['set'] ?? [];
+        $source = $row === 'sky' ? (empty($set['sky']) ? null : (array) ($set['skyLayer'] ?? [])) : ($set['layers'][preg_match('/^layer-(\d+)$/', $row, $m) === 1 ? (int) $m[1] : -1] ?? null);
+        $height = is_numeric($at['height_m'] ?? null) ? (float) $at['height_m'] : 0.0;
+        if ($scene?->id !== $sceneId || ! is_array($source) || $height <= 0) {
+            return ['ok' => false];
+        }
+        $picture = $filled !== null ? EditedImages::store($this->lesson, $filled) : null;
+        if ($filled !== null && $picture === null) {
+            return ['ok' => false];
+        }
+        $asset = $this->storeCutout($image, $title, $from);
+        if ($asset === null) {
+            return ['ok' => false];
+        }
+        $layers = $set['layers'] ?? [];
+        $layers[] = self::layerOverCut('cut-'.$asset->id, $at, $height / ($asset->height_m ?: Cutouts::DEFAULT_HEIGHT_M), $row === 'sky' ? 'sky' : (string) ($source['depth'] ?? 'mid'));
+        $config = $scene->config;
+        $config['stage25d']['set']['layers'] = array_values($layers);
+        if ($picture !== null) {
+            $src = parse_url(Storage::disk('public')->url($picture), PHP_URL_PATH);
+            // the edit_state stays: the filled copy has the very pixels (and crop) of the picture it was opened on
+            $rowPath = $row === 'sky' ? ['stage25d', 'set', 'skyLayer'] : ['stage25d', 'set', 'layers', (int) $m[1]];
+            data_set($config, [...$rowPath, 'src'], $src);
+            // and keeps what the stage measured on it before: where its land starts (the horizon, 'auto', and the whole
+            // set with it) and its line weight (every line of it), so filling one spot changes nothing else on screen
+            foreach (['land_top', 'ink_level'] as $key) {
+                if (is_numeric($at[$key] ?? null) && $at[$key] >= 0 && $at[$key] <= 1) {
+                    data_set($config, [...$rowPath, $key], (float) $at[$key]);
+                }
+            }
+        }
+        SceneHistory::startStep();   // its own undo step, whatever came just before
+        $this->storeStage25dConfig($scene, $config);
+        $this->selectSceneInternal($scene->id);   // the stage builds again: the new layer, the filled picture
+        $index = count($layers) - 1;
+        $this->selectInspectorTarget('s25_layer-'.$index);
+        $this->dispatch('toast', type: 'success', message: __('Made a layer. It is in My cut-outs too.'));
+
+        return ['ok' => true, 'id' => $asset->id, 'index' => $index, ...(isset($src) ? ['url' => $src] : [])];
+    }
+
+    /**
+     * The new layer's values: the placement held to the ranges every layer has (LayerKeys), Size from the height.
+     *
+     * @param  array<string,mixed>  $at
+     * @return array<string,mixed>
+     */
+    private static function layerOverCut(string $asset, array $at, float $scale, string $sourceDepth): array
+    {
+        $depth = in_array($at['depth'] ?? null, ['sky', 'bg', 'mid', 'fg', 'near'], true) ? $at['depth'] : $sourceDepth;
+        $values = LayerKeys::clean(['x' => $at['x'] ?? null, 'y' => $at['y'] ?? null, 'z' => $at['z'] ?? null, 'rotation' => $at['rotation'] ?? null, 'scale' => $scale]);
+        if (($values['rotation'] ?? null) === 0.0) {
+            unset($values['rotation']);
+        }
+
+        // drawn as part of the picture it came from: that picture's line weight, no shadow of its own (it has one already)
+        $ink = is_numeric($at['ink_level'] ?? null) ? max(0.0, min(1.0, (float) $at['ink_level'])) : null;
+
+        return ['asset' => $asset, 'depth' => $depth, ...$values, 'shadow' => 0, ...($ink !== null ? ['ink_level' => $ink] : [])];
     }
 
     /** A cut-out off the 3D shelf; scenes that use it keep showing it. */

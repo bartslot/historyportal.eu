@@ -23,6 +23,7 @@ import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stag
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { farEdgeOf, farEdgeOptions } from '@stage25d/stage25d/far-edge'
 import { libraryUrl } from './config.js'
+import { layerOverCut } from './cut-layer.js'
 import { assetIcon, layerLabel, numbered } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
@@ -147,6 +148,7 @@ export async function createStage25d (host, opts = {}) {
   let isPaused = null       // the player's pause (play's second argument): close-ups stop blinking
   let lead = 0   // the narration starts this many seconds into the scene (director's narration_at_s)
   let motionClock = 0
+  let heldMotion = null     // a test holds the layer motion at one moment (holdMotion): water, sway, breathing
   let heldAt = -1           // the scene's time at the last frame
   let framesAhead = 0       // how far animations ran on while that time stood still
   let last = performance.now()
@@ -198,7 +200,7 @@ export async function createStage25d (host, opts = {}) {
     stage.engine.runRenderLoop(() => {
       const now = performance.now()
       const step = Math.min(0.1, (now - last) / 1000)
-      motionClock += step
+      motionClock = heldMotion ?? motionClock + step
       last = now
       stage.tick(now)
       // close-ups blink only while the lesson runs: in the editor while it plays, in the player unless paused
@@ -563,7 +565,33 @@ export async function createStage25d (host, opts = {}) {
         frames: layerIndex(id) >= 0 && isAnimation(asset) ? { ...animOf(asset), loop: asset.loop !== false, play: row.play ?? null } : null,
         // a person made in the Character tab (app/Services/Editor/Characters.php): it opens there, on its own recipe
         character: layerIndex(id) >= 0 && asset.character ? { id: Number(String(asset.id).slice(4)), recipe: asset.recipe ?? null } : null,
+        // "Make a layer" can lift a part of it onto a layer of its own, over its own pixels (cutPlacement)
+        layerable: !asset.character && !!api.cutPlacement(id, { x: 0, y: 0, w: 1, h: 1 }, 1, 1),
       }
+    },
+    /**
+     * "Make a layer" (editor/cutout-dialog.js): the values of a new layer that lies over the part `box` (px of the picture
+     * as the editor opened it, `w` x `h`) of row `id` ('layer-3' or 'sky'), with no jump on screen (cut-layer.js).
+     * Null for a row it cannot place: a ground band, a figure of parts, an animation, a tiled strip.
+     */
+    cutPlacement (id, box, w, h) {
+      const i = layerIndex(id)
+      const row = id === 'sky' ? (cfg?.set?.sky ? skyNow : null) : layers[i]
+      const asset = row && assets.get(id === 'sky' ? cfg.set.sky : row.asset)
+      if (!row || !asset || !stage || !box || !(w > 0) || !(h > 0) || isAnimation(asset) || (i >= 0 && puppetOf(asset, row, libData.base))) return null
+      const u = (box.x + box.w / 2) / w
+      const bottom = stage.pictureToWorld(i >= 0 ? i : -1, u, (box.y + box.h) / h)
+      const top = stage.pictureToWorld(i >= 0 ? i : -1, u, box.y / h)
+      if (!bottom || !top) return null
+      const depth = id === 'sky' ? 'sky' : row.depth
+      const at = layerOverCut({
+        bottom: bottom.point, top: top.point, eye: bottom.eye, land: bottom.land, depth,
+        order: layers.filter((l) => l.depth === depth).length,
+        rotation: i >= 0 ? (layerAt(row, nowT()).rotation ?? 0) : 0,
+      })
+      // the new layer's lines weighed as its picture's; the picture keeps where its land starts once its hole is filled
+      const landTop = row.land_top ?? bottom.landTop
+      return at && { ...at, ...(bottom.ink != null ? { ink_level: bottom.ink } : {}), ...(landTop != null ? { land_top: landTop } : {}) }
     },
     /** What the Character tab opens for a new person: no picture yet, the period's first person to start from. */
     newCharacter () {
@@ -851,6 +879,9 @@ export async function createStage25d (host, opts = {}) {
         viewWidth: viewWidthAt(zNow(layerIndex(id))),
         play: { speed: l.play?.speed ?? 1, offset: l.play?.offset ?? 0 },
         ink: { outline: l.outline ?? 0, etch: l.etch ?? 0 },
+        // water on this picture (water.ts) and the picture's px, for the Paint the water brush; a figure has none
+        water: puppet || asset?.layer === 'figure' ? undefined : l.water ?? null,
+        size: asset ? [asset.w, asset.h] : null,
       }
     },
     /** A picture's ink: its outline (px) and etched shadow (0..1). Live, and saved on the layer. */
@@ -861,6 +892,17 @@ export async function createStage25d (host, opts = {}) {
       if (!now) return
       commit(id, { play: { ...(now.play ?? {}), ...play } })
     },
+    /** Water on one layer (water.ts): on, amount, speed, glints, loop, mask. Live, and saved on the layer whole. */
+    setLayerWater (id, patch) {
+      const l = layers[layerIndex(id)]
+      if (l) commit(id, { water: { ...(l.water ?? {}), ...patch } })
+    },
+    /** The Paint the water brush's mask on the canvas, live, before it is saved (a canvas, white = water). */
+    drawWaterMask (id, source) { if (layerIndex(id) >= 0) stage?.drawWaterMask(layerIndex(id), source) },
+    /** A layer's picture on the canvas: its top-left, top-right and bottom-left corners as shares (stage.ts layerGhost). */
+    layerCorners (id) { return layerIndex(id) >= 0 ? stage?.layerGhost(layerIndex(id)) ?? null : null },
+    /** Hold all layer motion at `t` seconds (null: run again). For checks that compare frames; nothing saves it. */
+    holdMotion (t) { heldMotion = Number.isFinite(t) ? t : null; if (heldMotion !== null) motionClock = heldMotion },
     /** Motion of one layer: kind, amount, speed. Live, and saved on the layer. */
     setLayerMotion (id, motion) {
       // from what the row shows: a row with no motion of its own has its picture's, and the server takes no motion without a kind

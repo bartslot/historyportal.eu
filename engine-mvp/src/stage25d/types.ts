@@ -59,6 +59,10 @@ export interface Library {
 /** Teacher-editable motion on one layer; a bare kind is the same as { kind }. */
 export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number }
 
+/** Water on a picture (water.ts): a looping ripple, glints and twinkles inside the teacher's painted mask (a grey webp,
+ *  white = water). `on: false` keeps the values and the mask, so turning it back on restores them. */
+export interface WaterSpec { on?: boolean; amount?: number; speed?: number; glints?: number; loop?: number; mask?: string }
+
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */
 /** ease 'smooth': the run from this key to the next passes through the keys round it (an animation preset's poses,
@@ -107,6 +111,12 @@ export interface SceneLayer {
   need?: string | string[]
   /** the teacher's edited copy of the picture (a URL), drawn instead of the library file */
   src?: string
+  /** the ink level its lines are weighed by (ground.ts inkLevel), instead of its own file's: a part lifted out of a
+   *  picture ("Make a layer") keeps that picture's lines */
+  ink_level?: number
+  /** where its land starts (ground.ts landTop), instead of its own file's: a picture with a part lifted out and the
+   *  hole filled keeps the horizon it had (set.horizon 'auto') */
+  land_top?: number
   /** that copy's crop to its paint (editor/trim.js): its offset in the library file and its own anchor */
   edit_state?: { crop?: [number, number]; anchor?: [number, number] } | null
   asset?: string | null
@@ -135,6 +145,7 @@ export interface SceneLayer {
   /** how far a bone is turned from the painted pose, degrees clockwise on screen (layout.ts bonesAt) */
   [bone: `bone:${string}`]: number | undefined
   motion?: MotionKind | MotionSpec
+  water?: WaterSpec
   keys?: LayerKey[]
   /** share of the plane's height (from the bottom) that fades into the ground: bg strips 0.22 by default */
   feather?: number

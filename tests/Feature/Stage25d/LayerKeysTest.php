@@ -165,6 +165,26 @@ class LayerKeysTest extends TestCase
         $this->assertEquals(5.0, $scene->fresh()->config['stage25d']['set']['layers'][0]['play']['speed'], 'a non-number changes nothing');
     }
 
+    public function test_water_is_saved_held_to_range_with_only_a_mask_of_its_own_lesson(): void
+    {
+        Storage::fake('public');
+        $scene = $this->sceneWith($this->stage());
+        $editor = Livewire::actingAs($scene->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])
+            ->call('selectScene', $scene->id);
+        $png = 'data:image/png;base64,'.base64_encode((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg=='));
+        $saved = $editor->instance()->saveStage25dWaterMask($scene->id, 0, $png);
+        $this->assertTrue($saved['ok']);
+        $this->assertMatchesRegularExpression('#^/storage/lessons/'.$scene->lesson_id.'/water/[0-9a-f-]{36}\.png$#', $saved['url']);
+        $this->assertFalse($editor->instance()->saveStage25dWaterMask($scene->id, 0, 'data:image/gif;base64,R0lGOD')['ok']);
+        $this->assertFalse($editor->instance()->saveStage25dWaterMask($scene->id, 9, $png)['ok'], 'no such layer');
+
+        $editor->call('saveStage25dLayer', 0, ['water' => ['amount' => 9, 'loop' => 1, 'glints' => 'x', 'mask' => $saved['url']]], $scene->id);
+        $this->assertEquals(['on' => true, 'amount' => 3.0, 'loop' => 2.0, 'mask' => $saved['url']], $scene->fresh()->config['stage25d']['set']['layers'][0]['water']);
+
+        $editor->call('saveStage25dLayer', 0, ['water' => ['on' => false, 'mask' => '/storage/lessons/'.($scene->lesson_id + 1).'/water/'.str_repeat('a', 36).'.webp']], $scene->id);
+        $this->assertEquals(['on' => false], $scene->fresh()->config['stage25d']['set']['layers'][0]['water'], 'another lesson\'s mask is dropped');
+    }
+
     public function test_a_figure_with_legs_keeps_its_leg_and_braid_bones(): void
     {
         $scene = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'a', 'depth' => 'mid']]]]);

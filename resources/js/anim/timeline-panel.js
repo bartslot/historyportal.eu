@@ -15,6 +15,7 @@ import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, key
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
+import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
 
@@ -146,6 +147,30 @@ export const applyCamera = (map, values) => {
 }
 
 
+let stretchRaf = 0
+
+/**
+ * Play `from` → `to` once on the stage, then stay at `to` (a text preset just picked). Through window.__timelineKeying
+ * every frame, not one panel: the save re-renders the scene and the panel is rebuilt part way. Stops the moment the
+ * playhead is not where this left it (the teacher took it). Reduced motion: straight to `to`.
+ */
+function playStretch (from, to, reduced) {
+  cancelAnimationFrame(stretchRaf)
+  const keying = () => window.__timelineKeying
+  if (reduced || !(to > from)) { keying()?.seek?.(to); return }
+  let at = from
+  keying()?.seek?.(from)
+  const began = performance.now()
+  const step = (now) => {
+    const k = keying()
+    if (!k?.seek || Math.abs(k.time() - at) > 1e-3) return
+    at = Math.min(to, from + (now - began) / 1000)
+    k.seek(at)
+    if (at < to) stretchRaf = requestAnimationFrame(step)
+  }
+  stretchRaf = requestAnimationFrame(step)
+}
+
 export const animationTimeline = (config = {}) => ({
   ...labelColumn(),
   time: 0,
@@ -227,6 +252,9 @@ export const animationTimeline = (config = {}) => ({
       duration: () => this.duration,
       layerKeys: (target) => keysFromTracks(this.tracks)[String(target).slice(4)] ?? [],
       setLayerKeys: (target, keys) => this.replaceLayerKeys(target, keys),
+      // a text's motion preset (Motion tab, text-presets.js): keys on its rows at the playhead, one edit, played once
+      textPreset: (target, id) => this.applyTextPreset(target, id),
+      seek: (time) => this.seek(time),
       refresh: () => this.applyFrame(),
       // the Object list's type icon: the same hidden state as this panel's eye
       hideTarget: (id) => this.hideTargetOf(id),
@@ -908,6 +936,37 @@ export const animationTimeline = (config = {}) => ({
     this.applyFrame()
     this.save()
     this.announce()
+  },
+
+  /**
+   * A text's motion preset laid into its rows at the playhead (text-presets.js): saved as one edit, so one undo takes
+   * it back, then played once on the stage and left at its end, where the text has fully come in (or gone). Another
+   * entrance (or exit) picked while the playhead still sits where the last one ended takes that one's place, so trying them in a
+   * row compares them rather than stacking them one after the other.
+   */
+  applyTextPreset (target, id) {
+    this.stopEasingPreview()
+    this.pause()
+    const item = (window.__lessonTextLayer?._texts ?? []).find((t) => `text:${t.id}` === target)
+    const rest = (p) => { const track = this.trackFor(target, p); return track ? baseOf(track) : readObjectProperty(target, p) }
+    const last = this._lastPreset
+    const exit = EXIT_PRESETS.includes(id)
+    const start = last?.target === target && last.exit === exit && sameTime(this.time, last.to) ? last.from : this.time
+    const done = applyTextPreset(this.tracks, target, id, { start, duration: this.duration, text: item?.text ?? '', rest })
+    if (!done) return
+    this._lastPreset = { target, exit, from: done.from, to: done.to }
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))   // a pending edit saves as its own step first
+    const before = this.tracks
+    this.tracks = done.tracks
+    // a row the preset emptied stops moving: the text goes back to its resting value there, not the last one played
+    for (const p of PRESET_PROPERTIES) {
+      if (sortedKeys(this.trackFor(target, p)).length >= 2) continue
+      const old = before.find((t) => t.target === target && t.property === p)
+      if (old) writeObjectProperty(target, p, baseOf(old) ?? readObjectProperty(target, p))
+    }
+    this.save()
+    this.announce()
+    playStretch(done.from, done.to, this.reducedMotion)
   },
 
   /** Hand the stage25d layers their keys, as the timeline holds them now: it eases them exactly as the player will. */

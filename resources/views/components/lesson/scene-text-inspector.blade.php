@@ -223,8 +223,31 @@
         </x-ui.settings-section>
     </div>
 
-    {{-- A text has no entrance of its own: it moves by its keyframes, which live in the timeline. --}}
-    <div x-show="tab === 'animate'" x-cloak class="pt-3">
+    {{-- A text moves by its keyframes, which live in the timeline. A preset is a shortcut that writes them at the
+         playhead (resources/js/anim/text-presets.js) and plays them once on the stage; one undo takes it back. --}}
+    @php
+        $presetGroups = [
+            __('Entrance') => ['appear' => __('Appear'), 'fade' => __('Fade in'), 'rise' => __('Rise'), 'zoom' => __('Zoom in'),
+                'blur' => __('Blur in'), 'typewriter' => __('Typewriter'), 'words' => __('Word by word')],
+            __('Exit') => ['fadeOut' => __('Fade out')],
+        ];
+    @endphp
+    <div x-show="tab === 'animate'" x-cloak class="space-y-3 pt-3" x-data="{ picked: null }">
+        @foreach ($presetGroups as $heading => $presets)
+            <div class="space-y-1">
+                <p class="text-xs font-semibold uppercase tracking-wide text-panel-label">{{ $heading }}</p>
+                <div class="grid grid-cols-2 gap-1" role="group" aria-label="{{ $heading }}">
+                    @foreach ($presets as $presetId => $label)
+                        <button type="button" data-text-preset="{{ $presetId }}"
+                                x-on:click="picked = @js($presetId); window.__timelineKeying?.textPreset?.(@js($target), @js($presetId))"
+                                class="flex h-8 min-w-0 items-center rounded px-2 text-left text-xs ring-1 transition-colors"
+                                :class="picked === @js($presetId) ? 'bg-primary/10 text-base-content ring-primary' : 'bg-base-200 text-base-content/80 ring-transparent hover:ring-base-content/30'">
+                            <span class="truncate">{{ $label }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endforeach
         <button type="button" data-text-show-timeline
                 x-on:click="$store.view.script = true; $store.view.showTab('timeline'); window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: @js($id) } }))"
                 class="btn btn-sm w-full rounded-full">{{ __('Show in timeline') }}</button>

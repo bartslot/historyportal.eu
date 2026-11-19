@@ -167,6 +167,13 @@ export function markup (t, clean, modes = ['picture']) {
       </div>
       <span class="flex-1"></span>
       <div class="flex flex-col gap-2 border-t pt-3" style="border-color: var(--color-panel-border);">
+        <div class="flex flex-col gap-1" data-cut-layer-box hidden>
+          <button type="button" class="btn btn-sm" data-cut-layer disabled data-tooltip="${t('The part you selected becomes a layer of its own, in the same place.')}">${t('Make a layer')}</button>
+          <label class="flex min-h-8 cursor-pointer items-center justify-between gap-2 text-sm text-panel-value" data-tooltip="${t('Paints the spot it leaves from what is round it. The original picture is kept.')}">
+            <span>${t('Fill behind')}</span>
+            <input type="checkbox" class="toggle toggle-sm" data-cut-fill checked>
+          </label>
+        </div>
         <button type="button" class="btn btn-sm" data-cut-asset>${t('Save as asset')}</button>
         <button type="button" class="btn btn-ghost btn-sm" data-cut-original hidden>${t('Back to the original')}</button>
       </div>

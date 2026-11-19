@@ -75,7 +75,7 @@ class TimelineSaveKeepsTheStageTest extends TestCase
         foreach (['x', 'y', 'zoom', 'opacity'] as $property) {
             $tracks[] = ['target' => 'bg:1', 'property' => $property, 'keyframes' => $keys];
         }
-        foreach (['w', 'scale', 'rotation', 'blur', 'opacity', 'colorOpacity'] as $property) {
+        foreach (['w', 'scale', 'rotation', 'blur', 'opacity', 'colorOpacity', 'reveal', 'revealWords'] as $property) {
             $tracks[] = ['target' => 'text:t1', 'property' => $property, 'keyframes' => $keys];
         }
         $tracks[] = ['target' => 'text:t1', 'property' => 'color', 'keyframes' => [['time' => 0, 'value' => '#AABBCC'], ['time' => 1, 'value' => '#112233']]];
@@ -86,10 +86,10 @@ class TimelineSaveKeepsTheStageTest extends TestCase
         $saved = collect($this->scene->fresh()->config['timeline']['tracks'])->map(fn ($t) => $t['target'].'.'.$t['property'])->all();
         $this->assertSame([
             'bg:1.x', 'bg:1.y', 'bg:1.zoom', 'bg:1.opacity',
-            'text:t1.w', 'text:t1.scale', 'text:t1.rotation', 'text:t1.blur', 'text:t1.opacity', 'text:t1.colorOpacity',
+            'text:t1.w', 'text:t1.scale', 'text:t1.rotation', 'text:t1.blur', 'text:t1.opacity', 'text:t1.colorOpacity', 'text:t1.reveal', 'text:t1.revealWords',
             'text:t1.color',
         ], $saved);
-        $this->assertSame('#aabbcc', $this->scene->fresh()->config['timeline']['tracks'][10]['keyframes'][0]['value']);
+        $this->assertSame('#aabbcc', $this->scene->fresh()->config['timeline']['tracks'][12]['keyframes'][0]['value']);
     }
 
     public function test_undo_and_redo_of_a_removed_keyframe_reach_the_timeline_panel(): void

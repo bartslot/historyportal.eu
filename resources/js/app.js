@@ -9,6 +9,7 @@ import { watchCarousels } from './carousel.js';
 import { easingPreview } from './easing-preview.js';
 import { animationTimeline } from './anim/timeline-panel.js';
 import { animationPresets } from './anim/presets-picker.js';
+import { stage25dWater } from './scene/stage25d/water-panel.js';
 import { characterExpressions, timelineFace } from './character/face-keys.js';
 import { setupHeroLessonDemo } from './hero/lesson-demo.js';
 import { setupSiteHeader } from './site-header.js';
@@ -154,6 +155,8 @@ initNumericFields();
 window.animationTimeline = animationTimeline;
 // A figure's Animation section: x-data="animationPresets(layerId, presets)".
 window.animationPresets = animationPresets;
+// A picture's Water rows and its Paint the water brush: x-data="stage25dWater(layerId)".
+window.stage25dWater = stage25dWater;
 window.characterExpressions = characterExpressions;
 window.__timelineFace = timelineFace;
 

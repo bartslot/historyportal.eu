@@ -33,6 +33,8 @@ import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type Ben
 import { contactKeys, footLockOffset, heldBones, heldY, type Side } from './foot-lock'
 import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
+import { waterOf } from './water'
+import { glintSheet, makeWaterMask, type WaterMask } from './water-gl'
 import { spritesOf } from './scatter'
 import { makeStrewn, type Strewn } from './scatter-gl'
 import { strewPlan } from './strew'
@@ -61,7 +63,7 @@ const FAR_PIECE_Z = 880   // just in front of a terrain's far edge (900 m): that
 interface Band { handle: LayerHandle; z: number; w: number; h: number; skyline: number; index: number; asset: Asset; band: GroundBand; colour: RGB | null; copyAt: (z: number) => number; n: number; lod?: Lod }   // index: in set.groundBands; z: where it stands now; copyAt: one copy's width at z; n: copies side by side now
 /** A far picture's two copies (lod.ts): the painting and its low-detail copy, and which one it draws now. */
 interface Lod { high: RawTexture; low: RawTexture; isLow: boolean }
-interface Built { lod?: Lod; lock?: { keys: SceneLayer['keys']; size: string; ankle: Map<string, number> }; layer: SceneLayer; index: number; builtScale: number; builtZ: number; uRepeat: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean }  // index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
+interface Built { lod?: Lod; lock?: { keys: SceneLayer['keys']; size: string; ankle: Map<string, number> }; layer: SceneLayer; index: number; builtScale: number; builtZ: number; uRepeat: number; handle: LayerHandle; uvFit?: readonly [number, number]; asset: Asset; order: number; stain?: Stain; stainDepth?: (z: number) => number; ink?: number; flat: boolean; skyline?: number; bent?: BentPicture | null; blink?: (time: number) => number; ghost?: string; aquarel?: boolean; water?: WaterMask }  // water: its mask, made when it first has water; index -1 = the sky; aquarel: a flat figure the shader colours (its shade mask loaded)
 /** How far the paper wash floor is tinted toward the far landscape's own ground colour */
 const GROUND_WASH = 0.7
 const mix3 = (a: number[], b: number[], k: number) => a.map((v, i) => v + (b[i] - v) * k) as [number, number, number]
@@ -292,7 +294,7 @@ export class Stage {
         stain = makeStain(handle.mesh, sz.w, sz.d, this.scene)
         stain.mesh.alphaIndex = stainIndex(p.alphaIndex)
       }
-      next.push({ lod: low ? { high: tex, low, isLow: false } : undefined, layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, uRepeat: p.uRepeat, handle, uvFit, asset, order, stain, stainDepth, aquarel: !!(wash && shade), ink: inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
+      next.push({ lod: low ? { high: tex, low, isLow: false } : undefined, layer, index, builtScale: layer.scale ?? 1, builtZ: p.z, uRepeat: p.uRepeat, handle, uvFit, asset, order, stain, stainDepth, aquarel: !!(wash && shade), ink: layer.ink_level ?? inkLevels.get(urlOf(lib, asset, layer)), flat, skyline: skylines.get(urlOf(lib, asset, layer)), bent, ghost: puppet || bent || p.uRepeat !== 1 ? undefined : (layer.src ?? urlOf(lib, asset, layer)), blink: blinkTex ? blinker(seedOf(`${asset.id}:${index}`), this.calm) : undefined })
     }))
     // the floor: the scene's ground art (or the bundle paper), fading into where the far landscape ends
     const choice = resolveGround(s.set, lib)
@@ -313,7 +315,7 @@ export class Stage {
     if (choice.kind === 'paper' && choice.reason) misses.push({ need: s.set.ground, reason: choice.reason })
     // the first strip in the scene's own order (loads finish in any order), not a prop placed far off
     const far = next.filter((b) => b.asset.layer === 'bg').sort((a, b) => a.index - b.index)[0]
-    const strip = far ? { top: landTops.get(urlOf(lib, far.asset, far.layer)) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
+    const strip = far ? { top: far.layer.land_top ?? landTops.get(urlOf(lib, far.asset, far.layer)) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
     // under a strip the floor fades into the strip's own ground colour; with no strip, into the sky's colour where it
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
@@ -335,7 +337,7 @@ export class Stage {
       const t = await loadPremultiplied(url, this.scene).catch(() => { misses.push({ need: a.id, reason: `file did not load: ${url}` }); return null })
       if (t) cloudTex.set(a.id, t)
     }))
-    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
+    const dispose = (list: Built[]) => list.forEach((b) => { b.stain?.mesh.material?.dispose(); b.water?.dispose(); b.handle.mesh.dispose(); b.handle.material.dispose() })
     if (token !== this.buildToken) {   // a newer build won: this one never shows
       dispose(next)
       bandsNext.forEach((b) => { b.handle.mesh.dispose(); b.handle.material.dispose() })
@@ -622,6 +624,24 @@ export class Stage {
     return { url: b.ghost, tl: on(lo.x, hi.y), tr: on(hi.x, hi.y), bl: on(lo.x, lo.y) }
   }
 
+  /**
+   * A point of a layer's picture in the world as drawn now (u, v: shares of the picture from its top-left), with the
+   * eye, the far ground's land line and the picture's ink and land top: what "Make a layer" needs to lay a cut over its own pixels (the editor's
+   * scene/stage25d/cut-layer.js). index -1: the sky. Null where one picture file does not draw the layer (a figure of
+   * parts, a tiled strip), as for layerGhost.
+   */
+  pictureToWorld(index: number, u: number, v: number): { point: { x: number; y: number; z: number }; eye: { x: number; y: number; z: number }; land: number; ink: number | null; landTop: number | null } | null {
+    const b = this.built.find((n) => n.index === index)
+    if (!b?.ghost) return null
+    const mesh = b.handle.mesh
+    mesh.computeWorldMatrix(true)
+    const { minimum: lo, maximum: hi } = mesh.getBoundingInfo().boundingBox
+    const p = Vector3.TransformCoordinates(new Vector3(lo.x + (hi.x - lo.x) * u, hi.y - (hi.y - lo.y) * v, 0), mesh.getWorldMatrix())
+    const e = this.camera.position
+    // and how its lines were weighed and where its land starts: a part lifted out keeps both (SceneLayer ink_level, land_top)
+    return { point: { x: p.x, y: p.y, z: p.z }, eye: { x: e.x, y: e.y, z: e.z }, land: this.land, ink: b.ink ?? null, landTop: landTops.get(b.ghost) ?? null }
+  }
+
   /** A figure's joints on screen as shares of the canvas, in the pose drawn now; null for a layer that is no figure of parts.
    *  `mirrored`: the drawing shows mirrored, so a clockwise drag on screen turns its bones the other way. */
   jointsOnScreen(index: number): { mirrored: boolean; joints: { name: string; at: [number, number]; tip: [number, number] }[] } | null {
@@ -693,6 +713,25 @@ export class Stage {
   boneLimit(index: number, name: string, deg: number): number {
     const bent = this.built.find((n) => n.index === index)?.bent
     return bent && 'limit' in bent ? (bent as BentPuppet).limit(name, deg) : deg
+  }
+
+  /** A layer's water (water.ts): its mask follows the saved file, unless the brush drew the newest one itself. */
+  private poseWater(b: Built) {
+    const w = b.index >= 0 ? waterOf(b.layer) : null
+    if (!w) { b.handle.setWater(null, this.calm); return }
+    b.water ??= makeWaterMask(this.scene, b.asset.w, b.asset.h)
+    if (w.mask !== b.water.url) {
+      if (b.water.live) { b.water.url = w.mask; b.water.live = false } else b.water.load(w.mask)
+    }
+    b.handle.setWater(w, this.calm, b.water.tex, glintSheet(this.scene))
+  }
+
+  /** The brush's mask on a layer's water, live, before it is saved (the editor's Paint the water). */
+  drawWaterMask(index: number, source: CanvasImageSource) {
+    const b = this.built.find((n) => n.index === index)
+    if (!b) return
+    b.water ??= makeWaterMask(this.scene, b.asset.w, b.asset.h)
+    b.water.draw(source)
   }
 
   /** The camera's own motion is on; the editor stills it while working. Someone who asked for less motion never gets it. */
@@ -960,6 +999,7 @@ export class Stage {
       b.handle.setLight(kind === 'sky' || cloud ? WHITE : lit.ambient, lit.sun, lit.shade)
       b.handle.setTone(cloud ? lit.cloud.tone : 0, lit.cloud)
       b.handle.setMotion(motionOf(b.asset, b.layer))
+      this.poseWater(b)
       b.handle.material.setFloat('time', clock)
       if (isAnimation(b.asset)) b.handle.setCell(cellOf(b.asset, frameAt(b.asset, b.layer.play, frameT)))   // the scene's time: a seek shows the same frame
     }

@@ -30,6 +30,7 @@
  */
 import { t } from '../i18n.js'
 import { letterComicAmerica } from '../comic-america.js'
+import { applyReveal, clearReveal } from './text-reveal.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -516,8 +517,10 @@ export class TextOverlayLayer {
 
     const edit = this._makeEditEl(item)
     if (isComicAmerica(item)) letterBox(edit, true, item.text)
+    applyReveal(edit, item)   // a Typewriter or Word by word key part way: the rest of the words wait
     edit.addEventListener('focus', () => {
       edit.style.borderColor = '#f59e0b'
+      clearReveal(edit)   // typing goes into whole words, never into hidden letters
       if (!isComicAmerica(item)) return
       letterBox(edit, false, item.text)
       caretToEnd(edit)
@@ -807,6 +810,7 @@ export class TextOverlayLayer {
       else node.textContent = item.text
     }
 
+    applyReveal(node, item)
     return node
   }
 

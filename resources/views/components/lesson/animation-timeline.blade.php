@@ -67,6 +67,7 @@
             'scale' => __('Scale'), 'rotation' => __('Rotate'), 'blur' => __('Blur'),
             'opacity' => __('Opacity'),
             'color' => __('Colour'), 'colorOpacity' => __('Colour').' %',
+            'reveal' => __('Letters shown'), 'revealWords' => __('Words shown'),
             'tint' => __('Colour'), 'tint_opacity' => __('Colour').' %',
             'lng' => __('Longitude'), 'lat' => __('Latitude'), 'zoom' => __('Zoom'),
             'heading' => __('Direction'), 'tilt' => __('Tilt'), 'fov' => __('Zoom'), 'roll' => __('Rotate'),

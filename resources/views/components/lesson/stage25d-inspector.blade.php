@@ -441,6 +441,7 @@
                         </x-ui.panel-row>
                     </div>
                 @endforeach
+                <x-lesson.stage25d-water :layer-id="$layerId" />
             </div>
         </x-ui.settings-section>
     @endif

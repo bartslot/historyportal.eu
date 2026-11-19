@@ -112,6 +112,8 @@ final class Cutouts
         'Click a colour in the picture to paint with it.', 'Press on a colour and drag to take more of it.', 'Some paint lies outside the parts of this figure and was left out.', 'Option/Alt-click where to copy from first.',
         'Zoom in', 'Zoom out', 'Fit', 'Size', 'Softness', 'Tolerance', 'Everywhere', 'Add', 'Remove', 'Brush size', 'Soft edge', 'Edge',
         'Clean up', 'White holes', 'White edges', 'Soft bottom', 'Before', 'Save as asset', 'Back to the original', 'Close',
+        'Make a layer', 'Fill behind', 'The part you selected becomes a layer of its own, in the same place.',
+        'Paints the spot it leaves from what is round it. The original picture is kept.', 'This part cannot be made into a layer here.',
         'Save your changes?', 'Keep editing', 'Discard', 'The picture could not be saved. Try again.',
         'This picture cannot be opened here.', 'Saved.',
         'Frames', 'This picture is too big to save here: :size MB, the most is :max MB.', 'Show scene', 'Hide scene', 'Play', 'Pause', 'Speed', 'Loop', 'Duplicate', 'Delete',
