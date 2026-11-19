@@ -85,6 +85,29 @@ class ImageEditTest extends TestCase
         $this->assertSame($second['path'], $scene->fresh()->shots[0]['layers'][0]['path'], 'one Cmd-Z per save');
     }
 
+    public function test_a_save_lands_on_the_scene_the_editor_opened_on_even_after_the_selection_moved(): void
+    {
+        // Bart 11-19: a figure edited on the ship scene was saved onto a row of the next scene, which was selected by then
+        $lesson = $this->lesson();
+        $stage = fn (int $order) => Scene::create([
+            'lesson_id' => $lesson->id, 'order' => $order, 'kind' => 'stage25d', 'script_segment' => 'x', 'status' => 'ready',
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'stone-chamber-01', 'depth' => 'mid', 'x' => 0.6]]]]],
+        ]);
+        [$ship, $field] = [$stage(1), $stage(2)];
+        $editor = $this->editor($ship)->call('selectScene', $field->id);
+
+        $editor->call('saveEditedImage', 's25_layer-0', self::png(), [], $ship->id)->assertReturned(fn ($r) => $r['ok'] === true);
+
+        $this->assertArrayHasKey('src', $ship->fresh()->config['stage25d']['set']['layers'][0], 'the scene it was opened on takes the save');
+        $this->assertArrayNotHasKey('src', $field->fresh()->config['stage25d']['set']['layers'][0], 'the scene selected meanwhile is untouched');
+
+        // a picture layer of a 2D scene is written through the selection: rather nothing than the wrong scene
+        $layer = ['asset_id' => 7, 'kind' => 'figure', 'path' => 'assets/ship.png', 'x' => 50, 'y' => 50];
+        $flat = Scene::create(['lesson_id' => $lesson->id, 'order' => 3, 'kind' => 'narration', 'script_segment' => 'x', 'status' => 'ready', 'shots' => [['layers' => [$layer]]]]);
+        $editor->call('saveEditedImage', 'art_7', self::png(), [], $flat->id)->assertReturned(fn ($r) => $r['ok'] === false);
+        $this->assertSame($layer, $flat->fresh()->shots[0]['layers'][0]);
+    }
+
     public function test_a_stage25d_layer_band_and_sky_draw_the_edited_file_and_reset(): void
     {
         $scene = Scene::create([

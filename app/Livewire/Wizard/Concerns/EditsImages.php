@@ -146,9 +146,21 @@ trait EditsImages
      * @param  array<string,mixed>  $state  the editor's design state (crop, colour, filters, drawings)
      * @return array{ok: bool, url?: string} url: the new file, so the editor can have it in cache before it lifts
      */
-    public function saveEditedImage(string $target, string $image, array $state = []): array
+    public function saveEditedImage(string $target, string $image, array $state = [], ?int $sceneId = null): array
     {
-        return $this->applyEditedImage($this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null, $target, $image, $state);
+        return $this->applyEditedImage($this->editedScene($sceneId), $target, $image, $state);
+    }
+
+    /**
+     * The scene the picture editor opened on (`$sceneId`), not whichever scene is selected by the time it saves: the
+     * selection follows the URL, so a Back swipe or a scene click while the editor was open sent a figure's save from
+     * the ship onto the axe row of the next scene (Bart 11-19). Without an id (an older page), the selected scene.
+     */
+    private function editedScene(?int $sceneId): ?Scene
+    {
+        $id = $sceneId ?? $this->selectedSceneId;
+
+        return $id ? $this->lesson->scenes()->find($id) : null;
     }
 
     /**
@@ -158,7 +170,8 @@ trait EditsImages
     private function applyEditedImage(?Scene $scene, string $target, string $image, array $state = []): array
     {
         $at = EditedImages::target($target);
-        if ($at === null || $scene === null) {
+        // a 2D picture layer is written through the selection (writeLayerFields): another scene's save would land there
+        if ($at === null || $scene === null || ($at[0] === 'art' && $scene->id !== (int) $this->selectedSceneId)) {
             return ['ok' => false];
         }
         if (($cut = $this->ownCutoutOfRow($scene, $at)) !== null) {
@@ -219,10 +232,10 @@ trait EditsImages
      * on has lost those pixels. Null: nothing is known (a cut-out's own file), Bring back then goes back to what it opened on.
      */
     #[Renderless]
-    public function originalOfEdited(string $target): ?string
+    public function originalOfEdited(string $target, ?int $sceneId = null): ?string
     {
         $at = EditedImages::target($target);
-        $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
+        $scene = $this->editedScene($sceneId);
         if ($at === null || $scene === null) {
             return null;
         }
@@ -258,12 +271,12 @@ trait EditsImages
     }
 
     /** Back to the picture as it was before the editor touched it. */
-    public function resetEditedImage(string $target): void
+    public function resetEditedImage(string $target, ?int $sceneId = null): void
     {
         $at = EditedImages::target($target);
-        $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
-        if ($at === null || $scene === null) {
-            return;
+        $scene = $this->editedScene($sceneId);
+        if ($at === null || $scene === null || ($at[0] === 'art' && $scene->id !== (int) $this->selectedSceneId)) {
+            return;   // a 2D layer is written through the selection (applyEditedImage)
         }
         if ($at[0] === 'art') {
             $this->editArtLayer($scene, $at[1], fn (array $l): ?array => isset($l['original_path'])

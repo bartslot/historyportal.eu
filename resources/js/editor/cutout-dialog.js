@@ -114,6 +114,8 @@ export async function openCutout (target) {
   const wire = wireFor(target.el)
   if (!wire) { say('error', t('This picture cannot be opened here.')); return }
 
+  // the scene it opened on: a save lands there even when the selection moved meanwhile (EditsImages::editedScene)
+  const sceneId = Number(target.stage?.sceneId ?? wire.selectedSceneId) || null
   const cameFrom = document.activeElement
   const root = document.createElement('div')
   root.className = 'fixed inset-0 z-[9000] flex select-none flex-col outline-none'
@@ -384,7 +386,7 @@ export async function openCutout (target) {
       const crop = picture && target.trim && !figure ? cropOf(mask.opaque(), mask.size.w, mask.size.h) : null
       const url = picture ? pictureUrl(back, crop) : null
       const state = crop ? trimState(target.trim, crop) : target.trim?.state ?? {}
-      if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, state)))) return
+      if (url && (!fits(url) || !await saving(button, () => wire.saveEditedImage(target.id, url, state, sceneId)))) return
       if (!picture && modesChanged) say('success', t('Saved.'))
       if (back?.lost) say('error', t('Some paint lies outside the parts of this figure and was left out.'))
       close({ saved: true, pictureSaved: !!picture })
@@ -397,7 +399,7 @@ export async function openCutout (target) {
     ask.addEventListener('pointerdown', (e) => { if (e.target === ask) stay() })
     $('[data-cut-original]').addEventListener('click', async (e) => {
       const button = e.currentTarget
-      if (await saveOthers(button) && await saving(button, () => wire.resetEditedImage(target.id))) close({ saved: true })
+      if (await saveOthers(button) && await saving(button, () => wire.resetEditedImage(target.id, sceneId))) close({ saved: true })
     })
     // Make a layer: the selection as the teacher's cut-out AND a new layer over its own pixels, the picture behind
     // filled where it was (Fill behind, in a copy: the original is kept). One server write, one Cmd-Z.
@@ -413,7 +415,7 @@ export async function openCutout (target) {
       const button = e.currentTarget
       making = true
       let made = null
-      const ok = await saving(button, async () => (made = await wire.makeCutoutLayer(cut.dataUrl, target.title || '', from, target.stage.sceneId, target.stageId, at, filled)))
+      const ok = await saving(button, async () => (made = await wire.makeCutoutLayer(cut.dataUrl, target.title || '', from, sceneId, target.stageId, at, filled)))
       making = false
       refresh()
       if (!ok) return
@@ -493,7 +495,7 @@ export async function openCutout (target) {
           setTool(tool)
           mask.setClean(clean)   // opens already cleaned: the teacher only nudges
           // reopened after a save: Bring back reaches the picture from before any editing, when it can be found
-          if (target.edited && !target.puppet) wire.originalOfEdited?.(target.id).then((url) => url && mask.setSource(url, target.trim?.crop)).catch(() => {})
+          if (target.edited && !target.puppet) wire.originalOfEdited?.(target.id, sceneId).then((url) => url && mask.setSource(url, target.trim?.crop)).catch(() => {})
           peek?.pictureChanged()
         })
         .catch(() => {
@@ -556,7 +558,7 @@ export async function openCutout (target) {
       })
     }
     /** A mode's save reaches the server itself, so a failure can be told and the window can stay. */
-    const saveLayer = (patch) => wire.saveStage25dLayer(Number(target.stageId.slice('layer-'.length)), patch, target.stage.sceneId)
+    const saveLayer = (patch) => wire.saveStage25dLayer(Number(target.stageId.slice('layer-'.length)), patch, sceneId)
     if (target.frames) {
       others.frames = mountFrames({
         view: $('[data-slot-view="frames"]'), strip: $('[data-slot-strip="frames"]'), panel: $('[data-slot-panel="frames"]'),

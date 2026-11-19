@@ -230,7 +230,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-_QlBTcpm.js",
+    "file": "assets/app-CMIpCnKk.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -282,7 +282,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-3YmEvqnt.js",
+    "file": "assets/cutout-dialog-Bgyr4ztD.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -496,7 +496,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-gF3v5JOR.js",
+    "file": "assets/index-D2k34GJH.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -624,7 +624,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-A8doX3Nu.js",
+    "file": "assets/recorder-DK5V_2I_.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

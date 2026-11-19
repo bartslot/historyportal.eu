@@ -64,7 +64,7 @@ describe('double-click: the picture cleans itself', () => {
     const { $, done } = await open()
     $('[data-cut-save]').click()
     await done
-    expect(wire.saveEditedImage).toHaveBeenCalledWith('s25_band-0', 'data:image/webp;base64,CLEAN', {})
+    expect(wire.saveEditedImage).toHaveBeenCalledWith('s25_band-0', 'data:image/webp;base64,CLEAN', {}, null)
     expect(document.querySelector('[data-cutout]')).toBeNull()
   })
 
