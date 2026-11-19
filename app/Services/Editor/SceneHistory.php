@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Editor;
 
 use App\Models\Scene;
+use Illuminate\Support\Arr;
 
 /**
  * Undo and redo for the scene editor (Bart, 2026-09-29: Cmd-Z did nothing on a scene).
@@ -68,7 +69,7 @@ final class SceneHistory
         $merges = $history['undo'] !== [] && ($history['step'] ?? null) === $step
             && ($marked ? $history['at'] > 0 : $now - $history['at'] <= self::MERGE_SECONDS);
         if (! $merges) {
-            $history['undo'][] = self::stateOf($scene, original: true);
+            $history['undo'][] = self::stateOf($scene, original: true) + ['saved_at' => $now];
             $history['undo'] = array_slice($history['undo'], -self::DEPTH);
         }
         $history['redo'] = [];                                  // a new edit ends the redo trail
@@ -89,6 +90,18 @@ final class SceneHistory
         return self::step($scene, 'redo', 'undo');
     }
 
+    /**
+     * When the scene's newest undo step was made (seconds), or null when it has none. Cmd-Z weighs it
+     * against the editor's other undo slots (a deleted scene) so the newest edit of any kind goes first.
+     * A redone step counts as made now; a step recorded before this stamp existed counts as oldest.
+     */
+    public static function lastStepAt(int $sceneId): ?float
+    {
+        $last = Arr::last(self::load($sceneId)['undo']);
+
+        return isset($last['saved_at']) ? (float) $last['saved_at'] : null;
+    }
+
     private static function step(Scene $scene, string $from, string $to): bool
     {
         $history = self::load($scene->id);
@@ -96,13 +109,13 @@ final class SceneHistory
         if ($state === null) {
             return false;
         }
-        $history[$to][] = self::stateOf($scene, original: false);
+        $history[$to][] = self::stateOf($scene, original: false) + ['saved_at' => now()->getTimestampMs() / 1000];
         $history['at'] = 0.0;                                   // the next edit is its own step
         self::store($scene->id, $history);
 
         self::$applying = true;
         try {
-            $scene->fill($state)->save();
+            $scene->fill(Arr::only($state, self::FIELDS))->save();
         } finally {
             self::$applying = false;
         }

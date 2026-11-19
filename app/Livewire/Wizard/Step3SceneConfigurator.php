@@ -40,6 +40,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Editor\SceneHistory;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
 use App\Services\SceneArrow;
@@ -153,7 +154,9 @@ class Step3SceneConfigurator extends Component
      * it back where it was. One deep: the rail's delete is a single click, and a teacher who wants a
      * whole batch back reaches for the browser's back button, not a history stack.
      *
-     * @var array{id: int, order: int}|null
+     * `at` is when (seconds): Cmd-Z weighs it against the selected scene's own edits, newest first.
+     *
+     * @var array{id: int, order: int, at?: float}|null
      */
     public ?array $deletedScene = null;
 
@@ -5752,7 +5755,7 @@ class Step3SceneConfigurator extends Component
         // and the renumbering below would otherwise collide with the scene we just took out.
         $scene->update(['order' => $this->parkingOrder()]);
         $scene->delete();
-        $this->deletedScene = ['id' => $sceneId, 'order' => $wasOrder];
+        $this->deletedScene = ['id' => $sceneId, 'order' => $wasOrder, 'at' => now()->getTimestampMs() / 1000];
         session()->forget($this->voyageInsertKey());   // a newer structural edit: Cmd-Z means the delete now
 
         $remaining = $this->lesson->scenes()->ordered()->get();
@@ -5829,7 +5832,10 @@ class Step3SceneConfigurator extends Component
      */
     public function undoLastEdit(): void
     {
-        if ($this->deletedScene) {
+        // A deleted scene waits while the open scene holds a NEWER edit: delete a scene, then a layer,
+        // and Cmd-Z brought the scene back and left the layer gone (Bart 11-19).
+        $editAt = $this->selectedSceneId ? SceneHistory::lastStepAt($this->selectedSceneId) : null;
+        if ($this->deletedScene && ($editAt === null || $editAt <= (float) ($this->deletedScene['at'] ?? 0))) {
             $this->undoSceneDelete();
 
             return;
