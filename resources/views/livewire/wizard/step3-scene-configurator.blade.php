@@ -2016,6 +2016,18 @@
                 if (!obj || obj.bg) return;
                 window.Livewire.dispatch('scene:delete-object', { objectId: obj.id });
             },
+            // Right-click on a row: select it and open Duplicate / Delete at the pointer. Rows that can't be
+            // removed (the background, fixed scenery) have no menu, so the browser's own stays away too.
+            menuObj: null,
+            openMenu(obj, e) {
+                if (!obj || obj.bg || (obj.s25sky && !obj.removable)) return;
+                this.select(obj);
+                this.menuObj = obj;
+                const m = this.$refs.objMenu;
+                m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
+                m.style.top = Math.min(e.clientY, innerHeight - 96) + 'px';
+                m.showPopover();
+            },
             // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
             duplicateObject(obj) {
                 if (!obj || obj.bg) return;
@@ -2622,7 +2634,6 @@
          block for SortableJS's position:fixed reorder ghost and break the layer-drag interaction. --}}
     <style>
         [data-objlist-col][data-compact] [data-obj-label] { display: none !important; }
-        [data-objlist-col][data-compact] [data-obj-adjust] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-eye] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-row] { justify-content: center; padding-left: 0.25rem; padding-right: 0.25rem; gap: 0; }
     </style>
@@ -2642,6 +2653,7 @@
                 <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null"
                      data-obj-row
                      @click="select(obj)"
+                     @contextmenu.prevent="openMenu(obj, $event)"
                      :class="[
                         obj.bg || obj.bal || obj.dio || obj.s25sky ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
@@ -2667,33 +2679,31 @@
                             <span x-show="isHidden(obj)" x-cloak>{!! \App\Support\UiIcon::svg('hidden', ['class' => 'h-4 w-4']) !!}</span>
                         </button>
                     </template>
-                    {{-- Duplicate and Delete in the scene thumbs' "..." menu (components/ui/more-menu; Bart 2026-11-17),
-                         hover-revealed. HIDDEN until hover, not transparent: an invisible button still took the label's
-                         room, so a wide list read "Be...". data-nodrag stops a press here from starting a Sortable drag;
-                         @click.stop keeps the row's select from firing. data-obj-adjust hides it in the compact rail.
-                         Balloons and removable scenery are deleted, never copied. --}}
-                    <span data-nodrag data-obj-adjust class="contents" x-show="!obj.bg && (!obj.s25sky || obj.removable)">
-                        <x-ui.more-menu alpine-id="'obj-menu-' + obj.id" :label="__('Object options')" x-on:click.stop="null"
-                                        class="-my-1.5 hidden group-hover:flex group-focus-within:flex">
-                            <li x-show="!obj.bal && !obj.s25sky">
-                                <button type="button" @click.stop="$el.closest('[popover]').hidePopover(); duplicateObject(obj)">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#rail-duplicate"/></svg>
-                                    {{ __('Duplicate') }}
-                                    <span class="ml-auto opacity-60">⌘D</span>
-                                </button>
-                            </li>
-                            <li>
-                                <button type="button" class="text-error" @click.stop="$el.closest('[popover]').hidePopover(); deleteObject(obj)">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#rail-delete"/></svg>
-                                    {{ __('Delete') }}
-                                    <span class="ml-auto opacity-60">⌫</span>
-                                </button>
-                            </li>
-                        </x-ui.more-menu>
-                    </span>
                 </div>
             </template>
         </div>
+        {{-- Duplicate and Delete: a right-click on a row, as in Figma's and Keynote's layer lists (Bart 2026-11-19: the
+             row's "..." clashed with the eye). The row keeps one hover action, the eye; ⌘D and ⌫ do the same as these
+             items. One native popover for the whole list, opened at the pointer: the top layer, so the panel's overflow
+             never clips it, and Escape or a click outside closes it. wire:ignore: a Livewire morph after select() would reset its position. --}}
+        <ul popover x-ref="objMenu" data-obj-menu wire:ignore
+            class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
+            style="position: fixed; inset: auto;">
+            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky">
+                <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
+                    <x-ui.icon name="duplicate" />
+                    {{ __('Duplicate') }}
+                    <span class="ml-auto opacity-60">⌘D</span>
+                </button>
+            </li>
+            <li>
+                <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
+                    <x-ui.icon name="delete" />
+                    {{ __('Delete') }}
+                    <span class="ml-auto opacity-60">⌫</span>
+                </button>
+            </li>
+        </ul>
     </div>
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to

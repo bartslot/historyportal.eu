@@ -19,7 +19,7 @@ class UiIconTest extends TestCase
      * resources/ui-icons, never raise it. Interface icons are <x-ui.icon name="…" /> (or uiIcon() in JS).
      * What stays inline is drawing, not icons: rulers, curves, thumbnails, the status dot.
      */
-    private const INLINE_SVG_BASELINE = 113;
+    private const INLINE_SVG_BASELINE = 111;
 
     private const EDITOR_VIEWS = [
         'resources/views/livewire/wizard',
