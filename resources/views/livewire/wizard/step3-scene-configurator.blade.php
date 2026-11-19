@@ -3197,58 +3197,64 @@
                     <x-lesson.scene-type-thumb kind="branch" />
                     <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
                 </button>
-                {{-- A historical voyage from the catalogue, inserted here as its itinerary and legs
-                     (insertVoyage). The pick stays in Alpine so choosing never re-renders the modal.
-                     One voyage per lesson: once it sails, the tile says why it is off. --}}
-                @if ($lesson->hasVoyage())
-                    <div data-voyage-taken aria-disabled="true"
-                         class="flex flex-col gap-2 rounded-box border border-base-300 bg-base-200/40 p-2 text-left opacity-80">
-                        <x-lesson.scene-type-thumb kind="voyage" />
-                        <span class="text-sm font-medium text-base-content/70">{{ __('Voyage') }}</span>
-                        <span class="text-xs text-panel-hint">{{ __('This lesson already sails a voyage. Use Route to add a leg.') }}</span>
-                    </div>
-                @elseif (count($this->voyageOptions))
+                {{-- ONE Voyage tile (Bart 2026-11-19: "just don't show it", on a greyed-out Voyage beside Route and Overview,
+                     three tiles with the same ship). The tile always means the voyage; what it adds depends on the lesson:
+                       - no voyage yet: pick one from the catalogue, inserted here as its itinerary and legs (insertVoyage);
+                       - a voyage sails: add its next leg, or the whole-trip overview, each with its own icon.
+                     An option that can't be used is not shown at all. The choice stays in Alpine so opening it never
+                     re-renders the modal. --}}
+                @if ($lesson->hasVoyage() || count($this->voyageOptions))
                     <div class="contents" x-data="{ pick: false, voyage: '' }">
                         <button type="button" data-add-voyage x-show="!pick" @click="pick = true"
                                 class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
                             <x-lesson.scene-type-thumb kind="voyage" />
                             <span class="text-sm font-medium text-slate-200">{{ __('Voyage') }}</span>
                         </button>
-                        <div x-show="pick" x-cloak class="col-span-2 flex flex-col gap-2 rounded-box border border-primary bg-base-200 p-3 sm:col-span-3">
-                            <label for="add-voyage-pick" class="text-xs text-panel-hint">{{ __('Which voyage do you want to sail here?') }}</label>
-                            <select id="add-voyage-pick" x-model="voyage" class="select select-sm select-bordered w-full">
-                                <option value="">{{ __('Choose a voyage…') }}</option>
-                                @foreach ($this->voyageOptions as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="flex justify-end gap-2">
-                                <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
-                                <button type="button" class="btn btn-primary btn-sm" data-insert-voyage :disabled="!voyage"
-                                        @click="$wire.insertVoyage(voyage)" wire:loading.attr="disabled" wire:target="insertVoyage">
-                                    {{ __('Add voyage') }}
-                                </button>
-                            </div>
+                        <div x-show="pick" x-cloak data-voyage-choice class="col-span-2 flex flex-col gap-2 rounded-box border border-primary bg-base-200 p-3 sm:col-span-3">
+                            @if ($lesson->hasVoyage())
+                                <span class="text-xs text-panel-hint">{{ __('Add to this lesson\'s voyage') }}</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    {{-- The new leg's destination drops at the current map centre (fallback in PHP if none). --}}
+                                    <button type="button" data-add-voyage-leg
+                                            @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"
+                                            class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
+                                        <x-ui.icon name="voyage-leg" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
+                                        <span>
+                                            <span class="block text-sm font-medium text-base-content">{{ __('Next leg') }}</span>
+                                            <span class="block text-xs text-panel-hint">{{ __('Sail on to a new place') }}</span>
+                                        </span>
+                                    </button>
+                                    {{-- The itinerary: the whole trip on one screen. Same scene kind as a leg; it just stops nowhere. --}}
+                                    <button type="button" data-add-voyage-overview wire:click="addScene('voyage-overview')"
+                                            class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
+                                        <x-ui.icon name="voyage-overview" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
+                                        <span>
+                                            <span class="block text-sm font-medium text-base-content">{{ __('Whole voyage') }}</span>
+                                            <span class="block text-xs text-panel-hint">{{ __('Every stop on one map') }}</span>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
+                                </div>
+                            @else
+                                <label for="add-voyage-pick" class="text-xs text-panel-hint">{{ __('Which voyage do you want to sail here?') }}</label>
+                                <select id="add-voyage-pick" x-model="voyage" class="select select-sm select-bordered w-full">
+                                    <option value="">{{ __('Choose a voyage…') }}</option>
+                                    @foreach ($this->voyageOptions as $id => $name)
+                                        <option value="{{ $id }}">{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
+                                    <button type="button" class="btn btn-primary btn-sm" data-insert-voyage :disabled="!voyage"
+                                            @click="$wire.insertVoyage(voyage)" wire:loading.attr="disabled" wire:target="insertVoyage">
+                                        {{ __('Add voyage') }}
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                @endif
-                @if ($lesson->hasVoyage())
-                    {{-- Drop the new leg's destination at the current map centre (fallback in PHP if none). --}}
-                    <button type="button"
-                            @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                        <x-lesson.scene-type-thumb kind="voyage" />
-                        <span class="text-sm font-medium text-slate-200">{{ __('Route') }}</span>
-                    </button>
-                    {{-- The itinerary: the whole trip on one screen. Same scene kind as a stop on the
-                         route — it just stops nowhere — so it belongs beside it here. --}}
-                    <button type="button" wire:click="addScene('voyage-overview')"
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                        <div class="grid aspect-video place-items-center rounded-box border border-slate-700/60 bg-base-300/60 text-indigo-300">
-                            <x-lesson.icon-voyage-overview class="h-10 w-auto" />
-                        </div>
-                        <span class="text-sm font-medium text-slate-200">{{ __('Overview') }}</span>
-                    </button>
                 @endif
             </div>
         </div>
