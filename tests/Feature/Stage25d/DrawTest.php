@@ -106,6 +106,7 @@ class DrawTest extends TestCase
         Artisan::call('chatgpt:draw', ['job' => $job['job']]);
 
         $this->assertStringContainsString('Marco Polo on a camel', $seen['prompt']);
+        $this->assertStringStartsWith($seen['prompt'], (string) file_get_contents(SparkJobs::lastDrawPrompt()), 'the latest prompt can be read back, word for word');
         $this->assertStringContainsString('c. 1275', $seen['prompt'], 'the lesson era keeps the drawing in its time');
         $this->assertStringContainsString('Step 1, the ink', $seen['prompt']);
         $this->assertStringContainsString(HistoryLineStyle::COLOUR_PROMPT, $seen['prompt'], 'the colour pass is Bart\'s prompt, verbatim');

@@ -37,11 +37,13 @@ trait DrawsWithChatGpt
             return ['ok' => false];
         }
         $job = SparkJobs::newId();
+        $prompt = HistoryLineStyle::draw($what, $this->drawEra($scene), LocalChatGpt::GREEN_BACKGROUND, 'ink.png', LocalChatGpt::DRAWN);
         SparkJobs::write($job, [
             'draw' => true, 'status' => SparkJobs::RUNNING, 'user' => (int) auth()->id(), 'scene' => $scene->id, 'started' => time(),
-            'title' => Str::limit($what, 60, ''),
-            'prompt' => HistoryLineStyle::draw($what, $this->drawEra($scene), LocalChatGpt::GREEN_BACKGROUND, 'ink.png', LocalChatGpt::DRAWN),
+            'title' => Str::limit($what, 60, ''), 'prompt' => $prompt,
         ]);
+        // Bart 11-19: "show me where I can see the latest prompt input". The job folder goes when it lands; this stays.
+        file_put_contents(SparkJobs::lastDrawPrompt(), $prompt."\n\nAttached, in order: ".implode(', ', HistoryLineStyle::drawAnchors())."\n");
         Process::run(['sh', '-c', sprintf('nohup %s %s chatgpt:draw %s > /dev/null 2>&1 &', escapeshellarg(PHP_BINARY), escapeshellarg(base_path('artisan')), escapeshellarg($job))]);
 
         return ['ok' => true, 'job' => $job];

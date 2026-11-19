@@ -45,6 +45,12 @@ final class SparkJobs
         return array_values(array_filter(array_map('basename', glob(storage_path('app/chatgpt-local/spark-*')) ?: []), fn (string $id) => self::read($id) !== null));
     }
 
+    /** The prompt of the latest Draw (DrawsWithChatGpt), word for word as ChatGPT got it: it outlives its job folder. */
+    public static function lastDrawPrompt(): string
+    {
+        return storage_path('app/chatgpt-local/last-draw-prompt.txt');
+    }
+
     public static function newId(): string
     {
         return 'spark-'.bin2hex(random_bytes(12));
