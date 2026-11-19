@@ -144,7 +144,7 @@ class LibraryLayers
      * Library folders that hold full-colour watercolour plates, not ink on white paper: they fill the
      * frame and may move with a camera (Bart, 2026-10-13: no black-and-white pictures in a lesson).
      */
-    private const PAINTED_PLATES = ['history-line/backdrops/tasman/'];
+    private const PAINTED_PLATES = ['history-line/backdrops/tasman/', 'history-line/backdrops/marco-polo/'];
 
     /**
      * Background from the art library: its Cloudinary URL, uploaded on first use. Without Cloudinary

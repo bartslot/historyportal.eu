@@ -87,6 +87,7 @@ return [
 
     'library_eras' => [
         'tasman' => 'regents-rulers',
+        'marco-polo' => 'cities-states',
         'dante' => 'cities-states',
         'dante-comic' => 'cities-states',
         'commedia' => 'cities-states',
