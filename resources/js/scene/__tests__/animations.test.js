@@ -8,6 +8,8 @@ import {
   entranceFrames,
   playEntrance,
   sceneTransitionFrames,
+  sceneTransitionPlan,
+  playSceneTransition,
   playExit,
   EXITS,
 } from '../animations.js'
@@ -122,6 +124,43 @@ describe('scene transitions', () => {
   it('leaves crossfade and cut to opacity alone', () => {
     expect(sceneTransitionFrames('crossfade')).toBeNull()
     expect(sceneTransitionFrames('cut')).toBeNull()
+  })
+
+  it('plans both halves: the new picture fades (and slides) in over the old one fading out', () => {
+    const plan = sceneTransitionPlan({ type: 'slide-left', duration: 1.2, ease: 'pop' })
+    expect(plan.incoming).toEqual([{ opacity: 0, transform: 'translateX(100%)' }, { opacity: 1, transform: 'translateX(0)' }])
+    expect(plan.outgoing).toEqual([{ opacity: 1 }, { opacity: 0 }])
+    expect(plan.options).toEqual({ duration: 1200, easing: easingBezier('pop') })
+    expect(sceneTransitionPlan({ type: 'crossfade' }).incoming).toEqual([{ opacity: 0 }, { opacity: 1 }])
+  })
+
+  it('plans nothing for a cut or a zero duration, and clamps a long one to 3 s', () => {
+    expect(sceneTransitionPlan({ type: 'cut', duration: 1 })).toBeNull()
+    expect(sceneTransitionPlan({ type: 'crossfade', duration: 0 })).toBeNull()
+    expect(sceneTransitionPlan({ type: 'crossfade', duration: 30 }).options.duration).toBe(3000)
+    expect(sceneTransitionPlan({}).options.duration).toBe(800)
+  })
+
+  it('turns a slide into a fade under reduced motion', () => {
+    expect(sceneTransitionPlan({ type: 'slide-up' }, { reduce: true }).incoming).toEqual([{ opacity: 0 }, { opacity: 1 }])
+  })
+
+  it('animates the incoming and the outgoing element, and resolves when both are done', async () => {
+    const runs = []
+    const el = () => ({ animate: (frames, opts) => { runs.push({ frames, opts }); return { finished: Promise.resolve() } } })
+    await playSceneTransition(el(), el(), { type: 'slide-down', duration: 0.5 }, { reduce: false })
+    expect(runs).toHaveLength(2)
+    expect(runs[0].frames[0].transform).toBe('translateY(-100%)')
+    expect(runs[1].frames).toEqual([{ opacity: 1 }, { opacity: 0 }])
+    expect(runs[0].opts.duration).toBe(500)
+  })
+
+  it('plays nothing for a cut and tolerates a missing element', async () => {
+    const animate = vi.fn(() => ({ finished: Promise.resolve() }))
+    await playSceneTransition({ animate }, null, { type: 'cut' }, { reduce: false })
+    expect(animate).not.toHaveBeenCalled()
+    await playSceneTransition(null, { animate }, { type: 'crossfade' }, { reduce: false })
+    expect(animate).toHaveBeenCalledTimes(1)
   })
 })
 

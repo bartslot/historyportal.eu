@@ -15,3 +15,4 @@ export { ArtworkOverlay, artObjId, layersSignature, layersIdentity, normalizeLay
 export { mountWizardScene } from './wizard-bridge.js';
 export { BackgroundMusic, createBackgroundMusic } from './background-music.js';
 export { Sfx } from './sfx.js';
+export { previewSceneTransition } from './transition-preview.js';

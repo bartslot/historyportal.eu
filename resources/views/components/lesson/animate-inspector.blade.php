@@ -104,7 +104,11 @@
     ];
 @endphp
 
-<div class="space-y-3" @if ($isLayer) x-data="{ build: 'in' }" @endif>
+{{-- A scene's transition plays on the stage on every change, and again from Preview (scene/transition-preview.js). --}}
+<div class="space-y-3"
+     @if ($isLayer) x-data="{ build: 'in' }"
+     @else x-data="{ t: @js($transition), preview (key = null, value = null) { if (key) this.t = { ...this.t, [key]: value }; window.LessonScene?.previewSceneTransition?.(document.getElementById('lesson-canvas-root'), {{ (int) $scene?->id }}, this.t) } }"
+     @endif>
     @if ($isLayer)
         {{-- Build In / Build Out, the two halves of a layer's life on the scene. --}}
         <div role="tablist" class="tabs tabs-box tabs-sm w-full">
@@ -183,12 +187,19 @@
                 @endforeach
             </select>
         @else
-            <select class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300"
-                    wire:change="setSceneTransition('type', $event.target.value)">
+            <div class="flex items-center gap-1">
+            <select class="select select-xs select-bordered w-full border-slate-700 bg-slate-900 text-slate-300" data-scene-transition
+                    wire:change="setSceneTransition('type', $event.target.value)" x-on:change="preview('type', $event.target.value)">
                 @foreach ($transitions as $value => $label)
                     <option value="{{ $value }}" @selected($current['anim'] === $value)>{{ $label }}</option>
                 @endforeach
             </select>
+            <button type="button" x-on:click.prevent="preview()" data-scene-transition-preview
+                    aria-label="{{ __('Preview') }}" data-tooltip="{{ __('Preview') }}"
+                    class="btn btn-ghost btn-sm btn-square shrink-0">
+                <x-icons.play class="h-3.5 w-3.5" />
+            </button>
+            </div>
         @endif
     </label>
 
@@ -219,10 +230,12 @@
                              x-show="build === '{{ $half }}'" x-cloak />
         @endforeach
     @else
-        <x-ui.slider-row :label="__('Duration')" :min="0" :max="3" :step="0.1"
-                         :value="$current['delay']"
-                         :display="rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0'" unit="s"
-                         on-change="setSceneTransition('duration', $event.target.value)" />
+        <div x-on:change="preview('duration', $event.target.value)">
+            <x-ui.slider-row :label="__('Duration')" :min="0" :max="3" :step="0.1"
+                             :value="$current['delay']"
+                             :display="rtrim(rtrim(number_format($current['delay'], 1), '0'), '.') ?: '0'" unit="s"
+                             on-change="setSceneTransition('duration', $event.target.value)" />
+        </div>
     @endif
 
     {{-- Easing, chosen from live curves rather than a list of names --}}
@@ -234,7 +247,7 @@
              class="grid gap-1.5 [grid-template-columns:repeat(auto-fit,minmax(4rem,1fr))]">
             <template x-for="opt in options" :key="opt.key">
                 <button type="button"
-                        @click="choose(opt.key, (k) => $wire.{{ $isLayer ? "updateArtworkLayer($aid, build === 'out' ? 'anim_out_ease' : 'anim_ease', k)" : "setSceneTransition('ease', k)" }})"
+                        @click="choose(opt.key, (k) => {{ $isLayer ? "\$wire.updateArtworkLayer($aid, build === 'out' ? 'anim_out_ease' : 'anim_ease', k)" : "{ \$wire.setSceneTransition('ease', k); preview('ease', k) }" }})"
                         :class="selected === opt.key
                             ? 'border-primary bg-slate-900 text-primary'
                             : 'border-slate-700 bg-slate-900/60 text-panel-hint hover:border-slate-500'"

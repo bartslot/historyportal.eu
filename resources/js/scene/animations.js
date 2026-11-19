@@ -138,6 +138,44 @@ export function sceneTransitionFrames(type) {
   }
 }
 
+/** The longest a scene transition may take; matches Step3SceneConfigurator::setSceneTransition. */
+const MAX_TRANSITION_S = 3
+
+/**
+ * Both halves of a scene transition as WAAPI keyframes: the incoming picture fades in (a slide also
+ * moves it), the outgoing one fades out underneath. null for a cut, or a zero duration.
+ * `reduce` (prefers-reduced-motion): a slide becomes a plain fade, nothing travels across the screen.
+ */
+export function sceneTransitionPlan({ type = 'crossfade', duration = 0.8, ease = 'move' } = {}, { reduce = false } = {}) {
+  const seconds = Number.isFinite(Number(duration)) ? Number(duration) : 0.8
+  const ms = Math.max(0, Math.min(MAX_TRANSITION_S, seconds)) * 1000
+  if (type === 'cut' || ms === 0) return null
+  const slide = reduce ? null : sceneTransitionFrames(type)
+  return {
+    incoming: [{ opacity: 0, ...(slide && { transform: slide.from }) }, { opacity: 1, ...(slide && { transform: slide.to }) }],
+    outgoing: [{ opacity: 1 }, { opacity: 0 }],
+    options: { duration: ms, easing: easingBezier(ease) },
+  }
+}
+
+const prefersReducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Play a scene transition: `incoming` comes in over `outgoing` (either may be null). The editor's preview
+ * and the student player both run this, so what a teacher sees is what the class sees. No fill: once
+ * done, each element is back to its own styles. Resolves when it has finished (or was cancelled).
+ *
+ * @returns {Promise<void>}
+ */
+export function playSceneTransition(incoming, outgoing, transition, { reduce = prefersReducedMotion() } = {}) {
+  const plan = sceneTransitionPlan(transition, { reduce })
+  if (!plan) return Promise.resolve()
+  const runs = [[incoming, plan.incoming], [outgoing, plan.outgoing]]
+    .filter(([el]) => typeof el?.animate === 'function')
+    .map(([el, frames]) => el.animate(frames, plan.options))
+  return Promise.all(runs.map((a) => a.finished.catch(() => {}))).then(() => {})
+}
+
 export { EASE }
 
 /**

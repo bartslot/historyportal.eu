@@ -37,18 +37,15 @@ import { hasChoices, hasMeters, hasVoyage } from './scene/lesson-content.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
-import { sceneTransitionFrames, easingBezier, EASINGS } from './scene/animations.js'
+import { playSceneTransition } from './scene/animations.js'
 import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 import { silentWavUrl, sceneSeconds } from './silent-audio.js'
 
-// Easing key → cubic-bezier, for the scene transition set in the wizard's Animate tab.
 // Player chrome idle timing (Bart 2026-10-14: "auto hide when the mouse doesn't move after 1
 // second"). Fade in fast, fade out slower: appearing answers the hand, leaving should not snap.
 // The bands are where the top bar and the deck sit. Live knobs: Test tools → Settings → Player.
 const CHROME_IDLE = { idleMs: 1000, fadeInMs: 150, fadeOutMs: 400, topBandPx: 88, bottomBandPx: 176 }
-
-const SCENE_EASINGS = Object.fromEntries(EASINGS.map(e => [e.key, easingBezier(e.key)]))
 
 // How long the challenge clock owns the middle of the stage before it shrinks to the corner HUD.
 const BIG_TIMER_MS = 5000
@@ -807,37 +804,43 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     /**
-     * Apply the scene's transition (Animate tab) to the incoming background layer.
+     * Read the scene's transition (Animate tab) for whichever renderer brings the scene in.
      *
      * Crossfade is what the player has always done and stays the default. A slide moves the
-     * INCOMING layer only — sliding both at once reads as a shove rather than a change of scene —
-     * and 'cut' means exactly that: no fade, no movement, straight to the next picture.
+     * INCOMING picture only (sliding both reads as a shove rather than a change of scene), and
+     * 'cut' means exactly that. animations.js playSceneTransition plays it, the same code as the
+     * editor's preview. It was CSS on the incoming layer here, and _showBgImage reset that layer's
+     * transform in the same task, so a slide never moved (2026-11-19).
      */
-    _applySceneTransition (scene) {
+    _applySceneTransition (scene, cameFrom = null) {
       const t = (scene?.config || {}).transition || {}
-      const type = t.type || 'crossfade'
       const seconds = Number.isFinite(t.duration) ? t.duration : 0.8
-      const ms = type === 'cut' ? 0 : Math.max(0, Math.min(3, seconds)) * 1000
-      const ease = SCENE_EASINGS[t.ease] || SCENE_EASINGS.move
+      this._bgFadeDuration = t.type === 'cut' ? 0 : Math.max(0, Math.min(3, seconds)) * 1000
+      const from = cameFrom === null ? null : _sceneQueue[cameFrom]
+      this._pendingTransition = { transition: t, fromUrl: from?.image_url || null }
+    },
 
-      this._bgFadeDuration = ms
-      this._sceneTransition = { type, ms, ease }
+    /** The renderer that shows this scene plays its transition once; a later shot of the same scene just crossfades. */
+    _takePendingTransition () {
+      const pending = this._pendingTransition
+      this._pendingTransition = null
+      return pending
+    },
+    _pendingTransition: null,
 
-      const incoming = this._bgActive === 'A' ? this._bgLayerB : this._bgLayerA
-      if (!incoming) return
-
-      const frames = sceneTransitionFrames(type)
-      // Reset any transform left by the previous scene's slide before the next one starts, or the
-      // layer begins its entrance from wherever the last transition happened to leave it.
-      incoming.style.transition = 'none'
-      incoming.style.transform = frames ? frames.from : 'none'
-
-      if (!frames) return
-
-      requestAnimationFrame(() => {
-        incoming.style.transition = `opacity ${ms}ms ${ease}, transform ${ms}ms ${ease}`
-        incoming.style.transform = frames.to
-      })
+    /** A stage scene comes in over a still of the scene before it, laid under the stage's canvas until the transition ends. */
+    _transitionStageIn (host, pending) {
+      const canvas = host.querySelector('canvas.stage25d-canvas')
+      if (!canvas) return
+      let under = null
+      if (pending.fromUrl) {
+        under = document.createElement('img')
+        under.src = pending.fromUrl
+        under.alt = ''
+        under.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;'
+        canvas.before(under)
+      }
+      playSceneTransition(canvas, under, pending.transition).then(() => under?.remove())
     },
 
     // No image on this scene: a solid brand-navy backdrop instead of a stale leftover photo.
@@ -857,6 +860,8 @@ Alpine.data('lessonGame', (lesson) => ({
       el.style.opacity = '1'
       const other = this._bgActive === 'A' ? this._bgLayerA : this._bgLayerB
       if (other) other.style.opacity = '0'
+      const pending = this._takePendingTransition()
+      if (pending) playSceneTransition(el, other, pending.transition)
       this._bgActive = this._bgActive === 'A' ? 'B' : 'A'
     },
 
@@ -1021,6 +1026,9 @@ Alpine.data('lessonGame', (lesson) => ({
         this._bgLayerB.style.opacity = '0'
         this._bgActive = 'A'
       }
+      const pending = this._takePendingTransition()
+      const [incoming, outgoing] = layer === 'B' ? [this._bgLayerB, this._bgLayerA] : [this._bgLayerA, this._bgLayerB]
+      if (pending) playSceneTransition(incoming, outgoing, pending.transition)
     },
 
     // ── Storyboard shots: switch the flat image exactly when the narration reaches
@@ -1171,6 +1179,7 @@ Alpine.data('lessonGame', (lesson) => ({
     // One stage is kept across consecutive stage scenes (a WebGL context per scene would be slow).
     async _showStage25d (scene) {
       const req = ++this._parallaxReq
+      const pending = this._takePendingTransition()   // now, before any await: the next scene sets its own
       try {
         const host = document.getElementById('background-layer')
         if (!host) return
@@ -1180,6 +1189,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (req !== this._parallaxReq) return
         await stage.show(scene.config.stage25d)
         if (req !== this._parallaxReq) return
+        if (pending) this._transitionStageIn(host, pending)
         this._destroyParallax()   // a picture panel before stays up until the set is drawn: no black between them
         if (_bgCanvas) _bgCanvas.style.opacity = '0'
         host.style.opacity = '1'
@@ -1762,7 +1772,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // How this scene replaces the one before it (Animate tab). Read before the swap below so
       // _showBgImage / _showFlatColor apply it to whichever layer is coming in.
-      this._applySceneTransition(scene)
+      this._applySceneTransition(scene, cameFrom)
 
       // Swap background. Default scenes are a still flat picture (2D); skybox is opt-in per
       // scene; no image at all = the scene's solid backdrop (brand navy by default).
