@@ -9,13 +9,15 @@
  */
 import { createHistory } from './history.js'
 import { icon, ICONS } from './cutout-markup.js'
-import { loadKit, kitUrl, layersOf, drawLayers, drawEdge, slotAt, figureBox, rigOf, savePixels, facePixels, webpUrl } from '../character/layers.js'
+import { loadKit, kitUrl, layersOf, turnLayers, drawLayers, drawEdge, slotAt, figureBox, rigOf, savePixels, facePixels, webpUrl } from '../character/layers.js'
+import { nodAt } from '../character/head-turn.js'
 import { PARTS, PART_SLOTS, SLOT_PART, EXPRESSIONS, bodyOf, piecesIn, wear, colour, randomRecipe, presetRecipe, onBody, cleanRecipe, zonesOf, optionsFor } from '../character/recipe.js'
 import { cutPuppet } from '../character/rig.js'
 
 const KIT = 'babylonia-old-babylonian'
 const TILE = 88                       // px: three tiles across the inspector
 const HEAD_PAD = 0.12                 // of the head box: room round the head in the close view and its tiles
+const NOD_MS = 1100                   // the Nod button's "yes": two dips
 
 const RAIL = {
   who: 'M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z',
@@ -48,7 +50,15 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
       <button type="button" class="btn btn-ghost btn-square" data-chr-random data-tooltip="${esc(t('Random'))}" data-tooltip-placement="right" aria-label="${esc(t('Random'))}">${icon(RAIL.random)}</button>
     </div>
     <button type="button" class="btn btn-sm btn-square absolute right-2 top-2" data-chr-whole data-tooltip="${esc(t('Whole figure'))}" aria-label="${esc(t('Whole figure'))}" hidden>${icon(ICONS.zoomOut)}</button>
-    <div class="absolute inset-x-0 bottom-3 flex justify-center" data-chr-chips>
+    <div class="absolute inset-x-0 bottom-3 flex flex-col items-center gap-2" data-chr-chips>
+      <div class="flex items-center gap-3 rounded-full px-3 py-1" style="background: var(--color-panel);" role="group" aria-label="${esc(t('Head'))}" data-chr-head>
+        <label class="flex items-center gap-2 text-xs text-panel-label">${esc(t('Turn'))}
+          <input type="range" class="range range-xs w-24" min="-1" max="1" step="0.02" value="0" data-chr-turn aria-label="${esc(t('Turn the head'))}"></label>
+        <label class="flex items-center gap-2 text-xs text-panel-label">${esc(t('Nod'))}
+          <input type="range" class="range range-xs w-24" min="-1" max="1" step="0.02" value="0" data-chr-nod aria-label="${esc(t('Tilt the head up or down'))}"></label>
+        <button type="button" class="btn btn-xs btn-ghost btn-square" data-chr-nod-play data-tooltip="${esc(t('Play a nod'))}" aria-label="${esc(t('Play a nod'))}">${icon(ICONS.play)}</button>
+        <button type="button" class="btn btn-xs btn-ghost btn-square" data-chr-head-reset data-tooltip="${esc(t('Head straight again'))}" aria-label="${esc(t('Head straight again'))}">${icon(ICONS.undo)}</button>
+      </div>
       <div class="flex gap-1 rounded-full p-1" style="background: var(--color-panel);" role="radiogroup" aria-label="${esc(t('Expression'))}">
         ${EXPRESSIONS.map((e) => `<button type="button" role="radio" class="btn btn-sm rounded-full" data-chr-expression="${e}">${esc(t(EXPRESSION_LABELS[e]))}</button>`).join('')}
       </div>
@@ -62,6 +72,9 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
   let history = null
   let part = 'who', expression = 'calm', zoom = false, hover = null
   let layers = []
+  let baseLayers = []         // the stack as drawn; `layers` is it with the head turned (head-turn.js)
+  let pose = { turn: 0, nod: 0 }   // the head in the preview only: a pose is animated on the stage, never saved
+  let nodPlay = 0
   let frame = null            // { src, dst } of the last drawing, for the pointer
   let drawToken = 0
   let name = target.title || ''
@@ -95,15 +108,24 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     const token = ++drawToken
     const next = await layersOf(kit, recipe(), expression)
     if (token !== drawToken || destroyed) return
-    layers = next
+    baseLayers = next
+    paint()
+  }
+  /** The stack drawn now, with the head as `pose` holds it: synchronous, so a slider or the nod moves every frame. */
+  const paint = () => {
+    if (!kit || destroyed || !baseLayers.length) return
+    layers = turnLayers(baseLayers, pose, ['colour'])
     const dpr = window.devicePixelRatio || 1
     const w = view.clientWidth, h = view.clientHeight
-    for (const c of [art, edge]) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) }
+    for (const c of [art, edge]) {
+      const cw = Math.round(w * dpr), ch = Math.round(h * dpr)
+      if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch }
+    }
     const g = art.getContext('2d')
     g.setTransform(dpr, 0, 0, dpr, 0, 0)
     g.fillStyle = kit.paper
     g.fillRect(0, 0, w, h)
-    const src = zoom ? headRegion() : figureBox(layers)
+    const src = zoom ? headRegion() : figureBox(baseLayers)   // the frame holds still while the head turns
     const dst = fitRegion(src, w, h)
     frame = { src, dst, dpr }
     drawLayers(g, layers, src, dst)
@@ -308,6 +330,37 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     const p = partAt(e.clientX - r.left, e.clientY - r.top)
     openPart(p ?? (zoom ? 'face' : 'who'))
   })
+  // ── the head: Turn and Nod over the depth bump (character/head-turn.js), and a nod to play ─────────────────────────
+  const turnInput = $('[data-chr-turn]'), nodInput = $('[data-chr-nod]')
+  let painting = 0
+  const paintSoon = () => { if (!painting) painting = requestAnimationFrame(() => { painting = 0; paint() }) }
+  const setPose = (next) => {
+    pose = { turn: Math.max(-1, Math.min(1, next.turn)), nod: Math.max(-1, Math.min(1, next.nod)) }
+    turnInput.value = String(pose.turn)
+    nodInput.value = String(pose.nod)
+    paintSoon()
+  }
+  const stopNod = () => { if (nodPlay) cancelAnimationFrame(nodPlay); nodPlay = 0 }
+  const playNod = () => {
+    stopNod()
+    const from = { ...pose }, start = performance.now()
+    const step = (now) => {
+      const u = (now - start) / NOD_MS
+      if (destroyed) return
+      pose = u >= 1 ? from : nodAt(u, from)
+      paint()
+      nodPlay = u >= 1 ? 0 : requestAnimationFrame(step)
+    }
+    nodPlay = requestAnimationFrame(step)
+  }
+  view.addEventListener('input', (e) => {
+    if (e.target === turnInput || e.target === nodInput) { stopNod(); setPose({ turn: Number(turnInput.value), nod: Number(nodInput.value) }) }
+  })
+  // a double click on a slider puts it back in the middle
+  for (const el of [turnInput, nodInput]) el.addEventListener('dblclick', () => { el.value = '0'; setPose({ turn: Number(turnInput.value), nod: Number(nodInput.value) }) })
+  $('[data-chr-nod-play]').addEventListener('click', playNod)
+  $('[data-chr-head-reset]').addEventListener('click', () => { stopNod(); setPose({ turn: 0, nod: 0 }) })
+
   art.addEventListener('pointermove', (e) => {
     const r = art.getBoundingClientRect()
     const x = e.clientX - r.left, y = e.clientY - r.top
@@ -395,8 +448,11 @@ export function mountCharacter ({ view, panel, t, target, wire, stage, limit, on
     },
     show () { draw() },
     hide () {},
-    destroy () { destroyed = true; resize.disconnect() },
+    destroy () { destroyed = true; stopNod(); resize.disconnect() },
     setPicture () {},
+    /** For tests: the head's pose in the preview, and a way to set it. */
+    get pose () { return { ...pose } },
+    setPose,
     /** For tests and the dialog: the recipe on show. */
     get recipe () { return history?.now ?? null },
     ready,

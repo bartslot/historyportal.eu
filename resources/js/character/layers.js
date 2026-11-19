@@ -5,6 +5,7 @@
 import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
 import { svgRaw } from './svg-piece.js'
+import { headField, isRest, padOf, regionOf, warpPixels, turnPicture, grownBox } from './head-turn.js'
 
 const loaded = new Map()      // url -> Promise<ImageData>
 const painted = new Map()     // piece + colours -> { colour, flat, shade, cast } canvases
@@ -157,6 +158,57 @@ export function drawLayers (ctx, layers, src, dst, what = 'preview') {
     each('cast', 'lighten')
   } else each(what === 'preview' ? 'colour' : what)
   ctx.restore()
+}
+
+/** The head's depth bump (head-turn.js) for a stack: from its face piece's box, or null for a stack with no face. */
+export const fieldOf = (layers) => {
+  const face = layers.find((l) => l.slot === 'face')
+  return face ? headField(face.box) : null
+}
+
+const turned = new WeakMap()   // layer -> { key, layer }: the last pose each piece was turned to
+
+/**
+ * The stack with its head turned and nodded (`pose` { turn, nod }, each -1..1): every piece warped over the depth bump
+ * behind the face (head-turn.js), in a box grown to hold what slides past its edge. The bump is zero below the chin,
+ * so a piece clear of the head comes back as it is, and of an outfit only the bare head it paints is recomputed.
+ * `what`: the canvases to turn ('colour' for a preview; Save wants all of them). The raw fill and ink follow, so
+ * pointing at the turned face still finds the eyes. Each piece remembers its last pose: a slider at rest costs nothing.
+ */
+export function turnLayers (layers, pose, what = ['colour', 'flat', 'shade', 'cast']) {
+  const field = fieldOf(layers)
+  if (!field || isRest(pose)) return layers
+  const key = `${pose.turn.toFixed(3)}:${pose.nod.toFixed(3)}:${what.join(',')}:${field.cx}:${field.cy}`
+  const pad = padOf(field, pose) + 1
+  return layers.map((l) => {
+    const { width: w, height: h } = l.raw.fill
+    const rect = regionOf(l.box, [w, h], field, pose, pad)
+    if (!rect) return l
+    const seen = turned.get(l)
+    if (seen?.key === key) return seen.layer
+    const canvas = (c) => {
+      if (!c) return c
+      const out = canvasOf(w + 2 * pad, h + 2 * pad)
+      const g = out.getContext('2d')
+      g.drawImage(c, pad, pad)
+      // only the region round the head is read back and warped (an outfit is the whole body)
+      const sub = c.getContext('2d').getImageData(rect[0], rect[1], rect[2], rect[3])
+      const kx = l.box[2] / w, ky = l.box[3] / h
+      const warped = warpPixels(sub, [l.box[0] + rect[0] * kx, l.box[1] + rect[1] * ky, rect[2] * kx, rect[3] * ky], field, pose, 0, true)
+      g.putImageData(new ImageData(warped.data, warped.width, warped.height), rect[0] + pad, rect[1] + pad)
+      return out
+    }
+    // the raw fill and ink only when asked (pointing, the edge): a nod plays at the frame rate without them
+    const raw = { ...l.raw }
+    for (const k of ['fill', 'ink']) {
+      let made = null
+      Object.defineProperty(raw, k, { enumerable: true, get: () => (made ??= turnPicture(l.raw[k], l.box, field, pose, pad, false)) })
+    }
+    const next = { ...l, box: grownBox(l.box, w, h, pad), raw, sil: undefined }
+    for (const k of ['colour', 'flat', 'shade', 'cast']) next[k] = what.includes(k) ? canvas(l[k]) : null
+    turned.set(l, { key, layer: next })
+    return next
+  })
 }
 
 /** The slot painted at a baked-canvas point: the top piece with paint or ink there. */
