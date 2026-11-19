@@ -40,7 +40,8 @@ class UiIconTest extends TestCase
             $this->assertSame(1, substr_count($svg, '<svg'), "{$name}.svg holds one <svg>.");
             $this->assertMatchesRegularExpression('/\bviewBox="/', $svg, "{$name}.svg needs a viewBox to scale.");
             $this->assertStringNotContainsString('class=', $svg, "{$name}.svg carries no size: the caller sets it.");
-            $this->assertDoesNotMatchRegularExpression('/(?:fill|stroke)="#/', $svg, "{$name}.svg draws in currentColor, never a fixed colour.");
+            $drawn = (string) preg_replace('#<mask\b.*?</mask>#s', '', $svg);   // a mask's black and white are not colours on screen
+            $this->assertDoesNotMatchRegularExpression('/(?:fill|stroke)="#/', $drawn, "{$name}.svg draws in currentColor, never a fixed colour.");
             $this->assertStringNotContainsStringIgnoringCase('<text', $svg, "{$name}.svg has text in it (a Noun Project credit line?).");
         }
     }

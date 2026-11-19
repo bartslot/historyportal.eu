@@ -39,3 +39,16 @@ Historical borders, under CC-BY 4.0.
 ## OpenStreetMap
 
 Land polygons, released CC0.
+
+## Lets Icons (editor interface icons)
+
+Most of the lesson editor's interface icons in `resources/ui-icons/` are the Light style of
+**Lets Icons** by Leonid Tsvetkov ([Figma Community](https://www.figma.com/community/file/886554014393250663)),
+drawn here at stroke 1.5 instead of 1. Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
+which asks for credit and for changes to be indicated:
+
+> Icons: Lets Icons by Leonid Tsvetkov, CC BY 4.0. Stroke width changed.
+
+The pack has no warning triangle, pause, undo, redo, zoom, eraser, clone stamp, brush, sparkle or
+sidebar, and its "text" is a clear-formatting mark: those icons are our own, on the same 24 px grid
+and stroke.
