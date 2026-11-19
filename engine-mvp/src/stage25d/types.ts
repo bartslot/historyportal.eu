@@ -61,7 +61,9 @@ export interface MotionSpec { kind?: MotionKind; amount?: number; speed?: number
 
 /** Water on a picture (water.ts): a looping ripple, glints and twinkles inside the teacher's painted mask (a grey webp,
  *  white = water). `on: false` keeps the values and the mask, so turning it back on restores them. */
-export interface WaterSpec { on?: boolean; amount?: number; speed?: number; glints?: number; loop?: number; mask?: string }
+export interface WaterSpec { on?: boolean; look?: WaterLook; amount?: number; speed?: number; glints?: number; loop?: number; mask?: string }
+/** where a layer's water starts (water.ts WATER_LOOKS): a gentle one, the anime one, a lively one */
+export type WaterLook = 'quiet' | 'anime' | 'lively'
 
 /** A layer keyframe: t seconds into the scene; missing fields hold the layer's own value. */
 /** y: metres the picture stands above (or below) its ground point; rotation: degrees, clockwise on screen. */

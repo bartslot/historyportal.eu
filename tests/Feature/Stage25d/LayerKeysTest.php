@@ -178,10 +178,10 @@ class LayerKeysTest extends TestCase
         $this->assertFalse($editor->instance()->saveStage25dWaterMask($scene->id, 0, 'data:image/gif;base64,R0lGOD')['ok']);
         $this->assertFalse($editor->instance()->saveStage25dWaterMask($scene->id, 9, $png)['ok'], 'no such layer');
 
-        $editor->call('saveStage25dLayer', 0, ['water' => ['amount' => 9, 'loop' => 1, 'glints' => 'x', 'mask' => $saved['url']]], $scene->id);
-        $this->assertEquals(['on' => true, 'amount' => 3.0, 'loop' => 2.0, 'mask' => $saved['url']], $scene->fresh()->config['stage25d']['set']['layers'][0]['water']);
+        $editor->call('saveStage25dLayer', 0, ['water' => ['look' => 'lively', 'amount' => 9, 'loop' => 1, 'glints' => 'x', 'mask' => $saved['url']]], $scene->id);
+        $this->assertEquals(['on' => true, 'look' => 'lively', 'amount' => 3.0, 'loop' => 2.0, 'mask' => $saved['url']], $scene->fresh()->config['stage25d']['set']['layers'][0]['water']);
 
-        $editor->call('saveStage25dLayer', 0, ['water' => ['on' => false, 'mask' => '/storage/lessons/'.($scene->lesson_id + 1).'/water/'.str_repeat('a', 36).'.webp']], $scene->id);
+        $editor->call('saveStage25dLayer', 0, ['water' => ['on' => false, 'look' => 'neon', 'mask' => '/storage/lessons/'.($scene->lesson_id + 1).'/water/'.str_repeat('a', 36).'.webp']], $scene->id);
         $this->assertEquals(['on' => false], $scene->fresh()->config['stage25d']['set']['layers'][0]['water'], 'another lesson\'s mask is dropped');
     }
 

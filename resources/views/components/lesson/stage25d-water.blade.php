@@ -12,15 +12,24 @@
         <input type="checkbox" class="toggle toggle-sm shrink-0" :checked="on" x-on:change="toggle($event.target.checked)" data-stage25d-water-toggle />
     </label>
     <div x-show="on" class="space-y-1">
-        @foreach ([['amount', __('Strength'), 0, 3, 0.05, 1], ['speed', __('Speed'), 0, 3, 0.05, 1], ['glints', __('Glints'), 0, 3, 0.05, 1], ['loop', __('Loop length'), 2, 12, 0.5, 4]] as [$prop, $label, $min, $max, $step, $default])
+        {{-- a look: where the sliders below start (water.ts WATER_LOOKS) --}}
+        <x-ui.panel-row :label="__('Look')">
+            <div class="join w-full" role="radiogroup" aria-label="{{ __('Look') }}">
+                @foreach ([['quiet', __('Calm')], ['anime', __('Anime')], ['lively', __('Lively')]] as [$look, $label])
+                    <button type="button" class="btn btn-sm join-item flex-1 px-0" role="radio" :class="look === '{{ $look }}' && 'btn-active'"
+                            :aria-checked="look === '{{ $look }}'" x-on:click="setLook('{{ $look }}')" data-stage25d-water-look="{{ $look }}">{{ $label }}</button>
+                @endforeach
+            </div>
+        </x-ui.panel-row>
+        @foreach ([['amount', __('Strength'), 0, 3, 0.05], ['speed', __('Speed'), 0, 3, 0.05], ['glints', __('Glints'), 0, 3, 0.05], ['loop', __('Loop length'), 2, 12, 0.5]] as [$prop, $label, $min, $max, $step])
             <x-ui.panel-row :label="$label">
                 <span class="range-panel-knob min-w-0 flex-1">
                     <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}" class="range range-panel" data-stage25d-water-field="{{ $prop }}"
-                           aria-label="{{ $label }}" :value="value('{{ $prop }}', {{ $default }})"
+                           aria-label="{{ $label }}" :value="value('{{ $prop }}')"
                            x-on:input="set({ {{ $prop }}: Number($event.target.value) })" />
                 </span>
                 <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value"
-                      x-text="{{ $prop === 'loop' ? "value('loop', 4).toFixed(1) + ' s'" : "Number(value('".$prop."', ".$default.")).toFixed(2)" }}"></span>
+                      x-text="{{ $prop === 'loop' ? "value('loop').toFixed(1) + ' s'" : "Number(value('".$prop."')).toFixed(2)" }}"></span>
             </x-ui.panel-row>
         @endforeach
         <button type="button" class="btn btn-sm mt-1 w-full" x-on:click="open()" data-stage25d-water-paint>{{ __('Paint the water') }}</button>

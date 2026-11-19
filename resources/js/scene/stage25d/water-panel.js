@@ -7,7 +7,7 @@
  * (drawWaterMask) and is saved when the hand lifts: the file first (saveStage25dWaterMask), then its url on the layer,
  * so an undo takes the mask back like any value.
  */
-import { guessWaterMask, WATER_LOOP_DEFAULT } from '@stage25d/stage25d/water'
+import { guessWaterMask, WATER_LOOK_DEFAULT, WATER_LOOKS } from '@stage25d/stage25d/water'
 
 /** The mask's longest side in px (water-gl.ts MASK_MAX): soft water edges need no more. */
 const MASK_MAX = 512
@@ -32,14 +32,21 @@ export function stage25dWater (id) {
     get stage () { return window.__stage25d },
     get water () { return this.info?.water ?? null },
     get on () { return !!this.water && this.water.on !== false },
-    value (key, d) { return this.water?.[key] ?? d },
+    get look () { return WATER_LOOKS[this.water?.look] ? this.water.look : WATER_LOOK_DEFAULT },
+    /** A slider's value: the teacher's, else where its look starts. */
+    value (key) { return this.water?.[key] ?? WATER_LOOKS[this.look][key] },
     sync () { this.info = this.stage?.layerInfo?.(id) ?? null },
     init () { wire = this.$wire; this.sync() },
 
     set (patch) { this.stage?.setLayerWater?.(id, patch); this.sync() },
+    /** A look puts every slider where it starts; each stays the teacher's to move from there. */
+    setLook (look) {
+      const { amount, speed, glints, loop } = WATER_LOOKS[look]
+      this.set({ look, amount, speed, glints, loop })
+    },
     /** On: the values it had (a mask kept while it was off comes back); the first time, a guessed mask to start from. */
     async toggle (on) {
-      this.set({ on, amount: this.value('amount', 1), speed: this.value('speed', 1), glints: this.value('glints', 1), loop: this.value('loop', WATER_LOOP_DEFAULT) })
+      this.set({ on, look: this.look, amount: this.value('amount'), speed: this.value('speed'), glints: this.value('glints'), loop: this.value('loop') })
       if (on && !this.water?.mask) {
         try { await this.prepare() } catch { return }   // no picture to guess from: the brush still paints
         this.guess()

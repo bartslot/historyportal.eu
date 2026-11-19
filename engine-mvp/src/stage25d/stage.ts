@@ -723,7 +723,7 @@ export class Stage {
     if (w.mask !== b.water.url) {
       if (b.water.live) { b.water.url = w.mask; b.water.live = false } else b.water.load(w.mask)
     }
-    b.handle.setWater(w, this.calm, b.water.tex, glintSheet(this.scene))
+    b.handle.setWater(w, this.calm, b.water.tex, glintSheet(this.scene), b.water.top)
   }
 
   /** The brush's mask on a layer's water, live, before it is saved (the editor's Paint the water). */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { GLINT_FRAMES, glintFrame, glintPhase, glintRate, glintStrokes, guessWaterMask, rippleAt, twinkleAt, waterCycles, waterOf, type Water } from './water'
+import { GLINT_FRAMES, GLINT_VARIANTS, WATER_LOOKS, glintFrame, glintRate, glintStrokes, glintsOf, guessWaterMask, maskTop, rippleAt, twinkleAt, waterCycles, waterOf, type Water } from './water'
 
-const W: Water = { amount: 1, speed: 1, glints: 1, loop: 4, mask: null }
+const W: Water = { look: 'anime', amount: 1, speed: 1, glints: 1, loop: 4, twinkle: 0.35, size: 1, stretch: 4.5, mask: null }
 const PX = [1536, 504] as const
 
 describe('water loop', () => {
@@ -9,8 +9,8 @@ describe('water loop', () => {
     for (const w of [W, { ...W, loop: 4.5, speed: 1.7 }, { ...W, loop: 2, speed: 3 }, { ...W, loop: 12, speed: 0.3 }]) {
       for (const t of [0, 0.37, 1.9, 3.2, 17.25]) {
         for (const [u, v] of [[0.1, 0.6], [0.5, 0.9], [0.83, 0.71]]) {
-          const a = rippleAt(u, v, t, w, PX, 1)
-          const b = rippleAt(u, v, t + w.loop, w, PX, 1)
+          const a = rippleAt(u, v, t, w, PX, 1, false, 0.55)
+          const b = rippleAt(u, v, t + w.loop, w, PX, 1, false, 0.55)
           expect(b[0]).toBeCloseTo(a[0], 9)
           expect(b[1]).toBeCloseTo(a[1], 9)
         }
@@ -60,17 +60,64 @@ describe('glints', () => {
 
   it('each glint has its own phase: at one moment they show every frame, never one pulse', () => {
     const count = new Array(GLINT_FRAMES).fill(0)
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) count[glintFrame(1.234, glintPhase(x, y), 4)]++
+    const all = glintsOf(W, PX, 0.4, () => 1, () => 1)
+    for (const g of all) count[glintFrame(1.234, g.phase, 4)]++
     expect(count.every((n) => n > 0)).toBe(true)
-    expect(Math.max(...count)).toBeLessThan(256 * 0.25)
+    expect(Math.max(...count)).toBeLessThan(all.length * 0.25)
+  })
+
+  it('are scattered over the whole mask, never in rows: within a band their heights differ', () => {
+    const all = glintsOf(W, PX, 0.4, () => 1, () => 1)
+    expect(all.length).toBeGreaterThan(60)
+    // the water from 0.4 down, in ten slices: every slice has glints
+    for (let k = 0; k < 10; k++) expect(all.some((g) => g.v >= 0.4 + k * 0.06 && g.v < 0.4 + (k + 1) * 0.06)).toBe(true)
+    // no two glints share a height: a row would
+    const heights = new Set(all.map((g) => g.v.toFixed(6)))
+    expect(heights.size).toBeGreaterThan(all.length * 0.99)
+  })
+
+  it('are small and close together far away, larger and further apart near', () => {
+    const all = glintsOf(W, PX, 0.4, () => 1, () => 1)
+    const far = all.filter((g) => g.d < 0.25), near = all.filter((g) => g.d > 0.75)
+    const mean = (gs: typeof all) => gs.reduce((n, g) => n + g.width, 0) / gs.length
+    expect(mean(far)).toBeLessThan(mean(near) * 0.5)
+    // per unit of picture height, far water holds more of them
+    expect(far.length / 0.25).toBeGreaterThan(near.length / 0.25)
+  })
+
+  it('are denser where the picture is light (reflections of sky and buildings)', () => {
+    const light = glintsOf(W, PX, 0.4, (u) => (u < 0.5 ? 1 : 0), () => 1)
+    const left = light.filter((g) => g.u < 0.5).length, right = light.filter((g) => g.u >= 0.5).length
+    expect(left).toBeGreaterThan(right * 3)
+  })
+
+  it('come in every shape: broken strokes most, arcs, dashes and the odd dot', () => {
+    const all = glintsOf(W, PX, 0.4, () => 1, () => 1)
+    const per = new Array(GLINT_VARIANTS).fill(0)
+    for (const g of all) per[g.variant]++
+    expect(per.every((n) => n > 0)).toBe(true)
+    expect(per[0]).toBe(Math.max(...per))
+  })
+
+  it('stay on the water: none where the mask is empty', () => {
+    expect(glintsOf(W, PX, 0.4, () => 1, (u) => (u < 0.5 ? 1 : 0)).every((g) => g.u < 0.5)).toBe(true)
   })
 
   it('held still when someone asked for less motion', () => {
     expect(glintFrame(0.1, 0.5, 4, true)).toBe(glintFrame(3.3, 0.5, 4, true))
   })
 
-  it('every frame has strokes to draw', () => {
-    for (let i = 0; i < GLINT_FRAMES; i++) expect(glintStrokes(i).length).toBeGreaterThan(1)
+  it('every cel of every shape has strokes to draw, inside its frame', () => {
+    for (let r = 0; r < GLINT_VARIANTS; r++) for (let i = 0; i < GLINT_FRAMES; i++) {
+      const st = glintStrokes(i, r)
+      expect(st.length).toBeGreaterThan(0)
+      for (const x of st) {
+        expect(Math.min(x.x0, x.x1) - x.width * 1.1).toBeGreaterThanOrEqual(0)
+        expect(Math.max(x.x0, x.x1) + x.width * 1.1).toBeLessThanOrEqual(96)
+        expect(x.y - x.width * 1.1 + Math.min(0, x.bow)).toBeGreaterThanOrEqual(0)
+        expect(x.y + x.width * 1.1).toBeLessThanOrEqual(24)
+      }
+    }
   })
 })
 
@@ -88,7 +135,30 @@ describe('waterOf', () => {
   it('is off without water, when turned off, and keeps values in range', () => {
     expect(waterOf({})).toBeNull()
     expect(waterOf({ water: { on: false, amount: 2 } })).toBeNull()
-    expect(waterOf({ water: { amount: 9, loop: 1 } })).toEqual({ amount: 3, speed: 1, glints: 1, loop: 2, mask: null })
+    expect(waterOf({ water: { amount: 9, loop: 1 } })).toEqual({ ...WATER_LOOKS.anime, look: 'anime', amount: 3, loop: 2, mask: null })
+  })
+})
+
+describe('looks', () => {
+  it('a look is where the sliders start; a slider the teacher moved wins', () => {
+    expect(waterOf({ water: { look: 'quiet' } })).toMatchObject({ amount: WATER_LOOKS.quiet.amount, glints: WATER_LOOKS.quiet.glints, twinkle: WATER_LOOKS.quiet.twinkle })
+    expect(waterOf({ water: { look: 'lively', glints: 0.2 } })?.glints).toBe(0.2)
+    expect(waterOf({ water: { look: 'bogus' as never } })?.look).toBe('anime')
+  })
+
+  it('quiet has the fewest glints, twinkles and the gentlest ripple; lively the most', () => {
+    const { quiet, anime, lively } = WATER_LOOKS
+    for (const k of ['amount', 'glints', 'twinkle'] as const) {
+      expect(quiet[k]).toBeLessThan(anime[k])
+      expect(anime[k]).toBeLessThan(lively[k])
+    }
+  })
+
+  it('the far edge of the water is the highest row of the mask', () => {
+    const grey = new Uint8Array(10 * 10)
+    for (let y = 6; y < 10; y++) grey.fill(255, y * 10, y * 10 + 10)
+    expect(maskTop(grey, 10, 10)).toBe(0.6)
+    expect(maskTop(new Uint8Array(100), 10, 10)).toBe(1)
   })
 })
 

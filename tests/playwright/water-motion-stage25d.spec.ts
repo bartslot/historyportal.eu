@@ -71,7 +71,8 @@ async function settle (page: Page) {
   await expect.poll(async () => {
     await page.waitForTimeout(700)
     const now = (await frameAt(page, 0.7)).lum
-    const same = now.every((v, i) => v === prev[i])
+    // SwiftShader redraws a glint's soft edge a few levels apart at one held moment (see the less-motion test)
+    const same = now.filter((v, i) => Math.abs(v - prev[i]) > 12).length < now.length * 0.0005
     prev = now
     return same
   }, { timeout: 60_000 }).toBe(true)
@@ -112,6 +113,12 @@ test('Water: paint it with the mouse, it moves only there, loops exactly, surviv
   const toggle = section.locator('[data-stage25d-water-toggle]')
   await toggle.check()
   await expect(section.locator('[data-stage25d-water-field="amount"]')).toBeVisible()
+  // a look puts the sliders where it starts: Lively, then back to Anime (the default)
+  await section.locator('[data-stage25d-water-look="lively"]').click()
+  await expect(section.locator('[data-stage25d-water-field="glints"]')).toHaveValue('1.9')
+  await expect(section.locator('[data-stage25d-water-look="lively"]')).toHaveAttribute('aria-checked', 'true')
+  await section.locator('[data-stage25d-water-look="anime"]').click()
+  await expect(section.locator('[data-stage25d-water-field="amount"]')).toHaveValue('0.9')
 
   // paint: wipe the guessed mask, then two real mouse strokes across the near water, left half only
   await section.locator('[data-stage25d-water-paint]').click()

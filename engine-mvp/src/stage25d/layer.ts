@@ -606,9 +606,10 @@ export interface LayerHandle {
   setCell(c: readonly [number, number, number, number]): void
   /** a close-up's lid: 0 open .. 1 closed (no-op on a layer built without a blink) */
   setBlink(t: number): void
-  /** water on this picture (water.ts): its values, its mask (grey, white = water) and the glint sheet; null: none.
+  /** water on this picture (water.ts): its values, its mask (grey, white = water), the glint sheet and the water's far
+   *  edge (v of its highest masked row); null: none.
    *  calm: someone asked for less motion (no ripple, no twinkles, the glints held) */
-  setWater(w: Water | null, calm: boolean, mask?: Texture, glints?: Texture): void
+  setWater(w: Water | null, calm: boolean, mask?: Texture, glints?: Texture, top?: number): void
   /** a flat figure's watercolour and shading (look.ts aquarelOf) and its drawing's size in px; no-op unless built with one */
   setAquarel(a: Aquarel, drawSize: readonly [number, number]): void
 }
@@ -684,7 +685,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   const mesh = anchoredPlane(`layer:${asset.id}`, asset, w, h, scene)
   const mat = new ShaderMaterial(`layer:${asset.id}`, scene, 'stageLayer', {
     attributes: rest ? ['position', 'uv', 'uv2'] : ['position', 'uv'],
-    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', 'bomb', 'texPx', 'water', 'waterAmt', 'waterW', 'waterLoop', 'waterRate', 'waterGlints', 'waterCalm', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
+    uniforms: ['worldViewProjection', 'time', 'kind', 'amount', 'speed', 'phase', 'height', 'width', 'opacity', 'uRepeat', 'feather', 'featherTint', 'groundLine', 'lineFade', 'lineThin', 'haze', 'lineBrown', 'inkMul', 'pxUV', 'hazeTint', 'paper', 'grain', 'patches', 'wash', 'washColour', 'recolour', 'grainUV', 'bottomFade', 'edgeSoft', 'footM', 'grounding', 'grass', 'light', 'sunSide', 'drift', 'footTint', 'sunColour', 'shadeColour', 'ambient', 'tone', 'toneLight', 'toneShade', 'toneUnder', 'cell', 'outlineW', 'etch', 'uvFit', 'restScale', 'bomb', 'texPx', 'water', 'waterAmt', 'waterW', 'waterLoop', 'waterRate', 'waterGlints', 'waterCalm', 'waterTop', 'waterTwinkle', 'waterSize', 'waterStretch', ...(blink ? ['blinkT', 'eyeBox0', 'eyeBox1', 'eyeLash0', 'eyeLash1'] : []),
       ...(aquarel ? ['figureWash', 'figureShade', 'shadeDepth', 'shadeSat', 'shadeGran', 'shadeTint', 'drawPx'] : [])],
     samplers: [...(rest ? ['tex', 'rest'] : ['tex']), 'waterMask', 'glintTex', ...(blink ? ['blinkTex'] : []), ...(aquarel ? ['washTex', 'shadeTex'] : [])],
     defines: [...(rest ? ['#define REST'] : []), ...(blink ? ['#define BLINK'] : []), ...(aquarel ? ['#define AQUAREL'] : [])],
@@ -723,6 +724,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
   mat.setVector2('uvFit', new Vector2(1, 1))
   mat.setFloat('bomb', 0).setVector2('texPx', new Vector2(tex.getSize().width, tex.getSize().height))
   mat.setFloat('water', 0).setFloat('waterAmt', 0).setFloat('waterW', 0).setFloat('waterLoop', 4).setFloat('waterRate', 8).setFloat('waterGlints', 0).setFloat('waterCalm', 0)
+  mat.setFloat('waterTop', 0).setFloat('waterTwinkle', 0).setFloat('waterSize', 1).setFloat('waterStretch', 1)
   mat.setTexture('waterMask', tex).setTexture('glintTex', tex)   // bound to something valid; read only with water on
   let waterOn = false
   mesh.material = mat
@@ -778,7 +780,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
     setUvFit: (f) => { mat.setVector2('uvFit', new Vector2(f[0], f[1])).setVector2('restScale', new Vector2(1 / f[0], 1 / f[1])) },
     setCell: (c) => { for (const x of cast ? [mat, cast.mat] : [mat]) x.setVector4('cell', new Vector4(c[0], c[1], c[2], c[3])) },
     setBlink: (t) => { if (blink) mat.setFloat('blinkT', t) },
-    setWater: (w, calm, mask, glints) => {
+    setWater: (w, calm, mask, glints, top = 0) => {
       if (!w || !mask || !glints) {
         if (waterOn) mat.setFloat('water', 0)
         waterOn = false
@@ -789,6 +791,7 @@ export function makeLayer(asset: Asset, tex: RawTexture, w: number, h: number, u
       mat.setTexture('waterMask', mask).setTexture('glintTex', glints)
       mat.setFloat('water', 1).setFloat('waterAmt', w.amount).setFloat('waterW', waterOmega(w.loop, w.speed)).setFloat('waterLoop', w.loop)
         .setFloat('waterRate', glintRate(w.loop)).setFloat('waterGlints', w.glints).setFloat('waterCalm', calm ? 1 : 0)
+        .setFloat('waterTop', top).setFloat('waterTwinkle', w.twinkle).setFloat('waterSize', w.size).setFloat('waterStretch', w.stretch)
     },
     setAquarel: (a, size) => {
       if (!aquarel) return
