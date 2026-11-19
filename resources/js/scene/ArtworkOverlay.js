@@ -20,6 +20,7 @@
  */
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
+import { handleCss } from './stage-handle.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
@@ -71,10 +72,8 @@ const HANDLES = [
   { name: 'e', axis: 'x', pos: 'right:-5px; top:calc(50% - 5px);', cursor: 'ew-resize' },
 ]
 
-/** The look of a layer handle on the stage (the corner dots); speech balloons use it too. */
-export const handleCss = (pos, cursor) => `position:absolute; ${pos} width:10px; height:10px; pointer-events:auto;
-  border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${cursor};
-  box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
+/** The look of a layer handle on the stage (the corner dots); speech balloons and text boxes use it too. */
+export { handleCss }
 
 // Object-list / selection id namespace so artwork ids never collide with text-box ids.
 export const artObjId = (assetId) => `art_${assetId}`
