@@ -40,7 +40,7 @@
 
     <button type="button" x-on:click="open = !open"
             :aria-expanded="open ? 'true' : 'false'"
-            class="flex h-8 w-full items-center justify-between px-4 text-left">
+            class="flex h-11 w-full items-center justify-between px-4 text-left">
         <span class="flex items-center gap-2">
             {{ $icon ?? '' }}
             <span class="text-2xs font-semibold tracking-wide text-panel-title">{{ $title }}</span>
@@ -49,7 +49,7 @@
                               ::class="open ? '' : '-rotate-90'" />
     </button>
 
-    <div x-show="open" x-cloak class="px-4 pb-3">
+    <div x-show="open" x-cloak class="px-4 pb-4">
         {{ $slot }}
     </div>
 </div>
