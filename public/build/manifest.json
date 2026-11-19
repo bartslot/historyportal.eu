@@ -1,11 +1,11 @@
 {
-  "_BalloonLayer-1BwPMpTN.js": {
-    "file": "assets/BalloonLayer-1BwPMpTN.js",
+  "_BalloonLayer-J98SKpTS.js": {
+    "file": "assets/BalloonLayer-J98SKpTS.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
       "_easing-HS2C6-zA.js",
-      "_draw-options-5VKCko38.js",
+      "_draw-options-DPSbZipp.js",
       "_comic-america-DKlp7hw_.js"
     ]
   },
@@ -64,8 +64,8 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-BS1u7pR4.js": {
-    "file": "assets/big-countdown-BS1u7pR4.js",
+  "_big-countdown-kHLehT-z.js": {
+    "file": "assets/big-countdown-kHLehT-z.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -73,7 +73,7 @@
       "_easing-HS2C6-zA.js"
     ],
     "dynamicImports": [
-      "_engine-BtHgQGP9.js"
+      "_engine-BJ643KVs.js"
     ]
   },
   "_border-sweep-g9uwK-kV.js": {
@@ -83,11 +83,11 @@
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_camera-BOChOyuU.js": {
-    "file": "assets/camera-BOChOyuU.js",
+  "_camera-DxdH6wHK.js": {
+    "file": "assets/camera-DxdH6wHK.js",
     "name": "camera",
     "imports": [
-      "_draw-options-5VKCko38.js"
+      "_draw-options-DPSbZipp.js"
     ]
   },
   "_clip-W780-tgz.js": {
@@ -106,8 +106,8 @@
     "file": "assets/dom-DXxEHj4M.js",
     "name": "dom"
   },
-  "_draw-options-5VKCko38.js": {
-    "file": "assets/draw-options-5VKCko38.js",
+  "_draw-options-DPSbZipp.js": {
+    "file": "assets/draw-options-DPSbZipp.js",
     "name": "draw-options",
     "imports": [
       "_easing-HS2C6-zA.js"
@@ -117,15 +117,15 @@
     "file": "assets/easing-HS2C6-zA.js",
     "name": "easing"
   },
-  "_engine-BtHgQGP9.js": {
-    "file": "assets/engine-BtHgQGP9.js",
+  "_engine-BJ643KVs.js": {
+    "file": "assets/engine-BJ643KVs.js",
     "name": "engine",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_babylon-BN1RBZWF.js",
       "_puppet-sheet-B0KaX9MG.js",
-      "_presets-BkcNbVMZ.js",
+      "_presets-B1NIQCJr.js",
       "_config-DwQUN7uY.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_projection-CL24asTn.js"
@@ -163,11 +163,11 @@
     "file": "assets/pausable-clock-B6VRcHlA.js",
     "name": "pausable-clock"
   },
-  "_presets-BkcNbVMZ.js": {
-    "file": "assets/presets-BkcNbVMZ.js",
+  "_presets-B1NIQCJr.js": {
+    "file": "assets/presets-B1NIQCJr.js",
     "name": "presets",
     "imports": [
-      "_draw-options-5VKCko38.js"
+      "_draw-options-DPSbZipp.js"
     ]
   },
   "_projection-CL24asTn.js": {
@@ -181,8 +181,8 @@
       "_load-image-DngxJD_v.js"
     ]
   },
-  "_quick-mask-CBJc1Lxb.js": {
-    "file": "assets/quick-mask-CBJc1Lxb.js",
+  "_quick-mask-B4aMtdOs.js": {
+    "file": "assets/quick-mask-B4aMtdOs.js",
     "name": "quick-mask",
     "isDynamicEntry": true,
     "imports": [
@@ -230,7 +230,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-oGbW9igT.js",
+    "file": "assets/app-BXIzXZTe.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -239,10 +239,10 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_draw-options-5VKCko38.js",
-      "_BalloonLayer-1BwPMpTN.js",
+      "_draw-options-DPSbZipp.js",
+      "_BalloonLayer-J98SKpTS.js",
       "_clip-W780-tgz.js",
-      "_presets-BkcNbVMZ.js",
+      "_presets-B1NIQCJr.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js",
       "_comic-america-DKlp7hw_.js"
@@ -252,7 +252,7 @@
       "resources/js/scene/tempo.js",
       "resources/js/editor/cutout-dialog.js",
       "resources/js/test-session/recorder.js",
-      "_quick-mask-CBJc1Lxb.js",
+      "_quick-mask-B4aMtdOs.js",
       "resources/js/lesson-map.js",
       "resources/js/scene/index.js",
       "node_modules/three/build/three.module.js"
@@ -282,12 +282,12 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-Co4Jm_-s.js",
+    "file": "assets/cutout-dialog-DBpXGfZz.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
     "imports": [
-      "_quick-mask-CBJc1Lxb.js",
+      "_quick-mask-B4aMtdOs.js",
       "resources/js/app.js",
       "_puppet-sheet-B0KaX9MG.js",
       "_load-image-DngxJD_v.js",
@@ -295,22 +295,22 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_draw-options-5VKCko38.js",
-      "_BalloonLayer-1BwPMpTN.js",
+      "_draw-options-DPSbZipp.js",
+      "_BalloonLayer-J98SKpTS.js",
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
-      "_presets-BkcNbVMZ.js",
+      "_presets-B1NIQCJr.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
   },
   "resources/js/editor/draw-layer.js": {
-    "file": "assets/draw-layer-CXl8cZf7.js",
+    "file": "assets/draw-layer-BMiSWOuA.js",
     "name": "draw-layer",
     "src": "resources/js/editor/draw-layer.js",
     "isDynamicEntry": true,
     "imports": [
-      "_draw-options-5VKCko38.js",
+      "_draw-options-DPSbZipp.js",
       "_easing-HS2C6-zA.js"
     ]
   },
@@ -333,7 +333,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-Bwh3kWsg.js",
+    "file": "assets/lesson-player-t2jx2_dE.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -341,9 +341,9 @@
       "_vite-helpers-DqutJMZx.js",
       "_dom-DXxEHj4M.js",
       "_pausable-clock-B6VRcHlA.js",
-      "_draw-options-5VKCko38.js",
+      "_draw-options-DPSbZipp.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "_config-DwQUN7uY.js",
       "_stage-handoff-BcqTMCox.js",
       "_i18n-DoByrmTl.js",
@@ -362,7 +362,7 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-1BwPMpTN.js",
+      "_BalloonLayer-J98SKpTS.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
       "_TeamGame-C10aU5JA.js",
@@ -395,14 +395,14 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-SLkCwtI0.js",
+    "file": "assets/ArtworkOverlay-CFeESvpX.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_draw-options-5VKCko38.js",
+      "_draw-options-DPSbZipp.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "_alpha-mask-C1RIm4VB.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
@@ -410,27 +410,27 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-mxQroY3w.js",
+    "file": "assets/ParallaxScene-PmlZrJHB.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
-      "_camera-BOChOyuU.js",
+      "_camera-DxdH6wHK.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js",
-      "_draw-options-5VKCko38.js"
+      "_draw-options-DPSbZipp.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-D0XHpmow.js",
+    "file": "assets/QuizOverlay-Cd7GMRGB.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CEzLlAaX.js",
@@ -438,7 +438,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-Bc5MENRD.js",
+    "file": "assets/SplitStage-T0ZG33Xy.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -446,12 +446,12 @@
       "resources/js/scene/ParallaxScene.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-1BwPMpTN.js",
-      "_big-countdown-BS1u7pR4.js",
+      "_BalloonLayer-J98SKpTS.js",
+      "_big-countdown-kHLehT-z.js",
       "_ambient-CEzLlAaX.js",
       "_stage-handoff-BcqTMCox.js",
-      "_camera-BOChOyuU.js",
-      "_draw-options-5VKCko38.js",
+      "_camera-DxdH6wHK.js",
+      "_draw-options-DPSbZipp.js",
       "_easing-HS2C6-zA.js",
       "_alpha-mask-C1RIm4VB.js",
       "_comic-america-DKlp7hw_.js",
@@ -496,31 +496,31 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DCzdP8Y-.js",
+    "file": "assets/index-KVFxeFmj.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_vite-helpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
-      "_camera-BOChOyuU.js",
-      "_BalloonLayer-1BwPMpTN.js",
+      "_camera-DxdH6wHK.js",
+      "_BalloonLayer-J98SKpTS.js",
       "resources/js/app.js",
       "node_modules/three/build/three.module.js",
+      "_draw-options-DPSbZipp.js",
       "_ambient-CEzLlAaX.js",
       "_easing-HS2C6-zA.js",
       "_comic-america-DKlp7hw_.js",
-      "_draw-options-5VKCko38.js",
       "_alpha-mask-C1RIm4VB.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_clip-W780-tgz.js",
-      "_presets-BkcNbVMZ.js",
+      "_presets-B1NIQCJr.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ],
@@ -586,23 +586,23 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/splat-reveal.js": {
-    "file": "assets/splat-reveal-Cg_wKfD5.js",
+    "file": "assets/splat-reveal-5kK7zBjN.js",
     "name": "splat-reveal",
     "src": "resources/js/scene/stage25d/splat-reveal.js",
     "isDynamicEntry": true,
     "imports": [
       "_babylon-BN1RBZWF.js",
-      "_engine-BtHgQGP9.js",
+      "_engine-BJ643KVs.js",
       "_vite-helpers-DqutJMZx.js",
       "_puppet-sheet-B0KaX9MG.js",
       "_load-image-DngxJD_v.js",
-      "_presets-BkcNbVMZ.js",
-      "_draw-options-5VKCko38.js",
+      "_presets-B1NIQCJr.js",
+      "_draw-options-DPSbZipp.js",
       "_easing-HS2C6-zA.js",
       "_config-DwQUN7uY.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-BS1u7pR4.js",
+      "_big-countdown-kHLehT-z.js",
       "_ambient-CEzLlAaX.js",
       "_alpha-mask-C1RIm4VB.js",
       "_projection-CL24asTn.js"
@@ -624,7 +624,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CLDFc3Cd.js",
+    "file": "assets/recorder-CMN7PXl-.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -634,11 +634,11 @@
       "_vite-helpers-DqutJMZx.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
-      "_draw-options-5VKCko38.js",
-      "_BalloonLayer-1BwPMpTN.js",
+      "_draw-options-DPSbZipp.js",
+      "_BalloonLayer-J98SKpTS.js",
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
-      "_presets-BkcNbVMZ.js",
+      "_presets-B1NIQCJr.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
