@@ -108,16 +108,18 @@ class LessonContentNotTypeTest extends TestCase
             }
         }
         $this->editor($this->lesson())->set('addSceneOpen', true)
-            ->assertSeeHtml('data-add-voyage')->assertDontSeeHtml('data-voyage-taken');
+            ->assertSeeHtml('data-add-voyage')->assertSeeHtml('data-insert-voyage')->assertDontSeeHtml('data-add-voyage-leg');
     }
 
-    /** One voyage per lesson: the tile stays in the menu, switched off, and says why. */
-    public function test_a_lesson_that_sails_shows_the_voyage_tile_off_with_its_reason(): void
+    /** One voyage per lesson: once it sails, the same Voyage tile adds a leg or the overview. Nothing is shown switched off (Bart 2026-11-19). */
+    public function test_a_lesson_that_sails_offers_a_next_leg_and_the_whole_voyage_under_one_tile(): void
     {
         $this->editor($this->voyageLesson())->set('addSceneOpen', true)
-            ->assertDontSeeHtml('data-add-voyage')
-            ->assertSeeHtml('data-voyage-taken')
-            ->assertSee(__('This lesson already sails a voyage. Use Route to add a leg.'));
+            ->assertSeeHtml('data-add-voyage')
+            ->assertSeeHtml('data-add-voyage-leg')
+            ->assertSeeHtml('data-add-voyage-overview')
+            ->assertDontSeeHtml('data-insert-voyage')
+            ->assertDontSeeHtml('aria-disabled="true"');
     }
 
     public function test_adding_a_decision_point_leaves_the_type_arc_and_meters_alone(): void
