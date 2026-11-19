@@ -226,7 +226,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DIaJaGN9.css",
+    "file": "assets/app-CEwhmFOR.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -235,7 +235,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-C2mj4_Is.js",
+    "file": "assets/app-B9nHj5Bc.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -287,7 +287,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-BRFPOFYO.js",
+    "file": "assets/cutout-dialog-rk5WAbWC.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -504,7 +504,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Dx3nZUaq.js",
+    "file": "assets/index-CfTEYoDT.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -630,7 +630,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CI59HZTf.js",
+    "file": "assets/recorder-DADAs_l2.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
