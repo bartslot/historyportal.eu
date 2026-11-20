@@ -252,6 +252,17 @@ export const transportAt = (v, t) => {
  * A picture to draw INSTEAD of a model on this stretch, when the teacher chose one for the leg.
  * Takes precedence over `transport`: they picked a specific marker, so show it.
  */
+/**
+ * Where a w0 x h0 picture sits inside a circle of radius r, whole: scaled so its corners stay just
+ * inside the rim (90% of it, so the picture breathes), centred. Offsets are from the centre.
+ */
+export const fitPictureInDisc = (w0, h0, r) => {
+  const diag = Math.hypot(w0 || 1, h0 || 1);
+  const k = (2 * r * 0.9) / diag;
+  const w = (w0 || 1) * k, h = (h0 || 1) * k;
+  return { x: -w / 2, y: -h / 2, w, h };
+};
+
 export const markerImageAt = (v, t) => {
   const url = legAt(v, t)?.marker_image;
 
@@ -452,7 +463,21 @@ export function addVoyageShips(map, { beforeId = 'tm-clouds', only = null, ambie
   const markerSprites = new Map();   // url -> THREE.Mesh | 'pending'
   const markerGeometry = new THREE.PlaneGeometry(1, 1);
 
-  /** Crop an image to a circle with a ring, on a transparent square — the 64px avatar, as a texture. */
+  /** A picture's top-left pixel, as a CSS colour: what its background is, near enough. */
+  const cornerColour = (img) => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = c.height = 1;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1);
+      const [r, g, b, a] = cx.getImageData(0, 0, 1, 1).data;
+      return a < 16 ? '#f3ead7' : `rgb(${r},${g},${b})`;
+    } catch (_) {
+      return '#f3ead7';   // a tainted canvas: parchment, like the map under it
+    }
+  };
+
+  /** An image in a circle with a ring, on a transparent square: the 64px avatar, as a texture. */
   const roundTexture = (img) => {
     const canvas = document.createElement('canvas');
     canvas.width = MARKER_TEX;
@@ -465,9 +490,12 @@ export function addVoyageShips(map, { beforeId = 'tm-clouds', only = null, ambie
     ctx.beginPath();
     ctx.arc(r, r, r - ring, 0, Math.PI * 2);
     ctx.clip();
-    // Cover, centred: a portrait squeezed into a circle is worse than one cropped to fit it.
-    const side = Math.min(img.width, img.height) || 1;
-    ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, MARKER_TEX, MARKER_TEX);
+    // The WHOLE picture, zoomed out to sit inside the disc (Bart 2026-11-20: cover cropped the ship to its
+    // sails). The disc behind it takes the picture's own corner colour, so its background runs on to the ring.
+    ctx.fillStyle = cornerColour(img);
+    ctx.fillRect(0, 0, MARKER_TEX, MARKER_TEX);
+    const { x, y, w, h } = fitPictureInDisc(img.width, img.height, r - ring);
+    ctx.drawImage(img, r + x, r + y, w, h);
     ctx.restore();
 
     ctx.beginPath();

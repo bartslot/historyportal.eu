@@ -188,8 +188,12 @@
                      by canoe). Drawn on the map as this same round portrait with its ring. --}}
                 <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/40 p-2">
                     @if ($legMarkerImage !== '')
-                        <img src="{{ $legMarkerImage }}" alt=""
-                             class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary" />
+                        {{-- The whole picture, zoomed out inside the disc, as the map draws it (voyage-ships.js
+                             roundTexture). The disc takes the picture's corner colour once it loads. --}}
+                        <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-base-content ring-2 ring-primary">
+                            <img src="{{ $legMarkerImage }}" alt="" class="h-[72%] w-[72%] object-contain"
+                                 x-data x-on:load="(() => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage($el, 0, 0, 1, 1, 0, 0, 1, 1); const [r, g, b, a] = x.getImageData(0, 0, 1, 1).data; if (a > 15) $el.parentElement.style.backgroundColor = `rgb(${r},${g},${b})` } catch (e) {} })()" />
+                        </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-prose text-slate-300">{{ __('A picture travels this leg.') }}</p>
                             <div class="mt-1 flex gap-2">
