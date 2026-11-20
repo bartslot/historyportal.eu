@@ -10,7 +10,27 @@
     "place": "Akko",
     "date_label": "20 mei 1271",
     "title": "Akko, de laatste haven van de kruisvaarders",
-    "story": "Niccolò en Maffeo Polo nemen de zeventienjarige Marco mee uit Venetië. In Akko krijgen ze brieven van de pauselijke legaat Tedaldo Visconti, die daar hoort dat hij zelf paus is gekozen. Hij geeft hen twee monniken mee voor Koeblai Khan, maar die keren al snel om."
+    "story": "Niccolò en Maffeo Polo nemen de zeventienjarige Marco mee uit Venetië. In Akko, de laatste stad van de kruisvaarders, zoeken ze de pauselijke legaat Tedaldo Visconti op. Koeblai Khan heeft hun om olie uit Jeruzalem gevraagd, dus eerst gaan ze daarheen."
+   }
+  },
+  {
+   "depart": "1271-06-01",
+   "arrive": "1271-06-10",
+   "stop": {
+    "place": "Jeruzalem",
+    "date_label": "juni 1271",
+    "title": "Jeruzalem, olie voor de Khan",
+    "story": "Koeblai Khan wil olie uit de lamp die brandt bij het graf van Christus in de Heilig-Grafkerk. De Polo's reizen van Akko over land naar Jeruzalem om die olie te halen. Het is een geschenk dat ze helemaal naar China zullen dragen."
+   }
+  },
+  {
+   "depart": "1271-06-20",
+   "arrive": "1271-07-01",
+   "stop": {
+    "place": "Akko",
+    "date_label": "juli 1271",
+    "title": "Terug in Akko",
+    "story": "Met de olie keren ze terug naar Akko. Visconti geeft hun brieven voor de Khan mee. Later hoort hij dat hij zelf paus is gekozen, en dan stuurt hij hun twee monniken achterna, maar die keren al snel om."
    }
   },
   {

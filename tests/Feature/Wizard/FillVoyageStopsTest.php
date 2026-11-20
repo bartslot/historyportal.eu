@@ -28,9 +28,9 @@ class FillVoyageStopsTest extends TestCase
             'image_style' => 'realistic', 'status' => LessonStatus::ScenesReady,
             'game_type' => 'voyage', 'game_config' => ['voyage' => 'marco-polo-1271'],
         ]);
-        foreach ([0, 1, 2] as $leg) {
-            Scene::create(['lesson_id' => $lesson->id, 'order' => $leg + 1, 'kind' => 'voyage', 'status' => 'ready',
-                'location' => $leg === 1 ? 'Lajazzo' : null,
+        foreach ([0, 3, 4] as $i => $leg) { // Akko, Ayas, Tabriz
+            Scene::create(['lesson_id' => $lesson->id, 'order' => $i + 1, 'kind' => 'voyage', 'status' => 'ready',
+                'location' => $leg === 3 ? 'Lajazzo' : null,
                 'config' => ['voyage' => 'marco-polo-1271', 'leg' => $leg, 'view' => 'flat', 'gallery' => ['title' => '', 'story' => '']]]);
         }
 

@@ -42,7 +42,7 @@ describe('dateAtSample', () => {
 
   it('shows only the year for a voyage with no day-level dates (Marco Polo)', () => {
     const polo = voyage('marco-polo-1271')
-    const date = dateAtSample(polo, smooth(polo.waypoints), 5.5 * S)
+    const date = dateAtSample(polo, smooth(polo.waypoints), 7.5 * S)
     expect(date.precision).toBe('year')
     expect(formatVoyageDate(date, 'en')).toMatch(/^12\d\d$/)
   })
@@ -91,13 +91,13 @@ describe('landTransportAtSample', () => {
   const marco = voyage('marco-polo-1271')
 
   it('names the mount on Marco Polo\'s land legs, so the label never says galley over Persia', () => {
-    expect(landTransportAtSample(marco, 8 * S)).toBe('camel')    // Persian desert, wp 7-10
-    expect(landTransportAtSample(marco, 5.5 * S)).toBe('horse')  // Anatolian highlands, wp 4-7
+    expect(landTransportAtSample(marco, 10 * S)).toBe('camel')   // Persian desert, wp 9-12
+    expect(landTransportAtSample(marco, 7.5 * S)).toBe('horse')  // Anatolian highlands, wp 6-9
   })
 
   it('stays null at sea, where the fleet names belong', () => {
     expect(landTransportAtSample(marco, 1.5 * S)).toBeNull()     // Venice to Acre
-    expect(landTransportAtSample(marco, 25 * S)).toBeNull()      // the sea road home
+    expect(landTransportAtSample(marco, 27 * S)).toBeNull()      // the sea road home
   })
 
   it('stays null on a route without legs', () => {

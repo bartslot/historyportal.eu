@@ -104,7 +104,7 @@ return [
             'script' => 'In 1271, a seventeen year old called Marco Polo sailed out of Venice with his father Niccolò and his uncle Maffeo. The two older men had done this before. They had reached the court of Kublai Khan, the Mongol emperor who now ruled China, and he had asked them to come back and bring scholars and holy oil from Jerusalem. Marco had barely met his father, who had been away for most of his childhood. He was going with two near strangers to a place nobody in Venice could describe. He would be forty one years old before he saw his own city again.',
         ],
         [
-            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 3,
+            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 5,
             'chapter' => 'The desert that has a voice',
             'location' => 'Persia',
             'year' => 1272,
@@ -119,7 +119,7 @@ return [
             'script' => 'They went down through Persia to Hormuz, meaning to finish the journey by sea. Then they saw the ships. The boats in that harbour were stitched together with rope made from coconut husk instead of being nailed, and Marco wrote that he would not have sailed in one for anything, because they were drowning men constantly. So the Polos turned round and went back north, on foot and by camel, and took the hardest overland route on earth instead. That decision added years to their journey. It is also why we have the book, because the road they chose went through places no European had ever described.',
         ],
         [
-            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 5,
+            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 7,
             'chapter' => 'The roof of the world',
             'location' => 'The Pamirs',
             'year' => 1273,
@@ -134,7 +134,7 @@ return [
             'script' => 'Then came the Pamirs, the mountains travellers called the roof of the world. The caravan spent twelve days on a plateau more than four thousand metres up where, Marco says, no birds fly and nothing grows. And he wrote down a detail that tells you he was really paying attention: up there, fires burned strangely dim and pale, and it took much longer to cook anything. He had no idea why. He was describing thin air at high altitude, and nobody in Europe would understand the reason for another four hundred years. When you are deciding whether to believe a traveller, small useless details like that one are worth more than any grand claim.',
         ],
         [
-            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 7,
+            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 9,
             'chapter' => 'The desert of no return',
             'location' => 'The Taklamakan',
             'year' => 1274,
@@ -149,7 +149,7 @@ return [
             'script' => 'The Taklamakan desert is so hostile that its name is often translated as the place you go in and do not come out. Nobody crossed the middle. Caravans crept round the rim, hopping from one oasis town to the next, and if you missed a well you died. Marco wrote down what the caravan men believed about that place: that spirits called out to travellers by their own names, in the voices of their friends, and led them away from the road into the sand, and that whoever followed was never found. That is not a fact about geography. It is a fact about fear, and about what it does to people who are exhausted and a very long way from home.',
         ],
         [
-            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 8,
+            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 10,
             'chapter' => 'The court of the Great Khan',
             'location' => 'Khanbaliq',
             'year' => 1275,
@@ -202,7 +202,7 @@ return [
         ],
 
         [
-            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 10,
+            'type' => 'voyage', 'voyage' => 'marco-polo-1271', 'leg' => 12,
             'chapter' => 'The long way home',
             'location' => 'The Indian Ocean',
             'year' => 1292,
