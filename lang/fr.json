@@ -2948,5 +2948,7 @@
     "Next leg": "Étape suivante",
     "Sail on to a new place": "Naviguer vers un nouveau lieu",
     "Whole voyage": "Tout le voyage",
-    "Every stop on one map": "Chaque escale sur une carte"
+    "Every stop on one map": "Chaque escale sur une carte",
+    "{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops": "{1} Remplir 1 escale vide|[2,*] Remplir :count escales vides",
+    "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Toutes les escales étaient déjà remplies.|{1} 1 escale remplie.|[2,*] :count escales remplies."
 }

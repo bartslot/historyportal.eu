@@ -1,4 +1,4 @@
-@props(['scene' => null, 'voyageDef' => null, 'routeLine' => [], 'voyageMap' => ['cities' => true, 'borders' => true, 'labels' => true], 'voyageFog' => [], 'voyageView' => 'flat', 'transports' => [], 'stops' => []])
+@props(['scene' => null, 'voyageDef' => null, 'routeLine' => [], 'voyageMap' => ['cities' => true, 'borders' => true, 'labels' => true], 'voyageFog' => [], 'voyageView' => 'flat', 'transports' => [], 'stops' => [], 'fillableStops' => 0])
 
 @php
     $config = $scene->config ?? [];
@@ -52,6 +52,17 @@
             <span x-show="!wide" class="rounded-full bg-slate-800 px-2 py-0.5 text-2xs font-medium text-panel-hint">{{ __('Waypoint :n / :total', ['n' => $legIndex + 1, 'total' => $legCount]) }}</span>
         @endif
     </div>
+
+    {{-- The voyage's own stop copy (resources/js/timemap/<id>-tour.json) can fill the stops a teacher has not
+         written yet: name, date, title and story (Step3SceneConfigurator::fillVoyageStops). Shown only while
+         there is something empty to fill; it never overwrites. --}}
+    @if ($fillableStops > 0)
+        <button type="button" wire:click="fillVoyageStops(true)" wire:loading.attr="disabled" wire:target="fillVoyageStops" data-fill-voyage-stops
+                class="btn btn-sm mt-3 w-full justify-start gap-2">
+            <x-ui.icon name="voyage-overview" />
+            {{ trans_choice('{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops', $fillableStops, ['count' => $fillableStops]) }}
+        </button>
+    @endif
 
     {{-- What the editor is looking at: one waypoint, or the whole voyage. Same control as the tab
          row below — same box, same button size — because it is the same kind of choice, and two

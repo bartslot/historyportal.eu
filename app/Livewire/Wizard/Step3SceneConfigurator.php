@@ -2132,6 +2132,92 @@ class Step3SceneConfigurator extends Component
         return $stops;
     }
 
+    /**
+     * How many of this voyage's stops the tour pack could fill: a leg scene whose date, gallery title
+     * story or name is still empty. 0 hides the "Fill in the stops" button.
+     */
+    public function fillableStops(): int
+    {
+        $voyageId = $this->selectedVoyageId();
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId) : [];
+        if (! $copy) {
+            return 0;
+        }
+
+        return $this->voyageLegScenes($voyageId)->filter(function (Scene $scene) use ($copy): bool {
+            $stop = $copy[(int) ($scene->config['leg'] ?? 0)] ?? [];
+            $gallery = (array) ($scene->config['gallery'] ?? []);
+            foreach (['title', 'date_label', 'story'] as $field) {
+                if (($stop[$field] ?? '') !== '' && trim((string) ($gallery[$field] ?? '')) === '') {
+                    return true;
+                }
+            }
+
+            return ($stop['place'] ?? '') !== '' && trim((string) $scene->location) === '';
+        })->count();
+    }
+
+    /**
+     * Fill this voyage's EMPTY stops from its tour pack (Bart 2026-11-20: "Can we auto populate the stops of
+     * Marco Polo?"): each leg's date, gallery title and short story. The stop's name is left alone unless
+     * asked for. Never overwrites anything a teacher typed.
+     */
+    public function fillVoyageStops(bool $withNames = false): void
+    {
+        $voyageId = $this->selectedVoyageId();
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId) : [];
+        if (! $copy) {
+            return;
+        }
+        $filled = 0;
+        $gc = $withNames ? $this->ensureVoyageDef() : null;
+        foreach ($this->voyageLegScenes($voyageId) as $scene) {
+            $leg = (int) ($scene->config['leg'] ?? 0);
+            $stop = $copy[$leg] ?? [];
+            $config = $scene->config;
+            $gallery = (array) ($config['gallery'] ?? []);
+            $changed = false;
+            foreach (['title', 'date_label', 'story'] as $field) {
+                if (($stop[$field] ?? '') !== '' && trim((string) ($gallery[$field] ?? '')) === '') {
+                    $gallery[$field] = $stop[$field];
+                    $changed = true;
+                }
+            }
+            $updates = [];
+            if ($changed) {
+                $config['gallery'] = $gallery;
+                $updates['config'] = $config;
+            }
+            if ($withNames && ($stop['place'] ?? '') !== '' && trim((string) $scene->location) === ''
+                && trim((string) ($gc['voyage_def']['legs'][$leg]['title'] ?? '')) === '' && isset($gc['voyage_def']['legs'][$leg])) {
+                $gc['voyage_def']['legs'][$leg]['title'] = $stop['place'];
+                $updates['location'] = $stop['place'];
+            }
+            if ($updates) {
+                $scene->update($updates);
+                $filled++;
+            }
+        }
+        if ($withNames && $gc !== null) {
+            $this->saveGameConfig($gc);
+        }
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        if ($this->selectedSceneId) {
+            $this->selectSceneInternal((int) $this->selectedSceneId);
+        }
+        $this->dispatch('toast', type: 'success', message: trans_choice('{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.', $filled, ['count' => $filled]));
+    }
+
+    /** This voyage's leg scenes (not its overview). */
+    private function voyageLegScenes(string $voyageId): \Illuminate\Support\Collection
+    {
+        return $this->lesson->scenes()->where('kind', 'voyage')->ordered()->get()
+            ->reject(fn (Scene $s) => (bool) ($s->config['overview'] ?? false))
+            ->filter(fn (Scene $s) => ($s->config['voyage'] ?? $voyageId) === $voyageId)
+            ->values();
+    }
+
     /** Does the last leg end where the first one began (within ~100 km)? */
     private function voyageReturnsHome(array $def): bool
     {

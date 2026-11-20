@@ -1193,7 +1193,7 @@
                                                   :team-draft="$teamDraft" :team-is-default="$this->teamGameIsDefault()"
                                                   :predict-draft="$predictDraft" />
                 @elseif ($sceneModel->kind === 'voyage')
-                    <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" />
+                    <x-lesson.scene-inspector-voyage :scene="$sceneModel" :voyage-def="$this->voyageDef()" :route-line="$this->routeLine()" :voyage-map="$this->voyageMap()" :voyage-fog="$this->voyageFog()" :voyage-view="$this->voyageView()" :transports="$this->transports()" :stops="$this->voyageStops()" :fillable-stops="$this->fillableStops()" />
                 @elseif ($sceneModel->kind === 'gallery')
                     <x-lesson.scene-inspector-gallery :scene="$sceneModel" />
                 @elseif ($sceneModel->kind === 'video')

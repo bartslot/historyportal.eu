@@ -261,6 +261,20 @@ class VoyageLessonBuilder
     }
 
     /** @return array<string,mixed> */
+    /**
+     * The tour pack's copy for each leg's stop (place, date_label, title, story), by leg index. Empty
+     * when the voyage has no pack. The editor fills a lesson's empty stops from it.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public function stopCopy(string $voyageId): array
+    {
+        return array_map(
+            fn ($leg) => array_map('strval', array_intersect_key((array) ($leg['stop'] ?? []), array_flip(['place', 'date_label', 'title', 'story']))),
+            array_values((array) ($this->tourPack($voyageId)['legs'] ?? [])),
+        );
+    }
+
     private function tourPack(string $voyageId): array
     {
         $path = resource_path("js/timemap/{$voyageId}-tour.json");
