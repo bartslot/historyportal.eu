@@ -15,6 +15,7 @@ import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, key
 import { wordSpans, snapTime, wordAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
+import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
@@ -266,6 +267,7 @@ export const animationTimeline = (config = {}) => ({
     // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
     // not the copy this panel remembered (which is exactly what the undo took back).
     window.addEventListener('timeline-restored', (event) => this.restore(event.detail?.timeline))
+    window.addEventListener('voyage-intro-changed', (event) => this.introChanged(!!event.detail?.on))
 
     // The stage25d layers keep their keys on the layer: whenever the stage shows a scene, or the server's copy
     // changed under it (undo), the s25 tracks are re-read from the layers.
@@ -435,6 +437,34 @@ export const animationTimeline = (config = {}) => ({
   addCamera () {
     if (this.hasCamera || !this.canHaveCamera) return
     this.targets = [...this.targets, 'camera']
+    this.refreshObjects()
+    this.save()
+  },
+
+  /**
+   * The voyage's "from space" intro, as the scene's camera (Bart 2026-11-20: "i would like to see the camera
+   * automatically when intro is on in the timeline. and the camera should also do the angle"). Switching it
+   * on keys the camera from the whole globe down to the view on the stage now, ending tilted; the player
+   * plays those keys instead of a built-in fly-in, so what the timeline shows is what the class sees.
+   * Switching it off takes the camera away only while it is still the intro's: a camera a teacher keyed stays.
+   */
+  introChanged (on) {
+    if (!this.canHaveCamera) return
+    const mine = isIntroCamera(this.tracks)
+    const keyed = this.tracks.some((t) => t.target === 'camera' && sortedKeys(t).length)
+    if (on) {
+      const map = window.__lessonMap
+      if (!map || (keyed && !mine)) return
+      const tracks = introCameraTracks(cameraFromMap(map))
+      this.tracks = [...this.tracks.filter((t) => t.target !== 'camera'), ...tracks]
+      if (!this.hasCamera) this.targets = [...this.targets, 'camera']
+      const end = Math.max(...tracks.flatMap((t) => t.keyframes.map((k) => k.time)))
+      if (this.duration < end) this.duration = end
+      this.openGroups.camera = true
+    } else if (mine) {
+      this.tracks = this.tracks.filter((t) => t.target !== 'camera')
+      this.targets = this.targets.filter((t) => t !== 'camera')
+    } else return
     this.refreshObjects()
     this.save()
   },

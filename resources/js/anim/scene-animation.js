@@ -14,6 +14,41 @@ export const liveTracks = (timeline) => (timeline?.tracks ?? []).filter((t) => s
 
 export const hasAnimation = (timeline) => liveTracks(timeline).length > 0
 
+/**
+ * When the scene's camera stops moving, in seconds: its last key. 0 with no camera move. After it the
+ * camera is let go (the voyage's own follow camera takes over a leg), so frameAt leaves it out.
+ */
+export const cameraEnd = (timeline) => Math.max(0, ...liveTracks(timeline)
+  .filter((t) => kindOfTarget(t.target) === 'camera')
+  .flatMap((t) => sortedKeys(t).map((k) => k.time)))
+
+/** Does the timeline move the map's camera? Then it is the scene's opening, not the voyage's built-in fly-in. */
+export const cameraDrives = (timeline) => cameraEnd(timeline) > 0
+
+/**
+ * The "from space" intro as camera keys (Bart 2026-11-20: show it in the timeline, and let it tilt).
+ * Held on the whole globe for a beat, then a dive to `to` that ends tilted, so the map arrives at an angle.
+ */
+export const INTRO_FROM_ZOOM = 1.05
+export const INTRO_TILT = 40
+export const introCameraTracks = (to, { hold = 0.9, dive = 3.2 } = {}) => {
+  const end = { lng: to.lng, lat: to.lat, zoom: to.zoom, heading: to.heading ?? 0, tilt: Math.max(Number(to.tilt) || 0, INTRO_TILT) }
+  const start = { ...end, zoom: INTRO_FROM_ZOOM, tilt: 0 }
+  const times = [0, hold, hold + dive]
+  return ['lng', 'lat', 'zoom', 'heading', 'tilt'].map((property) => ({
+    target: 'camera',
+    property,
+    keyframes: [start, start, end].map((v, i) => ({ time: +times[i].toFixed(3), value: +Number(v[property]).toFixed(property === 'zoom' ? 3 : 6) })),
+  }))
+}
+
+/** Is this camera the intro's (so switching the intro off may take it away), not one a teacher keyed? */
+export const isIntroCamera = (tracks) => {
+  const zoom = (tracks ?? []).find((t) => t.target === 'camera' && t.property === 'zoom')
+  const keys = sortedKeys(zoom)
+  return keys.length === 3 && Math.abs(keys[0].value - INTRO_FROM_ZOOM) < 1e-6
+}
+
 /** Every animated value at `time`, as `{ target: { property: value } }`. */
 export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), time)
 

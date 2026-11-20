@@ -315,11 +315,13 @@
         {{-- Space intro. The chart is flat, so there is no Flat/Globe view to choose (Bart 10-24: one map). --}}
         <section>
             <div class="mt-2 flex items-end justify-between gap-3">
-                {{-- INTRO — the "from space" fly-in. Only the first leg plays it. --}}
+                {{-- INTRO — the "from space" fly-in. Switching it on keys the scene's camera in the timeline (timeline-panel
+                     introChanged), from the globe down to the stage's view, ending tilted; the player plays those keys. --}}
                 <label class="flex items-center gap-2" data-tooltip="{{ __('Fly in from orbit before departure (first leg only)') }}">
                     <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Space intro') }}</span>
                     <input type="checkbox" @checked($intro)
                            wire:change="setVoyageIntro($event.target.checked)"
+                           x-on:change="$dispatch('voyage-intro-changed', { on: $event.target.checked })"
                            class="toggle toggle-sm toggle-warning" />
                 </label>
             </div>

@@ -1201,7 +1201,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   };
 
   // Play one leg on the EXISTING map — no rebuild, just ease the camera over and sail.
-  const runLeg = (leg, { intro = false, stopImages = [], gallery = null, hotspot = null } = {}) => {
+  const runLeg = (leg, { intro = false, holdMs = 0, stopImages = [], gallery = null, hotspot = null } = {}) => {
     inOverview = false;   // back on a single leg: its landfall is draggable again
     const token = ++legToken;      // cancels any in-flight sail/timer from the previous leg
     if (raf) { cancelAnimationFrame(raf); raf = null; }
@@ -1234,7 +1234,12 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     }
     updateTrail(f0, ships.pointAt(voyage, f0));
 
-    if (intro && !skipAnim) {
+    if (holdMs > 0 && !skipAnim) {
+      // The scene's own camera keys are playing the opening (timeline): leave the camera to them and
+      // set sail when they are done.
+      setChip(L.departMs, pack.title || '');
+      setTimeout(() => { if (token === legToken) begin(token); }, holdMs);
+    } else if (intro && !skipAnim) {
       // Only the very first leg gets the "from space" dive-in.
       map.jumpTo({ center: [start.lng, start.lat], zoom: 1.05, pitch: 0 });
       setChip(L.departMs, pack.title || '');
