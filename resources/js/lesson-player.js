@@ -21,7 +21,7 @@ import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, fo
 import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
-import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
+import { hasAnimation, frameAt, applyFrameTo, cameraEndsAt, releaseCameraAfter } from './anim/scene-animation.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
 import { isStage25d } from './scene/stage25d/config.js'
@@ -2128,6 +2128,7 @@ Alpine.data('lessonGame', (lesson) => ({
       }
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
         intro: !!cfg.intro,
+        cameraMs: cameraEndsAt(cfg.timeline) * 1000,   // a timeline camera flies in; the ship waits for it
         stopImages: cfg.stop_images || [],
         gallery: cfg.gallery || null,
         hotspot: cfg.hotspot || null,
@@ -2517,9 +2518,14 @@ Alpine.data('lessonGame', (lesson) => ({
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
       const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
+      // A voyage map moves too (the Space intro is a camera, VoyageIntroCamera.php), and lets go after
+      // the camera's last key so the sail can follow the ship.
+      const cameraEnd = scene.kind === 'voyage' ? cameraEndsAt(timeline) : Infinity
       const step = () => {
         if (epoch !== this._playEpoch) return
-        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map })
+        const t = clock()
+        const map = scene.kind === 'voyage' ? _voyageInstance?.map : _mapInstance?.map
+        applyFrameTo(releaseCameraAfter(frameAt(timeline, t), t, cameraEnd), { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

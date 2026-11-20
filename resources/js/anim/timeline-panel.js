@@ -288,6 +288,7 @@ export const animationTimeline = (config = {}) => ({
     this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
     this.waitForObjects()
     this.listenToCanvas()
+    this.seedIntroCamera()
     this.$nextTick(() => { if (this.zoomIsMine) this.measureFit(); else this.fit() })
     // Only refit while the zoom is still ours to choose. Refitting on every resize threw away a
     // zoom the teacher had just set, which reads as the control not working.
@@ -432,6 +433,18 @@ export const animationTimeline = (config = {}) => ({
    * of a property — so when the camera's rows moved from altitude to zoom, every scene was left
    * holding a track for a property the registry no longer has: invisible, inert, and still saved.
    */
+  /**
+   * A voyage scene with the Space intro on shows it as its camera (VoyageIntroCamera.php). One saved
+   * before that has no camera yet: ask the tour where the scene rests and add it, once.
+   */
+  seedIntroCamera (tries = 40) {
+    if (config.sceneKind !== 'voyage' || !config.intro || this.hasCamera || !this.$el?.isConnected) return
+    const map = window.__lessonMap
+    const pose = map && !map.isMoving() ? window.__voyageIntroPose?.() : null
+    if (pose) { this.$wire?.setVoyageIntro?.(true, pose); return }
+    if (tries) setTimeout(() => this.seedIntroCamera(tries - 1), 250)
+  },
+
   addCamera () {
     if (this.hasCamera || !this.canHaveCamera) return
     this.targets = [...this.targets, 'camera']

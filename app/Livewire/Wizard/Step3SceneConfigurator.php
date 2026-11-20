@@ -54,6 +54,7 @@ use App\Services\Support\SceneSplit;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\SpeechBalloons;
 use App\Services\Support\TextLayerStyle;
+use App\Services\Support\VoyageIntroCamera;
 use App\Services\Support\WebpEncoder;
 use App\Services\Support\WhiteCutout;
 use App\Services\VoyageLessonBuilder;
@@ -2581,13 +2582,27 @@ class Step3SceneConfigurator extends Component
     }
 
     /** Voyage scene: toggle the "from space" intro fly-in (only meaningful on the first leg). */
-    public function setVoyageIntro(bool $on): void
+    public function setVoyageIntro(bool $on, mixed $pose = null): void
     {
         if (! $this->selectedScene) {
             return;
         }
         $this->selectedScene['config']['intro'] = $on;
+        // The intro IS a camera on the timeline (VoyageIntroCamera): on adds it, landing on the
+        // framing the editor shows ($pose); off takes it away.
+        $timeline = (array) ($this->selectedScene['config']['timeline'] ?? []);
+        if ($timeline === [] && ! $on) {
+            $this->saveSelected();
+
+            return;
+        }
+        $timeline['duration'] ??= $this->lesson->sceneLengthMs() / 1000;
+        $timeline = $on
+            ? ($pose !== null ? VoyageIntroCamera::withIntro($timeline, (array) $pose) : $timeline)
+            : VoyageIntroCamera::withoutIntro($timeline);
+        $this->selectedScene['config']['timeline'] = $this->storedTimeline($timeline);
         $this->saveSelected();
+        $this->dispatch('timeline-restored', timeline: $this->selectedScene['config']['timeline'], keepSelection: true);
     }
 
     /** Voyage scene: edit this leg's departure date (writes voyage_def, not scene.config). */

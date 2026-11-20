@@ -39,6 +39,7 @@
 <div data-timeline-config="{{ json_encode([
         'sceneId'   => $scene?->id,
         'sceneKind' => $scene?->kind,
+        'intro'     => (bool) ($config['intro'] ?? false),
         'duration'  => $duration,
         'alignment' => $alignment,
         'targets'   => $timeline['targets'] ?? [],

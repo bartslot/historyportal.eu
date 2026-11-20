@@ -1201,7 +1201,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   };
 
   // Play one leg on the EXISTING map — no rebuild, just ease the camera over and sail.
-  const runLeg = (leg, { intro = false, stopImages = [], gallery = null, hotspot = null } = {}) => {
+  const runLeg = (leg, { intro = false, cameraMs = 0, stopImages = [], gallery = null, hotspot = null } = {}) => {
     inOverview = false;   // back on a single leg: its landfall is draggable again
     const token = ++legToken;      // cancels any in-flight sail/timer from the previous leg
     if (raf) { cancelAnimationFrame(raf); raf = null; }
@@ -1234,8 +1234,14 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     }
     updateTrail(f0, ships.pointAt(voyage, f0));
 
-    if (intro && !skipAnim) {
-      // Only the very first leg gets the "from space" dive-in.
+    if (cameraMs > 0 && !skipAnim) {
+      // The scene's timeline has a camera (the Space intro is one, VoyageIntroCamera.php): it moves the
+      // map, the ship waits at the departure until the camera's last key, then sails as usual.
+      setChip(L.departMs, pack.title || '');
+      setTimeout(() => { if (token === legToken) begin(token); }, cameraMs);
+    } else if (intro && !skipAnim) {
+      // Only the very first leg gets the "from space" dive-in. (A scene saved before the intro became
+      // timeline keys still has no camera, and plays this one.)
       map.jumpTo({ center: [start.lng, start.lat], zoom: 1.05, pitch: 0 });
       setChip(L.departMs, pack.title || '');
       setTimeout(() => {
@@ -1493,8 +1499,30 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     } catch (_) { /* degenerate bounds (single stop) */ }
   };
 
+  /**
+   * Where a Space intro lands: this scene's resting framing, flat on. The whole trip on an itinerary
+   * scene, the departure at sailing zoom on a leg. The editor sends it with the toggle.
+   */
+  const introPose = () => {
+    if (inOverview) {
+      const stops = overviewStops();
+      if (!stops.length) return null;
+      const lngs = stops.map((s) => s.lng);
+      const lats = stops.map((s) => s.lat);
+      const cam = map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: { top: 70, bottom: 70, left: 60, right: 60 } });
+      if (!cam) return null;
+      const lng = cam.center.lng ?? cam.center[0];
+      const lat = cam.center.lat ?? cam.center[1];
+      return { lng, lat, zoom: cam.zoom, heading: 0 };
+    }
+    return L.start ? { lng: L.start.lng, lat: L.start.lat, zoom: L.followZoom, heading: 0 } : null;
+  };
+  window.__voyageIntroPose = introPose;
+
   return {
     playLeg,
+    introPose,
     map,   // the live MapLibre instance (used by the text projector; handy for debugging)
     /**
      * Freeze / unfreeze the sailing ship. A voyage leg is playback just like narration is, so the
@@ -1739,6 +1767,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       try { fog?.destroy(); } catch (_) { /* idem */ }
       try { ships?.destroy(); } catch (_) { /* idem */ }
       try { inst.destroy(); } catch (_) { /* idem */ }
+      if (window.__voyageIntroPose === introPose) window.__voyageIntroPose = null;
       el.innerHTML = '';
     },
   };

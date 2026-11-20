@@ -315,7 +315,7 @@
                 <label class="flex items-center gap-2" data-tooltip="{{ __('Fly in from orbit before departure (first leg only)') }}">
                     <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Space intro') }}</span>
                     <input type="checkbox" @checked($intro)
-                           wire:change="setVoyageIntro($event.target.checked)"
+                           x-on:change="$wire.setVoyageIntro($event.target.checked, window.__voyageIntroPose?.() ?? null)"
                            class="toggle toggle-sm toggle-warning" />
                 </label>
             </div>

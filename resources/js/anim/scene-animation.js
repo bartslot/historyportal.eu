@@ -14,6 +14,21 @@ export const liveTracks = (timeline) => (timeline?.tracks ?? []).filter((t) => s
 
 export const hasAnimation = (timeline) => liveTracks(timeline).length > 0
 
+/** Seconds into the scene of the camera's last key, or 0 when the camera does not move. */
+export const cameraEndsAt = (timeline) => Math.max(0, ...liveTracks(timeline)
+  .filter((t) => kindOfTarget(t.target) === 'camera')
+  .flatMap((t) => sortedKeys(t).map((k) => Number(k.time) || 0)))
+
+/**
+ * The frame without its camera once the camera's keys are done. A voyage sails after its intro and
+ * the sail follows the ship: a camera still holding its last key every frame would pin the map.
+ */
+export const releaseCameraAfter = (frame, time, end) => {
+  if (!(time > end) || !frame.camera) return frame
+  const { camera, ...rest } = frame
+  return rest
+}
+
 /** Every animated value at `time`, as `{ target: { property: value } }`. */
 export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), time)
 
