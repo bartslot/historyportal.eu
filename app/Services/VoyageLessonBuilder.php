@@ -267,12 +267,29 @@ class VoyageLessonBuilder
      *
      * @return array<int, array<string, string>>
      */
-    public function stopCopy(string $voyageId): array
+    public function stopCopy(string $voyageId, array $legs = []): array
     {
-        return array_map(
-            fn ($leg) => array_map('strval', array_intersect_key((array) ($leg['stop'] ?? []), array_flip(['place', 'date_label', 'title', 'story']))),
-            array_values((array) ($this->tourPack($voyageId)['legs'] ?? [])),
-        );
+        $pack = array_values((array) ($this->tourPack($voyageId)['legs'] ?? []));
+        $copy = fn ($leg) => array_map('strval', array_intersect_key((array) ($leg['stop'] ?? []), array_flip(['place', 'date_label', 'title', 'story'])));
+        if (! $legs) {
+            return array_map($copy, $pack);
+        }
+        // Match a lesson's own legs to the pack by ARRIVAL DATE first: a lesson copied the route before a stop was
+        // added to the catalogue (Jerusalem, 2026-11-20) still has the old numbering, and by index alone every
+        // stop after the new one would get its neighbour's story. Falls back to the index when no date matches.
+        $byArrive = [];
+        foreach ($pack as $leg) {
+            if (! empty($leg['arrive'])) {
+                $byArrive[(string) $leg['arrive']] = $leg;
+            }
+        }
+        $out = [];
+        foreach (array_values($legs) as $i => $leg) {
+            $match = $byArrive[(string) ($leg['arrive'] ?? '')] ?? (count($legs) === count($pack) ? ($pack[$i] ?? null) : null);
+            $out[$i] = $match ? $copy($match) : [];
+        }
+
+        return $out;
     }
 
     private function tourPack(string $voyageId): array

@@ -2139,7 +2139,7 @@ class Step3SceneConfigurator extends Component
     public function fillableStops(): int
     {
         $voyageId = $this->selectedVoyageId();
-        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId) : [];
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, (array) ($this->voyageDef()['legs'] ?? [])) : [];
         if (! $copy) {
             return 0;
         }
@@ -2166,7 +2166,7 @@ class Step3SceneConfigurator extends Component
     public function fillVoyageStops(bool $withNames = false): void
     {
         $voyageId = $this->selectedVoyageId();
-        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId) : [];
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, (array) ($this->voyageDef()['legs'] ?? [])) : [];
         if (! $copy) {
             return;
         }
