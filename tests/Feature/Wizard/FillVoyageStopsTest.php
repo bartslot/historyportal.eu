@@ -53,6 +53,7 @@ class FillVoyageStopsTest extends TestCase
         $this->assertSame('Akko', $scenes[0]->location);
         $this->assertSame('20 mei 1271', $scenes[0]->config['gallery']['date_label']);
         $this->assertNotSame('', $scenes[0]->config['gallery']['story']);
+        $this->assertSame($scenes[0]->config['gallery']['story'], $scenes[0]->script_segment, 'the story is the stop\'s script');
         $this->assertSame('Lajazzo', $scenes[1]->location, 'a name the teacher typed is kept');
         $this->assertSame('Tabriz', $scenes[2]->location);
         $this->assertSame('Akko', $lesson->fresh()->game_config['voyage_def']['legs'][0]['title']);

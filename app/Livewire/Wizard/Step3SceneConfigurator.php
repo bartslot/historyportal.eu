@@ -2153,13 +2153,14 @@ class Step3SceneConfigurator extends Component
                 }
             }
 
-            return ($stop['place'] ?? '') !== '' && trim((string) $scene->location) === '';
+            return (($stop['place'] ?? '') !== '' && trim((string) $scene->location) === '')
+                || (($stop['story'] ?? '') !== '' && trim((string) $scene->script_segment) === '');
         })->count();
     }
 
     /**
      * Fill this voyage's EMPTY stops from its tour pack (Bart 2026-11-20: "Can we auto populate the stops of
-     * Marco Polo?"): each leg's date, gallery title and short story. The stop's name is left alone unless
+     * Marco Polo?"): each leg's date, gallery title and short story, the story also as its script. The stop's name is left alone unless
      * asked for. Never overwrites anything a teacher typed.
      */
     public function fillVoyageStops(bool $withNames = false): void
@@ -2187,6 +2188,11 @@ class Step3SceneConfigurator extends Component
             if ($changed) {
                 $config['gallery'] = $gallery;
                 $updates['config'] = $config;
+            }
+            // The story is also the stop's script (Bart 2026-11-20: "add the text to the story in the writing of the
+            // script"), so the narration says it. Only into an empty script; a written one stays.
+            if (($stop['story'] ?? '') !== '' && trim((string) $scene->script_segment) === '') {
+                $updates['script_segment'] = $stop['story'];
             }
             if ($withNames && ($stop['place'] ?? '') !== '' && trim((string) $scene->location) === ''
                 && trim((string) ($gc['voyage_def']['legs'][$leg]['title'] ?? '')) === '' && isset($gc['voyage_def']['legs'][$leg])) {
