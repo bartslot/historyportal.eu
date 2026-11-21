@@ -162,8 +162,8 @@ return [
         // The old poet at his desk (watercolour study); indoors, so no sky, birds or trees.
         'backdrop' => "{$h}/backdrops/dante/scrittoio-1283",
         'layers' => [
-            ['asset' => "{$h}/figures/dante/dante-esule", 'x' => 24, 'y' => 64, 'height' => 72,
-                'depth' => 1.15, 'anim' => 'fade', 'anim_delay' => 0.4, 'anim_duration' => 1800],
+            // At the desk, not in his travelling cloak: he finished the Paradiso here in Ravenna.
+            $person('dante/dante-scrive', 40, 96, 62, 0.4, ['ambient' => 'none', 'anim_duration' => 1800]),
         ],
     ],
     'eredita' => [
