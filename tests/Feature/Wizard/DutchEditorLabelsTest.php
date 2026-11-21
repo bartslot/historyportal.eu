@@ -38,10 +38,10 @@ class DutchEditorLabelsTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
             ->html();
 
-        foreach (['Verhaal', 'Strategiespel', 'Debat', 'Kaart', 'Galerij', 'Keuzemoment'] as $dutch) {
+        foreach (['Verhaal', 'Strategiespel', 'Debat', 'Kaart', 'Galerij'] as $dutch) {
             $this->assertStringContainsString(">{$dutch}</span>", $html);
         }
-        foreach (['Story', 'Strategy game', 'Debate', 'Map', 'Gallery', 'Decision point'] as $english) {
+        foreach (['Story', 'Strategy game', 'Debate', 'Map', 'Gallery'] as $english) {
             $this->assertStringNotContainsString(">{$english}</span>", $html);
         }
         // Object-list rows built in Alpine: never a bare English literal.

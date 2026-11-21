@@ -5,7 +5,14 @@
              role="status" data-import-notes>
             <div class="flex items-start gap-3">
                 <div class="min-w-0 flex-1">
-                    <p class="font-semibold">{{ __('Imported from Twine: :scenes scenes, :decisions Decision points.', ['scenes' => $report['scenes'] ?? 0, 'decisions' => $report['decisions'] ?? 0]) }}</p>
+                    <p class="font-semibold">
+                        @if (array_key_exists('choices', $report))
+                            {{ __('Imported from Twine: :scenes scenes, :choices choices.', ['scenes' => $report['scenes'] ?? 0, 'choices' => $report['choices']]) }}
+                        @else
+                            {{-- An import from before scene links (2026-11-21) made Decision points instead. --}}
+                            {{ __('Imported from Twine: :scenes scenes, :decisions Decision points.', ['scenes' => $report['scenes'] ?? 0, 'decisions' => $report['decisions'] ?? 0]) }}
+                        @endif
+                    </p>
                     @if (! empty($report['notes']))
                         <ul class="mt-2 max-h-48 list-disc space-y-1 overflow-y-auto pl-5 text-base-content/80">
                             @foreach ($report['notes'] as $note)

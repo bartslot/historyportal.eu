@@ -8,6 +8,8 @@
     'problems' => null,
     // The Livewire component the clicks go to: '$parent.' inside SceneRail.
     'call'     => '',
+    // Scene numbers this scene's choices jump to (SceneLinks); the tag shows them, or "End" for an ending.
+    'leadsTo'  => [],
 ])
 
 {{-- data-thumb / data-thumb-selected let the rail's @container "compact" rules (timeline.blade)
@@ -108,6 +110,15 @@
     @if ($number !== null)
         <span data-micro-label class="absolute left-1.5 top-1 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
             {{ $number }}
+        </span>
+    @endif
+
+    @if (($scene->config['ending'] ?? false) === true || $leadsTo !== [])
+        {{-- Where this scene's choices lead: the same quiet micro-label as the number above it, no accent. --}}
+        <span data-scene-leads-to data-micro-label
+              class="absolute left-1.5 top-4 text-3xs font-semibold leading-none text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+              data-tooltip="{{ ($scene->config['ending'] ?? false) === true ? __('The lesson ends here') : __('Choices lead to scene :n', ['n' => implode(', ', $leadsTo)]) }}">
+            {{ ($scene->config['ending'] ?? false) === true ? __('End') : '→ '.implode(', ', $leadsTo) }}
         </span>
     @endif
 

@@ -24,6 +24,7 @@ use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
 use App\Livewire\Wizard\Concerns\EditsSceneLoop;
+use App\Livewire\Wizard\Concerns\EditsSceneLinks;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -96,6 +97,7 @@ class Step3SceneConfigurator extends Component
     use EditsSceneBalloons;
     use EditsSplitPanels;
     use EditsStage25d;
+    use EditsSceneLinks;
     use EditsStoryGame;
     use EditsTeamGame;
     use EditsTitleScreen;
@@ -122,9 +124,6 @@ class Step3SceneConfigurator extends Component
 
     /** A stage text's fonts (resources/js/scene/TextOverlayLayer.js FONTS); anything else falls back. */
     public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic-america'];
-
-    /** Mirrors BuildLessonOutline::MAX_BRANCH_GROUPS — hand-authored branches obey the same ceiling. */
-    private const MAX_BRANCH_GROUPS = 3;
 
     /** A teacher's time estimate for a scene the student paces: ten seconds to an hour. */
     private const ESTIMATE_MIN_SECONDS = 10;
@@ -681,6 +680,7 @@ class Step3SceneConfigurator extends Component
         $payload = $this->withCleanTeamGame($payload, $scene);
         $payload = $this->withCleanPredict($payload);
         $payload = $this->withCleanMoment($payload, $scene);
+        $payload = $this->withStoredSceneLinks($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.
@@ -5388,9 +5388,10 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        // A branch is three scenes, not one, so it has its own builder.
+        // A Decision point is choices on a scene the lesson already has, not new scenes (Bart 2026-11-21:
+        // "there is a keuzemoment, it adds 3 scenes"): the scene the menu was opened at gets two choices.
         if ($kind === 'branch') {
-            $this->addBranchGroup();
+            $this->addChoicesToScene($this->takeInsertionPoint());
 
             return;
         }
@@ -5546,71 +5547,6 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($scene->id);
     }
 
-    /**
-     * Add a hand-authored branch: one question scene followed by two option scenes.
-     *
-     * Until now `BuildLessonOutline` was the ONLY code that ever wrote branch_group/branch_role, so
-     * a branching story could not exist without a working LLM — and with the writing service out of
-     * credit there was no way to make one at all. This is the same manual escape hatch map/gallery/
-     * voyage scenes already have.
-     *
-     * The three scenes are plain narration scenes carrying branch metadata, which is exactly what
-     * the generator produces, so the player, the game-pack PDF and the publish gate all read them
-     * without knowing which route built them.
-     */
-    private function addBranchGroup(): void
-    {
-        $used = $this->lesson->scenes()
-            ->whereNotNull('branch_group')
-            ->pluck('branch_group')
-            ->map(fn ($g) => (int) $g);
-
-        $group = ($used->max() ?? 0) + 1;
-        if ($group > self::MAX_BRANCH_GROUPS) {
-            $this->dispatch('toast', type: 'error', message: __('A story can hold at most :n decision points.', ['n' => self::MAX_BRANCH_GROUPS]));
-
-            return;
-        }
-
-        // The lesson's arc and type stay as they are: a Decision point is content, and the scenes
-        // it adds are what make the lesson branch (Lesson::hasChoices). Class meters are the
-        // teacher's own choice (EditsStoryGame::addStoryMeters), so none are seeded here.
-
-        $insertAfterSceneId = $this->takeInsertionPoint();
-        $next = ((int) $this->lesson->scenes()->max('order')) + 1;
-
-        $rows = [
-            ['role' => 'question', 'title' => __('Decision :n', ['n' => $group]), 'label' => null],
-            ['role' => 'option_a', 'title' => __('Decision :n: first choice', ['n' => $group]), 'label' => __('First choice')],
-            ['role' => 'option_b', 'title' => __('Decision :n: second choice', ['n' => $group]), 'label' => __('Second choice')],
-        ];
-
-        $created = [];
-        foreach ($rows as $i => $row) {
-            $created[] = Scene::create([
-                'lesson_id' => $this->lesson->id,
-                'order' => $next + $i,
-                'kind' => 'narration',
-                'title' => $row['title'],
-                'image_style' => $this->lesson->image_style,
-                'branch_group' => $group,
-                'branch_role' => $row['role'],
-                'branch_choice_label' => $row['label'],
-                // Same as a hand-added Story scene: the teacher writes the script, then narrates.
-                'status' => 'pending',
-            ]);
-        }
-
-        // Keep the trio together, in order, after whatever was selected.
-        $after = $insertAfterSceneId;
-        foreach ($created as $scene) {
-            $this->placeSceneAfterSelected($scene, $after);
-            $after = $scene->id;
-        }
-
-        $this->selectSceneInternal($created[0]->id);
-        $this->dispatch('toast', message: __('Decision point added. Write the question, then set what each choice changes.'));
-    }
 
     /** @return array<string,string> catalog voyages that can be sailed (have legs), as [id => name] */
     #[Computed]

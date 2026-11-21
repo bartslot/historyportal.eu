@@ -46,11 +46,24 @@ class LessonCopier
             $lesson->forceFill($overrides);
             $lesson->save();
 
-            $source->scenes()->get()->each(function ($scene) use ($lesson): void {
+            $ids = [];
+            $copies = [];
+            $source->scenes()->get()->each(function ($scene) use ($lesson, &$ids, &$copies): void {
                 $copy = $scene->replicate();
                 $copy->lesson_id = $lesson->id;
                 $copy->save();
+                $ids[$scene->id] = $copy->id;
+                $copies[] = $copy;
             });
+            // Choices name the scene they jump to by id (SceneLinks): point them at the copies, or the copied
+            // lesson would link into the original and the player would drop every choice.
+            foreach ($copies as $copy) {
+                $links = ($copy->config ?? [])['links'] ?? null;
+                if (is_array($links) && $links !== []) {
+                    $copy->config = ['links' => array_map(fn ($l) => is_array($l) ? ['to' => $ids[(int) ($l['to'] ?? 0)] ?? null] + $l : $l, $links)] + $copy->config;
+                    $copy->save();
+                }
+            }
 
             $source->quizQuestions()->get()->each(function ($question) use ($lesson): void {
                 $copy = $question->replicate();
