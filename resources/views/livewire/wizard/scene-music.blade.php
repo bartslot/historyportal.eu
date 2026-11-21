@@ -63,17 +63,6 @@
             <p class="text-xs text-panel-hint">{{ __('No music plays under this scene.') }}</p>
         @endforelse
 
-        @if (count($music['layers']) < \App\Support\SceneMusic::MAX_LAYERS && $tracks->isNotEmpty())
-            <div class="flex gap-2">
-                <select wire:model="addTrackId" class="select select-xs flex-1" aria-label="{{ __('Choose a track') }}">
-                    <option value="">{{ __('Choose a track') }}</option>
-                    @foreach ($tracks as $t)
-                        <option value="{{ $t->id }}">{{ $t->title }}</option>
-                    @endforeach
-                </select>
-                <button type="button" class="btn btn-xs btn-primary" wire:click="addLayer">{{ __('Add') }}</button>
-            </div>
-        @endif
 
         <x-ui.slider-row :label="__('Crossfade')" :value="$music['crossfade']" min="0" max="10" step="0.5"
                          unit="s" :display="$music['crossfade']" :default="2"
@@ -82,6 +71,49 @@
                          unit="%" :display="(int) round($music['duck'] * 100)" :default="0.4"
                          on-change="$set('music.duck', Number($event.target.value))" />
     @endif
+
+    {{-- The library to pick from: play a song, Use adds it (on a scene that continued, it starts a mix of its own). --}}
+    @if ($tracks->isNotEmpty() && count($music['layers'] ?? []) < \App\Support\SceneMusic::MAX_LAYERS)
+        <x-wizard.song-list :tracks="$tracks" action="useTrack" :in-use="collect($music['layers'] ?? [])->pluck('track_id')" />
+    @endif
+
+    {{-- Sound: the ambience bed under the scene (App\Support\SceneAmbience). Its own preview, so it plays without the music. --}}
+    <div class="space-y-2 border-t border-panel-hairline pt-3" x-data="sceneMusicPreview(@js($trackUrls))" x-on:livewire:navigating.window="stop()" data-scene-sound>
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Sound') }}</span>
+            <button type="button" class="btn btn-xs btn-outline" data-sound-preview
+                    x-on:click="toggle(@js($ambienceMix))" @disabled(! $ambienceMix)>
+                <span x-show="! playing">{{ __('Preview') }}</span>
+                <span x-show="playing" x-cloak>{{ __('Stop') }}</span>
+            </button>
+        </div>
+        <select class="select select-xs w-full" aria-label="{{ __('Sound under this scene') }}"
+                wire:key="sound-choice-{{ $ambienceChoice }}"
+                x-on:change="$wire.setAmbience($event.target.value)">
+            <option value="auto" @selected($ambienceChoice === 'auto')>
+                {{ $ambienceAuto ? __('Auto: :name', ['name' => $ambienceAuto->title]) : __('Auto: nothing fits this scene') }}
+            </option>
+            @foreach ($beds as $bed)
+                <option value="{{ $bed->id }}" @selected($ambienceChoice === $bed->id)>{{ $bed->title }}</option>
+            @endforeach
+            <option value="off" @selected($ambienceChoice === 'off')>{{ __('Off') }}</option>
+        </select>
+        @if ($ambienceMix)
+            <x-ui.slider-row :label="__('Sound volume')" :value="$ambienceVolume" min="0" max="1" step="0.05"
+                             unit="%" :display="(int) round($ambienceVolume * 100)" :default="\App\Support\SceneAmbience::DEFAULT_VOLUME"
+                             on-change="$wire.setAmbienceVolume(Number($event.target.value))" />
+        @endif
+        <form wire:submit="makeAmbience" class="space-y-1">
+            <textarea wire:model="soundPrompt" rows="2" maxlength="500" class="textarea textarea-xs w-full"
+                      placeholder="{{ __('Describe a new sound, e.g. desert wind over rocky mountains, a distant eagle') }}"
+                      aria-label="{{ __('Describe a new sound') }}"></textarea>
+            @error('soundPrompt') <p class="text-xs text-error">{{ $message }}</p> @enderror
+            <button type="submit" class="btn btn-xs btn-primary w-full" wire:loading.attr="disabled" wire:target="makeAmbience">
+                <span wire:loading.remove wire:target="makeAmbience">{{ __('Make this sound') }}</span>
+                <span wire:loading wire:target="makeAmbience">{{ __('Making the sound, about 20 seconds') }}</span>
+            </button>
+        </form>
+    </div>
 
     @if ($isAdmin)
         <details class="rounded-box border border-panel-hairline p-2">

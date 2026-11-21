@@ -16,15 +16,15 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-Dt2QFGFb.js": {
-    "file": "assets/PowerMeter-Dt2QFGFb.js",
+  "_PowerMeter-CHV9JA73.js": {
+    "file": "assets/PowerMeter-CHV9JA73.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_i18n-DoByrmTl.js",
-      "_dom-DXxEHj4M.js",
-      "_TeamGame-BUgjMgNa.js",
+      "_race-VR0Fbz9P.js",
+      "_TeamGame-DeuvCMGe.js",
       "_ambient-CnaWjG1w.js",
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
@@ -37,13 +37,13 @@
     "file": "assets/ScrollTrigger-B2uKOqL4.js",
     "name": "ScrollTrigger"
   },
-  "_TeamGame-BUgjMgNa.js": {
-    "file": "assets/TeamGame-BUgjMgNa.js",
+  "_TeamGame-DeuvCMGe.js": {
+    "file": "assets/TeamGame-DeuvCMGe.js",
     "name": "TeamGame",
     "isDynamicEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
-      "_dom-DXxEHj4M.js",
+      "_race-VR0Fbz9P.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js"
     ]
@@ -64,8 +64,8 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-CAOg7wqk.js": {
-    "file": "assets/big-countdown-CAOg7wqk.js",
+  "_big-countdown-B0c9M518.js": {
+    "file": "assets/big-countdown-B0c9M518.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -101,10 +101,6 @@
   "_config-DwQUN7uY.js": {
     "file": "assets/config-DwQUN7uY.js",
     "name": "config"
-  },
-  "_dom-DXxEHj4M.js": {
-    "file": "assets/dom-DXxEHj4M.js",
-    "name": "dom"
   },
   "_draw-options-DMlbCfiW.js": {
     "file": "assets/draw-options-DMlbCfiW.js",
@@ -183,6 +179,10 @@
       "_load-image-DngxJD_v.js"
     ]
   },
+  "_race-VR0Fbz9P.js": {
+    "file": "assets/race-VR0Fbz9P.js",
+    "name": "race"
+  },
   "_sail-clip-kDndrBgn.js": {
     "file": "assets/sail-clip-kDndrBgn.js",
     "name": "sail-clip",
@@ -194,9 +194,12 @@
     "file": "assets/stage-handle-Ckz2xOyo.js",
     "name": "stage-handle"
   },
-  "_stage-handoff-BcqTMCox.js": {
-    "file": "assets/stage-handoff-BcqTMCox.js",
-    "name": "stage-handoff"
+  "_stage-handoff-BvZUkjeo.js": {
+    "file": "assets/stage-handoff-BvZUkjeo.js",
+    "name": "stage-handoff",
+    "imports": [
+      "_big-countdown-B0c9M518.js"
+    ]
   },
   "_team-colours-JOtUsqOj.js": {
     "file": "assets/team-colours-JOtUsqOj.js",
@@ -221,7 +224,7 @@
     ]
   },
   "engine-mvp/src/sound/player.ts": {
-    "file": "assets/player-kiiXS9Aa.js",
+    "file": "assets/player-ClfQJTBK.js",
     "name": "player",
     "src": "engine-mvp/src/sound/player.ts",
     "isDynamicEntry": true
@@ -233,7 +236,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BI0VMBN0.css",
+    "file": "assets/app-C4YGbjtg.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -242,7 +245,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BUdXu9Nz.js",
+    "file": "assets/app-B2HessQ3.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -295,7 +298,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog--YDsuzv8.js",
+    "file": "assets/cutout-dialog-BoA5Feb3.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -347,24 +350,24 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-c5YPkpdP.js",
+    "file": "assets/lesson-player-CBgCdNvY.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
-      "_dom-DXxEHj4M.js",
+      "_race-VR0Fbz9P.js",
       "_pausable-clock-B6VRcHlA.js",
       "_sail-clip-kDndrBgn.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "_config-DwQUN7uY.js",
-      "_stage-handoff-BcqTMCox.js",
-      "_draw-options-DMlbCfiW.js",
+      "_stage-handoff-BvZUkjeo.js",
       "_i18n-DoByrmTl.js",
+      "_easing-HS2C6-zA.js",
+      "_draw-options-DMlbCfiW.js",
       "resources/js/scene/music-mixer.js",
       "_ambient-CnaWjG1w.js",
-      "_easing-HS2C6-zA.js",
       "resources/js/scene/tempo.js"
     ],
     "dynamicImports": [
@@ -380,8 +383,8 @@
       "_BalloonLayer-CL9yMzst.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
-      "_TeamGame-BUgjMgNa.js",
-      "_PowerMeter-Dt2QFGFb.js",
+      "_TeamGame-DeuvCMGe.js",
+      "_PowerMeter-CHV9JA73.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/wind-world.js",
       "resources/js/scene/race-lobby.js",
@@ -391,18 +394,18 @@
     ]
   },
   "resources/js/race-device.js": {
-    "file": "assets/race-device-LyIHtfrv.js",
+    "file": "assets/race-device-B4MEwOOX.js",
     "name": "race-device",
     "src": "resources/js/race-device.js",
     "isEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
-      "_dom-DXxEHj4M.js",
-      "_PowerMeter-Dt2QFGFb.js",
+      "_race-VR0Fbz9P.js",
+      "_PowerMeter-CHV9JA73.js",
       "resources/js/scene/race-sync.js",
       "resources/js/scene/race-stage.js",
       "_vite-helpers-DqutJMZx.js",
-      "_TeamGame-BUgjMgNa.js",
+      "_TeamGame-DeuvCMGe.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
@@ -410,7 +413,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-Dm9Nr3oo.js",
+    "file": "assets/ArtworkOverlay-CBsRJIRr.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -418,7 +421,7 @@
       "_draw-options-DMlbCfiW.js",
       "_i18n-DoByrmTl.js",
       "_stage-handle-Ckz2xOyo.js",
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "_alpha-mask-C1RIm4VB.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js",
@@ -426,14 +429,14 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-CB2J5Nn8.js",
+    "file": "assets/ParallaxScene-CKbpT6Ut.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "_ambient-CnaWjG1w.js",
-      "_stage-handoff-BcqTMCox.js",
+      "_stage-handoff-BvZUkjeo.js",
       "_camera-Bqw6kZpV.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js",
@@ -441,12 +444,12 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-BS3_qFZN.js",
+    "file": "assets/QuizOverlay-CrP-6xuI.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CnaWjG1w.js",
@@ -454,7 +457,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-Cxw9mdM5.js",
+    "file": "assets/SplitStage-D2w73S_a.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -463,9 +466,9 @@
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-CL9yMzst.js",
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "_ambient-CnaWjG1w.js",
-      "_stage-handoff-BcqTMCox.js",
+      "_stage-handoff-BvZUkjeo.js",
       "_camera-Bqw6kZpV.js",
       "_draw-options-DMlbCfiW.js",
       "_easing-HS2C6-zA.js",
@@ -476,12 +479,12 @@
     ]
   },
   "resources/js/scene/StoryGameEngine.js": {
-    "file": "assets/StoryGameEngine-vi7rFSy4.js",
+    "file": "assets/StoryGameEngine-Dm8P2nFX.js",
     "name": "StoryGameEngine",
     "src": "resources/js/scene/StoryGameEngine.js",
     "isDynamicEntry": true,
     "imports": [
-      "_dom-DXxEHj4M.js",
+      "_race-VR0Fbz9P.js",
       "_i18n-DoByrmTl.js"
     ]
   },
@@ -514,12 +517,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Dmoq0YK2.js",
+    "file": "assets/index-C8xCZouD.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CAOg7wqk.js",
+      "_big-countdown-B0c9M518.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -552,16 +555,16 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-tilkZmuA.js",
+    "file": "assets/mic-qyvffZ87.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-Dt2QFGFb.js",
+      "_PowerMeter-CHV9JA73.js",
       "_vite-helpers-DqutJMZx.js",
       "_i18n-DoByrmTl.js",
-      "_dom-DXxEHj4M.js",
-      "_TeamGame-BUgjMgNa.js",
+      "_race-VR0Fbz9P.js",
+      "_TeamGame-DeuvCMGe.js",
       "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
@@ -569,7 +572,7 @@
     ]
   },
   "resources/js/scene/music-mixer.js": {
-    "file": "assets/music-mixer-CscTe0Lc.js",
+    "file": "assets/music-mixer-CC4FiDbp.js",
     "name": "music-mixer",
     "src": "resources/js/scene/music-mixer.js",
     "isDynamicEntry": true,
@@ -578,24 +581,24 @@
     ]
   },
   "resources/js/scene/race-lobby.js": {
-    "file": "assets/race-lobby-CGWfTek0.js",
+    "file": "assets/race-lobby-RCMs1qDe.js",
     "name": "race-lobby",
     "src": "resources/js/scene/race-lobby.js",
     "isDynamicEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
-      "_dom-DXxEHj4M.js",
+      "_race-VR0Fbz9P.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/race-sync.js"
     ]
   },
   "resources/js/scene/race-stage.js": {
-    "file": "assets/race-stage-zyc_Wq9u.js",
+    "file": "assets/race-stage-tH6aawkt.js",
     "name": "race-stage",
     "src": "resources/js/scene/race-stage.js",
     "isDynamicEntry": true,
     "imports": [
-      "_dom-DXxEHj4M.js",
+      "_race-VR0Fbz9P.js",
       "_team-colours-JOtUsqOj.js"
     ]
   },
@@ -641,7 +644,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-mShd98uh.js",
+    "file": "assets/recorder-TO3-QU6n.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

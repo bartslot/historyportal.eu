@@ -646,6 +646,8 @@
                 // A split scene draws its figures under the text: the object list can't swap them.
                 split: !!(p.split ?? _vcfg.split),
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
+                // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
+                choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
 
@@ -1124,7 +1126,7 @@
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
                 <x-ui.panel-tabs class="mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['mask', __('Mask'), \App\Support\TabIcons::MASK], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
                              JS dedupe guard, or the layer stays visibly selected with nothing
@@ -1137,6 +1139,13 @@
 
                 <div x-show="tab === 'format'">
                     <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
+                </div>
+                {{-- Mask: the picture painted on paper or straight. Unset follows the layer's kind
+                     (ArtworkOverlay layerEdge): a whole picture is painted, a cut-out keeps its outline. --}}
+                <div x-show="tab === 'mask'" x-cloak>
+                    @php $alEdge = in_array($al['edge'] ?? null, ['painted', 'straight'], true) ? $al['edge'] : (($al['kind'] ?? 'cover') === 'cover' ? 'painted' : 'straight'); @endphp
+                    <x-lesson.paper-edge-control :value="$alEdge" name="layer-edge-{{ $al['asset_id'] ?? 0 }}"
+                        on-change="window.__setLayerProp?.({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value); $wire.updateArtworkLayer({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value)" />
                 </div>
                 <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
@@ -1168,8 +1177,50 @@
                      scene before it just as a narration scene does. --}}
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
+                {{-- Mask only where the scene shows a picture of its own (the painted paper edge, paper-edge.js). --}}
+                @php $sceneMaskable = ($sceneModel->image_path || ! empty($sceneModel->shots)) && ! in_array($sceneModel->kind, ['map', 'game', 'voyage', 'gallery', 'video', 'stage25d'], true); @endphp
                 <x-ui.panel-tabs name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
+                                 :tabs="array_values(array_filter([['format', __('Format'), \App\Support\TabIcons::FORMAT], $sceneMaskable ? ['mask', __('Mask'), \App\Support\TabIcons::MASK] : null, ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]))" />
+
+                @if ($sceneMaskable)
+                    <div x-show="tab === 'mask'" x-cloak>
+                        <x-lesson.paper-edge-control :value="($sceneModel->config['paper_edge'] ?? true) === false ? 'straight' : 'painted'"
+                            name="scene-edge-{{ $sceneModel->id }}"
+                            on-change="$wire.call('setPaperEdge', $event.target.value === 'painted')" />
+                        {{-- The edge's shape: Bart's book mask, or one of three watercolour blots. --}}
+                        @php $paperMask = in_array($sceneModel->config['paper_mask'] ?? null, \App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS, true) ? $sceneModel->config['paper_mask'] : 'book'; @endphp
+                        <div class="mt-3 space-y-1" data-paper-mask-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Shape') }}</span>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                @foreach (\App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS as $mk)
+                                    @php $file = $mk === 'book' ? 'edge-mask.webp' : "edge-mask-{$mk}.webp"; @endphp
+                                    <button type="button" wire:click="setPaperMask('{{ $mk }}')" aria-pressed="{{ $paperMask === $mk ? 'true' : 'false' }}"
+                                            aria-label="{{ $mk === 'book' ? __('Book') : __('Watercolour :n', ['n' => $loop->index]) }}"
+                                            class="h-11 rounded border p-1 {{ $paperMask === $mk ? 'border-primary ring-1 ring-primary' : 'border-panel-border' }}">
+                                        <span class="block h-full w-full bg-base-content/80"
+                                              style="-webkit-mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat; mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat;"></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- The colour the picture fades into: paper unless the teacher picks one. --}}
+                        @php $paperHex = preg_match('/^#[0-9a-f]{6}$/i', (string) ($sceneModel->config['paper_color'] ?? '')) ? $sceneModel->config['paper_color'] : null; @endphp
+                        <div class="mt-3 space-y-1" data-paper-color-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Background') }}</span>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="{{ $paperHex ?? '#f6f1e7' }}" aria-label="{{ __('Background colour') }}"
+                                       wire:change="setPaperColor($event.target.value)"
+                                       class="h-8 w-11 cursor-pointer rounded border border-panel-border bg-transparent p-0.5" />
+                                @if ($paperHex)
+                                    <button type="button" class="btn btn-ghost btn-sm h-8 min-h-8" wire:click="setPaperColor(null)">{{ __('Paper') }}</button>
+                                @else
+                                    <span class="text-prose text-panel-hint">{{ __('Paper') }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
                 @unless (auth()->user()?->isGuestDemo())
@@ -1218,6 +1269,12 @@
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />
+                @endif
+
+                {{-- Twine-style choices: buttons at the end of the scene that jump to any scene. Not on a quiz or
+                     game (those resume on their own) nor inside a Decision point (its options already branch). --}}
+                @if ($sceneModel->kind !== 'game' && $sceneModel->branch_role === null)
+                    <x-lesson.scene-links-inspector :scene="$sceneModel" :targets="$this->sceneLinkTargets()" />
                 @endif
                 </div>{{-- /format tab --}}
                 </div>{{-- /scene-inspector-{{ $sceneModel->id }} --}}
@@ -1342,7 +1399,8 @@
                  is one soundtrack, and the player shuffles and crossfades it by itself. Off unless
                  the teacher asks for it, because music under a voice on a classroom speaker makes
                  the narration harder to follow. Students can still mute it with everything else. --}}
-            <div class="mt-6 border-t border-slate-700/50 pt-4">
+            {{-- Its own foldable section (bart, 11-21), open by default and remembered per teacher. --}}
+            <x-ui.settings-section :title="__('Music')" name="lesson-music" :open="true" class="-mx-4 mt-6 w-auto! pt-2" data-lesson-music-section>
                 <label class="flex items-center justify-between gap-3">
                     <span>
                         <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Background music') }}</span>
@@ -1357,7 +1415,7 @@
                         <livewire:wizard.lesson-music :lesson="$lesson" :key="'lesson-music-'.$lesson->id" />
                     </div>
                 @endunless
-            </div>
+            </x-ui.settings-section>
             @endif
         </div>
         </div>{{-- /.lp-panel-content --}}
@@ -1421,6 +1479,7 @@
         voyage: @js(\App\Support\UiIcon::svg('voyage-leg', ['class' => 'h-4 w-4'])),
         terrain: @js(\App\Support\UiIcon::svg('layer-terrain', ['class' => 'h-4 w-4'])),
         group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
+        choices: @js(\App\Support\UiIcon::svg('layer-choices', ['class' => 'h-4 w-4'])),
         quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1798,6 +1857,11 @@
                 this.refresh();
                 setInterval(() => { if (!this.dragging && window.Alpine?.store('view')?.objects) this.refresh(); }, 2000);
                 window.addEventListener('objscene-changed', () => this.refresh());   // scene switched → relist layers
+                // Choices added or removed (EditsSceneLinks): the Choices row comes or goes.
+                window.addEventListener('scene-choices', (e) => {
+                    if (window.__objScene && (e.detail?.sceneId ?? null) === window.__objScene.sceneId) window.__objScene.choices = !!e.detail?.has;
+                    this.refresh();
+                });
                 this.$nextTick(() => this.initSortable());
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
@@ -1877,7 +1941,10 @@
                 // Speech balloons are drawn over everything: listed first, never restacked by hand.
                 const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
                     ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
-                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items, ...s25Sky];
+                // The Choices layer fades in over everything when the scene is over: listed first, pinned.
+                const choiceItems = (window.__objScene || {}).choices
+                    ? [{ id: '__choices__', icon: 'choices', label: @js(__('Choices')), bg: true, section: 'choices' }] : [];
+                const items = [...choiceItems, ...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items, ...s25Sky];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -2052,7 +2119,7 @@
                     // row used to scroll a panel that might not even be showing.
                     window.dispatchEvent(new CustomEvent('inspector-open'));
                     const panel = () => document.querySelector('aside[x-ref="inspectorPanel"]');
-                    const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
+                    const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : obj.section === 'choices' ? '[data-scene-links-inspector]' : '[data-bg-section]');
                     const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
                         target.style.transition = 'box- .2s';
@@ -2251,6 +2318,12 @@
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-ui.icon name="text" class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Text') }}</span>
+                </button>
+                {{-- Choices (Twine-style links): buttons that fade in over the scene when it ends, each jumping to a scene. --}}
+                <button type="button" @click="$wire.addChoicesToScene(null); addOpen = false" data-add-choices
+                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
+                    <span class="h-4 w-4 shrink-0 text-panel-hint" x-html="window.__objIcons?.choices"></span>
+                    <span>{{ __('Choices') }}</span>
                 </button>
                 <button type="button" @click="$wire.addBalloon(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">

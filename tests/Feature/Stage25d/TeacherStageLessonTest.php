@@ -6,7 +6,6 @@ namespace Tests\Feature\Stage25d;
 
 use App\Enums\LessonStatus;
 use App\Jobs\Concerns\MarksSceneReady;
-use App\Jobs\GenerateLessonScript;
 use App\Jobs\GenerateSceneAudio;
 use App\Jobs\GenerateSceneImage;
 use App\Jobs\GenerateSceneShots;
@@ -16,6 +15,7 @@ use App\Livewire\Wizard\Step3SceneConfigurator;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\Lessons\LessonAssetFanOut;
 use App\Services\OpenAiLlmService;
 use App\Services\Stage25d\StageSet;
 use App\Support\LibraryEra;
@@ -191,8 +191,8 @@ class TeacherStageLessonTest extends TestCase
             'image_prompt' => 'A girl carries stones to a hunebed', 'script_segment' => 'Een meisje sjouwt stenen.']);
         Scene::create(['lesson_id' => $lesson->id, 'order' => 2, 'kind' => 'game', 'game_type' => 'quiz', 'status' => 'generating']);
 
-        $job = new GenerateLessonScript($lesson->id);
-        (fn () => $this->dispatchAssetJobs($lesson, $lesson->scenes()->orderBy('order')->get()))->call($job);
+        $fanOut = app(LessonAssetFanOut::class);
+        (fn () => $this->dispatchAssetJobs($lesson, $lesson->scenes()->orderBy('order')->get()))->call($fanOut);
 
         $story->refresh();
         $this->assertSame('stage25d', $story->kind);
@@ -214,8 +214,8 @@ class TeacherStageLessonTest extends TestCase
         $staged = Scene::create(['lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'stage25d', 'status' => 'generating', 'script_segment' => 'x',
             'config' => ['stage25d' => StageSet::starter('nl-prehistory', 's1')]]);
 
-        $job = new GenerateLessonScript($lesson->id);
-        (fn () => $this->dispatchAssetJobs($lesson, $lesson->scenes()->orderBy('order')->get()))->call($job);
+        $fanOut = app(LessonAssetFanOut::class);
+        (fn () => $this->dispatchAssetJobs($lesson, $lesson->scenes()->orderBy('order')->get()))->call($fanOut);
 
         $this->assertSame(StageSet::starter('nl-prehistory', 's1'), $staged->fresh()->config['stage25d']);
         Bus::assertBatched(fn (PendingBatch $batch) => collect($batch->jobs)

@@ -133,7 +133,7 @@ class SceneMusicEditorTest extends TestCase
 
         $tracks = MusicTrack::forScenes([$this->scene->fresh()]);
 
-        $this->assertSame(['url' => $this->track->url(), 'title' => 'Road ahead', 'bpm' => null, 'beat_offset' => null], $tracks[$this->track->id]);
+        $this->assertSame(['url' => $this->track->url(), 'title' => 'Road ahead', 'bpm' => null, 'beat_offset' => null, 'ambient' => false], $tracks[$this->track->id]);
         $this->assertSame([], MusicTrack::forScenes([]));
     }
 
@@ -146,5 +146,25 @@ class SceneMusicEditorTest extends TestCase
         $this->artisan('music:import', ['file' => $file, '--licence' => 'suno_free'])->assertFailed();
 
         Storage::disk('public')->assertExists(MusicTrack::where('title', 'Road ahead 2')->firstOrFail()->path);
+    }
+
+    public function test_use_in_the_song_list_puts_the_song_under_the_scene_once(): void
+    {
+        $this->actingAs($this->teacher);
+        $other = MusicTrack::create(['title' => 'Harbour', 'licence' => 'suno_paid', 'path' => 'music/harbour.mp3']);
+
+        $c = Livewire::test(SceneMusic::class, ['scene' => $this->scene])
+            ->assertSee('Road ahead')->assertSee('Harbour')
+            ->call('useTrack', $this->track->id);
+
+        // The scene continued from the one before: Use gives it a mix of its own.
+        $this->assertSame([$this->track->id], array_column($this->scene->fresh()->music['layers'], 'track_id'));
+        $c->assertSee('In use');
+
+        $c->call('useTrack', $other->id);
+        $this->assertSame([$this->track->id, $other->id], array_column($this->scene->fresh()->music['layers'], 'track_id'));
+
+        $c->call('undo');
+        $this->assertSame([$this->track->id], array_column($this->scene->fresh()->music['layers'], 'track_id'));
     }
 }

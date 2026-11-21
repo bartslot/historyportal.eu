@@ -63,13 +63,25 @@ class LessonContentNotTypeTest extends TestCase
         return Livewire::actingAs($this->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson->fresh()]);
     }
 
+    /** A Decision point as the generator writes it: the editor adds choices as a layer now (EditsSceneLinks). */
+    private function decisionPoint(Lesson $lesson): void
+    {
+        $next = (int) $lesson->scenes()->max('order') + 1;
+        foreach (['question' => null, 'option_a' => 'First choice', 'option_b' => 'Second choice'] as $role => $label) {
+            Scene::create(['lesson_id' => $lesson->id, 'order' => $next++, 'kind' => 'narration', 'status' => 'pending',
+                'branch_group' => 1, 'branch_role' => $role, 'branch_choice_label' => $label]);
+        }
+    }
+
     public function test_a_voyage_lesson_takes_a_decision_point(): void
     {
         $lesson = $this->voyageLesson();
 
+        // Add > Choices: a layer on the scene, so the voyage keeps its scenes and its type
+        $before = $lesson->scenes()->count();
         $this->editor($lesson)->call('addScene', 'branch');
 
-        $this->assertSame(3, $lesson->scenes()->whereNotNull('branch_role')->count());
+        $this->assertSame($before, $lesson->scenes()->count());
         $this->assertSame('voyage', $lesson->fresh()->game_type);
     }
 
@@ -98,11 +110,11 @@ class LessonContentNotTypeTest extends TestCase
         $this->assertSame($legs + 1, $lesson->scenes()->where('kind', 'voyage')->count());
     }
 
-    public function test_the_add_scene_menu_offers_voyage_decision_point_and_3d_in_every_lesson(): void
+    public function test_the_add_scene_menu_offers_voyage_and_3d_in_every_lesson_and_choices_are_a_layer(): void
     {
         foreach ([$this->lesson(), $this->voyageLesson()] as $lesson) {
             $editor = $this->editor($lesson)->set('addSceneOpen', true);
-            $editor->assertSeeHtml("addScene('branch')");
+            $editor->assertDontSeeHtml("addScene('branch')")->assertSeeHtml('data-add-choices');
             if ($editor->instance()->eraStageBundle !== null) {
                 $editor->assertSeeHtml('data-add-stage25d');
             }
@@ -126,7 +138,7 @@ class LessonContentNotTypeTest extends TestCase
     {
         $lesson = $this->lesson(['game_type' => 'quiz', 'include_game' => true, 'narrative_framework' => 'heros_journey']);
 
-        $this->editor($lesson)->call('addScene', 'branch');
+        $this->decisionPoint($lesson);
         $fresh = $lesson->fresh();
 
         $this->assertSame('quiz', $fresh->game_type);
@@ -158,7 +170,7 @@ class LessonContentNotTypeTest extends TestCase
     public function test_choices_get_the_effects_panel_and_meters_only_when_the_teacher_adds_them(): void
     {
         $lesson = $this->lesson();
-        $this->editor($lesson)->call('addScene', 'branch');
+        $this->decisionPoint($lesson);
         $option = $lesson->scenes()->where('branch_role', 'option_a')->firstOrFail();
 
         $editor = $this->editor($lesson);

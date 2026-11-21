@@ -37,6 +37,7 @@ final class SceneRail extends Component
             $scenes->map(fn (Scene $s) => [
                 $s->id, $s->order, $s->status, $s->kind, $s->game_type, $s->year, $s->location, $s->chapter_name,
                 $s->image_path, $s->branch_role, $s->config['overview'] ?? null, $s->config['stage25d']['beat'] ?? null,
+                $s->config['links'] ?? null, $s->config['ending'] ?? null,
             ])->all(),
         ]));
     }

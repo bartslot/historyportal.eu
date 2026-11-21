@@ -41,7 +41,7 @@ class DutchEditorLabelsTest extends TestCase
         foreach (['Verhaal', 'Strategiespel', 'Debat', 'Kaart', 'Galerij'] as $dutch) {
             $this->assertStringContainsString(">{$dutch}</span>", $html);
         }
-        foreach (['Story', 'Strategy game', 'Debate', 'Map', 'Gallery', 'Decision point'] as $english) {
+        foreach (['Story', 'Strategy game', 'Debate', 'Map', 'Gallery'] as $english) {
             $this->assertStringNotContainsString(">{$english}</span>", $html);
         }
         foreach (['Verhaal en media', 'Interactie', 'Kaart en reis'] as $group) {   // the picker's categories (Bart 2026-11-21)

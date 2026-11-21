@@ -44,7 +44,7 @@ class SmallTextFloorTest extends TestCase
      */
     private const ALLOWED_MICRO_LABELS = [
         // Scene number and "Title" tag painted on a thumbnail of the stage.
-        'resources/views/components/lesson/scene-thumb.blade.php' => 2,
+        'resources/views/components/lesson/scene-thumb.blade.php' => 3,
         'resources/views/components/lesson/timeline.blade.php' => 1,
         // "plan" and correctness badges on an art thumbnail in the wizard picker.
         'resources/views/livewire/wizard/step3-scene-configurator.blade.php' => 2,

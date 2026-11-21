@@ -107,7 +107,7 @@
         // Does a music bed play under the narration? Off unless the teacher turned it on — most
         // lessons run on a classroom speaker, where music under a voice is the last thing wanted.
         'background_music'      => (bool) $lesson->background_music,
-        'music_tracks'          => $lesson->relationLoaded('scenes') ? \App\Models\MusicTrack::forScenes($lesson->scenes) : [],
+        'music_tracks'          => $lesson->relationLoaded('scenes') ? \App\Models\MusicTrack::forScenes($lesson->scenes->each->setRelation('lesson', $lesson)) : [],
         'include_game'          => (bool) $lesson->include_game,
         'game_type'             => $lesson->game_type,
         'game_config'           => $lesson->game_config,
@@ -169,8 +169,12 @@
                 'game_type'   => $s->game_type,
                 'scene_view'  => $s->scene_view,
                 'audio_url'   => $s->audioUrl(),
+                // The narrator reading the scene's choices out as they fade in (null = not recorded yet).
+                'choices_audio_url' => \App\Services\Lessons\ChoicePrompt::audioUrl($s),
                 // The scene's music mix (scene/music-mixer.js); null = keep the previous scene's.
                 'music'       => $s->music,
+                // The ambience bed under it (wind, waves, a bazaar): its own mixer, never inherited.
+                'ambience'    => \App\Support\SceneAmbience::forScene($s),
                 'script'      => $s->script_segment,
                 'image_url'   => \App\Support\MediaUrl::of($s->image_path),
                 // Attribution for a sourced painting or photograph. Commons images are mostly CC BY
@@ -178,6 +182,8 @@
                 'image_credit' => $s->config['image_credit'] ?? null,
                 'shots'       => collect($s->shots ?? [])->map(fn($shot) => [
                     'image_url'       => \App\Support\MediaUrl::of($shot['image_path'] ?? null),
+                    // The picture's moving version, a muted MP4 loop (SceneLoop).
+                    'loop'            => \App\Services\Support\SceneLoop::urlFor($s, $shot['image_path'] ?? null),
                     // bg_url/hero_url (E3b story-pack shots): the player renders these as
                     // parallax layers when bg_url is present, flat image_url otherwise.
                     'bg_url'          => \App\Support\MediaUrl::of($shot['bg_path'] ?? null),
@@ -185,6 +191,7 @@
                     // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
                     'layers'          => collect($shot['layers'] ?? [])->map(fn($l) => [
                         'url'    => !empty($l['path']) ? \App\Support\MediaUrl::of($l['path']) : ($l['url'] ?? null),
+                        'loop'   => ($l['kind'] ?? 'cover') === 'cover' ? \App\Services\Support\SceneLoop::urlFor($s, $l['path'] ?? null) : null,
                         // asset_id + x/y drive the free-positioned clipart overlay (voyage-map layers).
                         'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                         'x'      => isset($l['x']) ? (float) $l['x'] : null,
@@ -202,6 +209,8 @@
                         'blur'    => isset($l['blur']) ? (float) $l['blur'] : null,
                         'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
                         'blend'   => in_array($l['blend'] ?? null, ['multiply', 'screen', 'overlay', 'darken', 'lighten'], true) ? $l['blend'] : null,
+                        // The painted paper edge; null = the layer's default (ArtworkOverlay layerEdge).
+                        'edge'    => in_array($l['edge'] ?? null, ['painted', 'straight'], true) ? $l['edge'] : null,
                         // Colour treatment — knock out the paper, drain the colour, recolour the
                         // ink. All three travel together: a tint without its white key would
                         // paint the paper back in, so the class would see something the teacher
@@ -251,6 +260,7 @@
                 'timeline'    => $s->timelineSeconds(),
                 'background_color' => $s->background_color,
                 'background_gradient' => $s->config['background_gradient'] ?? null,
+                'image_loop' => \App\Services\Support\SceneLoop::urlForScene($s),
                 // Same deliberate trade-off as lesson-level quiz_questions above:
                 // correct_index is client-visible; grading stays client-side for v1.
                 'quiz_questions' => $s->kind === 'game'

@@ -55,10 +55,17 @@ class TwineImportTest extends TestCase
         return $lesson->scenes()->orderBy('order')->get()->keyBy('chapter_name');
     }
 
-    public function test_the_story_becomes_twelve_3d_scenes_in_reading_order_with_three_decision_points(): void
+    /** @return list<array{0: string, 1: string}> a scene's choices as [button text, scene it jumps to] */
+    private function choices(Scene $scene): array
+    {
+        return collect($scene->config['links'] ?? [])->map(fn ($l) => [$l['label'], Scene::find($l['to'])->chapter_name])->all();
+    }
+
+    public function test_the_story_becomes_twelve_3d_scenes_in_reading_order_linked_the_way_twine_links_them(): void
     {
         $lesson = $this->marcoPolo();
         $scenes = $lesson->scenes()->orderBy('order')->get();
+        $byName = $scenes->keyBy('chapter_name');
 
         $this->assertSame('Marco Polo', $lesson->title);
         $this->assertSame(
@@ -67,15 +74,20 @@ class TwineImportTest extends TestCase
         );
         $this->assertTrue($scenes->every(fn (Scene $s) => $s->kind === 'stage25d' && $s->config['stage25d']['bundle'] === 'nl-prehistory' && $s->config['stage25d']['world_id'] === 'test-port'));
         $this->assertSame(
-            [[1, 'question', null], [1, 'option_a', 'Ask Niccolò where you are headed'], [1, 'option_b', 'Watch the sailors loading the ship']],
-            $scenes->slice(0, 3)->map(fn (Scene $s) => [$s->branch_group, $s->branch_role, $s->branch_choice_label])->values()->all(),
+            [['Ask Niccolò where you are headed', 'Destination'], ['Watch the sailors loading the ship', 'Cargo']],
+            $this->choices($byName['Venice']),
         );
-        $this->assertSame([2, 'option_b', 'Ask Zafar about the colorful powders'], [$scenes[6]->branch_group, $scenes[6]->branch_role, $scenes[6]->branch_choice_label]);
-        $this->assertSame([3, 'option_a', 'Examine the strange money'], [$scenes[9]->branch_group, $scenes[9]->branch_role, $scenes[9]->branch_choice_label]);
-        $this->assertNull($scenes[3]->branch_group);   // Embark: where both options meet again
-        $this->assertSame(3, $scenes->where('branch_role', 'question')->count());
-        $this->assertTrue($lesson->hasChoices());
-        $this->assertNotSame('story_game', $lesson->game_type);   // no lesson type: a Decision point is an add-on
+        // both choices go on to the same scene, each with its own button, as in Twine
+        $this->assertSame([['Board the galley', 'Embark']], $this->choices($byName['Destination']));
+        $this->assertSame([['Board the galley', 'Embark']], $this->choices($byName['Cargo']));
+        $this->assertSame([['Leave the market and head toward the mountains', 'Pamir']], $this->choices($byName['Spices']));
+        // the link back is kept: the last scene offers the journey again
+        $this->assertSame([['Replay the journey from Venice', 'Venice']], $this->choices($byName['Kublai Khan']));
+        $this->assertTrue($scenes->every(fn (Scene $s) => $s->branch_role === null && empty($s->config['ending'])));
+        $this->assertSame(15, $lesson->import_report['choices']);
+        // the narrator asks before reading the choices out, in turn one of three lines, naming the story's hero
+        $this->assertSame('So now Marco is doubtful... but what would you choose?', $byName['Venice']->config['links_prompt']);
+        $this->assertArrayNotHasKey('links_prompt', $byName['Kublai Khan']->config);   // one button is not a choice: nothing to ask
     }
 
     public function test_the_narration_is_the_narrators_words_exactly_and_the_shot_is_the_note(): void
@@ -130,7 +142,7 @@ class TwineImportTest extends TestCase
         $this->assertSame(4, Characters::of($this->teacher)->count());
     }
 
-    public function test_an_own_character_with_the_same_name_is_used_and_the_replay_link_is_an_end_note(): void
+    public function test_an_own_character_with_the_same_name_is_used(): void
     {
         $zafar = Characters::starter($this->teacher, 'Zafar', 'man');
         $lesson = $this->marcoPolo();
@@ -138,8 +150,6 @@ class TwineImportTest extends TestCase
 
         $this->assertSame('chr-'.$zafar->id, $layer['asset']);
         $this->assertSame(4, Characters::of($this->teacher)->count());
-        $notes = implode("\n", $lesson->import_report['notes']);
-        $this->assertStringContainsString('"Replay the journey from Venice" in Kublai Khan went back to Venice. The lesson ends there.', $notes);
         $this->assertSame(['Marco Polo', 'Niccolò Polo', 'Zafar', 'Kublai Khan'], array_column($lesson->import_report['cast'], 'name'));
         $this->assertFalse($lesson->import_report['seen']);
     }
@@ -166,11 +176,18 @@ class TwineImportTest extends TestCase
         $this->upload($html)->assertRedirect();
         $lesson = Lesson::sole();
 
-        $this->assertSame(['Start', 'Left', 'End', 'Middle', 'Right', 'Lost'], $lesson->scenes()->orderBy('order')->pluck('chapter_name')->all());
+        $scenes = $lesson->scenes()->orderBy('order')->get()->keyBy('chapter_name');
+        $this->assertSame(['Start', 'Left', 'Middle', 'Right', 'End', 'Lost'], $scenes->keys()->all());
         $this->assertSame(0, $lesson->scenes()->whereNotNull('branch_role')->count());
+        // three choices are three buttons; a passage with no links ends the lesson
+        $this->assertSame([['Left', 'Left'], ['Middle', 'Middle'], ['Right', 'Right']], $this->choices($scenes['Start']));
+        $this->assertSame([['End', 'End']], $this->choices($scenes['Middle']));
+        $this->assertSame(
+            ['Start' => false, 'Left' => false, 'Middle' => false, 'Right' => true, 'End' => true, 'Lost' => true],
+            $scenes->map(fn (Scene $s) => ($s->config['ending'] ?? false) === true)->all(),
+        );
         $notes = implode("\n", $lesson->import_report['notes']);
         $this->assertStringContainsString('Start has story code', $notes);
-        $this->assertStringContainsString('Start offers 3 choices', $notes);
         $this->assertStringContainsString('No link leads to Lost', $notes);
     }
 
@@ -179,13 +196,13 @@ class TwineImportTest extends TestCase
         $lesson = $this->marcoPolo();
 
         Livewire::actingAs($this->teacher)->test(ImportNotes::class, ['lesson' => $lesson])
-            ->assertSee('Imported from Twine: 12 scenes, 3 Decision points.')
+            ->assertSee('Imported from Twine: 12 scenes, 15 choices.')
             ->call('dismiss')
             ->assertDontSee('Imported from Twine');
         $this->assertTrue($lesson->refresh()->import_report['seen']);
     }
 
-    public function test_the_player_gets_the_decision_points_without_meters(): void
+    public function test_the_player_gets_the_choices_without_meters(): void
     {
         $lesson = $this->marcoPolo();
 
@@ -194,10 +211,11 @@ class TwineImportTest extends TestCase
         $data = json_decode($m[1], true);
         $scenes = collect($data['scenes']);
 
-        // lesson-content.js hasChoices: a branch_role is enough, the player asks; no meters, no meter game
-        $this->assertSame(['question', 'option_a', 'option_b', null], $scenes->take(4)->pluck('branch_role')->all());
-        $this->assertSame('Watch the sailors loading the ship', $scenes[2]['branch_choice_label']);
-        $this->assertSame([1, 1, 1], $scenes->take(3)->pluck('branch_group')->all());
+        // scene-links.js reads config.links: each button names the id of a scene the player has
+        $links = $scenes[0]['config']['links'];
+        $this->assertSame(['Ask Niccolò where you are headed', 'Watch the sailors loading the ship'], array_column($links, 'label'));
+        $this->assertSame([$scenes[1]['id'], $scenes[2]['id']], array_column($links, 'to'));
+        $this->assertSame([null], $scenes->pluck('branch_role')->unique()->values()->all());
         $this->assertEmpty($data['game_config']['meters'] ?? []);
     }
 }

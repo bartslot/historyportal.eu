@@ -30,15 +30,18 @@ import { createStageSound, hasStageSound } from './scene/stage25d/sound.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
+import { attachLoop } from './scene/picture-loop.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
 import { gameFlowFor, playsPredict } from './scene/game-flow.js'
 import { hasChoices, hasMeters, hasVoyage } from './scene/lesson-content.js'
+import { isEnding, routeAfter, showLinkChoices } from './scene/scene-links.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { playSceneTransition } from './scene/animations.js'
+import { applyPaperEdge, hasPaperEdge, maskContainedPicture, paperLook } from './scene/paper-edge.js'
 import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 import { silentWavUrl, sceneSeconds } from './silent-audio.js'
@@ -171,6 +174,7 @@ let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outs
 const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
 let _autoAdvanceRaf = null    // voyage auto-advance progress loop
 let _music          = null   // BackgroundMusic bed (owns its own Audio elements; outside Alpine's proxy)
+let _ambience       = null   // the scenes' ambience beds (SceneAmbience): a second MusicMixer, beside the music
 let _initDone       = false  // guard: prevent double-init from Vite HMR / Alpine re-mount
 let _parallax       = null   // live ParallaxScene instance (layered bg+hero shot, E3b)
 let _split          = null   // live SplitStage: a split scene's two comic panels
@@ -181,6 +185,7 @@ let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
 let _stage25d       = null   // live Babylon 2.5D stage (a scene of kind stage25d), mounted lazily
 const _stageSound   = createStageSound()   // the stage scenes' beds + sfx; its AudioContext waits for startLesson's click
 if (typeof window !== 'undefined') window.__stageSound = _stageSound   // tests and the dev panel read engine.state() / engine.log
+if (typeof window !== 'undefined') window.__ambience = () => _ambience   // tests read the ambience mixer's voices
 // The editor's title-screen miniatures (?title_preview=1): they only ever show the title, so they fetch no narration.
 const TITLE_PREVIEW = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('title_preview') === '1'
 // How many narrated scenes ahead the player fetches into the HTTP cache (_warmNarration).
@@ -698,6 +703,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // a moment ago, so the browser will let it make a sound. It is created here rather than in
       // init() so a lesson opened and never started never downloads a track.
       this._startBackgroundMusic()
+      this._startAmbience()
 
       this.phase = 'INTRO'
       this._playIntro()
@@ -718,14 +724,25 @@ Alpine.data('lessonGame', (lesson) => ({
       _music.start()
     },
 
+    // Wind, waves, a bazaar under each scene. Started with the lesson whether or not music plays.
+    _startAmbience () {
+      if (_ambience || !lesson.scenes?.some(s => s?.ambience)) return
+      _ambience = createMusicMixer(lesson.music_tracks || {})
+      _ambience.setMuted(this.audioMuted)
+      _ambience.setVolume(this.volumeLevel)
+      _ambience.start()
+    },
+
     // ── Background / Ken Burns ─────────────────────────────────────────
     _buildBackgroundLayer () {
       const bg = document.getElementById('background-layer')
       if (!bg) return
 
+      // bg-no-repeat: a 'Whole image' (contain) picture is smaller than the stage on one side, and
+      // without it the browser tiled it above and below (Bart saw pictures repeat vertically).
       // Layer A
       const a = document.createElement('div')
-      a.className = 'absolute inset-0 bg-cover bg-center transition-opacity ease-in-out overflow-hidden'
+      a.className = 'absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity ease-in-out overflow-hidden'
       a.style.transitionDuration = `${this._bgFadeDuration}ms`
       a.style.opacity = '1'
       bg.appendChild(a)
@@ -733,7 +750,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Layer B
       const b = document.createElement('div')
-      b.className = 'absolute inset-0 bg-cover bg-center transition-opacity ease-in-out overflow-hidden'
+      b.className = 'absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity ease-in-out overflow-hidden'
       b.style.transitionDuration = `${this._bgFadeDuration}ms`
       b.style.opacity = '0'
       bg.appendChild(b)
@@ -767,6 +784,7 @@ Alpine.data('lessonGame', (lesson) => ({
       el.style.backgroundImage = `url(${img.url})`
       el.style.backgroundSize  = fit
       el.style.backgroundColor = ''
+      maskContainedPicture(el, img.url, fit === 'contain' && !!this._paperEdge)
       // A timeline crop from the scene before (background-crop.js cropBox) does not carry over.
       el.style.scale = ''
       el.style.filter = ''
@@ -1004,7 +1022,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Flat 2D scene render: the scene image on the CSS Ken Burns layers, 3D canvas hidden.
     // This is the default per scene (skybox is opt-in via scene_view).
-    _showFlatScene (url) {
+    _showFlatScene (url, loop = null) {
       if (!url) return
       this._destroyParallax()   // a flat shot replaces any live layered (parallax) scene
       if (_bgCanvas) _bgCanvas.style.opacity = '0'
@@ -1018,6 +1036,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // Crossfade to this scene's image, held still (a camera move makes it a layered shot).
       const layer = this._bgActive === 'A' ? 'B' : 'A'
       this._showBgImage({ url }, layer, { still: true })
+      // The picture's moving version (picture-loop.js); the layer fading out lets its own go.
+      const [inEl, outEl] = layer === 'B' ? [this._bgLayerB, this._bgLayerA] : [this._bgLayerA, this._bgLayerB]
+      attachLoop(inEl, loop, { fit: normalizeFit(this._bgFit) })
+      const leaving = outEl?.querySelector(':scope > video.scene-picture-loop')
+      setTimeout(() => {
+        // Only the loop that was leaving: the layer may have been reused for a new scene since.
+        if (leaving?.isConnected && outEl.style.opacity === '0') { leaving.pause(); leaving.removeAttribute('src'); leaving.load(); leaving.remove() }
+      }, this._bgFadeDuration + 100)
       if (layer === 'B') {
         this._bgLayerB.style.opacity = '1'
         this._bgLayerA.style.opacity = '0'
@@ -1040,9 +1066,9 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Route one shot to the right renderer: LAYERED (2-layer parallax) when it carries
     // a bg_url, otherwise a still flat picture — every existing lesson stays flat.
-    _showShot (shot, fallbackUrl = null) {
+    _showShot (shot, fallbackUrl = null, fallbackLoop = null) {
       if (shot?.bg_url || (Array.isArray(shot?.layers) && shot.layers.length)) { this._showLayeredShot(shot); return }
-      this._showFlatScene(shot?.image_url || shot?.url || fallbackUrl)
+      this._showFlatScene(shot?.image_url || shot?.url || fallbackUrl, shot?.image_url ? shot.loop : fallbackLoop)
     },
 
     // Layered shot (E3b): bg layer + optional transparent hero PNG, hero panning at
@@ -1142,7 +1168,7 @@ Alpine.data('lessonGame', (lesson) => ({
         hideFlatLayers([this._bgLayerA, this._bgLayerB])
       } catch (e) {
         console.warn('lesson-player: split scene failed, falling back to the first panel', e)
-        this._showShot(scene.shots?.[0], scene.image_url)
+        this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)
       }
     },
 
@@ -1172,7 +1198,7 @@ Alpine.data('lessonGame', (lesson) => ({
         _diorama.play(() => this._audio?.currentTime ?? 0)
       } catch (e) {
         console.warn('lesson-player: diorama failed, falling back to flat', e)
-        this._showFlatScene(scene.image_url)
+        this._showFlatScene(scene.image_url, scene.image_loop)
       }
     },
 
@@ -1239,7 +1265,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _startShotPlayback (scene) {
       const shots = scene.shots || []
-      this._showShot(shots[0], scene.image_url)
+      this._showShot(shots[0], scene.image_url, scene.image_loop)
       this._shotCursor = 0
       // time: seconds when the shot should appear; null = unresolved (even-split fallback).
       // resolveAnchorTime / pickShotIndex are pure + unit-tested in scene/shot-sync.js.
@@ -1322,7 +1348,8 @@ Alpine.data('lessonGame', (lesson) => ({
             kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, diorama_assets: s.diorama_assets ?? {}, scene_view: s.scene_view,
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
-            audio_url: s.audio_url, music: s.music ?? null, script: s.script, image_url: s.image_url,
+            audio_url: s.audio_url, music: s.music ?? null, ambience: s.ambience ?? null, script: s.script, image_url: s.image_url,
+            choices_audio_url: s.choices_audio_url ?? null,   // the narrator reading the choices out (_speakChoices)
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
             chapter: s.chapter ?? null, chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
@@ -1331,6 +1358,7 @@ Alpine.data('lessonGame', (lesson) => ({
             // (layered parallax shots, E3b) — the whole array passes through untouched.
             shots: s.shots ?? null, alignment: s.alignment ?? null,
             background_color: s.background_color ?? null, background_gradient: s.background_gradient ?? null,
+            image_loop: s.image_loop ?? null,
             quiz_questions: s.quiz_questions ?? null,
             quiz_shuffle: s.quiz_shuffle ?? 'per_player',
           }))
@@ -1460,6 +1488,10 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _sceneIndex: 0,
+    _closeLinkChoices: null,   // closes the scene-links choice card while it is up (scene/scene-links.js)
+    _choicesAudio: null,       // the narrator reading those choices out (_speakChoices)
+    _choicesAudioTimer: null,
+    _trail: null,              // [{from, to}] per link jump, newest last: Back walks it home (loops included)
 
     // The small grey line under the deck: where the words came from, and who made the picture.
     //
@@ -1612,6 +1644,9 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     _playScene (index) {
+      // A choice card still up belongs to the scene the class is leaving (Back, a chapter jump).
+      this._closeLinkChoices?.()
+      this._closeLinkChoices = null
       // marks drawn in class belong to the scene they were drawn on: the pen closes with them
       if (this.drawing) this.stopDraw()
       // A mid-segment click is for THIS scene's narration only; a scene that never starts narration
@@ -1628,6 +1663,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // This scene's music, or the scene before it's still playing on (a chapter jump lands mid-chapter).
       _music?.enterScene?.(resolveSceneMusic(_sceneQueue, index))
+      _ambience?.enterScene(scene.ambience ?? null)
 
       // A landfall gallery freezes this scene's auto-advance while it is open, and it is a GLOBAL
       // flag. If a tour is torn down with its modal still up, nothing ever clears it and every
@@ -1753,6 +1789,12 @@ Alpine.data('lessonGame', (lesson) => ({
         this._hideEmbedBg()
       }
 
+      // The picture is painted on the page: a soft irregular edge with paper around it, unless the
+      // scene turned it off. Maps, films and embeds keep their plain full-bleed frame.
+      const paintsPicture = !_embed?.src && !['map', 'voyage', 'video'].includes(scene.kind) && !!(scene.image_url || scene.shots?.length)
+      this._paperEdge = hasPaperEdge(scene.config, paintsPicture)
+      applyPaperEdge(document.getElementById('background-layer'), this._paperEdge, paperLook(scene.config))
+
       // Map block — render the historical atlas as a slide (no audio).
       if (scene.kind === 'map') { this._playMapScene(index, scene); return }
 
@@ -1791,7 +1833,7 @@ Alpine.data('lessonGame', (lesson) => ({
         } else if (scene.shots?.length > 1) {
           this._startShotPlayback(scene)                        // storyboard: images follow the narration
         } else {
-          this._showShot(scene.shots?.[0], scene.image_url)     // still flat 2D, or layered when the shot has bg_url
+          this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)     // still flat 2D, or layered when the shot has bg_url
         }
       } else if (scene.kind !== 'map') {
         this._showFlatColor(scene.background_color, scene.background_gradient)
@@ -1930,7 +1972,7 @@ Alpine.data('lessonGame', (lesson) => ({
     // we go straight into the challenge — a quiz used to be silently skipped when its intro had no audio.
     _playGameScene (index, scene) {
       if (scene.image_url || scene.shots?.length) {
-        this._showShot(scene.shots?.[0], scene.image_url)
+        this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)
       } else {
         this._showFlatColor(scene.background_color, scene.background_gradient)
       }
@@ -2238,6 +2280,11 @@ Alpine.data('lessonGame', (lesson) => ({
     // a scene the student already reached.
     get hasNextSlide () {
       if (this.chapterCardOn) return true   // Next skips the chapter card
+      // A scene that ends in choices or a jump: Next brings up the choice card or makes the jump.
+      const route = routeAfter(_sceneQueue, this._sceneIndex).kind
+      if (route === 'choose' || route === 'jump') return !this._closeLinkChoices
+      // An ending marked mid-list: Next finishes the lesson (a map or video scene can only end through Next).
+      if (isEnding(_sceneQueue[this._sceneIndex])) return true
       if (this._sceneIndex >= _sceneQueue.length - 1) return false
       return this.showMapContinue || this._sails || this.mayEnter(this._sceneIndex + 1)
     },
@@ -2248,13 +2295,24 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this.chapterCardOn) { this.skipChapterCard(); return }
       if (!this.canSkip) return
       if (this.showMapContinue || this._sails) { this.advanceMap(); return }
+      // A scene that ends in choices, a jump or the end goes there, not to the next one in the list.
+      const route = routeAfter(_sceneQueue, this._sceneIndex).kind
+      if (route === 'choose' || route === 'jump' || isEnding(_sceneQueue[this._sceneIndex])) {
+        if (this._closeLinkChoices) return   // the choice card is already up: the class taps a choice
+        this._stopAudio()
+        this._advanceSceneNow(this._sceneIndex)
+        return
+      }
       this.goToChapter(this._sceneIndex + 1)
     },
 
     // Previous slide (←). Replays the previous scene from its start.
     previousSlide () {
       // Step over a game the class already played: those are never replayed (mayEnter).
-      let i = this._sceneIndex - 1
+      // A scene the class reached by a link: Back returns the way it came, one jump at a time.
+      const last = this._trail?.[this._trail.length - 1]
+      const came = last && last.to === this._sceneIndex ? this._trail.pop().from : null
+      let i = came ?? this._sceneIndex - 1
       while (i >= 0 && !this.mayEnter(i)) i--
       if (i < 0) return
       this._teardownStageScene(false, _sceneQueue[i])
@@ -2317,15 +2375,59 @@ Alpine.data('lessonGame', (lesson) => ({
       this._afterExits(() => this._advanceSceneNow(index))
     },
 
+    // Where the lesson goes after a scene: the next one in the list, or where the scene's links say
+    // (scene/scene-links.js): an ending, a straight jump, or a choice the class taps.
     _advanceSceneNow (index) {
       this._tel.log('scene_completed', { sceneIndex: index, sceneId: _sceneQueue[index]?.id })
-      const next = index + 1
-      if (next < _sceneQueue.length) {
-        this._sceneIndex = next
-        this._playScene(next)
+      const route = routeAfter(_sceneQueue, index)
+      if (route.kind === 'next') {
+        this._sceneIndex = route.index
+        this._playScene(route.index)
+      } else if (route.kind === 'jump') {
+        this._followLink(index, route.index)
+      } else if (route.kind === 'choose') {
+        const host = document.getElementById('lesson-stage')
+        if (!host) { this._followLink(index, route.links[0].index); return }
+        _stageSound.hold(_sceneQueue)
+        const close = showLinkChoices(host, route.links, _sceneQueue, (link) => {
+          this._hushChoices()
+          this._closeLinkChoices = null
+          this._tel.log('scene_link_chosen', { sceneIndex: index, sceneId: _sceneQueue[index]?.id, to: link.to })
+          this._followLink(index, link.index)
+        })
+        this._closeLinkChoices = () => { this._hushChoices(); close() }
+        this._speakChoices(_sceneQueue[index]?.choices_audio_url)
       } else {
         this._onAudioEnded()
       }
+    },
+
+    // The narrator asks and reads the choices out as the card fades in (App\Services\Lessons\ChoicePrompt).
+    // It starts once the buttons have risen, and never holds the class: a tap stops it and jumps.
+    _speakChoices (url) {
+      this._hushChoices()
+      if (!url) return
+      this._choicesAudioTimer = setTimeout(() => {
+        this._choicesAudioTimer = null
+        const a = this._choicesAudio = new Audio(url)
+        a.volume = this.audioMuted ? 0 : this.volumeLevel
+        a.play().catch(() => {})
+      }, 500)
+    },
+
+    _hushChoices () {
+      clearTimeout(this._choicesAudioTimer)
+      this._choicesAudioTimer = null
+      try { this._choicesAudio?.pause() } catch (_) { /* already gone */ }
+      this._choicesAudio = null
+    },
+
+    // A jump by a link: Back from the scene it lands on returns to the scene the class came from.
+    _followLink (from, to) {
+      this._trail = [...(this._trail || []), { from, to }]
+      this._teardownStageScene(false, _sceneQueue[to])
+      this._sceneIndex = to
+      this._playScene(to)
     },
 
     _onAudioEnded () {
@@ -2405,14 +2507,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (flow === 'strategy') { this._beginGameFlow(scene); return }
         this.canResumeAfterGame = false
       }
-      this._tel.log('scene_completed', { sceneIndex: index, sceneId: _sceneQueue[index]?.id })
-      const next = index + 1
-      if (next < _sceneQueue.length) {
-        this._sceneIndex = next
-        this._playScene(next)
-      } else {
-        this._onAudioEnded()
-      }
+      this._advanceSceneNow(index)
     },
 
     async _renderSceneTexts (scene) {
@@ -3013,6 +3108,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}
       _music = null
+      try { _ambience?.stop() } catch (_) {}
+      _ambience = null
       _stageSound.leave()
       try { this._teardownStageScene(true) } catch (_) { /* tear down the persistent voyage map */ }
       this.phase = 'ENDED'
@@ -3247,8 +3344,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Pausing the lesson pauses everything the lesson is making, music included — a bed still
       // playing over a frozen picture is how you get a teacher hunting for a second stop button.
-      if (this.playbackPaused) { _music?.pause(); _stageSound.pause() }
-      else { _music?.resume(); _stageSound.resume() }
+      if (this.playbackPaused) { _music?.pause(); _ambience?.pause(); _stageSound.pause() }
+      else { _music?.resume(); _ambience?.resume(); _stageSound.resume() }
     },
 
     _attachAudioListeners () {
@@ -3257,9 +3354,9 @@ Alpine.data('lessonGame', (lesson) => ({
       // without this, a muted lesson came back at full volume on the next scene.
       this._audio.volume = this.audioMuted ? 0 : this.volumeLevel
       // The scene music dips while the narrator speaks and comes back up in the pauses.
-      this._audio.addEventListener('play', () => { this.audioPlaying = true; _music?.duck?.(true) }, { once: false })
-      this._audio.addEventListener('pause', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
-      this._audio.addEventListener('ended', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
+      this._audio.addEventListener('play', () => { this.audioPlaying = true; _music?.duck?.(true); _ambience?.duck(true) }, { once: false })
+      this._audio.addEventListener('pause', () => { this.audioPlaying = false; _music?.duck?.(false); _ambience?.duck(false) }, { once: false })
+      this._audio.addEventListener('ended', () => { this.audioPlaying = false; _music?.duck?.(false); _ambience?.duck(false) }, { once: false })
     },
 
     toggleAudio () {
@@ -3305,9 +3402,12 @@ Alpine.data('lessonGame', (lesson) => ({
       const level = this.audioMuted ? 0 : this.volumeLevel
       _music?.setMuted(this.audioMuted)
       _music?.setVolume(this.volumeLevel)
+      _ambience?.setMuted(this.audioMuted)
+      _ambience?.setVolume(this.volumeLevel)
       Sfx.setMuted(this.audioMuted)
       Sfx.setVolume(level)
       _stageSound.setLevel(level)
+      if (this._choicesAudio) this._choicesAudio.volume = level
     },
 
     // ── Subtitles ──────────────────────────────────────────────────────
@@ -3711,6 +3811,8 @@ Alpine.data('lessonGame', (lesson) => ({
       }
       try { _music?.destroy() } catch (_) {}
       _music = null
+      try { _ambience?.destroy() } catch (_) {}
+      _ambience = null
       _stageSound.destroy()
       this.audioPlaying = false
     },

@@ -14,7 +14,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Hand-authored branching.
+ * Decision points (question + two options) in the editor: their effects panel, meters and publish gate.
+ * Adding one from the editor is gone; a choice is now the Choices layer (tests/Feature/Editor/SceneLinksTest).
  *
  * BuildLessonOutline used to be the only code that ever wrote branch_group/branch_role, so a
  * branching story was impossible without a working LLM — and with the writing service out of credit,
@@ -44,11 +45,19 @@ class AddBranchSceneTest extends TestCase
         ]);
     }
 
+    /**
+     * A Decision point as the generator writes one: a question and two options. The editor no longer adds these
+     * (Bart 2026-11-21: a choice is a layer on a scene, EditsSceneLinks), but generated lessons still carry them.
+     */
     private function addBranch(): void
     {
-        Livewire::actingAs($this->teacher)
-            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
-            ->call('addScene', 'branch');
+        $next = (int) $this->lesson->scenes()->max('order') + 1;
+        foreach (['question' => null, 'option_a' => 'First choice', 'option_b' => 'Second choice'] as $role => $label) {
+            Scene::create([
+                'lesson_id' => $this->lesson->id, 'order' => $next++, 'kind' => 'narration', 'status' => 'pending',
+                'branch_group' => 1, 'branch_role' => $role, 'branch_choice_label' => $label,
+            ]);
+        }
     }
 
     private function addMeters(): void
@@ -58,31 +67,7 @@ class AddBranchSceneTest extends TestCase
             ->call('addStoryMeters');
     }
 
-    public function test_adding_a_branch_creates_a_question_and_two_options_in_one_group(): void
-    {
-        $this->addBranch();
 
-        $branch = $this->lesson->scenes()->whereNotNull('branch_group')->ordered()->get();
-
-        $this->assertCount(3, $branch);
-        $this->assertSame(['question', 'option_a', 'option_b'], $branch->pluck('branch_role')->all());
-        $this->assertSame([1, 1, 1], $branch->pluck('branch_group')->map(fn ($g) => (int) $g)->all());
-        // Options carry a starting choice label; the question does not.
-        $this->assertNull($branch[0]->branch_choice_label);
-        $this->assertNotEmpty($branch[1]->branch_choice_label);
-        $this->assertNotEmpty($branch[2]->branch_choice_label);
-    }
-
-    /** Structurally identical to what the generator emits, so every reader treats them the same. */
-    public function test_branch_scenes_are_narration_scenes_like_the_generated_ones(): void
-    {
-        $this->addBranch();
-
-        foreach ($this->lesson->scenes()->whereNotNull('branch_group')->get() as $scene) {
-            $this->assertSame('narration', $scene->kind);
-            $this->assertSame('pending', $scene->status);
-        }
-    }
 
     /**
      * A Decision point is content: the lesson keeps the type it was made as and brings no meters
@@ -145,41 +130,8 @@ class AddBranchSceneTest extends TestCase
         $this->assertSame(10, $effects['deltas'][$meterKey] ?? null);
     }
 
-    public function test_a_second_branch_gets_its_own_group(): void
-    {
-        $this->addBranch();
-        $this->addBranch();
 
-        $groups = $this->lesson->scenes()->whereNotNull('branch_group')
-            ->pluck('branch_group')->map(fn ($g) => (int) $g)->unique()->sort()->values()->all();
 
-        $this->assertSame([1, 2], $groups);
-        $this->assertSame(6, $this->lesson->scenes()->whereNotNull('branch_group')->count());
-    }
-
-    /** Same ceiling the generator obeys, so a hand-built story can't outgrow the player. */
-    public function test_branches_are_capped_at_three_groups(): void
-    {
-        for ($i = 0; $i < 4; $i++) {
-            $this->addBranch();
-        }
-
-        $this->assertSame(3, $this->lesson->scenes()->whereNotNull('branch_group')
-            ->distinct()->count('branch_group'));
-        $this->assertSame(9, $this->lesson->scenes()->whereNotNull('branch_group')->count());
-    }
-
-    /** The trio must stay contiguous and in role order after the selected scene. */
-    public function test_the_three_scenes_are_kept_together_in_order(): void
-    {
-        $this->addBranch();
-
-        $roles = $this->lesson->scenes()->ordered()->get()
-            ->filter(fn (Scene $s) => $s->branch_role !== null)
-            ->values()->pluck('branch_role')->all();
-
-        $this->assertSame(['question', 'option_a', 'option_b'], $roles);
-    }
 
     /**
      * The payoff: a branch built entirely by hand must be publishable once the teacher fills it in.
@@ -224,16 +176,4 @@ class AddBranchSceneTest extends TestCase
         $this->assertSame(LessonStatus::Published, $lesson->fresh()->status);
     }
 
-    /** A voyage lesson takes a Decision point like any other lesson, and keeps its type. */
-    public function test_a_voyage_lesson_takes_a_branch(): void
-    {
-        $this->lesson->update(['game_type' => 'voyage']);
-
-        Livewire::actingAs($this->teacher)
-            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson->fresh()])
-            ->call('addScene', 'branch');
-
-        $this->assertSame(3, $this->lesson->scenes()->whereNotNull('branch_group')->count());
-        $this->assertSame('voyage', $this->lesson->fresh()->game_type);
-    }
 }
