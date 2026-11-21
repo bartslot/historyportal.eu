@@ -168,4 +168,57 @@ class Step3PictureLoopTest extends TestCase
         $this->assertSame(Storage::disk('public')->url('lessons/1/a.mp4'), SceneLoop::urlFor($scene, 'lessons/1/a.jpg?v=3'));
         $this->assertNull(SceneLoop::urlFor($scene, null));
     }
+
+    public function test_the_upload_picker_takes_an_mp4_for_the_scene_background(): void
+    {
+        // Bart, 2026-11-21: "the upload image field must be an image" when choosing a video there.
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+
+        $this->wizardOn($scene)
+            ->call('openPaintingPicker')
+            ->set('uploadImage', $this->realMp4())
+            ->assertHasNoErrors('uploadImage')
+            ->assertSet('paintingPickerOpen', false);
+
+        $scene->refresh();
+        $this->assertNotNull(SceneLoop::urlForScene($scene));
+        $this->assertSame($scene->image_path, SceneLoop::of($scene)['poster']);
+    }
+
+    public function test_the_upload_picker_without_ffmpeg_keeps_the_picture_as_the_still(): void
+    {
+        config(['services.ffmpeg.path' => '/nonexistent/ffmpeg', 'services.ffmpeg.probe_path' => '/nonexistent/ffprobe']);
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+
+        $this->wizardOn($scene)
+            ->call('openPaintingPicker')
+            ->set('uploadImage', UploadedFile::fake()->create('ships.mp4', 500, 'video/mp4'))
+            ->assertHasNoErrors('uploadImage');
+
+        $this->assertSame('lessons/1/scenes/1/bg.jpg', SceneLoop::of($scene->refresh())['poster'] ?? null);
+    }
+
+    public function test_a_gallery_image_picker_refuses_a_video_with_a_reason(): void
+    {
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+
+        $this->wizardOn($scene)
+            ->set('paintingPickerMode', 'gallery_image')
+            ->set('uploadImage', UploadedFile::fake()->create('ships.mp4', 500, 'video/mp4'))
+            ->assertHasErrors('uploadImage');
+
+        $this->assertNull(SceneLoop::of($scene->refresh()));
+    }
+
+    public function test_the_upload_picker_still_refuses_a_video_over_the_limit(): void
+    {
+        $scene = $this->scene(['image_path' => 'lessons/1/scenes/1/bg.jpg']);
+
+        $this->wizardOn($scene)
+            ->call('openPaintingPicker')
+            ->set('uploadImage', UploadedFile::fake()->create('ships.mp4', 60 * 1024, 'video/mp4'))
+            ->assertDispatched('toast');
+
+        $this->assertNull(SceneLoop::of($scene->refresh()));
+    }
 }

@@ -28,6 +28,18 @@ trait EditsSceneLoop
     // application/mp4 is what file sniffing reports for some MP4s that carry no audio track.
     private const LOOP_VIDEO_MIMES = 'video/mp4,application/mp4,video/webm,video/quicktime';
 
+    /** Does the open picker take a video? Only for the scene's own picture: background or slide. */
+    public function pickerTakesVideo(): bool
+    {
+        return in_array($this->paintingPickerMode, ['background', 'layer'], true);
+    }
+
+    /** The largest video this server takes, for the picker's hint: "50 MB", or less when PHP says so. */
+    public function loopVideoLimit(): string
+    {
+        return UploadLimit::human(self::LOOP_VIDEO_CEILING_BYTES);
+    }
+
     /** Is the file waiting in this upload property a video, not a picture? */
     private function isDroppedVideo(string $property): bool
     {
