@@ -60,3 +60,22 @@ describe('layerEdge', () => {
     expect(layerEdge({ kind: 'figure', edge: 'bogus' })).toBe('straight')
   })
 })
+
+describe('paperLook', () => {
+  it('reads a hex colour and a known shape, else the paper and the book mask', async () => {
+    const { paperLook } = await import('../paper-edge.js')
+    expect(paperLook({ paper_color: '#1f2a44', paper_mask: 'blot-011' }))
+      .toEqual({ color: '#1f2a44', mask: "url('/images/paper/edge-mask-blot-011.webp')" })
+    expect(paperLook({ paper_color: 'red', paper_mask: 'book' })).toEqual({ color: null, mask: null })
+    expect(paperLook(null)).toEqual({ color: null, mask: null })
+  })
+
+  it('paints the sheet in the scene colour', async () => {
+    const { applyPaperEdge } = await import('../paper-edge.js')
+    const parent = document.createElement('div'); const host = document.createElement('div')
+    parent.appendChild(host); document.body.appendChild(parent)
+    applyPaperEdge(host, true, { color: '#112233' })
+    expect(parent.querySelector('[data-paper-sheet]').style.background).toContain('rgb(17, 34, 51)')
+    expect(host.style.getPropertyValue('--paper-edge-bg')).toBe('#112233')
+  })
+})

@@ -1079,9 +1079,10 @@
     background-image: url('/images/paper/paper.svg');
     background-size: 512px 512px;
 }
-.paper-edge {
-    -webkit-mask: url('/images/paper/edge-mask.webp') center / 100% 100% no-repeat;
-    mask: url('/images/paper/edge-mask.webp') center / 100% 100% no-repeat;
+.paper-edge,
+.paper-edge .lp-split .px-scene {
+    -webkit-mask: var(--paper-edge-mask, url('/images/paper/edge-mask.webp')) center / 100% 100% no-repeat;
+    mask: var(--paper-edge-mask, url('/images/paper/edge-mask.webp')) center / 100% 100% no-repeat;
 }
 /* Comic panels: the host also holds the balloons and figures, so each panel's own picture gets
    the edge instead of the whole host (a balloon or a face must never fade into the paper). */
@@ -1089,13 +1090,9 @@
     -webkit-mask: none;
     mask: none;
 }
-.paper-edge .lp-split .px-scene {
-    -webkit-mask: url('/images/paper/edge-mask.webp') center / 100% 100% no-repeat;
-    mask: url('/images/paper/edge-mask.webp') center / 100% 100% no-repeat;
-}
 /* The panel's own colour (inline, SplitStage) would show through the edge: paper instead. */
 .paper-edge .lp-split__panel {
-    background: var(--lp-paper) url('/images/paper/paper.svg') 0 0 / 512px 512px !important;
+    background: var(--paper-edge-bg, var(--lp-paper) url('/images/paper/paper.svg') 0 0 / 512px 512px) !important;
 }
 
 /* ─── Film grain overlay (add class to any section / card) ───────────── */

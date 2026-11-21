@@ -7,7 +7,7 @@ import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas, gradientCss } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
-import { applyPaperEdge } from './paper-edge.js'
+import { applyPaperEdge, paperLook } from './paper-edge.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
@@ -164,6 +164,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,
                         paperEdge: payload.config?.paper_edge !== false,
+                        paperLook: paperLook(payload.config),
                         backdropDepth: payload.config?.backdrop_depth ?? null,
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
@@ -314,6 +315,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 entry: firstShot?.entry ?? null,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
                 paperEdge: e.detail?.config?.paper_edge !== false,
+                paperLook: paperLook(e.detail?.config),
                 backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
@@ -505,7 +507,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // Hide sphere only after texture is ready — avoids black flash.
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
-            if (motion.paperEdge) setPaperEdge(canvasEl)
+            if (motion.paperEdge) setPaperEdge(canvasEl, motion.paperLook)
 
             // A still picture at a clean fit, as in the player: a scene moves by its shot camera
             // (a camera move makes it a layered shot), never by a Ken Burns drift of its own.
@@ -877,7 +879,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             _splitStage.select(panel)
             window.__lessonArtworkLayer = _splitStage.overlay(panel)
             _stageBackgrounds = _splitStage.backgrounds()
-            setPaperEdge(payload.config?.paper_edge !== false ? _splitHost : null)
+            setPaperEdge(payload.config?.paper_edge !== false ? _splitHost : null, paperLook(payload.config))
             return
         }
         // A figure's value changed (depth, a tint): the stage is rebuilt, and its new overlays held no
@@ -898,7 +900,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         parent.appendChild(host)
         _splitHost = host
         // Both panels are painted on one sheet of paper, as in the player (the whole layer host is masked there too).
-        setPaperEdge(payload.config?.paper_edge !== false ? host : null)
+        setPaperEdge(payload.config?.paper_edge !== false ? host : null, paperLook(payload.config))
         // A drop on the stage lands in the panel under it, in that panel's own units (__placeIcon).
         window.__splitPanelAt = (x, y) => _splitStage?.panelAt?.(x, y) ?? null
         _splitStage = new _splitMod.SplitStage(host, {
@@ -1238,10 +1240,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     /**
      * The painted paper edge (paper-edge.js) on whichever element shows this scene's picture: the
      * layer host for a layered shot, the split host for comic panels, the WebGL canvas for a flat
-     * one. null takes it off all of them.
+     * one. null takes it off all of them. look: the scene's colour behind the edge and its edge shape (paperLook).
      */
-    function setPaperEdge(target) {
-        for (const el of [canvasEl, _wizardLayerHost, _splitHost]) applyPaperEdge(el, !!target && el === target)
+    function setPaperEdge(target, look = {}) {
+        for (const el of [canvasEl, _wizardLayerHost, _splitHost]) applyPaperEdge(el, !!target && el === target, look)
     }
 
     function destroyWizardLayers() {
@@ -1277,7 +1279,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (!host) return false
 
             host.style.display = ''
-            setPaperEdge(payload.paperEdge && bgLayers.length ? host : null)
+            setPaperEdge(payload.paperEdge && bgLayers.length ? host : null, payload.paperLook)
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
             // Figures with no backdrop picture stand on the scene's own gradient or colour, as in the player
             host.style.background = bgLayers.length ? '' : (gradientCss(payload.gradient) || payload.backgroundColor || '#0f172a')

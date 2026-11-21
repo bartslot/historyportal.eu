@@ -922,6 +922,50 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
+    /** The edge shapes in public/images/paper (paper-edge.js PAPER_MASKS). 'book' is Bart's book mask, the default. */
+    public const PAPER_MASKS = ['book', 'blot-004', 'blot-005', 'blot-011'];
+
+    /**
+     * The colour the painted edge fades into (Masker tab). null or anything but a hex colour puts
+     * the paper back (config.paper_color, resources/js/scene/paper-edge.js paperLook()).
+     */
+    public function setPaperColor(?string $hex): void
+    {
+        $hex = is_string($hex) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex) ? strtolower($hex) : null;
+        $this->writePaperConfig('paper_color', $hex);
+    }
+
+    /** The edge's shape (Masker tab, config.paper_mask). The book mask is the default and is stored as nothing. */
+    public function setPaperMask(string $mask): void
+    {
+        if (! in_array($mask, self::PAPER_MASKS, true)) {
+            return;
+        }
+        $this->writePaperConfig('paper_mask', $mask === 'book' ? null : $mask);
+    }
+
+    private function writePaperConfig(string $key, ?string $value): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        if ($value === null) {
+            unset($config[$key]);
+        } else {
+            $config[$key] = $value;
+        }
+        $scene->update(['config' => $config]);
+
+        // Keep the snapshot in step, or saveSelected() would write the pre-edit config back.
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        $this->selectSceneInternal($scene->id);
+    }
+
     /** @return array<int, array{asset_id: int, path: string, title: string, url: string, depth: float, scale: float, height: float, sway: bool, x?: float, y?: float, wobble?: int, opacity?: float, blur?: float, z?: int, blend?: string, kind?: string}> */
     #[Computed]
     public function sceneArtworkLayers(): array

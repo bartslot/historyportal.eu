@@ -38,7 +38,7 @@ import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { playSceneTransition } from './scene/animations.js'
-import { applyPaperEdge, hasPaperEdge, maskContainedPicture } from './scene/paper-edge.js'
+import { applyPaperEdge, hasPaperEdge, maskContainedPicture, paperLook } from './scene/paper-edge.js'
 import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 import { silentWavUrl, sceneSeconds } from './silent-audio.js'
@@ -1760,7 +1760,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // scene turned it off. Maps, films and embeds keep their plain full-bleed frame.
       const paintsPicture = !_embed?.src && !['map', 'voyage', 'video'].includes(scene.kind) && !!(scene.image_url || scene.shots?.length)
       this._paperEdge = hasPaperEdge(scene.config, paintsPicture)
-      applyPaperEdge(document.getElementById('background-layer'), this._paperEdge)
+      applyPaperEdge(document.getElementById('background-layer'), this._paperEdge, paperLook(scene.config))
 
       // Map block — render the historical atlas as a slide (no audio).
       if (scene.kind === 'map') { this._playMapScene(index, scene); return }

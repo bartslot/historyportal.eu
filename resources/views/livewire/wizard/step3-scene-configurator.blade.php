@@ -1181,6 +1181,38 @@
                         <x-lesson.paper-edge-control :value="($sceneModel->config['paper_edge'] ?? true) === false ? 'straight' : 'painted'"
                             name="scene-edge-{{ $sceneModel->id }}"
                             on-change="$wire.call('setPaperEdge', $event.target.value === 'painted')" />
+                        {{-- The edge's shape: Bart's book mask, or one of three watercolour blots. --}}
+                        @php $paperMask = in_array($sceneModel->config['paper_mask'] ?? null, \App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS, true) ? $sceneModel->config['paper_mask'] : 'book'; @endphp
+                        <div class="mt-3 space-y-1" data-paper-mask-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Shape') }}</span>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                @foreach (\App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS as $mk)
+                                    @php $file = $mk === 'book' ? 'edge-mask.webp' : "edge-mask-{$mk}.webp"; @endphp
+                                    <button type="button" wire:click="setPaperMask('{{ $mk }}')" aria-pressed="{{ $paperMask === $mk ? 'true' : 'false' }}"
+                                            aria-label="{{ $mk === 'book' ? __('Book') : __('Watercolour :n', ['n' => $loop->index]) }}"
+                                            class="h-11 rounded border p-1 {{ $paperMask === $mk ? 'border-primary ring-1 ring-primary' : 'border-panel-border' }}">
+                                        <span class="block h-full w-full bg-base-content/80"
+                                              style="-webkit-mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat; mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat;"></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- The colour the picture fades into: paper unless the teacher picks one. --}}
+                        @php $paperHex = preg_match('/^#[0-9a-f]{6}$/i', (string) ($sceneModel->config['paper_color'] ?? '')) ? $sceneModel->config['paper_color'] : null; @endphp
+                        <div class="mt-3 space-y-1" data-paper-color-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Background') }}</span>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="{{ $paperHex ?? '#f6f1e7' }}" aria-label="{{ __('Background colour') }}"
+                                       wire:change="setPaperColor($event.target.value)"
+                                       class="h-8 w-11 cursor-pointer rounded border border-panel-border bg-transparent p-0.5" />
+                                @if ($paperHex)
+                                    <button type="button" class="btn btn-ghost btn-sm h-8 min-h-8" wire:click="setPaperColor(null)">{{ __('Paper') }}</button>
+                                @else
+                                    <span class="text-prose text-panel-hint">{{ __('Paper') }}</span>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 @endif
 
