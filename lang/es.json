@@ -2981,5 +2981,18 @@
     "Paint the water": "Pinta el agua",
     "Find the water": "Busca el agua",
     "Anime": "Anime",
-    "Lively": "Vivo"
+    "Lively": "Vivo",
+    "Script ready to read": "Guion listo para leer",
+    "Read your script": "Lee tu guion",
+    "Approve it as it is, or tell the assistant what to change. Pictures and narration start after you approve.": "Apruébalo tal como está o dile al asistente qué cambiar. Las imágenes y la narración se crean cuando lo apruebes.",
+    "The script": "El guion",
+    "Ask the assistant": "Pregunta al asistente",
+    "Say what should change, for example \"make scene 2 shorter\" or \"more about daily life in the city\".": "Di qué debe cambiar, por ejemplo \"acorta la escena 2\" o \"más sobre la vida diaria en la ciudad\".",
+    "The assistant is rewriting your script…": "El asistente está reescribiendo tu guion…",
+    "Ask for changes": "Pedir cambios",
+    "Approve the script": "Aprobar el guion",
+    "Pictures and narration are made from this text.": "Las imágenes y la narración se crean a partir de este texto.",
+    "Sorry, that change did not work this time. Your script is unchanged. Try asking again.": "Lo siento, ese cambio no funcionó esta vez. Tu guion no ha cambiado. Vuelve a pedirlo.",
+    "I did not find anything to change for that. Could you say which scene, or what should be different?": "No encontré nada que cambiar con eso. ¿Puedes decir qué escena o qué debería ser distinto?",
+    "I changed :count scene.|I changed :count scenes.": "He cambiado :count escena.|He cambiado :count escenas."
 }

@@ -224,7 +224,7 @@ class Step2Story extends Component
         ]);
         $this->lesson->save();
 
-        $this->lesson->refresh()->startGenerationPipeline();
+        $this->lesson->refresh()->startGenerationPipeline(reviewScript: true);
         $this->lesson->update(['wizard_step' => 3]);
 
         $this->redirect(
