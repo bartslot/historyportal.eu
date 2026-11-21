@@ -3527,7 +3527,7 @@
          role="dialog" aria-modal="true">
         <div class="modal-box hp-modals max-w-4xl border border-slate-700/70">
             <div class="mb-3 flex items-center justify-between gap-3">
-                <h2 class="text-lg font-semibold text-slate-100">{{ __('Import icons') }}</h2>
+                <h2 class="text-lg font-semibold text-slate-100">{{ __('Import assets') }}</h2>
                 <button type="button" class="btn btn-ghost btn-sm btn-circle text-panel-hint"
                         aria-label="{{ __('Close') }}" wire:click="$set('svgLibraryOpen', false)">✕</button>
             </div>

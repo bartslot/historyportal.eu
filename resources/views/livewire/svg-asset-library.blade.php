@@ -2,6 +2,38 @@
      The tiles are cards with a title and a button, so the grid has a floor (data-cards). --}}
 <div class="space-y-6" x-data="imageGrid({ id: 'svg-library', kind: 'icon', initial: 128 })">
 
+    {{-- Your artwork first (Bart 2026-11-21: "make sure that the assets in the lesson is the first thing you see"), then the search for more. --}}
+    <div>
+        <div class="mb-3 flex items-center gap-2">
+            <h3 class="mr-auto text-sm font-semibold uppercase tracking-wide opacity-60">{{ __('Your imported artwork') }}</h3>
+            <x-ui.thumb-size />
+        </div>
+        @if ($this->library->isEmpty())
+            <p class="text-sm opacity-50 italic">{{ __('Nothing yet. Search below to build your ink-art library.') }}</p>
+        @else
+            <div class="lp-thumb-grid gap-3" data-cards :style="gridStyle">
+                @foreach ($this->library as $asset)
+                    {{-- The remove ✕ is a SIBLING of the add button, not nested inside it: a <button>
+                         inside a <button> is invalid HTML (browsers auto-close the outer one) and the
+                         ✕ click would bubble into attach(). Both sit inside the relative wrapper. --}}
+                    <div class="group relative rounded-lg border border-base-300 bg-base-100 p-2 flex flex-col">
+                        <button wire:click="attach({{ $asset->id }})" class="text-left" aria-label="Add {{ $asset->title }} to Scene">
+                            <div class="flex aspect-square items-center justify-center overflow-hidden rounded bg-base-200">
+                                <img src="{{ $asset->url() }}" alt="{{ $asset->title }}" class="max-h-full max-w-full">
+                            </div>
+                            <p class="mt-2 truncate text-xs font-medium" title="{{ $asset->title }}">{{ $asset->title }}</p>
+                            <p class="truncate text-prose opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
+                        </button>
+                        <button wire:click="remove({{ $asset->id }})"
+                                wire:confirm="Remove this artwork from your library?"
+                                class="btn btn-ghost btn-xs btn-circle absolute right-1 top-1 text-error opacity-0 transition group-hover:opacity-100"
+                                aria-label="Remove {{ $asset->title }}">✕</button>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- Search Wikimedia Commons --}}
     <div class="card bg-base-200 border border-base-300">
         <div class="card-body gap-4">
@@ -57,37 +89,5 @@
             </form>
             @error('urlInput') <p class="text-error text-sm">{{ $message }}</p> @enderror
         </div>
-    </div>
-
-    {{-- Personal library --}}
-    <div>
-        <div class="mb-3 flex items-center gap-2">
-            <h3 class="mr-auto text-sm font-semibold uppercase tracking-wide opacity-60">Your imported artwork</h3>
-            <x-ui.thumb-size />
-        </div>
-        @if ($this->library->isEmpty())
-            <p class="text-sm opacity-50 italic">Nothing yet. Search above to build your ink-art library.</p>
-        @else
-            <div class="lp-thumb-grid gap-3" data-cards :style="gridStyle">
-                @foreach ($this->library as $asset)
-                    {{-- The remove ✕ is a SIBLING of the add button, not nested inside it: a <button>
-                         inside a <button> is invalid HTML (browsers auto-close the outer one) and the
-                         ✕ click would bubble into attach(). Both sit inside the relative wrapper. --}}
-                    <div class="group relative rounded-lg border border-base-300 bg-base-100 p-2 flex flex-col">
-                        <button wire:click="attach({{ $asset->id }})" class="text-left" aria-label="Add {{ $asset->title }} to Scene">
-                            <div class="flex aspect-square items-center justify-center overflow-hidden rounded bg-base-200">
-                                <img src="{{ $asset->url() }}" alt="{{ $asset->title }}" class="max-h-full max-w-full">
-                            </div>
-                            <p class="mt-2 truncate text-xs font-medium" title="{{ $asset->title }}">{{ $asset->title }}</p>
-                            <p class="truncate text-prose opacity-50" title="{{ $asset->credit() }}">{{ $asset->credit() }}</p>
-                        </button>
-                        <button wire:click="remove({{ $asset->id }})"
-                                wire:confirm="Remove this artwork from your library?"
-                                class="btn btn-ghost btn-xs btn-circle absolute right-1 top-1 text-error opacity-0 transition group-hover:opacity-100"
-                                aria-label="Remove {{ $asset->title }}">✕</button>
-                    </div>
-                @endforeach
-            </div>
-        @endif
     </div>
 </div>

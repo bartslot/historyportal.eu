@@ -986,7 +986,7 @@ class Step3SceneConfiguratorTest extends TestCase
             ->assertSet('svgLibraryOpen', false)
             ->dispatch('open-svg-library')
             ->assertSet('svgLibraryOpen', true)
-            ->assertSee('Import icons')
+            ->assertSee('Import assets')
             ->assertSeeLivewire('svg-asset-library');
     }
 
