@@ -216,8 +216,10 @@ class Step3PictureLoopTest extends TestCase
 
         $this->wizardOn($scene)
             ->call('openPaintingPicker')
+            // Livewire's temporary-upload rule (config/livewire.php, 50 MB) refuses it before the
+            // component runs; the picker shows that error under the grid.
             ->set('uploadImage', UploadedFile::fake()->create('ships.mp4', 60 * 1024, 'video/mp4'))
-            ->assertDispatched('toast');
+            ->assertHasErrors('uploadImage');
 
         $this->assertNull(SceneLoop::of($scene->refresh()));
     }
