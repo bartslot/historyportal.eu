@@ -87,6 +87,10 @@
         <div id="timeline-track"
              class="flex-1 space-y-2 overflow-y-auto p-3"
              @if ($editable) data-sortable="timeline" @endif>
+            @php
+                // Scene number by id, for the "→ 7" tag on a scene whose choices lead elsewhere (SceneLinks).
+                $sceneNumbers = $scenes->values()->mapWithKeys(fn ($s, $i) => [$s->id => $i + 1]);
+            @endphp
             @foreach ($scenes as $scene)
                 {{-- No gap inside a Decision point: its question and two choices stay together. --}}
                 @if ($editable && ! in_array($scene->branch_role, ['option_a', 'option_b'], true))
@@ -108,6 +112,7 @@
                                       :problems="$problems[$scene->id] ?? []"
                                       :selected="$scene->id === $selectedSceneId"
                                       :number="$loop->iteration"
+                                      :leads-to="collect($scene->config['links'] ?? [])->map(fn ($l) => $sceneNumbers[$l['to'] ?? 0] ?? null)->filter()->unique()->values()->all()"
                                       :editable="$editable"
                                       :call="$call"
                                       wide />

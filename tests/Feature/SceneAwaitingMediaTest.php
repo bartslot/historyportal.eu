@@ -43,11 +43,10 @@ class SceneAwaitingMediaTest extends TestCase
         return array_map(fn ($a, $b) => ($a ?: $b) === 'true', $m[1], $m[2]);
     }
 
-    public function test_a_fresh_decision_point_and_empty_game_scenes_are_not_awaiting_media(): void
+    public function test_empty_game_scenes_are_not_awaiting_media(): void
     {
         $lesson = $this->lesson();
         $component = Livewire::actingAs($lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $lesson]);
-        $component->call('addScene', 'branch');
         foreach (['strategy', 'debate', 'predict'] as $type) {
             $component->call('addScene', 'game', $type);
         }

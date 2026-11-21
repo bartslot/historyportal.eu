@@ -2939,5 +2939,18 @@
     "Paint the water": "Peindre l'eau",
     "Find the water": "Trouver l'eau",
     "Anime": "Anime",
-    "Lively": "Vif"
+    "Lively": "Vif",
+    "A scene can show at most :n choices.": "Une scène affiche au plus :n choix.",
+    "Add choice": "Ajouter un choix",
+    "Button text": "Texte du bouton",
+    "Choices": "Choix",
+    "Choices go on a story scene. Add or select one first.": "Les choix se placent sur une scène de récit. Ajoutez-en ou sélectionnez-en une d’abord.",
+    "Choices lead to scene :n": "Les choix mènent à la scène :n",
+    "Ending": "Fin",
+    "Goes to": "Mène à",
+    "Goes to…": "Mène à…",
+    "Imported from Twine: :scenes scenes, :choices choices.": "Importé de Twine : :scenes scènes, :choices choix.",
+    "Remove choice": "Supprimer le choix",
+    "The lesson ends here": "La leçon se termine ici",
+    "Two choices added. Set where each one goes.": "Deux choix ajoutés. Indiquez où mène chacun."
 }

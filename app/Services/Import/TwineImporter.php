@@ -12,6 +12,7 @@ use App\Models\SvgAsset;
 use App\Models\User;
 use App\Services\Editor\Characters;
 use App\Services\Lessons\SceneDialogue;
+use App\Services\Lessons\SceneLinks;
 use App\Services\Stage25d\GroundDistance;
 use App\Services\Stage25d\StageSet;
 use App\Services\Stage25d\StageWorlds;
@@ -23,20 +24,16 @@ use InvalidArgumentException;
 /**
  * A Twine story as a new lesson of the teacher's: one empty 3D scene per passage, in the world the teacher picked.
  *
- * Order: from the start passage on. A passage whose two links lead to two passages that both go on to one shared
- * passage is a Decision point (the passage is the question, the two are the options, the link texts their buttons),
- * and the story goes on at the shared passage. Everything else is played in reading order, one after the other,
- * and what did not fit (a fan of three, a dead end, story code, a link back) is a note the teacher reads after.
- * A link back to a passage already played ends the lesson there: a lesson has no loops.
+ * Order: breadth-first from the start passage, so a passage's choices follow it. Every Twine link becomes a scene link
+ * (App\Services\Lessons\SceneLinks): the link text is the button, the passage it names is the scene the class jumps
+ * to, links back included (Bart 2026-11-21: "links to other scenes", the way Marianna built her story). A passage
+ * with no links is an ending. What did not fit (story code, a link to a missing passage) is a note the teacher reads.
  *
  * Per scene: the narrator's lines are the script, word for word; the shot description is the scene's note; every
  * other speaker is a character standing on the ground, and their lines are silent balloons, one after the other.
  */
 final class TwineImporter
 {
-    /** Decision points a lesson holds (Step3SceneConfigurator::MAX_BRANCH_GROUPS). */
-    public const MAX_DECISIONS = 3;
-
     /** Reading and timing: words per second, the shortest hold, and a balloon split past this many words. */
     private const WORDS_PER_SECOND = 2.5;
 
@@ -98,8 +95,18 @@ final class TwineImporter
                 'status' => LessonStatus::Draft,
                 'wizard_step' => 3,
             ]);
-            foreach ($plan as $order => $step) {
-                $this->scene($lesson, $order + 1, $step, $parsed[$step['name']], $cast, $teacher, $worldKey, $preset);
+            $ids = [];
+            foreach ($plan as $order => $name) {
+                $ids[$name] = $this->scene($lesson, $order + 1, $name, $parsed[$name], $cast, $teacher, $worldKey, $preset)->id;
+            }
+            // Second pass: every scene exists now, so each Twine link can name the scene it jumps to.
+            $choices = 0;
+            foreach ($plan as $name) {
+                $links = self::links($parsed[$name], $ids);
+                $choices += count($links);
+                $scene = $lesson->scenes()->findOrFail($ids[$name]);
+                // A passage with nowhere to go is an ending: the scene after it in the list is another path.
+                $scene->update(['config' => SceneLinks::into($scene->config, $links, $links === [])]);
             }
             $auto = collect($this->made)->filter(fn (?SvgAsset $a) => $a !== null && ! empty($a->character['auto']))->keys();
             if ($auto->isNotEmpty()) {
@@ -109,7 +116,7 @@ final class TwineImporter
                 'source' => 'twine',
                 'story' => $story['name'],
                 'scenes' => count($plan),
-                'decisions' => collect($plan)->where('role', 'question')->count(),
+                'choices' => $choices,
                 'cast' => collect($cast)->map(fn ($c) => $c + ['character_id' => $this->made[$c['name']]?->id ?? null])->values()->all(),
                 'notes' => $this->notes,
                 'seen' => false,
@@ -120,109 +127,71 @@ final class TwineImporter
     }
 
     /**
-     * The passages in lesson order, each with its Decision point role.
+     * The passages in lesson order: breadth-first from the start passage, so the choices a passage offers sit
+     * together right after it (Venice, Destination, Cargo, Embark...). Passages no link reaches come last.
      *
      * @param  array<string, array<string,mixed>>  $parsed
-     * @return list<array{name:string, role:?string, group:?int, label:?string}>
+     * @return list<string> passage names
      */
     private function order(string $start, array $parsed): array
     {
         $plan = [];
-        $seen = [];
-        $stack = [$start];
-        $groups = 0;
-        while ($stack !== []) {
-            $name = array_pop($stack);
-            if (isset($seen[$name])) {
-                continue;
-            }
-            $seen[$name] = true;
+        $seen = [$start => true];
+        $queue = [$start];
+        while ($queue !== []) {
+            $name = array_shift($queue);
+            $plan[] = $name;
             $title = TwineParser::title($name);
-            $next = [];
-            $back = [];
             foreach ($parsed[$name]['links'] as $link) {
                 $target = $link['target'];
                 if (! isset($parsed[$target])) {
                     $this->notes[] = __('":label" in :scene leads to a passage the story does not have. It was left out.', ['label' => $link['label'], 'scene' => $title]);
-                } elseif (isset($seen[$target])) {
-                    $back[] = $link;
-                } else {
-                    $next[$target] ??= $link['label'];
+                } elseif (! isset($seen[$target])) {
+                    $seen[$target] = true;
+                    $queue[] = $target;
                 }
-            }
-            foreach ($back as $link) {
-                $this->notes[] = $next === [] && $stack === []
-                    ? __('":label" in :scene went back to :target. The lesson ends there.', ['label' => $link['label'], 'scene' => $title, 'target' => TwineParser::title($link['target'])])
-                    : __('":label" in :scene went back to :target. A lesson has no loops, so it was left out.', ['label' => $link['label'], 'scene' => $title, 'target' => TwineParser::title($link['target'])]);
             }
             if ($parsed[$name]['code']) {
                 $this->notes[] = __(':scene has story code (variables or macros). It was left out.', ['scene' => $title]);
             }
-            $join = count($next) === 2 ? $this->join(array_keys($next), $parsed, $seen) : null;
-            if ($join !== null && $groups < self::MAX_DECISIONS) {
-                $groups++;
-                $plan[] = ['name' => $name, 'role' => 'question', 'group' => $groups, 'label' => null];
-                foreach (array_keys($next) as $i => $option) {
-                    $seen[$option] = true;
-                    $plan[] = ['name' => $option, 'role' => $i === 0 ? 'option_a' : 'option_b', 'group' => $groups, 'label' => $next[$option]];
-                    if ($parsed[$option]['code']) {
-                        $this->notes[] = __(':scene has story code (variables or macros). It was left out.', ['scene' => TwineParser::title($option)]);
-                    }
-                }
-                $stack[] = $join;
-
-                continue;
-            }
-            if ($join !== null) {
-                $this->notes[] = __('A lesson holds :n Decision points, so the choice in :scene is played one after the other.', ['n' => self::MAX_DECISIONS, 'scene' => $title]);
-            } elseif (count($next) > 1) {
-                $this->notes[] = __(':scene offers :n choices that do not meet again. They are played one after the other.', ['n' => count($next), 'scene' => $title]);
-            }
-            $plan[] = ['name' => $name, 'role' => null, 'group' => null, 'label' => null];
-            foreach (array_reverse(array_keys($next)) as $target) {
-                $stack[] = $target;
-            }
-            if ($next === [] && $stack !== [] && $parsed[$name]['links'] === []) {
-                $this->notes[] = __(':scene has no links. The lesson goes on with the next passage.', ['scene' => $title]);
-            }
         }
         foreach (array_diff_key($parsed, $seen) as $name => $p) {
-            $plan[] = ['name' => $name, 'role' => null, 'group' => null, 'label' => null];
+            $plan[] = $name;
             $this->notes[] = __('No link leads to :scene. It was added at the end.', ['scene' => TwineParser::title($name)]);
+            if ($p['code']) {
+                $this->notes[] = __(':scene has story code (variables or macros). It was left out.', ['scene' => TwineParser::title($name)]);
+            }
         }
 
         return $plan;
     }
 
     /**
-     * The passage both options go on to, when each has exactly that one way on; null otherwise.
+     * Every Twine link of a passage as a scene link (SceneLinks): its words on the button, its passage as the
+     * scene it jumps to. Links back to an earlier passage stay, so "Replay the journey" replays it.
      *
-     * @param  list<string>  $options
-     * @param  array<string, array<string,mixed>>  $parsed
-     * @param  array<string,bool>  $seen
+     * @param  array<string,mixed>  $part
+     * @param  array<string,int>  $ids  scene id by passage name
+     * @return list<array{label:string, to:int}>
      */
-    private function join(array $options, array $parsed, array $seen): ?string
+    private static function links(array $part, array $ids): array
     {
-        $joins = [];
-        foreach ($options as $option) {
-            $targets = array_unique(array_column($parsed[$option]['links'], 'target'));
-            if (count($targets) !== 1) {
-                return null;
+        $links = [];
+        foreach ($part['links'] as $link) {
+            if (isset($ids[$link['target']]) && count($links) < SceneLinks::MAX_LINKS) {
+                $links[] = ['label' => SceneLinks::label($link['label']), 'to' => $ids[$link['target']]];
             }
-            $joins[] = $targets[array_key_first($targets)];
         }
-        $join = $joins[0];
 
-        return count(array_unique($joins)) === 1 && isset($parsed[$join]) && ! isset($seen[$join]) && ! in_array($join, $options, true) ? $join : null;
+        return $links;
     }
 
     /**
-     * @param  array{name:string, role:?string, group:?int, label:?string}  $step
      * @param  array<string,mixed>  $part
      * @param  list<array{name:string, description:string}>  $cast
      * @param  array<string,mixed>  $preset
      */
-    private function scene(Lesson $lesson, int $order, array $step, array $part, array $cast, User $teacher, string $worldKey, array $preset): void
+    private function scene(Lesson $lesson, int $order, string $passage, array $part, array $cast, User $teacher, string $worldKey, array $preset): Scene
     {
         $stage = StageWorlds::apply(StageSet::blank((string) $preset['bundle'], 's'.$order), $worldKey, $preset);
 
@@ -262,18 +231,15 @@ final class TwineImporter
         $end = $timed === [] ? 0 : max(array_map(fn ($l) => $l['end'], $timed));
         $length = max(self::MIN_SCENE_SECONDS, (int) ceil($end));
 
-        Scene::create([
+        return Scene::create([
             'lesson_id' => $lesson->id,
             'order' => $order,
             'kind' => 'stage25d',
-            'chapter_name' => Str::limit(TwineParser::title($step['name']), 120, ''),
+            'chapter_name' => Str::limit(TwineParser::title($passage), 120, ''),
             'script_segment' => implode("\n\n", array_column(array_filter($lines, fn ($l) => $l['speaker'] === 'narrator'), 'text')),
             'image_style' => ImageStyleTemplate::STAGE,
             'status' => 'ready',
             'duration_seconds' => $length,
-            'branch_group' => $step['group'],
-            'branch_role' => $step['role'],
-            'branch_choice_label' => $step['label'] !== null ? Str::limit($step['label'], 120, '') : null,
             // the timeline runs as long as the lines, so every balloon is on it (the editor's default is 8 s)
             'config' => ['stage25d' => $stage, 'timeline' => ['duration' => (float) $length, 'targets' => [], 'tracks' => []]]
                 + ($balloons !== [] ? ['lines' => $balloons] : [])

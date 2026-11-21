@@ -646,6 +646,8 @@
                 // A split scene draws its figures under the text: the object list can't swap them.
                 split: !!(p.split ?? _vcfg.split),
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
+                // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
+                choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
 
@@ -1215,6 +1217,12 @@
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />
                 @endif
+
+                {{-- Twine-style choices: buttons at the end of the scene that jump to any scene. Not on a quiz or
+                     game (those resume on their own) nor inside a Decision point (its options already branch). --}}
+                @if ($sceneModel->kind !== 'game' && $sceneModel->branch_role === null)
+                    <x-lesson.scene-links-inspector :scene="$sceneModel" :targets="$this->sceneLinkTargets()" />
+                @endif
                 </div>{{-- /format tab --}}
                 </div>{{-- /scene-inspector-{{ $sceneModel->id }} --}}
             @else
@@ -1417,6 +1425,7 @@
         // a floor in perspective (the terrain): Heroicons outline weight, 24 px, stroke 1.5
         terrain: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M7.5 6.75h9l5.25 12.75H2.25L7.5 6.75ZM6.12 10.1h11.76M4.56 13.9h14.88M12 6.75V19.5M9.75 6.75 7.5 19.5M14.25 6.75l2.25 12.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         group:  '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        choices: '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M3.75 12h6l4.5-6h6m-6 0 2-2m-2 2 2 2M10 12l4.5 6h6m0 0-2-2m2 2-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         quiz:   '<svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M9 12l2 2 4-4m-9 8h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
@@ -1794,6 +1803,11 @@
                 this.refresh();
                 setInterval(() => { if (!this.dragging && window.Alpine?.store('view')?.objects) this.refresh(); }, 2000);
                 window.addEventListener('objscene-changed', () => this.refresh());   // scene switched → relist layers
+                // Choices added or removed (EditsSceneLinks): the Choices row comes or goes.
+                window.addEventListener('scene-choices', (e) => {
+                    if (window.__objScene && (e.detail?.sceneId ?? null) === window.__objScene.sceneId) window.__objScene.choices = !!e.detail?.has;
+                    this.refresh();
+                });
                 this.$nextTick(() => this.initSortable());
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
@@ -1873,7 +1887,10 @@
                 // Speech balloons are drawn over everything: listed first, never restacked by hand.
                 const balloonItems = (window.__balloons?.list() ?? []).map((b) =>
                     ({ id: b.id, icon: 'balloon', label: b.text, bg: false, bal: true }));
-                const items = [...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items, ...s25Sky];
+                // The Choices layer fades in over everything when the scene is over: listed first, pinned.
+                const choiceItems = (window.__objScene || {}).choices
+                    ? [{ id: '__choices__', icon: 'choices', label: @js(__('Choices')), bg: true, section: 'choices' }] : [];
+                const items = [...choiceItems, ...balloonItems, ...(onTop ? [...artItems, ...textItems] : [...textItems, ...artItems]), ...dioItems, ...s25Items, ...s25Sky];
                 // Bottom layer(s), pinned (not drag-reorderable). A Route waypoint scene lists its own
                 // stack — the Gallery overlay ON TOP of the Waypoint map — instead of a bare Background;
                 // every other scene lists a single Background (or Slideshow for a standalone gallery).
@@ -2036,7 +2053,7 @@
                     // row used to scroll a panel that might not even be showing.
                     window.dispatchEvent(new CustomEvent('inspector-open'));
                     const panel = () => document.querySelector('aside[x-ref="inspectorPanel"]');
-                    const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : '[data-bg-section]');
+                    const find = () => panel()?.querySelector(obj.section === 'quiz' ? '[data-quiz-section]' : obj.section === 'choices' ? '[data-scene-links-inspector]' : '[data-bg-section]');
                     const flash = (target) => {
                         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
                         target.style.transition = 'box- .2s';
@@ -2249,6 +2266,12 @@
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
                     <x-icons.pencil class="h-4 w-4 shrink-0 text-panel-hint" />
                     <span>{{ __('Text') }}</span>
+                </button>
+                {{-- Choices (Twine-style links): buttons that fade in over the scene when it ends, each jumping to a scene. --}}
+                <button type="button" @click="$wire.addChoicesToScene(null); addOpen = false" data-add-choices
+                        class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
+                    <span class="h-4 w-4 shrink-0 text-panel-hint" x-html="window.__objIcons?.choices"></span>
+                    <span>{{ __('Choices') }}</span>
                 </button>
                 <button type="button" @click="$wire.addBalloon(); addOpen = false"
                         class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-base-200" role="menuitem">
@@ -3208,13 +3231,8 @@
                         <span class="text-sm font-medium text-slate-200">{{ __('3D scene') }}</span>
                     </button>
                 @endif
-                {{-- Every lesson takes a Decision point and a voyage: things a teacher adds for
-                     immersion, never a form chosen when the lesson was made. --}}
-                <button type="button" wire:click="addScene('branch')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="branch" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
-                </button>
+                {{-- No Decision point tile: a choice is a layer on a scene (Add > Choices), not scenes of its own
+                     (Bart 2026-11-21). Every lesson takes a voyage: immersion, never a form chosen at birth. --}}
                 {{-- A historical voyage from the catalogue, inserted here as its itinerary and legs
                      (insertVoyage). The pick stays in Alpine so choosing never re-renders the modal.
                      One voyage per lesson: once it sails, the tile says why it is off. --}}

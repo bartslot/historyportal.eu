@@ -2981,5 +2981,18 @@
     "Paint the water": "Schilder het water",
     "Find the water": "Zoek het water",
     "Anime": "Anime",
-    "Lively": "Levendig"
+    "Lively": "Levendig",
+    "A scene can show at most :n choices.": "Een scène toont hoogstens :n keuzes.",
+    "Add choice": "Keuze toevoegen",
+    "Button text": "Knoptekst",
+    "Choices": "Keuzes",
+    "Choices go on a story scene. Add or select one first.": "Keuzes horen bij een verhaalscène. Voeg er eerst een toe of kies er een.",
+    "Choices lead to scene :n": "Keuzes gaan naar scène :n",
+    "Ending": "Einde",
+    "Goes to": "Gaat naar",
+    "Goes to…": "Gaat naar…",
+    "Imported from Twine: :scenes scenes, :choices choices.": "Geïmporteerd uit Twine: :scenes scènes, :choices keuzes.",
+    "Remove choice": "Keuze verwijderen",
+    "The lesson ends here": "De les eindigt hier",
+    "Two choices added. Set where each one goes.": "Twee keuzes toegevoegd. Stel in waar elke keuze naartoe gaat."
 }
