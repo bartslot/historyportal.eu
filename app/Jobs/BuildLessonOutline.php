@@ -418,7 +418,8 @@ class BuildLessonOutline implements ShouldQueue
 
         $lesson->update([
             'status' => LessonStatus::Failed,
-            'error_message' => __('Planning the lesson took too long and was stopped. Try again; it usually works the second time.'),
+            // Worded so step2-generate's "timed out" branch shows the teacher its translated retry hint.
+            'error_message' => 'Planning the lesson timed out: '.($e?->getMessage() ?? 'the worker stopped'),
         ]);
     }
 
