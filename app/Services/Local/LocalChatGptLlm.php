@@ -10,7 +10,7 @@ use RuntimeException;
 /** A text role answered by ChatGPT on this machine (config/llm.php provider `chatgpt_local`): same calls, other route. */
 class LocalChatGptLlm extends OpenAiLlmService
 {
-    protected function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null): string
+    protected function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null, ?int $timeout = null): string
     {
         if (! LocalChatGpt::available()) {
             throw new RuntimeException('ChatGPT on this machine is not available here.');

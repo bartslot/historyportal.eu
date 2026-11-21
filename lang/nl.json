@@ -2982,5 +2982,18 @@
     "Find the water": "Zoek het water",
     "Anime": "Anime",
     "Lively": "Levendig",
+    "Script ready to read": "Script klaar om te lezen",
+    "Read your script": "Lees je script",
+    "Approve it as it is, or tell the assistant what to change. Pictures and narration start after you approve.": "Keur het goed zoals het is, of vertel de assistent wat er anders moet. Beelden en vertelling worden gemaakt zodra je het goedkeurt.",
+    "The script": "Het script",
+    "Ask the assistant": "Vraag het de assistent",
+    "Say what should change, for example \"make scene 2 shorter\" or \"more about daily life in the city\".": "Zeg wat er anders moet, bijvoorbeeld \"maak scène 2 korter\" of \"meer over het dagelijks leven in de stad\".",
+    "The assistant is rewriting your script…": "De assistent herschrijft je script…",
+    "Ask for changes": "Vraag om aanpassingen",
+    "Approve the script": "Keur het script goed",
+    "Pictures and narration are made from this text.": "Beelden en vertelling worden van deze tekst gemaakt.",
+    "Sorry, that change did not work this time. Your script is unchanged. Try asking again.": "Sorry, die aanpassing lukte deze keer niet. Je script is niet veranderd. Vraag het nog eens.",
+    "I did not find anything to change for that. Could you say which scene, or what should be different?": "Ik vond daar niets om aan te passen. Kun je zeggen welke scène, of wat er anders moet?",
+    "I changed :count scene.|I changed :count scenes.": "Ik heb :count scène aangepast.|Ik heb :count scènes aangepast.",
     "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT op de Mac die de beelden maakt staat uit. Er is niets veranderd."
 }

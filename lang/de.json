@@ -2940,5 +2940,18 @@
     "Find the water": "Wasser finden",
     "Anime": "Anime",
     "Lively": "Lebhaft",
+    "Script ready to read": "Skript bereit zum Lesen",
+    "Read your script": "Lies dein Skript",
+    "Approve it as it is, or tell the assistant what to change. Pictures and narration start after you approve.": "Gib es so frei, wie es ist, oder sag dem Assistenten, was sich ändern soll. Bilder und Erzählung entstehen, sobald du es freigibst.",
+    "The script": "Das Skript",
+    "Ask the assistant": "Frag den Assistenten",
+    "Say what should change, for example \"make scene 2 shorter\" or \"more about daily life in the city\".": "Sag, was sich ändern soll, zum Beispiel \"mach Szene 2 kürzer\" oder \"mehr über den Alltag in der Stadt\".",
+    "The assistant is rewriting your script…": "Der Assistent schreibt dein Skript um…",
+    "Ask for changes": "Änderungen anfragen",
+    "Approve the script": "Skript freigeben",
+    "Pictures and narration are made from this text.": "Bilder und Erzählung entstehen aus diesem Text.",
+    "Sorry, that change did not work this time. Your script is unchanged. Try asking again.": "Diese Änderung hat leider nicht geklappt. Dein Skript ist unverändert. Frag einfach noch einmal.",
+    "I did not find anything to change for that. Could you say which scene, or what should be different?": "Dafür habe ich nichts zum Ändern gefunden. Kannst du sagen, welche Szene oder was anders sein soll?",
+    "I changed :count scene.|I changed :count scenes.": "Ich habe :count Szene geändert.|Ich habe :count Szenen geändert.",
     "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT auf dem Mac, der die Bilder macht, ist aus. Es wurde nichts geändert."
 }

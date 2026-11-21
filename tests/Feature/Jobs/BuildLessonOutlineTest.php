@@ -353,4 +353,54 @@ class BuildLessonOutlineTest extends TestCase
         $this->assertSame(LessonStatus::Failed, $this->lesson->status);
         $this->assertStringContainsString('OpenAI down', (string) $this->lesson->error_message);
     }
+    public function test_a_job_that_dies_mid_outline_marks_the_lesson_failed_instead_of_hanging_on_18_percent(): void
+    {
+        $this->lesson->update(['status' => LessonStatus::Outlining]);
+
+        (new BuildLessonOutline($this->lesson->id))->failed(new \RuntimeException('has timed out'));
+
+        $this->lesson->refresh();
+        $this->assertSame(LessonStatus::Failed, $this->lesson->status);
+        $this->assertNotEmpty($this->lesson->error_message);
+    }
+
+    public function test_the_lesson_stays_planning_until_the_script_job_is_handed_off(): void
+    {
+        // A story game's repair calls run after the outline call, before scenes are made. A
+        // worker timeout there must find the lesson still planning, or failed() leaves it stranded.
+        $this->lesson->update(['include_game' => true, 'game_type' => 'story_game', 'narrative_framework' => 'branching']);
+        $this->mock(OpenAiLlmService::class, fn ($mock) => $mock->shouldReceive('json')->andReturn($this->storyGameOutline()));
+        Bus::fake();
+
+        $seen = [];
+        Scene::creating(function () use (&$seen): void {
+            $seen[] = $this->lesson->fresh()->status;
+        });
+
+        (new BuildLessonOutline($this->lesson->id))->handle(app(OpenAiLlmService::class));
+
+        $this->assertNotEmpty($seen);
+        $this->assertSame([LessonStatus::Outlining], array_values(array_unique($seen, SORT_REGULAR)));
+        $this->assertSame(LessonStatus::ScenesGenerating, $this->lesson->fresh()->status);
+    }
+
+    public function test_failed_leaves_a_lesson_that_already_moved_on_alone(): void
+    {
+        $this->lesson->update(['status' => LessonStatus::ScenesGenerating]);
+
+        (new BuildLessonOutline($this->lesson->id))->failed(new \RuntimeException('late'));
+
+        $this->assertSame(LessonStatus::ScenesGenerating, $this->lesson->fresh()->status);
+    }
+
+    public function test_the_job_outlives_its_own_outline_call(): void
+    {
+        $job = new BuildLessonOutline($this->lesson->id);
+        $outlineTimeout = (new \ReflectionClassConstant(BuildLessonOutline::class, 'OUTLINE_TIMEOUT'))->getValue();
+
+        // Two tries of the outline call, plus room for the source fetches, before the worker kills it.
+        $this->assertGreaterThan($outlineTimeout * 2 + 60, $job->timeout);
+        $this->assertLessThan((int) config('queue.connections.database.retry_after'), $job->timeout);
+        $this->assertTrue($job->failOnTimeout);
+    }
 }

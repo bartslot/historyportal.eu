@@ -50,6 +50,7 @@ class Lesson extends Model
         'game_type',
         'game_config',
         'import_report',
+        'script_review',
         'game_pack_path',
         'quiz_question_count',
         'quiz_timing',
@@ -192,6 +193,7 @@ class Lesson extends Model
             'outline' => 'array',
             'game_config' => 'array',
             'import_report' => 'array',
+            'script_review' => 'array',
             'teacher_guide' => 'array',
             'include_game' => 'boolean',
             'quiz_question_count' => 'integer',
@@ -340,7 +342,7 @@ class Lesson extends Model
      */
     public function cardEntryStep(): ?int
     {
-        if ($this->status->isGenerating() || $this->status === LessonStatus::Failed) {
+        if ($this->status->isGenerating() || in_array($this->status, [LessonStatus::Failed, LessonStatus::ScriptReview], true)) {
             return null;
         }
 
@@ -395,13 +397,22 @@ class Lesson extends Model
             ->get();
     }
 
-    public function startGenerationPipeline(): void
+    /**
+     * @param  bool  $reviewScript  Stop once the script is written, so the teacher can approve it or ask
+     *                              the assistant for changes before pictures and narration are made
+     *                              (App\Services\Lessons\ScriptReview). The teacher's own paths pass true;
+     *                              commands and benchmarks run straight through.
+     */
+    public function startGenerationPipeline(bool $reviewScript = false): void
     {
         if (! $this->source()->exists()) {
             throw new \RuntimeException('Cannot start pipeline: no LessonSource attached.');
         }
 
-        $this->update(['status' => LessonStatus::SourceReady]);
+        $this->update([
+            'status' => LessonStatus::SourceReady,
+            'script_review' => $reviewScript ? ['state' => 'writing', 'messages' => []] : null,
+        ]);
         \App\Jobs\BuildLessonOutline::dispatch($this->id);
     }
 
