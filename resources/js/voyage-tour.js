@@ -108,7 +108,7 @@ const setReadingOverlayOpen = (open) => {
   } catch (_) { /* no CustomEvent (never in a browser we support) */ }
 };
 
-export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null } = {}) {
+export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null } = {}) {
   // Prefer the lesson's editable copy, but ONLY when it belongs to this voyage. A lesson can hold
   // scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def` would draw
   // the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
@@ -1526,7 +1526,15 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       map,
       hud,
       stops.map((s, i) => ({ lng: s.lng, lat: s.lat, name: s.name, number: numbers[i] })),
-      { hidden: drawing && anim.stops },
+      {
+        hidden: drawing && anim.stops,
+        // The editor: drag a stop's number to move that landfall (or the home port).
+        onDrop: editable && onStopMove ? (i, lng, lat) => {
+          const s = stops[i];
+          const wpIndex = s.leg === undefined ? Number(route.legs[0]?.wp?.[0]) : Number(route.legs[s.leg]?.wp?.[1]);
+          if (Number.isInteger(wpIndex)) onStopMove(wpIndex, lng, lat);
+        } : null,
+      },
     );
 
     if (drawing && sailing) {

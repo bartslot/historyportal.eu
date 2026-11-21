@@ -521,6 +521,9 @@
                              // Pointer dragging, like the object list: reliable inside this fixed panel.
                              forceFallback: true,
                              fallbackTolerance: 4,
+                             // Typing a stop's new name is not a drag.
+                             filter: 'input',
+                             preventOnFilter: false,
                              onStart: (evt) => { evt.item._stopNext = evt.item.nextSibling },
                              onEnd: (evt) => {
                                  const order = [...evt.to.querySelectorAll('[data-stop-leg]')]
@@ -541,8 +544,19 @@
                              data-stop-leg="{{ $stop['leg'] }}"
                              @if ($stop['scene_id']) wire:click="selectScene({{ $stop['scene_id'] }})" @endif>
                             <span data-stop-number class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-700/70 text-2xs font-semibold text-slate-200">{{ $stop['n'] }}</span>
-                            <span class="flex-1 truncate">
-                                {{ $stop['title'] ?: __('Unnamed stop') }}
+                            {{-- Double-click (or the pencil) to rename the stop in place, scene or no scene. --}}
+                            <span class="flex min-w-0 flex-1 items-center gap-1" x-data="{ editing: false, name: @js($stop['title']),
+                                    edit() { this.editing = true; this.$nextTick(() => { this.$refs.name.focus(); this.$refs.name.select() }) },
+                                    save() { if (!this.editing) return; this.editing = false; if (this.name.trim() !== @js($stop['title'])) $wire.renameVoyageStop({{ $stop['leg'] }}, this.name) } }">
+                                <span x-show="!editing" x-on:dblclick.stop="edit()" class="min-w-0 flex-1 truncate">{{ $stop['title'] ?: __('Unnamed stop') }}</span>
+                                <input x-show="editing" x-cloak x-ref="name" type="text" x-model="name" maxlength="80" data-stop-rename
+                                       x-on:click.stop x-on:keydown.enter.prevent="save()" x-on:keydown.escape.prevent="name = @js($stop['title']); editing = false"
+                                       x-on:blur="save()" aria-label="{{ __('Stop name') }}" class="input input-xs min-w-0 flex-1 select-text" />
+                                <button type="button" data-nodrag data-stop-rename-button x-show="!editing" x-on:click.stop="edit()"
+                                        class="btn btn-ghost btn-xs shrink-0 px-1 text-panel-hint opacity-0 transition group-hover:opacity-100 hover:text-primary focus-visible:opacity-100"
+                                        aria-label="{{ __('Rename this stop') }}" data-tooltip="{{ __('Rename this stop') }}">
+                                    <x-icons.pencil class="h-3.5 w-3.5" />
+                                </button>
                             </span>
                             @if (! $stop['scene_id'])
                                 {{-- A stop the class cannot watch: this leg has no scene. One click makes

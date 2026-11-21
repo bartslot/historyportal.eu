@@ -2794,6 +2794,30 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($this->selectedSceneId);
     }
 
+    /**
+     * Rename a stop right in the itinerary list, with or without a scene of its own (Bart 2026-11-21: "So how do I
+     * change Acre into Jerusalem"). Same storage as setLegTitle: the leg's title, mirrored into the leg scene's
+     * location when there is one.
+     */
+    public function renameVoyageStop(int $leg, string $title): void
+    {
+        $title = mb_substr(trim($title), 0, 80);
+        $gc = $this->ensureVoyageDef();
+        if (! isset($gc['voyage_def']['legs'][$leg])) {
+            return;
+        }
+        $gc['voyage_def']['legs'][$leg]['title'] = $title;
+        $this->saveGameConfig($gc);
+        $this->lesson->scenes()->where('kind', 'voyage')->get()
+            ->filter(fn ($s) => empty($s->config['overview']) && (int) ($s->config['leg'] ?? 0) === $leg)
+            ->each(fn ($s) => $s->update(['location' => $title !== '' ? $title : null]));
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        if ($this->selectedSceneId) {
+            $this->selectSceneInternal($this->selectedSceneId);
+        }
+    }
+
     // ── How this leg was travelled ────────────────────────────────────────────────────────────
     // Transport is a property of the CROSSING, not of the stop at either end: Marco Polo rode out
     // of Venice's hinterland, crossed the desert by camel and came home by sea, all between fixed
@@ -3015,6 +3039,42 @@ class Step3SceneConfigurator extends Component
         }
         // Unwrap the dragged longitude to sit within ±180° of the neighbour so a Pacific crossing stays
         // contiguous (Tonga ≈ 185°E) instead of jumping ~360° and drawing the route around the world.
+        $ref = $gc['voyage_def']['waypoints'][$wpIndex - 1][0] ?? ($gc['voyage_def']['waypoints'][$wpIndex + 1][0] ?? null);
+        $lng = self::unwrapLngNear($lng, $ref === null ? null : (float) $ref);
+        $gc['voyage_def']['waypoints'][$wpIndex] = [round($lng, 3), round($lat, 3)];
+        $this->saveGameConfig($gc);
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        $this->selectSceneInternal($this->selectedSceneId);
+    }
+
+    /**
+     * Drag a numbered stop on the itinerary (overview) scene: moves that stop's own waypoint, the landfall of
+     * whichever leg ends there (or the home port). Bart 2026-11-21: "would be nice to just drag the location on
+     * the map … the number". Only a stop moves from here, never a bend: bends belong to their leg's own scene.
+     */
+    #[On('voyageStopMoved')]
+    public function setVoyageStop(int $sceneId, int $wpIndex, $lng, $lat): void
+    {
+        if (! $this->selectedScene || (int) ($this->selectedScene['id'] ?? 0) !== $sceneId
+            || empty($this->selectedScene['config']['overview'])) {
+            return;
+        }
+        $lng = (float) $lng;
+        $lat = (float) $lat;
+        if (! is_finite($lng) || $lat < -90 || $lat > 90) {
+            return;
+        }
+        $this->pushVoyageUndo();
+        $gc = $this->ensureVoyageDef();
+        $legs = array_values((array) ($gc['voyage_def']['legs'] ?? []));
+        $stops = array_map(fn ($L) => (int) ($L['wp'][1] ?? -1), $legs);
+        if ($legs) {
+            $stops[] = (int) ($legs[0]['wp'][0] ?? -1);
+        }
+        if (! in_array($wpIndex, $stops, true) || ! isset($gc['voyage_def']['waypoints'][$wpIndex])) {
+            return;
+        }
         $ref = $gc['voyage_def']['waypoints'][$wpIndex - 1][0] ?? ($gc['voyage_def']['waypoints'][$wpIndex + 1][0] ?? null);
         $lng = self::unwrapLngNear($lng, $ref === null ? null : (float) $ref);
         $gc['voyage_def']['waypoints'][$wpIndex] = [round($lng, 3), round($lat, 3)];

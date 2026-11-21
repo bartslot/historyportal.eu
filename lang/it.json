@@ -2953,5 +2953,7 @@
     "Crossing to :place": "Traversata verso :place",
     "Every stop on one map": "Ogni tappa su una mappa",
     "{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops": "{1} Compila 1 tappa vuota|[2,*] Compila :count tappe vuote",
-    "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Tutte le tappe erano già compilate.|{1} 1 tappa compilata.|[2,*] :count tappe compilate."
+    "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Tutte le tappe erano già compilate.|{1} 1 tappa compilata.|[2,*] :count tappe compilate.",
+    "Stop name": "Nome della tappa",
+    "Rename this stop": "Rinomina questa tappa"
 }

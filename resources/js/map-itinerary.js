@@ -118,7 +118,7 @@ export function itinerarySchedule (count, totalMs = null, opts = {}) {
  * @param {{ hidden?: boolean }} [opts] hidden: start invisible, for a tour that reveals as it goes
  * @returns {{ reveal(i:number):void, revealAll():void, highlight(i:number|null):void, destroy():void }}
  */
-export function renderItineraryPins (map, hostEl, stops, { hidden = false } = {}) {
+export function renderItineraryPins (map, hostEl, stops, { hidden = false, onDrop = null } = {}) {
   const list = Array.isArray(stops) ? stops : []
   const pins = []
 
@@ -143,7 +143,58 @@ export function renderItineraryPins (map, hostEl, stops, { hidden = false } = {}
     if (hidden) pin.style.opacity = '0'
     hostEl.appendChild(pin)
     pins.push(pin)
+    if (onDrop) dragPin(pin, i)
   })
+
+  // The editor: a stop's number is a handle (Bart 2026-11-21: "would be nice to just drag the location on the map …
+  // the number"). The pin follows the pointer, and the drop hands the new place to the host, which saves and redraws.
+  function dragPin (pin, i) {
+    const dot = pin.querySelector('[data-number]')
+    if (!dot) return
+    pin.dataset.stopHandle = String(i)
+    dot.style.pointerEvents = 'auto'
+    dot.style.cursor = 'grab'
+    dot.style.touchAction = 'none'
+    let down = null
+    let moved = false
+    const at = (e) => {
+      const cr = map.getContainer().getBoundingClientRect()
+      return [e.clientX - cr.left, e.clientY - cr.top]
+    }
+    const end = (persist) => (e) => {
+      if (!down) return
+      const was = moved
+      down = null; moved = false
+      dot.style.cursor = 'grab'
+      pin.style.zIndex = '30'
+      if (!was) return
+      if (!persist) { position(); return }
+      const [x, y] = at(e)
+      const c = map.unproject([x, y + dot.offsetHeight / 2])
+      list[i] = { ...list[i], lng: c.lng, lat: c.lat }
+      position()
+      try { onDrop(i, c.lng, c.lat) } catch (_) { /* the host decides */ }
+    }
+    dot.addEventListener('pointerdown', (e) => {
+      if (e.button) return
+      down = { x: e.clientX, y: e.clientY }; moved = false
+      try { dot.setPointerCapture(e.pointerId) } catch (_) { /* older Safari */ }
+      e.preventDefault(); e.stopPropagation()
+    })
+    dot.addEventListener('pointermove', (e) => {
+      if (!down) return
+      if (!moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= 3) return
+      moved = true
+      dot.style.cursor = 'grabbing'
+      pin.style.zIndex = '40'
+      const [x, y] = at(e)
+      // The pin hangs above its point (translate -100%), its number at the bottom: keep the number under the pointer.
+      pin.style.left = `${x}px`
+      pin.style.top = `${y + dot.offsetHeight / 2}px`
+    })
+    dot.addEventListener('pointerup', end(true))
+    dot.addEventListener('pointercancel', end(false))
+  }
 
   const position = () => {
     list.forEach((s, i) => {

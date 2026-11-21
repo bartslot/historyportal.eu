@@ -767,6 +767,9 @@
                         // Drag a leg route point (destination or a bend) → persist that waypoint by index.
                         onEndpointMove: (wpIndex, lng, lat) =>
                             window.Livewire.dispatch('voyageWaypointMoved', { sceneId: currentSceneId, wpIndex, lng, lat }),
+                        // The itinerary: drag a stop's number → move that stop's own waypoint.
+                        onStopMove: (wpIndex, lng, lat) =>
+                            window.Livewire.dispatch('voyageStopMoved', { sceneId: currentSceneId, wpIndex, lng, lat }),
                         // Drop a NEW bend by dragging the route line → insert a waypoint after afterWpIndex.
                         onWaypointInsert: (afterWpIndex, lng, lat) =>
                             window.Livewire.dispatch('voyageWaypointInserted', { sceneId: currentSceneId, afterWpIndex, lng, lat }),

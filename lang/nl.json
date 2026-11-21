@@ -2995,5 +2995,7 @@
     "Crossing to :place": "Overtocht naar :place",
     "Every stop on one map": "Elke stop op één kaart",
     "{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops": "{1} Vul 1 lege tussenstop in|[2,*] Vul :count lege tussenstops in",
-    "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Alle tussenstops waren al ingevuld.|{1} 1 tussenstop ingevuld.|[2,*] :count tussenstops ingevuld."
+    "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Alle tussenstops waren al ingevuld.|{1} 1 tussenstop ingevuld.|[2,*] :count tussenstops ingevuld.",
+    "Stop name": "Naam van de stop",
+    "Rename this stop": "Hernoem deze stop"
 }
