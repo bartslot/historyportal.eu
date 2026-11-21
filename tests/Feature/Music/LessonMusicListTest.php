@@ -149,4 +149,27 @@ class LessonMusicListTest extends TestCase
         $this->actingAs(User::factory()->create());
         Livewire::test(LessonMusic::class, ['lesson' => $this->lesson])->assertForbidden();
     }
+
+    public function test_use_in_the_song_list_adds_a_row_from_the_next_free_scene(): void
+    {
+        $this->actingAs($this->teacher);
+        $bed = MusicTrack::create(['title' => 'Wind', 'kind' => MusicTrack::KIND_AMBIENCE, 'licence' => 'other', 'path' => 'music/ambience/wind.mp3']);
+
+        $c = Livewire::test(LessonMusic::class, ['lesson' => $this->lesson])
+            ->assertSee('Road ahead')->assertSee('Storm')->assertDontSee('Wind')
+            ->call('useTrack', $this->storm->id)
+            ->call('useTrack', $this->road->id);
+
+        $this->assertSame($this->storm->id, $this->music(1)['layers'][0]['track_id']);
+        $this->assertSame($this->road->id, $this->music(2)['layers'][0]['track_id']);
+
+        // An ambience bed is never a song.
+        $c->call('useTrack', $bed->id);
+        $this->assertNull($this->music(3));
+
+        // The last row on the last scene: Use takes the first scene still free.
+        $c->set('rows.1.scene', 20)->call('useTrack', $this->storm->id);
+        $this->assertSame($this->storm->id, $this->music(2)['layers'][0]['track_id']);
+        $this->assertSame([1, 2, 20], array_column($c->get('rows'), 'scene'));
+    }
 }

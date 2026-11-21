@@ -35,7 +35,7 @@ import { installEditSteps } from './editor/edit-steps.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
 import { initDragScroll } from './ui/drag-scroll.js';
 import { imageGrid, initImageZoom } from './ui/image-grid.js';
-import { lessonMusicTempo, sceneMusicPreview } from './scene/music-preview.js';
+import { lessonMusicTempo, sceneMusicPreview, songListPreview } from './scene/music-preview.js';
 import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { installStageZoom } from './editor/stage-zoom.js';
 import { drawTool } from './editor/draw-layer.js';
@@ -95,6 +95,8 @@ window.onboardingTour = createTour;
 // Scene inspector > Music > Preview: x-data="sceneMusicPreview(@js($trackUrls))".
 window.sceneMusicPreview = sceneMusicPreview;
 window.lessonMusicTempo = lessonMusicTempo;
+// The song list (components/wizard/song-list.blade.php): x-data="songListPreview()".
+window.songListPreview = songListPreview;
 
 // The About page's product tour, the same spotlight over screenshots: x-data="screenshotTour(@js($config))".
 window.screenshotTour = createScreenshotTour;
