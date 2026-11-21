@@ -1,1 +1,0 @@
-import{O as s}from"./big-countdown-D1a-1EdI.js";function r(...t){const o=t.filter(Boolean);return o.length?{destroy(e=0){for(const n of o)e>0?setTimeout(()=>n.destroy(),e):n.destroy()}}:null}function a(t){for(const o of t)o&&(Object.assign(o.style,{transition:"none",opacity:"0"}),s(o))}export{a as h,r as o};
