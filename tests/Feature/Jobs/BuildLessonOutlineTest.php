@@ -364,6 +364,26 @@ class BuildLessonOutlineTest extends TestCase
         $this->assertNotEmpty($this->lesson->error_message);
     }
 
+    public function test_the_lesson_stays_planning_until_the_script_job_is_handed_off(): void
+    {
+        // A story game's repair calls run after the outline call, before scenes are made. A
+        // worker timeout there must find the lesson still planning, or failed() leaves it stranded.
+        $this->lesson->update(['include_game' => true, 'game_type' => 'story_game', 'narrative_framework' => 'branching']);
+        $this->mock(OpenAiLlmService::class, fn ($mock) => $mock->shouldReceive('json')->andReturn($this->storyGameOutline()));
+        Bus::fake();
+
+        $seen = [];
+        Scene::creating(function () use (&$seen): void {
+            $seen[] = $this->lesson->fresh()->status;
+        });
+
+        (new BuildLessonOutline($this->lesson->id))->handle(app(OpenAiLlmService::class));
+
+        $this->assertNotEmpty($seen);
+        $this->assertSame([LessonStatus::Outlining], array_values(array_unique($seen, SORT_REGULAR)));
+        $this->assertSame(LessonStatus::ScenesGenerating, $this->lesson->fresh()->status);
+    }
+
     public function test_failed_leaves_a_lesson_that_already_moved_on_alone(): void
     {
         $this->lesson->update(['status' => LessonStatus::ScenesGenerating]);

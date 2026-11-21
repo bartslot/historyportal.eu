@@ -249,7 +249,8 @@ class BuildLessonOutline implements ShouldQueue
             $updates = [
                 'title' => $outline['title'] ?? $lesson->topic,
                 'outline' => $outline,
-                'status' => LessonStatus::ScenesGenerating,
+                // Status stays Outlining until the hand-off below: a story game's repair calls still
+                // follow, and failed() only rescues a lesson that is still planning.
             ];
             if ($isStoryGame) {
                 $meters = $this->validatedMeters($lesson, $outline['meters'] ?? null);
@@ -388,6 +389,7 @@ class BuildLessonOutline implements ShouldQueue
             // the per-scene image/audio batch and the quiz itself once scripts exist, and
             // (for a story-game with a print pack) the spelpakket PDF, whose event cards need
             // the generated script text — so that dispatch lives at the END of GenerateLessonScript.
+            $lesson->update(['status' => LessonStatus::ScenesGenerating]);
             GenerateLessonScript::dispatch($lesson->id);
         } catch (Throwable $e) {
             $lesson->update([
