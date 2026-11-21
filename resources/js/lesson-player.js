@@ -171,6 +171,7 @@ let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outs
 const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
 let _autoAdvanceRaf = null    // voyage auto-advance progress loop
 let _music          = null   // BackgroundMusic bed (owns its own Audio elements; outside Alpine's proxy)
+let _ambience       = null   // the scenes' ambience beds (SceneAmbience): a second MusicMixer, beside the music
 let _initDone       = false  // guard: prevent double-init from Vite HMR / Alpine re-mount
 let _parallax       = null   // live ParallaxScene instance (layered bg+hero shot, E3b)
 let _split          = null   // live SplitStage: a split scene's two comic panels
@@ -181,6 +182,7 @@ let _dioramaMod     = null   // cached ./scene/diorama/DioramaStage.js module
 let _stage25d       = null   // live Babylon 2.5D stage (a scene of kind stage25d), mounted lazily
 const _stageSound   = createStageSound()   // the stage scenes' beds + sfx; its AudioContext waits for startLesson's click
 if (typeof window !== 'undefined') window.__stageSound = _stageSound   // tests and the dev panel read engine.state() / engine.log
+if (typeof window !== 'undefined') window.__ambience = () => _ambience   // tests read the ambience mixer's voices
 // The editor's title-screen miniatures (?title_preview=1): they only ever show the title, so they fetch no narration.
 const TITLE_PREVIEW = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('title_preview') === '1'
 // How many narrated scenes ahead the player fetches into the HTTP cache (_warmNarration).
@@ -698,6 +700,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // a moment ago, so the browser will let it make a sound. It is created here rather than in
       // init() so a lesson opened and never started never downloads a track.
       this._startBackgroundMusic()
+      this._startAmbience()
 
       this.phase = 'INTRO'
       this._playIntro()
@@ -716,6 +719,15 @@ Alpine.data('lessonGame', (lesson) => ({
       _music.setMuted(this.audioMuted)
       _music.setVolume(this.volumeLevel)
       _music.start()
+    },
+
+    // Wind, waves, a bazaar under each scene. Started with the lesson whether or not music plays.
+    _startAmbience () {
+      if (_ambience || !lesson.scenes?.some(s => s?.ambience)) return
+      _ambience = createMusicMixer(lesson.music_tracks || {})
+      _ambience.setMuted(this.audioMuted)
+      _ambience.setVolume(this.volumeLevel)
+      _ambience.start()
     },
 
     // ── Background / Ken Burns ─────────────────────────────────────────
@@ -1322,7 +1334,7 @@ Alpine.data('lessonGame', (lesson) => ({
             kind: s.kind, game_type: s.game_type ?? null, config: s.config ?? null, diorama_assets: s.diorama_assets ?? {}, scene_view: s.scene_view,
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
-            audio_url: s.audio_url, music: s.music ?? null, script: s.script, image_url: s.image_url,
+            audio_url: s.audio_url, music: s.music ?? null, ambience: s.ambience ?? null, script: s.script, image_url: s.image_url,
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
             chapter: s.chapter ?? null, chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
@@ -1633,6 +1645,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // This scene's music, or the scene before it's still playing on (a chapter jump lands mid-chapter).
       _music?.enterScene?.(resolveSceneMusic(_sceneQueue, index))
+      _ambience?.enterScene(scene.ambience ?? null)
 
       // A landfall gallery freezes this scene's auto-advance while it is open, and it is a GLOBAL
       // flag. If a tour is torn down with its modal still up, nothing ever clears it and every
@@ -3035,6 +3048,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // The bed fades away over the closing screen rather than cutting on the last word.
       try { _music?.stop() } catch (_) {}
       _music = null
+      try { _ambience?.stop() } catch (_) {}
+      _ambience = null
       _stageSound.leave()
       try { this._teardownStageScene(true) } catch (_) { /* tear down the persistent voyage map */ }
       this.phase = 'ENDED'
@@ -3269,8 +3284,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Pausing the lesson pauses everything the lesson is making, music included — a bed still
       // playing over a frozen picture is how you get a teacher hunting for a second stop button.
-      if (this.playbackPaused) { _music?.pause(); _stageSound.pause() }
-      else { _music?.resume(); _stageSound.resume() }
+      if (this.playbackPaused) { _music?.pause(); _ambience?.pause(); _stageSound.pause() }
+      else { _music?.resume(); _ambience?.resume(); _stageSound.resume() }
     },
 
     _attachAudioListeners () {
@@ -3279,9 +3294,9 @@ Alpine.data('lessonGame', (lesson) => ({
       // without this, a muted lesson came back at full volume on the next scene.
       this._audio.volume = this.audioMuted ? 0 : this.volumeLevel
       // The scene music dips while the narrator speaks and comes back up in the pauses.
-      this._audio.addEventListener('play', () => { this.audioPlaying = true; _music?.duck?.(true) }, { once: false })
-      this._audio.addEventListener('pause', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
-      this._audio.addEventListener('ended', () => { this.audioPlaying = false; _music?.duck?.(false) }, { once: false })
+      this._audio.addEventListener('play', () => { this.audioPlaying = true; _music?.duck?.(true); _ambience?.duck(true) }, { once: false })
+      this._audio.addEventListener('pause', () => { this.audioPlaying = false; _music?.duck?.(false); _ambience?.duck(false) }, { once: false })
+      this._audio.addEventListener('ended', () => { this.audioPlaying = false; _music?.duck?.(false); _ambience?.duck(false) }, { once: false })
     },
 
     toggleAudio () {
@@ -3327,6 +3342,8 @@ Alpine.data('lessonGame', (lesson) => ({
       const level = this.audioMuted ? 0 : this.volumeLevel
       _music?.setMuted(this.audioMuted)
       _music?.setVolume(this.volumeLevel)
+      _ambience?.setMuted(this.audioMuted)
+      _ambience?.setVolume(this.volumeLevel)
       Sfx.setMuted(this.audioMuted)
       Sfx.setVolume(level)
       _stageSound.setLevel(level)
@@ -3733,6 +3750,8 @@ Alpine.data('lessonGame', (lesson) => ({
       }
       try { _music?.destroy() } catch (_) {}
       _music = null
+      try { _ambience?.destroy() } catch (_) {}
+      _ambience = null
       _stageSound.destroy()
       this.audioPlaying = false
     },
