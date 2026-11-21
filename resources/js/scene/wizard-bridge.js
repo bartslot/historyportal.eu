@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
+import { loopVideo } from './picture-loop.js'
 import { isClipartLayer, backdropLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
@@ -124,6 +125,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             _stageBackgrounds = null
             fade(canvasEl, 1)
             try {
+                // Only a flat slideshow picture keeps its loop texture; every other stage lets it go.
+                if (view !== 'slideshow' || payload.config?.diorama || payload.kind === 'stage25d' || payload.kind === 'video' || normalizeSplit(payload.split ?? payload.config?.split)) { wantedLoop = null; stopSlideshowLoop() }
                 if (!payload.config?.diorama) hideDiorama()
                 if (!(payload.kind === 'stage25d' && payload.config?.stage25d)) hideStage25d()
                 if (payload.kind === 'stage25d' && payload.config?.stage25d) {
@@ -155,6 +158,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     await applySlideshowBackground(payload.imageUrl, payload.sceneId ?? 0, payload.duration ?? 10, {
                         backgroundColor: payload.backgroundColor,
                         gradient: payload.backgroundGradient ?? payload.config?.background_gradient,
+                        loop: payload.imageLoop ?? null,
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
                         layers: firstShot?.layers ?? null,
@@ -304,6 +308,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const firstShot = (e.detail?.shots && e.detail.shots.length) ? e.detail.shots[0] : null
             await applySlideshowBackground(imageUrl, sceneId ?? 0, duration ?? 10, {
                 backgroundColor: e.detail?.backgroundColor,
+                loop: e.detail?.imageLoop ?? null,
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
                 layers: firstShot?.layers ?? null,
@@ -445,15 +450,51 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     const slideshowTextureCache = new Map()
     let currentBgFocus = 'center'   // 'top' anchors portrait backgrounds so faces survive the crop
     let currentBgFit   = 'cover'    // 'contain' shows the whole work, letterboxed
+    // The flat picture's moving version, as a texture (picture-loop.js): {url, tex, video}. Kept
+    // across the 3 s scene:load poll so the loop does not restart every time the scene is re-sent.
+    let slideshowLoop = null
+    const pendingLoops = new Map()   // url → Promise: two quick renders share one video, none is orphaned
+    let wantedLoop = null            // the loop the latest flat render asked for
+    function stopSlideshowLoop() {
+        if (!slideshowLoop) return
+        slideshowLoop.video.pause()
+        slideshowLoop.video.removeAttribute('src')
+        slideshowLoop.video.load()
+        slideshowLoop.tex.dispose()
+        slideshowLoop = null
+    }
+    /** A playing loop as a texture, sized like an image so coverScale reads it; null if it will not play. */
+    function loopTexture(loopUrl) {
+        return new Promise(resolve => {
+            const video = loopVideo(loopUrl)
+            const done = (ok) => {
+                clearTimeout(timer)
+                if (!ok) { video.removeAttribute('src'); video.load(); resolve(null); return }
+                video.width = video.videoWidth
+                video.height = video.videoHeight
+                const tex = new THREE.VideoTexture(video)
+                tex.colorSpace = THREE.SRGBColorSpace
+                tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping
+                resolve({ url: loopUrl, tex, video })
+            }
+            const timer = setTimeout(() => done(false), 8000)
+            video.addEventListener('playing', () => done(true), { once: true })
+            video.addEventListener('error', () => done(false), { once: true })
+            video.play?.()?.catch(() => done(false))
+        })
+    }
+
     async function applySlideshowBackground(url, sceneId = 0, durationSec = 10, motion = {}) {
         const isCurrent = motion.isCurrent ?? (() => true)
+        wantedLoop = motion.loop || null
+        if (slideshowLoop && slideshowLoop.url !== motion.loop) stopSlideshowLoop()
         currentBgFocus = motion.focus || 'center'
         currentBgFit   = normalizeFit(motion.fit)
         // Layered shot (E3c): render via ParallaxScene when the shot carries layers.
         if (Array.isArray(motion.layers) && motion.layers.length) {
             const didShow = await showLayeredSlideshowShot(motion)
             if (!isCurrent()) return
-            if (didShow) return
+            if (didShow) { wantedLoop = null; stopSlideshowLoop(); return }   // the panel plays the loop on its own plane
             // Fall through to flat if layered show fails
         }
         if (!isCurrent()) return
@@ -497,6 +538,25 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 slideshowTextureCache.set(cacheKey, tex)
             }
             if (!isCurrent()) return
+            // The picture's moving version replaces the still once it plays ('contain' keeps the
+            // still: its letterbox is baked into a padded copy, which a video cannot be).
+            if (motion.loop && currentBgFit !== 'contain' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+                const url = motion.loop
+                if (slideshowLoop?.url !== url) {
+                    if (!pendingLoops.has(url)) {
+                        // Adopted once, when it plays, and only if it is still the loop the stage wants;
+                        // a render that was overtaken meanwhile lets it go.
+                        pendingLoops.set(url, loopTexture(url).then(p => {
+                            pendingLoops.delete(url)
+                            if (p && wantedLoop === url) { stopSlideshowLoop(); slideshowLoop = p }
+                            else if (p) { p.video.pause(); p.video.removeAttribute('src'); p.tex.dispose() }
+                        }))
+                    }
+                    await pendingLoops.get(url)
+                }
+                if (!isCurrent()) return
+                if (slideshowLoop?.url === url) tex = slideshowLoop.tex
+            }
             // Hide sphere only after texture is ready — avoids black flash.
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
@@ -1273,7 +1333,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const matte = payload.backgroundColor || null
             // The shot's own camera (camera.js): previewed in a loop, the figures riding along.
             const camera = cameraSpec(payload.camera)
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), fit, matte, camera, payload.entry ?? null])
+            const bgSig = JSON.stringify([bgLayers.map(l => [stripV(l.url), stripV(l.loop)]), fit, matte, camera, payload.entry ?? null])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }

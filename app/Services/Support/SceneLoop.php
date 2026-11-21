@@ -1,0 +1,83 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Support;
+
+use App\Models\Scene;
+use App\Support\MediaUrl;
+
+/**
+ * A scene picture that moves: a short muted MP4 loop that plays in place of the still.
+ *
+ * Stored on the scene as config.bg_loop = {src, poster}: `src` is the video's storage path,
+ * `poster` the image_path it belongs to. The still stays the scene's picture everywhere a
+ * picture is needed (rail thumbs, posters, covers, the first frame before the video is ready),
+ * and the loop only plays while that same picture is still the background. A teacher who picks
+ * another picture gets the new picture, never the old picture's motion over it, without every
+ * background setter having to remember to clear the loop.
+ */
+final class SceneLoop
+{
+    public const KEY = 'bg_loop';
+
+    /** The loop's URL for a picture, or null when this picture has no loop. */
+    public static function urlFor(?Scene $scene, ?string $picturePath): ?string
+    {
+        $loop = self::of($scene);
+        if ($loop === null || $picturePath === null || $picturePath === '') {
+            return null;
+        }
+
+        return self::samePicture($loop['poster'], $picturePath) ? MediaUrl::of($loop['src']) : null;
+    }
+
+    /** The scene's own picture moves (the flat stage and the inspector ask this). */
+    public static function urlForScene(?Scene $scene): ?string
+    {
+        return self::urlFor($scene, $scene?->image_path);
+    }
+
+    /**
+     * The stored loop, when it is well formed.
+     *
+     * @return array{src: string, poster: string}|null
+     */
+    public static function of(?Scene $scene): ?array
+    {
+        $loop = ($scene?->config ?? [])[self::KEY] ?? null;
+        if (! is_array($loop) || ! is_string($loop['src'] ?? null) || ! is_string($loop['poster'] ?? null)) {
+            return null;
+        }
+
+        return ['src' => $loop['src'], 'poster' => $loop['poster']];
+    }
+
+    /**
+     * @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    public static function with(array $config, string $src, string $poster): array
+    {
+        return [...$config, self::KEY => ['src' => $src, 'poster' => $poster]];
+    }
+
+    /**
+     * @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    public static function without(array $config): array
+    {
+        unset($config[self::KEY]);
+
+        return $config;
+    }
+
+    /** image_path may be stored with or without the leading "/storage/"; compare the file itself. */
+    private static function samePicture(string $a, string $b): bool
+    {
+        $norm = fn (string $p) => ltrim(preg_replace('#^/?storage/#', '', strtok($p, '?')) ?: $p, '/');
+
+        return $norm($a) === $norm($b);
+    }
+}

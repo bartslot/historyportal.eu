@@ -15,6 +15,8 @@
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
     // On a split scene the Image controls show and set the active panel's own picture.
     $backgroundImageUrl = \App\Support\MediaUrl::versioned($split ? ($panelShot['image_path'] ?? null) : $scene->image_path, $scene->updated_at?->timestamp);
+    // The picture's moving version (a dropped MP4, SceneLoop); a split panel has none.
+    $pictureLoopUrl = $split ? null : \App\Services\Support\SceneLoop::urlForScene($scene);
     $bgEmbed        = ($scene->config ?? [])['bg_embed'] ?? null;
     $gradient       = ($scene->config ?? [])['background_gradient'] ?? null;
     $bgType         = match (true) {
@@ -194,9 +196,18 @@
                 @endif
                 <div class="min-w-0 leading-tight">
                     <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Current image') }}</span>
-                    <span class="block truncate text-2xs text-panel-hint">{{ $backgroundImageUrl ? __('Scene background') : __('No background selected') }}</span>
+                    <span class="block truncate text-2xs text-panel-hint">{{ $pictureLoopUrl ? __('Moving picture') : ($backgroundImageUrl ? __('Scene background') : __('No background selected')) }}</span>
                 </div>
             </div>
+
+            {{-- A dropped MP4 makes the picture move; the still stays when the teacher stops it. --}}
+            @if ($pictureLoopUrl)
+                <div class="flex items-center gap-2" data-picture-loop>
+                    <video src="{{ $pictureLoopUrl }}" muted loop autoplay playsinline aria-hidden="true"
+                           class="h-8 w-14 shrink-0 rounded object-cover ring-1 ring-slate-700"></video>
+                    <button type="button" class="btn btn-sm btn-ghost ml-auto" wire:click="removeBackgroundLoop">{{ __('Stop moving') }}</button>
+                </div>
+            @endif
 
             {{-- Fit — how the image fills the 16:9 stage. Cover crops the overflow (and anchors a
                  portrait to the top so the face survives); Contain shows the whole work. --}}

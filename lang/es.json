@@ -2981,5 +2981,14 @@
     "Paint the water": "Pinta el agua",
     "Find the water": "Busca el agua",
     "Anime": "Anime",
-    "Lively": "Vivo"
+    "Lively": "Vivo",
+    "Moving picture": "Imagen en movimiento",
+    "Stop moving": "Detener el movimiento",
+    "The picture moves.": "La imagen se mueve.",
+    "Select a scene first, then drop the video on it.": "Elige primero una escena y suelta el vídeo encima.",
+    "A moving picture goes on a scene with a picture.": "Una imagen en movimiento va en una escena con imagen.",
+    "The video could not be saved. Try again.": "No se pudo guardar el vídeo. Inténtalo de nuevo.",
+    "This server cannot read the video. Add a picture first, then drop the video on it.": "Este servidor no puede leer el vídeo. Añade primero una imagen y suelta el vídeo encima.",
+    "A moving picture goes on a scene with one picture, not on comic panels.": "Una imagen en movimiento va en una escena con una sola imagen, no en viñetas.",
+    "This server cannot read the video. Use an MP4.": "Este servidor no puede leer el vídeo. Usa un MP4."
 }

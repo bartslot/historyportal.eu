@@ -178,6 +178,8 @@
                 'image_credit' => $s->config['image_credit'] ?? null,
                 'shots'       => collect($s->shots ?? [])->map(fn($shot) => [
                     'image_url'       => \App\Support\MediaUrl::of($shot['image_path'] ?? null),
+                    // The picture's moving version, a muted MP4 loop (SceneLoop).
+                    'loop'            => \App\Services\Support\SceneLoop::urlFor($s, $shot['image_path'] ?? null),
                     // bg_url/hero_url (E3b story-pack shots): the player renders these as
                     // parallax layers when bg_url is present, flat image_url otherwise.
                     'bg_url'          => \App\Support\MediaUrl::of($shot['bg_path'] ?? null),
@@ -185,6 +187,7 @@
                     // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
                     'layers'          => collect($shot['layers'] ?? [])->map(fn($l) => [
                         'url'    => !empty($l['path']) ? \App\Support\MediaUrl::of($l['path']) : ($l['url'] ?? null),
+                        'loop'   => ($l['kind'] ?? 'cover') === 'cover' ? \App\Services\Support\SceneLoop::urlFor($s, $l['path'] ?? null) : null,
                         // asset_id + x/y drive the free-positioned clipart overlay (voyage-map layers).
                         'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                         'x'      => isset($l['x']) ? (float) $l['x'] : null,
@@ -251,6 +254,7 @@
                 'timeline'    => $s->timelineSeconds(),
                 'background_color' => $s->background_color,
                 'background_gradient' => $s->config['background_gradient'] ?? null,
+                'image_loop' => \App\Services\Support\SceneLoop::urlForScene($s),
                 // Same deliberate trade-off as lesson-level quiz_questions above:
                 // correct_index is client-visible; grading stays client-side for v1.
                 'quiz_questions' => $s->kind === 'game'

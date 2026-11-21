@@ -29,6 +29,7 @@ import { createStageSound, hasStageSound } from './scene/stage25d/sound.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
+import { attachLoop } from './scene/picture-loop.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
@@ -1003,7 +1004,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Flat 2D scene render: the scene image on the CSS Ken Burns layers, 3D canvas hidden.
     // This is the default per scene (skybox is opt-in via scene_view).
-    _showFlatScene (url) {
+    _showFlatScene (url, loop = null) {
       if (!url) return
       this._destroyParallax()   // a flat shot replaces any live layered (parallax) scene
       if (_bgCanvas) _bgCanvas.style.opacity = '0'
@@ -1017,6 +1018,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // Crossfade to this scene's image, held still (a camera move makes it a layered shot).
       const layer = this._bgActive === 'A' ? 'B' : 'A'
       this._showBgImage({ url }, layer, { still: true })
+      // The picture's moving version (picture-loop.js); the layer fading out lets its own go.
+      const [inEl, outEl] = layer === 'B' ? [this._bgLayerB, this._bgLayerA] : [this._bgLayerA, this._bgLayerB]
+      attachLoop(inEl, loop, { fit: normalizeFit(this._bgFit) })
+      const leaving = outEl?.querySelector(':scope > video.scene-picture-loop')
+      setTimeout(() => {
+        // Only the loop that was leaving: the layer may have been reused for a new scene since.
+        if (leaving?.isConnected && outEl.style.opacity === '0') { leaving.pause(); leaving.removeAttribute('src'); leaving.load(); leaving.remove() }
+      }, this._bgFadeDuration + 100)
       if (layer === 'B') {
         this._bgLayerB.style.opacity = '1'
         this._bgLayerA.style.opacity = '0'
@@ -1039,9 +1048,9 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // Route one shot to the right renderer: LAYERED (2-layer parallax) when it carries
     // a bg_url, otherwise a still flat picture — every existing lesson stays flat.
-    _showShot (shot, fallbackUrl = null) {
+    _showShot (shot, fallbackUrl = null, fallbackLoop = null) {
       if (shot?.bg_url || (Array.isArray(shot?.layers) && shot.layers.length)) { this._showLayeredShot(shot); return }
-      this._showFlatScene(shot?.image_url || shot?.url || fallbackUrl)
+      this._showFlatScene(shot?.image_url || shot?.url || fallbackUrl, shot?.image_url ? shot.loop : fallbackLoop)
     },
 
     // Layered shot (E3b): bg layer + optional transparent hero PNG, hero panning at
@@ -1141,7 +1150,7 @@ Alpine.data('lessonGame', (lesson) => ({
         hideFlatLayers([this._bgLayerA, this._bgLayerB])
       } catch (e) {
         console.warn('lesson-player: split scene failed, falling back to the first panel', e)
-        this._showShot(scene.shots?.[0], scene.image_url)
+        this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)
       }
     },
 
@@ -1171,7 +1180,7 @@ Alpine.data('lessonGame', (lesson) => ({
         _diorama.play(() => this._audio?.currentTime ?? 0)
       } catch (e) {
         console.warn('lesson-player: diorama failed, falling back to flat', e)
-        this._showFlatScene(scene.image_url)
+        this._showFlatScene(scene.image_url, scene.image_loop)
       }
     },
 
@@ -1238,7 +1247,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _startShotPlayback (scene) {
       const shots = scene.shots || []
-      this._showShot(shots[0], scene.image_url)
+      this._showShot(shots[0], scene.image_url, scene.image_loop)
       this._shotCursor = 0
       // time: seconds when the shot should appear; null = unresolved (even-split fallback).
       // resolveAnchorTime / pickShotIndex are pure + unit-tested in scene/shot-sync.js.
@@ -1330,6 +1339,7 @@ Alpine.data('lessonGame', (lesson) => ({
             // (layered parallax shots, E3b) — the whole array passes through untouched.
             shots: s.shots ?? null, alignment: s.alignment ?? null,
             background_color: s.background_color ?? null, background_gradient: s.background_gradient ?? null,
+            image_loop: s.image_loop ?? null,
             quiz_questions: s.quiz_questions ?? null,
             quiz_shuffle: s.quiz_shuffle ?? 'per_player',
           }))
@@ -1790,7 +1800,7 @@ Alpine.data('lessonGame', (lesson) => ({
         } else if (scene.shots?.length > 1) {
           this._startShotPlayback(scene)                        // storyboard: images follow the narration
         } else {
-          this._showShot(scene.shots?.[0], scene.image_url)     // still flat 2D, or layered when the shot has bg_url
+          this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)     // still flat 2D, or layered when the shot has bg_url
         }
       } else if (scene.kind !== 'map') {
         this._showFlatColor(scene.background_color, scene.background_gradient)
@@ -1929,7 +1939,7 @@ Alpine.data('lessonGame', (lesson) => ({
     // we go straight into the challenge — a quiz used to be silently skipped when its intro had no audio.
     _playGameScene (index, scene) {
       if (scene.image_url || scene.shots?.length) {
-        this._showShot(scene.shots?.[0], scene.image_url)
+        this._showShot(scene.shots?.[0], scene.image_url, scene.image_loop)
       } else {
         this._showFlatColor(scene.background_color, scene.background_gradient)
       }
