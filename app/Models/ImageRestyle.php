@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property int $step 0 queued, 1 ink pass, 2 colour pass
  * @property string|null $ink_path pass 1 output (black ink with hatching)
  * @property string|null $result_path pass 2 output (the final watercolour)
- * @property string|null $error_code credits | blocked | busy | failed
+ * @property string|null $error_code credits | blocked | busy | offline | failed
  */
 class ImageRestyle extends Model
 {

@@ -8,8 +8,8 @@ use App\Jobs\Concerns\MarksSceneReady;
 use App\Models\Scene;
 use App\Services\FigureAppearanceService;
 use App\Services\HistoricalImageValidationPrompt;
-use App\Services\OpenAiImageService;
 use App\Services\Llm\Llm;
+use App\Services\OpenAiImageService;
 use App\Services\OpenAiLlmService;
 use App\Services\ShotListPrompt;
 use App\Services\Support\GridSlicer;
@@ -40,7 +40,11 @@ class GenerateSceneShots implements ShouldQueue
     /** Two LLM calls + one image render that can take minutes at 1536x1024. */
     public int $timeout = 420;
 
-    public function __construct(public readonly int $sceneId) {}
+    public function __construct(public readonly int $sceneId)
+    {
+        // ChatGPT on Bart's Mac takes longer than the paid API, and the job waits for it (ImageRoute::RELAY).
+        $this->timeout = \App\Services\Imaging\ImageRoute::jobTimeout(420);
+    }
 
     public function backoff(): array
     {
