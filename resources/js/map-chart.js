@@ -52,7 +52,8 @@ export const CHART = Object.freeze({
   ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
   ridgeWash: 0.8,              // ridge opacity: the ink stays, a touch quieter
   tuftOpacity: 0.55,
-  waveOpacity: 0.8,
+  // Off (Bart 2026-11-21: "please remove these wavy lines"): the sea reads as water without them. The tuner can bring them back.
+  waveOpacity: 0,
   waveScale: 1.5,
   seaWash: 0.85,               // was 0.6: the wash now carries the sea's depth colours (Bart 11-11, aquarel water); painted sea washes over the base sea (Bart 10-26: "lots of watercolour textures")
   seaGrain: 0.14,              // the paint's granulation over the water, at screen scale (the baked glaze is too soft for it)
@@ -185,9 +186,9 @@ export function chartLayers (cfg = CHART) {
       layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
     // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
-    { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
+    ...(cfg.waveOpacity > 0 ? [{ id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
       layout: { 'icon-image': ['concat', 'chart-wave-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': waveSize(cfg.waveScale) },
-      paint: { 'icon-opacity': cfg.waveOpacity } },
+      paint: { 'icon-opacity': cfg.waveOpacity } }] : []),
   ]
   return { under, over }
 }

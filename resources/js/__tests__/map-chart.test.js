@@ -10,7 +10,8 @@ describe('map-chart: the watercolour sea chart', () => {
     it('stacks sea, depth glaze, land, foothills, then ink coast, ridges and waves', () => {
         const { under, over } = chartLayers();
         expect(ids(under)).toEqual(['bg', 'chart-wash-sea', 'chart-glaze', 'chart-sea-grain', 'chart-bleed', 'land', 'chart-wash-land', 'chart-lakes', 'chart-land-edge', 'chart-tufts']);
-        expect(ids(over)).toEqual(['chart-coast-dash', 'coast-bold', 'chart-ridges', 'chart-waves']);
+        expect(ids(over)).toEqual(['chart-coast-dash', 'coast-bold', 'chart-ridges']);   // no wave strokes by default (Bart 2026-11-21)
+        expect(ids(chartLayers({ ...CHART, waveOpacity: 0.8 }).over)).toContain('chart-waves');
     });
 
     it('never stacks ridges and keeps them off the continent view', () => {
