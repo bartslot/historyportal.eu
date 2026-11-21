@@ -11,6 +11,7 @@ use App\Models\Scene;
 use App\Models\SvgAsset;
 use App\Models\User;
 use App\Services\Editor\Characters;
+use App\Services\Lessons\ChoicePrompt;
 use App\Services\Lessons\SceneDialogue;
 use App\Services\Lessons\SceneLinks;
 use App\Services\Stage25d\GroundDistance;
@@ -101,12 +102,21 @@ final class TwineImporter
             }
             // Second pass: every scene exists now, so each Twine link can name the scene it jumps to.
             $choices = 0;
+            $turn = 0;
+            $hero = ChoicePrompt::firstName($cast);
+            $locale = ChoicePrompt::locale($lesson);
             foreach ($plan as $name) {
                 $links = self::links($parsed[$name], $ids);
                 $choices += count($links);
                 $scene = $lesson->scenes()->findOrFail($ids[$name]);
                 // A passage with nowhere to go is an ending: the scene after it in the list is another path.
-                $scene->update(['config' => SceneLinks::into($scene->config, $links, $links === [])]);
+                $config = SceneLinks::into($scene->config, $links, $links === []);
+                // The narrator asks before reading the choices out, one of three lines in turn ("So now Marco
+                // is doubtful... but what would you choose?"). Recorded with the scene's narration.
+                if (ChoicePrompt::spoken($config, $locale) !== '') {
+                    $config['links_prompt'] = ChoicePrompt::lineFor($hero, $locale, $turn++);
+                }
+                $scene->update(['config' => $config]);
             }
             $auto = collect($this->made)->filter(fn (?SvgAsset $a) => $a !== null && ! empty($a->character['auto']))->keys();
             if ($auto->isNotEmpty()) {

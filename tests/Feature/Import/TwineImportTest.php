@@ -85,6 +85,9 @@ class TwineImportTest extends TestCase
         $this->assertSame([['Replay the journey from Venice', 'Venice']], $this->choices($byName['Kublai Khan']));
         $this->assertTrue($scenes->every(fn (Scene $s) => $s->branch_role === null && empty($s->config['ending'])));
         $this->assertSame(15, $lesson->import_report['choices']);
+        // the narrator asks before reading the choices out, in turn one of three lines, naming the story's hero
+        $this->assertSame('So now Marco is doubtful... but what would you choose?', $byName['Venice']->config['links_prompt']);
+        $this->assertArrayNotHasKey('links_prompt', $byName['Kublai Khan']->config);   // one button is not a choice: nothing to ask
     }
 
     public function test_the_narration_is_the_narrators_words_exactly_and_the_shot_is_the_note(): void

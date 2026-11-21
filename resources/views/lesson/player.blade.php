@@ -169,6 +169,8 @@
                 'game_type'   => $s->game_type,
                 'scene_view'  => $s->scene_view,
                 'audio_url'   => $s->audioUrl(),
+                // The narrator reading the scene's choices out as they fade in (null = not recorded yet).
+                'choices_audio_url' => \App\Services\Lessons\ChoicePrompt::audioUrl($s),
                 // The scene's music mix (scene/music-mixer.js); null = keep the previous scene's.
                 'music'       => $s->music,
                 // The ambience bed under it (wind, waves, a bazaar): its own mixer, never inherited.

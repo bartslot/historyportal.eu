@@ -73,6 +73,9 @@ final class SceneLinks
         unset($config['links'], $config['ending']);
         if ($links !== []) {
             $config['links'] = array_values($links);
+        } else {
+            // What the narrator says over the choices goes with them (App\Services\Lessons\ChoicePrompt).
+            unset($config['links_prompt'], $config['links_audio']);
         }
         if ($ending) {
             $config['ending'] = true;

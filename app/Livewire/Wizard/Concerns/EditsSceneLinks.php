@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Livewire\Wizard\Concerns;
 
+use App\Jobs\GenerateChoicesAudio;
 use App\Models\Scene;
+use App\Services\Lessons\ChoicePrompt;
 use App\Services\Lessons\SceneLinks;
+use App\Support\NarrationBudget;
 
 /**
  * The "Choices" section of Scene details: buttons at the end of a scene that jump to another scene of the
  * lesson, or mark the scene as an ending (App\Services\Lessons\SceneLinks). Scene lookups go through
  * $this->lesson->scenes(), so a teacher only ever links within their own lesson.
+ *
+ * The narrator reads the choices out when they fade in: a prompt line (App\Services\Lessons\ChoicePrompt),
+ * then each choice. Any change to those words is recorded again (GenerateChoicesAudio) and, like a script
+ * edit, paid from the lesson's narration allowance (NarrationBudget) by how much changed.
  */
 trait EditsSceneLinks
 {
@@ -50,6 +57,9 @@ trait EditsSceneLinks
                 $links[] = ['label' => '', 'to' => isset($after[$i]) ? (int) $after[$i] : null];
             }
         }
+        if (ChoicePrompt::prompt($scene->config) === '') {
+            $scene->config = ['links_prompt' => ChoicePrompt::forNewChoices($scene)] + ($scene->config ?? []);
+        }
         $this->writeSceneLinks($scene, $links, false);
         if ($this->selectedSceneId !== $scene->id) {
             $this->selectScene($scene->id);
@@ -70,6 +80,17 @@ trait EditsSceneLinks
         }
         $links[$index][$field] = $field === 'label' ? SceneLinks::label($value) : (is_numeric($value) ? (int) $value : null);
         $this->writeSceneLinks($scene, $links, $this->endsHere($scene));
+    }
+
+    /** What the narrator says before reading the choices out. Emptied, the narrator reads only the choices. */
+    public function saveChoicesPrompt(int $sceneId, mixed $text): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        if ($this->linksOf($scene) === []) {
+            return;
+        }
+        $scene->config = ['links_prompt' => ChoicePrompt::clean($text)] + ($scene->config ?? []);
+        $this->writeSceneLinks($scene, $this->linksOf($scene), $this->endsHere($scene));
     }
 
     public function removeSceneLink(int $sceneId, int $index): void
@@ -103,6 +124,49 @@ trait EditsSceneLinks
             ->all();
     }
 
+    /**
+     * The choice keys of a scene come from the database, never from the inspector's copy: they are written
+     * by the methods above and by GenerateChoicesAudio, which the inspector never sees.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withStoredSceneLinks(array $payload, Scene $scene): array
+    {
+        if (! array_key_exists('config', $payload) || ! is_array($payload['config'])) {
+            return $payload;
+        }
+        $keys = ['links', 'ending', 'links_prompt', 'links_audio'];
+        $stored = array_intersect_key($scene->config ?? [], array_flip($keys));
+        $payload['config'] = $stored + array_diff_key($payload['config'], array_flip($keys));
+
+        return $payload;
+    }
+
+    /**
+     * Have the narrator record the choices again when their words changed. Paid like a script edit: only
+     * the change, from the lesson's allowance. Out of allowance, the choices still work, without a voice.
+     */
+    private function narrateChoices(Scene $scene): void
+    {
+        $locale = ChoicePrompt::locale($this->lesson);
+        $spoken = ChoicePrompt::spoken($scene->config, $locale);
+        $recorded = (string) ((($scene->config ?? [])['links_audio'] ?? [])['text'] ?? '');
+        if ($spoken === '' || $spoken === $recorded) {
+            return;
+        }
+        if (! NarrationBudget::charge($this->lesson, NarrationBudget::costOfEdit($recorded, $spoken))) {
+            $this->warnBudgetSpent();
+
+            return;
+        }
+        GenerateChoicesAudio::dispatch($scene->id)->onQueue('narrate');
+        // Prod's queue runs from a once-a-minute cron: start this one as the request ends (see regenerate()).
+        if (config('queue.default') !== 'sync') {
+            app()->terminating(fn () => \Illuminate\Support\Facades\Artisan::call('queue:work', ['--once' => true, '--queue' => 'narrate', '--tries' => 2]));
+        }
+    }
+
     /** @return list<array{label: string, to: int|null}> */
     private function linksOf(Scene $scene): array
     {
@@ -119,6 +183,7 @@ trait EditsSceneLinks
     {
         $scene->config = SceneLinks::into($scene->config, SceneLinks::clean($links, $this->lesson->scenes()->pluck('id')->all()), $ending);
         $scene->save();
+        $this->narrateChoices($scene);
         // The inspector and the rail read these per request: let them see the new links.
         unset($this->selectedSceneModel, $this->scenes);
         // The object list shows a Choices row while the scene has the layer.

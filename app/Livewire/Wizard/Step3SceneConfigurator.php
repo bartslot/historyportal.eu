@@ -671,6 +671,7 @@ class Step3SceneConfigurator extends Component
         $payload = $this->withCleanTeamGame($payload, $scene);
         $payload = $this->withCleanPredict($payload);
         $payload = $this->withCleanMoment($payload, $scene);
+        $payload = $this->withStoredSceneLinks($payload, $scene);
         $scriptDirty = ($scene->script_segment ?? '') !== ($payload['script_segment'] ?? '');
 
         // Detect changes that should re-paint the 3D stage so the canvas updates.

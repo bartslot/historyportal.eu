@@ -2977,5 +2977,12 @@
     "Imported from Twine: :scenes scenes, :choices choices.": "Importé de Twine : :scenes scènes, :choices choix.",
     "Remove choice": "Supprimer le choix",
     "The lesson ends here": "La leçon se termine ici",
-    "Two choices added. Set where each one goes.": "Deux choix ajoutés. Indiquez où mène chacun."
+    "Two choices added. Set where each one goes.": "Deux choix ajoutés. Indiquez où mène chacun.",
+    "So now :name is doubtful... but what would you choose?": ":name hésite maintenant... mais toi, que choisirais-tu ?",
+    "So now the choice is yours... what would you choose?": "Maintenant, le choix t'appartient... que choisirais-tu ?",
+    "What should :name do now? Think it over, then choose.": "Que devrait faire :name maintenant ? Réfléchis bien, puis choisis.",
+    "What happens next? Think it over, then choose.": "Que se passe-t-il ensuite ? Réfléchis bien, puis choisis.",
+    "The story could go either way. If you were :name, what would you do?": "L'histoire peut basculer d'un côté comme de l'autre. Si tu étais :name, que ferais-tu ?",
+    "The story could go either way. What would you do?": "L'histoire peut basculer d'un côté comme de l'autre. Que ferais-tu ?",
+    "What the narrator asks": "Ce que demande le narrateur"
 }

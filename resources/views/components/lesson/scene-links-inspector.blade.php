@@ -6,10 +6,11 @@
 @php
     $links = array_values((array) (($scene->config ?? [])['links'] ?? []));
     $ending = (($scene->config ?? [])['ending'] ?? false) === true;
+    $prompt = \App\Services\Lessons\ChoicePrompt::prompt($scene->config ?? []);
 @endphp
 @if ($links !== [] || $ending)
 <section data-scene-links-inspector class="mt-4 space-y-2 border-t border-base-content/10 pt-3"
-         wire:key="scene-links-{{ $scene->id }}-{{ md5((string) json_encode([$links, $ending])) }}">
+         wire:key="scene-links-{{ $scene->id }}-{{ md5((string) json_encode([$links, $ending, $prompt])) }}">
     <div class="flex h-8 items-center justify-between">
         <h4 class="lp-card-label text-panel-label">{{ __('Choices') }}</h4>
         <label class="flex h-8 cursor-pointer items-center gap-2 text-xs text-panel-label">
@@ -18,6 +19,14 @@
             {{ __('Ending') }}
         </label>
     </div>
+
+    @if (count($links) >= 2)
+        {{-- What the narrator says as the choices fade in, before reading them out (App\Services\Lessons\ChoicePrompt). --}}
+        <textarea rows="2" maxlength="{{ \App\Services\Lessons\ChoicePrompt::MAX }}" data-choices-prompt
+                  wire:change="saveChoicesPrompt({{ $scene->id }}, $event.target.value)"
+                  placeholder="{{ __('What the narrator asks') }}" aria-label="{{ __('What the narrator asks') }}"
+                  class="textarea textarea-sm textarea-bordered w-full resize-none leading-snug">{{ $prompt }}</textarea>
+    @endif
 
     @foreach ($links as $i => $link)
         <div data-scene-link-row class="space-y-1">

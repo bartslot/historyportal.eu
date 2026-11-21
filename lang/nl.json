@@ -3019,5 +3019,12 @@
     "Imported from Twine: :scenes scenes, :choices choices.": "Geïmporteerd uit Twine: :scenes scènes, :choices keuzes.",
     "Remove choice": "Keuze verwijderen",
     "The lesson ends here": "De les eindigt hier",
-    "Two choices added. Set where each one goes.": "Twee keuzes toegevoegd. Stel in waar elke keuze naartoe gaat."
+    "Two choices added. Set where each one goes.": "Twee keuzes toegevoegd. Stel in waar elke keuze naartoe gaat.",
+    "So now :name is doubtful... but what would you choose?": "Nu twijfelt :name... maar wat zou jij kiezen?",
+    "So now the choice is yours... what would you choose?": "Nu is de keuze aan jou... wat zou jij kiezen?",
+    "What should :name do now? Think it over, then choose.": "Wat moet :name nu doen? Denk er even over na en kies dan.",
+    "What happens next? Think it over, then choose.": "Hoe gaat het verder? Denk er even over na en kies dan.",
+    "The story could go either way. If you were :name, what would you do?": "Het verhaal kan alle kanten op. Als jij :name was, wat zou jij doen?",
+    "The story could go either way. What would you do?": "Het verhaal kan alle kanten op. Wat zou jij doen?",
+    "What the narrator asks": "Wat de verteller vraagt"
 }

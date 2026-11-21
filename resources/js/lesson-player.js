@@ -1335,6 +1335,7 @@ Alpine.data('lessonGame', (lesson) => ({
             branch_group: s.branch_group ?? null, branch_role: s.branch_role ?? null,
             branch_choice_label: s.branch_choice_label ?? null,
             audio_url: s.audio_url, music: s.music ?? null, ambience: s.ambience ?? null, script: s.script, image_url: s.image_url,
+            choices_audio_url: s.choices_audio_url ?? null,   // the narrator reading the choices out (_speakChoices)
             image_credit: s.image_credit ?? null,   // shown under the deck — CC BY obliges us to
             chapter: s.chapter ?? null, chapter_name: s.chapter_name ?? null, year: s.year ?? null, location: s.location ?? null,
             duration_seconds: s.duration_seconds ?? null,
@@ -1473,6 +1474,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _sceneIndex: 0,
     _closeLinkChoices: null,   // closes the scene-links choice card while it is up (scene/scene-links.js)
+    _choicesAudio: null,       // the narrator reading those choices out (_speakChoices)
+    _choicesAudioTimer: null,
     _trail: null,              // [{from, to}] per link jump, newest last: Back walks it home (loops included)
 
     // The small grey line under the deck: where the words came from, and who made the picture.
@@ -2356,14 +2359,37 @@ Alpine.data('lessonGame', (lesson) => ({
         const host = document.getElementById('lesson-stage')
         if (!host) { this._followLink(index, route.links[0].index); return }
         _stageSound.hold(_sceneQueue)
-        this._closeLinkChoices = showLinkChoices(host, route.links, _sceneQueue, (link) => {
+        const close = showLinkChoices(host, route.links, _sceneQueue, (link) => {
+          this._hushChoices()
           this._closeLinkChoices = null
           this._tel.log('scene_link_chosen', { sceneIndex: index, sceneId: _sceneQueue[index]?.id, to: link.to })
           this._followLink(index, link.index)
         })
+        this._closeLinkChoices = () => { this._hushChoices(); close() }
+        this._speakChoices(_sceneQueue[index]?.choices_audio_url)
       } else {
         this._onAudioEnded()
       }
+    },
+
+    // The narrator asks and reads the choices out as the card fades in (App\Services\Lessons\ChoicePrompt).
+    // It starts once the buttons have risen, and never holds the class: a tap stops it and jumps.
+    _speakChoices (url) {
+      this._hushChoices()
+      if (!url) return
+      this._choicesAudioTimer = setTimeout(() => {
+        this._choicesAudioTimer = null
+        const a = this._choicesAudio = new Audio(url)
+        a.volume = this.audioMuted ? 0 : this.volumeLevel
+        a.play().catch(() => {})
+      }, 500)
+    },
+
+    _hushChoices () {
+      clearTimeout(this._choicesAudioTimer)
+      this._choicesAudioTimer = null
+      try { this._choicesAudio?.pause() } catch (_) { /* already gone */ }
+      this._choicesAudio = null
     },
 
     // A jump by a link: Back from the scene it lands on returns to the scene the class came from.
@@ -3347,6 +3373,7 @@ Alpine.data('lessonGame', (lesson) => ({
       Sfx.setMuted(this.audioMuted)
       Sfx.setVolume(level)
       _stageSound.setLevel(level)
+      if (this._choicesAudio) this._choicesAudio.volume = level
     },
 
     // ── Subtitles ──────────────────────────────────────────────────────
