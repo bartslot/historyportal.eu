@@ -1,0 +1,168 @@
+{
+ "voyage": "marco-polo-1271",
+ "lang": "en",
+ "title": "The travels of Marco Polo (1271-1295)",
+ "subtitle": "From Venice to the court of Kublai Khan and back",
+ "legs": [
+  {
+   "depart": "1271-04-01",
+   "arrive": "1271-05-20",
+   "stop": {
+    "place": "Acre",
+    "date_label": "20 May 1271",
+    "title": "Acre, the crusaders' last port",
+    "story": "Niccolò and Maffeo Polo take seventeen-year-old Marco with them from Venice. In Acre, the crusaders' last city, they call on the papal legate Tedaldo Visconti. Kublai Khan has asked them for oil from Jerusalem, so they go there first."
+   }
+  },
+  {
+   "depart": "1271-06-01",
+   "arrive": "1271-06-10",
+   "stop": {
+    "place": "Jerusalem",
+    "date_label": "June 1271",
+    "title": "Jerusalem, oil for the Khan",
+    "story": "Kublai Khan wants oil from the lamp that burns at the tomb of Christ in the Church of the Holy Sepulchre. The Polos travel overland from Acre to Jerusalem to fetch it. It is a gift they will carry all the way to China."
+   }
+  },
+  {
+   "depart": "1271-06-20",
+   "arrive": "1271-07-01",
+   "stop": {
+    "place": "Acre",
+    "date_label": "July 1271",
+    "title": "Back in Acre",
+    "story": "With the oil they return to Acre. Visconti gives them letters for the Khan. Later he hears that he himself has been elected pope, and he sends two friars after them, but the friars soon turn back."
+   }
+  },
+  {
+   "depart": "1271-11-01",
+   "arrive": "1271-11-20",
+   "stop": {
+    "place": "Ayas",
+    "date_label": "20 November 1271",
+    "title": "Ayas, the gateway inland",
+    "story": "Ayas (Lajazzo) in Lesser Armenia is a busy trading port. Spices and silk from the east arrive here, and here the Polos leave the sea to travel on overland."
+   }
+  },
+  {
+   "depart": "1271-11-20",
+   "arrive": "1272-03-15",
+   "stop": {
+    "place": "Tabriz",
+    "date_label": "March 1272",
+    "title": "Tabriz, market of Persia",
+    "story": "Tabriz is a great trading city in the empire of the Mongol Ilkhans. Marco describes merchants from many lands and cloth of silk and gold."
+   }
+  },
+  {
+   "depart": "1272-04-01",
+   "arrive": "1272-08-10",
+   "stop": {
+    "place": "Hormuz",
+    "date_label": "August 1272",
+    "title": "Hormuz, ships without nails",
+    "story": "In Hormuz the Polos want to take a ship to China. But the ships are sewn together with coconut-fibre rope, without iron nails. They think them too dangerous and travel on overland."
+   }
+  },
+  {
+   "depart": "1272-09-01",
+   "arrive": "1273-06-01",
+   "stop": {
+    "place": "Balkh",
+    "date_label": "June 1273",
+    "title": "Balkh, a ruined city",
+    "story": "Balkh was one of the oldest and richest cities of Central Asia. Marco still sees beautiful palaces, but also the destruction the Mongols left there."
+   }
+  },
+  {
+   "depart": "1273-06-15",
+   "arrive": "1273-10-01",
+   "stop": {
+    "place": "Pamir",
+    "date_label": "October 1273",
+    "title": "Over the roof of the world",
+    "story": "The travellers cross the high plain of the Pamir for twelve days. Marco writes that fire burns less brightly there and that wild sheep with enormous horns live there; those sheep now carry his name."
+   }
+  },
+  {
+   "depart": "1273-10-15",
+   "arrive": "1274-03-01",
+   "stop": {
+    "place": "Khotan",
+    "date_label": "March 1274",
+    "title": "Khotan, oasis of jade",
+    "story": "Khotan lies on the edge of the Taklamakan Desert. Its rivers carry jade down from the mountains, a stone that is worth more than gold in China."
+   }
+  },
+  {
+   "depart": "1274-03-15",
+   "arrive": "1274-11-01",
+   "stop": {
+    "place": "Ganzhou",
+    "date_label": "November 1274",
+    "title": "Ganzhou, a year of waiting",
+    "story": "After the deserts of Lop and the Gobi, the Polos reach Ganzhou. Marco says they stay here for about a year on their business."
+   }
+  },
+  {
+   "depart": "1275-01-01",
+   "arrive": "1275-05-01",
+   "stop": {
+    "place": "Khanbaliq",
+    "date_label": "May 1275",
+    "title": "At the court of Kublai Khan",
+    "story": "After more than three years on the road, the Polos reach Kublai Khan, first at his summer palace Shangdu (Xanadu) and then in his capital Khanbaliq, today's Beijing. Marco stays in the Khan's service for seventeen years."
+   }
+  },
+  {
+   "depart": "1291-01-01",
+   "arrive": "1291-02-01",
+   "stop": {
+    "place": "Zaiton",
+    "date_label": "February 1291",
+    "title": "Zaiton, the great port",
+    "story": "Hundreds of ships lie in Zaiton (Quanzhou). Here the Polos are finally allowed to go home: they escort Princess Kököchin, who is to be married in Persia."
+   }
+  },
+  {
+   "depart": "1291-02-15",
+   "arrive": "1293-11-01",
+   "stop": {
+    "place": "Hormuz",
+    "date_label": "November 1293",
+    "title": "After two years at sea",
+    "story": "The fleet sails past Sumatra, Ceylon and India back to Hormuz. The voyage takes more than two years, and of the hundreds on board only a few arrive alive."
+   }
+  },
+  {
+   "depart": "1293-12-01",
+   "arrive": "1294-02-01",
+   "stop": {
+    "place": "Tabriz",
+    "date_label": "February 1294",
+    "title": "The princess is delivered",
+    "story": "The Polos bring Princess Kököchin to the court of the Ilkhans in Persia. On the way they hear that Kublai Khan has died."
+   }
+  },
+  {
+   "depart": "1294-03-01",
+   "arrive": "1294-06-01",
+   "stop": {
+    "place": "Trebizond",
+    "date_label": "June 1294",
+    "title": "Trebizond, robbed on the Black Sea",
+    "story": "In Trebizond on the Black Sea the Polos are robbed of part of what they carry. From here they go on by ship to Constantinople."
+   }
+  },
+  {
+   "depart": "1294-07-01",
+   "arrive": "1295-01-01",
+   "stop": {
+    "place": "Venice",
+    "date_label": "1295",
+    "title": "Back in Venice",
+    "story": "After twenty-four years they are back in Venice. A few years later Marco is a prisoner in Genoa. There he tells his story to Rustichello of Pisa, who turns it into a book."
+   }
+  }
+ ]
+}

@@ -31,6 +31,7 @@
 import { t } from '../i18n.js'
 import { letterComicAmerica } from '../comic-america.js'
 import { applyReveal, clearReveal } from './text-reveal.js'
+import { handleCss } from './stage-handle.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -38,6 +39,11 @@ const EDIT_DRAG_THRESHOLD_PX = 14
 // Safe margin (px) kept clear on every edge: text is placed 40px in and can never be dragged
 // past it, so teachers can't push a label off-canvas or into the letterbox and lose it.
 const SAFE_PAD_PX = 40
+// A new text box starts this wide (% of the stage), so Align left / center / right has room to
+// show. The same width the old max-width allowed, so nothing new is wider than before.
+const DEFAULT_WIDTH_PCT = 46
+// The narrowest a box can be dragged, in px: one short word at the smallest size.
+const MIN_WIDTH_PX = 48
 
 const FONTS = {
   sans:    { label: 'Clean',   stack: "'Inter', ui-sans-serif, sans-serif", weight: 600 },
@@ -162,6 +168,7 @@ export class TextOverlayLayer {
       el.style.boxShadow = on
         ? (item.kind === 'rect' ? 'inset 0 0 0 2px #38bdf8' : '0 0 0 2px #38bdf8')
         : ''
+      for (const h of el.querySelectorAll(':scope > [data-text-handle]')) h.style.display = on ? '' : 'none'
     }
   }
 
@@ -305,6 +312,7 @@ export class TextOverlayLayer {
       y,
       font: 'sans',
       size,
+      w: Math.min(DEFAULT_WIDTH_PCT, 100 - x - padXPct),
       anchor: 'screen',
     }
     this._texts.push(item)
@@ -620,7 +628,69 @@ export class TextOverlayLayer {
       window.addEventListener('pointerup', onUp)
     })
 
+    this._addWidthHandles(item, node)
     return node
+  }
+
+  /**
+   * Keynote's side handles on a text box: drag the right dot to make the box wider or narrower,
+   * the left dot to move its left edge. The text wraps to the new width and Align places each
+   * line inside it. Height follows the text, so there are no top or bottom handles. Shown only
+   * while the box is selected (see _applySelection).
+   */
+  _addWidthHandles(item, node) {
+    for (const side of ['w', 'e']) {
+      const handle = document.createElement('div')
+      handle.dataset.textHandle = side
+      handle.style.cssText = handleCss(`${side === 'w' ? 'left' : 'right'}:-6px; top:calc(50% - 5px);`, 'ew-resize') + ' z-index:4;'
+      handle.style.display = 'none'
+      handle.addEventListener('pointerdown', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        this.select(item.id)
+        const rect = this.host.getBoundingClientRect()
+        if (!rect.width) return
+        const pct = (px) => (px / rect.width) * 100
+        const padPct = pct(SAFE_PAD_PX)
+        const minPct = pct(MIN_WIDTH_PX)
+        const startX = e.clientX
+        const origin = {
+          x: item.x,
+          w: Number.isFinite(item.w) ? item.w : pct(node.getBoundingClientRect().width),
+        }
+        const right = origin.x + origin.w
+        let moved = false
+        try { handle.setPointerCapture?.(e.pointerId) } catch (_) { /* synthetic pointers throw */ }
+
+        const onMove = (ev) => {
+          const dx = pct(ev.clientX - startX)
+          if (!moved && Math.abs(ev.clientX - startX) < 2) return
+          moved = true
+          if (side === 'e') {
+            item.w = Math.max(minPct, Math.min(100 - padPct - origin.x, origin.w + dx))
+          } else {
+            item.x = Math.max(padPct, Math.min(right - minPct, origin.x + dx))
+            item.w = right - item.x
+          }
+          node.style.left = `${item.x}%`
+          node.style.width = `${item.w}%`
+          node.style.maxWidth = 'none'
+        }
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove)
+          window.removeEventListener('pointerup', onUp)
+          if (!moved) return
+          if (item.anchor === 'map' && this._projector) {
+            const ll = this._projector.unproject(item.x, item.y)
+            if (ll) { item.lng = ll.lng; item.lat = ll.lat }
+          }
+          this._emitChange()
+        }
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', onUp)
+      })
+      node.appendChild(handle)
+    }
   }
 
   // Font / size / pin controls shown while a text box is focused.

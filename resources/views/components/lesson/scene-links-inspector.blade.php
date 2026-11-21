@@ -39,9 +39,7 @@
                 <button type="button" class="btn btn-ghost btn-sm btn-square text-panel-hint"
                         wire:click="removeSceneLink({{ $scene->id }}, {{ $i }})"
                         data-tooltip="{{ __('Remove choice') }}" aria-label="{{ __('Remove choice') }}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                    </svg>
+                    <x-ui.icon name="close" class="h-4 w-4" />
                 </button>
             </div>
             <select class="select select-sm select-bordered w-full"

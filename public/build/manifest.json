@@ -1,11 +1,11 @@
 {
-  "_BalloonLayer-BG6XJ35E.js": {
-    "file": "assets/BalloonLayer-BG6XJ35E.js",
+  "_BalloonLayer-CL9yMzst.js": {
+    "file": "assets/BalloonLayer-CL9yMzst.js",
     "name": "BalloonLayer",
     "isDynamicEntry": true,
     "imports": [
       "_easing-HS2C6-zA.js",
-      "_draw-options-DuQuMyPh.js",
+      "_draw-options-DMlbCfiW.js",
       "_comic-america-DKlp7hw_.js"
     ]
   },
@@ -16,16 +16,16 @@
       "node_modules/three/build/three.module.js"
     ]
   },
-  "_PowerMeter-CAAORoCX.js": {
-    "file": "assets/PowerMeter-CAAORoCX.js",
+  "_PowerMeter-CHV9JA73.js": {
+    "file": "assets/PowerMeter-CHV9JA73.js",
     "name": "PowerMeter",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_i18n-DoByrmTl.js",
       "_race-VR0Fbz9P.js",
-      "_TeamGame-jRLivRbK.js",
-      "_ambient-CEzLlAaX.js",
+      "_TeamGame-DeuvCMGe.js",
+      "_ambient-CnaWjG1w.js",
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
     ],
@@ -37,14 +37,14 @@
     "file": "assets/ScrollTrigger-B2uKOqL4.js",
     "name": "ScrollTrigger"
   },
-  "_TeamGame-jRLivRbK.js": {
-    "file": "assets/TeamGame-jRLivRbK.js",
+  "_TeamGame-DeuvCMGe.js": {
+    "file": "assets/TeamGame-DeuvCMGe.js",
     "name": "TeamGame",
     "isDynamicEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
       "_race-VR0Fbz9P.js",
-      "_ambient-CEzLlAaX.js",
+      "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js"
     ]
   },
@@ -52,8 +52,8 @@
     "file": "assets/alpha-mask-C1RIm4VB.js",
     "name": "alpha-mask"
   },
-  "_ambient-CEzLlAaX.js": {
-    "file": "assets/ambient-CEzLlAaX.js",
+  "_ambient-CnaWjG1w.js": {
+    "file": "assets/ambient-CnaWjG1w.js",
     "name": "ambient"
   },
   "_babylon-ClnPoGlu.js": {
@@ -64,30 +64,30 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-Dsfy1xVP.js": {
-    "file": "assets/big-countdown-Dsfy1xVP.js",
+  "_big-countdown-B0c9M518.js": {
+    "file": "assets/big-countdown-B0c9M518.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
-      "_ambient-CEzLlAaX.js",
+      "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
     ],
     "dynamicImports": [
-      "_engine-Wme-e69E.js"
+      "_engine-FT9aiHkN.js"
     ]
   },
-  "_border-sweep-g9uwK-kV.js": {
-    "file": "assets/border-sweep-g9uwK-kV.js",
+  "_border-sweep-BN94bNmI.js": {
+    "file": "assets/border-sweep-BN94bNmI.js",
     "name": "border-sweep",
     "imports": [
       "_easing-HS2C6-zA.js"
     ]
   },
-  "_camera-DBGvDOmt.js": {
-    "file": "assets/camera-DBGvDOmt.js",
+  "_camera-Bqw6kZpV.js": {
+    "file": "assets/camera-Bqw6kZpV.js",
     "name": "camera",
     "imports": [
-      "_draw-options-DuQuMyPh.js"
+      "_draw-options-DMlbCfiW.js"
     ]
   },
   "_clip-W780-tgz.js": {
@@ -102,8 +102,8 @@
     "file": "assets/config-DwQUN7uY.js",
     "name": "config"
   },
-  "_draw-options-DuQuMyPh.js": {
-    "file": "assets/draw-options-DuQuMyPh.js",
+  "_draw-options-DMlbCfiW.js": {
+    "file": "assets/draw-options-DMlbCfiW.js",
     "name": "draw-options",
     "imports": [
       "_easing-HS2C6-zA.js"
@@ -113,17 +113,18 @@
     "file": "assets/easing-HS2C6-zA.js",
     "name": "easing"
   },
-  "_engine-Wme-e69E.js": {
-    "file": "assets/engine-Wme-e69E.js",
+  "_engine-FT9aiHkN.js": {
+    "file": "assets/engine-FT9aiHkN.js",
     "name": "engine",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_babylon-ClnPoGlu.js",
       "_puppet-sheet-B0KaX9MG.js",
-      "_water-C7gxFcRy.js",
+      "_water-BjePzq6I.js",
       "_config-DwQUN7uY.js",
-      "resources/js/scene/ArtworkOverlay.js",
+      "_stage-handle-Ckz2xOyo.js",
+      "_ambient-CnaWjG1w.js",
       "_projection-CL24asTn.js"
     ],
     "dynamicImports": [
@@ -182,11 +183,22 @@
     "file": "assets/race-VR0Fbz9P.js",
     "name": "race"
   },
-  "_stage-handoff-CoyE52Kn.js": {
-    "file": "assets/stage-handoff-CoyE52Kn.js",
+  "_sail-clip-kDndrBgn.js": {
+    "file": "assets/sail-clip-kDndrBgn.js",
+    "name": "sail-clip",
+    "imports": [
+      "_easing-HS2C6-zA.js"
+    ]
+  },
+  "_stage-handle-Ckz2xOyo.js": {
+    "file": "assets/stage-handle-Ckz2xOyo.js",
+    "name": "stage-handle"
+  },
+  "_stage-handoff-BvZUkjeo.js": {
+    "file": "assets/stage-handoff-BvZUkjeo.js",
     "name": "stage-handoff",
     "imports": [
-      "_big-countdown-Dsfy1xVP.js"
+      "_big-countdown-B0c9M518.js"
     ]
   },
   "_team-colours-JOtUsqOj.js": {
@@ -204,11 +216,11 @@
     "file": "assets/vite-helpers-DqutJMZx.js",
     "name": "vite-helpers"
   },
-  "_water-C7gxFcRy.js": {
-    "file": "assets/water-C7gxFcRy.js",
+  "_water-BjePzq6I.js": {
+    "file": "assets/water-BjePzq6I.js",
     "name": "water",
     "imports": [
-      "_draw-options-DuQuMyPh.js"
+      "_sail-clip-kDndrBgn.js"
     ]
   },
   "engine-mvp/src/sound/player.ts": {
@@ -224,7 +236,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-73YxB4wH.css",
+    "file": "assets/app-C4YGbjtg.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -233,7 +245,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CQhjQXld.js",
+    "file": "assets/app-B2HessQ3.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -242,10 +254,11 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_draw-options-DuQuMyPh.js",
-      "_BalloonLayer-BG6XJ35E.js",
+      "_draw-options-DMlbCfiW.js",
+      "_sail-clip-kDndrBgn.js",
+      "_BalloonLayer-CL9yMzst.js",
       "_clip-W780-tgz.js",
-      "_water-C7gxFcRy.js",
+      "_water-BjePzq6I.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js",
       "_comic-america-DKlp7hw_.js"
@@ -285,7 +298,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-D68MZjy9.js",
+    "file": "assets/cutout-dialog-BoA5Feb3.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -298,22 +311,23 @@
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
       "_i18n-DoByrmTl.js",
-      "_draw-options-DuQuMyPh.js",
-      "_BalloonLayer-BG6XJ35E.js",
+      "_draw-options-DMlbCfiW.js",
+      "_sail-clip-kDndrBgn.js",
+      "_BalloonLayer-CL9yMzst.js",
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
-      "_water-C7gxFcRy.js",
+      "_water-BjePzq6I.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
   },
   "resources/js/editor/draw-layer.js": {
-    "file": "assets/draw-layer-D_Svz1F2.js",
+    "file": "assets/draw-layer-BgPA6UJC.js",
     "name": "draw-layer",
     "src": "resources/js/editor/draw-layer.js",
     "isDynamicEntry": true,
     "imports": [
-      "_draw-options-DuQuMyPh.js",
+      "_draw-options-DMlbCfiW.js",
       "_easing-HS2C6-zA.js"
     ]
   },
@@ -324,7 +338,7 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-BCR6bJP0.js",
+    "file": "assets/lesson-map-K6HCD2K_.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
@@ -336,7 +350,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DSnKPwqK.js",
+    "file": "assets/lesson-player-CBgCdNvY.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -344,15 +358,16 @@
       "_vite-helpers-DqutJMZx.js",
       "_race-VR0Fbz9P.js",
       "_pausable-clock-B6VRcHlA.js",
-      "_draw-options-DuQuMyPh.js",
+      "_sail-clip-kDndrBgn.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-Dsfy1xVP.js",
+      "_big-countdown-B0c9M518.js",
       "_config-DwQUN7uY.js",
-      "_stage-handoff-CoyE52Kn.js",
+      "_stage-handoff-BvZUkjeo.js",
       "_i18n-DoByrmTl.js",
       "_easing-HS2C6-zA.js",
+      "_draw-options-DMlbCfiW.js",
       "resources/js/scene/music-mixer.js",
-      "_ambient-CEzLlAaX.js",
+      "_ambient-CnaWjG1w.js",
       "resources/js/scene/tempo.js"
     ],
     "dynamicImports": [
@@ -365,11 +380,11 @@
       "resources/js/lesson-map.js",
       "resources/js/voyage-tour.js",
       "resources/js/scene/TextOverlayLayer.js",
-      "_BalloonLayer-BG6XJ35E.js",
+      "_BalloonLayer-CL9yMzst.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
-      "_TeamGame-jRLivRbK.js",
-      "_PowerMeter-CAAORoCX.js",
+      "_TeamGame-DeuvCMGe.js",
+      "_PowerMeter-CHV9JA73.js",
       "resources/js/scene/card-place.js",
       "resources/js/scene/wind-world.js",
       "resources/js/scene/race-lobby.js",
@@ -379,69 +394,70 @@
     ]
   },
   "resources/js/race-device.js": {
-    "file": "assets/race-device-BX3nVIRr.js",
+    "file": "assets/race-device-B4MEwOOX.js",
     "name": "race-device",
     "src": "resources/js/race-device.js",
     "isEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
       "_race-VR0Fbz9P.js",
-      "_PowerMeter-CAAORoCX.js",
+      "_PowerMeter-CHV9JA73.js",
       "resources/js/scene/race-sync.js",
       "resources/js/scene/race-stage.js",
       "_vite-helpers-DqutJMZx.js",
-      "_TeamGame-jRLivRbK.js",
-      "_ambient-CEzLlAaX.js",
+      "_TeamGame-DeuvCMGe.js",
+      "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-CKbhj_Oz.js",
+    "file": "assets/ArtworkOverlay-CBsRJIRr.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_draw-options-DuQuMyPh.js",
+      "_draw-options-DMlbCfiW.js",
       "_i18n-DoByrmTl.js",
-      "_big-countdown-Dsfy1xVP.js",
+      "_stage-handle-Ckz2xOyo.js",
+      "_big-countdown-B0c9M518.js",
       "_alpha-mask-C1RIm4VB.js",
-      "_ambient-CEzLlAaX.js",
+      "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js"
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-DznG0R0f.js",
+    "file": "assets/ParallaxScene-CKbpT6Ut.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dsfy1xVP.js",
-      "_ambient-CEzLlAaX.js",
-      "_stage-handoff-CoyE52Kn.js",
-      "_camera-DBGvDOmt.js",
+      "_big-countdown-B0c9M518.js",
+      "_ambient-CnaWjG1w.js",
+      "_stage-handoff-BvZUkjeo.js",
+      "_camera-Bqw6kZpV.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js",
-      "_draw-options-DuQuMyPh.js"
+      "_draw-options-DMlbCfiW.js"
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-HOcNLjE-.js",
+    "file": "assets/QuizOverlay-CrP-6xuI.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dsfy1xVP.js",
+      "_big-countdown-B0c9M518.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
-      "_ambient-CEzLlAaX.js",
+      "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-BFdZfJDd.js",
+    "file": "assets/SplitStage-D2w73S_a.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -449,13 +465,14 @@
       "resources/js/scene/ParallaxScene.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
-      "_BalloonLayer-BG6XJ35E.js",
-      "_big-countdown-Dsfy1xVP.js",
-      "_ambient-CEzLlAaX.js",
-      "_stage-handoff-CoyE52Kn.js",
-      "_camera-DBGvDOmt.js",
-      "_draw-options-DuQuMyPh.js",
+      "_BalloonLayer-CL9yMzst.js",
+      "_big-countdown-B0c9M518.js",
+      "_ambient-CnaWjG1w.js",
+      "_stage-handoff-BvZUkjeo.js",
+      "_camera-Bqw6kZpV.js",
+      "_draw-options-DMlbCfiW.js",
       "_easing-HS2C6-zA.js",
+      "_stage-handle-Ckz2xOyo.js",
       "_alpha-mask-C1RIm4VB.js",
       "_comic-america-DKlp7hw_.js",
       "_vite-helpers-DqutJMZx.js"
@@ -472,13 +489,14 @@
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-B07-h_fv.js",
+    "file": "assets/TextOverlayLayer-LtUUNc4z.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true,
     "imports": [
       "_i18n-DoByrmTl.js",
-      "_comic-america-DKlp7hw_.js"
+      "_comic-america-DKlp7hw_.js",
+      "_stage-handle-Ckz2xOyo.js"
     ]
   },
   "resources/js/scene/card-place.js": {
@@ -499,31 +517,33 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-y4Wy9nBG.js",
+    "file": "assets/index-C8xCZouD.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-Dsfy1xVP.js",
+      "_big-countdown-B0c9M518.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_vite-helpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
-      "_camera-DBGvDOmt.js",
-      "_BalloonLayer-BG6XJ35E.js",
+      "_camera-Bqw6kZpV.js",
+      "_BalloonLayer-CL9yMzst.js",
+      "_stage-handle-Ckz2xOyo.js",
+      "_ambient-CnaWjG1w.js",
       "resources/js/app.js",
       "node_modules/three/build/three.module.js",
-      "_draw-options-DuQuMyPh.js",
-      "_ambient-CEzLlAaX.js",
+      "_draw-options-DMlbCfiW.js",
       "_easing-HS2C6-zA.js",
       "_comic-america-DKlp7hw_.js",
       "_alpha-mask-C1RIm4VB.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_ScrollTrigger-B2uKOqL4.js",
+      "_sail-clip-kDndrBgn.js",
       "_clip-W780-tgz.js",
-      "_water-C7gxFcRy.js",
+      "_water-BjePzq6I.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ],
@@ -535,17 +555,17 @@
     ]
   },
   "resources/js/scene/meter-inputs/mic.js": {
-    "file": "assets/mic-C4Hzefjx.js",
+    "file": "assets/mic-qyvffZ87.js",
     "name": "mic",
     "src": "resources/js/scene/meter-inputs/mic.js",
     "isDynamicEntry": true,
     "imports": [
-      "_PowerMeter-CAAORoCX.js",
+      "_PowerMeter-CHV9JA73.js",
       "_vite-helpers-DqutJMZx.js",
       "_i18n-DoByrmTl.js",
       "_race-VR0Fbz9P.js",
-      "_TeamGame-jRLivRbK.js",
-      "_ambient-CEzLlAaX.js",
+      "_TeamGame-DeuvCMGe.js",
+      "_ambient-CnaWjG1w.js",
       "_team-colours-JOtUsqOj.js",
       "resources/js/scene/card-place.js",
       "_easing-HS2C6-zA.js"
@@ -589,25 +609,22 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/splat-reveal.js": {
-    "file": "assets/splat-reveal-CpohB0nh.js",
+    "file": "assets/splat-reveal-DpWsBs88.js",
     "name": "splat-reveal",
     "src": "resources/js/scene/stage25d/splat-reveal.js",
     "isDynamicEntry": true,
     "imports": [
       "_babylon-ClnPoGlu.js",
-      "_engine-Wme-e69E.js",
+      "_engine-FT9aiHkN.js",
       "_vite-helpers-DqutJMZx.js",
       "_puppet-sheet-B0KaX9MG.js",
       "_load-image-DngxJD_v.js",
-      "_water-C7gxFcRy.js",
-      "_draw-options-DuQuMyPh.js",
+      "_water-BjePzq6I.js",
+      "_sail-clip-kDndrBgn.js",
       "_easing-HS2C6-zA.js",
       "_config-DwQUN7uY.js",
-      "resources/js/scene/ArtworkOverlay.js",
-      "_i18n-DoByrmTl.js",
-      "_big-countdown-Dsfy1xVP.js",
-      "_ambient-CEzLlAaX.js",
-      "_alpha-mask-C1RIm4VB.js",
+      "_stage-handle-Ckz2xOyo.js",
+      "_ambient-CnaWjG1w.js",
       "_projection-CL24asTn.js"
     ]
   },
@@ -627,7 +644,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-DjcoJNf-.js",
+    "file": "assets/recorder-TO3-QU6n.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -637,17 +654,18 @@
       "_vite-helpers-DqutJMZx.js",
       "_ScrollTrigger-B2uKOqL4.js",
       "_easing-HS2C6-zA.js",
-      "_draw-options-DuQuMyPh.js",
-      "_BalloonLayer-BG6XJ35E.js",
+      "_draw-options-DMlbCfiW.js",
+      "_sail-clip-kDndrBgn.js",
+      "_BalloonLayer-CL9yMzst.js",
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
-      "_water-C7gxFcRy.js",
+      "_water-BjePzq6I.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
   },
   "resources/js/timemap/index.js": {
-    "file": "assets/index-CIY_Amyw.js",
+    "file": "assets/index-Cg7ZenMr.js",
     "name": "index",
     "src": "resources/js/timemap/index.js",
     "isEntry": true,
@@ -655,7 +673,7 @@
       "_vite-helpers-DqutJMZx.js",
       "_map-imagery-Bp93pHDe.js",
       "_easing-HS2C6-zA.js",
-      "_border-sweep-g9uwK-kV.js",
+      "_border-sweep-BN94bNmI.js",
       "_tuner-CTMYYJl-.js",
       "_i18n-DoByrmTl.js"
     ],
@@ -664,19 +682,19 @@
     ]
   },
   "resources/js/timemap/voyage-ships.js": {
-    "file": "assets/voyage-ships-kuJNjZ85.js",
+    "file": "assets/voyage-ships-C0P5ENzn.js",
     "name": "voyage-ships",
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
       "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
-      "_border-sweep-g9uwK-kV.js",
+      "_border-sweep-BN94bNmI.js",
       "_easing-HS2C6-zA.js"
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-l_kK1Mpz.js",
+    "file": "assets/voyage-tour-BnWheoqa.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -685,12 +703,13 @@
       "resources/js/lesson-map.js",
       "resources/js/gallery-scene.js",
       "_easing-HS2C6-zA.js",
-      "_border-sweep-g9uwK-kV.js",
+      "_border-sweep-BN94bNmI.js",
       "resources/js/timemap/voyage-ships.js",
       "_vite-helpers-DqutJMZx.js",
       "_map-imagery-Bp93pHDe.js",
       "_pausable-clock-B6VRcHlA.js",
       "_i18n-DoByrmTl.js",
+      "_sail-clip-kDndrBgn.js",
       "node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]

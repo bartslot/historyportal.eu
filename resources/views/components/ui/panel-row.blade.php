@@ -47,11 +47,13 @@
           @class([$labelClasses, 'block', 'cursor-col-resize' => $default !== null])>{{ $label }}</span>
     <div class="flex items-center gap-2" style="min-height: var(--settings-panel-row-h, 2rem)">
         <div class="flex min-w-0 flex-1 items-center gap-1.5">{{ $slot }}</div>
-        <span class="flex shrink-0 items-center justify-center" style="width: 13px">
-            @if ($keyframe)
+        {{-- A stacked control with no diamond runs to the panel edge, like the selects beside it (Bart 2026-11-19:
+             "no random white space left or right"). The column is reserved only when a diamond sits in it. --}}
+        @if ($keyframe)
+            <span class="flex shrink-0 items-center justify-center" style="width: 13px">
                 <x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeProperty" />
-            @endif
-        </span>
+            </span>
+        @endif
     </div>
 </div>
 @else

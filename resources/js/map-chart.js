@@ -52,7 +52,8 @@ export const CHART = Object.freeze({
   ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
   ridgeWash: 0.8,              // ridge opacity: the ink stays, a touch quieter
   tuftOpacity: 0.55,
-  waveOpacity: 0.8,
+  // Off (Bart 2026-11-21: "please remove these wavy lines"): the sea reads as water without them. The tuner can bring them back.
+  waveOpacity: 0,
   waveScale: 1.5,
   seaWash: 0.85,               // was 0.6: the wash now carries the sea's depth colours (Bart 11-11, aquarel water); painted sea washes over the base sea (Bart 10-26: "lots of watercolour textures")
   seaGrain: 0.14,              // the paint's granulation over the water, at screen scale (the baked glaze is too soft for it)
@@ -125,6 +126,23 @@ export const ISLET_KM2 = [[0, 20000], [2.5, 3000], [3.5, 800], [4.5, 100], [5.5,
 const shownAtZoom = (on = 1) => ['step', ['zoom'],
   ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
 
+/**
+ * Lakes are not specks: a lake the size of Balkhash or Issyk-Kul belongs on a map of Asia, where the islet rule hid
+ * every lake under 20 000 km² and left the land wash's pale hole where it should be (Bart 2026-11-21: "all the lakes
+ * are not blue … these need the same treatment as other lakes"). Their own, much lower, size per zoom.
+ */
+export const LAKE_KM2 = [[0, 1000], [3.5, 300], [4.5, 50], [5.5, 0]]
+const lakeAt = (z) => [...LAKE_KM2].reverse().find(([from]) => z >= from)[1]
+const lakeShownAtZoom = (on = 1) => ['step', ['zoom'],
+  ...LAKE_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
+/** One zoom step for the shared coastline: a lake's ring by the lake rule, any other by the islet rule. */
+const ringShownAtZoom = (on = 1) => {
+  const zs = [...new Set([...ISLET_KM2, ...LAKE_KM2].map(([z]) => z))].sort((a, b) => a - b)
+  const isleAt = (z) => [...ISLET_KM2].reverse().find(([from]) => z >= from)[1]
+  const at = (z) => ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], ['case', ['has', 'lake'], lakeAt(z), isleAt(z)]]], on, 0]
+  return ['step', ['zoom'], ...zs.flatMap((z, i) => [...(i ? [z] : []), at(z)])]
+}
+
 const fadeIn = (from, to) => ['interpolate', ['linear'], ['zoom'], from, 0, from + 0.4, to]
 
 /**
@@ -146,9 +164,9 @@ export function chartLayers (cfg = CHART) {
     { id: 'chart-wash-land', type: 'raster', source: 'chart-wash-land', paint: { 'raster-opacity': cfg.landWash, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } },
     // Inland water (the IJsselmeer, Lake Geneva, the Great Lakes) painted as the sea: Natural Earth's
     // land has them filled in, and the chart had drawn the Netherlands without its IJsselmeer.
-    { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': shownAtZoom() } },
+    { id: 'chart-lakes', type: 'fill', source: 'chart-lakes', paint: { 'fill-pattern': 'chart-sea', 'fill-opacity': lakeShownAtZoom() } },
     { id: 'chart-land-edge', type: 'line', source: 'coastline', layout: { 'line-join': 'round' },
-      paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': shownAtZoom(cfg.landEdgeOpacity),
+      paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': ringShownAtZoom(cfg.landEdgeOpacity),
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
       layout: { 'icon-image': ['concat', 'chart-tuft-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
@@ -162,15 +180,15 @@ export function chartLayers (cfg = CHART) {
       paint: { 'line-color': cfg.inkColor, 'line-opacity': shownAtZoom(cfg.dashOpacity), 'line-width': 1.3, 'line-dasharray': [3, 2.2],
         'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': shownAtZoom() } },
+      paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': ringShownAtZoom() } },
     // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
       layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
     // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
-    { id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
+    ...(cfg.waveOpacity > 0 ? [{ id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
       layout: { 'icon-image': ['concat', 'chart-wave-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': waveSize(cfg.waveScale) },
-      paint: { 'icon-opacity': cfg.waveOpacity } },
+      paint: { 'icon-opacity': cfg.waveOpacity } }] : []),
   ]
   return { under, over }
 }

@@ -11,6 +11,7 @@ use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -42,6 +43,21 @@ class SceneRailTest extends TestCase
             ->assertSee('Place 2')
             ->assertSeeHtml('wire:click="$parent.selectScene('.$scene->id.')"')
             ->assertSeeHtml('data-thumb-selected');
+    }
+
+    public function test_the_title_card_shows_what_the_title_screen_shows_when_the_lesson_has_no_title_picture(): void
+    {
+        // Bart 2026-11-21: a lesson of 3D scenes has no title picture of its own, and its title card in the rail was an
+        // empty dark box. The player's title screen falls back to the lesson's card picture: the first scene's still.
+        Storage::fake('public');
+        $lesson = $this->lesson();
+        $still = 'lessons/'.$lesson->id.'/scenes/1/still-abc.jpg';
+        Storage::disk('public')->put($still, 'jpg');
+        $lesson->scenes()->ordered()->first()->update(['image_path' => $still]);
+        $html = Livewire::actingAs($lesson->teacher)->test(SceneRail::class, ['lessonId' => $lesson->id, 'titleSelected' => true])->html();
+        $title = substr($html, (int) strpos($html, 'data-title-thumb'), 1500);
+        $this->assertStringContainsString('data-title-thumb', $title);
+        $this->assertStringContainsString('still-abc.jpg', $title, 'the title card shows the picture the title screen uses');
     }
 
     public function test_another_teacher_never_sees_the_rail(): void

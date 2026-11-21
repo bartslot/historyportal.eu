@@ -44,6 +44,9 @@ class DutchEditorLabelsTest extends TestCase
         foreach (['Story', 'Strategy game', 'Debate', 'Map', 'Gallery'] as $english) {
             $this->assertStringNotContainsString(">{$english}</span>", $html);
         }
+        foreach (['Verhaal en media', 'Interactie', 'Kaart en reis'] as $group) {   // the picker's categories (Bart 2026-11-21)
+            $this->assertStringContainsString(">{$group}</h3>", $html);
+        }
         // Object-list rows built in Alpine: never a bare English literal.
         foreach (["label: 'Gallery'", "label: 'Waypoint'", "? 'Slideshow'", "' half'"] as $literal) {
             $this->assertStringNotContainsString($literal, $html);

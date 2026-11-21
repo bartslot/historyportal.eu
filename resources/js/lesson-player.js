@@ -21,7 +21,8 @@ import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, fo
 import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
-import { hasAnimation, frameAt, applyFrameTo } from './anim/scene-animation.js'
+import { hasAnimation, frameAt, applyFrameTo, cameraEnd } from './anim/scene-animation.js'
+import { storedSail } from './anim/sail-clip.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
 import { isStage25d } from './scene/stage25d/config.js'
@@ -2168,8 +2169,17 @@ Alpine.data('lessonGame', (lesson) => ({
         this._startStageAuto(scene)
         return
       }
+      // A camera keyed in the timeline IS the opening (the space intro is seeded there): the built-in fly-in
+      // stands down and the ship waits for the camera to finish.
+      const camHold = cameraEnd(cfg.timeline)
+      // The crossing's own clip on the timeline (anim/sail-clip.js): when the ship sets off and how long it sails.
+      // Without one the leg sets off after the camera and sails as long as its dates say.
+      const sail = storedSail(cfg.timeline)
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
-        intro: !!cfg.intro,
+        intro: !!cfg.intro && !camHold && !sail?.start,
+        holdMs: (sail ? sail.start : camHold) * 1000,
+        sailMs: sail ? (sail.end - sail.start) * 1000 : 0,
+        cameraUntilMs: camHold * 1000,
         stopImages: cfg.stop_images || [],
         gallery: cfg.gallery || null,
         hotspot: cfg.hotspot || null,
@@ -2611,10 +2621,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // The background keyed like a layer: a split scene's panels, else the scene's own picture.
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
+      const camEnd = cameraEnd(timeline)
       const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
       const step = () => {
         if (epoch !== this._playEpoch) return
-        applyFrameTo(frameAt(timeline, clock()), { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map })
+        const t = clock()
+        const frame = frameAt(timeline, t)
+        if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
+        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

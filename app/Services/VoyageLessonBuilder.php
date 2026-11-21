@@ -33,7 +33,7 @@ class VoyageLessonBuilder
     public function __construct(private CloudinaryService $cloud) {}
 
     /**
-     * @param  array{title?:string,topic?:string,grade_level?:string,tone?:string}  $overrides
+     * @param  array{title?:string,topic?:string,grade_level?:string,tone?:string,language?:string}  $overrides
      */
     public function build(string $voyageId, User $teacher, array $overrides = []): Lesson
     {
@@ -41,7 +41,8 @@ class VoyageLessonBuilder
         if (empty($catalog['legs'])) {
             throw new RuntimeException("Voyage '{$voyageId}' has no legs in voyages.json — add legs (and a fleet) before it can become a lesson.");
         }
-        $pack = $this->tourPack($voyageId);
+        $language = (string) ($overrides['language'] ?? (self::langCode(app()->getLocale()) ?? 'en'));
+        $pack = $this->tourPack($voyageId, $language);
 
         $title = $overrides['title'] ?? ($pack['title'] ?? ($catalog['name'] ?? $voyageId).' — voyage');
 
@@ -50,6 +51,7 @@ class VoyageLessonBuilder
             [
                 'topic' => $overrides['topic'] ?? $title,
                 'subject' => 'history',
+                'language' => $language,
                 'grade_level' => $overrides['grade_level'] ?? 'K-7',
                 'tone' => $overrides['tone'] ?? 'adventurous',
                 'status' => LessonStatus::Previewable->value,
@@ -83,7 +85,7 @@ class VoyageLessonBuilder
             $lesson->scenes()->create($this->galleryScenePayload($pack['intro'], $voyageId, 'intro', $order++));
         }
 
-        foreach ($this->routeScenes($voyageId) as $payload) {
+        foreach ($this->routeScenes($voyageId, $language) as $payload) {
             $lesson->scenes()->create(['order' => $order++, ...$payload]);
         }
 
@@ -102,13 +104,13 @@ class VoyageLessonBuilder
      *
      * @return list<array<string,mixed>>
      */
-    public function routeScenes(string $voyageId): array
+    public function routeScenes(string $voyageId, ?string $lang = null): array
     {
         $catalog = $this->catalogEntry($voyageId);
         if (empty($catalog['legs'])) {
             throw new RuntimeException("Voyage '{$voyageId}' has no legs in voyages.json — add legs (and a fleet) before it can become a lesson.");
         }
-        $pack = $this->tourPack($voyageId);
+        $pack = $this->tourPack($voyageId, $lang);
 
         // The itinerary: the whole voyage on one screen before anyone sets off, so a class can see
         // where they are going. It carries no geometry of its own — the renderer derives the route
@@ -261,14 +263,110 @@ class VoyageLessonBuilder
     }
 
     /** @return array<string,mixed> */
-    private function tourPack(string $voyageId): array
+    /**
+     * The tour pack's copy for each leg's stop (place, date_label, title, story), by leg index. Empty
+     * when the voyage has no pack. The editor fills a lesson's empty stops from it.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public function stopCopy(string $voyageId, array $legs = [], ?string $lang = null): array
     {
+        return $this->matchStops($this->tourPack($voyageId, $lang), $legs);
+    }
+
+    /** @return array<int, array<string, string>> */
+    private function matchStops(array $tourPack, array $legs): array
+    {
+        $pack = array_values((array) ($tourPack['legs'] ?? []));
+        $copy = fn ($leg) => array_map('strval', array_intersect_key((array) ($leg['stop'] ?? []), array_flip(['place', 'date_label', 'title', 'story'])));
+        if (! $legs) {
+            return array_map($copy, $pack);
+        }
+        // Match a lesson's own legs to the pack by ARRIVAL DATE first: a lesson copied the route before a stop was
+        // added to the catalogue (Jerusalem, 2026-11-20) still has the old numbering, and by index alone every
+        // stop after the new one would get its neighbour's story. Falls back to the index when no date matches.
+        $byArrive = [];
+        foreach ($pack as $leg) {
+            if (! empty($leg['arrive'])) {
+                $byArrive[(string) $leg['arrive']] = $leg;
+            }
+        }
+        $out = [];
+        foreach (array_values($legs) as $i => $leg) {
+            $match = $byArrive[(string) ($leg['arrive'] ?? '')] ?? (count($legs) === count($pack) ? ($pack[$i] ?? null) : null);
+            $out[$i] = $match ? $copy($match) : [];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The tour pack in the lesson's language: `<id>-tour.<lang>.json` when there is one, else `<id>-tour.json`, which
+     * is written in its own `lang` (Dutch when it says nothing). Bart 2026-11-21: "Venetië is in dutch, while the
+     * lesson is in english."
+     */
+    private function tourPack(string $voyageId, ?string $lang = null): array
+    {
+        $code = self::langCode($lang);
         $path = resource_path("js/timemap/{$voyageId}-tour.json");
+        if ($code !== null && File::exists(resource_path("js/timemap/{$voyageId}-tour.{$code}.json"))) {
+            $path = resource_path("js/timemap/{$voyageId}-tour.{$code}.json");
+        }
         if (! File::exists($path)) {
             return [];
         }
         $json = json_decode(File::get($path), true);
 
         return is_array($json) ? $json : [];
+    }
+
+    /** Every pack this voyage has, in any language, keyed by language code. */
+    private function tourPacks(string $voyageId): array
+    {
+        $packs = [];
+        foreach (File::glob(resource_path("js/timemap/{$voyageId}-tour*.json")) as $path) {
+            if (! preg_match('/-tour(?:\.([a-z]{2}))?\.json$/', $path, $m)) {
+                continue;
+            }
+            $json = json_decode(File::get($path), true);
+            if (is_array($json)) {
+                $packs[$m[1] ?? (string) ($json['lang'] ?? 'nl')] = $json;
+            }
+        }
+
+        return $packs;
+    }
+
+    private static function langCode(?string $lang): ?string
+    {
+        $code = strtolower(substr(trim((string) $lang), 0, 2));
+
+        return preg_match('/^[a-z]{2}$/', $code) ? $code : null;
+    }
+
+    /**
+     * Each leg's stop copy as the OTHER languages' packs word it, by leg index and field: text the editor once filled
+     * in from a pack in the wrong language, which it may replace because no teacher wrote it.
+     *
+     * @return array<int, array<string, list<string>>>
+     */
+    public function foreignStopCopy(string $voyageId, array $legs, ?string $lang): array
+    {
+        $code = self::langCode($lang);
+        $out = [];
+        foreach ($this->tourPacks($voyageId) as $packLang => $pack) {
+            if ($packLang === $code) {
+                continue;
+            }
+            foreach ($this->matchStops($pack, $legs) as $i => $stop) {
+                foreach ($stop as $field => $text) {
+                    if ($text !== '') {
+                        $out[$i][$field][] = $text;
+                    }
+                }
+            }
+        }
+
+        return $out;
     }
 }

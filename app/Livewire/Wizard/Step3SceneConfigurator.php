@@ -1572,6 +1572,26 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * The selected leg's dates, for its crossing on the timeline (resources/js/anim/sail-clip.js). Null on anything
+     * that sails nothing: another kind of scene, or the itinerary.
+     *
+     * @return array{depart: string, arrive: string}|null
+     */
+    public function sailLeg(): ?array
+    {
+        $scene = $this->selectedScene;
+        if (! $scene || ($scene['kind'] ?? null) !== 'voyage' || ! empty($scene['config']['overview'])) {
+            return null;
+        }
+        $leg = $this->voyageDef()['legs'][(int) ($scene['config']['leg'] ?? 0)] ?? null;
+        if (! is_array($leg)) {
+            return null;
+        }
+
+        return ['depart' => (string) ($leg['depart'] ?? ''), 'arrive' => (string) ($leg['arrive'] ?? '')];
+    }
+
+    /**
      * The editable route copy for ONE voyage, falling back to the shared catalogue.
      *
      * Takes the voyage explicitly because the scene payload is built per scene: asking for "the"
@@ -2141,6 +2161,127 @@ class Step3SceneConfigurator extends Component
         return $stops;
     }
 
+    /**
+     * How many of this voyage's stops the tour pack could fill: a leg scene whose date, gallery title
+     * story or name is still empty. 0 hides the "Fill in the stops" button.
+     */
+    public function fillableStops(): int
+    {
+        $voyageId = $this->selectedVoyageId();
+        $legs = (array) ($this->voyageDef()['legs'] ?? []);
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, $legs, $this->lesson->language) : [];
+        if (! $copy) {
+            return 0;
+        }
+        $open = $this->stopFieldOpen($voyageId, $legs);
+
+        return $this->voyageLegScenes($voyageId)->filter(function (Scene $scene) use ($copy, $open): bool {
+            $leg = (int) ($scene->config['leg'] ?? 0);
+            $stop = $copy[$leg] ?? [];
+            $gallery = (array) ($scene->config['gallery'] ?? []);
+            foreach (['title', 'date_label', 'story'] as $field) {
+                if (($stop[$field] ?? '') !== '' && $stop[$field] !== ($gallery[$field] ?? null) && $open($leg, $field, $gallery[$field] ?? '')) {
+                    return true;
+                }
+            }
+
+            return (($stop['place'] ?? '') !== '' && $stop['place'] !== $scene->location && $open($leg, 'place', $scene->location, true))
+                || (($stop['story'] ?? '') !== '' && $stop['story'] !== $scene->script_segment && $open($leg, 'story', $scene->script_segment));
+        })->count();
+    }
+
+    /**
+     * Whether a stop's field may take the pack's copy: it is empty, or it still holds a pack's copy in another
+     * language, which the editor put there and no teacher wrote (Bart 2026-11-21: "Venetië is in dutch, while the
+     * lesson is in english"). A name only counts as empty when asked for; a name in the wrong language always may go.
+     *
+     * @return \Closure(int, string, ?string, bool=): bool
+     */
+    private function stopFieldOpen(string $voyageId, array $legs, bool $emptyNames = true): \Closure
+    {
+        $foreign = app(VoyageLessonBuilder::class)->foreignStopCopy($voyageId, $legs, $this->lesson->language);
+
+        return function (int $leg, string $field, ?string $value, bool $isName = false) use ($foreign, $emptyNames): bool {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return ! $isName || $emptyNames;
+            }
+
+            return in_array($value, $foreign[$leg][$field] ?? [], true);
+        };
+    }
+
+    /**
+     * Fill this voyage's EMPTY stops from its tour pack (Bart 2026-11-20: "Can we auto populate the stops of
+     * Marco Polo?"): each leg's date, gallery title and short story, the story also as its script. The stop's name is left alone unless
+     * asked for. Never overwrites anything a teacher typed.
+     */
+    public function fillVoyageStops(bool $withNames = false): void
+    {
+        $voyageId = $this->selectedVoyageId();
+        $legs = (array) ($this->voyageDef()['legs'] ?? []);
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, $legs, $this->lesson->language) : [];
+        if (! $copy) {
+            return;
+        }
+        $open = $this->stopFieldOpen($voyageId, $legs, $withNames);
+        $filled = 0;
+        $gc = $this->ensureVoyageDef();
+        $namesChanged = false;
+        foreach ($this->voyageLegScenes($voyageId) as $scene) {
+            $leg = (int) ($scene->config['leg'] ?? 0);
+            $stop = $copy[$leg] ?? [];
+            $config = $scene->config;
+            $gallery = (array) ($config['gallery'] ?? []);
+            $changed = false;
+            foreach (['title', 'date_label', 'story'] as $field) {
+                if (($stop[$field] ?? '') !== '' && $open($leg, $field, $gallery[$field] ?? '')) {
+                    $gallery[$field] = $stop[$field];
+                    $changed = true;
+                }
+            }
+            $updates = [];
+            if ($changed) {
+                $config['gallery'] = $gallery;
+                $updates['config'] = $config;
+            }
+            // The story is also the stop's script (Bart 2026-11-20: "add the text to the story in the writing of the
+            // script"), so the narration says it. Only into an empty script (or one still in another language's copy).
+            if (($stop['story'] ?? '') !== '' && $open($leg, 'story', $scene->script_segment)) {
+                $updates['script_segment'] = $stop['story'];
+            }
+            $title = $gc['voyage_def']['legs'][$leg]['title'] ?? null;
+            if (($stop['place'] ?? '') !== '' && isset($gc['voyage_def']['legs'][$leg])
+                && $open($leg, 'place', $scene->location, true) && $open($leg, 'place', $title)) {
+                $gc['voyage_def']['legs'][$leg]['title'] = $stop['place'];
+                $updates['location'] = $stop['place'];
+                $namesChanged = true;
+            }
+            if ($updates) {
+                $scene->update($updates);
+                $filled++;
+            }
+        }
+        if ($namesChanged) {
+            $this->saveGameConfig($gc);
+        }
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        if ($this->selectedSceneId) {
+            $this->selectSceneInternal((int) $this->selectedSceneId);
+        }
+        $this->dispatch('toast', type: 'success', message: trans_choice('{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.', $filled, ['count' => $filled]));
+    }
+
+    /** This voyage's leg scenes (not its overview). */
+    private function voyageLegScenes(string $voyageId): \Illuminate\Support\Collection
+    {
+        return $this->lesson->scenes()->where('kind', 'voyage')->ordered()->get()
+            ->reject(fn (Scene $s) => (bool) ($s->config['overview'] ?? false))
+            ->filter(fn (Scene $s) => ($s->config['voyage'] ?? $voyageId) === $voyageId)
+            ->values();
+    }
+
     /** Does the last leg end where the first one began (within ~100 km)? */
     private function voyageReturnsHome(array $def): bool
     {
@@ -2224,13 +2365,22 @@ class Step3SceneConfigurator extends Component
         }
         $anim = ($this->selectedScene['config']['overview_anim'] ?? []) + ['route' => 'draw', 'duration' => 3.0, 'stops' => true];
         $anim[$key] = match ($key) {
-            'route' => in_array($value, ['draw', 'none'], true) ? $value : 'draw',
-            'duration' => max(0.5, min(10.0, (float) $value)),
+            'route' => in_array($value, ['draw', 'sail', 'none'], true) ? $value : 'draw',
+            // Sailing the whole voyage takes a while; drawing a line does not (Bart 2026-11-21).
+            'duration' => max(0.5, min(($anim['route'] ?? 'draw') === 'sail' ? 90.0 : 10.0, (float) $value)),
             'stops' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
             default => null,
         };
         if ($anim[$key] === null) {
             return;
+        }
+        // The preset: picking "Sail the whole voyage" gives it room to sail (two seconds a leg), and going back to a
+        // plain draw brings the time back inside what a draw allows.
+        if ($key === 'route') {
+            $legs = count($this->voyageDef()['legs'] ?? []);
+            $anim['duration'] = $value === 'sail'
+                ? (float) max(10, min(90, 2 * max(1, $legs)))
+                : min(10.0, (float) $anim['duration']);
         }
         $this->selectedScene['config']['overview_anim'] = $anim;
         $this->saveSelected();
@@ -2291,7 +2441,7 @@ class Step3SceneConfigurator extends Component
      * A timeline from the browser as it is stored, rebuilt field by field.
      *
      * @param  array<string, mixed>  $timeline
-     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>}
+     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
      */
     private function storedTimeline(array $timeline): array
     {
@@ -2371,7 +2521,19 @@ class Step3SceneConfigurator extends Component
             $tracks[] = $stored;
         }
 
-        return ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+        $stored = ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+
+        // A voyage leg's crossing as a clip (resources/js/anim/sail-clip.js): when the ship sets off, when it lands.
+        $sail = $timeline['sail'] ?? null;
+        if (is_array($sail) && is_numeric($sail['start'] ?? null) && is_numeric($sail['end'] ?? null)) {
+            $start = max(0.0, min(3600.0, round((float) $sail['start'], 2)));
+            $end = max(0.0, min(3600.0, round((float) $sail['end'], 2)));
+            if ($end - $start >= 0.5) {
+                $stored['sail'] = ['start' => $start, 'end' => $end];
+            }
+        }
+
+        return $stored;
     }
 
     /**
@@ -2670,6 +2832,30 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($this->selectedSceneId);
     }
 
+    /**
+     * Rename a stop right in the itinerary list, with or without a scene of its own (Bart 2026-11-21: "So how do I
+     * change Acre into Jerusalem"). Same storage as setLegTitle: the leg's title, mirrored into the leg scene's
+     * location when there is one.
+     */
+    public function renameVoyageStop(int $leg, string $title): void
+    {
+        $title = mb_substr(trim($title), 0, 80);
+        $gc = $this->ensureVoyageDef();
+        if (! isset($gc['voyage_def']['legs'][$leg])) {
+            return;
+        }
+        $gc['voyage_def']['legs'][$leg]['title'] = $title;
+        $this->saveGameConfig($gc);
+        $this->lesson->scenes()->where('kind', 'voyage')->get()
+            ->filter(fn ($s) => empty($s->config['overview']) && (int) ($s->config['leg'] ?? 0) === $leg)
+            ->each(fn ($s) => $s->update(['location' => $title !== '' ? $title : null]));
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        if ($this->selectedSceneId) {
+            $this->selectSceneInternal($this->selectedSceneId);
+        }
+    }
+
     // ── How this leg was travelled ────────────────────────────────────────────────────────────
     // Transport is a property of the CROSSING, not of the stop at either end: Marco Polo rode out
     // of Venice's hinterland, crossed the desert by camel and came home by sea, all between fixed
@@ -2891,6 +3077,42 @@ class Step3SceneConfigurator extends Component
         }
         // Unwrap the dragged longitude to sit within ±180° of the neighbour so a Pacific crossing stays
         // contiguous (Tonga ≈ 185°E) instead of jumping ~360° and drawing the route around the world.
+        $ref = $gc['voyage_def']['waypoints'][$wpIndex - 1][0] ?? ($gc['voyage_def']['waypoints'][$wpIndex + 1][0] ?? null);
+        $lng = self::unwrapLngNear($lng, $ref === null ? null : (float) $ref);
+        $gc['voyage_def']['waypoints'][$wpIndex] = [round($lng, 3), round($lat, 3)];
+        $this->saveGameConfig($gc);
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        $this->selectSceneInternal($this->selectedSceneId);
+    }
+
+    /**
+     * Drag a numbered stop on the itinerary (overview) scene: moves that stop's own waypoint, the landfall of
+     * whichever leg ends there (or the home port). Bart 2026-11-21: "would be nice to just drag the location on
+     * the map … the number". Only a stop moves from here, never a bend: bends belong to their leg's own scene.
+     */
+    #[On('voyageStopMoved')]
+    public function setVoyageStop(int $sceneId, int $wpIndex, $lng, $lat): void
+    {
+        if (! $this->selectedScene || (int) ($this->selectedScene['id'] ?? 0) !== $sceneId
+            || empty($this->selectedScene['config']['overview'])) {
+            return;
+        }
+        $lng = (float) $lng;
+        $lat = (float) $lat;
+        if (! is_finite($lng) || $lat < -90 || $lat > 90) {
+            return;
+        }
+        $this->pushVoyageUndo();
+        $gc = $this->ensureVoyageDef();
+        $legs = array_values((array) ($gc['voyage_def']['legs'] ?? []));
+        $stops = array_map(fn ($L) => (int) ($L['wp'][1] ?? -1), $legs);
+        if ($legs) {
+            $stops[] = (int) ($legs[0]['wp'][0] ?? -1);
+        }
+        if (! in_array($wpIndex, $stops, true) || ! isset($gc['voyage_def']['waypoints'][$wpIndex])) {
+            return;
+        }
         $ref = $gc['voyage_def']['waypoints'][$wpIndex - 1][0] ?? ($gc['voyage_def']['waypoints'][$wpIndex + 1][0] ?? null);
         $lng = self::unwrapLngNear($lng, $ref === null ? null : (float) $ref);
         $gc['voyage_def']['waypoints'][$wpIndex] = [round($lng, 3), round($lat, 3)];
@@ -5594,7 +5816,7 @@ class Step3SceneConfigurator extends Component
         $after = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
         $created = [];
-        foreach (app(VoyageLessonBuilder::class)->routeScenes($voyageId) as $i => $payload) {
+        foreach (app(VoyageLessonBuilder::class)->routeScenes($voyageId, $this->lesson->language) as $i => $payload) {
             $created[] = Scene::create(['lesson_id' => $this->lesson->id, 'order' => $next + $i, ...$payload]);
         }
         // Keep the run together, in order, after whatever was selected (as a Decision point does).
