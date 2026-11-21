@@ -1414,6 +1414,7 @@
         leaf: @js(\App\Support\UiIcon::svg('layer-plant', ['class' => 'h-4 w-4'])),
         balloon: @js(\App\Support\UiIcon::svg('layer-balloon', ['class' => 'h-4 w-4'])),
         camera: @js(\App\Support\UiIcon::svg('layer-camera', ['class' => 'h-4 w-4'])),
+        voyage: @js(\App\Support\UiIcon::svg('voyage-leg', ['class' => 'h-4 w-4'])),
         terrain: @js(\App\Support\UiIcon::svg('layer-terrain', ['class' => 'h-4 w-4'])),
         group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
         quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),

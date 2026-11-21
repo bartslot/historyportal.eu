@@ -1563,6 +1563,26 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * The selected leg's dates, for its crossing on the timeline (resources/js/anim/sail-clip.js). Null on anything
+     * that sails nothing: another kind of scene, or the itinerary.
+     *
+     * @return array{depart: string, arrive: string}|null
+     */
+    public function sailLeg(): ?array
+    {
+        $scene = $this->selectedScene;
+        if (! $scene || ($scene['kind'] ?? null) !== 'voyage' || ! empty($scene['config']['overview'])) {
+            return null;
+        }
+        $leg = $this->voyageDef()['legs'][(int) ($scene['config']['leg'] ?? 0)] ?? null;
+        if (! is_array($leg)) {
+            return null;
+        }
+
+        return ['depart' => (string) ($leg['depart'] ?? ''), 'arrive' => (string) ($leg['arrive'] ?? '')];
+    }
+
+    /**
      * The editable route copy for ONE voyage, falling back to the shared catalogue.
      *
      * Takes the voyage explicitly because the scene payload is built per scene: asking for "the"
@@ -2374,7 +2394,7 @@ class Step3SceneConfigurator extends Component
      * A timeline from the browser as it is stored, rebuilt field by field.
      *
      * @param  array<string, mixed>  $timeline
-     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>}
+     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
      */
     private function storedTimeline(array $timeline): array
     {
@@ -2454,7 +2474,19 @@ class Step3SceneConfigurator extends Component
             $tracks[] = $stored;
         }
 
-        return ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+        $stored = ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+
+        // A voyage leg's crossing as a clip (resources/js/anim/sail-clip.js): when the ship sets off, when it lands.
+        $sail = $timeline['sail'] ?? null;
+        if (is_array($sail) && is_numeric($sail['start'] ?? null) && is_numeric($sail['end'] ?? null)) {
+            $start = max(0.0, min(3600.0, round((float) $sail['start'], 2)));
+            $end = max(0.0, min(3600.0, round((float) $sail['end'], 2)));
+            if ($end - $start >= 0.5) {
+                $stored['sail'] = ['start' => $start, 'end' => $end];
+            }
+        }
+
+        return $stored;
     }
 
     /**

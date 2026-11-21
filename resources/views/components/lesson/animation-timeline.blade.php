@@ -11,6 +11,8 @@
     // does); the field beside the playhead changes one scene. (The JS carries the same default —
     // this is the one that reaches the page.)
     $duration = (float) ($timeline['duration'] ?? ($scene?->lesson?->sceneLengthMs() ?? \App\Models\Lesson::SCENE_LENGTH_MS) / 1000);
+    // A voyage leg's crossing is a clip on this timeline (resources/js/anim/sail-clip.js).
+    $sailLeg = isset($this) && method_exists($this, 'sailLeg') ? $this->sailLeg() : null;
 @endphp
 
 {{-- The wizard's Timeline tab (Figma 1417:1999).
@@ -43,6 +45,9 @@
         'alignment' => $alignment,
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
+        'sail'      => $timeline['sail'] ?? null,
+        'sailLeg'   => $sailLeg,
+        'sailLabel' => $sailLeg ? ($scene?->location ? __('Crossing to :place', ['place' => $scene->location]) : __('Crossing')) : null,
         'easingLabels' => [
             'auto'           => __('Automatic'),
             'linear'         => __('Linear'),
@@ -237,7 +242,9 @@
             {{-- Adding a camera is not part of the empty state. It was, and that meant a map scene
                  with a single caption on it could never be given one: the button was inside the
                  "nothing here" branch, which stopped rendering the moment a layer existed. --}}
-            <div x-show="canHaveCamera && !hasCamera" class="px-4 py-2">
+            {{-- A fixed height, mirrored by a spacer beside the ruler on the lanes' side, so the rows below it still
+                 line up with their bars (the voyage's crossing sat one row above its name). --}}
+            <div x-show="canHaveCamera && !hasCamera" class="flex items-center px-4" style="height: 40px">
                 <button type="button" x-on:click="addCamera()" data-timeline-add-camera
                         class="btn btn-xs rounded-full">{{ __('Add camera') }}</button>
             </div>
@@ -284,7 +291,7 @@
                         </svg>
                         <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
                     </button>
-                    <button type="button" x-on:click="toggleGroup(object.target, $event)"
+                    <button type="button" x-on:click="toggleGroup(object.target, $event)" x-show="object.kind !== 'sail'"
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
                             :aria-label="openGroups[object.target] ? @js(__('Collapse')) : @js(__('Expand'))"
@@ -302,7 +309,7 @@
 
                          The icon CHANGES rather than only its colour, which is what the HIG asks
                          for: not everyone can perceive a tint. --}}
-                    <button type="button" x-on:click="toggleHidden(object.target)"
+                    <button type="button" x-on:click="toggleHidden(object.target)" x-show="object.kind !== 'sail'"
                             :data-timeline-eye="object.target"
                             :aria-pressed="isHidden(object.target) ? 'true' : 'false'"
                             :class="isHidden(object.target) ? 'text-panel-label' : 'text-panel-icon'"
@@ -481,6 +488,8 @@
                     </template>
                 </div>
 
+                <div x-show="canHaveCamera && !hasCamera" style="height: 40px" data-timeline-add-camera-spacer></div>
+
                 <template x-for="object in objects" :key="object.target">
                     <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
@@ -525,6 +534,19 @@
                                  Effects): from when it appears to the scene's end. Drag a balloon's
                                  to move it, an end to stretch it; drag a figure's to set when it
                                  appears, which gives it an entrance (Bart, 2026-11-10). --}}
+                            {{-- A voyage leg's crossing (Bart 2026-11-21: "I want it to control the time"): the body moves
+                                 when the ship sets off, the ends stretch or squeeze how long it sails. --}}
+                            <template x-if="object.kind === 'sail'">
+                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px]"
+                                     data-timeline-sail
+                                     x-on:pointerdown="startBar($event, object.target)"
+                                     :style="barStyle(barOf(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                    <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-l-[3px] bg-base-content/40"></span>
+                                    <span class="pointer-events-none truncate px-1 text-xs text-base-content/80"
+                                          x-text="(Math.round((barOf(object.target).to - barOf(object.target).from) * 10) / 10) + ' s'"></span>
+                                    <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
+                                </div>
+                            </template>
                             <template x-if="object.kind === 'bal' || object.kind === 'art'">
                                 <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
                                      :data-timeline-span="object.target"

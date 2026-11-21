@@ -13,6 +13,7 @@ import { buffer as turfBuffer, lineString as turfLine, simplify as turfSimplify,
 import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
 import { t } from './i18n.js';
+import { defaultSailSeconds } from './anim/sail-clip.js';
 
 // Voyage tour — the whole voyage is ONE persistent map. Legs play via playLeg(): the map, ships,
 // fog and route trail are built once, and moving between scenes eases the camera to the next leg
@@ -22,8 +23,6 @@ import { t } from './i18n.js';
 // Content packs live next to the route data: resources/js/timemap/<voyage>-tour.json.
 
 const TOUR_PACKS = import.meta.glob('./timemap/*-tour.json', { eager: true });
-const MS_PER_MONTH = 2000;
-const MONTH_MS = 30.44 * 24 * 3600 * 1000;
 const LEG_EASE_MS = 1400;  // smooth glide from one leg's arrival to the next leg's departure
 // The voyage's follow zoom is a GLOBAL slider (ocean_zoom 0–100), NOT an auto-fit of the leg span
 // (which zoomed right out to the whole world on ocean crossings). 0% = tight on the ship + a small
@@ -309,7 +308,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   const updatePaintPreview = () => { try { const s = map.getSource('voyage-paint'); if (s) s.setData(paintFC()); } catch (_) { /* no source yet */ } };
 
   // Per-leg state, replaced by runLeg().
-  let L = { def: null, stop: null, departMs: 0, arriveMs: 0, f0: 0, f1: 1, start: null, end: null, followZoom: 3.8, stopImages: [], gallery: null };
+  let L = { def: null, stop: null, departMs: 0, arriveMs: 0, f0: 0, f1: 1, start: null, end: null, followZoom: 3.8, stopImages: [], gallery: null, holdMs: 0, sailMs: 0, cameraUntilMs: 0 };
   let sailing = false;   // true only while a leg's sail animation is running (drives the live zoom)
 
   // ── Pause ────────────────────────────────────────────────────────────
@@ -1155,7 +1154,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   };
 
   const sail = (token) => {
-    const durationMs = Math.min(26_000, Math.max(6_000, ((L.arriveMs - L.departMs) / MONTH_MS) * MS_PER_MONTH));
+    // The crossing's length is the scene timeline's sail clip when the teacher set one (anim/sail-clip.js).
+    const durationMs = L.sailMs > 0 ? L.sailMs : defaultSailSeconds(L.def.depart, L.def.arrive) * 1000;
     sailClock.reset();
     if (paused) sailClock.pause();   // a leg that starts while paused waits at its departure point
     sailing = true;
@@ -1171,7 +1171,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // Follow the ship at the slider-controlled zoom (L.followZoom). "Dolly in on arrival" adds a
       // little extra zoom over the last 40% of the crossing as the ship makes landfall.
       const arrivalIn = MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA * smoothstep(Math.max(0, (eased - 0.6) / 0.4)) : 0;
-      map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: 0 });
+      // While the scene's own camera keys are still playing, they frame the shot; the follow camera waits.
+      if (L.holdMs + sailClock.elapsed() >= L.cameraUntilMs) map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom + arrivalIn, pitch: 0 });
       setChip(L.departMs + eased * (L.arriveMs - L.departMs), null);
       if (p < 1) { raf = requestAnimationFrame(step); } else { sailing = false; sailStep = null; showArrival(token); }
     };
@@ -1201,7 +1202,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   };
 
   // Play one leg on the EXISTING map — no rebuild, just ease the camera over and sail.
-  const runLeg = (leg, { intro = false, holdMs = 0, stopImages = [], gallery = null, hotspot = null } = {}) => {
+  const runLeg = (leg, { intro = false, holdMs = 0, sailMs = 0, cameraUntilMs = 0, stopImages = [], gallery = null, hotspot = null } = {}) => {
     inOverview = false;   // back on a single leg: its landfall is draggable again
     const token = ++legToken;      // cancels any in-flight sail/timer from the previous leg
     if (raf) { cancelAnimationFrame(raf); raf = null; }
@@ -1225,6 +1226,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       departMs: Date.parse(legDef.depart), arriveMs: Date.parse(legDef.arrive),
       f0, f1, start, end, stopImages: stopImages || [], gallery: gallery || null, hotspot: hotspot || null,
       followZoom: voyageFollowZoom(MO.ocean_zoom),   // GLOBAL slider, not an auto-fit of the leg span
+      holdMs: Math.max(0, Number(holdMs) || 0), sailMs: Math.max(0, Number(sailMs) || 0), cameraUntilMs: Math.max(0, Number(cameraUntilMs) || 0),
     };
 
     ships.setTourProgress(voyage, f0);
@@ -1500,7 +1502,25 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 
   return {
     playLeg,
-    map,   // the live MapLibre instance (used by the text projector; handy for debugging)
+    map,
+    /**
+     * The editor's timeline scrubbing the crossing: the ship and its trail at `p` (0..1) of the leg, with the same
+     * easing the class sees. `follow` keeps the map on the ship (off while the scene's own camera keys frame it).
+     * `null` puts the leg back as the editor shows it, arrived.
+     */
+    previewSail (p, { follow = true } = {}) {
+      if (!ready || !ships || !L.def || inOverview) return;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      const done = p == null;
+      const eased = done ? 1 : smoothstep(Math.min(1, Math.max(0, Number(p) || 0)));
+      const f = L.f0 + eased * (L.f1 - L.f0);
+      ships.setTourProgress(voyage, f);
+      const pos = ships.pointAt(voyage, f);
+      updateTrail(f, pos);
+      if (fog) fog.revealTo(f, { force: true });
+      if (follow) map.jumpTo({ center: [pos.lng, pos.lat], zoom: L.followZoom, pitch: 0 });
+      setChip(done || eased >= 1 ? L.arriveMs : L.departMs + eased * (L.arriveMs - L.departMs), done || eased >= 1 ? (L.stop ? L.stop.place : '') : null);
+    },   // the live MapLibre instance (used by the text projector; handy for debugging)
     /**
      * Freeze / unfreeze the sailing ship. A voyage leg is playback just like narration is, so the
      * player's play/pause has to reach it — without this the only "pause" a student had on a

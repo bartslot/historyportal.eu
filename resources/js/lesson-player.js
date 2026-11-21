@@ -22,6 +22,7 @@ import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
 import { hasAnimation, frameAt, applyFrameTo, cameraEnd } from './anim/scene-animation.js'
+import { storedSail } from './anim/sail-clip.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
 import { isStage25d } from './scene/stage25d/config.js'
@@ -2129,9 +2130,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // A camera keyed in the timeline IS the opening (the space intro is seeded there): the built-in fly-in
       // stands down and the ship waits for the camera to finish.
       const camHold = cameraEnd(cfg.timeline)
+      // The crossing's own clip on the timeline (anim/sail-clip.js): when the ship sets off and how long it sails.
+      // Without one the leg sets off after the camera and sails as long as its dates say.
+      const sail = storedSail(cfg.timeline)
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
-        intro: !!cfg.intro && !camHold,
-        holdMs: camHold * 1000,
+        intro: !!cfg.intro && !camHold && !sail?.start,
+        holdMs: (sail ? sail.start : camHold) * 1000,
+        sailMs: sail ? (sail.end - sail.start) * 1000 : 0,
+        cameraUntilMs: camHold * 1000,
         stopImages: cfg.stop_images || [],
         gallery: cfg.gallery || null,
         hotspot: cfg.hotspot || null,
