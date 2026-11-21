@@ -96,30 +96,45 @@ trait EditsSceneLinks
             return;
         }
         $group = $this->lesson->scenes()->where('branch_group', $scene->branch_group)->orderBy('order')->get();
-        $options = $group->filter(fn (Scene $s): bool => str_starts_with((string) $s->branch_role, 'option'))->values();
-        $question = $group->first(fn (Scene $s): bool => $s->branch_role === 'question')
+        // An option can be several scenes in a row (LessonImporter::branch, StoryGameEngine.resolveGroups): one run
+        // per role, and the class plays the whole run it picked.
+        $runs = $group->filter(fn (Scene $s): bool => str_starts_with((string) $s->branch_role, 'option'))
+            ->groupBy('branch_role')->map(fn ($run) => $run->sortBy('order')->values())->values();
+        $question = $group->filter(fn (Scene $s): bool => $s->branch_role === 'question')->last()
             ?? $this->lesson->scenes()->where('order', '<', $group->min('order'))->orderByDesc('order')->first();
-        if ($options->isEmpty() || $question === null) {
+        if ($runs->isEmpty() || $question === null) {
             $this->dispatch('toast', type: 'error', message: __('Choices go on a story scene. Add or select one first.'));
 
             return;
         }
+        $lastOfGroup = (int) $group->sortBy('order')->last()->id;
         $after = $this->lesson->scenes()->where('order', '>', $group->max('order'))->orderBy('order')->value('id');
-        // Each option's button text, read before the branch fields are cleared below.
-        $links = $options->take(SceneLinks::MAX_LINKS)
-            ->map(fn (Scene $o): array => ['label' => SceneLinks::label($o->branch_choice_label ?: $o->chapterName()), 'to' => (int) $o->id])
+        // Each run's button text, read before the branch fields are cleared below.
+        $links = $runs->take(SceneLinks::MAX_LINKS)
+            ->map(function ($run): array {
+                $label = $run->map(fn (Scene $s): string => trim((string) $s->branch_choice_label))->first(fn (string $l): bool => $l !== '');
+
+                return ['label' => SceneLinks::label($label ?? $run->first()->chapterName()), 'to' => (int) $run->first()->id];
+            })
             ->values()->all();
 
         foreach ($group as $member) {
             $member->update(['branch_group' => null, 'branch_role' => null, 'branch_choice_label' => null]);
         }
-        foreach ($options as $i => $option) {
-            // The last option scene runs on into the scene after the group by itself; the others jump there.
-            $last = $i === $options->count() - 1;
-            if ($after === null) {
-                $this->writeSceneLinks($option->fresh(), [], true);
-            } elseif (! $last) {
-                $this->writeSceneLinks($option->fresh(), [['label' => '', 'to' => (int) $after]], false);
+        $nextInGroup = fn (Scene $s): ?int => ($n = $group->sortBy('order')->first(fn (Scene $g): bool => $g->order > $s->order)) ? (int) $n->id : null;
+        foreach ($runs as $run) {
+            foreach ($run as $i => $member) {
+                $next = $run[$i + 1] ?? null;
+                if ($next !== null) {
+                    // Within a run: on to its next scene, jumping over another option's scenes in between.
+                    if ($nextInGroup($member) !== (int) $next->id) {
+                        $this->writeSceneLinks($member->fresh(), [['label' => '', 'to' => (int) $next->id]], false);
+                    }
+                } elseif ($after === null) {
+                    $this->writeSceneLinks($member->fresh(), [], true);   // the lesson ends after every option
+                } elseif ((int) $member->id !== $lastOfGroup) {
+                    $this->writeSceneLinks($member->fresh(), [['label' => '', 'to' => (int) $after]], false);   // past the other options
+                }
             }
         }
         $question = $question->fresh();

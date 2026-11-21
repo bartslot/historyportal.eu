@@ -251,4 +251,21 @@ class SceneLinksTest extends TestCase
         $this->assertSame(0, $this->lesson->scenes()->whereNotNull('branch_group')->count());
         $this->assertSame(5, $this->lesson->scenes()->count());                                         // nothing deleted
     }
+
+    public function test_an_option_of_several_scenes_plays_as_one_run(): void
+    {
+        [$venice, $a1, $a2, $b1] = $this->scenes;
+        $venice->update(['branch_group' => 2, 'branch_role' => 'question']);
+        $a1->update(['branch_group' => 2, 'branch_role' => 'option_a', 'branch_choice_label' => 'Sail']);
+        $a2->update(['branch_group' => 2, 'branch_role' => 'option_a']);
+        $b1->update(['branch_group' => 2, 'branch_role' => 'option_b', 'branch_choice_label' => 'Stay']);
+        $after = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 5, 'kind' => 'narration', 'chapter_name' => 'Hormuz', 'script_segment' => 'On.', 'status' => 'ready']);
+
+        $this->editor($venice)->call('convertDecisionToChoices', $venice->id);
+
+        $this->assertSame([['label' => 'Sail', 'to' => $a1->id], ['label' => 'Stay', 'to' => $b1->id]], $venice->fresh()->config['links']);
+        $this->assertArrayNotHasKey('links', $a1->fresh()->config ?? []);                 // on into its own next scene
+        $this->assertSame([['label' => '', 'to' => $after->id]], $a2->fresh()->config['links']);   // the run's end skips Stay
+        $this->assertArrayNotHasKey('links', $b1->fresh()->config ?? []);
+    }
 }
