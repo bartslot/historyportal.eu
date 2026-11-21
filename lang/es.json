@@ -2994,7 +2994,7 @@
     "Crossing": "Travesía",
     "Crossing to :place": "Travesía hacia :place",
     "Every stop on one map": "Cada parada en un mapa",
-    "{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops": "{1} Rellenar 1 parada vacía|[2,*] Rellenar :count paradas vacías",
+    "{1} Fill in 1 stop|[2,*] Fill in :count stops": "{1} Rellenar 1 parada|[2,*] Rellenar :count paradas",
     "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Todas las paradas ya estaban rellenas.|{1} 1 parada rellenada.|[2,*] :count paradas rellenadas.",
     "Stop name": "Nombre de la parada",
     "Rename this stop": "Cambiar el nombre de esta parada"

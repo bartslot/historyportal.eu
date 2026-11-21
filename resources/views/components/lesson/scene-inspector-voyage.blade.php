@@ -54,13 +54,14 @@
     </div>
 
     {{-- The voyage's own stop copy (resources/js/timemap/<id>-tour.json) can fill the stops a teacher has not
-         written yet: name, date, title and story (Step3SceneConfigurator::fillVoyageStops). Shown only while
-         there is something empty to fill; it never overwrites. --}}
+         written yet: name, date, title and story (Step3SceneConfigurator::fillVoyageStops), in the lesson's language,
+         also replacing pack text left in another language. Shown only while there is something to fill; it never
+         overwrites what a teacher wrote. --}}
     @if ($fillableStops > 0)
         <button type="button" wire:click="fillVoyageStops(true)" wire:loading.attr="disabled" wire:target="fillVoyageStops" data-fill-voyage-stops
                 class="btn btn-sm mt-3 w-full justify-start gap-2">
             <x-ui.icon name="voyage-overview" />
-            {{ trans_choice('{1} Fill in 1 empty stop|[2,*] Fill in :count empty stops', $fillableStops, ['count' => $fillableStops]) }}
+            {{ trans_choice('{1} Fill in 1 stop|[2,*] Fill in :count stops', $fillableStops, ['count' => $fillableStops]) }}
         </button>
     @endif
 

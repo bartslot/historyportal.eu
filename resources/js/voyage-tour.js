@@ -22,7 +22,13 @@ import { defaultSailSeconds } from './anim/sail-clip.js';
 // through, and arrival pins the thumbnails + a hotspot that opens the gallery modal.
 // Content packs live next to the route data: resources/js/timemap/<voyage>-tour.json.
 
-const TOUR_PACKS = import.meta.glob('./timemap/*-tour.json', { eager: true });
+const TOUR_PACKS = import.meta.glob('./timemap/*-tour*.json', { eager: true });
+/** The pack in the lesson's language (`<voyage>-tour.<lang>.json`), else the voyage's own (Bart 2026-11-21: "Venetië is in dutch, while the lesson is in english"). */
+export const tourPackFor = (voyage, lang, packs = TOUR_PACKS) => {
+  const code = String(lang || '').slice(0, 2).toLowerCase();
+  const at = (key) => packs[key]?.default || packs[key];
+  return (code && at(`./timemap/${voyage}-tour.${code}.json`)) || at(`./timemap/${voyage}-tour.json`) || {};
+};
 const LEG_EASE_MS = 1400;  // smooth glide from one leg's arrival to the next leg's departure
 // The voyage's follow zoom is a GLOBAL slider (ocean_zoom 0–100), NOT an auto-fit of the leg span
 // (which zoomed right out to the whole world on ocean crossings). 0% = tight on the ship + a small
@@ -108,14 +114,13 @@ const setReadingOverlayOpen = (open) => {
   } catch (_) { /* no CustomEvent (never in a browser we support) */ }
 };
 
-export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null } = {}) {
+export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null } = {}) {
   // Prefer the lesson's editable copy, but ONLY when it belongs to this voyage. A lesson can hold
   // scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def` would draw
   // the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
   const mine = def && (!def.id || def.id === voyage) ? def : null;
   const route = mine || voyageRoutes().find((v) => v.id === voyage);
-  const pack = TOUR_PACKS[`./timemap/${voyage}-tour.json`]?.default
-    || TOUR_PACKS[`./timemap/${voyage}-tour.json`] || {};
+  const pack = tourPackFor(voyage, lang || el?.closest?.('[lang]')?.getAttribute('lang'));
   if (!route || !route.legs || !route.legs.length) {
     el.innerHTML = '<div class="flex h-full items-center justify-center text-base-content/60">Reis niet gevonden.</div>';
     return { playLeg() {}, destroy() {} };

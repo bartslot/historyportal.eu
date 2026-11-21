@@ -2159,23 +2159,47 @@ class Step3SceneConfigurator extends Component
     public function fillableStops(): int
     {
         $voyageId = $this->selectedVoyageId();
-        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, (array) ($this->voyageDef()['legs'] ?? [])) : [];
+        $legs = (array) ($this->voyageDef()['legs'] ?? []);
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, $legs, $this->lesson->language) : [];
         if (! $copy) {
             return 0;
         }
+        $open = $this->stopFieldOpen($voyageId, $legs);
 
-        return $this->voyageLegScenes($voyageId)->filter(function (Scene $scene) use ($copy): bool {
-            $stop = $copy[(int) ($scene->config['leg'] ?? 0)] ?? [];
+        return $this->voyageLegScenes($voyageId)->filter(function (Scene $scene) use ($copy, $open): bool {
+            $leg = (int) ($scene->config['leg'] ?? 0);
+            $stop = $copy[$leg] ?? [];
             $gallery = (array) ($scene->config['gallery'] ?? []);
             foreach (['title', 'date_label', 'story'] as $field) {
-                if (($stop[$field] ?? '') !== '' && trim((string) ($gallery[$field] ?? '')) === '') {
+                if (($stop[$field] ?? '') !== '' && $stop[$field] !== ($gallery[$field] ?? null) && $open($leg, $field, $gallery[$field] ?? '')) {
                     return true;
                 }
             }
 
-            return (($stop['place'] ?? '') !== '' && trim((string) $scene->location) === '')
-                || (($stop['story'] ?? '') !== '' && trim((string) $scene->script_segment) === '');
+            return (($stop['place'] ?? '') !== '' && $stop['place'] !== $scene->location && $open($leg, 'place', $scene->location, true))
+                || (($stop['story'] ?? '') !== '' && $stop['story'] !== $scene->script_segment && $open($leg, 'story', $scene->script_segment));
         })->count();
+    }
+
+    /**
+     * Whether a stop's field may take the pack's copy: it is empty, or it still holds a pack's copy in another
+     * language, which the editor put there and no teacher wrote (Bart 2026-11-21: "Venetië is in dutch, while the
+     * lesson is in english"). A name only counts as empty when asked for; a name in the wrong language always may go.
+     *
+     * @return \Closure(int, string, ?string, bool=): bool
+     */
+    private function stopFieldOpen(string $voyageId, array $legs, bool $emptyNames = true): \Closure
+    {
+        $foreign = app(VoyageLessonBuilder::class)->foreignStopCopy($voyageId, $legs, $this->lesson->language);
+
+        return function (int $leg, string $field, ?string $value, bool $isName = false) use ($foreign, $emptyNames): bool {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return ! $isName || $emptyNames;
+            }
+
+            return in_array($value, $foreign[$leg][$field] ?? [], true);
+        };
     }
 
     /**
@@ -2186,12 +2210,15 @@ class Step3SceneConfigurator extends Component
     public function fillVoyageStops(bool $withNames = false): void
     {
         $voyageId = $this->selectedVoyageId();
-        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, (array) ($this->voyageDef()['legs'] ?? [])) : [];
+        $legs = (array) ($this->voyageDef()['legs'] ?? []);
+        $copy = $voyageId ? app(VoyageLessonBuilder::class)->stopCopy($voyageId, $legs, $this->lesson->language) : [];
         if (! $copy) {
             return;
         }
+        $open = $this->stopFieldOpen($voyageId, $legs, $withNames);
         $filled = 0;
-        $gc = $withNames ? $this->ensureVoyageDef() : null;
+        $gc = $this->ensureVoyageDef();
+        $namesChanged = false;
         foreach ($this->voyageLegScenes($voyageId) as $scene) {
             $leg = (int) ($scene->config['leg'] ?? 0);
             $stop = $copy[$leg] ?? [];
@@ -2199,7 +2226,7 @@ class Step3SceneConfigurator extends Component
             $gallery = (array) ($config['gallery'] ?? []);
             $changed = false;
             foreach (['title', 'date_label', 'story'] as $field) {
-                if (($stop[$field] ?? '') !== '' && trim((string) ($gallery[$field] ?? '')) === '') {
+                if (($stop[$field] ?? '') !== '' && $open($leg, $field, $gallery[$field] ?? '')) {
                     $gallery[$field] = $stop[$field];
                     $changed = true;
                 }
@@ -2210,21 +2237,23 @@ class Step3SceneConfigurator extends Component
                 $updates['config'] = $config;
             }
             // The story is also the stop's script (Bart 2026-11-20: "add the text to the story in the writing of the
-            // script"), so the narration says it. Only into an empty script; a written one stays.
-            if (($stop['story'] ?? '') !== '' && trim((string) $scene->script_segment) === '') {
+            // script"), so the narration says it. Only into an empty script (or one still in another language's copy).
+            if (($stop['story'] ?? '') !== '' && $open($leg, 'story', $scene->script_segment)) {
                 $updates['script_segment'] = $stop['story'];
             }
-            if ($withNames && ($stop['place'] ?? '') !== '' && trim((string) $scene->location) === ''
-                && trim((string) ($gc['voyage_def']['legs'][$leg]['title'] ?? '')) === '' && isset($gc['voyage_def']['legs'][$leg])) {
+            $title = $gc['voyage_def']['legs'][$leg]['title'] ?? null;
+            if (($stop['place'] ?? '') !== '' && isset($gc['voyage_def']['legs'][$leg])
+                && $open($leg, 'place', $scene->location, true) && $open($leg, 'place', $title)) {
                 $gc['voyage_def']['legs'][$leg]['title'] = $stop['place'];
                 $updates['location'] = $stop['place'];
+                $namesChanged = true;
             }
             if ($updates) {
                 $scene->update($updates);
                 $filled++;
             }
         }
-        if ($withNames && $gc !== null) {
+        if ($namesChanged) {
             $this->saveGameConfig($gc);
         }
         $this->lesson->refresh();
@@ -5832,7 +5861,7 @@ class Step3SceneConfigurator extends Component
         $after = $this->takeInsertionPoint();
         $next = ((int) $this->lesson->scenes()->max('order')) + 1;
         $created = [];
-        foreach (app(VoyageLessonBuilder::class)->routeScenes($voyageId) as $i => $payload) {
+        foreach (app(VoyageLessonBuilder::class)->routeScenes($voyageId, $this->lesson->language) as $i => $payload) {
             $created[] = Scene::create(['lesson_id' => $this->lesson->id, 'order' => $next + $i, ...$payload]);
         }
         // Keep the run together, in order, after whatever was selected (as a Decision point does).

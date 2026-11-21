@@ -768,6 +768,7 @@
                         onEndpointMove: (wpIndex, lng, lat) =>
                             window.Livewire.dispatch('voyageWaypointMoved', { sceneId: currentSceneId, wpIndex, lng, lat }),
                         // The itinerary: drag a stop's number → move that stop's own waypoint.
+                        lang: @js($this->lesson->language),   // the lesson's, not the editor's: a Dutch teacher builds English lessons
                         onStopMove: (wpIndex, lng, lat) =>
                             window.Livewire.dispatch('voyageStopMoved', { sceneId: currentSceneId, wpIndex, lng, lat }),
                         // Drop a NEW bend by dragging the route line → insert a waypoint after afterWpIndex.
