@@ -2964,5 +2964,14 @@
     "Sound under this scene": "Son sous cette scène",
     "Sound volume": "Volume du son",
     "That is a lot of new sounds for one hour. Try again a little later.": "Cela fait beaucoup de nouveaux sons en une heure. Réessaie un peu plus tard.",
-    "The sound could not be made just now. Try again in a minute.": "Le son n'a pas pu être créé pour l'instant. Réessaie dans une minute."
+    "The sound could not be made just now. Try again in a minute.": "Le son n'a pas pu être créé pour l'instant. Réessaie dans une minute.",
+    "Songs": "Morceaux",
+    ":count song|:count songs": ":count morceau|:count morceaux",
+    "That song could not be loaded.": "Ce morceau n’a pas pu être chargé.",
+    "Stop :title": "Arrêter :title",
+    "Play :title": "Écouter :title",
+    "In use": "Utilisé",
+    "Use :title": "Utiliser :title",
+    "Use": "Utiliser",
+    "Every scene already starts its own track.": "Chaque scène commence déjà par son propre morceau."
 }

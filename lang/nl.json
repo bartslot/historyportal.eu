@@ -3006,5 +3006,14 @@
     "Sound under this scene": "Geluid onder deze scène",
     "Sound volume": "Volume geluid",
     "That is a lot of new sounds for one hour. Try again a little later.": "Dat zijn veel nieuwe geluiden in een uur. Probeer het straks nog eens.",
-    "The sound could not be made just now. Try again in a minute.": "Het geluid kon nu niet gemaakt worden. Probeer het over een minuut opnieuw."
+    "The sound could not be made just now. Try again in a minute.": "Het geluid kon nu niet gemaakt worden. Probeer het over een minuut opnieuw.",
+    "Songs": "Nummers",
+    ":count song|:count songs": ":count nummer|:count nummers",
+    "That song could not be loaded.": "Dat nummer kon niet worden geladen.",
+    "Stop :title": ":title stoppen",
+    "Play :title": ":title afspelen",
+    "In use": "In gebruik",
+    "Use :title": ":title gebruiken",
+    "Use": "Gebruik",
+    "Every scene already starts its own track.": "Elke scène begint al met een eigen nummer."
 }

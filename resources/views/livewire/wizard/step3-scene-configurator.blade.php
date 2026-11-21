@@ -1338,7 +1338,8 @@
                  is one soundtrack, and the player shuffles and crossfades it by itself. Off unless
                  the teacher asks for it, because music under a voice on a classroom speaker makes
                  the narration harder to follow. Students can still mute it with everything else. --}}
-            <div class="mt-6 border-t border-slate-700/50 pt-4">
+            {{-- Its own foldable section (bart, 11-21), open by default and remembered per teacher. --}}
+            <x-ui.settings-section :title="__('Music')" name="lesson-music" :open="true" class="-mx-4 mt-6 w-auto! pt-2" data-lesson-music-section>
                 <label class="flex items-center justify-between gap-3">
                     <span>
                         <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Background music') }}</span>
@@ -1353,7 +1354,7 @@
                         <livewire:wizard.lesson-music :lesson="$lesson" :key="'lesson-music-'.$lesson->id" />
                     </div>
                 @endunless
-            </div>
+            </x-ui.settings-section>
             @endif
         </div>
         </div>{{-- /.lp-panel-content --}}

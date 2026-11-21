@@ -2964,5 +2964,14 @@
     "Sound under this scene": "Geräusch unter dieser Szene",
     "Sound volume": "Lautstärke Geräusch",
     "That is a lot of new sounds for one hour. Try again a little later.": "Das sind viele neue Geräusche in einer Stunde. Versuch es später noch einmal.",
-    "The sound could not be made just now. Try again in a minute.": "Das Geräusch konnte gerade nicht erstellt werden. Versuch es in einer Minute erneut."
+    "The sound could not be made just now. Try again in a minute.": "Das Geräusch konnte gerade nicht erstellt werden. Versuch es in einer Minute erneut.",
+    "Songs": "Songs",
+    ":count song|:count songs": ":count Song|:count Songs",
+    "That song could not be loaded.": "Dieser Song konnte nicht geladen werden.",
+    "Stop :title": ":title stoppen",
+    "Play :title": ":title abspielen",
+    "In use": "In Gebrauch",
+    "Use :title": ":title verwenden",
+    "Use": "Verwenden",
+    "Every scene already starts its own track.": "Jede Szene beginnt schon mit einem eigenen Track."
 }
