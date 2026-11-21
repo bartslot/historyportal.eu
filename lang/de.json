@@ -2973,5 +2973,14 @@
     "In use": "In Gebrauch",
     "Use :title": ":title verwenden",
     "Use": "Verwenden",
-    "Every scene already starts its own track.": "Jede Szene beginnt schon mit einem eigenen Track."
+    "Every scene already starts its own track.": "Jede Szene beginnt schon mit einem eigenen Track.",
+    "Moving picture": "Bewegtes Bild",
+    "Stop moving": "Anhalten",
+    "The picture moves.": "Das Bild bewegt sich.",
+    "Select a scene first, then drop the video on it.": "Wähle zuerst eine Szene und zieh das Video darauf.",
+    "A moving picture goes on a scene with a picture.": "Ein bewegtes Bild gehört zu einer Szene mit Bild.",
+    "The video could not be saved. Try again.": "Das Video konnte nicht gespeichert werden. Versuch es noch einmal.",
+    "This server cannot read the video. Add a picture first, then drop the video on it.": "Dieser Server kann das Video nicht lesen. Füge zuerst ein Bild hinzu und zieh das Video darauf.",
+    "A moving picture goes on a scene with one picture, not on comic panels.": "Ein bewegtes Bild gehört zu einer Szene mit einem Bild, nicht zu Comic-Panels.",
+    "This server cannot read the video. Use an MP4.": "Dieser Server kann das Video nicht lesen. Nimm ein MP4."
 }

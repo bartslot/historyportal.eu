@@ -214,6 +214,35 @@ class VideoTranscoder
         }
     }
 
+    /**
+     * The video's first frame as image bytes (JPEG), or null when ffmpeg is missing or fails.
+     * A moving scene picture keeps a still for everything that needs one (rail thumb, poster).
+     */
+    public function firstFrame(string $absolutePath): ?string
+    {
+        if (! is_file($absolutePath) || ! $this->isAvailable()) {
+            return null;
+        }
+        $out = $absolutePath.'.poster.jpg';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-i', $absolutePath,
+                '-frames:v', '1', '-q:v', '2', $out,
+            ]);
+            $process->setTimeout(60);
+            $process->run();
+            $bytes = $process->isSuccessful() && is_file($out) ? (string) file_get_contents($out) : '';
+
+            return $bytes !== '' ? $bytes : null;
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] first frame failed', ['path' => $absolutePath, 'error' => $e->getMessage()]);
+
+            return null;
+        } finally {
+            @unlink($out);
+        }
+    }
+
     public function isAvailable(): bool
     {
         try {

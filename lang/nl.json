@@ -3015,5 +3015,14 @@
     "In use": "In gebruik",
     "Use :title": ":title gebruiken",
     "Use": "Gebruik",
-    "Every scene already starts its own track.": "Elke scène begint al met een eigen nummer."
+    "Every scene already starts its own track.": "Elke scène begint al met een eigen nummer.",
+    "Moving picture": "Bewegend beeld",
+    "Stop moving": "Stilzetten",
+    "The picture moves.": "Het beeld beweegt.",
+    "Select a scene first, then drop the video on it.": "Kies eerst een scène en sleep de video erop.",
+    "A moving picture goes on a scene with a picture.": "Een bewegend beeld hoort bij een scène met een afbeelding.",
+    "The video could not be saved. Try again.": "De video kon niet worden bewaard. Probeer het opnieuw.",
+    "This server cannot read the video. Add a picture first, then drop the video on it.": "Deze server kan de video niet lezen. Voeg eerst een afbeelding toe en sleep de video erop.",
+    "A moving picture goes on a scene with one picture, not on comic panels.": "Een bewegend beeld hoort bij een scène met één afbeelding, niet bij stripvakken.",
+    "This server cannot read the video. Use an MP4.": "Deze server kan de video niet lezen. Gebruik een MP4."
 }

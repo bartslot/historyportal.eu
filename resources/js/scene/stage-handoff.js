@@ -1,3 +1,5 @@
+import { detachLoop } from './picture-loop.js'
+
 /**
  * Whatever is leaving the player's layer host (a layered panel, a split stage of comic panels), as
  * ONE `replaces` handle for ParallaxScene.show: it stays on screen until the incoming panel is
@@ -23,5 +25,9 @@ export function outgoingStages (...stages) {
 
 /** The flat layers hold an older picture once something covers them: hide them, so no gap shows it. */
 export function hideFlatLayers (layers) {
-  for (const el of layers) if (el) Object.assign(el.style, { transition: 'none', opacity: '0' })
+  for (const el of layers) {
+    if (!el) continue
+    Object.assign(el.style, { transition: 'none', opacity: '0' })
+    detachLoop(el)   // a hidden picture's loop would keep downloading and decoding unseen
+  }
 }

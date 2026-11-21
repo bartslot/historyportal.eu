@@ -2973,5 +2973,14 @@
     "In use": "Utilisé",
     "Use :title": "Utiliser :title",
     "Use": "Utiliser",
-    "Every scene already starts its own track.": "Chaque scène commence déjà par son propre morceau."
+    "Every scene already starts its own track.": "Chaque scène commence déjà par son propre morceau.",
+    "Moving picture": "Image animée",
+    "Stop moving": "Arrêter le mouvement",
+    "The picture moves.": "L'image s'anime.",
+    "Select a scene first, then drop the video on it.": "Choisis d'abord une scène, puis dépose la vidéo dessus.",
+    "A moving picture goes on a scene with a picture.": "Une image animée va sur une scène qui a une image.",
+    "The video could not be saved. Try again.": "La vidéo n'a pas pu être enregistrée. Réessaie.",
+    "This server cannot read the video. Add a picture first, then drop the video on it.": "Ce serveur ne peut pas lire la vidéo. Ajoute d'abord une image, puis dépose la vidéo dessus.",
+    "A moving picture goes on a scene with one picture, not on comic panels.": "Une image animée va sur une scène à une seule image, pas sur des cases de BD.",
+    "This server cannot read the video. Use an MP4.": "Ce serveur ne peut pas lire la vidéo. Utilise un MP4."
 }

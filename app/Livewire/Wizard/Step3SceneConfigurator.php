@@ -23,6 +23,7 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
+use App\Livewire\Wizard\Concerns\EditsSceneLoop;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -49,6 +50,7 @@ use App\Services\Stage25d\StageSet;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
+use App\Services\Support\SceneLoop;
 use App\Services\Support\SceneSplit;
 use App\Services\Support\ShotCamera;
 use App\Services\Support\SpeechBalloons;
@@ -90,6 +92,7 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsSceneBackground;
+    use EditsSceneLoop;
     use EditsSceneBalloons;
     use EditsSplitPanels;
     use EditsStage25d;
@@ -300,6 +303,8 @@ class Step3SceneConfigurator extends Component
 
         return collect($scene->shots ?? [])->map(fn ($shot) => [
             'image_url' => MediaUrl::versioned($shot['image_path'] ?? null, $ts),
+            // The picture's moving version, when it has one (SceneLoop).
+            'loop' => SceneLoop::urlFor($scene, $shot['image_path'] ?? null),
             // bg_url/hero_url (E3b story-pack shots) — parallax layers, see ParallaxScene.js.
             'bg_url' => MediaUrl::versioned($shot['bg_path'] ?? null, $ts),
             'hero_url' => MediaUrl::versioned($shot['hero_path'] ?? null, $ts),
@@ -314,6 +319,7 @@ class Step3SceneConfigurator extends Component
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
+                'loop' => ($l['kind'] ?? 'cover') === 'cover' ? SceneLoop::urlFor($scene, $l['path'] ?? null) : null,
                 // asset_id + x/y let the on-canvas editor identify and free-position each layer.
                 'asset_id' => isset($l['asset_id']) ? (int) $l['asset_id'] : null,
                 // A duplicated layer has its own synthetic id; its title lives on the original asset.
@@ -511,6 +517,7 @@ class Step3SceneConfigurator extends Component
             'skyboxOpacity' => (float) ($scene->skybox_opacity ?? 1.0),
             'backgroundColor' => (string) ($scene->background_color ?? '#000000'),
             'backgroundGradient' => $scene->config['background_gradient'] ?? null,
+            'imageLoop' => SceneLoop::urlForScene($scene),
             'focus' => $scene->config['background_focus'] ?? null,   // 'top' for portraits
             // Standard or split (two comic panels, SceneSplit); the panel the inspector edits.
             'split' => SceneSplit::of($scene->config),
@@ -3566,6 +3573,11 @@ class Step3SceneConfigurator extends Component
      */
     public function updatedDroppedImage(): void
     {
+        if ($this->isDroppedVideo('droppedImage')) {
+            $this->applyDroppedLoop('droppedImage');
+
+            return;
+        }
         $path = $this->storeDroppedImage('droppedImage', $name);
         if ($path === null) {
             return;
@@ -3648,6 +3660,11 @@ class Step3SceneConfigurator extends Component
     /** Dropped on the background slot. The teacher pointed at the background, so it is the background. */
     public function updatedDroppedBackground(): void
     {
+        if ($this->isDroppedVideo('droppedBackground')) {
+            $this->applyDroppedLoop('droppedBackground');
+
+            return;
+        }
         $path = $this->storeDroppedImage('droppedBackground');
         if ($path === null) {
             return;
