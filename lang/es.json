@@ -2981,5 +2981,17 @@
     "Paint the water": "Pinta el agua",
     "Find the water": "Busca el agua",
     "Anime": "Anime",
-    "Lively": "Vivo"
+    "Lively": "Vivo",
+    "Auto: :name": "Auto: :name",
+    "Auto: nothing fits this scene": "Auto: nada encaja con esta escena",
+    "Describe a new sound": "Describe un sonido nuevo",
+    "Describe a new sound, e.g. desert wind over rocky mountains, a distant eagle": "Describe un sonido nuevo, p. ej. viento del desierto sobre montañas rocosas, un águila a lo lejos",
+    "Make this sound": "Crear este sonido",
+    "Making the sound, about 20 seconds": "Creando el sonido, unos 20 segundos",
+    "New sound added under this scene.": "Sonido nuevo añadido bajo esta escena.",
+    "Sound": "Sonido",
+    "Sound under this scene": "Sonido bajo esta escena",
+    "Sound volume": "Volumen del sonido",
+    "That is a lot of new sounds for one hour. Try again a little later.": "Son muchos sonidos nuevos en una hora. Inténtalo un poco más tarde.",
+    "The sound could not be made just now. Try again in a minute.": "No se pudo crear el sonido ahora. Inténtalo de nuevo en un minuto."
 }

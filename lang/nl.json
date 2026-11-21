@@ -2981,5 +2981,17 @@
     "Paint the water": "Schilder het water",
     "Find the water": "Zoek het water",
     "Anime": "Anime",
-    "Lively": "Levendig"
+    "Lively": "Levendig",
+    "Auto: :name": "Auto: :name",
+    "Auto: nothing fits this scene": "Auto: niets past bij deze scène",
+    "Describe a new sound": "Beschrijf een nieuw geluid",
+    "Describe a new sound, e.g. desert wind over rocky mountains, a distant eagle": "Beschrijf een nieuw geluid, bijv. woestijnwind over rotsige bergen, een verre arend",
+    "Make this sound": "Maak dit geluid",
+    "Making the sound, about 20 seconds": "Geluid wordt gemaakt, ongeveer 20 seconden",
+    "New sound added under this scene.": "Nieuw geluid onder deze scène gezet.",
+    "Sound": "Geluid",
+    "Sound under this scene": "Geluid onder deze scène",
+    "Sound volume": "Volume geluid",
+    "That is a lot of new sounds for one hour. Try again a little later.": "Dat zijn veel nieuwe geluiden in een uur. Probeer het straks nog eens.",
+    "The sound could not be made just now. Try again in a minute.": "Het geluid kon nu niet gemaakt worden. Probeer het over een minuut opnieuw."
 }

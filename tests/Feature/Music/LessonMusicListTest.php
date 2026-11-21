@@ -141,7 +141,7 @@ class LessonMusicListTest extends TestCase
         $this->actingAs($admin);
         Livewire::test(LessonMusic::class, ['lesson' => $this->lesson])->call('saveTempo', $this->road->id, 92.5, 0.1, true);
         $this->assertSame(92.5, $this->road->fresh()->bpm);
-        $this->assertSame(['url' => $this->road->url(), 'title' => 'Road ahead', 'bpm' => 92.5, 'beat_offset' => 0.1], $this->road->fresh()->forMixer());
+        $this->assertSame(['url' => $this->road->url(), 'title' => 'Road ahead', 'bpm' => 92.5, 'beat_offset' => 0.1, 'ambient' => false], $this->road->fresh()->forMixer());
     }
 
     public function test_another_teacher_cannot_open_the_list(): void

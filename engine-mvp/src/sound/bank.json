@@ -36,7 +36,14 @@
         "babylon",
         "sumer",
         "akkad",
-        "iraq"
+        "iraq",
+        "mesopotamië",
+        "babylonië",
+        "soemer",
+        "soemeriërs",
+        "sumerians",
+        "uruk",
+        "irak"
       ]
     },
     "intro": {
@@ -643,11 +650,9 @@
       "tags": [
         "desert",
         "dune",
-        "sand",
         "gobi",
         "taklamakan",
         "woestijn",
-        "zand",
         "duin"
       ],
       "universal": true,
@@ -662,14 +667,9 @@
         "mountain",
         "pass",
         "pamir",
-        "snow",
-        "cold",
-        "high",
         "berg",
         "bergen",
-        "pas",
-        "sneeuw",
-        "koud"
+        "pas"
       ],
       "universal": true,
       "source": "elevenlabs"
@@ -683,12 +683,223 @@
         "caravan",
         "camel",
         "silk-road",
-        "trade",
-        "travel",
         "karavaan",
         "kameel",
         "kamelen",
         "zijderoute"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "mountain-eagle",
+      "bundle": "journeys",
+      "file": "beds/mountain-eagle.m4a",
+      "gain": 0.45,
+      "tags": [
+        "apache",
+        "eagle",
+        "hawk",
+        "rocky",
+        "canyon",
+        "mesa",
+        "arend",
+        "havik",
+        "rotsen"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "eastern-port",
+      "bundle": "journeys",
+      "file": "beds/eastern-port.m4a",
+      "gain": 0.45,
+      "tags": [
+        "port",
+        "harbour",
+        "quay",
+        "dock",
+        "haven",
+        "kade"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "imperial-court",
+      "bundle": "journeys",
+      "file": "beds/imperial-court.m4a",
+      "gain": 0.45,
+      "tags": [
+        "court",
+        "palace",
+        "emperor",
+        "khan",
+        "throne",
+        "hof",
+        "paleis",
+        "keizer",
+        "troon"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "palace-garden",
+      "bundle": "journeys",
+      "file": "beds/palace-garden.m4a",
+      "gain": 0.45,
+      "tags": [
+        "garden",
+        "fountain",
+        "pavilion",
+        "tuin",
+        "fontein"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "river-boat",
+      "bundle": "journeys",
+      "file": "beds/river-boat.m4a",
+      "gain": 0.45,
+      "tags": [
+        "river",
+        "boat",
+        "barge",
+        "row",
+        "rivier",
+        "boot",
+        "roeien"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "village-farm",
+      "bundle": "journeys",
+      "file": "beds/village-farm.m4a",
+      "gain": 0.45,
+      "tags": [
+        "village",
+        "farm",
+        "mudbrick",
+        "hut",
+        "dorp",
+        "boerderij"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "rain-steady",
+      "bundle": "journeys",
+      "file": "beds/rain-steady.m4a",
+      "gain": 0.45,
+      "tags": [
+        "rain",
+        "wet",
+        "drizzle",
+        "regen",
+        "nat"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "thunderstorm-land",
+      "bundle": "journeys",
+      "file": "beds/thunderstorm-land.m4a",
+      "gain": 0.45,
+      "tags": [
+        "thunder",
+        "lightning",
+        "storm",
+        "onweer",
+        "bliksem"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "oasis",
+      "bundle": "journeys",
+      "file": "beds/oasis.m4a",
+      "gain": 0.45,
+      "tags": [
+        "oasis",
+        "well",
+        "palm",
+        "caravanserai",
+        "oase",
+        "bron"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "steppe-yurt-camp",
+      "bundle": "journeys",
+      "file": "beds/steppe-yurt-camp.m4a",
+      "gain": 0.45,
+      "tags": [
+        "yurt",
+        "nomad",
+        "mongol",
+        "horse",
+        "joert",
+        "nomaden",
+        "paard",
+        "paarden"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "forest-night",
+      "bundle": "journeys",
+      "file": "beds/forest-night.m4a",
+      "gain": 0.45,
+      "tags": [
+        "forest",
+        "night",
+        "owl",
+        "bos",
+        "nacht",
+        "uil"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "ship-below-deck",
+      "bundle": "journeys",
+      "file": "beds/ship-below-deck.m4a",
+      "gain": 0.45,
+      "tags": [
+        "hold",
+        "cabin",
+        "below",
+        "ruim",
+        "kajuit",
+        "benedendeks"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "becalmed-sea",
+      "bundle": "journeys",
+      "file": "beds/becalmed-sea.m4a",
+      "gain": 0.45,
+      "tags": [
+        "calm",
+        "becalmed",
+        "doldrums",
+        "windstil",
+        "kalm"
       ],
       "universal": true,
       "source": "elevenlabs"

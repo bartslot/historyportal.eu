@@ -224,7 +224,7 @@ export class MusicMixer {
     if (this._tempos.has(id)) return this._tempos.get(id)
     const known = this.tracks[id]
     let tempo = known?.bpm ? { bpm: Number(known.bpm), beat_offset: Number(known.beat_offset) || 0 } : null
-    if (!tempo) {
+    if (!tempo && !known?.ambient) {   // an ambience bed has no beat: timed crossfades
       tempo = estimateTempo(buffer)
       if (tempo) this._onTempo?.(id, tempo)
     }

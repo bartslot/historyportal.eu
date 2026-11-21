@@ -7,8 +7,14 @@ namespace App\Livewire\Wizard;
 use App\Enums\MusicLicence;
 use App\Models\MusicTrack;
 use App\Models\Scene;
+use App\Services\ElevenLabsService;
+use App\Support\SceneAmbience;
 use App\Support\SceneMusic as SceneMusicShape;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Once;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Validate;
@@ -21,6 +27,9 @@ use Livewire\WithFileUploads;
  * rule: the teacher can change and reverse everything). The player mixes it (scene/music-mixer.js).
  *
  * Only admins add tracks to the library: whoever uploads vouches for the licence.
+ *
+ * Below it, Sound: the ambience bed under the scene (App\Support\SceneAmbience), Auto, a bed from the
+ * library, or Off, with its volume, and a field to describe a new one that ElevenLabs makes.
  */
 class SceneMusic extends Component
 {
@@ -45,6 +54,12 @@ class SceneMusic extends Component
     public string $uploadSource = '';
 
     public string $uploadLicence = 'suno_paid';
+
+    /** What a new ambience bed should sound like ("Desert wind over rocky mountains, a distant eagle"). */
+    public string $soundPrompt = '';
+
+    /** New sounds per teacher per hour: each one is an ElevenLabs call. */
+    private const SOUNDS_PER_HOUR = 10;
 
     #[Validate('nullable|string|max:500')]
     public string $uploadNote = '';
@@ -108,9 +123,72 @@ class SceneMusic extends Component
             return;
         }
         $previous = array_pop($stack);
-        $this->scene->update(['music' => $previous['m'] ?? null, 'music_undo' => $stack ?: null]);
+        $this->scene->update(array_key_exists('a', $previous)
+            ? ['config' => self::withAmbience($this->scene->fresh()->config, $previous['a']), 'music_undo' => $stack ?: null]
+            : ['music' => $previous['m'] ?? null, 'music_undo' => $stack ?: null]);
         $this->music = $this->scene->music;
         $this->dispatch('scene-music-changed');
+    }
+
+    /** Sound: 'auto', 'off', or a bed's track id. */
+    public function setAmbience(string $value): void
+    {
+        if ($value === 'auto' || $value === 'off') {
+            $this->saveAmbience($value === 'off' ? 'off' : null);
+
+            return;
+        }
+        $id = (int) $value;
+        if (! SceneAmbience::tracks()->contains('id', $id)) {
+            return;
+        }
+        $this->saveAmbience(['track_id' => $id, 'volume' => SceneAmbience::volume($this->scene)]);
+    }
+
+    /** The bed's volume; picking a volume on Auto keeps Auto's bed as the scene's own. */
+    public function setAmbienceVolume(float $volume): void
+    {
+        $track = SceneAmbience::forScene($this->scene)['layers'][0]['track_id'] ?? null;
+        if ($track) {
+            $this->saveAmbience(['track_id' => $track, 'volume' => round(max(0.0, min(1.0, $volume)), 3)]);
+        }
+    }
+
+    /** Describe a sound, ElevenLabs makes a looping bed, it goes in the library and under this scene. */
+    public function makeAmbience(ElevenLabsService $eleven): void
+    {
+        $this->authorizeScene($this->scene);
+        $this->validate(['soundPrompt' => 'required|string|min:8|max:500']);
+        $key = 'scene-sound:'.auth()->id();
+        if (RateLimiter::tooManyAttempts($key, self::SOUNDS_PER_HOUR)) {
+            $this->addError('soundPrompt', __('That is a lot of new sounds for one hour. Try again a little later.'));
+
+            return;
+        }
+        RateLimiter::hit($key, 3600);
+
+        $prompt = trim($this->soundPrompt);
+        $audio = $eleven->soundEffect($prompt.' No music, no speech, no words, no modern sounds.');
+        if ($audio === null) {
+            $this->addError('soundPrompt', __('The sound could not be made just now. Try again in a minute.'));
+
+            return;
+        }
+        $path = 'music/ambience/'.Str::uuid().'.mp3';
+        Storage::disk('public')->put($path, $audio);
+        $track = MusicTrack::create([
+            'user_id' => auth()->id(),
+            'title' => Str::limit($prompt, 48),
+            'kind' => MusicTrack::KIND_AMBIENCE,
+            'prompt' => $prompt,
+            'licence' => MusicLicence::Other,
+            'licence_note' => 'ElevenLabs sound effects, paid plan: commercial use granted.',
+            'path' => $path,
+        ]);
+        Once::flush();   // SceneAmbience::tracks() has to see the new bed
+        $this->soundPrompt = '';
+        $this->saveAmbience(['track_id' => $track->id, 'volume' => SceneAmbience::volume($this->scene)]);
+        $this->dispatch('toast', type: 'success', message: __('New sound added under this scene.'));
     }
 
     /** A pasted Suno link fills an empty title with the song's own. */
@@ -144,11 +222,17 @@ class SceneMusic extends Component
 
     public function render(): View
     {
-        $tracks = MusicTrack::query()->orderBy('title')->get();
+        $tracks = MusicTrack::query()->music()->orderBy('title')->get();
+        $beds = SceneAmbience::tracks();
 
         return view('livewire.wizard.scene-music', [
             'tracks' => $tracks,
-            'trackUrls' => $tracks->mapWithKeys(fn (MusicTrack $t) => [$t->id => $t->forMixer()])->all(),
+            'trackUrls' => $tracks->concat($beds)->mapWithKeys(fn (MusicTrack $t) => [$t->id => $t->forMixer()])->all(),
+            'beds' => $beds,
+            'ambienceChoice' => SceneAmbience::choice($this->scene),
+            'ambienceVolume' => SceneAmbience::volume($this->scene),
+            'ambienceAuto' => SceneAmbience::auto($this->scene),
+            'ambienceMix' => SceneAmbience::forScene($this->scene),
             'canUndo' => ! empty($this->scene->music_undo),
             'isAdmin' => (bool) auth()->user()?->isAdmin(),
             'licences' => MusicLicence::cases(),
@@ -158,7 +242,7 @@ class SceneMusic extends Component
     private function save(?array $music): void
     {
         $this->authorizeScene($this->scene);
-        $clean = $music === null ? null : SceneMusicShape::normalize($music, MusicTrack::query()->pluck('id')->all());
+        $clean = $music === null ? null : SceneMusicShape::normalize($music, MusicTrack::query()->music()->pluck('id')->all());
         if ($clean === $this->scene->music) {
             $this->music = $clean;
 
@@ -172,6 +256,37 @@ class SceneMusic extends Component
         ]);
         $this->music = $clean;
         $this->dispatch('scene-music-changed');
+    }
+
+    /** @param  'off'|array{track_id: int, volume: float}|null  $ambience  null = Auto */
+    private function saveAmbience(string|array|null $ambience): void
+    {
+        $this->authorizeScene($this->scene);
+        $config = $this->scene->fresh()->config ?? [];
+        $before = $config['ambience'] ?? null;
+        if ($before === $ambience) {
+            return;
+        }
+        $stack = $this->scene->music_undo ?? [];
+        $stack[] = ['a' => $before];
+        $this->scene->update([
+            'config' => self::withAmbience($config, $ambience),
+            'music_undo' => array_slice($stack, -self::UNDO_DEPTH),
+        ]);
+        $this->dispatch('scene-music-changed');
+    }
+
+    /** @param  array<string, mixed>|null  $config */
+    private static function withAmbience(?array $config, string|array|null $ambience): array
+    {
+        $config ??= [];
+        if ($ambience === null) {
+            unset($config['ambience']);
+        } else {
+            $config['ambience'] = $ambience;
+        }
+
+        return $config;
     }
 
     private function authorizeScene(Scene $scene): void

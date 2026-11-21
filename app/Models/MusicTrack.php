@@ -5,19 +5,39 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\MusicLicence;
+use App\Support\SceneAmbience;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
-/** A licensed music file in the shared library, picked per scene by the teacher. */
+/**
+ * A licensed audio file in the shared library, picked per scene by the teacher: music (kind 'music')
+ * or an ambience bed (kind 'ambience': wind, waves, a bazaar), which loops under a scene beside its
+ * music. See App\Support\SceneAmbience.
+ */
 class MusicTrack extends Model
 {
-    protected $fillable = ['user_id', 'title', 'source_url', 'licence', 'licence_note', 'path', 'bpm', 'beat_offset'];
+    protected $fillable = ['user_id', 'title', 'kind', 'slug', 'tags', 'prompt', 'source_url', 'licence', 'licence_note', 'path', 'bpm', 'beat_offset'];
 
     protected function casts(): array
     {
-        return ['licence' => MusicLicence::class, 'bpm' => 'float', 'beat_offset' => 'float'];
+        return ['licence' => MusicLicence::class, 'bpm' => 'float', 'beat_offset' => 'float', 'tags' => 'array'];
+    }
+
+    public const KIND_MUSIC = 'music';
+
+    public const KIND_AMBIENCE = 'ambience';
+
+    public function scopeMusic(Builder $q): Builder
+    {
+        return $q->where('kind', self::KIND_MUSIC);
+    }
+
+    public function scopeAmbience(Builder $q): Builder
+    {
+        return $q->where('kind', self::KIND_AMBIENCE);
     }
 
     public function user(): BelongsTo
@@ -60,8 +80,9 @@ class MusicTrack extends Model
     public static function forScenes(iterable $scenes): array
     {
         $ids = collect($scenes)
-            ->flatMap(fn (Scene $s) => collect($s->music['layers'] ?? [])->pluck('track_id'))
-            ->unique()->values();
+            ->flatMap(fn (Scene $s) => collect($s->music['layers'] ?? [])->pluck('track_id')
+                ->push(SceneAmbience::forScene($s)['layers'][0]['track_id'] ?? null))
+            ->filter()->unique()->values();
 
         if ($ids->isEmpty()) {
             return [];
@@ -72,10 +93,13 @@ class MusicTrack extends Model
             ->all();
     }
 
-    /** @return array{url: string, title: string, bpm: ?float, beat_offset: ?float} */
+    /** @return array{url: string, title: string, bpm: ?float, beat_offset: ?float, ambient: bool} */
     public function forMixer(): array
     {
-        return ['url' => $this->url(), 'title' => $this->title, 'bpm' => $this->bpm, 'beat_offset' => $this->beat_offset];
+        return [
+            'url' => $this->url(), 'title' => $this->title, 'bpm' => $this->bpm, 'beat_offset' => $this->beat_offset,
+            'ambient' => $this->kind === self::KIND_AMBIENCE,   // no beat: the mixer never guesses a tempo for wind
+        ];
     }
 
     /**
