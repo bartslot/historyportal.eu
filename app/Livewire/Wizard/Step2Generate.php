@@ -12,9 +12,11 @@ use App\Jobs\GenerateSceneScript;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Services\LessonGenerationRecovery;
+use App\Services\Lessons\ScriptReview;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 class Step2Generate extends Component
@@ -27,6 +29,10 @@ class Step2Generate extends Component
     ];
 
     public Lesson $lesson;
+
+    /** What the teacher asks the assistant to change in the script (ScriptReview). */
+    #[Validate('required|string|min:3|max:2000')]
+    public string $changeRequest = '';
 
     public function mount(Lesson $lesson): void
     {
@@ -78,7 +84,57 @@ class Step2Generate extends Component
             // the teacher can choose to build by hand — but that must stay a CHOICE, or the poll
             // would redirect them off the error screen before they ever read what went wrong.
             LessonStatus::Failed,
+            // The script waits for the teacher: nothing to advance to until they approve it.
+            LessonStatus::ScriptReview,
         ], true);
+    }
+
+    /** The teacher is reading the script (ScriptReview). */
+    #[Computed]
+    public function reviewingScript(): bool
+    {
+        return $this->lesson->status === LessonStatus::ScriptReview;
+    }
+
+    /** The assistant is rewriting the script: poll until its answer lands. */
+    #[Computed]
+    public function revisingScript(): bool
+    {
+        return $this->reviewingScript && ScriptReview::isRevising($this->lesson);
+    }
+
+    /** @return list<array{role: string, text: string}> */
+    #[Computed]
+    public function reviewMessages(): array
+    {
+        return array_values((array) ($this->lesson->script_review['messages'] ?? []));
+    }
+
+    /** Re-read the lesson while the assistant works, without the generation auto-advance. */
+    public function refreshReview(): void
+    {
+        $this->lesson->refresh();
+        unset($this->scenes, $this->reviewingScript, $this->revisingScript, $this->reviewMessages);
+    }
+
+    public function requestScriptChanges(): void
+    {
+        $this->validate();
+        ScriptReview::requestChanges($this->lesson, trim($this->changeRequest));
+        $this->changeRequest = '';
+        $this->refreshReview();
+    }
+
+    public function saveSceneScript(int $sceneId, string $text): void
+    {
+        ScriptReview::saveScene($this->lesson, $sceneId, mb_substr($text, 0, 6000));
+        $this->refreshReview();
+    }
+
+    public function approveScript(): void
+    {
+        ScriptReview::approve($this->lesson);
+        $this->refreshReview();
     }
 
     /**

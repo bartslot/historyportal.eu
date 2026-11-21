@@ -5,6 +5,7 @@ $statusSteps = [
     LessonStatus::SourceReady->value      => ['label' => __('Waiting for the workshop to begin'), 'detail' => __('Your lesson is queued and ready for the first worker.'), 'pct' => 2],
     LessonStatus::FetchingSources->value  => ['label' => __('Researching the historical setting'), 'detail' => __('Finding reliable source material and useful historical images.'), 'pct' => 8],
     LessonStatus::Outlining->value        => ['label' => __('Planning the lesson narrative'), 'detail' => __('Choosing the key events, sequence, and teaching structure.'), 'pct' => 18],
+    LessonStatus::ScriptReview->value     => ['label' => __('Read your script'), 'detail' => __('Approve it as it is, or tell the assistant what to change. Pictures and narration start after you approve.'), 'pct' => null],
     LessonStatus::ScenesGenerating->value => ['label' => __('Building the lesson scenes'), 'detail' => __('Writing the script, creating visuals, and preparing narration.'), 'pct' => null],
     LessonStatus::ScenesReady->value      => ['label' => __('Preparing the final knowledge check'), 'detail' => __('The scenes are ready. The quiz is being connected to the lesson.'), 'pct' => 95],
     LessonStatus::Configuring->value      => ['label' => __('Your lesson is ready'), 'detail' => __('Continue to review and configure the finished lesson.'), 'pct' => 100],
@@ -14,6 +15,7 @@ $pipelineOrder = [
     LessonStatus::SourceReady->value => -1,
     LessonStatus::FetchingSources->value => 0,
     LessonStatus::Outlining->value => 1,
+    LessonStatus::ScriptReview->value => 2,
     LessonStatus::ScenesGenerating->value => 2,
     LessonStatus::ScenesReady->value => 3,
     LessonStatus::Configuring->value => 4,
@@ -121,7 +123,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
 
 <div
     class="mx-auto max-w-5xl pb-10 pt-8"
-    @if($this->autoAdvanceActive) wire:poll.2s="checkAndAutoAdvance" @endif
+    @if($this->revisingScript) wire:poll.2s="refreshReview" @elseif($this->autoAdvanceActive) wire:poll.2s="checkAndAutoAdvance" @endif
 >
     <header class="mx-auto max-w-2xl text-center">
         <p class="text-prose font-semibold uppercase tracking-eyebrow text-panel-link/75">
@@ -135,6 +137,9 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
         </p>
     </header>
 
+    @if ($this->reviewingScript)
+        @include('livewire.wizard.partials.script-review')
+    @else
     <div class="mt-10 grid items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,.9fr)] lg:gap-16">
         <section class="flex min-w-0 flex-col items-center" aria-label="{{ __('Generation animation and progress') }}">
             <x-wizard.history-time-machine :state="$machineState" />
@@ -221,6 +226,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
             </ol>
         </section>
     </div>
+    @endif
 
     @if ($isFailed || $isStalled)
         <aside
@@ -284,7 +290,7 @@ $machineState = $isFailed ? 'error' : ($isStalled ? 'stalled' : ($isDone ? 'read
         </aside>
     @endif
 
-    @if ($generatable->isNotEmpty())
+    @if ($generatable->isNotEmpty() && ! $this->reviewingScript)
         <details class="mx-auto mt-8 max-w-3xl border-y border-slate-800 py-1">
             <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm text-panel-hint transition hover:text-slate-200">
                 <span>{{ __('Scene details') }}</span>
