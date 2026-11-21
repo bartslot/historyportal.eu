@@ -2955,5 +2955,8 @@
     "{1} Fill in 1 stop|[2,*] Fill in :count stops": "{1} Compila 1 tappa|[2,*] Compila :count tappe",
     "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Tutte le tappe erano già compilate.|{1} 1 tappa compilata.|[2,*] :count tappe compilate.",
     "Stop name": "Nome della tappa",
-    "Rename this stop": "Rinomina questa tappa"
+    "Rename this stop": "Rinomina questa tappa",
+    "Story and media": "Racconto e media",
+    "Interaction": "Interazione",
+    "Map and voyage": "Mappa e viaggio"
 }

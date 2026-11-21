@@ -3146,121 +3146,132 @@
                         aria-label="{{ __('Close') }}" wire:click="$set('addSceneOpen', false)">✕</button>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <button type="button" wire:click="addScene('narration')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="narration" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Story') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('game', 'quiz')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="game" game-type="quiz" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Quiz') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('game', 'strategy')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="game" game-type="strategy" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Strategy game') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('game', 'debate')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="game" game-type="debate" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Debate') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="game" game-type="predict" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Predict moment') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('map')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="map" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Map') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('gallery')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="gallery" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Gallery') }}</span>
-                </button>
-                <button type="button" wire:click="addScene('video')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="video" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
-                </button>
-                {{-- A 3D scene: whenever there is a painted stage bundle to build it from. --}}
-                @if ($this->eraStageBundle)
-                    <button type="button" wire:click="addScene('stage25d')" data-add-stage25d
-                            class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                        <x-lesson.scene-type-thumb kind="stage25d" />
-                        <span class="text-sm font-medium text-slate-200">{{ __('3D scene') }}</span>
-                    </button>
-                @endif
-                {{-- Every lesson takes a Decision point and a voyage: things a teacher adds for
-                     immersion, never a form chosen when the lesson was made. --}}
-                <button type="button" wire:click="addScene('branch')"
-                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                    <x-lesson.scene-type-thumb kind="branch" />
-                    <span class="text-sm font-medium text-slate-200">{{ __('Decision point') }}</span>
-                </button>
-                {{-- ONE Voyage tile (Bart 2026-11-19: "just don't show it", on a greyed-out Voyage beside Route and Overview,
-                     three tiles with the same ship). The tile always means the voyage; what it adds depends on the lesson:
-                       - no voyage yet: pick one from the catalogue, inserted here as its itinerary and legs (insertVoyage);
-                       - a voyage sails: add its next leg, or the whole-trip overview, each with its own icon.
-                     An option that can't be used is not shown at all. The choice stays in Alpine so opening it never
-                     re-renders the modal. --}}
-                @if ($lesson->hasVoyage() || count($this->voyageOptions))
-                    <div class="contents" x-data="{ pick: false, voyage: '' }">
-                        <button type="button" data-add-voyage x-show="!pick" @click="pick = true"
+            {{-- Grouped (Bart 2026-11-21: "the amount of options is too big. Make categories, interaction together"
+                 / "Map together with Reis route and overzicht"). --}}
+            <div class="space-y-5">
+                <section data-add-scene-group="story">
+                    <h3 class="mb-2 text-2xs uppercase tracking-widest text-panel-hint">{{ __('Story and media') }}</h3>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <button type="button" wire:click="addScene('narration')"
                                 class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
-                            <x-lesson.scene-type-thumb kind="voyage" />
-                            <span class="text-sm font-medium text-slate-200">{{ __('Voyage') }}</span>
+                            <x-lesson.scene-type-thumb kind="narration" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Story') }}</span>
                         </button>
-                        <div x-show="pick" x-cloak data-voyage-choice class="col-span-2 flex flex-col gap-2 rounded-box border border-primary bg-base-200 p-3 sm:col-span-3">
-                            @if ($lesson->hasVoyage())
-                                <span class="text-xs text-panel-hint">{{ __('Add to this lesson\'s voyage') }}</span>
-                                <div class="grid grid-cols-2 gap-2">
-                                    {{-- The new leg's destination drops at the current map centre (fallback in PHP if none). --}}
-                                    <button type="button" data-add-voyage-leg
-                                            @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"
-                                            class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
-                                        <x-ui.icon name="voyage-leg" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
-                                        <span>
-                                            <span class="block text-sm font-medium text-base-content">{{ __('Next leg') }}</span>
-                                            <span class="block text-xs text-panel-hint">{{ __('Sail on to a new place') }}</span>
-                                        </span>
-                                    </button>
-                                    {{-- The itinerary: the whole trip on one screen. Same scene kind as a leg; it just stops nowhere. --}}
-                                    <button type="button" data-add-voyage-overview wire:click="addScene('voyage-overview')"
-                                            class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
-                                        <x-ui.icon name="voyage-overview" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
-                                        <span>
-                                            <span class="block text-sm font-medium text-base-content">{{ __('Whole voyage') }}</span>
-                                            <span class="block text-xs text-panel-hint">{{ __('Every stop on one map') }}</span>
-                                        </span>
-                                    </button>
-                                </div>
-                                <div class="flex justify-end">
-                                    <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
-                                </div>
-                            @else
-                                <label for="add-voyage-pick" class="text-xs text-panel-hint">{{ __('Which voyage do you want to sail here?') }}</label>
-                                <select id="add-voyage-pick" x-model="voyage" class="select select-sm select-bordered w-full">
-                                    <option value="">{{ __('Choose a voyage…') }}</option>
-                                    @foreach ($this->voyageOptions as $id => $name)
-                                        <option value="{{ $id }}">{{ $name }}</option>
-                                    @endforeach
-                                </select>
-                                <div class="flex justify-end gap-2">
-                                    <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
-                                    <button type="button" class="btn btn-primary btn-sm" data-insert-voyage :disabled="!voyage"
-                                            @click="$wire.insertVoyage(voyage)" wire:loading.attr="disabled" wire:target="insertVoyage">
-                                        {{ __('Add voyage') }}
-                                    </button>
-                                </div>
-                            @endif
-                        </div>
+                        <button type="button" wire:click="addScene('gallery')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="gallery" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Gallery') }}</span>
+                        </button>
+                        <button type="button" wire:click="addScene('video')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="video" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Video') }}</span>
+                        </button>
+                        {{-- A 3D scene: whenever there is a painted stage bundle to build it from. --}}
+                        @if ($this->eraStageBundle)
+                            <button type="button" wire:click="addScene('stage25d')" data-add-stage25d
+                                    class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                                <x-lesson.scene-type-thumb kind="stage25d" />
+                                <span class="text-sm font-medium text-slate-200">{{ __('3D scene') }}</span>
+                            </button>
+                        @endif
                     </div>
-                @endif
+                </section>
+                <section data-add-scene-group="interaction">
+                    <h3 class="mb-2 text-2xs uppercase tracking-widest text-panel-hint">{{ __('Interaction') }}</h3>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <button type="button" wire:click="addScene('game', 'quiz')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="game" game-type="quiz" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Quiz') }}</span>
+                        </button>
+                        <button type="button" wire:click="addScene('game', 'debate')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="game" game-type="debate" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Debate') }}</span>
+                        </button>
+                        <button type="button" wire:click="addScene('game', 'predict')" data-add-predict
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="game" game-type="predict" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Predict moment') }}</span>
+                        </button>
+                        {{-- No Decision point here (Bart 2026-11-21: "I actually want to remove this from scenes … it should become a layer"). --}}
+                        <button type="button" wire:click="addScene('game', 'strategy')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="game" game-type="strategy" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Strategy game') }}</span>
+                        </button>
+                    </div>
+                </section>
+                <section data-add-scene-group="map">
+                    <h3 class="mb-2 text-2xs uppercase tracking-widest text-panel-hint">{{ __('Map and voyage') }}</h3>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <button type="button" wire:click="addScene('map')"
+                                class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                            <x-lesson.scene-type-thumb kind="map" />
+                            <span class="text-sm font-medium text-slate-200">{{ __('Map') }}</span>
+                        </button>
+                        {{-- ONE Voyage tile (Bart 2026-11-19: "just don't show it", on a greyed-out Voyage beside Route and Overview,
+                             three tiles with the same ship). The tile always means the voyage; what it adds depends on the lesson:
+                               - no voyage yet: pick one from the catalogue, inserted here as its itinerary and legs (insertVoyage);
+                               - a voyage sails: add its next leg, or the whole-trip overview, each with its own icon.
+                             An option that can't be used is not shown at all. The choice stays in Alpine so opening it never
+                             re-renders the modal. --}}
+                        @if ($lesson->hasVoyage() || count($this->voyageOptions))
+                            <div class="contents" x-data="{ pick: false, voyage: '' }">
+                                <button type="button" data-add-voyage x-show="!pick" @click="pick = true"
+                                        class="group flex flex-col gap-2 rounded-box border border-slate-700/70 bg-base-200/60 p-2 text-left transition hover:border-primary">
+                                    <x-lesson.scene-type-thumb kind="voyage" />
+                                    <span class="text-sm font-medium text-slate-200">{{ __('Voyage') }}</span>
+                                </button>
+                                <div x-show="pick" x-cloak data-voyage-choice class="col-span-2 flex flex-col gap-2 rounded-box border border-primary bg-base-200 p-3 sm:col-span-3">
+                                    @if ($lesson->hasVoyage())
+                                        <span class="text-xs text-panel-hint">{{ __('Add to this lesson\'s voyage') }}</span>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            {{-- The new leg's destination drops at the current map centre (fallback in PHP if none). --}}
+                                            <button type="button" data-add-voyage-leg
+                                                    @click="const c = (window.__voyageCenter && window.__voyageCenter()) || null; $wire.addScene('voyage', null, c ? c.lng : null, c ? c.lat : null)"
+                                                    class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
+                                                <x-ui.icon name="voyage-leg" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
+                                                <span>
+                                                    <span class="block text-sm font-medium text-base-content">{{ __('Next leg') }}</span>
+                                                    <span class="block text-xs text-panel-hint">{{ __('Sail on to a new place') }}</span>
+                                                </span>
+                                            </button>
+                                            {{-- The itinerary: the whole trip on one screen. Same scene kind as a leg; it just stops nowhere. --}}
+                                            <button type="button" data-add-voyage-overview wire:click="addScene('voyage-overview')"
+                                                    class="flex items-start gap-2.5 rounded-box border border-base-300 bg-base-100 p-3 text-left transition hover:border-primary">
+                                                <x-ui.icon name="voyage-overview" class="mt-0.5 h-6 w-6 shrink-0 text-indigo-300" />
+                                                <span>
+                                                    <span class="block text-sm font-medium text-base-content">{{ __('Whole voyage') }}</span>
+                                                    <span class="block text-xs text-panel-hint">{{ __('Every stop on one map') }}</span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                        <div class="flex justify-end">
+                                            <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
+                                        </div>
+                                    @else
+                                        <label for="add-voyage-pick" class="text-xs text-panel-hint">{{ __('Which voyage do you want to sail here?') }}</label>
+                                        <select id="add-voyage-pick" x-model="voyage" class="select select-sm select-bordered w-full">
+                                            <option value="">{{ __('Choose a voyage…') }}</option>
+                                            @foreach ($this->voyageOptions as $id => $name)
+                                                <option value="{{ $id }}">{{ $name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="flex justify-end gap-2">
+                                            <button type="button" class="btn btn-ghost btn-sm" @click="pick = false">{{ __('Cancel') }}</button>
+                                            <button type="button" class="btn btn-primary btn-sm" data-insert-voyage :disabled="!voyage"
+                                                    @click="$wire.insertVoyage(voyage)" wire:loading.attr="disabled" wire:target="insertVoyage">
+                                                {{ __('Add voyage') }}
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </section>
             </div>
         </div>
         <button type="button" class="modal-backdrop" aria-label="{{ __('Close') }}"

@@ -2955,5 +2955,8 @@
     "{1} Fill in 1 stop|[2,*] Fill in :count stops": "{1} 1 Halt ausfüllen|[2,*] :count Halte ausfüllen",
     "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Alle Halte waren schon ausgefüllt.|{1} 1 Halt ausgefüllt.|[2,*] :count Halte ausgefüllt.",
     "Stop name": "Name des Halts",
-    "Rename this stop": "Diesen Halt umbenennen"
+    "Rename this stop": "Diesen Halt umbenennen",
+    "Story and media": "Geschichte und Medien",
+    "Interaction": "Interaktion",
+    "Map and voyage": "Karte und Reise"
 }

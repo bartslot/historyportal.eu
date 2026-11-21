@@ -2955,5 +2955,8 @@
     "{1} Fill in 1 stop|[2,*] Fill in :count stops": "{1} Remplir 1 escale|[2,*] Remplir :count escales",
     "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Toutes les escales étaient déjà remplies.|{1} 1 escale remplie.|[2,*] :count escales remplies.",
     "Stop name": "Nom de l'escale",
-    "Rename this stop": "Renommer cette escale"
+    "Rename this stop": "Renommer cette escale",
+    "Story and media": "Récit et médias",
+    "Interaction": "Interaction",
+    "Map and voyage": "Carte et voyage"
 }

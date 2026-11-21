@@ -2997,5 +2997,8 @@
     "{1} Fill in 1 stop|[2,*] Fill in :count stops": "{1} Vul 1 tussenstop in|[2,*] Vul :count tussenstops in",
     "{0} Every stop was already filled in.|{1} Filled in 1 stop.|[2,*] Filled in :count stops.": "{0} Alle tussenstops waren al ingevuld.|{1} 1 tussenstop ingevuld.|[2,*] :count tussenstops ingevuld.",
     "Stop name": "Naam van de stop",
-    "Rename this stop": "Hernoem deze stop"
+    "Rename this stop": "Hernoem deze stop",
+    "Story and media": "Verhaal en media",
+    "Interaction": "Interactie",
+    "Map and voyage": "Kaart en reis"
 }
