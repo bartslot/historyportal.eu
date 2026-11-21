@@ -13,6 +13,7 @@
     $bgKind         = $scene->config['background_credit']['kind'] ?? null;
     $srcDefault     = $bgKind === 'painting' ? 'paintings' : 'ai';
     $backgroundFit  = ($scene->config['background_fit'] ?? 'cover') === 'contain' ? 'contain' : 'cover';
+    $paperEdge      = ($scene->config['paper_edge'] ?? true) === false ? 'straight' : 'painted';
     // On a split scene the Image controls show and set the active panel's own picture.
     $backgroundImageUrl = \App\Support\MediaUrl::versioned($split ? ($panelShot['image_path'] ?? null) : $scene->image_path, $scene->updated_at?->timestamp);
     $bgEmbed        = ($scene->config ?? [])['bg_embed'] ?? null;
@@ -212,6 +213,16 @@
                     <p class="mt-1 text-prose leading-tight text-panel-hint" x-show="fit === 'contain'" x-cloak>
                         {{ __('Shows the whole picture, with bars where it does not reach the edges.') }}
                     </p>
+                </div>
+            @endif
+
+            {{-- Edge — the picture painted on paper (soft, irregular edge, the default) or full-bleed. --}}
+            @if ($backgroundImageUrl)
+                <div x-data="{ edge: @js($paperEdge) }" data-paper-edge-control>
+                    <span class="mb-1 block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Edge') }}</span>
+                    <x-ui.segmented panel name="paper-edge" model="edge"
+                                    :options="[['painted', __('Painted on paper')], ['straight', __('Straight')]]"
+                                    on-change="$wire.call('setPaperEdge', $event.target.value === 'painted')" />
                 </div>
             @endif
 

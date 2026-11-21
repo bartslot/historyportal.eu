@@ -898,6 +898,28 @@ trait EditsSceneArtwork
         $this->selectSceneInternal($scene->id);
     }
 
+    /**
+     * The picture's edge: painted (a soft, irregular edge with paper around it, the default) or
+     * straight (full-bleed). See resources/js/scene/paper-edge.js.
+     */
+    public function setPaperEdge(bool $painted): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $config['paper_edge'] = $painted;
+        $scene->update(['config' => $config]);
+
+        // Keep the snapshot in step, or saveSelected() would write the pre-edit config back.
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        $this->selectSceneInternal($scene->id);
+    }
+
     /** @return array<int, array{asset_id: int, path: string, title: string, url: string, depth: float, scale: float, height: float, sway: bool, x?: float, y?: float, wobble?: int, opacity?: float, blur?: float, z?: int, blend?: string, kind?: string}> */
     #[Computed]
     public function sceneArtworkLayers(): array

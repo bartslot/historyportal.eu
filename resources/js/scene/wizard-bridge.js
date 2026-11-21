@@ -7,6 +7,7 @@ import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas, gradientCss } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
+import { applyPaperEdge } from './paper-edge.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
@@ -123,6 +124,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // path below sets it; anything else (a map, a world, a film) has none to animate.
             _stageBackgrounds = null
             fade(canvasEl, 1)
+            setPaperEdge(null)   // the slideshow path below paints it back on a picture
             try {
                 if (!payload.config?.diorama) hideDiorama()
                 if (!(payload.kind === 'stage25d' && payload.config?.stage25d)) hideStage25d()
@@ -161,6 +163,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         camera: firstShot?.camera ?? null,
                         entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,
+                        paperEdge: payload.config?.paper_edge !== false,
                         backdropDepth: payload.config?.backdrop_depth ?? null,
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
@@ -310,6 +313,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 camera: firstShot?.camera ?? null,
                 entry: firstShot?.entry ?? null,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
+                paperEdge: e.detail?.config?.paper_edge !== false,
                 backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
@@ -449,6 +453,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         const isCurrent = motion.isCurrent ?? (() => true)
         currentBgFocus = motion.focus || 'center'
         currentBgFit   = normalizeFit(motion.fit)
+        setPaperEdge(null)
         // Layered shot (E3c): render via ParallaxScene when the shot carries layers.
         if (Array.isArray(motion.layers) && motion.layers.length) {
             const didShow = await showLayeredSlideshowShot(motion)
@@ -500,6 +505,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // Hide sphere only after texture is ready — avoids black flash.
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
+            if (motion.paperEdge) setPaperEdge(canvasEl)
 
             // A still picture at a clean fit, as in the player: a scene moves by its shot camera
             // (a camera move makes it a layered shot), never by a Ken Burns drift of its own.
@@ -1225,12 +1231,22 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         window.dispatchEvent(new CustomEvent('scene-objects-changed'))
     }
 
+    /**
+     * The painted paper edge (paper-edge.js) on whichever element shows this scene's picture: the
+     * layer host for a layered shot, the WebGL canvas for a flat one. null takes it off both.
+     */
+    function setPaperEdge(target) {
+        applyPaperEdge(canvasEl, target === canvasEl)
+        applyPaperEdge(_wizardLayerHost, !!target && target === _wizardLayerHost)
+    }
+
     function destroyWizardLayers() {
         if (_wizardLayeredScene) {
             try { _wizardLayeredScene.destroy() } catch (_) {}
             _wizardLayeredScene = null
         }
         if (_wizardLayerHost) _wizardLayerHost.style.display = 'none'
+        setPaperEdge(null)
         _bgSig = null
         if (_artworkOverlay) { try { _artworkOverlay.clear() } catch (_) {} }
         if (_artworkHost) _artworkHost.style.display = 'none'
@@ -1257,6 +1273,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (!host) return false
 
             host.style.display = ''
+            setPaperEdge(payload.paperEdge && bgLayers.length ? host : null)
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
             // Figures with no backdrop picture stand on the scene's own gradient or colour, as in the player
             host.style.background = bgLayers.length ? '' : (gradientCss(payload.gradient) || payload.backgroundColor || '#0f172a')
