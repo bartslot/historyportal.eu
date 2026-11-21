@@ -31,10 +31,15 @@ class OpenAiLlmService
      * @param  int|null  $maxTokens  Per-call output-token cap. Pass a larger value for big JSON
      *                               (e.g. a branching lesson outline) so the response isn't
      *                               truncated mid-structure. Falls back to services.openai.max_tokens.
+     * @param  int|null  $timeout  Per-call read timeout in seconds, for a call that writes a lot (a
+     *                             whole lesson outline). With it the call is tried twice, not four
+     *                             times: a slow answer cut off by the clock is just as slow the next
+     *                             time. A 60-second clock tried four times ran BuildLessonOutline out
+     *                             of time and left lessons stuck at 18% (2026-11-21).
      */
-    public function json(string $system, string $user, ?string $model = null, ?int $maxTokens = null): array
+    public function json(string $system, string $user, ?string $model = null, ?int $maxTokens = null, ?int $timeout = null): array
     {
-        $raw = $this->call($system, $user, $model, jsonMode: true, maxTokens: $maxTokens);
+        $raw = $this->call($system, $user, $model, jsonMode: true, maxTokens: $maxTokens, timeout: $timeout);
 
         // Strip markdown code fences that some local models (LM Studio, Ollama) wrap around JSON
         $clean = preg_replace('/^```(?:json)?\s*/i', '', trim($raw));
@@ -147,7 +152,7 @@ class OpenAiLlmService
         ]);
     }
 
-    protected function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null): string
+    protected function call(string $system, string $user, ?string $model, bool $jsonMode, ?int $maxTokens = null, ?int $timeout = null): string
     {
         $payload = [
             'model'    => $model ?? $this->model ?? config('services.openai.model'),
@@ -171,15 +176,20 @@ class OpenAiLlmService
             $payload['response_format'] = ['type' => $jsonFormat];
         }
 
-        return $this->send($payload);
+        return $this->send($payload, $timeout);
     }
 
     /** Issue a chat/completions request and return the assistant text. */
-    private function send(array $payload): string
+    private function send(array $payload, ?int $callTimeout = null): string
     {
         $base    = $this->baseUrl ?? config('services.openai.base_url');
         $key     = $this->apiKey  ?? config('services.openai.api_key');
         $timeout = $this->timeout ?? (int) config('services.openai.timeout', 60);
+        $tries   = 4;
+        if ($callTimeout !== null) {
+            $timeout = max($timeout, $callTimeout);
+            $tries = 2;
+        }
 
         try {
             $response = Http::withToken($key)
@@ -189,7 +199,7 @@ class OpenAiLlmService
                 // the provider's Retry-After and decides how long to wait.
                 // A busy model (503 "high demand") needs longer than a second: three tries a
                 // second apart all failed on prod 2026-10-23 and a lesson came out with no scenes.
-                ->retry(times: 4, sleepMilliseconds: fn (int $attempt) => [2000, 8000, 20000][$attempt - 1] ?? 20000, when: fn ($e, $req) => ! ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429), throw: false)
+                ->retry(times: $tries, sleepMilliseconds: fn (int $attempt) => [2000, 8000, 20000][$attempt - 1] ?? 20000, when: fn ($e, $req) => ! ($e instanceof \Illuminate\Http\Client\RequestException && $e->response->status() === 429), throw: false)
                 ->post(rtrim($base, '/') . '/chat/completions', $payload);
         } catch (\Throwable $e) {
             throw new RuntimeException('OpenAI API request failed: ' . $e->getMessage(), previous: $e);

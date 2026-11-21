@@ -47,9 +47,23 @@ class BuildLessonOutline implements ShouldQueue
         ['key' => 'support',  'label' => 'Steun',       'icon' => '❤️', 'start' => 60],
     ];
 
-    public int $tries = 3;
+    /** A fresh attempt redoes every source fetch and the whole outline call, so two is plenty. */
+    public int $tries = 2;
 
-    public int $timeout = 120;
+    /**
+     * Seconds the whole job may take: source fetches, the outline call (OUTLINE_TIMEOUT, twice at
+     * worst) and a story game's repair calls. It was 120 while the outline call alone could take
+     * longer, so the worker killed the job mid-call, the catch in handle() never ran and the lesson
+     * sat on "Planning the lesson narrative" (18%) for good (2026-11-21). Stays under the database
+     * queue's retry_after (900) and the scheduler's 15-minute overlap lock, so a live job is never doubled.
+     */
+    public int $timeout = 840;
+
+    /** A timeout ends the job and marks the lesson failed (see failed()), so it can't hang on 18%. */
+    public bool $failOnTimeout = true;
+
+    /** Read timeout for the outline call: 16k tokens of JSON from gpt-4o-mini can take two minutes. */
+    private const OUTLINE_TIMEOUT = 240;
 
     public function __construct(public readonly int $lessonId) {}
 
@@ -219,6 +233,7 @@ class BuildLessonOutline implements ShouldQueue
                 system: LessonOutlinePrompt::system($hasGame, $lesson->game_type),
                 user: LessonOutlinePrompt::user($lesson, $sourceText, $story),
                 maxTokens: 16000,
+                timeout: self::OUTLINE_TIMEOUT,
             );
 
             // Curated stories are the pedagogical source of truth: their reviewed objectives
@@ -381,6 +396,30 @@ class BuildLessonOutline implements ShouldQueue
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * The job died without reaching the catch in handle(): the worker killed it on its timeout, or
+     * every attempt was used up. Without this the lesson kept its "Outlining" status forever and the
+     * teacher watched the bar stop at 18%. Mark it failed, so the wizard offers a retry.
+     */
+    public function failed(?Throwable $e): void
+    {
+        $lesson = Lesson::find($this->lessonId);
+        if ($lesson === null || ! in_array($lesson->status, [
+            LessonStatus::SourceReady,
+            LessonStatus::FetchingSources,
+            LessonStatus::Outlining,
+        ], true)) {
+            return;
+        }
+
+        Log::error("BuildLessonOutline #{$lesson->id}: gave up: ".($e?->getMessage() ?? 'no error given'));
+
+        $lesson->update([
+            'status' => LessonStatus::Failed,
+            'error_message' => __('Planning the lesson took too long and was stopped. Try again; it usually works the second time.'),
+        ]);
     }
 
     /**
