@@ -17,6 +17,8 @@ enum LessonStatus: string
     case FetchingSources = 'fetching_sources';
     case Outlining = 'outlining';
     case ScenesGenerating = 'scenes_generating';
+    /** The script is written and waits for the teacher to approve it or ask for changes. */
+    case ScriptReview = 'script_review';
     case ScenesReady = 'scenes_ready';
     case Configuring = 'configuring';
     case Previewable = 'previewable';
@@ -52,6 +54,7 @@ enum LessonStatus: string
             self::FetchingSources => __('Fetching sources…'),
             self::Outlining => __('Outlining...'),
             self::ScenesGenerating => __('Generating scenes...'),
+            self::ScriptReview => __('Script ready to read'),
             self::ScenesReady => __('Scenes ready'),
             self::Configuring => __('Configuring'),
             self::Previewable => __('Previewable'),
@@ -71,6 +74,7 @@ enum LessonStatus: string
             self::FetchingSources => 'cyan',
             self::Outlining => 'blue',
             self::ScenesGenerating => 'blue',
+            self::ScriptReview => 'amber',
             self::ScenesReady => 'green',
             self::Configuring => 'amber',
             self::Previewable => 'green',

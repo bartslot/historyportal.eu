@@ -885,7 +885,7 @@ class LessonChat extends Component
 
         // Same as Step2Story::generate — sets SourceReady + dispatches BuildLessonOutline,
         // then lands on the wizard's Generate progress view (step 3).
-        $lesson->refresh()->startGenerationPipeline();
+        $lesson->refresh()->startGenerationPipeline(reviewScript: true);
 
         $this->createdLessonId = $lesson->id;
         $this->redirectToWizard($lesson->id);
