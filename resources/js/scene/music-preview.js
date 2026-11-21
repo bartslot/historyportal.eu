@@ -8,8 +8,14 @@ export function sceneMusicPreview (tracks) {
   return {
     playing: false,
     failed: false,
+    init () {
+      // Only a song list stops it: the scene's Music and Sound previews may play together.
+      this._onOther = (e) => { if (e.detail?.kind === 'song' && this.playing) this.stop() }
+      window.addEventListener('music-preview-start', this._onOther)
+    },
     async toggle (music) {
       if (this.playing) return this.stop()
+      window.dispatchEvent(new CustomEvent('music-preview-start', { detail: { kind: 'scene', from: this } }))
       this.playing = true
       this.failed = false
       const { createMusicMixer } = await import('./music-mixer.js')
@@ -25,6 +31,7 @@ export function sceneMusicPreview (tracks) {
     destroy () {
       mixer?.destroy()
       mixer = null
+      window.removeEventListener('music-preview-start', this._onOther)
     },
   }
 }
@@ -49,6 +56,57 @@ export function lessonMusicTempo (tracks) {
           console.warn('lesson music: tempo not estimated', url, e)
         }
       }
+    },
+  }
+}
+
+/**
+ * The song list (components/wizard/song-list.blade.php): play one song to hear it, Use it. One song
+ * plays at a time across every list on the page, and starting one stops the scene's own Preview
+ * (and the other way round) through the 'music-preview-start' window event.
+ */
+export function songListPreview () {
+  let audio = null
+  return {
+    current: null,
+    position: 0,
+    duration: 0,
+    failed: false,
+    init () {
+      this._onOther = (e) => { if (e.detail?.from !== this) this.stop() }
+      window.addEventListener('music-preview-start', this._onOther)
+    },
+    toggle (id, url) {
+      if (this.current === id) return this.stop()
+      this.stop()
+      window.dispatchEvent(new CustomEvent('music-preview-start', { detail: { kind: 'song', from: this } }))
+      this.failed = false
+      this.current = id
+      audio = new Audio(url)
+      audio.addEventListener('timeupdate', () => { this.position = audio?.currentTime ?? 0 })
+      audio.addEventListener('loadedmetadata', () => { this.duration = audio?.duration ?? 0 })
+      audio.addEventListener('ended', () => this.stop())
+      audio.addEventListener('error', () => { this.failed = true; this.stop() })
+      audio.play().catch(() => { if (this.current === id) { this.failed = true; this.stop() } })
+    },
+    stop () {
+      if (audio) {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio = null
+      }
+      this.current = null
+      this.position = 0
+      this.duration = 0
+    },
+    clock (s) {
+      if (!Number.isFinite(s) || s <= 0) return '0:00'
+      const m = Math.floor(s / 60)
+      return `${m}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+    },
+    destroy () {
+      this.stop()
+      window.removeEventListener('music-preview-start', this._onOther)
     },
   }
 }

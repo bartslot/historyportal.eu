@@ -2964,5 +2964,14 @@
     "Sound under this scene": "Suono sotto questa scena",
     "Sound volume": "Volume del suono",
     "That is a lot of new sounds for one hour. Try again a little later.": "Sono tanti nuovi suoni in un'ora. Riprova più tardi.",
-    "The sound could not be made just now. Try again in a minute.": "Non è stato possibile creare il suono ora. Riprova tra un minuto."
+    "The sound could not be made just now. Try again in a minute.": "Non è stato possibile creare il suono ora. Riprova tra un minuto.",
+    "Songs": "Brani",
+    ":count song|:count songs": ":count brano|:count brani",
+    "That song could not be loaded.": "Impossibile caricare questo brano.",
+    "Stop :title": "Ferma :title",
+    "Play :title": "Riproduci :title",
+    "In use": "In uso",
+    "Use :title": "Usa :title",
+    "Use": "Usa",
+    "Every scene already starts its own track.": "Ogni scena inizia già con un proprio brano."
 }

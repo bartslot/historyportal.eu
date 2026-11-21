@@ -50,7 +50,30 @@ class LessonMusic extends Component
             return;   // every scene already starts a row
         }
         $rows = $this->rows;
-        $rows[] = ['scene' => $scene, 'track_id' => MusicTrack::query()->orderBy('title')->value('id'), 'layers' => 1, 'origin' => null];
+        $rows[] = ['scene' => $scene, 'track_id' => MusicTrack::query()->music()->orderBy('title')->value('id'), 'layers' => 1, 'origin' => null];
+        $this->save($rows);
+    }
+
+    /**
+     * The song list's Use: a new row with this song, from the first scene after the last row, or the
+     * first scene still free if the last row is already on the last scene.
+     */
+    public function useTrack(int $trackId): void
+    {
+        if (! MusicTrack::query()->music()->whereKey($trackId)->exists()) {
+            return;
+        }
+        $count = $this->lesson->scenes()->count();
+        $taken = array_map(fn ($r) => (int) $r['scene'], $this->rows);
+        $after = $taken === [] ? 0 : max($taken);
+        $free = array_values(array_diff(range(1, max(1, $count)), $taken));
+        $scene = collect($free)->first(fn (int $n) => $n > $after) ?? ($free[0] ?? null);
+        if ($scene === null || $count === 0) {
+            return;   // every scene already starts a row
+        }
+        $rows = $this->rows;
+        $rows[] = ['scene' => $scene, 'track_id' => $trackId, 'layers' => 1, 'origin' => null];
+        usort($rows, fn ($a, $b) => (int) $a['scene'] <=> (int) $b['scene']);
         $this->save($rows);
     }
 
@@ -113,7 +136,7 @@ class LessonMusic extends Component
 
     public function render(): View
     {
-        $tracks = MusicTrack::query()->orderBy('title')->get();
+        $tracks = MusicTrack::query()->music()->orderBy('title')->get();
         $used = collect($this->rows)->pluck('track_id')->filter()->unique();
 
         return view('livewire.wizard.lesson-music', [
@@ -132,7 +155,7 @@ class LessonMusic extends Component
         $this->authorizeLesson($this->lesson);
         $scenes = $this->scenes();
         try {
-            $changes = LessonMusicCues::apply($scenes, $rows, MusicTrack::query()->pluck('id')->all());
+            $changes = LessonMusicCues::apply($scenes, $rows, MusicTrack::query()->music()->pluck('id')->all());
         } catch (\InvalidArgumentException) {
             $this->addError('rows', __('Each row needs its own scene, between 1 and :count.', ['count' => count($scenes)]));
             $this->rows = LessonMusicCues::rows($scenes);
