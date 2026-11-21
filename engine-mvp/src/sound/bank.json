@@ -44,6 +44,9 @@
     },
     "neutral": {
       "regions": []
+    },
+    "journeys": {
+      "regions": []
     }
   },
   "places": {
@@ -55,6 +58,24 @@
     "sea": [
       "sea-waves",
       "rigging-creak"
+    ],
+    "desert": [
+      "desert-wind"
+    ],
+    "gobi": [
+      "desert-wind",
+      "caravan-camels"
+    ],
+    "taklamakan": [
+      "desert-wind",
+      "caravan-camels"
+    ],
+    "pamir": [
+      "mountain-pass"
+    ],
+    "silk-road": [
+      "caravan-camels",
+      "desert-wind"
     ]
   },
   "beds": [
@@ -556,6 +577,121 @@
         "outdoor"
       ],
       "note": "a soft open-air bed with no landscape in it: under a place no bundle covers yet"
+    },
+    {
+      "id": "sail-open-sea",
+      "bundle": "journeys",
+      "file": "beds/sail-open-sea.m4a",
+      "gain": 0.5,
+      "tags": [
+        "voyage",
+        "sail",
+        "ship",
+        "deck",
+        "open-sea",
+        "ocean",
+        "zeilen",
+        "schip",
+        "reis"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "sea-storm",
+      "bundle": "journeys",
+      "file": "beds/sea-storm.m4a",
+      "gain": 0.5,
+      "tags": [
+        "storm",
+        "gale",
+        "thunder",
+        "rain",
+        "tempest",
+        "storm",
+        "onweer",
+        "regen"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "bazaar",
+      "bundle": "journeys",
+      "file": "beds/bazaar.m4a",
+      "gain": 0.4,
+      "tags": [
+        "bazaar",
+        "market",
+        "souk",
+        "trader",
+        "merchant",
+        "spice",
+        "silk",
+        "markt",
+        "handelaar",
+        "koopman"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "desert-wind",
+      "bundle": "journeys",
+      "file": "beds/desert-wind.m4a",
+      "gain": 0.5,
+      "tags": [
+        "desert",
+        "dune",
+        "sand",
+        "gobi",
+        "taklamakan",
+        "woestijn",
+        "zand",
+        "duin"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "mountain-pass",
+      "bundle": "journeys",
+      "file": "beds/mountain-pass.m4a",
+      "gain": 0.5,
+      "tags": [
+        "mountain",
+        "pass",
+        "pamir",
+        "snow",
+        "cold",
+        "high",
+        "berg",
+        "bergen",
+        "pas",
+        "sneeuw",
+        "koud"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
+    },
+    {
+      "id": "caravan-camels",
+      "bundle": "journeys",
+      "file": "beds/caravan-camels.m4a",
+      "gain": 0.45,
+      "tags": [
+        "caravan",
+        "camel",
+        "silk-road",
+        "trade",
+        "travel",
+        "karavaan",
+        "kameel",
+        "kamelen",
+        "zijderoute"
+      ],
+      "universal": true,
+      "source": "elevenlabs"
     }
   ],
   "sfx": [

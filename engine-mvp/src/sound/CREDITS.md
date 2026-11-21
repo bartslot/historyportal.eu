@@ -70,3 +70,19 @@ on a paid plan. Not CC0.
 | `sfx/tablet-set-down.m4a` | one-shot, 1 s | A small clay tablet set down on a wooden table, a single soft dull knock. |
 | `sfx/grain-pour.m4a` | one-shot, 3 s | Barley grain poured from a basket into a cloth sack, dry pouring hiss, close. |
 | `sfx/step-earth.m4a` | one-shot, 1.5 s | Three footsteps of leather sandals on dry packed earth, close. |
+
+## Journeys (`journeys`): ElevenLabs sound effects
+
+Generated 2026-11-21 by `engine-mvp/tools/soundbank/eleven_beds.py` (prompts in `eleven_beds.json`), same recipe as
+Babylonia above. Suffix on every prompt: "Realistic field recording. No music, no speech, no words, no modern sounds." Universal beds: settings any lesson can travel through.
+
+Licence: generated on a paid ElevenLabs plan (Creator); commercial use granted. Not CC0.
+
+| File | Kind | Prompt |
+|---|---|---|
+| `beds/sail-open-sea.m4a` | ambience bed, seamless 20 s loop | On the wooden deck of an old sailing ship at sea, steady wind in the canvas sails, wooden hull timbers and mast creaking slowly as the ship rolls, waves washing along the hull, ropes straining. Continuous ambience. |
+| `beds/sea-storm.m4a` | ambience bed, seamless 20 s loop | Violent storm at sea heard from the deck of a wooden sailing ship, howling wind, heavy rain, big waves crashing over the bow, timbers groaning loudly, distant rolling thunder. Continuous ambience. |
+| `beds/bazaar.m4a` | ambience bed, seamless 20 s loop | Busy covered bazaar in an old eastern city, a crowd murmuring with no clear words, footsteps on stone, a metal smith tapping copper far away, a donkey braying, cloth rustling. Continuous ambience. |
+| `beds/desert-wind.m4a` | ambience bed, seamless 20 s loop | Vast empty sand desert, a dry hot wind blowing steadily, fine sand hissing over dunes, no animals, wide open silence under the wind. Continuous ambience. |
+| `beds/mountain-pass.m4a` | ambience bed, seamless 20 s loop | High cold mountain pass far above the tree line, a thin icy wind gusting over rock and snow, loose stones trickling now and then, a hollow wide echo, no birds. Continuous ambience. |
+| `beds/caravan-camels.m4a` | ambience bed, seamless 20 s loop | A camel caravan walking slowly across dry open land, soft heavy camel footfalls on sand and gravel, small bells on the camels ringing gently, harness leather creaking, a camel grunting now and then, light wind. Continuous ambience. |
