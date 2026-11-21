@@ -2953,5 +2953,17 @@
     "Sorry, that change did not work this time. Your script is unchanged. Try asking again.": "Désolé, cette modification n'a pas fonctionné cette fois. Votre script est inchangé. Redemandez.",
     "I did not find anything to change for that. Could you say which scene, or what should be different?": "Je n'ai rien trouvé à changer pour cela. Pouvez-vous dire quelle scène, ou ce qui doit être différent ?",
     "I changed :count scene.|I changed :count scenes.": "J'ai modifié :count scène.|J'ai modifié :count scènes.",
+    "Auto: :name": "Auto : :name",
+    "Auto: nothing fits this scene": "Auto : rien ne convient à cette scène",
+    "Describe a new sound": "Décris un nouveau son",
+    "Describe a new sound, e.g. desert wind over rocky mountains, a distant eagle": "Décris un nouveau son, p. ex. vent du désert sur des montagnes rocheuses, un aigle au loin",
+    "Make this sound": "Créer ce son",
+    "Making the sound, about 20 seconds": "Création du son, environ 20 secondes",
+    "New sound added under this scene.": "Nouveau son placé sous cette scène.",
+    "Sound": "Son",
+    "Sound under this scene": "Son sous cette scène",
+    "Sound volume": "Volume du son",
+    "That is a lot of new sounds for one hour. Try again a little later.": "Cela fait beaucoup de nouveaux sons en une heure. Réessaie un peu plus tard.",
+    "The sound could not be made just now. Try again in a minute.": "Le son n'a pas pu être créé pour l'instant. Réessaie dans une minute.",
     "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT sur le Mac qui fait les images est éteint. Rien n’a été modifié."
 }

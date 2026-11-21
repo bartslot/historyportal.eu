@@ -174,6 +174,36 @@ class ElevenLabsService
         }
     }
 
+    /**
+     * A looping ambience bed from the sound effects API (same settings as the sound bank beds), as mp3
+     * bytes, or null when the call failed (logged). `loop` makes ElevenLabs end where it began.
+     */
+    public function soundEffect(string $prompt, float $seconds = 20.0, bool $loop = true): ?string
+    {
+        try {
+            $response = Http::withHeaders(['xi-api-key' => $this->apiKey, 'Content-Type' => 'application/json'])
+                ->timeout(120)->connectTimeout(5)
+                ->post("{$this->baseUrl}/v1/sound-generation?output_format=mp3_44100_128", [
+                    'text' => $prompt,
+                    'model_id' => 'eleven_text_to_sound_v2',
+                    'duration_seconds' => max(0.5, min(30.0, $seconds)),
+                    'prompt_influence' => 0.45,
+                    'loop' => $loop,
+                ]);
+        } catch (\Throwable $e) {
+            Log::error('[ElevenLabs] sound-generation failed: '.$e->getMessage());
+
+            return null;
+        }
+        if (! $response->successful() || $response->body() === '') {
+            Log::error('[ElevenLabs] sound-generation HTTP '.$response->status().': '.substr($response->body(), 0, 300));
+
+            return null;
+        }
+
+        return $response->body();
+    }
+
     public function getVoicePreviewUrl(string $voiceId): ?string
     {
         $voices = $this->getVoices();

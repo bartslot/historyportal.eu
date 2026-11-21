@@ -2995,5 +2995,17 @@
     "Sorry, that change did not work this time. Your script is unchanged. Try asking again.": "Sorry, die aanpassing lukte deze keer niet. Je script is niet veranderd. Vraag het nog eens.",
     "I did not find anything to change for that. Could you say which scene, or what should be different?": "Ik vond daar niets om aan te passen. Kun je zeggen welke scène, of wat er anders moet?",
     "I changed :count scene.|I changed :count scenes.": "Ik heb :count scène aangepast.|Ik heb :count scènes aangepast.",
+    "Auto: :name": "Auto: :name",
+    "Auto: nothing fits this scene": "Auto: niets past bij deze scène",
+    "Describe a new sound": "Beschrijf een nieuw geluid",
+    "Describe a new sound, e.g. desert wind over rocky mountains, a distant eagle": "Beschrijf een nieuw geluid, bijv. woestijnwind over rotsige bergen, een verre arend",
+    "Make this sound": "Maak dit geluid",
+    "Making the sound, about 20 seconds": "Geluid wordt gemaakt, ongeveer 20 seconden",
+    "New sound added under this scene.": "Nieuw geluid onder deze scène gezet.",
+    "Sound": "Geluid",
+    "Sound under this scene": "Geluid onder deze scène",
+    "Sound volume": "Volume geluid",
+    "That is a lot of new sounds for one hour. Try again a little later.": "Dat zijn veel nieuwe geluiden in een uur. Probeer het straks nog eens.",
+    "The sound could not be made just now. Try again in a minute.": "Het geluid kon nu niet gemaakt worden. Probeer het over een minuut opnieuw.",
     "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT op de Mac die de beelden maakt staat uit. Er is niets veranderd."
 }

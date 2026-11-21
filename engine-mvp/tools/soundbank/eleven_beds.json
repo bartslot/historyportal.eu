@@ -1,0 +1,288 @@
+{
+  "_note": "Ambience bed prompts for ElevenLabs sound effects (eleven_beds.py). batch 1 = generated first; the rest wait for Bart's go. Every prompt gets the suffix appended.",
+  "suffix": "Realistic field recording. No music, no speech, no words, no modern sounds.",
+  "beds": [
+    {
+      "id": "sail-open-sea",
+      "batch": 1,
+      "setting": "sea voyage",
+      "tags": [
+        "voyage",
+        "sail",
+        "ship",
+        "deck",
+        "open-sea",
+        "ocean",
+        "zeilen",
+        "schip",
+        "reis"
+      ],
+      "prompt": "On the wooden deck of an old sailing ship at sea, steady wind in the canvas sails, wooden hull timbers and mast creaking slowly as the ship rolls, waves washing along the hull, ropes straining. Continuous ambience."
+    },
+    {
+      "id": "sea-storm",
+      "batch": 1,
+      "setting": "storm at sea",
+      "tags": [
+        "storm",
+        "gale",
+        "thunder",
+        "rain",
+        "tempest",
+        "storm",
+        "onweer",
+        "regen"
+      ],
+      "prompt": "Violent storm at sea heard from the deck of a wooden sailing ship, howling wind, heavy rain, big waves crashing over the bow, timbers groaning loudly, distant rolling thunder. Continuous ambience."
+    },
+    {
+      "id": "bazaar",
+      "batch": 1,
+      "setting": "bazaar",
+      "tags": [
+        "bazaar",
+        "market",
+        "souk",
+        "trader",
+        "merchant",
+        "spice",
+        "silk",
+        "markt",
+        "handelaar",
+        "koopman"
+      ],
+      "prompt": "Busy covered bazaar in an old eastern city, a crowd murmuring with no clear words, footsteps on stone, a metal smith tapping copper far away, a donkey braying, cloth rustling. Continuous ambience."
+    },
+    {
+      "id": "desert-wind",
+      "batch": 1,
+      "setting": "desert",
+      "tags": [
+        "desert",
+        "dune",
+        "gobi",
+        "taklamakan",
+        "woestijn",
+        "duin"
+      ],
+      "prompt": "Vast empty sand desert, a dry hot wind blowing steadily, fine sand hissing over dunes, no animals, wide open silence under the wind. Continuous ambience."
+    },
+    {
+      "id": "mountain-pass",
+      "batch": 1,
+      "setting": "mountain pass (Pamir)",
+      "tags": [
+        "mountain",
+        "pass",
+        "pamir",
+        "berg",
+        "bergen",
+        "pas"
+      ],
+      "prompt": "High cold mountain pass far above the tree line, a thin icy wind gusting over rock and snow, loose stones trickling now and then, a hollow wide echo, no birds. Continuous ambience."
+    },
+    {
+      "id": "caravan-camels",
+      "batch": 1,
+      "setting": "caravan",
+      "tags": [
+        "caravan",
+        "camel",
+        "silk-road",
+        "karavaan",
+        "kameel",
+        "kamelen",
+        "zijderoute"
+      ],
+      "prompt": "A camel caravan walking slowly across dry open land, soft heavy camel footfalls on sand and gravel, small bells on the camels ringing gently, harness leather creaking, a camel grunting now and then, light wind. Continuous ambience."
+    },
+    {
+      "id": "mountain-eagle",
+      "batch": 2,
+      "setting": "rocky desert mountains (Apache)",
+      "tags": [
+        "apache",
+        "eagle",
+        "hawk",
+        "rocky",
+        "canyon",
+        "mesa",
+        "arend",
+        "havik",
+        "rotsen"
+      ],
+      "prompt": "Sound of desert wind blowing steadily, with occasional stronger gusts swirling across rocky mountains. In the distance, the sharp cry of an eagle or hawk echoes faintly, carried by the air. The atmosphere feels vast, solitary, and cinematic, evoking the presence of a lone Apache standing on the mountain.",
+      "by": "Bart, 2026-11-21"
+    },
+    {
+      "id": "eastern-port",
+      "batch": 2,
+      "setting": "port (eastern / Mediterranean)",
+      "tags": [
+        "port",
+        "harbour",
+        "quay",
+        "dock",
+        "haven",
+        "kade"
+      ],
+      "prompt": "Old harbour of a busy trading city, water lapping against stone quays, wooden ships creaking at their moorings, gulls, porters shouting far away with no clear words, crates and barrels being moved. Continuous ambience."
+    },
+    {
+      "id": "imperial-court",
+      "batch": 2,
+      "setting": "imperial court",
+      "tags": [
+        "court",
+        "palace",
+        "emperor",
+        "khan",
+        "throne",
+        "hof",
+        "paleis",
+        "keizer",
+        "troon"
+      ],
+      "prompt": "Vast stone palace hall of an emperor, large reverberant room tone, distant soft footsteps of courtiers on polished floors, silk robes rustling, a soft wind chime far away, a quiet murmur with no clear words. Continuous ambience."
+    },
+    {
+      "id": "palace-garden",
+      "batch": 2,
+      "setting": "palace garden",
+      "tags": [
+        "garden",
+        "fountain",
+        "pavilion",
+        "tuin",
+        "fontein"
+      ],
+      "prompt": "Quiet walled palace garden, a stone fountain trickling, songbirds in the trees, a soft breeze in leaves, distant peacock call. Continuous ambience."
+    },
+    {
+      "id": "river-boat",
+      "batch": 2,
+      "setting": "river journey",
+      "tags": [
+        "river",
+        "boat",
+        "barge",
+        "row",
+        "rivier",
+        "boot",
+        "roeien"
+      ],
+      "prompt": "Travelling on a wooden river boat, slow river water gurgling along the hull, oars dipping and creaking in rhythm, birds on the banks, light breeze. Continuous ambience."
+    },
+    {
+      "id": "village-farm",
+      "batch": 2,
+      "setting": "early farming village (Uruk)",
+      "tags": [
+        "village",
+        "farm",
+        "mudbrick",
+        "hut",
+        "dorp",
+        "boerderij"
+      ],
+      "prompt": "Small early farming village of mud brick houses in a hot river plain, chickens and goats nearby, a grinding stone working grain now and then, children far away with no clear words, dry breeze. Continuous ambience."
+    },
+    {
+      "id": "rain-steady",
+      "batch": 2,
+      "setting": "rain",
+      "tags": [
+        "rain",
+        "wet",
+        "drizzle",
+        "regen",
+        "nat"
+      ],
+      "prompt": "Steady rain falling outdoors on earth, leaves and a wooden roof, water dripping from eaves, no thunder. Continuous ambience."
+    },
+    {
+      "id": "thunderstorm-land",
+      "batch": 2,
+      "setting": "storm on land",
+      "tags": [
+        "thunder",
+        "lightning",
+        "storm",
+        "onweer",
+        "bliksem"
+      ],
+      "prompt": "Heavy thunderstorm over open land, rain pouring, strong gusts of wind, loud thunder cracking close and rolling away. Continuous ambience."
+    },
+    {
+      "id": "oasis",
+      "batch": 2,
+      "setting": "oasis / caravanserai",
+      "tags": [
+        "oasis",
+        "well",
+        "palm",
+        "caravanserai",
+        "oase",
+        "bron"
+      ],
+      "prompt": "Small desert oasis at evening, palm leaves rustling, water poured from a well bucket, camels resting and grunting softly, crickets beginning, a small fire. Continuous ambience."
+    },
+    {
+      "id": "steppe-yurt-camp",
+      "batch": 2,
+      "setting": "nomad camp (Mongol steppe)",
+      "tags": [
+        "yurt",
+        "nomad",
+        "mongol",
+        "horse",
+        "joert",
+        "nomaden",
+        "paard",
+        "paarden"
+      ],
+      "prompt": "Nomad camp of felt tents on a wide grass steppe, strong open wind, horses whinnying and stamping, felt flapping, a dog barking far away. Continuous ambience."
+    },
+    {
+      "id": "forest-night",
+      "batch": 2,
+      "setting": "forest at night",
+      "tags": [
+        "forest",
+        "night",
+        "owl",
+        "bos",
+        "nacht",
+        "uil"
+      ],
+      "prompt": "Deep forest at night, crickets, an owl hooting far away, leaves rustling in a light breeze, a branch creaking. Continuous ambience."
+    },
+    {
+      "id": "ship-below-deck",
+      "batch": 2,
+      "setting": "below deck on a ship",
+      "tags": [
+        "hold",
+        "cabin",
+        "below",
+        "ruim",
+        "kajuit",
+        "benedendeks"
+      ],
+      "prompt": "Inside the cramped wooden hold of an old sailing ship, heavy timbers creaking all around, water sloshing against the hull outside, a lantern swinging on a hook, muffled wind. Continuous ambience."
+    },
+    {
+      "id": "becalmed-sea",
+      "batch": 2,
+      "setting": "becalmed at sea",
+      "tags": [
+        "calm",
+        "becalmed",
+        "doldrums",
+        "windstil",
+        "kalm"
+      ],
+      "prompt": "A wooden sailing ship becalmed on a flat sea in heat, almost no wind, sails hanging slack and flapping once now and then, gentle small water laps, slow single timber creaks. Continuous ambience."
+    }
+  ]
+}
