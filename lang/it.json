@@ -2477,6 +2477,7 @@
     "The image service declined this picture. Nothing was changed.": "Il servizio di immagini ha rifiutato questa immagine. Non è stato cambiato nulla.",
     "The image service is busy. Try again in a minute. Nothing was changed.": "Il servizio di immagini è occupato. Riprova tra un minuto. Non è stato cambiato nulla.",
     "The restyle did not work. Nothing was changed.": "La ristilizzazione non è riuscita. Non è stato cambiato nulla.",
+    "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT sul Mac che crea le immagini è spento. Non è stato cambiato nulla.",
     "Restyling 1/2: ink…": "Ristilizzazione 1/2: inchiostro…",
     "Restyling 2/2: colour…": "Ristilizzazione 2/2: colore…",
     "Stage art": "Scenografia",
@@ -2964,6 +2965,5 @@
     "Sound under this scene": "Suono sotto questa scena",
     "Sound volume": "Volume del suono",
     "That is a lot of new sounds for one hour. Try again a little later.": "Sono tanti nuovi suoni in un'ora. Riprova più tardi.",
-    "The sound could not be made just now. Try again in a minute.": "Non è stato possibile creare il suono ora. Riprova tra un minuto.",
-    "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT sul Mac che crea le immagini è spento. Non è stato cambiato nulla."
+    "The sound could not be made just now. Try again in a minute.": "Non è stato possibile creare il suono ora. Riprova tra un minuto."
 }

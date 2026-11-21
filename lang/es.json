@@ -2277,6 +2277,7 @@
     "The race is over. Look at the class screen.": "La carrera ha terminado. Mirad la pantalla de la clase.",
     "The rail on the left lists every scene in order. Click one to open it. You can reorder scenes, delete the ones you do not need, and add new ones.": "La columna de la izquierda muestra todas las escenas en orden. Haz clic en una para abrirla. Puedes reordenar las escenas, eliminar las que no necesites y añadir otras nuevas.",
     "The restyle did not work. Nothing was changed.": "El cambio de estilo no ha funcionado. No se ha cambiado nada.",
+    "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT en el Mac que hace las imágenes está apagado. No se ha cambiado nada.",
     "The sail (with these camera moves) plays in Preview and for students. The editor jumps straight to each landfall.": "La navegación (con estos movimientos de cámara) se ve en la vista previa y la ven los alumnos. El editor salta directamente a cada desembarco.",
     "The scene draws itself as an ink line-art animation (sets the render mode to Drawing).": "La escena se dibuja sola como una animación de trazos de tinta (pone el modo de render en Dibujo).",
     "The scene draws itself as an ink line-art animation.": "La escena se dibuja sola como una animación de trazos de tinta.",
@@ -3006,6 +3007,5 @@
     "Sound under this scene": "Sonido bajo esta escena",
     "Sound volume": "Volumen del sonido",
     "That is a lot of new sounds for one hour. Try again a little later.": "Son muchos sonidos nuevos en una hora. Inténtalo un poco más tarde.",
-    "The sound could not be made just now. Try again in a minute.": "No se pudo crear el sonido ahora. Inténtalo de nuevo en un minuto.",
-    "ChatGPT on the Mac that makes the pictures is off. Nothing was changed.": "ChatGPT en el Mac que hace las imágenes está apagado. No se ha cambiado nada."
+    "The sound could not be made just now. Try again in a minute.": "No se pudo crear el sonido ahora. Inténtalo de nuevo en un minuto."
 }
