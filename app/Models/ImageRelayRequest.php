@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 /** A picture the server asked ChatGPT on Bart's Mac for; see App\Services\Imaging\ImageRelay. */
 class ImageRelayRequest extends Model
 {
+    public const PREPARING = 'preparing';
+
     public const QUEUED = 'queued';
 
     public const RUNNING = 'running';

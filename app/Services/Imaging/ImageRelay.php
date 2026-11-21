@@ -22,14 +22,15 @@ final class ImageRelay
     /** @param  list<array{bytes: string, name: string}>  $images */
     public function make(string $prompt, string $size, bool $transparent, array $images): string
     {
-        $row = ImageRelayRequest::create(['prompt' => $prompt, 'size' => $size, 'transparent' => $transparent]);
+        // Not claimable until its pictures are on disk: a Mac polling in between would get an edit without its source.
+        $row = ImageRelayRequest::create(['status' => ImageRelayRequest::PREPARING, 'prompt' => $prompt, 'size' => $size, 'transparent' => $transparent]);
         $disk = Storage::disk('local');
         $inputs = [];
         foreach (array_values($images) as $i => $image) {
             $inputs[] = $path = $row->dir().'/in-'.($i + 1).'-'.basename($image['name']);
             $disk->put($path, $image['bytes']);
         }
-        $row->update(['inputs' => $inputs]);
+        $row->update(['inputs' => $inputs, 'status' => ImageRelayRequest::QUEUED]);
 
         $pickup = (int) config('services.image_generation.relay_pickup', 90);
         $wait = (int) config('services.image_generation.relay_wait', 540);

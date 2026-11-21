@@ -33,10 +33,23 @@ final class ImageRoute
         return self::driver() === self::OPENAI;
     }
 
-    /** A job that may wait on the Mac needs the relay's wait plus room for its own work. */
-    public static function jobTimeout(int $openAi): int
+    /** Seconds ChatGPT on this Mac may take for one picture (LocalChatGpt::picture). */
+    private const LOCAL_SECONDS = 600;
+
+    /**
+     * A job's timeout when it makes `$pictures` pictures one after another: ChatGPT takes longer than the paid API,
+     * locally (LOCAL_SECONDS each) and through the relay (relay_wait each). On prod DB_QUEUE_RETRY_AFTER must stay above
+     * it, or a still-running job is started a second time.
+     */
+    public static function jobTimeout(int $openAi, int $pictures = 1): int
     {
-        return self::driver() === self::RELAY ? max($openAi, (int) config('services.image_generation.relay_wait', 540) + 60) : $openAi;
+        $each = match (self::driver()) {
+            self::RELAY => (int) config('services.image_generation.relay_wait', 540),
+            self::LOCAL => self::LOCAL_SECONDS,
+            default => 0,
+        };
+
+        return $each === 0 ? $openAi : max($openAi, $pictures * $each + 60);
     }
 
     /**

@@ -71,6 +71,12 @@ class ImageRelayTest extends TestCase
         Storage::disk('local')->assertExists($row->fresh()->result_path);
     }
 
+    public function test_a_request_whose_pictures_are_still_being_written_is_not_handed_out(): void
+    {
+        ImageRelayRequest::create(['prompt' => 'x', 'size' => '1024x1024', 'status' => ImageRelayRequest::PREPARING]);
+        $this->postJson(route('api.image-relay.next'), [], $this->mac())->assertOk()->assertJson(['request' => null]);
+    }
+
     public function test_a_finished_request_is_returned_to_the_waiting_job(): void
     {
         $row = ImageRelayRequest::create(['prompt' => 'x', 'size' => '1024x1024', 'status' => ImageRelayRequest::RUNNING]);
@@ -98,6 +104,11 @@ class ImageRelayTest extends TestCase
         config()->set('services.image_generation.driver', ImageRoute::RELAY);
         config()->set('services.image_generation.relay_wait', 540);
         $this->assertSame(600, (new \App\Jobs\RestyleImage(1))->timeout);
+
+        $this->assertSame(4 * 540 + 60, (new \App\Jobs\GenerateSkyboxCandidates(1))->timeout, 'four pictures in a row');
+
+        config()->set('services.image_generation.driver', ImageRoute::LOCAL);
+        $this->assertSame(660, (new \App\Jobs\RestyleImage(1))->timeout, 'ChatGPT on this Mac may take 600 s');
 
         config()->set('services.image_generation.driver', ImageRoute::OPENAI);
         $this->assertSame(240, (new \App\Jobs\RestyleImage(1))->timeout);

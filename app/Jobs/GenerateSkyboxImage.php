@@ -27,7 +27,11 @@ class GenerateSkyboxImage implements ShouldQueue
 
     public int $timeout = 150;
 
-    public function __construct(public readonly int $sceneId) {}
+    public function __construct(public readonly int $sceneId)
+    {
+        // ChatGPT takes longer than the paid API, and the job waits for it (ImageRoute).
+        $this->timeout = \App\Services\Imaging\ImageRoute::jobTimeout(150);
+    }
 
     public function backoff(): array
     {
