@@ -128,6 +128,17 @@ class SceneLinksTest extends TestCase
             ->assertSeeHtml('data-add-choices');
     }
 
+    public function test_a_copied_lesson_links_to_its_own_scenes(): void
+    {
+        [$venice, , $cargo] = $this->scenes;
+        $venice->update(['config' => ['links' => [['label' => 'Watch the sailors', 'to' => $cargo->id]]]]);
+
+        $copy = app(\App\Services\LessonCopier::class)->copy($this->lesson->fresh(), $this->teacher);
+        $scenes = $copy->scenes()->orderBy('order')->get();
+
+        $this->assertSame([['to' => $scenes[2]->id, 'label' => 'Watch the sailors']], $scenes[0]->config['links']);
+    }
+
     public function test_the_player_gets_the_links(): void
     {
         [$venice, , $cargo] = $this->scenes;

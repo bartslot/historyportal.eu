@@ -34,7 +34,7 @@ import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
 import { gameFlowFor, playsPredict } from './scene/game-flow.js'
 import { hasChoices, hasMeters, hasVoyage } from './scene/lesson-content.js'
-import { routeAfter, showLinkChoices } from './scene/scene-links.js'
+import { isEnding, routeAfter, showLinkChoices } from './scene/scene-links.js'
 import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
@@ -1461,7 +1461,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     _sceneIndex: 0,
     _closeLinkChoices: null,   // closes the scene-links choice card while it is up (scene/scene-links.js)
-    _linkedFrom: null,         // scene index → the scene a link jumped from, for Back
+    _trail: null,              // [{from, to}] per link jump, newest last: Back walks it home (loops included)
 
     // The small grey line under the deck: where the words came from, and who made the picture.
     //
@@ -2237,7 +2237,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // A scene that ends in choices or a jump: Next brings up the choice card or makes the jump.
       const route = routeAfter(_sceneQueue, this._sceneIndex).kind
       if (route === 'choose' || route === 'jump') return !this._closeLinkChoices
-      if (route === 'end') return false
+      // An ending marked mid-list: Next finishes the lesson (a map or video scene can only end through Next).
+      if (isEnding(_sceneQueue[this._sceneIndex])) return true
       if (this._sceneIndex >= _sceneQueue.length - 1) return false
       return this.showMapContinue || this._sails || this.mayEnter(this._sceneIndex + 1)
     },
@@ -2249,7 +2250,8 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!this.canSkip) return
       if (this.showMapContinue || this._sails) { this.advanceMap(); return }
       // A scene that ends in choices, a jump or the end goes there, not to the next one in the list.
-      if (routeAfter(_sceneQueue, this._sceneIndex).kind !== 'next') {
+      const route = routeAfter(_sceneQueue, this._sceneIndex).kind
+      if (route === 'choose' || route === 'jump' || isEnding(_sceneQueue[this._sceneIndex])) {
         if (this._closeLinkChoices) return   // the choice card is already up: the class taps a choice
         this._stopAudio()
         this._advanceSceneNow(this._sceneIndex)
@@ -2261,7 +2263,9 @@ Alpine.data('lessonGame', (lesson) => ({
     // Previous slide (←). Replays the previous scene from its start.
     previousSlide () {
       // Step over a game the class already played: those are never replayed (mayEnter).
-      const came = this._linkedFrom?.[this._sceneIndex]
+      // A scene the class reached by a link: Back returns the way it came, one jump at a time.
+      const last = this._trail?.[this._trail.length - 1]
+      const came = last && last.to === this._sceneIndex ? this._trail.pop().from : null
       let i = came ?? this._sceneIndex - 1
       while (i >= 0 && !this.mayEnter(i)) i--
       if (i < 0) return
@@ -2351,7 +2355,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
     // A jump by a link: Back from the scene it lands on returns to the scene the class came from.
     _followLink (from, to) {
-      this._linkedFrom = { ...(this._linkedFrom || {}), [to]: from }
+      this._trail = [...(this._trail || []), { from, to }]
       this._teardownStageScene(false, _sceneQueue[to])
       this._sceneIndex = to
       this._playScene(to)
