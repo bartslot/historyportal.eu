@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogManifestController;
+use App\Http\Controllers\Api\ImageRelayController;
 use App\Http\Controllers\Api\LessonTeamController;
 use App\Http\Controllers\Api\StudentLessonController;
 use Illuminate\Http\Request;
@@ -50,3 +51,12 @@ Route::prefix('lesson')->name('api.lesson.')->group(function () {
         ->middleware('throttle:telemetry')
         ->name('telemetry.store');
 });
+
+// ── ChatGPT relay: Bart's Mac makes the AI pictures the server asks for (App\Services\Imaging\ImageRelay) ──
+Route::prefix('image-relay')->name('api.image-relay.')
+    ->middleware([\App\Http\Middleware\ImageRelayToken::class, 'throttle:120,1'])->group(function () {
+        Route::post('/next', [ImageRelayController::class, 'next'])->name('next');
+        Route::get('/{imageRelayRequest}/input/{index}', [ImageRelayController::class, 'input'])->whereNumber('index')->name('input');
+        Route::post('/{imageRelayRequest}/finish', [ImageRelayController::class, 'finish'])->name('finish');
+    });
+
