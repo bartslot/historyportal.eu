@@ -82,6 +82,58 @@ trait EditsSceneLinks
         $this->writeSceneLinks($scene, $links, $this->endsHere($scene));
     }
 
+    /**
+     * An old Decision point (a question scene and its option scenes, branch_group) becomes the Choices layer
+     * (Bart 2026-11-21, on prod: "the ux is missing for the choice"). Nothing is deleted: the question scene
+     * gets one choice per option scene, each option scene goes on past the others to the scene after the
+     * group (or ends the lesson when there is none), and the scenes are ordinary story scenes again.
+     * Class meters and their effects are not carried over: a Choices layer has none.
+     */
+    public function convertDecisionToChoices(int $sceneId): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        if ($scene->branch_group === null) {
+            return;
+        }
+        $group = $this->lesson->scenes()->where('branch_group', $scene->branch_group)->orderBy('order')->get();
+        $options = $group->filter(fn (Scene $s): bool => str_starts_with((string) $s->branch_role, 'option'))->values();
+        $question = $group->first(fn (Scene $s): bool => $s->branch_role === 'question')
+            ?? $this->lesson->scenes()->where('order', '<', $group->min('order'))->orderByDesc('order')->first();
+        if ($options->isEmpty() || $question === null) {
+            $this->dispatch('toast', type: 'error', message: __('Choices go on a story scene. Add or select one first.'));
+
+            return;
+        }
+        $after = $this->lesson->scenes()->where('order', '>', $group->max('order'))->orderBy('order')->value('id');
+        // Each option's button text, read before the branch fields are cleared below.
+        $links = $options->take(SceneLinks::MAX_LINKS)
+            ->map(fn (Scene $o): array => ['label' => SceneLinks::label($o->branch_choice_label ?: $o->chapterName()), 'to' => (int) $o->id])
+            ->values()->all();
+
+        foreach ($group as $member) {
+            $member->update(['branch_group' => null, 'branch_role' => null, 'branch_choice_label' => null]);
+        }
+        foreach ($options as $i => $option) {
+            // The last option scene runs on into the scene after the group by itself; the others jump there.
+            $last = $i === $options->count() - 1;
+            if ($after === null) {
+                $this->writeSceneLinks($option->fresh(), [], true);
+            } elseif (! $last) {
+                $this->writeSceneLinks($option->fresh(), [['label' => '', 'to' => (int) $after]], false);
+            }
+        }
+        $question = $question->fresh();
+        if (ChoicePrompt::prompt($question->config) === '') {
+            $question->config = ['links_prompt' => ChoicePrompt::forNewChoices($question)] + ($question->config ?? []);
+        }
+        $this->writeSceneLinks($question, $links, false);
+
+        unset($this->selectedSceneModel, $this->scenes);
+        $this->selectScene($question->id);
+        $this->dispatch('inspector-open');
+        $this->dispatch('toast', message: __('This decision point is now a Choices layer on the scene.'));
+    }
+
     /** What the narrator says before reading the choices out. Emptied, the narrator reads only the choices. */
     public function saveChoicesPrompt(int $sceneId, mixed $text): void
     {

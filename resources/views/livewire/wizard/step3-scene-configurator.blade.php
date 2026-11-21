@@ -1267,6 +1267,17 @@
                 @endif
 
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
+                {{-- An old Decision point (three scenes): one click makes it the Choices layer on its question scene. --}}
+                @if ($sceneModel->kind !== 'game' && $sceneModel->branch_group !== null)
+                    <div data-convert-decision class="mt-4 flex h-8 items-center justify-between border-t border-base-content/10 pt-3">
+                        <h4 class="lp-card-label text-panel-label">{{ __('Decision point') }}</h4>
+                        <button type="button" class="btn btn-ghost btn-sm text-panel-link"
+                                wire:click="convertDecisionToChoices({{ $sceneModel->id }})">
+                            <span class="h-4 w-4" x-html="window.__objIcons?.choices"></span> {{ __('Make it choices') }}
+                        </button>
+                    </div>
+                @endif
+
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />
                 @endif
