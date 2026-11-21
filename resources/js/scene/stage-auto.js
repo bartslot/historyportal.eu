@@ -26,7 +26,10 @@ export function stageFloorMs (scene) {
   const set = Number(cfg.estimate_seconds)
   if (set > 0) return set * 1000
   const images = scene?.kind === 'gallery' && Array.isArray(cfg.images) ? cfg.images.length : 0
-  return Math.max(STAGE_FLOOR_MS, images * CYCLE_MS)
+  // An itinerary that sails the whole voyage is watched to the end, with a moment on the finished map.
+  const sails = scene?.kind === 'voyage' && cfg.overview && cfg.overview_anim?.route === 'sail'
+    ? Number(cfg.overview_anim.duration || 0) * 1000 + 3000 : 0
+  return Math.max(STAGE_FLOOR_MS, images * CYCLE_MS, sails)
 }
 
 /**

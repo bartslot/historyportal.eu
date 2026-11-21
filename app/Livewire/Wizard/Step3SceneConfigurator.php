@@ -2327,13 +2327,22 @@ class Step3SceneConfigurator extends Component
         }
         $anim = ($this->selectedScene['config']['overview_anim'] ?? []) + ['route' => 'draw', 'duration' => 3.0, 'stops' => true];
         $anim[$key] = match ($key) {
-            'route' => in_array($value, ['draw', 'none'], true) ? $value : 'draw',
-            'duration' => max(0.5, min(10.0, (float) $value)),
+            'route' => in_array($value, ['draw', 'sail', 'none'], true) ? $value : 'draw',
+            // Sailing the whole voyage takes a while; drawing a line does not (Bart 2026-11-21).
+            'duration' => max(0.5, min(($anim['route'] ?? 'draw') === 'sail' ? 90.0 : 10.0, (float) $value)),
             'stops' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
             default => null,
         };
         if ($anim[$key] === null) {
             return;
+        }
+        // The preset: picking "Sail the whole voyage" gives it room to sail (two seconds a leg), and going back to a
+        // plain draw brings the time back inside what a draw allows.
+        if ($key === 'route') {
+            $legs = count($this->voyageDef()['legs'] ?? []);
+            $anim['duration'] = $value === 'sail'
+                ? (float) max(10, min(90, 2 * max(1, $legs)))
+                : min(10.0, (float) $anim['duration']);
         }
         $this->selectedScene['config']['overview_anim'] = $anim;
         $this->saveSelected();

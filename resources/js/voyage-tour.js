@@ -124,6 +124,14 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const skipAnim = reducedMotion || preview;   // preview/reduced-motion jumps straight to arrival
   const RL = Object.assign({}, ROUTE_LINE_DEFAULTS, routeLine || {});
+  /**
+   * Every leg keeps to the RIGHT of its own direction of travel, like a two-way road (Bart 2026-11-21: "13 legs are
+   * overlapping", Marco Polo's way home ran over his way out between Hormuz, Tabriz and Trebizond). line-offset is
+   * measured from the line's own direction, so a leg sailed the other way lands on the other side by itself, and a
+   * leg that shares no road with another simply sits a hair off its stops. A bit more than the line's width, so the
+   * two directions read as two lines with a gap between them.
+   */
+  const trailOffset = () => Math.max(2, Number(RL.thickness) || 3) + 2.5;
 
   // ── Hosts: map + HUD overlay (built once) ─────────────────────────────
   const mapHost = document.createElement('div');
@@ -1361,7 +1369,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         layout: { 'line-cap': 'round', 'line-join': 'round', visibility: RL.enabled ? 'visible' : 'none' },
         // line-gradient fades the sailed path from a low floor (oldest) to full at the ship (newest).
         // line-color is ignored while a gradient is set; line-opacity still scales the whole line.
-        paint: { 'line-gradient': trailGradient(0), 'line-opacity': Number(RL.opacity), 'line-width': Number(RL.thickness) },
+        paint: { 'line-gradient': trailGradient(0), 'line-opacity': Number(RL.opacity), 'line-width': Number(RL.thickness), 'line-offset': trailOffset() },
       }, trailBefore);
       redrawTrailGeometry();   // draw the whole route once; updateTrail() only reveals it
     }
@@ -1376,7 +1384,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       map.addLayer({
         id: 'voyage-edit-line', type: 'line', source: 'voyage-edit-line',
         layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
-        paint: { 'line-color': RL.color, 'line-opacity': 1, 'line-width': Number(RL.thickness) },
+        paint: { 'line-color': RL.color, 'line-opacity': 1, 'line-width': Number(RL.thickness), 'line-offset': trailOffset() },
       }, editBefore);
     }
     // Editor-only: a visible amber wash + dashed outline over the teacher-painted regions. The real
@@ -1449,6 +1457,42 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     overviewItinerary = null;
   };
 
+  /**
+   * The whole-voyage preset (Bart 2026-11-21: "make a preset so we can show the whole route animated"): the traveller
+   * sails every leg in order on the fitted map, the line drawn behind it, a short pause at each landfall as its number
+   * appears. A long leg gets more of the time than a short one, but not in proportion (the square root of its share),
+   * so a ten-day ride to Jerusalem is still something you can watch. Returns the first rAF step.
+   */
+  const sailWholeVoyage = (totalMs, stops, numberStops) => {
+    const legs = (route.legs || []).map((leg, i) => {
+      const a = ships.fractionAtWaypoint(voyage, Number(leg.wp?.[0]) || 0);
+      const b = ships.fractionAtWaypoint(voyage, Number(leg.wp?.[1]) || 0);
+      return { i, a, b, w: Math.sqrt(Math.max(1e-4, b - a)) };
+    }).filter((l) => l.b > l.a);
+    if (!legs.length) return () => { updateTrail(1); };
+    const holdMs = Math.min(600, totalMs * 0.25 / legs.length);
+    const moveMs = Math.max(200, totalMs - holdMs * legs.length);
+    const wsum = legs.reduce((n, l) => n + l.w, 0);
+    let t0 = 0;
+    for (const l of legs) { l.start = t0; l.ms = moveMs * l.w / wsum; t0 += l.ms + holdMs; }
+    // The home port is there from the start: the voyage begins at it.
+    if (numberStops) stops.forEach((s, k) => { if (s.leg === undefined) overviewItinerary?.reveal(k); });
+    const started = performance.now();
+    const step = (now) => {
+      const el = now - started;
+      let f = legs[legs.length - 1].b;
+      for (const l of legs) {
+        if (el < l.start) { f = l.a; break; }
+        if (el < l.start + l.ms) { f = l.a + smoothstep((el - l.start) / l.ms) * (l.b - l.a); break; }
+        if (numberStops) stops.forEach((s, k) => { if (s.leg === l.i) overviewItinerary?.reveal(k); });
+      }
+      try { ships.setTourProgress(voyage, f); } catch (_) { /* fleet gone */ }
+      updateTrail(f, ships.pointAt(voyage, f));
+      overviewRaf = el < t0 ? requestAnimationFrame(step) : null;
+    };
+    return step;
+  };
+
   const renderOverview = ({ animate = true } = {}) => {
     clearOverview();
     inOverview = true;
@@ -1468,8 +1512,11 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // The EDITOR shows the finished route — a teacher needs to see and drag the whole thing, not
     // wait for it. The player draws it on. (`animate` is the camera's fly-in, a separate question.)
     const anim = Object.assign({ route: 'draw', duration: 3, stops: true }, overviewAnim || {});
-    const drawing = !editable && anim.route === 'draw' && Number(anim.duration) > 0;
+    const sailing = anim.route === 'sail';
+    const drawing = !editable && (anim.route === 'draw' || sailing) && Number(anim.duration) > 0;
     updateTrail(drawing ? 0 : 1);
+    // "Sail the whole voyage": the traveller is on the line from the home port. Elsewhere it stays where the last leg left it.
+    if (drawing && sailing && ships) { try { ships.setTourProgress(voyage, 0); } catch (_) { /* fleet not ready */ } }
 
     // While the route draws, a stop waits until the line reaches it — the itinerary should read
     // like a story, not arrive as a finished tangle. `hidden` starts them invisible; the rAF loop
@@ -1482,7 +1529,9 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       { hidden: drawing && anim.stops },
     );
 
-    if (drawing) {
+    if (drawing && sailing) {
+      overviewRaf = requestAnimationFrame(sailWholeVoyage(Math.max(1000, Number(anim.duration) * 1000), stops, anim.stops));
+    } else if (drawing) {
       // Where each stop sits along the DRAWN line, so a pin lands exactly as the ink passes it.
       const marks = stops.map((s, i) => (trailArc
         ? trailCutAt(drawnCoords, trailArc, { lng: s.lng, lat: s.lat }, i / Math.max(1, stops.length - 1))
@@ -1672,6 +1721,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
           map.setLayoutProperty('voyage-trail', 'visibility', RL.enabled ? 'visible' : 'none');
           map.setPaintProperty('voyage-trail', 'line-opacity', Number(RL.opacity));
           map.setPaintProperty('voyage-trail', 'line-width', Number(RL.thickness));
+          map.setPaintProperty('voyage-trail', 'line-offset', trailOffset());
         }
         // Curve/wobble change the drawn path itself, so re-lay the geometry, then re-reveal it to
         // wherever the ship currently is (this also re-applies the new colour).
