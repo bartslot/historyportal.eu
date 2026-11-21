@@ -341,6 +341,8 @@ class Step3SceneConfigurator extends Component
                 'blur' => isset($l['blur']) ? (float) $l['blur'] : null,
                 'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
                 'blend' => in_array($l['blend'] ?? null, ['multiply', 'screen', 'overlay', 'darken', 'lighten'], true) ? $l['blend'] : null,
+                // The painted paper edge; null = the layer's default (ArtworkOverlay layerEdge).
+                'edge' => in_array($l['edge'] ?? null, ['painted', 'straight'], true) ? $l['edge'] : null,
                 // Pinned to a place on the map beneath the stage, rather than to the stage itself.
                 'anchor' => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,

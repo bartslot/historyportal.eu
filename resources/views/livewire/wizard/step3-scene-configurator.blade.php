@@ -1120,7 +1120,7 @@
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
                 <x-ui.panel-tabs class="mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['mask', __('Mask'), \App\Support\TabIcons::MASK], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
                              JS dedupe guard, or the layer stays visibly selected with nothing
@@ -1133,6 +1133,13 @@
 
                 <div x-show="tab === 'format'">
                     <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
+                </div>
+                {{-- Mask: the picture painted on paper or straight. Unset follows the layer's kind
+                     (ArtworkOverlay layerEdge): a whole picture is painted, a cut-out keeps its outline. --}}
+                <div x-show="tab === 'mask'" x-cloak>
+                    @php $alEdge = in_array($al['edge'] ?? null, ['painted', 'straight'], true) ? $al['edge'] : (($al['kind'] ?? 'cover') === 'cover' ? 'painted' : 'straight'); @endphp
+                    <x-lesson.paper-edge-control :value="$alEdge" name="layer-edge-{{ $al['asset_id'] ?? 0 }}"
+                        on-change="window.__setLayerProp?.({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value); $wire.updateArtworkLayer({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value)" />
                 </div>
                 <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
@@ -1164,8 +1171,50 @@
                      scene before it just as a narration scene does. --}}
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
+                {{-- Mask only where the scene shows a picture of its own (the painted paper edge, paper-edge.js). --}}
+                @php $sceneMaskable = ($sceneModel->image_path || ! empty($sceneModel->shots)) && ! in_array($sceneModel->kind, ['map', 'game', 'voyage', 'gallery', 'video', 'stage25d'], true); @endphp
                 <x-ui.panel-tabs name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
+                                 :tabs="array_values(array_filter([['format', __('Format'), \App\Support\TabIcons::FORMAT], $sceneMaskable ? ['mask', __('Mask'), \App\Support\TabIcons::MASK] : null, ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]))" />
+
+                @if ($sceneMaskable)
+                    <div x-show="tab === 'mask'" x-cloak>
+                        <x-lesson.paper-edge-control :value="($sceneModel->config['paper_edge'] ?? true) === false ? 'straight' : 'painted'"
+                            name="scene-edge-{{ $sceneModel->id }}"
+                            on-change="$wire.call('setPaperEdge', $event.target.value === 'painted')" />
+                        {{-- The edge's shape: Bart's book mask, or one of three watercolour blots. --}}
+                        @php $paperMask = in_array($sceneModel->config['paper_mask'] ?? null, \App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS, true) ? $sceneModel->config['paper_mask'] : 'book'; @endphp
+                        <div class="mt-3 space-y-1" data-paper-mask-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Shape') }}</span>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                @foreach (\App\Livewire\Wizard\Step3SceneConfigurator::PAPER_MASKS as $mk)
+                                    @php $file = $mk === 'book' ? 'edge-mask.webp' : "edge-mask-{$mk}.webp"; @endphp
+                                    <button type="button" wire:click="setPaperMask('{{ $mk }}')" aria-pressed="{{ $paperMask === $mk ? 'true' : 'false' }}"
+                                            aria-label="{{ $mk === 'book' ? __('Book') : __('Watercolour :n', ['n' => $loop->index]) }}"
+                                            class="h-11 rounded border p-1 {{ $paperMask === $mk ? 'border-primary ring-1 ring-primary' : 'border-panel-border' }}">
+                                        <span class="block h-full w-full bg-base-content/80"
+                                              style="-webkit-mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat; mask: url('/images/paper/{{ $file }}') center / 100% 100% no-repeat;"></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- The colour the picture fades into: paper unless the teacher picks one. --}}
+                        @php $paperHex = preg_match('/^#[0-9a-f]{6}$/i', (string) ($sceneModel->config['paper_color'] ?? '')) ? $sceneModel->config['paper_color'] : null; @endphp
+                        <div class="mt-3 space-y-1" data-paper-color-control>
+                            <span class="block text-2xs font-semibold uppercase tracking-wider text-panel-hint">{{ __('Background') }}</span>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="{{ $paperHex ?? '#f6f1e7' }}" aria-label="{{ __('Background colour') }}"
+                                       wire:change="setPaperColor($event.target.value)"
+                                       class="h-8 w-11 cursor-pointer rounded border border-panel-border bg-transparent p-0.5" />
+                                @if ($paperHex)
+                                    <button type="button" class="btn btn-ghost btn-sm h-8 min-h-8" wire:click="setPaperColor(null)">{{ __('Paper') }}</button>
+                                @else
+                                    <span class="text-prose text-panel-hint">{{ __('Paper') }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
                 @unless (auth()->user()?->isGuestDemo())

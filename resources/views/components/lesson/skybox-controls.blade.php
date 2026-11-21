@@ -226,6 +226,7 @@
                 </div>
             @endif
 
+
             {{-- Split panel: which part of its picture the crop keeps. --}}
             @if ($split && $backgroundImageUrl)
                 <div class="space-y-1" data-panel-focus>

@@ -17,6 +17,9 @@ final class TabIcons
     /** Bart's Motion icon (Figma 2607:2626) as drawn: the file is a mask, so it takes the tab's colour. */
     public const MOTION = ['mask' => 'images/icons/motion.svg', 'class' => 'h-3.5 w-[23px]'];
 
+    /** A sheet with a ragged painted edge: the picture's mask (paper edge). */
+    public const MASK = 'M4.5 6.5c1.6-.9 3 .4 4.6-.3s2.7-.8 4.2-.1 2.9.6 4.4-.2c.9.7 1 2 .6 3.2-.5 1.5.4 2.6 0 4.1-.4 1.4.5 2.4-.1 3.9-1.5.9-2.9-.3-4.5.3s-2.7.7-4.2.1-3 .5-4.6-.2c-.7-1.4.3-2.6-.1-4s-.5-2.6.1-4c.4-1 .1-1.9-.4-2.8Z';
+
     /** Two beamed notes. */
     public const MUSIC = 'M8.5 18V6.5l11-2.5V16M8.5 9.5l11-2.5M3.5 18a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0M14.5 16a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0';
 }

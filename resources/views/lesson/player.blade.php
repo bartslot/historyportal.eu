@@ -207,6 +207,8 @@
                         'blur'    => isset($l['blur']) ? (float) $l['blur'] : null,
                         'opacity' => isset($l['opacity']) ? (float) $l['opacity'] : null,
                         'blend'   => in_array($l['blend'] ?? null, ['multiply', 'screen', 'overlay', 'darken', 'lighten'], true) ? $l['blend'] : null,
+                        // The painted paper edge; null = the layer's default (ArtworkOverlay layerEdge).
+                        'edge'    => in_array($l['edge'] ?? null, ['painted', 'straight'], true) ? $l['edge'] : null,
                         // Colour treatment — knock out the paper, drain the colour, recolour the
                         // ink. All three travel together: a tint without its white key would
                         // paint the paper back in, so the class would see something the teacher

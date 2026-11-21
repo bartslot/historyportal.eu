@@ -498,6 +498,8 @@ trait EditsSceneArtwork
             // 'normal' is how a teacher turns blending back OFF — without it in the list the
             // enum check below rejects the value and the select silently refuses to clear.
             'blend' => ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'],
+            // The painted paper edge on the picture (resources/js/scene/paper-edge.js).
+            'edge' => ['painted', 'straight'],
             // Colour treatment. white_key is how much of the top of the luminance range becomes
             // transparent — 0.04 is the 4% that clears scanned paper without eating light greys.
             'white_key' => [0, 0.5],
@@ -567,7 +569,7 @@ trait EditsSceneArtwork
             'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style' => (string) $value,
+            'kind', 'blend', 'edge', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style' => (string) $value,
             default => $value,
         };
 
@@ -597,7 +599,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style'], true)) {
+        if (in_array($field, ['kind', 'blend', 'edge', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }
@@ -889,6 +891,72 @@ trait EditsSceneArtwork
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
         $config = $scene->config ?? [];
         $config['background_fit'] = $fit;
+        $scene->update(['config' => $config]);
+
+        // Keep the snapshot in step, or saveSelected() would write the pre-edit config back.
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        $this->selectSceneInternal($scene->id);
+    }
+
+    /**
+     * The picture's edge: painted (a soft, irregular edge with paper around it, the default) or
+     * straight (full-bleed). See resources/js/scene/paper-edge.js.
+     */
+    public function setPaperEdge(bool $painted): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $config['paper_edge'] = $painted;
+        $scene->update(['config' => $config]);
+
+        // Keep the snapshot in step, or saveSelected() would write the pre-edit config back.
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        $this->selectSceneInternal($scene->id);
+    }
+
+    /** The edge shapes in public/images/paper (paper-edge.js PAPER_MASKS). 'book' is Bart's book mask, the default. */
+    public const PAPER_MASKS = ['book', 'blot-004', 'blot-005', 'blot-011'];
+
+    /**
+     * The colour the painted edge fades into (Masker tab). null or anything but a hex colour puts
+     * the paper back (config.paper_color, resources/js/scene/paper-edge.js paperLook()).
+     */
+    public function setPaperColor(?string $hex): void
+    {
+        $hex = is_string($hex) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex) ? strtolower($hex) : null;
+        $this->writePaperConfig('paper_color', $hex);
+    }
+
+    /** The edge's shape (Masker tab, config.paper_mask). The book mask is the default and is stored as nothing. */
+    public function setPaperMask(string $mask): void
+    {
+        if (! in_array($mask, self::PAPER_MASKS, true)) {
+            return;
+        }
+        $this->writePaperConfig('paper_mask', $mask === 'book' ? null : $mask);
+    }
+
+    private function writePaperConfig(string $key, ?string $value): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        if ($value === null) {
+            unset($config[$key]);
+        } else {
+            $config[$key] = $value;
+        }
         $scene->update(['config' => $config]);
 
         // Keep the snapshot in step, or saveSelected() would write the pre-edit config back.

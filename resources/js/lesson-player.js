@@ -39,6 +39,7 @@ import { singleSource, cropBox, cropPlates } from './scene/background-crop.js'
 import { mountEmbedBg } from './scene/embed-bg.js'
 import { sameOriginMediaUrl } from './media-url.js'
 import { playSceneTransition } from './scene/animations.js'
+import { applyPaperEdge, hasPaperEdge, maskContainedPicture, paperLook } from './scene/paper-edge.js'
 import { readProgress, saveProgress, clearProgress, canResume, safeStorage } from './scene/progress-store.js'
 import { crewText, readCrew, saveCrew, clearCrew, readBest, saveBest } from './scene/race.js'
 import { silentWavUrl, sceneSeconds } from './silent-audio.js'
@@ -735,9 +736,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const bg = document.getElementById('background-layer')
       if (!bg) return
 
+      // bg-no-repeat: a 'Whole image' (contain) picture is smaller than the stage on one side, and
+      // without it the browser tiled it above and below (Bart saw pictures repeat vertically).
       // Layer A
       const a = document.createElement('div')
-      a.className = 'absolute inset-0 bg-cover bg-center transition-opacity ease-in-out overflow-hidden'
+      a.className = 'absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity ease-in-out overflow-hidden'
       a.style.transitionDuration = `${this._bgFadeDuration}ms`
       a.style.opacity = '1'
       bg.appendChild(a)
@@ -745,7 +748,7 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // Layer B
       const b = document.createElement('div')
-      b.className = 'absolute inset-0 bg-cover bg-center transition-opacity ease-in-out overflow-hidden'
+      b.className = 'absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity ease-in-out overflow-hidden'
       b.style.transitionDuration = `${this._bgFadeDuration}ms`
       b.style.opacity = '0'
       bg.appendChild(b)
@@ -779,6 +782,7 @@ Alpine.data('lessonGame', (lesson) => ({
       el.style.backgroundImage = `url(${img.url})`
       el.style.backgroundSize  = fit
       el.style.backgroundColor = ''
+      maskContainedPicture(el, img.url, fit === 'contain' && !!this._paperEdge)
       // A timeline crop from the scene before (background-crop.js cropBox) does not carry over.
       el.style.scale = ''
       el.style.filter = ''
@@ -1774,6 +1778,12 @@ Alpine.data('lessonGame', (lesson) => ({
       } else {
         this._hideEmbedBg()
       }
+
+      // The picture is painted on the page: a soft irregular edge with paper around it, unless the
+      // scene turned it off. Maps, films and embeds keep their plain full-bleed frame.
+      const paintsPicture = !_embed?.src && !['map', 'voyage', 'video'].includes(scene.kind) && !!(scene.image_url || scene.shots?.length)
+      this._paperEdge = hasPaperEdge(scene.config, paintsPicture)
+      applyPaperEdge(document.getElementById('background-layer'), this._paperEdge, paperLook(scene.config))
 
       // Map block — render the historical atlas as a slide (no audio).
       if (scene.kind === 'map') { this._playMapScene(index, scene); return }
