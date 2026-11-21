@@ -200,7 +200,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   let handlesShown = false;
   let handleHold = 0;          // >0 while a drag owns the handles
   let handleLinger = null;
-  const HANDLE_HIT_PX = 14;    // how near the line counts as "on" it — a 2px line needs help
+  const HANDLE_HIT_PX = 18;    // how near the line counts as "on" it — a 2px line needs help
   const HANDLE_LINGER_MS = 400;
 
   const paintHandles = () => {
@@ -246,10 +246,29 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       if (!handlesShown || handleLinger) return;
       handleLinger = setTimeout(() => { handleLinger = null; setHandlesShown(false); }, HANDLE_LINGER_MS);
     });
-    map.on('mouseout', () => {
+    // The handles are DOM buttons laid OVER the canvas, so reaching one is a mouseout as far as the map is concerned.
+    // Hiding them on that took the dot away the moment the pointer reached it, which handed the pointer back to the
+    // canvas, which showed them again: they flickered, came to rest hidden, and a press on the line panned the map
+    // instead of bending it (Bart 2026-11-21: "editing a line on the tour is almost impossible. the handles are also
+    // dissapearing"). Moving onto a handle keeps them; only leaving the map and its handles altogether hides them.
+    const onHandle = (el) => !!(el && el.closest && hud.contains(el) && el.closest('[data-voyage-handle],[data-voyage-endpoint]'));
+    const inMap = (el) => !!(el && map.getContainer().contains(el));
+    map.on('mouseout', (e) => {
+      if (onHandle(e.originalEvent && e.originalEvent.relatedTarget)) return;
       clearTimeout(handleLinger);
       handleLinger = null;
       setHandlesShown(false);
+    });
+    hud.addEventListener('pointerover', (e) => {
+      if (!onHandle(e.target)) return;
+      clearTimeout(handleLinger);
+      handleLinger = null;
+      setHandlesShown(true);
+    });
+    hud.addEventListener('pointerout', (e) => {
+      if (!onHandle(e.target) || onHandle(e.relatedTarget) || handleHold > 0) return;
+      // Back onto the map: its mousemove decides. Off the map entirely: put them away.
+      if (!inMap(e.relatedTarget)) { clearTimeout(handleLinger); handleLinger = null; setHandlesShown(false); }
     });
   }
 
@@ -934,7 +953,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       }
 
       // ── Grab the line anywhere: a ghost dot rides the route under the cursor ────────────────
-      const GRAB_PX = 14;   // how close the cursor must be to the drawn line
+      const GRAB_PX = 18;   // how close the cursor must be to the drawn line
       const ghost = makeDot('insert');
       ghost.dataset.voyageHandle = 'ghost';
       ghost.setAttribute('data-tooltip', t('Drag to bend the route around land'));
@@ -965,7 +984,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         if ((e.originalEvent && e.originalEvent.buttons) || overHandle(e.point.x, e.point.y)) { hideGhost(); return; }
         const hit = nearestPointOnPolyline(e.point.x, e.point.y, legScreenPts());
         if (!hit || hit.d > GRAB_PX) { hideGhost(); return; }
-        ghost.style.left = `${hit.x}px`; ghost.style.top = `${hit.y}px`; ghost.style.display = '';
+        ghost.style.left = `${hit.x}px`; ghost.style.top = `${hit.y}px`; ghost.style.display = 'flex';   // not '': that drops the inline flex and squashes the dot into a bar
         ghost._px = { x: hit.x, y: hit.y };
         ghostDesc = { mode: 'insert', afterWpIndex: waypointBefore(hit.index) };
       };
@@ -981,7 +1000,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
           const run = runs[i];
           const mid = run ? midpointAlong(run.pts) : null;
           if (!mid || mid.length < MIN_RUN_PX) { h.style.display = 'none'; h._px = null; return; }
-          h.style.display = ''; h.style.left = `${mid.x}px`; h.style.top = `${mid.y}px`;
+          h.style.display = 'flex'; h.style.left = `${mid.x}px`; h.style.top = `${mid.y}px`;
           h._px = { x: mid.x, y: mid.y };
         });
       };
