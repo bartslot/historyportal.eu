@@ -49,3 +49,14 @@ describe('applyPaperEdge', () => {
     expect(parent.querySelector('[data-paper-sheet]')).toBeNull()
   })
 })
+
+describe('layerEdge', () => {
+  it('follows the choice, else paints a whole picture and leaves a cut-out straight', async () => {
+    const { layerEdge } = await import('../ArtworkOverlay.js')
+    expect(layerEdge({ kind: 'figure', edge: 'painted' })).toBe('painted')
+    expect(layerEdge({ kind: 'cover', edge: 'straight' })).toBe('straight')
+    expect(layerEdge({ kind: 'cover' })).toBe('painted')
+    expect(layerEdge({ kind: 'figure' })).toBe('straight')
+    expect(layerEdge({ kind: 'figure', edge: 'bogus' })).toBe('straight')
+  })
+})

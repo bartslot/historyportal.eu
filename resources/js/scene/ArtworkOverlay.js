@@ -106,7 +106,7 @@ export const artObjId = (assetId) => `art_${assetId}`
  * nothing on screen, which looks exactly like a save that did not take.
  */
 const SYNCABLE = [
-  'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
+  'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend', 'edge',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
   ...SIT_KEYS, 'occlude', ...ARROW_KEYS,
 ]
@@ -130,6 +130,12 @@ const WATCHED = [
   'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
 ]
 
+/** 'painted' or 'straight'. Unset: a whole picture (cover) is painted, a cut-out is not. */
+export function layerEdge(l) {
+  if (l.edge === 'painted' || l.edge === 'straight') return l.edge
+  return l.kind === 'cover' ? 'painted' : 'straight'
+}
+
 export function layersIdentity(layers) {
   return JSON.stringify((Array.isArray(layers) ? layers : []).map(l => [
     l.asset_id,
@@ -144,7 +150,7 @@ export function layersSignature(layers) {
     l.asset_id,
     String(l.url || (l.embed && l.embed.src) || '').split('?')[0],
     l.x, l.y, l.scale, l.height, l.width, l.depth, l.rotation,
-    l.blur, l.opacity, l.blend,
+    l.blur, l.opacity, l.blend, l.edge,
     l.white_key, l.grayscale, l.tint, l.tint_opacity,
     l.anim, l.anim_delay, l.anim_ease, l.anim_duration,
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
@@ -189,6 +195,9 @@ export function normalizeLayer(l) {
         // CSS mix-blend-mode. 'multiply' is what makes a scanned engraving or map sit ON the
         // scene by dropping its white paper, instead of floating in a white box.
         blend: l.blend || 'normal',
+        // The painted paper edge (paper-edge.js): 'painted' or 'straight'. A whole picture (cover)
+        // is painted unless the teacher says otherwise; a cut-out keeps its own outline.
+        edge: layerEdge(l),
         // Colour treatment: knock the paper out, drain the colour, recolour the ink.
         white_key: Number.isFinite(l.white_key) ? l.white_key : 0,
         grayscale: !!l.grayscale,
@@ -647,6 +656,10 @@ export class ArtworkOverlay {
       }
       case 'blend':
         node.style.mixBlendMode = item.blend && item.blend !== 'normal' ? item.blend : ''
+        break
+      case 'edge':
+        item.edge = layerEdge(item)
+        node.querySelector('img')?.classList.toggle('paper-edge', item.edge === 'painted')
         break
       case 'scale':
       case 'height':
@@ -1144,6 +1157,8 @@ export class ArtworkOverlay {
     // context, so a blend on the img would only ever mix with the node's own empty backdrop.
     // On the node it mixes with whatever the overlay sits over — which is the point of Multiply.
     if (item.blend && item.blend !== 'normal') node.style.mixBlendMode = item.blend
+    // The painted paper edge masks the picture itself, so the selection ring stays square.
+    if (item.edge === 'painted') img.classList.add('paper-edge')
     // Ambient motion on its own inner wrapper, so it composes with the node's transform (position,
     // rotation, parallax, entrance) instead of replacing it. Origin bottom-centre = the image's base.
     const amb = document.createElement('div')

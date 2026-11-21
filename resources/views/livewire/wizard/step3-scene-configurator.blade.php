@@ -1120,7 +1120,7 @@
                 <x-lesson.layer-panel-title :layer="$al" class="-mx-4 -mt-4" />
 
                 <x-ui.panel-tabs class="mb-1" name="layer-tabs-{{ $al['asset_id'] ?? 0 }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
+                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['mask', __('Mask'), \App\Support\TabIcons::MASK], ['animate', __('Motion'), \App\Support\TabIcons::MOTION]]">
                     <x-slot:breadcrumb>
                         {{-- Back to the scene's own settings. Also clears the canvas ring and the
                              JS dedupe guard, or the layer stays visibly selected with nothing
@@ -1133,6 +1133,13 @@
 
                 <div x-show="tab === 'format'">
                     <x-lesson.settings-map-panel :layer="$al" :scene="$this->selectedSceneModel" />
+                </div>
+                {{-- Mask: the picture painted on paper or straight. Unset follows the layer's kind
+                     (ArtworkOverlay layerEdge): a whole picture is painted, a cut-out keeps its outline. --}}
+                <div x-show="tab === 'mask'" x-cloak>
+                    @php $alEdge = in_array($al['edge'] ?? null, ['painted', 'straight'], true) ? $al['edge'] : (($al['kind'] ?? 'cover') === 'cover' ? 'painted' : 'straight'); @endphp
+                    <x-lesson.paper-edge-control :value="$alEdge" name="layer-edge-{{ $al['asset_id'] ?? 0 }}"
+                        on-change="window.__setLayerProp?.({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value); $wire.updateArtworkLayer({{ (int) ($al['asset_id'] ?? 0) }}, 'edge', $event.target.value)" />
                 </div>
                 <div x-show="tab === 'animate'" x-cloak class="pt-3">
                     <x-lesson.animate-inspector mode="layer" :layer="$al" :scene="$this->selectedSceneModel" />
@@ -1164,8 +1171,18 @@
                      scene before it just as a narration scene does. --}}
                 {{-- Same tab row as a selected layer gets. The two panels sat side by side with
                      different tab treatments, and a tab is a tab wherever it appears. --}}
+                {{-- Mask only where the scene shows a picture of its own (the painted paper edge, paper-edge.js). --}}
+                @php $sceneMaskable = ($sceneModel->image_path || ! empty($sceneModel->shots)) && ! in_array($sceneModel->kind, ['map', 'game', 'voyage', 'gallery', 'video', 'stage25d'], true); @endphp
                 <x-ui.panel-tabs name="scene-tabs-{{ $sceneModel->id }}"
-                                 :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT], ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]" />
+                                 :tabs="array_values(array_filter([['format', __('Format'), \App\Support\TabIcons::FORMAT], $sceneMaskable ? ['mask', __('Mask'), \App\Support\TabIcons::MASK] : null, ['animate', __('Motion'), \App\Support\TabIcons::MOTION], ['music', __('Music'), \App\Support\TabIcons::MUSIC]]))" />
+
+                @if ($sceneMaskable)
+                    <div x-show="tab === 'mask'" x-cloak>
+                        <x-lesson.paper-edge-control :value="($sceneModel->config['paper_edge'] ?? true) === false ? 'straight' : 'painted'"
+                            name="scene-edge-{{ $sceneModel->id }}"
+                            on-change="$wire.call('setPaperEdge', $event.target.value === 'painted')" />
+                    </div>
+                @endif
 
                 {{-- Music under this scene. wire:ignore: the 3 s poll would re-render the child and drop a value being typed; it saves and re-renders itself. --}}
                 @unless (auth()->user()?->isGuestDemo())

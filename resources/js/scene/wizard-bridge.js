@@ -845,6 +845,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
         _splitStage = null
         window.__splitPanelAt = null
+        if (_splitHost?.previousElementSibling?.hasAttribute('data-paper-sheet')) _splitHost.previousElementSibling.remove()
         _splitHost?.remove()
         _splitHost = null
         _splitSig = null
@@ -876,6 +877,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             _splitStage.select(panel)
             window.__lessonArtworkLayer = _splitStage.overlay(panel)
             _stageBackgrounds = _splitStage.backgrounds()
+            setPaperEdge(payload.config?.paper_edge !== false ? _splitHost : null)
             return
         }
         // A figure's value changed (depth, a tint): the stage is rebuilt, and its new overlays held no
@@ -895,6 +897,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         host.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;'
         parent.appendChild(host)
         _splitHost = host
+        // Both panels are painted on one sheet of paper, as in the player (the whole layer host is masked there too).
+        setPaperEdge(payload.config?.paper_edge !== false ? host : null)
         // A drop on the stage lands in the panel under it, in that panel's own units (__placeIcon).
         window.__splitPanelAt = (x, y) => _splitStage?.panelAt?.(x, y) ?? null
         _splitStage = new _splitMod.SplitStage(host, {
@@ -1233,11 +1237,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
 
     /**
      * The painted paper edge (paper-edge.js) on whichever element shows this scene's picture: the
-     * layer host for a layered shot, the WebGL canvas for a flat one. null takes it off both.
+     * layer host for a layered shot, the split host for comic panels, the WebGL canvas for a flat
+     * one. null takes it off all of them.
      */
     function setPaperEdge(target) {
-        applyPaperEdge(canvasEl, target === canvasEl)
-        applyPaperEdge(_wizardLayerHost, !!target && target === _wizardLayerHost)
+        for (const el of [canvasEl, _wizardLayerHost, _splitHost]) applyPaperEdge(el, !!target && el === target)
     }
 
     function destroyWizardLayers() {

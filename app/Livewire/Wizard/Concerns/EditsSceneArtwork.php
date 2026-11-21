@@ -498,6 +498,8 @@ trait EditsSceneArtwork
             // 'normal' is how a teacher turns blending back OFF — without it in the list the
             // enum check below rejects the value and the select silently refuses to clear.
             'blend' => ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'],
+            // The painted paper edge on the picture (resources/js/scene/paper-edge.js).
+            'edge' => ['painted', 'straight'],
             // Colour treatment. white_key is how much of the top of the luminance range becomes
             // transparent — 0.04 is the 4% that clears scanned paper without eating light greys.
             'white_key' => [0, 0.5],
@@ -567,7 +569,7 @@ trait EditsSceneArtwork
             'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
             'sway', 'grayscale', 'flip_x', 'flip_y' => (bool) $value,
-            'kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style' => (string) $value,
+            'kind', 'blend', 'edge', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style' => (string) $value,
             default => $value,
         };
 
@@ -597,7 +599,7 @@ trait EditsSceneArtwork
         }
 
         // Validate enum-like fields.
-        if (in_array($field, ['kind', 'blend', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style'], true)) {
+        if (in_array($field, ['kind', 'blend', 'edge', 'ink_preset', 'ink_fill', 'anim', 'anim_ease', 'anim_out', 'anim_out_ease', 'ambient', 'frames_play', 'arrow_style'], true)) {
             if (! in_array($coercedValue, $whitelist[$field], true)) {
                 return;
             }
