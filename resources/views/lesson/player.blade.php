@@ -117,7 +117,7 @@
         // the v2 path if stakes rise.
         'quiz_questions'        => $lesson->quizQuestions->whereNull('scene_id')->map->only(['question', 'image_path', 'options', 'correct_index', 'asks_ahead', 'explanation'])->values(),
         'quiz_timing'           => $lesson->quiz_timing,
-        'cover_image_url'       => $lesson->titleBgUrl() ?? $lesson->cardImageUrl(),
+        'cover_image_url'       => $lesson->titleScreenImageUrl(),
         // Where the lesson TEXT came from. The per-scene image credit rides on each scene below and
         // joins this on the same line, because a CC BY image has to say who made it.
         'source_attribution'    => $lesson->sourceAttribution(),
