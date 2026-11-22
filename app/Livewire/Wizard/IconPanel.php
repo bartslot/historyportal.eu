@@ -46,6 +46,13 @@ class IconPanel extends Component
     public const CUTOUTS = 'cutouts';
 
     /**
+     * The pictures this lesson already uses or made, first and where the panel opens (Bart 2026-11-22: "I want to see
+     * first the category of images that are already in the lesson … Dante is never going to be added to a story about
+     * marco polo and vice versa"). Shown once the lesson has one.
+     */
+    public const LESSON = 'lesson';
+
+    /**
      * Frames → one animated library asset (SequenceImporter). Admins only: it writes into the
      * library every teacher sees. Any problem (a gap in the numbers, two assets, JEV unreachable)
      * is shown in the dialog and nothing is stored.
@@ -110,6 +117,8 @@ class IconPanel extends Component
         $tab = session($this->tabKey());
         if (is_array($tab)) {
             [$this->collection, $this->category, $this->subcategory] = array_map('strval', array_pad(array_values($tab), 3, ''));
+        } elseif ($this->lessonAssetIds() !== []) {
+            [$this->collection, $this->category, $this->subcategory] = [self::LESSON, '', ''];
         }
         $this->era = (string) session($this->eraKey(), $this->openingEra());
     }
@@ -231,14 +240,14 @@ class IconPanel extends Component
     public function showCutouts(?string $removed = null): void
     {
         if ($removed !== null) {
-            unset($this->collections, $this->icons);
+            unset($this->collections, $this->icons, $this->lessonAssetIds);
             if ($this->collection === self::CUTOUTS && ! in_array(self::CUTOUTS, $this->collections, true)) {
                 $this->selectCollection($this->collections[0] ?? '');
             }
 
             return;
         }
-        unset($this->collections, $this->icons, $this->groups);
+        unset($this->collections, $this->icons, $this->groups, $this->lessonAssetIds);
         $this->selectCollection(self::CUTOUTS);
     }
 
@@ -281,7 +290,44 @@ class IconPanel extends Component
         $mine = auth()->check() && SvgAsset::query()->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->exists()
             ? [self::CUTOUTS] : [];
 
-        return [...$mine, ...$this->bundledCollections()];
+        $lesson = $this->lessonAssetIds() !== [] ? [self::LESSON] : [];
+
+        return [...$lesson, ...$mine, ...$this->bundledCollections()];
+    }
+
+    /**
+     * Ids of the pictures in this lesson: every layer its scenes place (2D shots and 3D sets) and every cut-out made
+     * in it, newest first.
+     *
+     * @return list<int>
+     */
+    #[Computed]
+    public function lessonAssetIds(): array
+    {
+        $lesson = $this->lessonId ? Lesson::find($this->lessonId) : null;
+        if (! $lesson) {
+            return [];
+        }
+        $ids = [];
+        foreach ($lesson->scenes()->get(['id', 'shots', 'config']) as $scene) {
+            foreach ((array) ($scene->shots ?? []) as $shot) {
+                foreach ((array) ($shot['layers'] ?? []) as $layer) {
+                    if (is_numeric($layer['asset_id'] ?? null)) {
+                        $ids[] = (int) $layer['asset_id'];
+                    }
+                }
+            }
+            foreach ((array) ($scene->config['stage25d']['set']['layers'] ?? []) as $layer) {
+                if (is_string($layer['asset'] ?? null) && ($id = Cutouts::idOf($layer['asset'])) !== null) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        $made = auth()->check()
+            ? SvgAsset::query()->where('lesson_id', $lesson->id)->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->pluck('id')->all()
+            : [];
+
+        return SvgAsset::query()->whereIn('id', array_unique([...$ids, ...$made]))->latest('id')->pluck('id')->all();
     }
 
     /** @return list<string> */
@@ -314,7 +360,7 @@ class IconPanel extends Component
     #[Computed]
     public function groups(): array
     {
-        if ($this->collection === self::CUTOUTS) {
+        if (in_array($this->collection, [self::CUTOUTS, self::LESSON], true)) {
             return [];
         }
         if ($main = self::MAIN_CATEGORIES[$this->collection] ?? null) {
@@ -388,6 +434,11 @@ class IconPanel extends Component
     #[Computed]
     public function icons(): \Illuminate\Support\Collection
     {
+        if ($this->collection === self::LESSON) {
+            $ids = $this->lessonAssetIds();
+
+            return SvgAsset::query()->whereIn('id', $ids)->get()->sortBy(fn (SvgAsset $a) => array_search($a->id, $ids, true))->values();
+        }
         if ($this->collection === self::CUTOUTS) {
             return SvgAsset::query()->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->latest()->limit(self::PAGE)->get();
         }

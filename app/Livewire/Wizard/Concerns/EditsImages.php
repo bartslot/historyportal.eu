@@ -47,7 +47,7 @@ trait EditsImages
     /** @param  array<string,mixed>  $from */
     private function storeCutout(string $image, string $title, array $from): ?SvgAsset
     {
-        $asset = Cutouts::save(auth()->user(), $image, $title, $from);
+        $asset = Cutouts::save(auth()->user(), $image, $title, $from, $this->lesson?->id);
         // the Assets panels follow: the icon panel opens its "My cut-outs" tab, the 3D library takes the new row
         if ($asset !== null) {
             $this->dispatch('cutouts-changed', id: $asset->id, stage: Cutouts::stageRow($asset));

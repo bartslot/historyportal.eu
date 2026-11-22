@@ -34,7 +34,7 @@ final class Cutouts
      *
      * @param  array<string,mixed>  $from
      */
-    public static function save(User $user, string $dataUrl, string $title, array $from = []): ?SvgAsset
+    public static function save(User $user, string $dataUrl, string $title, array $from = [], ?int $lessonId = null): ?SvgAsset
     {
         $path = EditedImages::storeIn("cutouts/{$user->id}", $dataUrl);
         if ($path === null) {
@@ -47,6 +47,7 @@ final class Cutouts
 
         return SvgAsset::create([
             'user_id' => $user->id,
+            'lesson_id' => $lessonId,
             'source' => self::SOURCE,
             'source_ref' => pathinfo($path, PATHINFO_FILENAME),
             'source_url' => '',
