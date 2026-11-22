@@ -12,7 +12,7 @@
 import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf, cameraValueMoves } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
-import { wordSpans, snapTime, wordAt } from './narration-clock.js'
+import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
@@ -798,6 +798,36 @@ export const animationTimeline = (config = {}) => ({
 
   /** The word under the playhead, which is the only readout that means anything to a teacher. */
   get spokenWord () { return wordAt(this.spans, this.time)?.word ?? '' },
+
+  /** The sentence under the playhead and the word lit in it, for the narration strip (Bart, 2026-11-22). */
+  get spokenSentence () { return sentenceAt(this.spans, this.time) },
+
+  /**
+   * Keeps the lit word on screen in the narration strip. A long sentence is wider than the dock, and
+   * the strip does not wrap (a row that grew a line mid-playback would shove the tracks down), so it
+   * scrolls itself sideways instead, only when the word would otherwise sit outside the view.
+   */
+  /**
+   * A word pressed in the narration strip. Playback carries on FROM that word: play() counts from
+   * the moment it started, so a bare seek would be undone on the very next frame.
+   */
+  seekToWord (time) {
+    this.seek(time)
+    if (this.playing) {
+      this._startedFrom = this.time
+      this._startedAt = performance.now()
+    }
+  },
+
+  revealSpokenWord (strip) {
+    const word = strip?.querySelector('[data-timeline-word]')
+    if (!word) return
+    const margin = 48
+    const left = word.offsetLeft
+    const right = left + word.offsetWidth
+    if (left < strip.scrollLeft + margin) strip.scrollLeft = Math.max(0, left - margin)
+    else if (right > strip.scrollLeft + strip.clientWidth - margin) strip.scrollLeft = right - strip.clientWidth + margin
+  },
 
   xOf (t) { return LANE_PAD_PX + t * this.zoom },
 
