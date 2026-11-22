@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 
-import { introCameraTracks, isIntroCamera, cameraEnd, cameraDrives, INTRO_TILT } from '../scene-animation.js'
+import { introCameraTracks, isIntroCamera, cameraEnd, cameraDrives, INTRO_TILT, openingCamera } from '../scene-animation.js'
 
 /** The space intro is the scene's camera (Bart 2026-11-20): globe, a beat, then a dive that ends tilted. */
 describe('introCameraTracks', () => {
@@ -28,3 +28,31 @@ describe('introCameraTracks', () => {
   })
 })
 
+
+// Bart 11-22, Bukhara: the editor opened on the focus pin's close-up, and only moving the playhead
+// put the timeline camera on the map.
+describe('openingCamera', () => {
+  const key = (property, a, b) => ({ target: 'camera', property, keyframes: [{ time: 0, value: a }, { time: 6, value: b }] })
+  const timeline = { tracks: [key('lng', 61.69, 49.43), key('lat', 42.45, 38), key('zoom', 1.22, 1.68)] }
+
+  it('opens on the timeline camera at 0 s', () => {
+    expect(openingCamera(timeline)).toEqual({ center: [61.69, 42.45], zoom: 1.22 })
+  })
+
+  it('carries heading and tilt when the timeline keys them', () => {
+    const tilted = { tracks: [...timeline.tracks, key('heading', 10, 0), key('tilt', 30, 0)] }
+    expect(openingCamera(tilted)).toMatchObject({ bearing: 10, pitch: 30 })
+  })
+
+  it("prefers the timeline over the writer's camera, and falls back to it", () => {
+    const writer = { center: [12, 41], zoom: 4 }
+    expect(openingCamera(timeline, writer).center).toEqual([61.69, 42.45])
+    expect(openingCamera(null, writer)).toEqual({ center: [12, 41], zoom: 4 })
+  })
+
+  it('has no opening camera for a single key or no camera at all', () => {
+    const single = { tracks: [{ target: 'camera', property: 'lng', keyframes: [{ time: 0, value: 5 }] }] }
+    expect(openingCamera(single)).toBeNull()
+    expect(openingCamera({ tracks: [] })).toBeNull()
+  })
+})

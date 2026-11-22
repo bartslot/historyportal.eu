@@ -855,6 +855,7 @@
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
                 return
@@ -879,6 +880,7 @@
                     showBorders: cfg.show_borders === true,
                     interactive: true,
                     annotations: cfg.annotations || [],
+                    timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
                     editable: true,
                     // currentSceneId, not p.sceneId: the same map stays up across map scenes (showScene).
                     onAnnotationsChange: (a) => window.Livewire.dispatch('annotationsChanged', { sceneId: currentSceneId, annotations: a }),
@@ -3398,8 +3400,14 @@
                     <span class="text-sm text-panel-hint"
                           x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
                           x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
-                    <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
-                    <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                    {{-- The scene's own picture also takes a video, which loops as its moving picture (EditsSceneLoop). --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size', ['size' => $this->loopVideoLimit()]) }}</span>
+                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime" class="hidden" />
+                    @else
+                        <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
+                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                    @endif
                 </label>
             @endunless
             {{-- imageGrid: the preview-size slider and the tile sizes (resources/js/ui/image-grid.js). --}}

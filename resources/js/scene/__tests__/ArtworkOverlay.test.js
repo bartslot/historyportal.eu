@@ -209,6 +209,31 @@ describe('ArtworkOverlay — pinned to the map', () => {
     expect(saved.at(-1)).toMatchObject({ anchor: 'screen', lng: null, lat: null })
   })
 
+  // Bart 11-22, Bukhara: a picture pinned to a place 4,000 km off the map's view sat off the stage,
+  // and letting go of the pin left it there.
+  it('brings a layer pinned off the map back onto the stage when it is unpinned', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -300, lat: 4 })])   // projects to x -250%
+
+    expect(overlay.togglePin(1)).toBe(false)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 10, y: 54 })
+    expect(node(el).style.left).toBe('10%')
+  })
+
+  it('leaves an unpinned layer where it is when it was already on the stage', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -45, lat: 2 })])     // x 5%, y 52%
+
+    overlay.togglePin(1)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 5, y: 52 })
+  })
+
   it('refuses to pin when there is no map to pin to', () => {
     const el = host()
     const overlay = new ArtworkOverlay(el)
