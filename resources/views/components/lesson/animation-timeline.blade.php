@@ -197,15 +197,13 @@
             </svg>
         </button>
 
-        <span data-timeline-word class="min-w-0 truncate text-2xs italic text-panel-label" x-text="spokenWord"></span>
-
         {{-- Zoom keeps its place at the trailing edge, as the file draws it, but it is shrink-0 and
              wears no word.
 
              The dock is only `window − inspector − rail` wide, and a game scene's inspector is
              48rem — so on a narrower screen the row runs out of space and the LAST thing on it is
-             the first to be squeezed away. That is how the zoom control disappeared. The word
-             readout beside it is the only thing here allowed to shrink. --}}
+             the first to be squeezed away. That is how the zoom control disappeared. The spoken
+             word used to sit here too; it has its own row below now. --}}
         <div class="ml-auto flex shrink-0 items-center gap-2">
             {{-- Logarithmic: every step multiplies the zoom, so it is equally gentle at both ends. --}}
             <span class="range-panel-knob" style="width: 88px" :style="{ '--range-t': zoomSlider / 1000 }">
@@ -216,6 +214,30 @@
                        data-timeline-zoom class="range range-panel" />
             </span>
         </div>
+    </div>
+
+    {{-- ── Narration ──────────────────────────────────────────────────────────────────────── --}}
+    {{-- The sentence being spoken, readable, with the word under the playhead in white (Bart,
+         2026-11-22: "make that row where the sentences are bigger, so we can check what words
+         it's on"). It replaced a 10px italic word squeezed in beside the zoom, which was the only
+         way to tell where a keyframe sits in the script.
+
+         One line that never wraps: a strip that grew a line mid-sentence would shove every track
+         down while the teacher is aiming at one. A long sentence scrolls sideways under its own
+         steam to keep the lit word in view. Each word is a button: pressing it puts the playhead
+         on it, which is the quickest way to land a keyframe on "Samarkand". --}}
+    <div x-show="spans.length" data-timeline-narration
+         x-effect="spokenSentence.current; $nextTick(() => revealSpokenWord($el))"
+         class="no-scrollbar relative flex shrink-0 items-center gap-x-0.5 overflow-x-auto whitespace-nowrap px-4 text-base leading-none"
+         style="height: 48px; background: var(--color-timeline-strip); border-top: 1px solid var(--color-panel-hairline)">
+        <template x-for="(w, i) in spokenSentence.words" :key="w.start">
+            <button type="button" x-on:click="seekToWord(w.start)"
+                    :data-timeline-word="i === spokenSentence.current ? '' : null"
+                    :aria-current="i === spokenSentence.current ? 'true' : null"
+                    :class="i === spokenSentence.current ? 'text-white' : 'text-panel-label hover:text-panel-value'"
+                    class="shrink-0 cursor-pointer rounded px-0.5 py-1 transition-colors duration-75"
+                    x-text="w.word"></button>
+        </template>
     </div>
 
     {{-- ── Tracks ─────────────────────────────────────────────────────────────────────────── --}}

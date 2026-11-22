@@ -3,7 +3,7 @@ import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
 import { loopVideo } from './picture-loop.js'
-import { isClipartLayer, backdropLayers } from './layer-filters.js'
+import { isClipartLayer, backdropLayers, flatStageLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas, gradientCss } from './background-gradient.js'
@@ -163,7 +163,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         loop: payload.imageLoop ?? null,
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
-                        layers: firstShot?.layers ?? null,
+                        // A map or voyage draws its figures over the map itself (flatStageLayers).
+                        layers: flatStageLayers(payload.kind, firstShot?.layers ?? null),
                         camera: firstShot?.camera ?? null,
                         entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,

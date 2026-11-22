@@ -613,3 +613,39 @@ describe('the keyboard', () => {
     expect(p.duration).toBe(6)
   })
 })
+
+describe('pressing a word in the narration strip', () => {
+  let frame = null
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', (fn) => { frame = fn; return 1 })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+  })
+  afterEach(() => { vi.unstubAllGlobals(); frame = null })
+
+  it('keeps playing from that word instead of jumping back on the next frame', () => {
+    const p = panel([])
+    p.seek = (t) => { p.time = t }
+    p.revealPlayhead = () => {}
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000)
+
+    p.play()
+    now.mockReturnValue(2000)        // one second in
+    frame()
+    expect(p.time).toBeCloseTo(1)
+
+    p.seekToWord(5)
+    now.mockReturnValue(2100)        // the next frame, 0.1 s later
+    frame()
+    expect(p.time).toBeCloseTo(5.1)
+    expect(p.playing).toBe(true)
+    now.mockRestore()
+  })
+
+  it('just moves the playhead while paused', () => {
+    const p = panel([])
+    p.seek = (t) => { p.time = t }
+    p.seekToWord(3)
+    expect(p.time).toBe(3)
+    expect(p.playing).toBe(false)
+  })
+})

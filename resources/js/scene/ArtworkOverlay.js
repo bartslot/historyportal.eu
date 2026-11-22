@@ -246,6 +246,9 @@ export function normalizeLayer(l) {
   }
 }
 
+/** A stage position (%) off the stage pulled back in, far enough that the picture can be seen and grabbed. */
+const onStage = (v) => (!Number.isFinite(v) ? 50 : v >= 0 && v <= 100 ? v : Math.max(10, Math.min(90, v)))
+
 export class ArtworkOverlay {
   constructor(hostEl, { onChange = null, readonly = false } = {}) {
     this.host = hostEl
@@ -450,6 +453,20 @@ export class ArtworkOverlay {
       item.anchor = 'screen'
       item.lng = null
       item.lat = null
+      // Pinned to a place the map is not showing, the layer sits off the stage, and letting go of
+      // the pin would leave it there: unpinned, and still nowhere to be seen. Bring it into view.
+      const x = onStage(item.x)
+      const y = onStage(item.y)
+      if (x !== item.x || y !== item.y) {
+        item.x = x
+        item.y = y
+        const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
+        if (el) {
+          el.style.left = `${item.x}%`
+          el.style.top = `${item.y}%`
+          this._syncChrome(item)
+        }
+      }
     } else {
       const ll = this._projector.unproject(item.x, item.y)
       if (!ll) return false
