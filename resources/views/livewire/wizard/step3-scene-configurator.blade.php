@@ -855,6 +855,7 @@
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
                 return
@@ -879,6 +880,7 @@
                     showBorders: cfg.show_borders === true,
                     interactive: true,
                     annotations: cfg.annotations || [],
+                    timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
                     editable: true,
                     // currentSceneId, not p.sceneId: the same map stays up across map scenes (showScene).
                     onAnnotationsChange: (a) => window.Livewire.dispatch('annotationsChanged', { sceneId: currentSceneId, annotations: a }),

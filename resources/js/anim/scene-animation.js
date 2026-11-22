@@ -49,6 +49,28 @@ export const isIntroCamera = (tracks) => {
   return keys.length === 3 && Math.abs(keys[0].value - INTRO_FROM_ZOOM) < 1e-6
 }
 
+/**
+ * Where a map scene opens: its timeline camera at 0 s when the timeline moves the camera, else the
+ * writer's fixed camera (lesson.json `camera: {center, zoom}`), else null (the map frames its pins).
+ * In the shape a MapLibre jumpTo/easeTo takes.
+ */
+export const openingCamera = (timeline, fixed = null) => {
+  const cam = cameraDrives(timeline) ? frameAt(timeline, 0).camera : null
+  if (cam && Number.isFinite(cam.lng) && Number.isFinite(cam.lat) && Number.isFinite(cam.zoom)) {
+    return {
+      center: [cam.lng, cam.lat],
+      zoom: cam.zoom,
+      ...(Number.isFinite(cam.heading) ? { bearing: cam.heading } : {}),
+      ...(Number.isFinite(cam.tilt) ? { pitch: cam.tilt } : {}),
+    }
+  }
+  const c = fixed?.center
+  if (Array.isArray(c) && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1])) && Number.isFinite(Number(fixed?.zoom))) {
+    return { center: [Number(c[0]), Number(c[1])], zoom: Number(fixed.zoom) }
+  }
+  return null
+}
+
 /** Every animated value at `time`, as `{ target: { property: value } }`. */
 export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), time)
 
