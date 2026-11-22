@@ -165,8 +165,8 @@
                                 on-change="$wire.call('updateSceneText', {{ $tid }}, 'effect', $event.target.value)" />
                 @if ($val('effect', 'shadow') === 'outline')
                     <x-ui.color-field
-                        :color="$val('effectColor', '#000000')" :opacity="1"
-                        :color-label="__('Outline colour')" :opacity-label="__('Opacity')"
+                        :color="$val('effectColor', '#000000')" :with-opacity="false"
+                        :color-label="__('Outline colour')"
                         :on-color-input="$live('effectColor', '$event.target.value')"
                         :on-color-change="$save('effectColor')" />
                 @endif
