@@ -19,7 +19,7 @@
  *   align  — 'left' (default) | 'center' | 'right' text alignment inside the box.
  *   bg     — 'glass' adds a frosted-glass card behind the text (blurs the scene image).
  *   bgColor/bgOpacity — colour + opacity of that glass card (defaults #0f172a / 0.3).
- *   color/colorOpacity, scale, rotation, blur, blend, opacity, grayscale — the text's look
+ *   color/colorOpacity, effect/effectColor, scale, rotation, blur, blend, opacity, grayscale — the text's look
  *            (App\Services\Support\TextLayerStyle). Absent = white, 1x, upright, sharp, normal.
  *   anchor — 'screen' (default) or 'map': pinned to a lng/lat, repositioned on
  *            every map move via the host-provided projector.
@@ -96,6 +96,8 @@ const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Numbe
 function applyLook (item, node) {
   const strength = num(item.colorOpacity)
   if (item.color || strength !== null) node.style.color = hexToRgba(item.color || TEXT_WHITE, strength ?? 1)
+  node.style.textShadow = edgeOf(item)
+  comicLook(item, node, strength)
   const turn = num(item.rotation)
   const scale = num(item.scale)
   node.style.transform = [turn ? `rotate(${turn}deg)` : '', scale !== null && scale !== 1 ? `scale(${scale})` : ''].filter(Boolean).join(' ')
@@ -105,6 +107,51 @@ function applyLook (item, node) {
   node.style.mixBlendMode = BLENDS.includes(item.blend) ? item.blend : ''
   const opacity = num(item.opacity)
   node.style.opacity = opacity !== null && opacity < 1 ? String(opacity) : ''
+}
+
+const SOFT_SHADOW = '0 2px 12px rgba(0,0,0,0.75)'
+const HEX = /^#[0-9a-f]{6}$/i
+
+/**
+ * What edges the letters (item.effect): the soft dark shadow (absent or 'shadow'), a hard outline in
+ * item.effectColor ('outline'), or nothing ('none', ink on light paper). The outline is a ring of
+ * hard shadows rather than -webkit-text-stroke, which eats into the letters. ComicAmerica draws its
+ * own outline (comicLook), so it takes no shadow.
+ */
+export function edgeOf (item) {
+  if (isComicAmerica(item) || item.effect === 'none') return 'none'
+  if (item.effect !== 'outline') return SOFT_SHADOW
+  const ink = HEX.test(item.effectColor) ? item.effectColor : '#000000'
+  const d = '0.06em'
+  return [`${d} 0`, `-${d} 0`, `0 ${d}`, `0 -${d}`, `${d} ${d}`, `-${d} ${d}`, `${d} -${d}`, `-${d} -${d}`, '0.03em 0.09em']
+    .map((o) => `${o} 0 ${ink}`).join(', ')
+}
+
+/** A colour `share` of the way from `hex` to `to`, as #rrggbb. */
+const mix = (hex, to, share) => {
+  const a = parseInt(hex.slice(1), 16)
+  const b = parseInt(to.slice(1), 16)
+  const ch = (shift) => Math.round(((a >> shift) & 255) * (1 - share) + ((b >> shift) & 255) * share)
+  return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * ComicAmerica's fill and ink (brand-kit.css .lp-comic-america): its letters are a gradient clipped
+ * to the text, so `color` alone never reached them and the Colour field did nothing on a comic text.
+ * The fill runs from the text's colour down to a darker shade of it; the outline takes effectColor,
+ * or goes when the edge is 'none'. Unset leaves the stylesheet's white and black.
+ */
+export function comicLook (item, node, strength = num(item.colorOpacity)) {
+  const props = ['--lp-ca-fill', '--lp-ca-shade', '--lp-ca-ink']
+  for (const p of props) node.style.removeProperty(p)
+  if (!isComicAmerica(item)) return
+  if (HEX.test(item.color) || strength !== null) {
+    const fill = HEX.test(item.color) ? item.color : '#ffffff'
+    node.style.setProperty('--lp-ca-fill', hexToRgba(fill, strength ?? 1))
+    node.style.setProperty('--lp-ca-shade', hexToRgba(mix(fill, '#2f3a4a', 0.38), strength ?? 1))
+  }
+  if (item.effect === 'none') node.style.setProperty('--lp-ca-ink', 'transparent')
+  else if (item.effect === 'outline' && HEX.test(item.effectColor)) node.style.setProperty('--lp-ca-ink', item.effectColor)
 }
 
 const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? item.align : 'left'
@@ -439,7 +486,7 @@ export class TextOverlayLayer {
     node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; max-width:46%;
       pointer-events:auto; color:#f8fafc; font-size:${sizeOf(item).css};
       font-family:${fontOf(item).stack}; font-weight:${fontOf(item).weight};
-      line-height:1.3; text-shadow:${isComicAmerica(item) ? 'none' : '0 2px 12px rgba(0,0,0,0.75)'};`
+      line-height:1.3;`
     // Frosted-glass card: blurs the moving scene image behind the text.
     if (item.bg === 'glass') {
       node.style.background = glassFill(item)

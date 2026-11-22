@@ -65,6 +65,7 @@ use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
+use App\Support\TextStylePresets;
 use App\Support\UploadLimit;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -1184,6 +1185,41 @@ class Step3SceneConfigurator extends Component
         unset($this->activeText);
 
         $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $text);
+    }
+
+    /** Put one of the ready-made looks (App\Support\TextStylePresets) on a text layer: one click, one save. */
+    public function applyTextStyle(string $textId, string $presetId): void
+    {
+        if (! $this->selectedSceneId || $textId === '') {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $texts = array_values((array) ($config['texts'] ?? []));
+        $index = collect($texts)->search(fn ($text) => is_array($text) && ($text['id'] ?? null) === $textId);
+
+        if ($index === false || ! is_array($texts[$index]) || ($texts[$index]['kind'] ?? null) === 'rect') {
+            return;
+        }
+
+        $text = TextStylePresets::apply($texts[$index], $presetId);
+        if ($text === null) {
+            return;
+        }
+
+        $texts[$index] = $text;
+        $config['texts'] = $texts;
+        $scene->update(['config' => $config]);
+
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        unset($this->activeText);
+
+        // The canvas merges a patch into what it has, so a look field the preset dropped goes as null.
+        $patch = [...array_fill_keys(TextStylePresets::LOOK_FIELDS, null), ...$text];
+        $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $patch);
     }
 
     public function deleteSceneText(string $textId): void

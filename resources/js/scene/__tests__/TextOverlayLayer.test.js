@@ -180,6 +180,41 @@ describe('a text layer\'s look', () => {
     expect(node.style.opacity).toBe('0.6')
   })
 
+  it('keeps the soft shadow by default, and draws an outline or nothing when asked', () => {
+    expect(nodeFor({}).style.textShadow).toContain('12px')
+    expect(nodeFor({ effect: 'none' }).style.textShadow).toBe('none')
+    const outlined = nodeFor({ effect: 'outline', effectColor: '#3b2412' }).style.textShadow
+    expect(outlined).toContain('#3b2412')
+    expect(outlined).not.toContain('12px')
+  })
+
+  // Bart 2026-11-22: "color doesn't work anymore". ComicAmerica letters are a gradient clipped to the
+  // text, so `color` never reached them.
+  it('colours ComicAmerica letters through the fill, and inks the outline', () => {
+    const node = nodeFor({ font: 'comic-america', color: '#fcd34d', effect: 'outline', effectColor: '#1c1917' })
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('rgba(252,211,77,1)')
+    expect(node.style.getPropertyValue('--lp-ca-shade')).toMatch(/^rgba\(/)
+    expect(node.style.getPropertyValue('--lp-ca-ink')).toBe('#1c1917')
+    expect(node.style.textShadow).toBe('none')
+  })
+
+  it('leaves ComicAmerica white on black when nothing is set', () => {
+    const node = nodeFor({ font: 'comic-america' })
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('')
+    expect(node.style.getPropertyValue('--lp-ca-ink')).toBe('')
+  })
+
+  it('a preset patch with nulls clears what the old look set', () => {
+    const el = host()
+    const layer = new TextOverlayLayer(el)
+    layer.setTexts([{ id: 'a', text: 'Batavia', x: 10, y: 10, font: 'comic-america', color: '#fcd34d', effect: 'outline', effectColor: '#000000' }])
+    layer.patch('a', { font: 'history', color: '#2b1d14', effect: 'none', effectColor: null, colorOpacity: null })
+    const node = el.querySelector('[data-text-id="a"]')
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('')
+    expect(node.style.textShadow).toBe('none')
+    expect(node.style.color).toBe('rgb(43, 29, 20)')
+  })
+
   it('the Format panel\'s live preview repaints it', () => {
     const el = host()
     const layer = new TextOverlayLayer(el)

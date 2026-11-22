@@ -76,6 +76,37 @@
 
     <div x-show="tab === 'format'" class="-mx-4 -mb-4 text-sm">
 
+        {{-- Ready-made looks (App\Support\TextStylePresets): one click sets font, size, colour, edge and card.
+             Each tile is its own name drawn in that look, on a scrap of a History Lines painting (or on
+             paper, for the ink styles), so the tile is the label. Every field stays editable below. --}}
+        @php
+            $currentStyle = \App\Support\TextStylePresets::current($text);
+            $sceneThumb = asset('images/editor/text-style-scene.webp');
+            $paperBg = "background: #efe6d2 url('".asset('images/paper/paper.svg')."') 0 0 / 256px 256px";
+        @endphp
+        <x-ui.settings-section :title="__('Styles')" name="text-styles">
+            <div class="grid grid-cols-2 gap-1.5" role="group" aria-label="{{ __('Styles') }}" data-text-styles>
+                @foreach (\App\Support\TextStylePresets::labels() as $styleId => $styleLabel)
+                    @php($look = \App\Support\TextStylePresets::preview($styleId))
+                    <button type="button" data-text-style="{{ $styleId }}"
+                            wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
+                            aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}"
+                            aria-label="{{ $styleLabel }}" data-tooltip="{{ $styleLabel }}"
+                            class="relative grid h-11 min-w-0 place-items-center overflow-hidden rounded-md px-1.5 ring-inset transition
+                                   {{ $currentStyle === $styleId ? 'ring-2 ring-base-content' : 'ring-1 ring-panel-hairline hover:ring-base-content/40' }}"
+                            style="{{ $look['paper'] ? $paperBg : "background: url('{$sceneThumb}') center / cover" }}">
+                        <span class="block max-w-full truncate leading-tight" style="{{ $look['card'] }}">
+                            @if ($look['comic'])
+                                <span class="lp-comic-america text-base" data-t="{{ $styleLabel }}" style="{{ $look['text'] }}"><span>{{ $styleLabel }}</span></span>
+                            @else
+                                <span class="text-sm" style="{{ $look['text'] }}">{{ $styleLabel }}</span>
+                            @endif
+                        </span>
+                    </button>
+                @endforeach
+            </div>
+        </x-ui.settings-section>
+
         <x-ui.settings-section :title="__('Typography')" name="text-typography">
             <div class="space-y-2">
                 <label class="flex items-center justify-between gap-2">
@@ -126,6 +157,19 @@
                     :on-opacity-input="$live('colorOpacity', '$event.target.value / 100')"
                     :on-opacity-change="$save('colorOpacity', '$event.target.value / 100')"
                     :keyframe-target="$target" color-property="color" opacity-property="colorOpacity" />
+
+                {{-- What edges the letters: the soft shadow (default), a hard outline, or nothing for ink on paper. --}}
+                <span class="block pt-1 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Edge') }}</span>
+                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !text-xs !font-semibold uppercase tracking-wide" :value="$val('effect', 'shadow')"
+                                :options="[['shadow', __('Shadow')], ['outline', __('Outline')], ['none', __('None')]]"
+                                on-change="$wire.call('updateSceneText', {{ $tid }}, 'effect', $event.target.value)" />
+                @if ($val('effect', 'shadow') === 'outline')
+                    <x-ui.color-field
+                        :color="$val('effectColor', '#000000')" :opacity="1"
+                        :color-label="__('Outline colour')" :opacity-label="__('Opacity')"
+                        :on-color-input="$live('effectColor', '$event.target.value')"
+                        :on-color-change="$save('effectColor')" />
+                @endif
 
                 <div class="divider my-0" role="presentation"></div>
 

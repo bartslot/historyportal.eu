@@ -138,4 +138,60 @@ class TextLayerInspectorTest extends TestCase
             // How-to prose stays out of the editor; the pin explains itself in a tooltip.
             ->assertDontSee(__('Edit content directly on the canvas. Adjust its appearance here.'));
     }
+
+    // Bart 2026-11-22: "it would be nice to get a bunch of presets". One click writes the whole look.
+    public function test_a_style_preset_writes_the_whole_look_and_keeps_the_rest(): void
+    {
+        $wizard = $this->wizard()
+            ->call('updateSceneText', 'txt_a', 'x', 12)
+            ->call('applyTextStyle', 'txt_a', 'comic-title');
+
+        $t = $this->text();
+        $this->assertSame('comic-america', $t['font']);
+        $this->assertSame('#ffffff', $t['color']);
+        $this->assertSame('outline', $t['effect']);
+        $this->assertSame('#000000', $t['effectColor']);
+        $this->assertSame('Batavia, 1642', $t['text']);
+        $this->assertEquals(12.0, $t['x']);
+
+        // The next preset replaces the look: no comic outline left behind.
+        $wizard->call('applyTextStyle', 'txt_a', 'ink-caption');
+        $t = $this->text();
+        $this->assertSame('history', $t['font']);
+        $this->assertSame('none', $t['effect']);
+        $this->assertArrayNotHasKey('effectColor', $t);
+        $this->assertSame('ink-caption', \App\Support\TextStylePresets::current($t));
+    }
+
+    public function test_an_unknown_preset_or_a_backing_panel_is_left_alone(): void
+    {
+        $before = $this->scene->fresh()->config;
+        $this->wizard()
+            ->call('applyTextStyle', 'txt_a', 'bounce')
+            ->call('applyTextStyle', 'rect_a', 'comic-title');
+
+        $this->assertEquals($before, $this->scene->fresh()->config);
+    }
+
+    public function test_the_edge_and_its_colour_are_kept_through_a_canvas_save(): void
+    {
+        $wizard = $this->wizard()
+            ->call('updateSceneText', 'txt_a', 'effect', 'outline')
+            ->call('updateSceneText', 'txt_a', 'effectColor', '#3B2412')
+            ->call('updateSceneText', 'txt_a', 'effect', 'glow');   // not an edge: ignored
+
+        $wizard->dispatch('sceneTextsChanged', sceneId: $this->scene->id, texts: [array_merge($this->text(), ['x' => 50]), $this->text('rect_a')]);
+
+        $t = $this->text();
+        $this->assertSame('outline', $t['effect']);
+        $this->assertSame('#3b2412', $t['effectColor']);
+    }
+
+    public function test_the_styles_strip_marks_the_look_in_use(): void
+    {
+        $this->wizard()->call('applyTextStyle', 'txt_a', 'gold-title')->set('activeTextId', 'txt_a')
+            ->assertSee(__('Styles'))
+            ->assertSeeHtml('data-text-style="gold-title"')
+            ->assertSeeHtml('data-text-style="comic-title"');
+    }
 }
