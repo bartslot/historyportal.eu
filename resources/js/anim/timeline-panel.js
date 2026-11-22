@@ -345,6 +345,9 @@ export const animationTimeline = (config = {}) => ({
       const map = window.__lessonMap
       if (!this.$el?.isConnected) return
       if (!map) { if (tries) setTimeout(() => hookMap(tries - 1), 250); return }
+      // The map opens on the camera at 0 s (lesson-map openingCamera). A playhead this panel
+      // remembered elsewhere puts the camera there once the map has settled, not at the next scrub.
+      if (this.time > 0) map.once('idle', () => { if (this.$el?.isConnected) this.applyFrame() })
       if (map.__timelineHooked) return
       map.__timelineHooked = true
       const panel = () => document.querySelector('[data-timeline]')?._x_dataStack?.[0]
