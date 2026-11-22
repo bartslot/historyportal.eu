@@ -3408,14 +3408,17 @@
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
-                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here. --}}
-                    {{-- A block, not inline @php(...): inline next to the file's @php blocks compiles to a stray endif. --}}
-                    @php
-                        $dropLine = $this->pickerTakesVideo() ? 'Drop a picture or video here, click to choose one or paste with :key' : 'Drop a picture here, click to choose one or paste with :key';
-                    @endphp
-                    <span class="text-sm text-panel-hint"
-                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
-                          x-text="@js(__($dropLine)).replace(':key', key)">{{ __($dropLine, ['key' => '⌘V']) }}</span>
+                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here.
+                         Two plain branches, no inline php directive: Blade paired one with a later php block and the view stopped compiling. --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture or video here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture or video here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @else
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @endif
                     {{-- The scene's own picture also takes a video, which loops as its moving picture (EditsSceneLoop). --}}
                     @if ($this->pickerTakesVideo())
                         <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size', ['size' => $this->loopVideoLimit()]) }}</span>
