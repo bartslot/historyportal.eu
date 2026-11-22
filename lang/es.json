@@ -3074,6 +3074,8 @@
     "The story could go either way. If you were :name, what would you do?": "La historia puede ir en cualquier dirección. Si fueras :name, ¿qué harías?",
     "The story could go either way. What would you do?": "La historia puede ir en cualquier dirección. ¿Qué harías tú?",
     "What the narrator asks": "Lo que pregunta el narrador",
+    "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG o WebP de hasta 8 MB, o un vídeo MP4 o WebM de hasta :size",
+    "A video can only be a scene's moving picture. Choose a picture here.": "Un vídeo solo puede ser la imagen en movimiento de una escena. Elige aquí una imagen.",
     "Make it choices": "Convertir en opciones",
     "This decision point is now a Choices layer on the scene.": "Este momento de decisión ahora es una capa de opciones en la escena."
 }
