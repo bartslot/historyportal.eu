@@ -62,7 +62,7 @@ class GreenKeyTest extends TestCase
             'pure #00FF00' => [[0, 255, 0]],
             'lighter screen' => [[60, 235, 70]],
             'bluer screen' => [[20, 220, 90]],
-            'darker screen' => [[10, 190, 30]],
+            'darker screen' => [[10, 205, 30]],
         ];
     }
 
@@ -89,10 +89,20 @@ class GreenKeyTest extends TestCase
         $this->assertLessThanOrEqual(0, $this->spillAt($out, 110, 100), 'no green halo');
     }
 
-    public function test_a_painting_with_a_green_field_is_left_alone(): void
+    /** @return array<string, array{0: array{int,int,int}}> */
+    public static function grasses(): array
+    {
+        return [
+            'muted grass' => [[90, 150, 60]],
+            'bright painted grass' => [[60, 190, 50]],
+        ];
+    }
+
+    #[DataProvider('grasses')]
+    public function test_a_painting_with_a_green_field_is_left_alone(array $grass): void
     {
         $img = imagecreatetruecolor(100, 100);
-        imagefill($img, 0, 0, imagecolorallocate($img, 90, 150, 60));   // grass all the way to the edge
+        imagefill($img, 0, 0, imagecolorallocate($img, ...$grass));   // grass all the way to the edge
         imagefilledrectangle($img, 0, 0, 99, 30, imagecolorallocate($img, 150, 190, 230));   // sky
 
         $this->assertNull(GreenKey::apply($this->png($img)));

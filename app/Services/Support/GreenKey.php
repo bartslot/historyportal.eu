@@ -37,8 +37,11 @@ final class GreenKey
     /** GD alpha (0 opaque .. 127 clear) below this counts as painted. */
     private const SOLID = 64;
 
-    /** An edge pixel this much greener than red and blue is the screen (#00FF00 leads by 255, grass by 30 to 80). */
+    /** An edge pixel this much greener than red and blue is the screen (#00FF00 leads by 255, grass by 30 to 80) ... */
     private const SCREEN = 100;
+
+    /** ... when it is also this bright: bright painted grass, RGB(60, 190, 50), leads by 130 but is darker. */
+    private const SCREEN_GREEN = 200;
 
     /** Share of the edge that must be screen before the picture counts as made on one. */
     private const SCREEN_SHARE = 0.5;
@@ -84,7 +87,7 @@ final class GreenKey
         $total = 0;
         foreach (self::edgeSample($img) as $c) {
             $total++;
-            if (self::spill($c) >= self::SCREEN) {
+            if (self::spill($c) >= self::SCREEN && (($c >> 8) & 0xFF) >= self::SCREEN_GREEN) {
                 $screen[] = self::spill($c);
             }
         }
