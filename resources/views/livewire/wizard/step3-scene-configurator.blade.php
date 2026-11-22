@@ -3409,7 +3409,10 @@
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
                     {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here. --}}
-                    @php($dropLine = $this->pickerTakesVideo() ? 'Drop a picture or video here, click to choose one or paste with :key' : 'Drop a picture here, click to choose one or paste with :key')
+                    {{-- A block, not inline @php(...): inline next to the file's @php blocks compiles to a stray endif. --}}
+                    @php
+                        $dropLine = $this->pickerTakesVideo() ? 'Drop a picture or video here, click to choose one or paste with :key' : 'Drop a picture here, click to choose one or paste with :key';
+                    @endphp
                     <span class="text-sm text-panel-hint"
                           x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
                           x-text="@js(__($dropLine)).replace(':key', key)">{{ __($dropLine, ['key' => '⌘V']) }}</span>
