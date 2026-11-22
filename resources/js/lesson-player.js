@@ -2013,6 +2013,8 @@ Alpine.data('lessonGame', (lesson) => ({
           annotations: cfg.annotations || [],
           showCities: cfg.show_cities === true,
           showBorders: cfg.show_borders === true,
+          camera: cfg.camera || null,
+          timeline: cfg.timeline || null,
         })
         const textHost = document.getElementById('lesson-text-overlay')
         if (this._textLayer && textHost) this._textLayer.setProjector(_mapInstance.textProjector(textHost))
@@ -2041,6 +2043,7 @@ Alpine.data('lessonGame', (lesson) => ({
           region: cfg.region || null,
           route: cfg.route || null,
           camera: cfg.camera || null,
+          timeline: cfg.timeline || null,       // a timeline camera: the scene opens on its first frame
           // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
           showCities: cfg.show_cities === true,
           showBorders: cfg.show_borders === true,
