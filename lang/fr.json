@@ -3032,6 +3032,8 @@
     "The story could go either way. If you were :name, what would you do?": "L'histoire peut basculer d'un côté comme de l'autre. Si tu étais :name, que ferais-tu ?",
     "The story could go either way. What would you do?": "L'histoire peut basculer d'un côté comme de l'autre. Que ferais-tu ?",
     "What the narrator asks": "Ce que demande le narrateur",
+    "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG ou WebP jusqu'à 8 Mo, ou une vidéo MP4 ou WebM jusqu'à :size",
+    "A video can only be a scene's moving picture. Choose a picture here.": "Une vidéo ne peut être que l'image animée d'une scène. Choisis une image ici.",
     "Styles": "Styles",
     "Outline colour": "Couleur du contour",
     "Comic title": "Titre BD",

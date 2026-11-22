@@ -4096,9 +4096,26 @@ class Step3SceneConfigurator extends Component
      */
     public function updatedUploadImage(): void
     {
+        $mode = $this->paintingPickerMode;
+
+        // A video chosen in the picker is the scene's moving picture, the same as one dropped on the
+        // canvas (Bart, 2026-11-21: "the upload image field must be an image" for a Marco Polo loop).
+        // Landfall, marker and gallery images are pictures shown by URL, so a video has no place there.
+        if ($this->isDroppedVideo('uploadImage')) {
+            if (! $this->pickerTakesVideo()) {
+                $this->reset('uploadImage');
+                $this->addError('uploadImage', __('A video can only be a scene\'s moving picture. Choose a picture here.'));
+
+                return;
+            }
+            $this->paintingPickerOpen = false;
+            $this->applyDroppedLoop('uploadImage');
+
+            return;
+        }
+
         $this->validate(['uploadImage' => 'image|mimes:jpg,jpeg,png,webp,gif|max:8192']);   // 8 MB
 
-        $mode = $this->paintingPickerMode;
         $this->paintingPickerOpen = false;
 
         // Landfall/gallery images are referenced by URL in scene config, so host them on Cloudinary
