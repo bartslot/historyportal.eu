@@ -375,7 +375,32 @@ const KEY_GREEN = [0, 255, 0];
 export function greenHoles(data, w, h, strength = CLEAN_DEFAULTS.white) {
     if (strength <= 0) return new Uint8Array(w * h);
     const tol = 24 + 32 * (Math.min(100, strength) / 100);
-    return patches(w, h, (p) => data[p * 4 + 3] > 0 && dist(data, p * 4, KEY_GREEN) <= tol, 1);
+    // The screen is never exactly #00FF00 (Bart 2026-11-22: "the range of the colors automatically transparent"):
+    // a paler or bluer screen, read off the picture's own edge, is the key as well.
+    const screen = screenColour(data, w, h);
+    return patches(w, h, (p) => data[p * 4 + 3] > 0
+        && (dist(data, p * 4, KEY_GREEN) <= tol || (screen !== null && dist(data, p * 4, screen) <= tol)), 1);
+}
+
+/** An edge pixel this much greener than its red and blue, and this bright, is green screen: bright grass is darker. */
+const SCREEN_SPILL = 100, SCREEN_GREEN = 200;
+
+/**
+ * The colour of the green screen the picture was made on: the median of its edge pixels that are screen, when more than
+ * half of the edge is. null for a picture not made on one (or already cut out).
+ */
+export function screenColour(data, w, h) {
+    const rgb = [[], [], []];
+    let total = 0;
+    const look = (x, y) => {
+        const i = (y * w + x) * 4;
+        total++;
+        if (data[i + 3] > 0 && data[i + 1] >= SCREEN_GREEN && data[i + 1] - Math.max(data[i], data[i + 2]) >= SCREEN_SPILL) for (let c = 0; c < 3; c++) rgb[c].push(data[i + c]);
+    };
+    for (let x = 0; x < w; x++) { look(x, 0); if (h > 1) look(x, h - 1); }
+    for (let y = 1; y < h - 1; y++) { look(0, y); if (w > 1) look(w - 1, y); }
+    if (!total || rgb[0].length / total <= 0.5) return null;
+    return rgb.map((c) => c.sort((a, b) => a - b)[c.length >> 1]);
 }
 
 /** Every 4-connected patch of pixels that pass `test` and is at least `minArea` big, as a mask (Uint8Array). */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wandSelect, wandSeed, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS } from '../quick-mask.js';
+import { wandSelect, wandSeed, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS, screenColour } from '../quick-mask.js';
 
 // 7×3: white | ink column | white, with a soft grey pixel next to the ink on the left.
 //   W W g K W W W
@@ -168,6 +168,20 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
         expect(a[5 * 20 + 6]).toBe(0);
         expect(a[9 * 20 + 10], 'grass stays').toBe(255);
         expect(a[0], 'hair stays').toBe(255);
+    });
+
+    // Bart 2026-11-22: "the range of the colors automatically transparent": a screen painted paler or bluer than #00FF00
+    it('takes out a paler or bluer screen than #00FF00, read off the edge, and leaves the figure', () => {
+        for (const screen of [[20, 220, 90, 255], [60, 235, 70, 255]]) {
+            // 20x10 on the screen, a brown figure in columns 6-13 with a pocket of screen at (9..10, 4..5)
+            const d = px(20, 10, (x, y) => (x >= 6 && x < 14 && !(x >= 9 && x < 11 && y >= 4 && y < 6) ? [150, 100, 60, 255] : screen));
+            expect(screenColour(d, 20, 10)).toEqual(screen.slice(0, 3));
+            const a = alpha(cleanUp(d, 20, 10, { white: 50 }));
+            expect(a[0], 'screen at the edge').toBe(0);
+            expect(a[4 * 20 + 9], 'screen in the pocket').toBe(0);
+            expect(a[2 * 20 + 7], 'the figure').toBe(255);
+        }
+        expect(screenColour(px(4, 4, () => [60, 190, 50, 255]), 4, 4), 'grass to the edge is no screen').toBeNull();
     });
 
     it('un-blends green from a pocket edge on a picture made on green, not from grass on one that was not', () => {
