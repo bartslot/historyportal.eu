@@ -3031,5 +3031,7 @@
     "What happens next? Think it over, then choose.": "Che cosa succede adesso? Pensaci bene, poi scegli.",
     "The story could go either way. If you were :name, what would you do?": "La storia può andare in un modo o nell'altro. Se tu fossi :name, che cosa faresti?",
     "The story could go either way. What would you do?": "La storia può andare in un modo o nell'altro. Tu che cosa faresti?",
-    "What the narrator asks": "Che cosa chiede il narratore"
+    "What the narrator asks": "Che cosa chiede il narratore",
+    "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG o WebP fino a 8 MB, oppure un video MP4 o WebM fino a :size",
+    "A video can only be a scene's moving picture. Choose a picture here.": "Un video può essere solo l'immagine in movimento di una scena. Scegli qui un'immagine."
 }
