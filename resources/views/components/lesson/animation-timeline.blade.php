@@ -231,7 +231,7 @@
          class="no-scrollbar relative flex shrink-0 items-center gap-x-0.5 overflow-x-auto whitespace-nowrap px-4 text-base leading-none"
          style="height: 48px; background: var(--color-timeline-strip); border-top: 1px solid var(--color-panel-hairline)">
         <template x-for="(w, i) in spokenSentence.words" :key="w.start">
-            <button type="button" x-on:click="seek(w.start)"
+            <button type="button" x-on:click="seekToWord(w.start)"
                     :data-timeline-word="i === spokenSentence.current ? '' : null"
                     :aria-current="i === spokenSentence.current ? 'true' : null"
                     :class="i === spokenSentence.current ? 'text-white' : 'text-panel-label hover:text-panel-value'"

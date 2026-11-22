@@ -807,6 +807,18 @@ export const animationTimeline = (config = {}) => ({
    * the strip does not wrap (a row that grew a line mid-playback would shove the tracks down), so it
    * scrolls itself sideways instead, only when the word would otherwise sit outside the view.
    */
+  /**
+   * A word pressed in the narration strip. Playback carries on FROM that word: play() counts from
+   * the moment it started, so a bare seek would be undone on the very next frame.
+   */
+  seekToWord (time) {
+    this.seek(time)
+    if (this.playing) {
+      this._startedFrom = this.time
+      this._startedAt = performance.now()
+    }
+  },
+
   revealSpokenWord (strip) {
     const word = strip?.querySelector('[data-timeline-word]')
     if (!word) return
