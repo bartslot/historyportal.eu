@@ -516,7 +516,23 @@ export const animationTimeline = (config = {}) => ({
     } else {
       this.openGroups[target] = !this.openGroups[target]
     }
+    if (this.openGroups[target]) this.closeOtherLayers(target)
     this.remember()
+  },
+
+  /**
+   * One layer open at a time (Bart 2026-11-22: "clicking on a layer should collapse the others … so 1 click just
+   * changes its movement"). Only the layer rows close; each layer's own groups keep their state for when it reopens.
+   */
+  closeOtherLayers (target) {
+    for (const o of this.objects) if (o.target !== target) this.openGroups[o.target] = false
+  },
+
+  /** A click on a row's name: select the layer, and open its movement (closing the rest) or close it again. */
+  clickObjectName (target) {
+    this.selectObject(target)
+    if (target === 'sail') return
+    this.toggleGroup(target)
   },
 
   // ── Groups: layer > group > property, as in After Effects ───────────────────────────────────
@@ -1696,7 +1712,7 @@ export const animationTimeline = (config = {}) => ({
     if (!target) return
     this.noteCanvasValues(target)
     // The 3D camera stays closed: its two keys are on its own row, and its panel frames them.
-    if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
+    if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.closeOtherLayers(target); this.remember() }
     this.$nextTick(() => {
       const row = [...this.$el.querySelectorAll('[data-timeline-group]')].find((el) => el.dataset.timelineGroup === target)
       row?.scrollIntoView({ block: 'nearest' })

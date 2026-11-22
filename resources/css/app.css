@@ -190,8 +190,10 @@
        which is the one thing a lane of bare diamonds cannot say: how long the move actually takes.
        Two weights so a group summarises its children without competing with them — the object's
        bar is the quieter of the pair, because the property rows are what you edit. */
-    --color-timeline-bar: #2f6fb8;        /* a property's own span */
-    --color-timeline-bar-group: #3b3f6b;  /* the object's span, summarising its properties */
+    /* One blue for both (Bart 2026-11-22: "can we make these blues the same? oklch(0.76 0.139 217)"). */
+    --color-timeline-bar: oklch(0.76 0.139 217);        /* a property's own span */
+    --color-timeline-bar-group: var(--color-timeline-bar);  /* the object's span, summarising its properties */
+    --color-timeline-bar-ink: #0f172a;    /* the label on a bar: dark, the blue is light */
     --timeline-lane-h: 1.3125rem;     /* 21px */
     --timeline-row-pitch: 2rem;       /* 32px: a control's height, lane plus its gap */
     --timeline-lane-top: calc((var(--timeline-row-pitch) - var(--timeline-lane-h)) / 2);

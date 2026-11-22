@@ -275,7 +275,8 @@
                     {{-- Double-click: every property of this object back to what it was before it
                          was keyed. A gesture rather than a "Reset all" button, which took the room
                          the name needs (Bart, 2026-10-16). --}}
-                    <button type="button" x-on:click="selectObject(object.target)"
+                    <button type="button" x-on:click="clickObjectName(object.target)"
+                            :aria-expanded="object.kind !== 'sail' ? (openGroups[object.target] ? 'true' : 'false') : null"
                             x-on:dblclick="canResetObject(object.target) && resetObject(object.target)"
                             :data-tooltip="canResetObject(object.target) ? @js(__('Double-click to reset all')) : null"
                             class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pl-4 text-left"
@@ -501,7 +502,7 @@
                                  class="absolute cursor-grab rounded-[3px]"
                                  :data-timeline-bar-group="object.target"
                                  x-on:pointerdown="startObjectBar($event, object.target)"
-                                 :style="barStyle(objectSpan(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                 :style="barStyle(objectSpan(object.target)) + '; top: var(--timeline-lane-top); height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
                                 {{-- A diorama item's path is one clip: its body moves it in time, its
                                      ends stretch it (slower) or squeeze it (faster). --}}
                                 <template x-if="object.kind === 'dio'">
@@ -540,9 +541,9 @@
                                 <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px]"
                                      data-timeline-sail
                                      x-on:pointerdown="startBar($event, object.target)"
-                                     :style="barStyle(barOf(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                     :style="barStyle(barOf(object.target)) + '; top: var(--timeline-lane-top); height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
                                     <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-l-[3px] bg-base-content/40"></span>
-                                    <span class="pointer-events-none truncate px-1 text-xs text-base-content/80"
+                                    <span class="pointer-events-none truncate px-1 text-xs" style="color: var(--color-timeline-bar-ink)"
                                           x-text="(Math.round((barOf(object.target).to - barOf(object.target).from) * 10) / 10) + ' s'"></span>
                                     <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
                                 </div>
@@ -577,18 +578,19 @@
                                 <template x-for="property in group.props" :key="property.key">
                                 <div class="relative" x-show="isSectionOpen(object.target, group.id)"
                                      style="height: var(--timeline-row-pitch)">
-                                    <div class="absolute inset-x-0 top-0 rounded-[2px]"
-                                         style="height: var(--timeline-lane-h); background: var(--color-panel-hairline)"
+                                    {{-- Same top and height as the bar on it (Bart 2026-11-22: the bars ran 2px over the lane). --}}
+                                    <div class="absolute inset-x-0 rounded-[2px]"
+                                         style="top: var(--timeline-lane-top); height: var(--timeline-lane-h); background: var(--color-panel-hairline)"
                                          :data-timeline-lane="object.target + ':' + property.key"></div>
                                     {{-- The span, drawn BEHIND the diamonds rather than instead of
                                          them: the bar is what you read, the diamonds are what you
                                          drag, and replacing one with the other would have cost the
                                          gestures that are already there. --}}
                                     <div x-show="spanOf(object.target, property.key)"
-                                         class="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[2px]"
+                                         class="pointer-events-none absolute grid place-items-center overflow-hidden rounded-[3px]"
                                          :data-timeline-bar="object.target + ':' + property.key"
                                          :style="barStyle(spanOf(object.target, property.key)) + '; top: var(--timeline-lane-top); height: var(--timeline-lane-h); background: var(--color-timeline-bar)'">
-                                        <span class="select-none truncate px-2 text-xs font-medium text-white/90"
+                                        <span class="select-none truncate px-2 text-xs font-medium" style="color: var(--color-timeline-bar-ink)"
                                               x-text="property.label"></span>
                                     </div>
                                     {{-- One hit area per stretch between two keys, over the bar. Click:
