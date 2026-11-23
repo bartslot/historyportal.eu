@@ -577,7 +577,7 @@
                                 <div class="pointer-events-none absolute flex items-center overflow-hidden rounded-[3px]"
                                      data-timeline-video
                                      :style="barStyle(videoSpan) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
-                                    <template x-for="x in videoRestarts" :key="x">
+                                    <template x-for="(x, i) in videoRestarts" :key="i">
                                         <span class="absolute inset-y-0 w-px bg-base-content/40" :style="`left: ${x}px`" data-timeline-video-restart></span>
                                     </template>
                                     <span class="flex min-w-0 items-center gap-1 truncate px-2 text-xs text-base-content/80">
