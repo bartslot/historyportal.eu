@@ -100,6 +100,7 @@ trait RestylesImages
             'credits' => __('The image service is out of credits right now. Nothing was changed.'),
             'blocked' => __('The image service declined this picture. Nothing was changed.'),
             'busy' => __('The image service is busy. Try again in a minute. Nothing was changed.'),
+            'offline' => __('ChatGPT on the Mac that makes the pictures is off. Nothing was changed.'),
             default => __('The restyle did not work. Nothing was changed.'),
         };
     }
