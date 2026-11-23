@@ -8,7 +8,8 @@ import { sweepBorder } from './map/border-sweep.js';
 import { addVoyageFog } from './timemap/voyage-fog.js';
 import { prefetchRouteTiles } from './timemap/tile-prefetch.js';
 import { renderItineraryPins } from './map-itinerary.js';
-import { SATELLITE_SOURCE, DEM_SOURCE } from './map-imagery.js';
+import { chartSources } from './map-chart.js';
+import { INTRO_ZOOM, OVERVIEW_PADDING, overviewBounds, legOpeningCamera, chartPrefetchPlan } from './voyage-opening.js';
 import { buffer as turfBuffer, lineString as turfLine, simplify as turfSimplify, destination as turfDestination, booleanPointInPolygon as turfPointInPolygon, polygon as turfPolygon, difference as turfDifference, featureCollection as turfFC } from '@turf/turf';
 import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
@@ -114,7 +115,7 @@ const setReadingOverlayOpen = (open) => {
   } catch (_) { /* no CustomEvent (never in a browser we support) */ }
 };
 
-export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null } = {}) {
+export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null, start = null, camera = null } = {}) {
   // Prefer the lesson's editable copy, but ONLY when it belongs to this voyage. A lesson can hold
   // scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def` would draw
   // the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
@@ -141,6 +142,25 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   // ── Hosts: map + HUD overlay (built once) ─────────────────────────────
   const mapHost = document.createElement('div');
   mapHost.style.cssText = 'position:absolute;inset:0;';
+  // In the player the map stays out of sight until it is whole: tiles loaded, ship, trail and fog
+  // built, camera on the scene's first frame. Shown any earlier, the class watched it assemble —
+  // bare paper, then the chart, then the ship and the route popping in on top. The editor keeps
+  // the map on screen throughout, because a teacher re-mounting it should never see it blink.
+  const holdHidden = !editable && !preview;
+  let revealed = !holdHidden;
+  let revealTimer = null;
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    clearTimeout(revealTimer);
+    mapHost.style.opacity = '1';
+  };
+  if (holdHidden) {
+    mapHost.style.opacity = '0';
+    mapHost.style.transition = 'opacity 320ms ease-out';
+    // A tile server that never answers must not leave the class looking at nothing.
+    revealTimer = setTimeout(reveal, 6000);
+  }
   const hud = document.createElement('div');
   hud.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:20;';
   el.style.position = 'relative';
@@ -1275,7 +1295,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       setTimeout(() => { if (token === legToken) begin(token); }, holdMs);
     } else if (intro && !skipAnim) {
       // Only the very first leg gets the "from space" dive-in.
-      map.jumpTo({ center: [start.lng, start.lat], zoom: 1.05, pitch: 0 });
+      map.jumpTo({ center: [start.lng, start.lat], zoom: INTRO_ZOOM, pitch: 0 });
       setChip(L.departMs, pack.title || '');
       setTimeout(() => {
         if (token !== legToken) return;
@@ -1283,6 +1303,10 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         map.once('moveend', () => { if (token === legToken) begin(token); });
       }, 900);
     } else if (skipAnim) {
+      begin(token);
+    } else if (!revealed) {
+      // Nobody has seen the map yet, so there is nothing to glide FROM: be at the departure.
+      map.jumpTo({ center: [start.lng, start.lat], zoom: L.followZoom, pitch: 0 });
       begin(token);
     } else {
       // Smooth glide to the new leg's departure, THEN sail — no jump/re-fit between scenes.
@@ -1328,29 +1352,21 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // by the time the camera gets there — no tile popping in under the hull mid-crossing. The
     // sailing zoom is the one that matters most (that is where the class spends the voyage); the
     // wider zoom covers the opening fly-in and the itinerary. Failures are ignored by design.
+    // The chart's own tiles (see chartPrefetchPlan: this used to warm satellite imagery the voyage
+    // no longer draws), at the zooms the follow camera loads, gently, so the tiles the map is asking
+    // for right now always come first.
     try {
-      // Which zooms, measured rather than assumed: the camera sits at ~z5, but it is PITCHED and
-      // (usually) draped over 3D terrain, and MapLibre answers that by fetching two to three levels
-      // finer for the ground nearest the viewer. Warming the camera's own zoom alone left every
-      // z6–z8 tile to load on arrival, which is the pop-in this is meant to remove. GIBS stops at
-      // 8, so there is nothing finer to ask for.
-      const sailZoom = Math.round(voyageFollowZoom(MO.ocean_zoom));
-      const finest = Math.min(SATELLITE_SOURCE.maxzoom ?? 8, sailZoom + 2);
-      const zooms = [];
-      for (let z = sailZoom; z <= finest; z++) zooms.push(z);
-      stopPrefetch = prefetchRouteTiles({
-        route: (route.waypoints || []).filter(Array.isArray),
-        templates: [SATELLITE_SOURCE.tiles[0], DEM_SOURCE.tiles[0]],
-        zooms,
-        pad: 1,
-        // Each extra zoom quadruples the corridor, so the cap is what keeps this a warm-up rather
-        // than a download of the ocean. Tiles come out in sailing order, so what fits is the part
-        // of the voyage the class reaches first.
-        max: 1500,
-        // GIBS is HTTP/2: a handful of parallel tiles is nothing to it, and the sooner the corridor
-        // is warm the fewer tiles the ship overtakes.
-        concurrency: 10,
-      });
+      const follow = voyageFollowZoom(MO.ocean_zoom);
+      const stops = chartPrefetchPlan(chartSources(location.origin), follow, MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA : 0)
+        .map(({ templates, zooms }) => prefetchRouteTiles({
+          route: (route.waypoints || []).filter(Array.isArray),
+          templates,
+          zooms,
+          pad: 1,
+          max: 600,
+          concurrency: 3,
+        }));
+      stopPrefetch = () => stops.forEach((stop) => { try { stop(); } catch (_) { /* finished */ } });
     } catch (_) { /* prefetching is an optimisation; never let it stop the tour */ }
 
     // Repaint the map to the chosen palette IN PLACE (never a re-mount), then follow it with the
@@ -1416,6 +1432,8 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     ready = true;
     if (pendingLeg) { runLeg(pendingLeg.leg, pendingLeg.opts); pendingLeg = null; }
     if (pendingOverview) { renderOverview(pendingOverview); pendingOverview = null; }
+    // Two frames: one for MapLibre to draw what was just added, one for it to reach the screen.
+    if (!revealed) requestAnimationFrame(() => requestAnimationFrame(reveal));
   });
 
   // ── Overview: the whole voyage on one screen ──────────────────────────────
@@ -1573,13 +1591,28 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     const bounds = [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
     try {
       map.fitBounds(bounds, {
-        padding: { top: 70, bottom: 70, left: 60, right: 60 },
+        padding: OVERVIEW_PADDING,
         pitch: 0,
         duration: animate && !skipAnim ? 1200 : 0,
         essential: true,
       });
     } catch (_) { /* degenerate bounds (single stop) */ }
   };
+
+  // ── Open where the first scene starts ─────────────────────────────────
+  // Applied before MapLibre draws its first frame, so the only tiles it loads are the ones the
+  // class will see, and nothing has to move once they are in. `camera` (a timeline's opening key)
+  // wins; otherwise the itinerary's fit, or the leg's departure.
+  try {
+    let cam = camera && Array.isArray(camera.center) ? camera : null;
+    if (!cam && start && start.overview) {
+      const box = overviewBounds(route);
+      cam = box ? map.cameraForBounds(box, { padding: OVERVIEW_PADDING }) : null;
+    } else if (!cam && start) {
+      cam = legOpeningCamera(route, start, voyageFollowZoom(MO.ocean_zoom));
+    }
+    if (cam) map.jumpTo({ ...cam, pitch: 0 });
+  } catch (_) { /* a container with no size yet: the scene's own camera move still lands it */ }
 
   return {
     playLeg,
@@ -1827,6 +1860,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       } catch (_) { return null; }
     },
     destroy() {
+      clearTimeout(revealTimer);
       // Close any open landfall gallery first, so its "a modal is open" flag can never outlive the
       // tour that owned it (that leak froze the next scene's auto-advance).
       try { galleryClose && galleryClose(); } catch (_) { /* already gone */ }

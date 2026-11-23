@@ -21,7 +21,8 @@ import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, fo
 import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
-import { hasAnimation, frameAt, applyFrameTo, cameraEnd } from './anim/scene-animation.js'
+import { hasAnimation, frameAt, applyFrameTo, cameraEnd, openingCamera } from './anim/scene-animation.js'
+import { voyageStart } from './voyage-opening.js'
 import { storedSail } from './anim/sail-clip.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
@@ -493,6 +494,9 @@ Alpine.data('lessonGame', (lesson) => ({
           }
         }
       } catch (_) { /* no params */ }
+
+      // A lesson that opens on a voyage loads its map behind the title screen.
+      this._prewarmVoyage()
 
       // Attach keyboard listeners for audio controls
       this._attachKeyboardListeners()
@@ -2099,6 +2103,85 @@ Alpine.data('lessonGame', (lesson) => ({
     },
 
     // ── Voyage tour leg (kind 'voyage') ────────────────────────────────
+    /**
+     * Build the persistent voyage map for `scene`, opening on that scene's first frame.
+     *
+     * The tour is told which scene it is being built for (`start`, `camera`) so the map opens where
+     * the scene begins instead of loading one view and then moving to another, which the class saw
+     * as the map arriving late and jumping into place.
+     */
+    _buildVoyageTour (stage, scene) {
+      const cfg = scene.config || {}
+      stage.innerHTML = ''
+      const inner = document.createElement('div')
+      inner.style.width = '100%'
+      inner.style.height = '100%'
+      stage.appendChild(inner)
+      // Period place labels come from the landfalls themselves — each voyage scene's location
+      // pinned at its leg's arrival. The teacher hides modern cities/borders via game_config.voyage_map.
+      // Only THIS voyage's scenes: a lesson with Tasman's 1642 and 1644 voyages pinned 1642's
+      // "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route (Arnhem Land, the Gulf).
+      const legLabels = _sceneQueue
+        .filter(s => s.kind === 'voyage' && s.location && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+        .map(s => ({
+          text: s.location,
+          leg: Number((s.config || {}).leg) || 0,
+          // Overview scene = the port the voyage leaves from; the rest = the leg's landfall.
+          at: (s.config || {}).overview ? 'depart' : 'arrive',
+        }))
+      const sail = storedSail(cfg.timeline)
+      _voyageInstance = window.renderVoyageTour(inner, {
+        voyage: cfg.voyage,
+        // The editable copy for THIS scene's voyage. A lesson can hold several voyages, so the
+        // per-voyage store is asked first; the older single copy is only good for its own id.
+        def: lesson.game_config?.voyage_defs?.[cfg.voyage]
+          || lesson.game_config?.voyage_def
+          || null,
+        view: cfg.view || 'globe',
+        routeLine: lesson.game_config?.route_line || null, // styled/animated trail (lesson-wide)
+        mapOptions: lesson.game_config?.voyage_map || null, // hide cities/borders, show place labels
+        legLabels,
+        paintedFog: lesson.game_config?.voyage_fog || null, // teacher-painted undiscovered regions
+        overviewAnim: cfg.overview_anim || null,            // itinerary: draw the route on
+        // Where the map opens: this scene's own first frame.
+        start: voyageStart(cfg, { cameraHold: cameraEnd(cfg.timeline), sailStart: sail?.start || 0 }),
+        camera: cameraEnd(cfg.timeline) ? openingCamera(cfg.timeline) : null,
+        // On each arrival: show the carousel controls + start the 10s auto-advance.
+        onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
+      })
+    },
+
+    /**
+     * A lesson that opens on a voyage builds its map while the title screen is up.
+     *
+     * The map, its tiles, the ship and the route all load behind the title, out of sight, so the
+     * first scene starts on a finished map instead of loading one in front of the class. Only for
+     * the scene the lesson will actually start on; any other first scene leaves the stage alone.
+     */
+    async _prewarmVoyage () {
+      if (TITLE_PREVIEW || _voyageInstance) return
+      const scene = _sceneQueue[this._startSceneIndex || 0]
+      if (scene?.kind !== 'voyage') return
+      try {
+        if (!window.renderVoyageTour) await import('./voyage-tour.js')
+      } catch (_) { return }   // the scene itself retries, and says so
+      // Start may have been pressed while the module loaded: then the scene builds its own map.
+      if (this.phase !== 'TITLE_SCREEN' || _voyageInstance || !window.renderVoyageTour) return
+      const stage = document.getElementById('lesson-map-stage')
+      if (!stage) return
+      // Laid out at full size (a map in a display:none box has no size to frame), but not drawn
+      // and not clickable over the title screen.
+      stage.style.visibility = 'hidden'
+      stage.style.display = 'block'
+      try { this._buildVoyageTour(stage, scene) } catch (e) {
+        console.warn('lesson-player: voyage prewarm failed', e)
+        _voyageInstance = null
+        stage.style.display = 'none'
+        stage.style.visibility = ''
+        stage.innerHTML = ''
+      }
+    },
+
     async _playVoyageScene (index, scene) {
       // (_playScene has already silenced the previous scene's narration.)
       const cfg = scene.config || {}
@@ -2121,44 +2204,11 @@ Alpine.data('lessonGame', (lesson) => ({
       const stage = document.getElementById('lesson-map-stage')
       if (!stage || !window.renderVoyageTour) { this._advanceScene(index); return }
       stage.style.display = 'block'
+      stage.style.visibility = ''   // built ahead behind the title screen (_prewarmVoyage)
       this.showMapContinue = false
       // ONE persistent map for the whole voyage — build it once, then play each leg on it (no
       // rebuild/re-fit between scenes). The map/ships/fog/trail survive; playLeg eases the camera.
-      if (!_voyageInstance) {
-        stage.innerHTML = ''
-        const inner = document.createElement('div')
-        inner.style.width = '100%'
-        inner.style.height = '100%'
-        stage.appendChild(inner)
-        // Period place labels come from the landfalls themselves — each voyage scene's location
-        // pinned at its leg's arrival. The teacher hides modern cities/borders via game_config.voyage_map.
-        // Only THIS voyage's scenes: a lesson with Tasman's 1642 and 1644 voyages pinned 1642's
-        // "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route (Arnhem Land, the Gulf).
-        const legLabels = _sceneQueue
-          .filter(s => s.kind === 'voyage' && s.location && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
-          .map(s => ({
-            text: s.location,
-            leg: Number((s.config || {}).leg) || 0,
-            // Overview scene = the port the voyage leaves from; the rest = the leg's landfall.
-            at: (s.config || {}).overview ? 'depart' : 'arrive',
-          }))
-        _voyageInstance = window.renderVoyageTour(inner, {
-          voyage: cfg.voyage,
-          // The editable copy for THIS scene's voyage. A lesson can hold several voyages, so the
-          // per-voyage store is asked first; the older single copy is only good for its own id.
-          def: lesson.game_config?.voyage_defs?.[cfg.voyage]
-            || lesson.game_config?.voyage_def
-            || null,
-          view: cfg.view || 'globe',
-          routeLine: lesson.game_config?.route_line || null, // styled/animated trail (lesson-wide)
-          mapOptions: lesson.game_config?.voyage_map || null, // hide cities/borders, show place labels
-          legLabels,
-          paintedFog: lesson.game_config?.voyage_fog || null, // teacher-painted undiscovered regions
-          overviewAnim: cfg.overview_anim || null,            // itinerary: draw the route on
-          // On each arrival: show the carousel controls + start the 10s auto-advance.
-          onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
-        })
-      }
+      if (!_voyageInstance) this._buildVoyageTour(stage, scene)
       // The itinerary scene: the whole voyage on one screen, no leg sailed. Same branch the editor
       // takes (see step3-scene-configurator) — without it the player sailed leg 0 instead, so a
       // scene the teacher had set to Overview arrived as just another waypoint.
@@ -2179,7 +2229,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Without one the leg sets off after the camera and sails as long as its dates say.
       const sail = storedSail(cfg.timeline)
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
-        intro: !!cfg.intro && !camHold && !sail?.start,
+        intro: voyageStart(cfg, { cameraHold: camHold, sailStart: sail?.start || 0 }).intro,
         holdMs: (sail ? sail.start : camHold) * 1000,
         sailMs: sail ? (sail.end - sail.start) * 1000 : 0,
         cameraUntilMs: camHold * 1000,
@@ -2341,7 +2391,8 @@ Alpine.data('lessonGame', (lesson) => ({
       if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} _mapInstance = null; _mapKey = null }
       if (_voyageInstance) { try { _voyageInstance.destroy() } catch (_) {} _voyageInstance = null }
       const stage = document.getElementById('lesson-map-stage')
-      if (stage) { stage.style.display = 'none'; stage.innerHTML = '' }
+      // visibility: a map built ahead behind the title screen (_prewarmVoyage) that never played
+      if (stage) { stage.style.display = 'none'; stage.style.visibility = ''; stage.innerHTML = '' }
       this.showMapContinue = false
     },
 
