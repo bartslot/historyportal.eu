@@ -20,7 +20,8 @@ import { boxView, openingView, labelsView } from './map-view.js'
 import { openingCamera } from './anim/scene-animation.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
-import { territoryLook, territoryAnim, linePaint, washPaint, etchPaint, etchTile, ETCH_IMAGE } from './map/territory-look.js'
+import { territoryLook, territoryAnim, linePaint, washPaint } from './map/territory-look.js'
+import { createTerritoryInk } from './map/territory-ink.js'
 
 // The linked territory's ink line and etching: map/territory-look.js (Bart 11-23, no more red).
 
@@ -112,6 +113,8 @@ export function renderLessonMap (el, opts = {}) {
   let anim = territoryAnim()
   // The OTHER territories' faint lines: a voyage map restyles them (setDetailStyle), never the switch.
   let others = { otherColor: GROUND.line }
+  // The hand-drawn border and etching (map/territory-ink.js), once the territory layers exist.
+  let ink = null
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // A map scene of a 3D lesson (lesson.json kind 'map'): a highlighted region, a route, and a camera the writer
   // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
@@ -486,8 +489,8 @@ export function renderLessonMap (el, opts = {}) {
     // The mountains are the chart's own painted ridges (map-chart.js), not the Time-Map's ink set.
     Promise.resolve()
       .then(() => {
-        // The linked territory's inside: a wash and an etching (territory-look.js), only one of them
-        // painted. The wash also carries the configurator's hover, the soft pre-selection when a
+        // The linked territory's wash (territory-look.js; its etching is drawn by hand, below).
+        // The wash also carries the configurator's hover, the soft pre-selection when a
         // teacher moves over the map to pick a territory (nothing sets `hover` in the player).
         if (map.getLayer('boundaries-fill')) return
         const below = map.getLayer('city-dots') ? 'city-dots' : undefined
@@ -496,14 +499,17 @@ export function renderLessonMap (el, opts = {}) {
           filter: polityFilter(year),
           paint: washPaint(look, anim),
         }, below)
+        // The linked territory's border and etching are drawn by hand over the map (Bart 11-23:
+        // "can we make the lines more drawn?"). Its parts come from the tiles the map already has.
         try {
-          putEtchImage()
-          map.addLayer({
-            id: 'boundaries-etch', type: 'fill', source: 'cliopatria', 'source-layer': 'boundaries',
-            filter: polityFilter(year),
-            paint: etchPaint(look, anim),
-          }, below)
-        } catch (e) { console.warn('lesson-map: territory etching unavailable', e) }
+          ink = createTerritoryInk(map, {
+            features: () => (activeQid
+              ? map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['all', polityFilter(year), ['==', ['get', 'Wikidata'], activeQid]] })
+              : []),
+            look: () => look,
+            anim: () => anim,
+          })
+        } catch (e) { console.warn('lesson-map: hand-drawn territory unavailable, the map draws the line', e) }
         wirePolityPicking()
       })
       .then(() => paintLateLayers())
@@ -642,7 +648,6 @@ export function renderLessonMap (el, opts = {}) {
     if (!map.getLayer('boundaries-line')) return
     map.setFilter('boundaries-line', polityFilter(year))
     if (map.getLayer('boundaries-fill')) map.setFilter('boundaries-fill', polityFilter(year))
-    if (map.getLayer('boundaries-etch')) map.setFilter('boundaries-etch', polityFilter(year))
     // Cities are period-specific — re-filter them too.
     if (map.getLayer('city-dots')) map.setFilter('city-dots', cityFilter(year))
     if (map.getLayer('city-labels')) {
@@ -703,18 +708,8 @@ export function renderLessonMap (el, opts = {}) {
     // their faint lines go; the linked one stays. The fills paint only the linked (or hovered)
     // territory, so they stay visible, which also keeps hover-to-link working with the switch off
     // (a hidden layer cannot be hovered or clicked).
-    for (const l of ['boundaries-line', 'boundaries-fill', 'boundaries-etch']) vis(l, true)
+    for (const l of ['boundaries-line', 'boundaries-fill']) vis(l, true)
     paintTerritory()
-  }
-
-  // The hatch tile is drawn in the fill colour, so a new colour is a new tile.
-  let etchColor = null
-  function putEtchImage () {
-    if (etchColor === look.fill_color && map.hasImage(ETCH_IMAGE)) return
-    const { image, pixelRatio } = etchTile(look.fill_color)
-    if (map.hasImage(ETCH_IMAGE)) map.updateImage(ETCH_IMAGE, image)
-    else map.addImage(ETCH_IMAGE, image, { pixelRatio })
-    etchColor = look.fill_color
   }
 
   // Put the look, the timeline's fill/border and the switch on the three territory layers.
@@ -723,10 +718,9 @@ export function renderLessonMap (el, opts = {}) {
       if (!map.getLayer(layer)) return
       for (const [k, v] of Object.entries(props)) { try { map.setPaintProperty(layer, k, v) } catch (_) {} }
     }
-    paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders }))
+    paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders, inked: !!ink }))
     paint('boundaries-fill', washPaint(look, anim))
-    if (map.getLayer('boundaries-etch')) { try { putEtchImage() } catch (_) {} }
-    paint('boundaries-etch', etchPaint(look, anim))
+    ink?.redraw()
   }
 
   // The timeline's Territory row. Year is keyed as a number and drawn as a whole year; it only
@@ -883,6 +877,7 @@ export function renderLessonMap (el, opts = {}) {
       try { anno?.destroy() } catch (_) {}
       try { untune?.() } catch (_) {}
       try { chartPaper.remove() } catch (_) {}
+      try { ink?.destroy() } catch (_) {}
       try { map.remove() } catch (_) {}
       if (window.__lessonMapApi === api) window.__lessonMapApi = null
     },

@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { territoryLook, territoryAnim, linePaint, washPaint, etchPaint, TERRITORY_DEFAULTS } from '../territory-look.js'
+import { territoryLook, territoryAnim, linePaint, washPaint, TERRITORY_DEFAULTS } from '../territory-look.js'
+import { isTileCut, tileToLngLat, territoryParts, noise2 } from '../territory-ink.js'
 import { applyFrameTo } from '../../anim/scene-animation.js'
 import { propertiesFor } from '../../anim/properties.js'
 
 // Bart 11-23: "standard it could be black, border (like a pen drawing)", "maybe etched".
 describe('territoryLook', () => {
-  // Etched as the default was "too much" (Bart 11-23): the line alone, the inside left clear.
-  it('defaults to a black pen line with nothing inside', () => {
+  // Hatching everywhere was "too much"; etching only along the edges stayed (Bart 11-23).
+  it('defaults to a black pen line with an etched edge', () => {
     expect(territoryLook()).toEqual({ ...TERRITORY_DEFAULTS })
-    expect(TERRITORY_DEFAULTS.fill_style).toBe('none')
+    expect(TERRITORY_DEFAULTS.fill_style).toBe('etched')
   })
 
   it('keeps what the teacher set and drops junk', () => {
@@ -29,17 +30,16 @@ describe('territory paint', () => {
     expect(caseValue(linePaint(look, territoryAnim(), { showOthers: true })['line-opacity'], false)).toBe(0.3)
   })
 
-  it('paints only the chosen fill, scaled by the timeline', () => {
+  it('washes only with Wash, scaled by the timeline', () => {
     const half = territoryAnim({ fill: 0.5 })
-    const etched = territoryLook({ fill_style: 'etched' })
-    expect(etchPaint(etched, half)['fill-opacity'][2]).toBeCloseTo(etched.fill_strength * 0.5)
-    expect(washPaint(etched, half)['fill-opacity'][2]).toBe(0)
     const wash = territoryLook({ fill_style: 'wash' })
     expect(washPaint(wash, half)['fill-opacity'][2]).toBeCloseTo(wash.fill_strength * 0.5)
-    expect(etchPaint(wash, half)['fill-opacity'][2]).toBe(0)
-    const none = territoryLook({ fill_style: 'none' })
-    expect(washPaint(none, half)['fill-opacity'][2]).toBe(0)
-    expect(etchPaint(none, half)['fill-opacity'][2]).toBe(0)
+    expect(washPaint(territoryLook({ fill_style: 'etched' }), half)['fill-opacity'][2]).toBe(0)
+    expect(washPaint(territoryLook({ fill_style: 'none' }), half)['fill-opacity'][2]).toBe(0)
+  })
+
+  it("stands the map's own line down while the border is drawn by hand", () => {
+    expect(caseValue(linePaint(look, territoryAnim(), { inked: true })['line-opacity'], true)).toBe(0)
   })
 
   it("keeps a voyage's border opacity behind the switch", () => {
@@ -62,5 +62,33 @@ describe('the Territory row on the timeline', () => {
     const got = []
     applyFrameTo({ 'terr:map': { fill: 0.4, year: 1250 } }, { territory: { setTerritoryValues: (v) => got.push(v) } })
     expect(got).toEqual([{ fill: 0.4, year: 1250 }])
+  })
+})
+
+describe('the hand-drawn territory', () => {
+  it('never inks the cut a tile made', () => {
+    expect(isTileCut({ x: -64, y: 10 }, { x: -64, y: 900 }, 4096)).toBe(true)
+    expect(isTileCut({ x: 4160, y: 10 }, { x: 4160, y: 900 }, 4096)).toBe(true)
+    expect(isTileCut({ x: 10, y: 10 }, { x: 900, y: 900 }, 4096)).toBe(false)
+    expect(isTileCut({ x: -64, y: 10 }, { x: 30, y: 10 }, 4096)).toBe(false)
+  })
+
+  it('puts tile units back on the globe', () => {
+    const [lng, lat] = tileToLngLat(2048, 2048, 0, 0, 0, 4096)
+    expect(lng).toBeCloseTo(0)
+    expect(lat).toBeCloseTo(0)
+    expect(tileToLngLat(0, 0, 1, 1, 0, 4096)[0]).toBeCloseTo(0)
+  })
+
+  it('takes the parts from the most detailed zoom only, once per tile', () => {
+    const f = (z, x, y) => ({ _z: z, _x: x, _y: y, id: 'Q1', _vectorTileFeature: { extent: 4096, loadGeometry: () => [[{ x: 0, y: 0 }]] } })
+    const parts = territoryParts([f(2, 1, 1), f(3, 2, 2), f(3, 2, 2), f(3, 3, 2)])
+    expect(parts.map((p) => `${p.z}/${p.x}/${p.y}`)).toEqual(['3/2/2', '3/3/2'])
+  })
+
+  it('wobbles the same way for the same spot', () => {
+    expect(noise2(1.3, 4.2)).toBe(noise2(1.3, 4.2))
+    expect(noise2(1.3, 4.2)).toBeGreaterThanOrEqual(0)
+    expect(noise2(1.3, 4.2)).toBeLessThanOrEqual(1)
   })
 })

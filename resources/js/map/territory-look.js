@@ -1,9 +1,10 @@
 /**
  * territory-look.js — how a map scene draws the territory the teacher linked.
  *
- * Bart, 2026-11-23: "standard it could be black, border (like a pen drawing)", "fill would be
- * transparent". Etched hatching was tried as the default and was "too much", so the default is the
- * black ink line alone, with Etched and Wash as choices, and the teacher can change it per scene (config.territory) and key it on the
+ * Bart, 2026-11-23: "standard it could be black, border (like a pen drawing)". Hatching over the
+ * whole area was "too much"; what stayed is etching "only [at] the edges", fading toward the middle,
+ * and lines that look "more drawn" (map/territory-ink.js). So the default is a black pen line with an
+ * etched band inside it, and the teacher can change it per scene (config.territory) and key it on the
  * timeline (the Territory row: fill, border, year).
  *
  * Only the LINKED territory takes this look. The atlas's other territories keep their faint pencil
@@ -16,7 +17,7 @@ export const FILL_STYLES = ['none', 'etched', 'wash']
 export const TERRITORY_DEFAULTS = Object.freeze({
   border_color: '#1b1712',
   border_width: 1.6,
-  fill_style: 'none',
+  fill_style: 'etched',
   fill_color: '#1b1712',
   fill_strength: 0.3,
 })
@@ -53,17 +54,19 @@ const HOVER = ['boolean', ['feature-state', 'hover'], false]
  * Paint of the shared boundaries line layer: the linked territory in the look, every other
  * territory a faint pencil line, or nothing with the Territory borders switch off.
  */
-export const linePaint = (look, anim, { showOthers = false, otherColor = '#a08868', otherWidth = 0.6, otherOpacity = 0.3 } = {}) => ({
+export const linePaint = (look, anim, { showOthers = false, otherColor = '#a08868', otherWidth = 0.6, otherOpacity = 0.3, inked = false } = {}) => ({
   'line-color': ['case', HIGHLIGHT, look.border_color, otherColor],
   'line-width': ['case', HIGHLIGHT, look.border_width, otherWidth],
-  'line-opacity': ['case', HIGHLIGHT, look.border_width > 0 ? anim.border : 0, showOthers ? otherOpacity : 0],
+  // `inked`: the hand-drawn border (territory-ink.js) is on, so the map's own line for it stands down.
+  'line-opacity': ['case', HIGHLIGHT, look.border_width > 0 && !inked ? anim.border : 0, showOthers ? otherOpacity : 0],
   // A pen line, not a vector stroke: a hair of softness on its edge.
   'line-blur': ['case', HIGHLIGHT, 0.35, 0],
 })
 
 /**
- * The colour wash. Also carries the configurator's hover (the soft pre-selection when a teacher
- * moves over the map to pick a territory), whatever the fill style.
+ * The colour wash (the etching is drawn by hand: map/territory-ink.js). Also carries the
+ * configurator's hover, the soft pre-selection when a teacher moves over the map to pick a
+ * territory, whatever the fill style.
  */
 export const washPaint = (look, anim) => ({
   'fill-color': look.fill_color,
@@ -72,30 +75,3 @@ export const washPaint = (look, anim) => ({
     HOVER, 0.12,
     0],
 })
-
-/** The etching: a hatch pattern, on the linked territory only. */
-export const etchPaint = (look, anim) => ({
-  'fill-pattern': ETCH_IMAGE,
-  'fill-opacity': ['case', HIGHLIGHT, look.fill_style === 'etched' ? look.fill_strength * anim.fill : 0, 0],
-})
-
-export const ETCH_IMAGE = 'territory-etch'
-
-/**
- * The hatch tile: fine diagonal pen strokes in the fill colour, transparent between them. 12 css px
- * between strokes; drawn at 2x so the lines stay crisp on a retina screen. The strokes run corner
- * to corner across the tile and wrap, so neighbouring tiles join into one continuous line.
- */
-export const etchTile = (color, { size = 12, ratio = 2 } = {}) => {
-  const px = size * ratio
-  const canvas = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(px, px) : Object.assign(document.createElement('canvas'), { width: px, height: px })
-  const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, px, px)
-  ctx.strokeStyle = color
-  ctx.lineWidth = 0.9 * ratio
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  for (const o of [-px, 0, px]) { ctx.moveTo(o, px); ctx.lineTo(o + px, 0) }
-  ctx.stroke()
-  return { image: ctx.getImageData(0, 0, px, px), pixelRatio: ratio }
-}
