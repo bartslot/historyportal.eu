@@ -3077,5 +3077,16 @@
     "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG of WebP tot 8 MB, of een MP4- of WebM-video tot :size",
     "A video can only be a scene's moving picture. Choose a picture here.": "Een video kan alleen het bewegende beeld van een scène zijn. Kies hier een afbeelding.",
     "Upload your own picture or video": "Upload je eigen afbeelding of video",
-    "Drop a picture or video here, click to choose one or paste with :key": "Sleep een afbeelding of video hierheen, klik om er een te kiezen of plak met :key"
+    "Drop a picture or video here, click to choose one or paste with :key": "Sleep een afbeelding of video hierheen, klik om er een te kiezen of plak met :key",
+    ":name took over this scene": ":name heeft deze scène overgenomen",
+    "A new picture or clip arrived": "Er is een nieuwe afbeelding of clip binnen",
+    "Someone": "Iemand",
+    "Editors": "Bewerkers",
+    ":name is editing this scene": ":name bewerkt deze scène",
+    "Take over": "Overnemen",
+    "Owner": "Eigenaar",
+    "Remove :name": ":name verwijderen",
+    "No teacher account uses this email address.": "Geen docentaccount gebruikt dit e-mailadres.",
+    "This is the lesson's owner.": "Dit is de eigenaar van de les.",
+    "Edit with others": "Samen bewerken"
 }

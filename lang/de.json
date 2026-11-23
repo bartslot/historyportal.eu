@@ -3035,5 +3035,16 @@
     "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG oder WebP bis 8 MB, oder ein MP4- oder WebM-Video bis :size",
     "A video can only be a scene's moving picture. Choose a picture here.": "Ein Video kann nur das bewegte Bild einer Szene sein. Wähle hier ein Bild.",
     "Upload your own picture or video": "Eigenes Bild oder Video hochladen",
-    "Drop a picture or video here, click to choose one or paste with :key": "Zieh ein Bild oder Video hierher, klicke zum Auswählen oder füge mit :key ein"
+    "Drop a picture or video here, click to choose one or paste with :key": "Zieh ein Bild oder Video hierher, klicke zum Auswählen oder füge mit :key ein",
+    ":name took over this scene": ":name hat diese Szene übernommen",
+    "A new picture or clip arrived": "Ein neues Bild oder ein neuer Clip ist da",
+    "Someone": "Jemand",
+    "Editors": "Bearbeiter",
+    ":name is editing this scene": ":name bearbeitet diese Szene",
+    "Take over": "Übernehmen",
+    "Owner": "Eigentümer",
+    "Remove :name": ":name entfernen",
+    "No teacher account uses this email address.": "Kein Lehrerkonto nutzt diese E-Mail-Adresse.",
+    "This is the lesson's owner.": "Das ist der Eigentümer der Lektion.",
+    "Edit with others": "Gemeinsam bearbeiten"
 }

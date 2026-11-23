@@ -39,6 +39,7 @@ import { lessonMusicTempo, sceneMusicPreview, songListPreview } from './scene/mu
 import { installTitleStagePick } from './editor/title-stage-pick.js';
 import { installStageZoom } from './editor/stage-zoom.js';
 import { drawTool } from './editor/draw-layer.js';
+import { startLessonCollab } from './editor/collab.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
 
@@ -57,6 +58,8 @@ window.addEventListener('image-edit:open', (e) => {
 });
 // Tekenen: pen, line and arrow over the scene, each saved as its own layer: x-data="drawTool()".
 window.drawTool = drawTool;
+// Several accounts in one lesson: who is where, scene locks, Take over (editor/collab.js).
+window.startLessonCollab = startLessonCollab;
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The

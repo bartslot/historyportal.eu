@@ -26,7 +26,7 @@ class LessonWizard extends Component
         $resolvedStep = $urlStep >= 1 && $urlStep <= 5 ? $urlStep : null;
 
         if ($lesson?->exists) {
-            abort_unless(auth()->user()?->canManage($lesson), 403);
+            abort_unless(auth()->user()?->canEdit($lesson), 403);
             $this->lesson = $lesson;
 
             // Resuming lands in the editor (4). The old Preview step (5) is gone: an explicit ?step=5
@@ -46,6 +46,13 @@ class LessonWizard extends Component
             }
 
             $this->step = $this->clampForGuestDemo($this->step);
+
+            // An editor the owner let in edits scenes, nothing else: the settings and generation steps
+            // spend the owner's credits and change what the lesson is (lesson_editors, User::canEdit).
+            if (! auth()->user()->canManage($lesson)) {
+                $this->step = 4;
+                $this->playOnOpen = false;
+            }
         } else {
             $this->step = $resolvedStep ?? 1;
         }
@@ -93,6 +100,11 @@ class LessonWizard extends Component
 
     public function render(): View
     {
+        // goToStep and a client-side set both land here: an editor who is not the owner stays in the editor.
+        if ($this->lesson?->exists && ! auth()->user()?->canManage($this->lesson)) {
+            $this->step = 4;
+        }
+
         return view('livewire.lesson-wizard')
             ->layout('components.layouts.app', [
                 'title' => __('Create Lesson'),

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard;
 
 use App\Enums\MusicLicence;
+use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
+use App\Models\Lesson;
 use App\Models\MusicTrack;
 use App\Models\Scene;
+use App\Services\Collaboration\LessonCollaboration;
 use App\Services\ElevenLabsService;
 use App\Support\SceneAmbience;
 use App\Support\SceneMusic as SceneMusicShape;
@@ -33,7 +36,29 @@ use Livewire\WithFileUploads;
  */
 class SceneMusic extends Component
 {
+    use GuardsLessonClaims;
     use WithFileUploads;
+
+    protected function claimLesson(): ?Lesson
+    {
+        return isset($this->scene) ? $this->scene->lesson : null;
+    }
+
+    /** The music belongs to the scene it sits in: whoever holds that scene. */
+    protected function claimTarget(): ?string
+    {
+        return isset($this->scene) ? LessonCollaboration::sceneTarget((int) $this->scene->id) : null;
+    }
+
+    protected function claimFreeMethods(): array
+    {
+        return ['$refresh', 'reload'];
+    }
+
+    protected function claimFreeProperties(): array
+    {
+        return ['soundPrompt', 'uploadTitle', 'uploadLicence', 'addTrackId'];
+    }
 
     private const UNDO_DEPTH = 30;
 
@@ -304,6 +329,6 @@ class SceneMusic extends Component
 
     private function authorizeScene(Scene $scene): void
     {
-        abort_unless((bool) auth()->user()?->canManage($scene->lesson), 403);
+        abort_unless((bool) auth()->user()?->canEdit($scene->lesson), 403);
     }
 }

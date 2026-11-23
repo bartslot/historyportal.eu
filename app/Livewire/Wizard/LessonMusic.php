@@ -196,6 +196,6 @@ class LessonMusic extends Component
 
     private function authorizeLesson(Lesson $lesson): void
     {
-        abort_unless((bool) auth()->user()?->canManage($lesson), 403);
+        abort_unless((bool) auth()->user()?->canEdit($lesson), 403);
     }
 }
