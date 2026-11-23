@@ -213,6 +213,8 @@ return [
     'ffmpeg' => [
         'path' => env('FFMPEG_PATH', 'ffmpeg'),
         'probe_path' => env('FFPROBE_PATH', 'ffprobe'),
+        // Threads per encode; SiteGround caps a user at 80 processes, threads included.
+        'threads' => (int) env('FFMPEG_THREADS', 4),
     ],
 
     // ── Upscayl local CLI (replaces fal.ai upscaling in dev) ─────────────────
