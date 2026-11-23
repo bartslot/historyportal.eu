@@ -46,6 +46,8 @@ FPS = int(os.environ.get("RENDER_FPS", "24"))
 IDLE_SECONDS = int(os.environ.get("HP_IDLE_SECONDS", "30"))
 RENDER_TIMEOUT = int(os.environ.get("RENDER_TIMEOUT_SECONDS", str(80 * 60)))
 FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
+DELIVERY_TRIES = int(os.environ.get("HP_DELIVERY_TRIES", "20"))
+DELIVERY_WAIT = int(os.environ.get("HP_DELIVERY_WAIT_SECONDS", "60"))
 VIDEO_EXT = (".mp4", ".mov", ".webm", ".mkv", ".gif")
 WATCH_NAME = re.compile(r"^(?:lesson-\d+-)?scene-(\d+)\b.*\.(?:mp4|mov|m4v)$", re.IGNORECASE)
 
@@ -88,17 +90,29 @@ def next_clip() -> dict | None:
         return json.load(res) if res.status == 200 else None
 
 
-def finish(clip: dict, video: Path | None = None, error: str = "") -> None:
+def finish(clip: dict, video: Path | None = None, error: str = "") -> bool:
+    """Deliver a clip (or its failure). True when the server has the last word: it took it, or it no longer wants
+    it (409: redone or handed out again). Anything else (a 503 during a deploy, the network gone) is tried again,
+    because a finished render is about half an hour of work."""
     fields = {"claim": clip["claim"]}
     if error:
         fields["error"] = error[:480]
     body, ctype = multipart(fields, {"video": video} if video else {})
-    try:
-        with server(f"/clips/{clip['id']}/finish", method="POST", data=body, headers={"Content-Type": ctype}) as res:
-            log(f"clip {clip['id']}: server says {json.load(res).get('status')}")
-    except urllib.error.HTTPError as e:
-        # 409: the clip was redone or handed out again while we rendered. Nothing to do.
-        log(f"clip {clip['id']}: server refused the result ({e.code}) {e.read()[:200]!r}")
+    for attempt in range(DELIVERY_TRIES):
+        try:
+            with server(f"/clips/{clip['id']}/finish", method="POST", data=body, headers={"Content-Type": ctype}) as res:
+                log(f"clip {clip['id']}: server says {json.load(res).get('status')}")
+                return True
+        except urllib.error.HTTPError as e:
+            detail = e.read()[:200]
+            if e.code in (404, 409, 422):   # gone, handed out again, or refused as it is: sending it again changes nothing
+                log(f"clip {clip['id']}: server refused the result ({e.code}) {detail!r}")
+                return True
+            log(f"clip {clip['id']}: delivery failed ({e.code}), try {attempt + 1} of {DELIVERY_TRIES}")
+        except OSError as e:
+            log(f"clip {clip['id']}: delivery failed ({e}), try {attempt + 1} of {DELIVERY_TRIES}")
+        time.sleep(DELIVERY_WAIT)
+    return False
 
 
 def attach(film: Path, scene: int) -> bool:
@@ -197,8 +211,10 @@ def render_one(clip: dict) -> None:
                 local.write_bytes(res.read())
             pictures.append(comfy_upload(local))
         raw = comfy_render(clip, pictures)
-        finish(clip, video=to_upload_file(raw))
-        shutil.rmtree(raw.parent, ignore_errors=True)
+        if finish(clip, video=to_upload_file(raw)):
+            shutil.rmtree(raw.parent, ignore_errors=True)
+        else:
+            log(f"clip {clip['id']}: not delivered; the render is kept in {raw.parent}")
     except Exception as e:  # the server must hear about every failure, or the clip waits until it goes stale
         log(f"clip {clip['id']}: failed: {e}")
         finish(clip, error=str(e))

@@ -114,15 +114,26 @@ final class RenderPcQueue
      */
     public function handOver(string $driver, ?int $lessonId = null): int
     {
-        $clips = $this->mine()->where('status', StoryMediaStatus::Queued->value)
-            ->when($lessonId, fn (Builder $q, int $id) => $q->where('lesson_id', $id))->orderBy('id')->get();
+        $ids = $this->mine()->where('status', StoryMediaStatus::Queued->value)
+            ->when($lessonId, fn (Builder $q, int $id) => $q->where('lesson_id', $id))->orderBy('id')->pluck('id');
         $target = Clips\ClipDrivers::make($driver);
-        foreach ($clips as $clip) {
-            $clip->update(['model' => $target->name() === 'elevenlabs' ? (string) config('story_video.video_model') : $target->name(), 'started_at' => now()]);
-            $target->start($clip);
+        $model = $target->name() === 'elevenlabs' ? (string) config('story_video.video_model') : $target->name();
+        $moved = 0;
+        foreach ($ids as $id) {
+            // One clip at a time under the same row lock as claim(): a clip the PC took in the meantime stays with the PC.
+            $clip = DB::transaction(function () use ($id, $model): ?StoryMediaItem {
+                $clip = $this->mine()->whereKey($id)->where('status', StoryMediaStatus::Queued->value)->lockForUpdate()->first();
+                $clip?->update(['model' => $model, 'generation_id' => null, 'started_at' => now()]);
+
+                return $clip;
+            });
+            if ($clip !== null) {
+                $target->start($clip);
+                $moved++;
+            }
         }
 
-        return $clips->count();
+        return $moved;
     }
 
     /** @return Builder<StoryMediaItem> */
