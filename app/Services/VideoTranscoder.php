@@ -343,7 +343,8 @@ class VideoTranscoder
             $process->run();
             preg_match_all('/^\s*V\S*\s+(\S+)/m', $process->getOutput(), $m);
 
-            return $m[1];
+            // The legend above the list (" V..... = Video") matches too; it is not an encoder.
+            return array_values(array_diff($m[1], ['=']));
         } catch (\Throwable) {
             return [];
         }
