@@ -36,7 +36,7 @@ class StoryVideoPipelineTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        config(['services.elevenlabs.media_api_key' => 'test-key', 'services.cloudinary.url' => null]);
+        config(['services.elevenlabs.media_api_key' => 'test-key', 'services.cloudinary.url' => null, 'story_video.picture_driver' => 'elevenlabs']);
         $this->teacher = User::factory()->create();
         $this->lesson = Lesson::create([
             'teacher_id' => $this->teacher->id, 'topic' => 'Marco Polo', 'subject' => 'history', 'grade_level' => 'Age 12',
@@ -233,6 +233,26 @@ class StoryVideoPipelineTest extends TestCase
         (new StoryVideoPlanner)->plan($this->lesson);
         $this->assertSame('green', $sheet->fresh()->input['colour']);
         $this->assertSame(StoryMediaStatus::Planned, $sheet->fresh()->status);
+    }
+
+    public function test_pictures_go_through_the_chatgpt_route_by_default_and_never_fall_back_to_paid_credits(): void
+    {
+        Queue::fake();
+        config(['story_video.picture_driver' => 'chatgpt']);
+        (new StoryVideoPlanner)->plan($this->lesson);
+        StoryVideoRun::for($this->lesson)->start(StoryMediaKind::CharacterSheet);
+        Queue::assertPushed(\App\Jobs\GenerateStoryPicture::class, 2);
+        Queue::assertNotPushed(GenerateStoryMedia::class);
+
+        $item = $this->lesson->storyMedia()->where('kind', 'character_sheet')->first();
+        $this->assertSame('chatgpt', $item->model);
+        if (! class_exists('App\\Services\\Imaging\\ImageRoute')) {
+            Http::fake();
+            (new \App\Jobs\GenerateStoryPicture($item->id))->handle();
+            $this->assertSame(StoryMediaStatus::Failed, $item->fresh()->status);
+            $this->assertStringContainsString('ChatGPT picture route', $item->fresh()->error);
+            Http::assertNothingSent();
+        }
     }
 
     public function test_the_video_panel_reads_the_script_and_starts_the_first_step(): void

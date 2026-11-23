@@ -11,13 +11,13 @@ use App\Services\Llm\Llm;
 use App\Services\OpenAiLlmService;
 use App\Services\StoryVideo\ElevenLabsMedia;
 use App\Services\StoryVideo\ElevenLabsRefused;
+use App\Services\StoryVideo\StoryMediaFiles;
 use App\Services\StoryVideo\StoryVideoRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
@@ -98,7 +98,7 @@ class GenerateStoryMedia implements ShouldQueue
         }
 
         $bytes = $media->download($state['url']);
-        $path = $this->store($item, $bytes, (string) ($state['mime'] ?? ''));
+        $path = StoryMediaFiles::store($item, $bytes, (string) ($state['mime'] ?? ''));
 
         if ($item->kind->isVideo()) {
             StoryVideoRun::for($item->lesson)->clipFinished($item, $path);
@@ -140,28 +140,5 @@ class GenerateStoryMedia implements ShouldQueue
     private function markFailed(StoryMediaItem $item, string $why): void
     {
         $item->update(['status' => StoryMediaStatus::Failed, 'generation_id' => null, 'error' => mb_substr($why, 0, 500)]);
-    }
-
-    private function store(StoryMediaItem $item, string $bytes, string $mime): string
-    {
-        $ext = match (true) {
-            str_contains($mime, 'mp4') || $item->kind->isVideo() => 'mp4',
-            str_contains($mime, 'webp') => 'webp',
-            str_contains($mime, 'jpeg') || str_contains($mime, 'jpg') => 'jpg',
-            default => 'png',
-        };
-        $dir = $item->scene_id !== null
-            ? "lessons/{$item->lesson_id}/scenes/{$item->scene_id}/story-video"
-            : "lessons/{$item->lesson_id}/story-video";
-        // A new name per attempt: the old file may still be on screen (or approved elsewhere) while this one lands.
-        $path = "{$dir}/{$item->key}-".now()->format('YmdHis').".{$ext}";
-        Storage::disk('public')->put($path, $bytes);
-        // The previous attempt goes, unless a scene still shows it (a remade world shot stays the scene's picture
-        // until the new one is approved).
-        if ($item->path !== null && $item->path !== $path && ! \App\Models\Scene::where('image_path', $item->path)->exists()) {
-            Storage::disk('public')->delete($item->path);
-        }
-
-        return $path;
     }
 }

@@ -7,13 +7,13 @@ namespace App\Services\StoryVideo;
 use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Jobs\AssembleSceneFilm;
-use App\Jobs\GenerateStoryMedia;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StoryMediaItem;
 use App\Services\Art\HistoryLineStyle;
 use App\Services\OpenAiLlmService;
 use App\Services\StoryVideo\Clips\ClipDrivers;
+use App\Services\StoryVideo\Pictures\PictureDrivers;
 use RuntimeException;
 
 /**
@@ -261,6 +261,8 @@ final class StoryVideoRun
 
             return;
         }
-        GenerateStoryMedia::dispatch($item->id);
+        $driver = PictureDrivers::make();
+        $item->update(['model' => $driver->name() === 'elevenlabs' ? (string) config('story_video.image_model') : $driver->name()]);
+        $driver->start($item);
     }
 }

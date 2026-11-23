@@ -12,7 +12,12 @@ declare(strict_types=1);
 */
 
 return [
-    // Nano Banana 2: takes up to 14 reference pictures, which carry the History Lines look.
+    // Who makes character sheets and world shots (App\Services\StoryVideo\Pictures\PictureDrivers): chatgpt (the
+    // ChatGPT route of ImageRoute, never paid credits) or elevenlabs (needs the ElevenLabs Pro plan; bart stayed on
+    // Creator, 2026-11-23).
+    'picture_driver' => env('STORY_VIDEO_PICTURE_DRIVER', 'chatgpt'),
+
+    // Nano Banana 2 (elevenlabs driver): takes up to 14 reference pictures, which carry the History Lines look.
     'image_model' => env('STORY_VIDEO_IMAGE_MODEL', 'gemini-3.1-flash-image'),
     'image_resolution' => env('STORY_VIDEO_IMAGE_RESOLUTION', '2K'),
 

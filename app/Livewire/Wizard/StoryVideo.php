@@ -52,7 +52,7 @@ class StoryVideo extends Component
     {
         $this->authorizeLesson($this->lesson);
         $kind = StoryMediaKind::from($this->step);
-        if (! ElevenLabsMedia::make()->isConfigured() || ! StoryVideoRun::for($this->lesson)->canStart($kind)) {
+        if (! self::makerReady($kind) || ! StoryVideoRun::for($this->lesson)->canStart($kind)) {
             return;
         }
         StoryVideoRun::for($this->lesson)->start($kind);
@@ -99,9 +99,21 @@ class StoryVideo extends Component
             'ready' => $here->where('status', StoryMediaStatus::Ready)->count(),
             'busy' => $items->contains(fn (StoryMediaItem $i) => $i->status->isBusy()),
             'seconds' => $kind->isVideo() ? $here->sum(fn ($i) => (int) (($i->input ?? [])['seconds'] ?? 0)) : 0,
-            'configured' => ElevenLabsMedia::make()->isConfigured(),
+            'configured' => self::makerReady($kind),
             'open' => $this->openItem !== null ? $here->firstWhere('id', $this->openItem) : null,
         ]);
+    }
+
+    /** Can this step's driver make anything here? ChatGPT needs its route set up; ElevenLabs needs a key. */
+    public static function makerReady(StoryMediaKind $kind): bool
+    {
+        $driver = $kind->isVideo() ? (string) config('story_video.clip_driver', 'elevenlabs') : (string) config('story_video.picture_driver', 'chatgpt');
+
+        return match ($driver) {
+            'elevenlabs' => ElevenLabsMedia::make()->isConfigured(),
+            'chatgpt' => class_exists('App\\Services\\Imaging\\ImageRoute') && ! \call_user_func(['App\\Services\\Imaging\\ImageRoute', 'usesOpenAi']),
+            default => true,
+        };
     }
 
     private function firstOpenStep(): StoryMediaKind
