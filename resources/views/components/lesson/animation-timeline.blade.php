@@ -42,6 +42,9 @@
         'sceneId'   => $scene?->id,
         'sceneKind' => $scene?->kind,
         'duration'  => $duration,
+        'durationSet' => ($timeline['durationSet'] ?? false) === true,
+        // The scene's narration: play plays it, and the Length follows it (Bart, 2026-11-23).
+        'audioUrl'  => $scene?->audioUrl(),
         'alignment' => $alignment,
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
@@ -169,6 +172,14 @@
                    class="h-8 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
             <span class="text-xs text-panel-label">ms</span>
         </label>
+        {{-- A Length the teacher typed stays theirs; this hands it back to the narration's clip. --}}
+        <template x-if="durationSet && narrationLength > 0">
+            <button type="button" x-on:click="matchNarration()" data-timeline-match-narration
+                    class="h-8 shrink-0 cursor-pointer rounded px-2 text-xs text-panel-label hover:text-white"
+                    :data-tooltip="@js(__('Make the timeline as long as the narration'))">
+                {{ __('Match narration') }}
+            </button>
+        </template>
 
         {{-- Loop, which is how you watch a two-second build twenty times while tuning it. --}}
         <button type="button" x-on:click="loop = !loop; remember()" data-timeline-loop
