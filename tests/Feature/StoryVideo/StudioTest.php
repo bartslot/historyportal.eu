@@ -215,4 +215,20 @@ class StudioTest extends TestCase
             ->assertSee(__('Made in the ElevenLabs studio from your Mac: :waiting waiting, :batch in a batch.', ['waiting' => 1, 'batch' => 0]))
             ->assertDontSee(__('No picture maker is set up yet (the ChatGPT route).'));
     }
+    public function test_a_world_shot_without_an_outline_brief_still_names_its_place(): void
+    {
+        // A Twine import: no scene_briefs, the place lives in the scene's shot line.
+        $this->lesson->update(['outline' => ['cast' => []]]);
+        $this->scene->update(['config' => ['shot_note' => 'The Venice quay at dawn, galleys moored, the lagoon behind.']]);
+        (new StoryVideoPlanner)->plan($this->lesson->fresh());
+
+        $shot = $this->lesson->storyMedia()->where('kind', 'world_shot')->firstOrFail();
+        $prompt = StoryVideoRun::for($this->lesson->fresh())->prompt($shot);
+
+        $this->assertStringContainsString('The Venice quay at dawn', $prompt);
+
+        // No shot line either: the narration says where we are.
+        $this->scene->update(['config' => []]);
+        $this->assertStringContainsString('Venice, 1271', StoryVideoPlanner::placeHint($this->scene->fresh()));
+    }
 }
