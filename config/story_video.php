@@ -22,7 +22,7 @@ return [
     'image_resolution' => env('STORY_VIDEO_IMAGE_RESOLUTION', '2K'),
 
     // Who makes clips (App\Services\StoryVideo\Clips\ClipDrivers): elevenlabs now, render_pc later.
-    'clip_driver' => env('STORY_VIDEO_CLIP_DRIVER', 'elevenlabs'),
+    'clip_driver' => env('STORY_VIDEO_CLIP_DRIVER', 'render_pc'),
 
     // Seedance 2 Fast: 480p / 720p, 4-15 s, up to 9 reference pictures (never together with a start frame).
     'video_model' => env('STORY_VIDEO_VIDEO_MODEL', 'bytedance-seedance-v2-fast'),

@@ -8,6 +8,10 @@
                         :options="collect($steps)->map(fn ($s) => [$s['kind']->value, $s['kind']->label().' '.$s['approved'].'/'.$s['count']])->all()"
                         on-change="$wire.set('step', $event.target.value)" />
 
+        @if ($renderPc)
+            <p class="text-prose text-panel-hint" data-render-pc>{{ $renderPc }}</p>
+        @endif
+
         @unless ($configured)
             <p class="text-prose text-error">{{ $kind->isVideo() ? __('No clip maker is set up for this step yet.') : __('No picture maker is set up yet (the ChatGPT route).') }}</p>
         @endunless

@@ -10,6 +10,7 @@ use App\Enums\StoryMediaStatus;
 use App\Jobs\EncodeSceneLoop;
 use App\Jobs\GenerateStoryMedia;
 use App\Jobs\PrepareRenderPcClip;
+use App\Livewire\Wizard\StoryVideo;
 use App\Models\Lesson;
 use App\Models\Scene;
 use App\Models\StoryMediaItem;
@@ -22,6 +23,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RenderPcTest extends TestCase
@@ -184,5 +186,17 @@ class RenderPcTest extends TestCase
         Queue::assertPushed(EncodeSceneLoop::class, fn (EncodeSceneLoop $job) => $job->sceneId === $this->scene->id && $job->upload === $loop['src']);
         // Only the moving picture changed.
         $this->assertSame('worlds/quay.png', $this->scene->fresh()->image_path);
+    }
+
+    public function test_the_video_step_says_how_the_render_pc_stands(): void
+    {
+        $this->waitingClip();
+        $teacher = User::findOrFail($this->lesson->teacher_id);
+
+        $panel = Livewire::actingAs($teacher)->test(StoryVideo::class, ['lesson' => $this->lesson])->set('step', 'clip');
+        $panel->assertSee(__('The render PC has not asked for work yet.'));
+
+        $this->pc()->postJson(route('api.render-pc.next'))->assertOk();
+        $panel->call('$refresh')->assertSee(__('The render PC is on.'))->assertDontSee(__('No clip maker is set up for this step yet.'));
     }
 }
