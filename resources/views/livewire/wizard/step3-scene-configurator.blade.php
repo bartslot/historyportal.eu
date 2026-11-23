@@ -1972,7 +1972,9 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    // A map scene's bottom object IS the map: the Map block (Bart 11-23), as the timeline names it.
+                    if (objKind === 'map') items.push({ id: '__bg__', icon: 'map', label: @js(__('Map block')), bg: true, section: 'bg' });
+                    else items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.

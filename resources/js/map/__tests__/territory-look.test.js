@@ -3,6 +3,7 @@ import { territoryLook, territoryAnim, linePaint, washPaint, TERRITORY_DEFAULTS 
 import { isTileCut, tileToLngLat, territoryParts, noise2 } from '../territory-ink.js'
 import { applyFrameTo } from '../../anim/scene-animation.js'
 import { propertiesFor } from '../../anim/properties.js'
+import { groupsFor } from '../../anim/timeline-groups.js'
 
 // Bart 11-23: "standard it could be black, border (like a pen drawing)", "maybe etched".
 describe('territoryLook', () => {
@@ -56,6 +57,10 @@ describe('territory paint', () => {
 describe('the Territory row on the timeline', () => {
   it('keys fill, border and year', () => {
     expect(propertiesFor('terr').map((p) => p.key)).toEqual(['fill', 'border', 'year'])
+  })
+
+  it('groups the Map block as Year, then Territory', () => {
+    expect(groupsFor('terr').map((g) => [g.id, g.props.map((p) => p.key)])).toEqual([['year', ['year']], ['territory', ['fill', 'border']]])
   })
 
   it('hands its frame to the map in the player', () => {

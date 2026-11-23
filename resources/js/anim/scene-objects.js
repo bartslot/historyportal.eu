@@ -91,10 +91,12 @@ export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i
     : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id, icon: i.icon }))
 
 /**
- * The territory a map scene links: one row while one is linked (lesson-map hasTerritory). There is
- * one per scene, so its target is fixed: 'terr:map'.
+ * The map block itself (Bart 11-23: "Can you add Map or Kaartblok to the animation settings?"):
+ * its year, and the linked territory's area and border. One per map scene, so its target is fixed:
+ * 'terr:map'. Listed whenever a lesson map is on stage; Area and Border only show something once a
+ * territory is linked.
  */
-export const territoryObjects = (label = 'Territory') => (window.__lessonMapApi?.hasTerritory?.()
+export const territoryObjects = (label = 'Map block') => (window.__lessonMapApi
   ? [{ target: 'terr:map', kind: 'terr', icon: 'map', label }]
   : [])
 

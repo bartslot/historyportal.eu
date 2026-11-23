@@ -435,8 +435,8 @@ export const animationTimeline = (config = {}) => ({
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
     // A voyage leg's crossing is a clip, under the camera that frames it (Bart 2026-11-21).
     const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
-    // The territory a map scene links: its fill, border and year (Bart 2026-11-23).
-    const territory = this.canHaveCamera ? territoryObjects(config.objectLabels?.territory) : []
+    // The map block: its year, and its territory's area and border (Bart 2026-11-23).
+    const territory = config.sceneKind === 'map' ? territoryObjects(config.objectLabels?.mapBlock) : []
     const listed = [...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
       ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]

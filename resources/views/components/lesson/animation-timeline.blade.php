@@ -62,7 +62,7 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
-        'objectLabels' => ['background' => __('Background'), 'territory' => __('Territory')],
+        'objectLabels' => ['background' => __('Background'), 'mapBlock' => __('Map block')],
         'propertyLabels' => [
             'bone:head' => __('Neck'), 'bone:chest' => __('Upper body'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),
@@ -85,6 +85,7 @@
         'groupLabels' => [
             'transform' => __('Transform'), 'appearance' => __('Appearance'), 'tail' => __('Tail'),
             'arrow' => __('Arrow'), 'position' => __('Position'), 'view' => __('Viewing angle'), 'bones' => __('Bones'), 'face' => __('Expression'),
+            'territory' => __('Territory'), 'year' => __('Year'),
         ],
      ]) }}"
      x-data="animationTimeline(JSON.parse($el.dataset.timelineConfig))"

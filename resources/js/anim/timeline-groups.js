@@ -14,7 +14,7 @@
 import { propertiesFor, propertyFor } from './properties.js'
 
 /** Group ids in the order a layer lists them. Camera has its own two. */
-const ORDER = ['transform', 'position', 'view', 'appearance', 'tail', 'arrow', 'face', 'bones']
+const ORDER = ['year', 'territory', 'transform', 'position', 'view', 'appearance', 'tail', 'arrow', 'face', 'bones']
 
 /** English lang key of each group's heading. The Blade passes the translations. */
 export const GROUP_LABEL_KEYS = {
@@ -26,6 +26,8 @@ export const GROUP_LABEL_KEYS = {
   view: 'Viewing angle',
   bones: 'Bones',
   face: 'Expression',
+  territory: 'Territory',
+  year: 'Year',
 }
 
 const APPEARANCE = new Set(['blur', 'opacity', 'color', 'colorOpacity', 'tint', 'tint_opacity', 'reveal', 'revealWords'])
@@ -34,7 +36,7 @@ const CAMERA_VIEW = new Set(['heading', 'tilt'])
 /** Which group a property sits in. A registry `group` (a tail, an arrow) wins: it is one shape. */
 const groupIdOf = (kind, property) => {
   if (kind === 'camera') return CAMERA_VIEW.has(property.key) ? 'view' : 'position'
-  if (kind === 'terr') return 'appearance'
+  if (kind === 'terr') return property.key === 'year' ? 'year' : 'territory'
   if (property.group) return property.group
   return APPEARANCE.has(property.key) ? 'appearance' : 'transform'
 }
