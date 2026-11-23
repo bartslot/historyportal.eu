@@ -3101,5 +3101,6 @@
     "The render PC has not asked for work yet.": "De render-pc heeft nog niet om werk gevraagd.",
     "The render PC last asked for work :ago.": "De render-pc vroeg :ago voor het laatst om werk.",
     "The render PC is on.": "De render-pc staat aan.",
-    ":rendering rendering, :waiting waiting.": ":rendering bezig, :waiting in de wachtrij."
+    ":rendering rendering, :waiting waiting.": ":rendering bezig, :waiting in de wachtrij.",
+    "Made in the ElevenLabs studio from your Mac: :waiting waiting, :batch in a batch.": "Gemaakt in de ElevenLabs-studio vanaf je Mac: :waiting in de wachtrij, :batch in een batch."
 }

@@ -12,6 +12,10 @@
             <p class="text-prose text-panel-hint" data-render-pc>{{ $renderPc }}</p>
         @endif
 
+        @if ($studio)
+            <p class="text-prose text-panel-hint" data-studio>{{ $studio }}</p>
+        @endif
+
         @unless ($configured)
             <p class="text-prose text-error">{{ $kind->isVideo() ? __('No clip maker is set up for this step yet.') : __('No picture maker is set up yet (the ChatGPT route).') }}</p>
         @endunless
