@@ -47,6 +47,13 @@ class VideoTranscoder
     public function __construct(
         private readonly string $ffmpegPath = 'ffmpeg',
         private readonly string $ffprobePath = 'ffprobe',
+        /**
+         * Threads per encode. SiteGround counts every thread against a cap of 80 processes per
+         * user, and on its 56-core machines x264 and SVT-AV1 left to themselves start more than
+         * that and fail to open ("Generic error in an external library", "Cannot allocate memory").
+         * Measured 2026-11-23 on a 1080p loop: 4 threads for x264, 2 for SVT-AV1, about 4 s each.
+         */
+        private readonly int $threads = 4,
     ) {}
 
     public static function make(): self
@@ -54,6 +61,7 @@ class VideoTranscoder
         return new self(
             (string) config('services.ffmpeg.path', 'ffmpeg'),
             (string) config('services.ffmpeg.probe_path', 'ffprobe'),
+            (int) config('services.ffmpeg.threads', 4),
         );
     }
 
@@ -250,7 +258,7 @@ class VideoTranscoder
                 return $fail('no H.264 encoder', $before);
             }
             $ok = $this->runEncode($storage->path($path), $storage->path($src), [
-                '-c:v', 'libx264', '-crf', '29', '-preset', 'slow',
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '29', '-preset', 'slow',
                 '-profile:v', 'high', '-pix_fmt', 'yuv420p',
             ]);
             if (! $ok) {
@@ -261,8 +269,8 @@ class VideoTranscoder
         $av1 = self::av1PathFor($src);
         if (! $storage->exists($av1)) {
             $av1Args = match (true) {
-                in_array('libsvtav1', $encoders, true) => ['-c:v', 'libsvtav1', '-crf', '44', '-preset', '6', '-pix_fmt', 'yuv420p'],
-                in_array('libaom-av1', $encoders, true) => ['-c:v', 'libaom-av1', '-crf', '44', '-b:v', '0', '-cpu-used', '6', '-row-mt', '1', '-pix_fmt', 'yuv420p'],
+                in_array('libsvtav1', $encoders, true) => ['-c:v', 'libsvtav1', '-threads', (string) $this->av1Threads(), '-svtav1-params', 'lp='.$this->av1Threads(), '-crf', '44', '-preset', '6', '-pix_fmt', 'yuv420p'],
+                in_array('libaom-av1', $encoders, true) => ['-c:v', 'libaom-av1', '-threads', (string) $this->av1Threads(), '-crf', '44', '-b:v', '0', '-cpu-used', '6', '-row-mt', '1', '-pix_fmt', 'yuv420p'],
                 default => null,
             };
             if ($av1Args === null) {
@@ -278,6 +286,69 @@ class VideoTranscoder
         Log::info('[VideoTranscoder] loop encoded', compact('path', 'src', 'av1', 'before', 'after', 'reasons'));
 
         return ['ok' => true, 'src' => $src, 'av1' => $av1, 'reason' => $reasons === [] ? 'encoded' : implode(', ', $reasons), 'before' => $before, 'after' => $after];
+    }
+
+    /**
+     * Join clips into one film, each cut to its beat: a clip longer than its beat is trimmed, a shorter one holds
+     * its last frame (never loops, bart 2026-11-23). The result is a plain H.264 master at the clips' own size and
+     * frame rate; encodeLoop() then makes the 720p 12 fps H.264 + AV1 class files from it.
+     *
+     * @param  list<array{path: string, seconds: float}>  $parts  paths on the disk, in order
+     * @return array{ok: bool, path: ?string, reason: string}
+     */
+    public function assemble(array $parts, string $out, string $disk = 'public'): array
+    {
+        $storage = Storage::disk($disk);
+        if ($parts === []) {
+            return ['ok' => false, 'path' => null, 'reason' => 'no clips'];
+        }
+        if (! $this->isAvailable() || ! in_array('libx264', $this->encoders(), true)) {
+            return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg with H.264 not available'];
+        }
+        $inputs = [];
+        $filters = [];
+        foreach (array_values($parts) as $i => $part) {
+            if (! $storage->exists($part['path'])) {
+                return ['ok' => false, 'path' => null, 'reason' => "missing clip {$part['path']}"];
+            }
+            $secs = max(0.5, round((float) $part['seconds'], 3));
+            $inputs = [...$inputs, '-i', $storage->path($part['path'])];
+            // Same size and rate for every part (concat needs it), pad with the last frame, then cut to the beat.
+            $filters[] = "[{$i}:v]scale=-2:".self::MAX_HEIGHT.',fps=24,setsar=1,format=yuv420p,'
+                ."tpad=stop_mode=clone:stop_duration={$secs},trim=duration={$secs},setpts=PTS-STARTPTS[v{$i}]";
+        }
+        $labels = implode('', array_map(fn ($i) => "[v{$i}]", array_keys($filters)));
+        $graph = implode(';', $filters).";{$labels}concat=n=".count($filters).':v=1:a=0[out]';
+
+        $final = $storage->path($out);
+        @mkdir(dirname($final), 0775, true);
+        $part = $final.'.part.mp4';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-threads', (string) $this->threads,
+                ...$inputs,
+                '-filter_complex', $graph, '-map', '[out]',
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
+                '-an', '-movflags', '+faststart', $part,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($part) && filesize($part) > 0 && rename($part, $final)) {
+                return ['ok' => true, 'path' => $out, 'reason' => 'joined'];
+            }
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'error' => $e->getMessage()]);
+        }
+        @unlink($part);
+
+        return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg failed'];
+    }
+
+    /** SVT-AV1 runs several threads per "lp", so it gets half: 2 by default. */
+    private function av1Threads(): int
+    {
+        return max(1, intdiv($this->threads, 2));
     }
 
     /** The class-ready H.264 loop made from an upload: "x.mp4" → "x.loop.mp4". */
@@ -309,7 +380,8 @@ class VideoTranscoder
         $out .= '.part.mp4';   // a half-written file must never look like a finished loop
         try {
             $process = new Process([
-                $this->ffmpegPath, '-y', '-loglevel', 'error', '-i', $in,
+                $this->ffmpegPath, '-y', '-loglevel', 'error',
+                '-threads', (string) $this->threads, '-i', $in,   // the decoder's threads count too
                 '-vf', 'fps=12,scale=-2:min('.self::MAX_HEIGHT.'\,ih)',
                 ...$codecArgs,
                 '-an', '-movflags', '+faststart',
@@ -343,7 +415,8 @@ class VideoTranscoder
             $process->run();
             preg_match_all('/^\s*V\S*\s+(\S+)/m', $process->getOutput(), $m);
 
-            return $m[1];
+            // The legend above the list (" V..... = Video") matches too; it is not an encoder.
+            return array_values(array_diff($m[1], ['=']));
         } catch (\Throwable) {
             return [];
         }

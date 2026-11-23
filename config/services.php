@@ -130,6 +130,9 @@ return [
         'base_url' => 'https://api.elevenlabs.io',
         // Narration voice for the Time-Map "read summary aloud" feature (George by default).
         'voice_id' => env('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb'),
+        // Pictures and video for the story-to-video pipeline (App\Services\StoryVideo\ElevenLabsMedia).
+        // Its own key when the voice key lacks the image and video permission; otherwise the voice key itself.
+        'media_api_key' => env('ELEVENLABS_IMAGE_API_KEY') ?: env('ELEVENLABS_API_KEY'),
     ],
 
     'tts' => [
@@ -213,6 +216,8 @@ return [
     'ffmpeg' => [
         'path' => env('FFMPEG_PATH', 'ffmpeg'),
         'probe_path' => env('FFPROBE_PATH', 'ffprobe'),
+        // Threads per encode; SiteGround caps a user at 80 processes, threads included.
+        'threads' => (int) env('FFMPEG_THREADS', 4),
     ],
 
     // ── Upscayl local CLI (replaces fal.ai upscaling in dev) ─────────────────
