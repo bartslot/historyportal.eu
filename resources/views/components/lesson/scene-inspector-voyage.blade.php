@@ -228,6 +228,21 @@
             </section>
         @endif
 
+        {{-- CLICKABLE ON THE MAP — whether the class gets a button to open this stop (config.gallery.button).
+             Bart 2026-11-23: an empty stop kept a button the children could click. Unset, it is on once the stop
+             has a story or a picture (App\Support\VoyageStopButton); flipping it pins the teacher's choice. Off,
+             the name stays on the map as plain text and the pictures stay as pictures. --}}
+        @php $stopButtonOn = \App\Support\VoyageStopButton::isOn($config); @endphp
+        <div class="flex items-center justify-between gap-3 border-t border-slate-700/50 pt-3" data-stop-button-switch>
+            <span class="min-w-0">
+                <span class="block text-xs uppercase tracking-wider text-panel-hint">{{ __('Clickable on the map') }}</span>
+                <span class="block text-2xs text-panel-hint">{{ $stopButtonOn ? __('The class can open this stop.') : __('The class sees the name only.') }}</span>
+            </span>
+            <input type="checkbox" @checked($stopButtonOn) aria-label="{{ __('Clickable on the map') }}"
+                   wire:change="setStopButton($event.target.checked)"
+                   class="toggle toggle-sm toggle-warning" />
+        </div>
+
         {{-- GALLERY / DESCRIPTION — the "just a description" layer. Opens as a modal over the map when
              the landfall hotspot (or a thumbnail) is clicked, so it lives in THIS voyage scene. --}}
         {{-- Folded away by default: a landfall's title, date line, story and images are a lot of

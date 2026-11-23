@@ -65,6 +65,7 @@ use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
+use App\Support\TerritoryLook;
 use App\Support\TextStylePresets;
 use App\Support\UploadLimit;
 use Illuminate\Support\Arr;
@@ -1539,6 +1540,27 @@ class Step3SceneConfigurator extends Component
         $this->selectedScene['config'][$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
         $this->saveSelected();
         $this->dispatch('mapDetailChanged', key: $key, value: $this->selectedScene['config'][$key]);
+    }
+
+    /**
+     * Map block: one field of the linked territory's look (config.territory, see App\Support\TerritoryLook).
+     * The live map takes the whole cleaned look at once, so the preview and the save never disagree.
+     */
+    public function setTerritoryLook(string $key, $value): void
+    {
+        if (! $this->selectedScene) {
+            return;
+        }
+        $clean = TerritoryLook::clean($key, $value);
+        if ($clean === null) {
+            return;
+        }
+        $stored = $this->selectedScene['config']['territory'] ?? [];
+        $stored = is_array($stored) ? $stored : [];
+        $stored[$key] = $clean;
+        $this->selectedScene['config']['territory'] = $stored;
+        $this->saveSelected();
+        $this->dispatch('territoryLookChanged', look: TerritoryLook::from($stored));
     }
 
     /** Map block: flip the projection between flat 2D (mercator) and 3D globe; persists in scene.config. */
@@ -3369,6 +3391,19 @@ class Step3SceneConfigurator extends Component
         } else {
             $this->selectedScene['config']['gallery']['images'] = array_values($imgs);
         }
+        $this->saveSelected();
+    }
+
+    /**
+     * The stop inspector's "Clickable on the map" switch (config.gallery.button): off, the class gets no button
+     * to open this stop. See App\Support\VoyageStopButton for the default while it is unset.
+     */
+    public function setStopButton(bool $on): void
+    {
+        if (! $this->selectedScene || ($this->selectedScene['kind'] ?? null) !== 'voyage') {
+            return;
+        }
+        $this->selectedScene['config']['gallery']['button'] = $on;
         $this->saveSelected();
     }
 

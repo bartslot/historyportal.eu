@@ -49,7 +49,7 @@ export const CHART = Object.freeze({
   dashOffset: 6,               // px at z5; positive = right of travel = the sea (coast rings run land-on-the-left)
   dashOpacity: 0.9,
   ridgeMinZoom: 3.6,
-  ridgeScale: 1.4,             // glyph size at z4 before the distance-to-coast cap
+  ridgeScale: 1.4,             // glyph size, x GEO_SIZE_Z4 at z4, doubling per zoom, before the distance-to-coast cap
   ridgeWash: 0.8,              // ridge opacity: the ink stays, a touch quieter
   tuftOpacity: 0.55,
   // Off (Bart 2026-11-21: "please remove these wavy lines"): the sea reads as water without them. The tuner can bring them back.
@@ -93,10 +93,19 @@ export function chartSources (origin = '') {
   }
 }
 
-/** Size capped by each glyph's distance to the coast, so it never reaches the shore (the approved lab rule). */
-const fittedSize = (scale, grow) => ['interpolate', ['exponential', 2], ['zoom'],
-  4, ['min', ['*', scale, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 4)]],
-  6, ['min', ['*', scale * grow, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 6)]]]
+/**
+ * A mountain's size ON THE GROUND: it doubles with every zoom level, exactly like the map under it.
+ * Bart 2026-11-23: "if we zoom out and in, the mountains appear in different places. that should not
+ * be possible as mountains never move. The mountains should be much smaller on a zoomed out view."
+ * They used to keep nearly one screen size, so zoomed out each one covered a whole country and the
+ * collision box picked a different handful at every zoom. Now every peak always shows, where it is,
+ * at the size of the land it stands on. GEO_SIZE_Z4 makes a size-1 glyph about one peak spacing wide
+ * at z4 (85 km, build-chart-data.py RIDGE_SPACING_KM). Still capped by the distance to the coast.
+ */
+const GEO_SIZE_Z4 = 0.18
+const fittedSize = (scale) => ['interpolate', ['exponential', 2], ['zoom'],
+  3, ['min', ['*', scale * GEO_SIZE_Z4 / 2, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 3)]],
+  7, ['min', ['*', scale * GEO_SIZE_Z4 * 8, ['get', 'sz']], ['/', ['get', 'fit'], kmAt(CAP_KM_Z4, 7)]]]
 
 /** Rank r: nothing below z2, a sixth of rank 0 up to z3, a third below z3.5, then one more rank per level. Size 0 = hidden. */
 const someOfRank0 = (every) => ['all', ['==', ['get', 'r'], 0], ['==', ['%', ['round', ['*', ['get', 'sz'], 100]], every], 0]]
@@ -169,7 +178,7 @@ export function chartLayers (cfg = CHART) {
       paint: { 'line-color': cfg.landEdgeColor, 'line-opacity': ringShownAtZoom(cfg.landEdgeOpacity),
         'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 8], 'line-offset': ['interpolate', ['linear'], ['zoom'], 3, -1.5, 6, -4] } },  // inside the land
     { id: 'chart-tufts', type: 'symbol', source: 'chart-tufts', 'source-layer': 'tufts', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-tuft-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57, 1.75) },
+      layout: { 'icon-image': ['concat', 'chart-tuft-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-allow-overlap': true, 'icon-size': fittedSize(cfg.ridgeScale * 0.57) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.tuftOpacity) } },
   ]
   const over = [
@@ -181,9 +190,12 @@ export function chartLayers (cfg = CHART) {
         'line-offset': ['interpolate', ['linear'], ['zoom'], 3.5, cfg.dashOffset * 0.6, 5, cfg.dashOffset] } },
     { id: 'coast-bold', type: 'line', source: 'coastline', layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': cfg.inkColor, 'line-width': coastWidth(cfg.coastWidth), 'line-opacity': ringShownAtZoom() } },
-    // Ridges never overlap: collision keeps them apart, so a range reads as peaks, not a dark mass.
+    // Every ridge always shows, where it stands (no collision: that picked a different set at every
+    // zoom, so the mountains seemed to move). The build spaces them, and their size follows the ground,
+    // so a range reads as peaks, not a dark mass. Only peaks on real relief (scripts/chart-peaks-relief.py).
     { id: 'chart-ridges', type: 'symbol', source: 'chart-peaks', 'source-layer': 'peaks', minzoom: cfg.ridgeMinZoom,
-      layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0, 'icon-size': fittedSize(cfg.ridgeScale, 1.3) },
+      layout: { 'icon-image': ['concat', 'chart-', ['coalesce', ['get', 'i'], 'ridge'], '-', FAMILY, '-', ['to-string', ['get', 'g']]], 'icon-anchor': 'bottom', 'icon-padding': 0,
+        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': fittedSize(cfg.ridgeScale) },
       paint: { 'icon-opacity': fadeIn(cfg.ridgeMinZoom, cfg.ridgeWash) } },
     // 4 in 9 marks, as in the approved lab: the full grid read as a busy sea.
     ...(cfg.waveOpacity > 0 ? [{ id: 'chart-waves', type: 'symbol', source: 'chart-waves', 'source-layer': 'waves', filter: ['<', ['%', ['round', ['*', ['get', 'sz'], 100]], 9], 4],
