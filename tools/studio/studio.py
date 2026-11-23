@@ -67,7 +67,9 @@ def call(path: str, *, method: str = "GET", data: bytes | None = None, headers: 
         die("STUDIO_TOKEN is not set (put it in tools/studio/studio.env or the environment).")
     url = path if path.startswith("http") else f"{SERVER}/api/studio{path}"
     req = urllib.request.Request(url, data=data, method=method,
-                                 headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/json", **(headers or {})})
+                                 headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/json",
+                                          # SiteGround refuses urllib's default agent with 403.
+                                          "User-Agent": "HistoryPortal-studio/1.0", **(headers or {})})
     return urllib.request.urlopen(req, timeout=timeout)
 
 
