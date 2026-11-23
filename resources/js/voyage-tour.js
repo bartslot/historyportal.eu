@@ -542,6 +542,52 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     if (src) src.setData(trailFeature(1));
   };
 
+  // ── The stop bubble's tail ──────────────────────────────────────────────
+  // Two SVGs in HUD pixel space: the hard ink shadow behind the bubble, and the cream tail with its inked
+  // sides in front of it, so the tail opens out of the bubble with no outline across its root. The sides
+  // are masked off inside the bubble; only the part outside it is inked.
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  let tailSeq = 0;
+  const stopBubbleTail = () => {
+    const mk = (tag, attrs = {}) => { const n = document.createElementNS(SVGNS, tag); Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v)); return n; };
+    const layer = () => mk('svg', { width: '1', height: '1', 'data-stop-tail': '', style: 'position:absolute;left:0;top:0;overflow:visible;pointer-events:none;' });
+    const back = layer(); const front = layer();
+    const shadow = mk('polygon', { fill: 'var(--stop-ink, #1b1712)' });
+    back.appendChild(shadow);
+    const maskId = `stop-tail-mask-${++tailSeq}`;
+    const mask = mk('mask', { id: maskId, maskUnits: 'userSpaceOnUse', x: '-10000', y: '-10000', width: '20000', height: '20000' });
+    const hole = mk('rect', { fill: 'black' });
+    mask.append(mk('rect', { x: '-10000', y: '-10000', width: '20000', height: '20000', fill: 'white' }), hole);
+    const defs = mk('defs'); defs.appendChild(mask);
+    const fill = mk('polygon', { fill: 'var(--stop-paper, #fbf2d9)' });
+    const sides = mk('polyline', { fill: 'none', stroke: 'var(--stop-ink, #1b1712)', 'stroke-width': '3', 'stroke-linejoin': 'round', 'stroke-linecap': 'round', mask: `url(#${maskId})` });
+    front.append(defs, fill, sides);
+    const draw = (bubble, p) => {
+      const x = parseFloat(bubble.style.left) || 0; const y = parseFloat(bubble.style.top) || 0;
+      const w = bubble.offsetWidth; const h = bubble.offsetHeight;
+      if (!w || !h) return;
+      // The root sits on the bubble's straight edge nearest the stop, the tip just short of the dot.
+      const r = Math.min(16, h / 2);
+      const bx = Math.max(x + r, Math.min(x + w - r, p.x)); const by = Math.max(y + r, Math.min(y + h - r, p.y));
+      let dx = p.x - bx; let dy = p.y - by; const d = Math.hypot(dx, dy) || 1;
+      dx /= d; dy /= d;
+      const inside = p.x > x && p.x < x + w && p.y > y && p.y < y + h;
+      const show = !inside && d > r + 10;
+      [back, front].forEach((n) => { n.style.display = show ? '' : 'none'; });
+      if (!show) return;
+      const tip = { x: p.x - dx * 11, y: p.y - dy * 11 };
+      const root = { x: bx + dx * (r - 6), y: by + dy * (r - 6) };   // just inside the edge, under the outline
+      const half = Math.min(11, w / 4);
+      const a = { x: root.x - dy * half, y: root.y + dx * half }; const b = { x: root.x + dy * half, y: root.y - dx * half };
+      const pts = (q) => q.map((v) => `${v.x.toFixed(1)},${v.y.toFixed(1)}`).join(' ');
+      fill.setAttribute('points', pts([a, tip, b]));
+      sides.setAttribute('points', pts([a, tip, b]));
+      shadow.setAttribute('points', pts([a, tip, b].map((v) => ({ x: v.x + 4, y: v.y + 4 }))));
+      Object.entries({ x: x + 3, y: y + 3, width: Math.max(0, w - 6), height: Math.max(0, h - 6), rx: Math.max(0, r - 3) }).forEach(([k, v]) => hole.setAttribute(k, String(v)));
+    };
+    return { back, front, draw };
+  };
+
   // ── Gallery modal (opened by the landfall hotspot / a thumbnail) ───────
   const galleryData = () => {
     if (L.gallery && (L.gallery.story || (L.gallery.images && L.gallery.images.length) || L.gallery.title)) return L.gallery;
@@ -626,7 +672,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // the map panned underneath, and the route slowly filled up with handles that ignored it.
     //
     // A query also survives a build that throws half way through, which an array cannot.
-    hud.querySelectorAll('[data-voyage-handle],[data-voyage-endpoint]').forEach((el) => { try { el.remove(); } catch (_) { /* gone */ } });
+    hud.querySelectorAll('[data-voyage-handle],[data-voyage-endpoint],[data-stop-tail]').forEach((el) => { try { el.remove(); } catch (_) { /* gone */ } });
     layoutInsertHandles = null;
     // Cleared above, then nothing rebuilt: the itinerary edits no leg.
     if (inOverview) return;
@@ -673,11 +719,17 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // A custom hotspot position (geo, so it survives zoom/pan) — set by the teacher dragging it.
     let hotspotPos = (L.hotspot && Number.isFinite(Number(L.hotspot.lng)) && Number.isFinite(Number(L.hotspot.lat)))
       ? { lng: Number(L.hotspot.lng), lat: Number(L.hotspot.lat) } : null;
+    let tail = null;
     if (gal) {
+      // A comic speech bubble (Bart 2026-11-23: "how do we make these buttons more comic style?"): cream
+      // paper, a thick hand-inked outline, a hard ink shadow and a tail that points at the stop's dot. The
+      // look is app.css .lp-stop-bubble; the tail is drawn in placeMarkers, because it follows the camera.
+      tail = stopBubbleTail();
+      hud.appendChild(tail.back);
       hotspot = document.createElement('button');
       hotspot.type = 'button';
-      hotspot.className = 'absolute rounded-full bg-base-100/95 px-4 py-2 text-sm font-semibold shadow-xl';
-      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;border:2px solid color-mix(in oklab, var(--color-primary) 90%, transparent);touch-action:none;';
+      hotspot.className = 'lp-stop-bubble';
+      hotspot.style.cssText += 'pointer-events:auto;cursor:pointer;touch-action:none;';
       // The button is labelled with the GALLERY title the teacher typed — it is that gallery this
       // opens. With no title it used to fall back to the landfall NAME, which put the place on the
       // map a second time right next to the line that already says it. A neutral word instead:
@@ -691,6 +743,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       arrowSpan.textContent = ' ▸';
       hotspot.append(lblSpan, arrowSpan);
       hud.appendChild(hotspot);
+      hud.appendChild(tail.front);
       arrivalHotspot = hotspot;
       // Pop the hotspot in just after the pins.
       try {
@@ -1038,6 +1091,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         } else {
           hotspot.style.left = `${p.x + 46}px`; hotspot.style.top = `${p.y + 12}px`;
         }
+        if (tail) tail.draw(hotspot, p);
       }
       layoutHandles();
     };
