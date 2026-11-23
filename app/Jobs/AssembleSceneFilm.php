@@ -8,14 +8,13 @@ use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Models\Scene;
 use App\Models\StoryMediaItem;
-use App\Services\Support\SceneLoop;
+use App\Services\StoryVideo\SceneFilm;
 use App\Services\VideoTranscoder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Every clip of a scene is approved: join them, each cut to its narration beat (a short clip holds its last frame),
@@ -51,12 +50,7 @@ class AssembleSceneFilm implements ShouldQueue
             return;
         }
 
-        $old = SceneLoop::of($scene);
-        $scene->update(['config' => SceneLoop::with($scene->config ?? [], $result['path'], (string) $scene->image_path)]);
-        if ($old !== null && str_contains($old['src'], '/story-video/film-')) {
-            Storage::disk('public')->delete(array_filter([$old['src'], $old['av1'] ?? null]));
-        }
-        EncodeSceneLoop::dispatch($scene->id, $result['path']);
+        SceneFilm::attach($scene, $result['path']);
     }
 
     /**

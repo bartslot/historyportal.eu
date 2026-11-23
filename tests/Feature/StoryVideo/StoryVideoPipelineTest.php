@@ -176,6 +176,32 @@ class StoryVideoPipelineTest extends TestCase
         Queue::assertPushed(AssembleSceneFilm::class, 1);
     }
 
+    public function test_a_film_attaches_to_the_scene_picture_and_encodes_only_when_not_already_encoded(): void
+    {
+        Queue::fake();
+        $scene = Scene::where('lesson_id', $this->lesson->id)->where('order', 1)->first();
+        $scene->update(['image_path' => 'lessons/w.png', 'config' => ['layers' => ['keep me']]]);
+
+        \App\Services\StoryVideo\SceneFilm::attach($scene, 'lessons/x/story-video/film.mp4');
+        $this->assertSame(['keep me'], $scene->fresh()->config['layers']);
+        $this->assertSame('lessons/x/story-video/film.mp4', $scene->fresh()->config['bg_loop']['src']);
+        Queue::assertPushed(\App\Jobs\EncodeSceneLoop::class, 1);
+
+        \App\Services\StoryVideo\SceneFilm::attach($scene, 'lessons/x/story-video/pc.loop.mp4', av1: 'lessons/x/story-video/pc.loop.av1.mp4', encoded: true);
+        $this->assertSame('lessons/x/story-video/pc.loop.av1.mp4', $scene->fresh()->config['bg_loop']['av1']);
+        Queue::assertPushed(\App\Jobs\EncodeSceneLoop::class, 1);
+    }
+
+    public function test_clips_go_through_the_configured_driver(): void
+    {
+        Queue::fake();
+        (new StoryVideoPlanner)->plan($this->lesson);
+        $this->lesson->storyMedia()->whereIn('kind', ['character_sheet', 'world_shot'])->update(['status' => 'approved', 'path' => 'a.png']);
+        $this->expectException(\InvalidArgumentException::class);
+        config(['story_video.clip_driver' => 'nope']);
+        StoryVideoRun::for($this->lesson)->start(StoryMediaKind::Clip);
+    }
+
     public function test_the_video_panel_reads_the_script_and_starts_the_first_step(): void
     {
         Queue::fake();

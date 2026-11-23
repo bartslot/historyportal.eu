@@ -89,7 +89,7 @@ class GenerateStoryMedia implements ShouldQueue
         $path = $this->store($item, $bytes, (string) ($state['mime'] ?? ''));
 
         if ($item->kind->isVideo()) {
-            $item->update(['path' => $path, 'status' => StoryMediaStatus::Ready, 'generation_id' => null]);
+            StoryVideoRun::for($item->lesson)->clipFinished($item, $path);
 
             return;
         }

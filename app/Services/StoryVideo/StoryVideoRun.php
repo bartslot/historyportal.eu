@@ -13,6 +13,7 @@ use App\Models\Scene;
 use App\Models\StoryMediaItem;
 use App\Services\Art\HistoryLineStyle;
 use App\Services\OpenAiLlmService;
+use App\Services\StoryVideo\Clips\ClipDrivers;
 use RuntimeException;
 
 /**
@@ -235,9 +236,31 @@ final class StoryVideoRun
         return StoryVideoPrompts::clip($staging, $seconds, $people);
     }
 
+    /** A clip driver delivers a finished clip (already stored on the public disk): it waits for the teacher. */
+    public function clipFinished(StoryMediaItem $clip, string $path): void
+    {
+        if ($clip->status->isBusy()) {
+            $clip->update(['path' => $path, 'status' => StoryMediaStatus::Ready, 'generation_id' => null, 'error' => null]);
+        }
+    }
+
+    public function clipFailed(StoryMediaItem $clip, string $why): void
+    {
+        if ($clip->status->isBusy()) {
+            $clip->update(['status' => StoryMediaStatus::Failed, 'generation_id' => null, 'error' => mb_substr($why, 0, 500)]);
+        }
+    }
+
     private function queue(StoryMediaItem $item): void
     {
         $item->update(['status' => StoryMediaStatus::Queued, 'generation_id' => null, 'error' => null, 'attempts' => 0, 'started_at' => now()]);
+        if ($item->kind->isVideo()) {
+            $driver = ClipDrivers::make();
+            $item->update(['model' => $driver->name() === 'elevenlabs' ? (string) config('story_video.video_model') : $driver->name()]);
+            $driver->start($item);
+
+            return;
+        }
         GenerateStoryMedia::dispatch($item->id);
     }
 }
