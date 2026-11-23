@@ -50,7 +50,13 @@ class ElevenLabsMedia
         $response = $this->http()->post("{$this->baseUrl}/v1/flows/{$kind}", $body);
         $id = $response->json('id');
         if (! $response->successful() || ! is_string($id) || $id === '') {
-            throw new RuntimeException("ElevenLabs {$kind} create failed ({$response->status()}): ".mb_substr($response->body(), 0, 400));
+            $code = (string) ($response->json('detail.code') ?? $response->json('code') ?? '');
+            throw new ElevenLabsRefused(match (true) {
+                $response->status() === 402 || $code === 'paid_plan_required' => 'ElevenLabs needs a Pro plan or above for pictures and video.',
+                $code === 'model_access_denied' => 'This ElevenLabs account has no access to the model yet (ByteDance models need approval).',
+                in_array($response->status(), [401, 403], true) => 'The ElevenLabs key has no image or video permission.',
+                default => "ElevenLabs {$kind} create failed ({$response->status()}): ".mb_substr($response->body(), 0, 300),
+            }, $response->status() === 429 || $response->serverError());
         }
 
         return $id;

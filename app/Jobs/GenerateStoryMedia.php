@@ -10,6 +10,7 @@ use App\Services\Art\StyleCheck;
 use App\Services\Llm\Llm;
 use App\Services\OpenAiLlmService;
 use App\Services\StoryVideo\ElevenLabsMedia;
+use App\Services\StoryVideo\ElevenLabsRefused;
 use App\Services\StoryVideo\StoryVideoRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -66,7 +67,18 @@ class GenerateStoryMedia implements ShouldQueue
             $run = StoryVideoRun::for($item->lesson);
             $prompt = $run->prompt($item, $llm);
             $correction = StyleCheck::correction((array) (($item->style ?? [])['problems'] ?? []));
-            $id = $media->create($kind, $run->body($item, $prompt.($item->attempts > 0 ? $correction : '')));
+            try {
+                $id = $media->create($kind, $run->body($item, $prompt.($item->attempts > 0 ? $correction : '')));
+            } catch (ElevenLabsRefused $e) {
+                if ($e->retryable) {
+                    $this->wait($item);   // busy: ask again shortly
+
+                    return;
+                }
+                $this->markFailed($item, $e->getMessage());   // plan, permission or access: retrying will not help
+
+                return;
+            }
             $item->update(['generation_id' => $id, 'status' => StoryMediaStatus::Generating, 'model' => (string) config($item->kind->isVideo() ? 'story_video.video_model' : 'story_video.image_model')]);
             $this->wait($item);
 

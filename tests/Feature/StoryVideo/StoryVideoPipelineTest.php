@@ -123,6 +123,21 @@ class StoryVideoPipelineTest extends TestCase
         $this->assertSame(1, $item->attempts);
     }
 
+    public function test_a_plan_that_has_no_pictures_fails_the_item_with_a_clear_message(): void
+    {
+        Queue::fake();
+        (new StoryVideoPlanner)->plan($this->lesson);
+        $item = $this->lesson->storyMedia()->where('kind', 'character_sheet')->first();
+        $item->update(['status' => StoryMediaStatus::Queued, 'started_at' => now()]);
+        Http::fake(['api.elevenlabs.io/v1/flows/image' => Http::response(['detail' => ['code' => 'paid_plan_required', 'message' => 'This endpoint requires a Pro plan or above.']], 402)]);
+
+        (new GenerateStoryMedia($item->id))->handle($this->createMock(OpenAiLlmService::class));
+
+        $this->assertSame(StoryMediaStatus::Failed, $item->fresh()->status);
+        $this->assertStringContainsString('Pro plan', $item->fresh()->error);
+        Queue::assertNothingPushed();
+    }
+
     public function test_a_failed_generation_marks_the_item_failed(): void
     {
         Queue::fake();
