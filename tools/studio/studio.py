@@ -150,19 +150,29 @@ def cmd_pull(args) -> None:
     jobs = []
     for n, item in enumerate(body["items"], start=1):
         folder = batch / f"{n:02d}-{item['kind'].replace('_', '-')}-{item['key']}"[:80]
-        folder.mkdir()
-        (folder / "prompt.txt").write_text(item["prompt"])
-        refs = []
-        for ref in item["references"]:
-            with call(f"{ref['url']}?claim={body['claim']}") as res:
-                (folder / ref["name"]).write_bytes(res.read())
-            refs.append(ref["name"])
         jobs.append({"number": n, "id": item["id"], "kind": item["kind"], "label": item["label"] or item["key"],
                      "lesson": item["lesson"], "lesson_id": item["lesson_id"], "scene_id": item["scene_id"],
-                     "folder": folder.name, "settings": item["settings"], "references": refs, "text": item["text"],
-                     "state": "to make", "result": None, "error": None})
+                     "folder": folder.name, "settings": item["settings"], "references": [r["name"] for r in item["references"]],
+                     "text": item["text"], "state": "to make", "result": None, "error": None})
+    # The claim is on disk before anything else can fail, so show/release always find this batch.
     data = {"claim": body["claim"], "pulled_at": time.time(), "server": SERVER, "jobs": jobs}
     save(batch, data)
+    try:
+        for j, item in zip(jobs, body["items"]):
+            folder = batch / j["folder"]
+            folder.mkdir(exist_ok=True)
+            (folder / "prompt.txt").write_text(item["prompt"])
+            for ref in item["references"]:
+                with call(f"{ref['url']}?claim={body['claim']}") as res:
+                    (folder / ref["name"]).write_bytes(res.read())
+    except (OSError, urllib.error.URLError) as e:
+        # Half a batch is no use in the studio: hand it all back so it can be pulled again at once.
+        code, answer = call_json("/release", {"claim": data["claim"]})
+        for j in jobs:
+            j["state"] = "released"
+        save(batch, data)
+        die(f"Downloading the references failed ({e}); the batch was handed back"
+            f" ({answer.get('released', '?') if code == 200 else 'release failed: ' + str(code)}). Pull again.")
     print(f"Batch {batch}")
     for j in jobs:
         print(describe(j))
