@@ -31,7 +31,8 @@ import { createTerritoryInk } from './map/territory-ink.js'
 const MODERN_FONT = ['inter']
 // Every label layer that gets the hand: the atlas's own labels plus the teacher's.
 // lesson-labels is not here: a voyage stop name keeps its own hand-lettered ink (map-place-label.js STOP_LABEL).
-const LABEL_LAYERS = ['city-labels', 'hcity-label', 'focus-label']
+// focus-label is not here either: a teacher's focus city takes the same lettering and inked dot (Bart 11-23).
+const LABEL_LAYERS = ['city-labels', 'hcity-label']
 
 /**
  * The ground. There is one, and it is the watercolour sea chart (map-chart.js).
@@ -45,7 +46,6 @@ const LABEL_LAYERS = ['city-labels', 'hcity-label', 'focus-label']
  * land alike.
  */
 const GROUND = {
-  focus: { color: '#1d1712', halo: 'rgba(246,241,228,0.9)', haloWidth: 1.4 },
   fog: '#f6f1e4',
   water: CHART.seaColor,
   line: '#a08868',   // borders: a light pencil line under the coast ink, not a second ink
@@ -688,13 +688,18 @@ export function renderLessonMap (el, opts = {}) {
     LABEL_LAYERS.forEach(font)
     // A focus label writes the PLACE and its note in separate sections of one text-field, so the
     // hand is baked into the field itself, not just the layer font.
+    //
+    // A focus city looks like a voyage stop (Bart 11-23: "the city name and dot more like we had at the
+    // previous style"): the name hand-lettered beside the inked ring-dot (map-place-label.js STOP_LABEL).
+    // The note under a name stays in type. The plain circle stays, invisible, as what a click hits.
     if (map.getLayer('focus-label')) {
-      try { map.setLayoutProperty('focus-label', 'text-field', focusLabelLayout(MODERN_FONT)['text-field']) } catch (_) {}
+      ensureStopDot(map)
+      const layout = stopLabelLayout({ textField: focusLabelLayout(STOP_LABEL.font)['text-field'] })
+      for (const [k, v] of Object.entries(layout)) { try { map.setLayoutProperty('focus-label', k, v) } catch (_) {} }
+      for (const [k, v] of Object.entries(stopLabelPaint())) paint('focus-label', k, v)
     }
-    paint('focus-label', 'text-color', GROUND.focus.color)
-    paint('focus-label', 'text-halo-color', GROUND.focus.halo)
-    paint('focus-label', 'text-halo-width', GROUND.focus.haloWidth + 0.6)
-    paint('focus-label', 'text-halo-blur', 0.4)
+    paint('focus-dot', 'circle-opacity', 0)
+    paint('focus-dot', 'circle-stroke-opacity', 0)
     // Letterbox bars (map narrower than the stage) match the sea.
     try { el.style.backgroundColor = GROUND.water } catch (_) {}
   }
