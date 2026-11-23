@@ -844,7 +844,8 @@ export const animationTimeline = (config = {}) => ({
   /**
    * A scene with narration is as long as its clip (Bart, 2026-11-23: "automatically change the
    * timeline based on the length of the audio clip"), until the teacher types a Length of their own.
-   * Never shorter than its last key: the save clamps keys to the length, so that would move them.
+   * Never shorter than its last key (the save clamps keys to the length, so that would move them)
+   * or a voyage leg's crossing.
    */
   followNarration () {
     if (!config.audioUrl) return
@@ -854,7 +855,9 @@ export const animationTimeline = (config = {}) => ({
     if (!(length > 0)) return
     this.narrationLength = length
     if (this.durationSet) return
-    const want = Math.round(Math.max(length, lastKeyTime(this.tracks)) * 100) / 100
+    // Nor shorter than a voyage leg's crossing, or the ship's landing falls off the ruler.
+    const crossing = this.isVoyageLeg ? this.sailSpan().end : 0
+    const want = Math.round(Math.max(length, lastKeyTime(this.tracks), crossing) * 100) / 100
     if (Math.abs(want - this.duration) < 0.01) return
     this.duration = Math.min(3600, want)
     if (this.time > this.duration) this.seek(this.duration)

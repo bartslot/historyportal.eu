@@ -721,6 +721,14 @@ describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
     expect(q.duration).toBe(14)
   })
 
+  it('never cuts a voyage crossing short', () => {
+    const p = voiced({ sailLeg: { from: [0, 0], to: [1, 1] } })
+    p.sailSpan = () => ({ start: 0, end: 20 })
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(5)
+    expect(p.duration).toBe(20)
+  })
+
   it('a Length the teacher typed stays, until they hand it back', () => {
     const p = voiced({ durationSet: true })
     p.fit = () => {}
