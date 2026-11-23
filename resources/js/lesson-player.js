@@ -2149,6 +2149,7 @@ Alpine.data('lessonGame', (lesson) => ({
         // On each arrival: show the carousel controls + start the 10s auto-advance.
         onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
       })
+      _voyageInstance.voyageId = cfg.voyage
     },
 
     /**
@@ -2208,6 +2209,12 @@ Alpine.data('lessonGame', (lesson) => ({
       this.showMapContinue = false
       // ONE persistent map for the whole voyage — build it once, then play each leg on it (no
       // rebuild/re-fit between scenes). The map/ships/fog/trail survive; playLeg eases the camera.
+      // A map of ANOTHER voyage is not this one's: a lesson can hold two (Tasman sailed twice), and
+      // the map built behind the title is the opening scene's, while Continue may resume elsewhere.
+      if (_voyageInstance && _voyageInstance.voyageId !== cfg.voyage) {
+        try { _voyageInstance.destroy() } catch (_) { /* already gone */ }
+        _voyageInstance = null
+      }
       if (!_voyageInstance) this._buildVoyageTour(stage, scene)
       // The itinerary scene: the whole voyage on one screen, no leg sailed. Same branch the editor
       // takes (see step3-scene-configurator) — without it the player sailed leg 0 instead, so a
