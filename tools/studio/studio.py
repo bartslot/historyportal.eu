@@ -137,7 +137,7 @@ def cmd_status(_args) -> None:
     code, body = call_json("/status", method="GET")
     if code != 200:
         die(f"Server answered {code}: {body.get('message', '')}")
-    print(f"Waiting: {body['waiting']} ({body['pictures_waiting']} pictures, {body['clips_waiting']} clips). In a batch: {body['in_batch']}.")
+    print(f"Clips waiting: {body['waiting']}. In a batch: {body['in_batch']}.")
 
 
 def cmd_pull(args) -> None:
