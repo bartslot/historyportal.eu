@@ -215,6 +215,141 @@ class VideoTranscoder
     }
 
     /**
+     * Encode a scene's moving picture for class: a 720p, 12 fps, silent H.264 MP4, and an AV1 copy
+     * for browsers that play AV1. Both are NEW files beside the upload ("x.mp4" → "x.loop.mp4" and
+     * "x.loop.av1.mp4"), so no browser keeps playing a cached copy of the file it replaces; the
+     * caller points the scene at them and deletes the upload.
+     *
+     * The settings are the render test of 2026-11-23 on the Hormuz clip: 15 s came out 1.4 MB as
+     * AV1 (CRF 44) and 2.2 MB as H.264 (CRF 29); VP9 was 3 MB and is not worth a third file. The
+     * loops are drawn "on twos", so 12 fps is the real frame rate, not a cut. They play muted, so the
+     * audio track is dropped. AV1 is not on older Safari, which is why H.264 stays the main file.
+     *
+     * Idempotent: an input that is already a ".loop.mp4" is not encoded again; only a missing AV1
+     * copy is made. Nothing is ever deleted here, and a failed encode leaves no file behind.
+     *
+     * @return array{ok: bool, src: ?string, av1: ?string, reason: string, before: int, after: int}
+     */
+    public function encodeLoop(string $path, string $disk = 'public'): array
+    {
+        $storage = Storage::disk($disk);
+        $fail = fn (string $why, int $size = 0) => ['ok' => false, 'src' => null, 'av1' => null, 'reason' => $why, 'before' => $size, 'after' => $size];
+        if (! $storage->exists($path)) {
+            return $fail('file not found');
+        }
+        $before = (int) $storage->size($path);
+        if (! $this->isAvailable()) {
+            return $fail('ffmpeg not available', $before);
+        }
+        $encoders = $this->encoders();
+        $reasons = [];
+
+        $src = self::isEncodedLoop($path) ? $path : self::loopPathFor($path);
+        if ($src !== $path && ! $storage->exists($src)) {
+            if (! in_array('libx264', $encoders, true)) {
+                return $fail('no H.264 encoder', $before);
+            }
+            $ok = $this->runEncode($storage->path($path), $storage->path($src), [
+                '-c:v', 'libx264', '-crf', '29', '-preset', 'slow',
+                '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+            ]);
+            if (! $ok) {
+                return $fail('H.264 encode failed', $before);
+            }
+        }
+
+        $av1 = self::av1PathFor($src);
+        if (! $storage->exists($av1)) {
+            $av1Args = match (true) {
+                in_array('libsvtav1', $encoders, true) => ['-c:v', 'libsvtav1', '-crf', '44', '-preset', '6', '-pix_fmt', 'yuv420p'],
+                in_array('libaom-av1', $encoders, true) => ['-c:v', 'libaom-av1', '-crf', '44', '-b:v', '0', '-cpu-used', '6', '-row-mt', '1', '-pix_fmt', 'yuv420p'],
+                default => null,
+            };
+            if ($av1Args === null) {
+                $reasons[] = 'no AV1 encoder';
+                $av1 = null;
+            } elseif (! $this->runEncode($storage->path($path), $storage->path($av1), $av1Args)) {
+                $reasons[] = 'AV1 encode failed';
+                $av1 = null;
+            }
+        }
+
+        $after = (int) $storage->size($src);
+        Log::info('[VideoTranscoder] loop encoded', compact('path', 'src', 'av1', 'before', 'after', 'reasons'));
+
+        return ['ok' => true, 'src' => $src, 'av1' => $av1, 'reason' => $reasons === [] ? 'encoded' : implode(', ', $reasons), 'before' => $before, 'after' => $after];
+    }
+
+    /** The class-ready H.264 loop made from an upload: "x.mp4" → "x.loop.mp4". */
+    public static function loopPathFor(string $path): string
+    {
+        return preg_replace('/\.[^.\/]+$/', '', $path).'.loop.mp4';
+    }
+
+    /** A loop's AV1 copy: "x.loop.mp4" → "x.loop.av1.mp4". */
+    public static function av1PathFor(string $path): string
+    {
+        return preg_replace('/\.mp4$/', '', $path).'.av1.mp4';
+    }
+
+    public static function isEncodedLoop(string $path): bool
+    {
+        return str_ends_with($path, '.loop.mp4');
+    }
+
+    /**
+     * One loop encode into $out: 720p at most, 12 fps, no audio, fast start. True when $out is a
+     * finished, non-empty file; otherwise nothing is left behind.
+     *
+     * @param  list<string>  $codecArgs
+     */
+    private function runEncode(string $in, string $out, array $codecArgs): bool
+    {
+        $final = $out;
+        $out .= '.part.mp4';   // a half-written file must never look like a finished loop
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-i', $in,
+                '-vf', 'fps=12,scale=-2:min('.self::MAX_HEIGHT.'\,ih)',
+                ...$codecArgs,
+                '-an', '-movflags', '+faststart',
+                $out,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($out) && filesize($out) > 0) {
+                return rename($out, $final);
+            }
+            Log::warning('[VideoTranscoder] loop encode failed', ['out' => $out, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] loop encode failed', ['out' => $out, 'error' => $e->getMessage()]);
+        }
+        @unlink($out);
+
+        return false;
+    }
+
+    /**
+     * The video encoders this ffmpeg was built with. SiteGround's own /usr/local/bin/ffmpeg has
+     * none (checked 2026-11-23: a non-GPL build, decoders only), so the answer decides what runs.
+     *
+     * @return list<string>
+     */
+    public function encoders(): array
+    {
+        try {
+            $process = new Process([$this->ffmpegPath, '-hide_banner', '-encoders']);
+            $process->setTimeout(10);
+            $process->run();
+            preg_match_all('/^\s*V\S*\s+(\S+)/m', $process->getOutput(), $m);
+
+            return $m[1];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
      * The video's first frame as image bytes (JPEG), or null when ffmpeg is missing or fails.
      * A moving scene picture keeps a still for everything that needs one (rail thumb, poster).
      */

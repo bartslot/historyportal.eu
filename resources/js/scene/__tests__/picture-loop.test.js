@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { attachLoop, detachLoop, loopVideo } from '../picture-loop.js'
+import { attachLoop, detachLoop, loopVideo, loopSource } from '../picture-loop.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { hideFlatLayers } from '../stage-handoff.js'
 
@@ -67,5 +67,22 @@ describe('picture loop', () => {
     expect(plane.querySelector('img').getAttribute('src')).toBe('/storage/a.jpg')
     expect(plane.querySelector('video').getAttribute('src')).toBe('/storage/a.mp4')
     scene.destroy()
+  })
+})
+
+describe('AV1 copy', () => {
+  it('fetches the AV1 file where the browser plays AV1', () => {
+    const spy = vi.spyOn(window.HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('probably')
+    expect(loopSource('/storage/a.loop.mp4#av1')).toBe('/storage/a.loop.av1.mp4')
+    expect(loopVideo('/storage/a.loop.mp4#av1').getAttribute('src')).toBe('/storage/a.loop.av1.mp4')
+    spy.mockRestore()
+  })
+
+  it('keeps the H.264 file where it does not, and for a loop without a copy', () => {
+    const spy = vi.spyOn(window.HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('')
+    expect(loopSource('/storage/a.loop.mp4#av1')).toBe('/storage/a.loop.mp4')
+    spy.mockReturnValue('probably')
+    expect(loopSource('/storage/a.mp4')).toBe('/storage/a.mp4')
+    spy.mockRestore()
   })
 })
