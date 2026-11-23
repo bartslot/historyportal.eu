@@ -319,6 +319,12 @@ class Lesson extends Model
         return $this->hasMany(Scene::class)->orderBy('order');
     }
 
+    /** Story to video: character sheets, world shots and clips (App\Services\StoryVideo\StoryVideoRun). */
+    public function storyMedia(): HasMany
+    {
+        return $this->hasMany(StoryMediaItem::class)->orderBy('position');
+    }
+
     /** "≈ N min" on the lesson card and the player's title screen. Eager-load `scenes` when listing. */
     public function estimatedMinutes(): int
     {
