@@ -86,6 +86,9 @@ const polityFilter = (year) => ['all',
  * @param {HTMLElement} el
  * @param {{ qid?: string, year?: number, interactive?: boolean }} opts
  */
+/** Border opacity: the linked territory at full strength, the others faint, or gone with the switch off. */
+const otherBorderOpacity = (showOthers) => ['case', ['boolean', ['feature-state', 'highlight'], false], 1, showOthers ? 0.3 : 0]
+
 export function renderLessonMap (el, opts = {}) {
   const { qid = null, interactive = true, editable = false, onAnnotationsChange = null, onPolityClick = null } = opts
   // `let`: showScene() hands the same map another scene's pins.
@@ -211,11 +214,13 @@ export function renderLessonMap (el, opts = {}) {
           // are just faint 30%-opacity borders so the terrain reads through.
           id: 'boundaries-line', type: 'line', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
-          layout: { 'line-join': 'round', visibility: layerToggles.borders ? 'visible' : 'none' },
+          // Always on: the linked territory's red ring shows whatever the toggle says. The toggle
+          // decides only whether the OTHER territories draw their faint lines (otherBorderOpacity).
+          layout: { 'line-join': 'round' },
           paint: {
             'line-color': ['case', ['boolean', ['feature-state', 'highlight'], false], PALETTE.highlight, GROUND.line],
             'line-width': ['case', ['boolean', ['feature-state', 'highlight'], false], 2.6, 0.6],
-            'line-opacity': ['case', ['boolean', ['feature-state', 'highlight'], false], 1, 0.3],
+            'line-opacity': otherBorderOpacity(layerToggles.borders),
           },
         },
         ...chart.over,
@@ -692,7 +697,14 @@ export function renderLessonMap (el, opts = {}) {
     // way to read, one of which sat in the Gulf of Guinea back when the curated cities had no
     // coordinates.
     for (const l of ['city-dots', 'city-labels', 'hcity-dot', 'hcity-label']) vis(l, layerToggles.cities)
-    for (const l of ['boundaries-line', 'boundaries-fill']) vis(l, layerToggles.borders)
+    // A territory the teacher linked always shows, red ring and wash (Bart 11-23: "Mongol Empire, red
+    // border at the chosen year... there's nothing shown on this map"). The Territory borders switch
+    // is about the atlas's OTHER territories: off, their faint lines go; the linked one stays. The fill
+    // paints only the linked (or hovered) territory, so it stays visible, which also keeps hover-to-link
+    // working with the switch off (a hidden layer cannot be hovered or clicked).
+    vis('boundaries-line', true)
+    vis('boundaries-fill', true)
+    if (map.getLayer('boundaries-line')) { try { map.setPaintProperty('boundaries-line', 'line-opacity', otherBorderOpacity(layerToggles.borders)) } catch (_) {} }
   }
 
   window.__lessonMap = map // debugging + test assertions (same idea as the Time-Map's __tmMap)
