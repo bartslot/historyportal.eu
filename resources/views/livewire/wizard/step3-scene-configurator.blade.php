@@ -489,7 +489,11 @@
             // the seed flow and left the preview blank / with no arrival card).
             if (!inst || !overlayHost || typeof inst.textProjector !== 'function') { layer.setProjector(null); return }
             layer.setProjector(inst.textProjector(overlayHost))
-            inst.map.on('move', () => layer.refreshPositions())
+            // Once per map, like the icons: this runs on every scene load and a listener each time piled up.
+            if (!inst.map.__textMoveBound) {
+                inst.map.__textMoveBound = true
+                inst.map.on('move', () => window.__lessonTextLayer?.refreshPositions())
+            }
         }
 
         // …and so can ICON layers. Same projector, same host box as the layers it positions, so
@@ -721,6 +725,7 @@
                         } catch (_) {}
                     }
                     lastKey = key; lastLeg = legNow; lastVoyageDefStr = defStr; lastOverview = wantsOverview
+                    wireTextProjector()   // a text pinned on this voyage follows its map
                     showMapArt(p)   // keep the clipart layers in sync (a poll/leg switch may add/move one)
                     return
                 }
@@ -806,6 +811,9 @@
                 } else {
                     console.error('[wizard] voyage/gallery renderer unavailable — is the module loaded?')
                 }
+                // Pinned texts follow the voyage map too (Bart 11-23: "it doesn't stick to the map").
+                // The voyage mounts after the destroy() + wire above, so wire the text layer to it now.
+                wireTextProjector()
                 // Clipart layers ride ABOVE the voyage map (never on a standalone gallery scene).
                 if (p.kind === 'voyage') showMapArt(p); else hideMapArt()
                 return
