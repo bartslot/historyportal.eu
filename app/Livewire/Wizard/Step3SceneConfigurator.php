@@ -3811,8 +3811,8 @@ class Step3SceneConfigurator extends Component
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         if ($this->showsAPicture($scene)) {
-            // A layer sits on top of something, so a drawing on white paper loses its paper and one
-            // made on the green screen loses its green.
+            // A layer sits on top of something, so it loses the green screen's range, or else the
+            // white paper of a drawing.
             // Only as a layer: a background keeps its white.
             $this->cutOutBackground($path);
 
@@ -3850,10 +3850,10 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * Make the background around an uploaded layer picture transparent, in place. A picture made on
-     * the green screen loses every green in the screen's range, also between arm and body (GreenKey,
-     * Bart 2026-11-22); one on paper loses the white connected to the edge (WhiteCutout). A photo or
-     * painting is left as it is.
+     * Make the background around an uploaded layer picture transparent, in place. The green screen's
+     * range of greens becomes the alpha channel wherever it is (GreenKey, Bart 2026-11-23: "we try not
+     * to produce anything in this range"); a picture with none of it loses the white paper connected
+     * to its edge (WhiteCutout). A photo or painting with neither is left as it is.
      */
     private function cutOutBackground(string $path): void
     {

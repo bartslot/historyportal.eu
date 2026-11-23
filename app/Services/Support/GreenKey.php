@@ -9,24 +9,32 @@ use GdImage;
 /**
  * The green screen out: everything transparent pictures are made on (solid #00FF00, CLAUDE.md, Bart 11-05) becomes
  * clear, and not only the exact key. Bart, 2026-11-22: "convert the green to just transparent pixels ... the range of
- * the colors automatically transparent". A screen is never one colour: ChatGPT paints it a little lighter here, a
- * little bluer there, and every hair and arm is blended into it.
+ * the colors automatically transparent", and 11-23: "green is in almost all the images we upload. it's a range of
+ * colors. we try not to produce anything in this range, so it's safe to say that this range can be converted to the
+ * alpha channel".
  *
- * So the key is a range, measured as how much greener a pixel is than its red and blue: past KEY_EDGE it starts going
- * see-through, from KEY_FULL on it is all background. On the way it loses its green, and a pixel that is part figure,
- * part screen takes its colour from the clean figure pixels next to it, because taking the green off alone leaves olive
- * and yellow halos. Painted grass and olive cloth lead green by far less than KEY_EDGE, so they stay.
- *
- * The key runs over the whole picture, not only from the edge: the screen between an arm and the body is screen too.
- * It only runs when the picture sits on a green screen, so a painting with a green field is never touched.
+ * So the range is the alpha channel, in every uploaded layer picture, wherever it is: at the edge, between an arm and
+ * the body, in a pocket of hair. Measured as how much greener a pixel is than its red and blue: past KEY_EDGE it starts
+ * going see-through, from KEY_FULL on it is clear. On the way it loses its green, and a pixel that is part figure, part
+ * screen takes its colour from the clean figure pixels next to it, because taking the green off alone leaves olive and
+ * yellow halos. Olive and sap greens (RGB 110,130,60 leads by 20) are below KEY_EDGE and stay.
  */
 final class GreenKey
 {
     /** This much greener than red and blue: the edge of the key begins. */
     public const KEY_EDGE = 40;
 
-    /** And from here it is all background. */
+    /**
+     * And from here it is clear. A paler or bluer screen leads by less than #00FF00 (RGB 20,220,90 by 130), so when the
+     * picture's own screen leads by less, the clear point moves down with it (SCREEN_MARGIN of its lead).
+     */
     public const KEY_FULL = 140;
+
+    /** A pixel this much greener than red and blue is the screen itself. */
+    private const SCREEN = 100;
+
+    /** The key is clear from this share of the screen's own lead on: the screen's shading is screen too. */
+    private const SCREEN_MARGIN = 0.85;
 
     /** Green leading by this much, too little to key: figure mixed with the screen. */
     private const TINT = 6;
@@ -37,21 +45,9 @@ final class GreenKey
     /** GD alpha (0 opaque .. 127 clear) below this counts as painted. */
     private const SOLID = 64;
 
-    /** An edge pixel this much greener than red and blue is the screen (#00FF00 leads by 255, grass by 30 to 80) ... */
-    private const SCREEN = 100;
-
-    /** ... when it is also this bright: bright painted grass, RGB(60, 190, 50), leads by 130 but is darker. */
-    private const SCREEN_GREEN = 200;
-
-    /** Share of the edge that must be screen before the picture counts as made on one. */
-    private const SCREEN_SHARE = 0.5;
-
-    /** The key is all background from this share of the screen's own lead on: the screen's shading is screen too. */
-    private const SCREEN_MARGIN = 0.85;
-
     /**
-     * The picture with its green screen keyed out, as a GD image with alpha on; null when it does not sit on a green
-     * screen (or already has transparency), so the caller stores it as it came.
+     * The picture with the green range keyed out, as a GD image with alpha on; null when it has no pixel in the range,
+     * so the caller stores it as it came (or tries the white paper cut-out).
      */
     public static function apply(string $bytes): ?GdImage
     {
@@ -60,43 +56,57 @@ final class GreenKey
             return null;
         }
         imagepalettetotruecolor($img);
-        $screen = imagesx($img) < 3 || imagesy($img) < 3 || self::hasTransparency($img) ? null : self::screenSpill($img);
-        if ($screen === null) {
+        if (! self::hasGreen($img)) {
             imagedestroy($img);
 
             return null;
         }
         imagealphablending($img, false);
         imagesavealpha($img, true);
-        // a paler or bluer screen leads green by less than #00FF00 does: all of it still goes
-        self::key($img, min(self::KEY_FULL, (int) round($screen * self::SCREEN_MARGIN)));
+        $screen = self::screenLead($img);
+        self::key($img, $screen === null ? self::KEY_FULL : min(self::KEY_FULL, (int) round($screen * self::SCREEN_MARGIN)));
 
         return $img;
     }
 
-    /** Is most of the picture's edge green screen? */
-    public static function sitsOnGreen(GdImage $img): bool
+    /** How much the picture's screen leads green by (median over its screen pixels, sampled); null: no screen in it. */
+    private static function screenLead(GdImage $img): ?int
     {
-        return self::screenSpill($img) !== null;
-    }
-
-    /** How much the screen leads green by (the median over the edge pixels that are screen); null: not on a screen. */
-    private static function screenSpill(GdImage $img): ?int
-    {
-        $screen = [];
-        $total = 0;
-        foreach (self::edgeSample($img) as $c) {
-            $total++;
-            if (self::spill($c) >= self::SCREEN && (($c >> 8) & 0xFF) >= self::SCREEN_GREEN) {
-                $screen[] = self::spill($c);
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $step = max(1, intdiv(max($w, $h), 300));
+        $leads = [];
+        for ($y = 0; $y < $h; $y += $step) {
+            for ($x = 0; $x < $w; $x += $step) {
+                $c = imagecolorat($img, $x, $y);
+                if ((($c >> 24) & 0x7F) < 127 && self::spill($c) >= self::SCREEN) {
+                    $leads[] = self::spill($c);
+                }
             }
         }
-        if ($total === 0 || count($screen) / $total <= self::SCREEN_SHARE) {
+        if ($leads === []) {
             return null;
         }
-        sort($screen);
+        sort($leads);
 
-        return $screen[intdiv(count($screen), 2)];
+        return $leads[intdiv(count($leads), 2)];
+    }
+
+    /** Does any visible pixel fall in the range? */
+    public static function hasGreen(GdImage $img): bool
+    {
+        $w = imagesx($img);
+        $h = imagesy($img);
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $c = imagecolorat($img, $x, $y);
+                if ((($c >> 24) & 0x7F) < 127 && self::spill($c) > self::KEY_EDGE) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -130,33 +140,6 @@ final class GreenKey
     private static function spill(int $c): int
     {
         return (($c >> 8) & 0xFF) - max(($c >> 16) & 0xFF, $c & 0xFF);
-    }
-
-    /** Transparent already (a PNG cut-out): leave it as the teacher made it. */
-    private static function hasTransparency(GdImage $img): bool
-    {
-        foreach (self::edgeSample($img) as $c) {
-            if (($c >> 24) & 0x7F) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** @return iterable<int> about 40 colours along each side of the picture */
-    private static function edgeSample(GdImage $img): iterable
-    {
-        $w = imagesx($img);
-        $h = imagesy($img);
-        for ($x = 0; $x < $w; $x += max(1, intdiv($w, 40))) {
-            yield imagecolorat($img, $x, 0);
-            yield imagecolorat($img, $x, $h - 1);
-        }
-        for ($y = 0; $y < $h; $y += max(1, intdiv($h, 40))) {
-            yield imagecolorat($img, 0, $y);
-            yield imagecolorat($img, $w - 1, $y);
-        }
     }
 
     /**

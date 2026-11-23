@@ -10,8 +10,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A picture made on the green screen loses the whole range of the screen's greens, not only #00FF00 (Bart,
- * 2026-11-22), also between arm and body, and keeps its own muted greens. A picture not made on a screen is untouched.
+ * The green range is the alpha channel in every uploaded picture (Bart, 2026-11-22/23): every shade of the screen goes,
+ * wherever it is, and olive paint stays. A picture with no green in the range is untouched.
  */
 class GreenKeyTest extends TestCase
 {
@@ -62,7 +62,8 @@ class GreenKeyTest extends TestCase
             'pure #00FF00' => [[0, 255, 0]],
             'lighter screen' => [[60, 235, 70]],
             'bluer screen' => [[20, 220, 90]],
-            'darker screen' => [[10, 205, 30]],
+            'darker screen' => [[10, 190, 30]],
+            'bright painted grass, in the range too' => [[60, 190, 50]],
         ];
     }
 
@@ -89,31 +90,41 @@ class GreenKeyTest extends TestCase
         $this->assertLessThanOrEqual(0, $this->spillAt($out, 110, 100), 'no green halo');
     }
 
-    /** @return array<string, array{0: array{int,int,int}}> */
-    public static function grasses(): array
-    {
-        return [
-            'muted grass' => [[90, 150, 60]],
-            'bright painted grass' => [[60, 190, 50]],
-        ];
-    }
-
-    #[DataProvider('grasses')]
-    public function test_a_painting_with_a_green_field_is_left_alone(array $grass): void
+    public function test_green_inside_a_picture_not_made_on_a_screen_goes_too(): void
     {
         $img = imagecreatetruecolor(100, 100);
-        imagefill($img, 0, 0, imagecolorallocate($img, ...$grass));   // grass all the way to the edge
-        imagefilledrectangle($img, 0, 0, 99, 30, imagecolorallocate($img, 150, 190, 230));   // sky
+        imagefill($img, 0, 0, imagecolorallocate($img, 150, 120, 90));                      // a brown painting to the edge
+        imagefilledrectangle($img, 40, 40, 49, 49, imagecolorallocate($img, 30, 230, 40));   // a pocket of screen
 
-        $this->assertNull(GreenKey::apply($this->png($img)));
+        $out = GreenKey::apply($this->png($img));
+
+        $this->assertNotNull($out);
+        $this->assertSame(127, $this->alphaAt($out, 45, 45));
+        $this->assertSame(0, $this->alphaAt($out, 10, 10));
     }
 
-    public function test_a_picture_that_is_already_a_cut_out_is_left_alone(): void
+    public function test_a_cut_out_keeps_its_clear_parts_and_loses_its_green_fringe(): void
     {
         $img = imagecreatetruecolor(100, 100);
         imagealphablending($img, false);
         imagesavealpha($img, true);
-        imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 255, 0, 127));
+        imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 0, 0, 127));
+        imagefilledrectangle($img, 30, 30, 69, 69, imagecolorallocatealpha($img, 120, 80, 50, 0));
+        imagefilledrectangle($img, 29, 30, 29, 69, imagecolorallocatealpha($img, 20, 200, 30, 0));   // a green fringe
+
+        $out = GreenKey::apply($this->png($img));
+
+        $this->assertNotNull($out);
+        $this->assertSame(127, $this->alphaAt($out, 5, 5));
+        $this->assertSame(127, $this->alphaAt($out, 29, 50));
+        $this->assertSame(0, $this->alphaAt($out, 50, 50));
+    }
+
+    public function test_a_picture_with_no_green_in_the_range_is_left_alone(): void
+    {
+        $img = imagecreatetruecolor(100, 100);
+        imagefill($img, 0, 0, imagecolorallocate($img, 150, 190, 230));                        // sky
+        imagefilledrectangle($img, 0, 60, 99, 99, imagecolorallocate($img, 110, 130, 60));      // olive field
 
         $this->assertNull(GreenKey::apply($this->png($img)));
     }

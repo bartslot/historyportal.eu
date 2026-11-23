@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wandSelect, wandSeed, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS, screenColour } from '../quick-mask.js';
+import { wandSelect, wandSeed, floodSelect, cut, restore, toleranceFromDrag, refineEdges, colorSelect, MAX_FEATHER, superpixels, brushSelect, opaqueBox, whiteHoles, defringe, fadeBottom, cleanUp, CLEAN_DEFAULTS, greenKey } from '../quick-mask.js';
 
 // 7×3: white | ink column | white, with a soft grey pixel next to the ink on the left.
 //   W W g K W W W
@@ -159,29 +159,30 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
     });
 
     // Bart 2026-11-10: green screen left between the curls of a figure made on #00FF00 (white holes only took white)
-    it('takes out green-screen pockets of any size, and leaves painted grass alone', () => {
+    it('takes out green-screen pockets of any size, and leaves olive paint alone', () => {
         // 20x10 hair; a 3x2 pocket of key green (as compressed: not exactly #00FF00); a strip of painted grass
-        const d = px(20, 10, (x, y) => (x >= 4 && x < 7 && y >= 4 && y < 6 ? [18, 236, 30, 255] : y === 9 ? [60, 190, 50, 255] : [150, 100, 60, 255]));
+        const d = px(20, 10, (x, y) => (x >= 4 && x < 7 && y >= 4 && y < 6 ? [18, 236, 30, 255] : y === 9 ? [110, 130, 60, 255] : [150, 100, 60, 255]));
         const holes = cleanUp(d, 20, 10, { white: 50 });
         const a = alpha(holes);
         expect(a[4 * 20 + 5]).toBe(0);
         expect(a[5 * 20 + 6]).toBe(0);
-        expect(a[9 * 20 + 10], 'grass stays').toBe(255);
+        expect(a[9 * 20 + 10], 'olive stays').toBe(255);
         expect(a[0], 'hair stays').toBe(255);
     });
 
-    // Bart 2026-11-22: "the range of the colors automatically transparent": a screen painted paler or bluer than #00FF00
-    it('takes out a paler or bluer screen than #00FF00, read off the edge, and leaves the figure', () => {
-        for (const screen of [[20, 220, 90, 255], [60, 235, 70, 255]]) {
-            // 20x10 on the screen, a brown figure in columns 6-13 with a pocket of screen at (9..10, 4..5)
-            const d = px(20, 10, (x, y) => (x >= 6 && x < 14 && !(x >= 9 && x < 11 && y >= 4 && y < 6) ? [150, 100, 60, 255] : screen));
-            expect(screenColour(d, 20, 10)).toEqual(screen.slice(0, 3));
+    // Bart 2026-11-23: "it's a range of colors. we try not to produce anything in this range, so it's safe to say
+    // that this range can be converted to the alpha channel"
+    it('makes every shade of the green screen clear, paler or bluer than #00FF00, and keeps olive and the figure', () => {
+        for (const screen of [[0, 255, 0, 255], [20, 220, 90, 255], [60, 235, 70, 255], [60, 190, 50, 255]]) {
+            // 20x10 on the screen, a brown figure in columns 6-13 with a pocket of screen and a strip of olive in it
+            const d = px(20, 10, (x, y) => (x >= 6 && x < 14 && !(x >= 9 && x < 11 && y >= 4 && y < 6) ? (y === 8 ? [110, 130, 60, 255] : [150, 100, 60, 255]) : screen));
             const a = alpha(cleanUp(d, 20, 10, { white: 50 }));
             expect(a[0], 'screen at the edge').toBe(0);
             expect(a[4 * 20 + 9], 'screen in the pocket').toBe(0);
             expect(a[2 * 20 + 7], 'the figure').toBe(255);
+            expect(a[8 * 20 + 7], 'olive paint').toBe(255);
         }
-        expect(screenColour(px(4, 4, () => [60, 190, 50, 255]), 4, 4), 'grass to the edge is no screen').toBeNull();
+        expect(greenKey(px(4, 1, () => [0, 255, 0, 255]), 4, 1, 0).some(Boolean), 'strength 0 keys nothing').toBe(false);
     });
 
     it('un-blends green from a pocket edge on a picture made on green, not from grass on one that was not', () => {
@@ -190,8 +191,8 @@ describe('clean-up: white holes, white edges, a soft bottom', () => {
         const out = cleanUp(d, 8, 1, { white: 50, fringe: 3 });
         expect(out[2 * 4 + 3], 'half green: half there').toBeLessThan(180);
         expect(out[2 * 4 + 1], 'its green taken out').toBeLessThan(140);
-        const grass = px(8, 1, (x) => (x === 0 ? [0, 0, 0, 0] : [60, 190, 50, 255]));
-        expect(alpha(cleanUp(grass, 8, 1, { white: 50, fringe: 3 })), 'grass at the edge of a picture never made on green').toEqual([0, 255, 255, 255, 255, 255, 255, 255]);
+        const grass = px(8, 1, (x) => (x === 0 ? [0, 0, 0, 0] : [110, 130, 60, 255]));   // olive: below the key's range
+        expect(alpha(cleanUp(grass, 8, 1, { white: 50, fringe: 3 })), 'olive at the edge of a picture never made on green').toEqual([0, 255, 255, 255, 255, 255, 255, 255]);
     });
 
     it('leaves a single white speck in the texture alone', () => {
