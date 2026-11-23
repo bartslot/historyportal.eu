@@ -73,6 +73,9 @@ trait GuardsLessonClaims
             return;
         }
 
+        // Access is checked at mount only; an editor the owner removed while their tab was open stops here.
+        abort_unless($user->canEdit($lesson), 403);
+
         if (in_array($methodName, $this->claimOwnerOnlyMethods(), true)) {
             abort_unless($user->canManage($lesson), 403);
         }
@@ -96,6 +99,9 @@ trait GuardsLessonClaims
 
         $lesson = $this->claimLesson();
         $user = auth()->user();
+        if ($lesson !== null && $user !== null) {
+            abort_unless($user->canEdit($lesson), 403);
+        }
         $target = $this->claimTarget();
         if ($lesson !== null && $user !== null && $target !== null) {
             app(LessonCollaboration::class)->authorizeEdit($lesson, $user, $target);

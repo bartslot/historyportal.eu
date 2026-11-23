@@ -239,7 +239,7 @@ class Step3SceneConfigurator extends Component
     protected function claimFreeMethods(): array
     {
         return [
-            '$refresh', 'poll', 'pollWorldStatus', 'pollRestyle', 'sparkStatus', 'sparkPending',
+            '$refresh', 'startEditStep', 'poll', 'pollWorldStatus', 'pollRestyle', 'sparkStatus', 'sparkPending',
             'selectScene', 'loadStageScene', 'selectTitle', 'refreshTitleFrame', 'showProblemScene', 'openProblems',
             'selectInspectorTarget', 'clearActiveText', 'setActiveLayer', 'clearActiveLayer', 'clearActiveBalloon', 'selectPanel',
             'scenesData', 'territoryResults', 'cityResults', 'paintingResults', 'pickerEra', 'pickerShelves',

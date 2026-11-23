@@ -279,4 +279,32 @@ class LessonCollaborationTest extends TestCase
         $this->actingAs($stranger)->post('/broadcasting/auth', ['socket_id' => '1.2', 'channel_name' => $channel])
             ->assertForbidden();
     }
+
+    public function test_an_editor_removed_while_the_tab_is_open_can_no_longer_edit(): void
+    {
+        $this->addJoey();
+        $editor = $this->editorFor($this->joey, $this->one);
+        $this->lesson->editors()->detach($this->joey->id);
+
+        $editor->call('setSceneBackgroundColor', '#112233')->assertForbidden();
+        $this->assertNotSame('#112233', $this->one->fresh()->background_color);
+    }
+
+    public function test_a_viewer_of_a_held_scene_can_still_press_and_navigate(): void
+    {
+        $this->addJoey();
+        app(LessonCollaboration::class)->ping($this->lesson, $this->owner, 'scene:'.$this->one->id);
+
+        // edit-steps.js marks every press with startEditStep, before the click's own call.
+        $this->editorFor($this->joey, $this->one)->call('startEditStep')->call('selectScene', $this->two->id)->assertOk();
+    }
+
+    public function test_an_added_editor_can_preview_an_unpublished_lesson(): void
+    {
+        $this->lesson->update(['lesson_code' => 'COLLAB1', 'status' => LessonStatus::Configuring]);
+        $this->actingAs($this->joey)->get(route('lesson.play', ['lessonCode' => 'COLLAB1']))->assertNotFound();
+
+        $this->addJoey();
+        $this->actingAs($this->joey)->get(route('lesson.play', ['lessonCode' => 'COLLAB1']))->assertOk();
+    }
 }

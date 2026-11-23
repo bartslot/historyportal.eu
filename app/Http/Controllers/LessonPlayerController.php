@@ -65,6 +65,14 @@ class LessonPlayerController extends Controller
                 ->first();
         }
 
+        // ...and so can the editors the owner added (lesson_editors): the editor's title preview loads here.
+        if (! $lesson && auth()->check()) {
+            $candidate = Lesson::where('lesson_code', $code)
+                ->with(['strategyGame', 'narrator', 'source', 'scenes'])
+                ->first();
+            $lesson = $candidate && auth()->user()->canEdit($candidate) ? $candidate : null;
+        }
+
         if (! $lesson) {
             abort(404, 'Lesson not found or not yet published.');
         }
