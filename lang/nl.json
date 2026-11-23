@@ -3083,5 +3083,8 @@
     "Area": "Vlak",
     "Area colour": "Kleur vlak",
     "Etched": "Geëtst",
-    "its border at the chosen year": "de grens in het gekozen jaar"
+    "its border at the chosen year": "de grens in het gekozen jaar",
+    "Clickable on the map": "Klikbaar op de kaart",
+    "The class can open this stop.": "De klas kan deze stop openen.",
+    "The class sees the name only.": "De klas ziet alleen de naam."
 }

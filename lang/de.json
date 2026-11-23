@@ -3041,5 +3041,8 @@
     "Area": "Fläche",
     "Area colour": "Flächenfarbe",
     "Etched": "Radiert",
-    "its border at the chosen year": "seine Grenze im gewählten Jahr"
+    "its border at the chosen year": "seine Grenze im gewählten Jahr",
+    "Clickable on the map": "Auf der Karte anklickbar",
+    "The class can open this stop.": "Die Klasse kann diesen Halt öffnen.",
+    "The class sees the name only.": "Die Klasse sieht nur den Namen."
 }

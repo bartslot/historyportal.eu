@@ -3083,5 +3083,8 @@
     "Area": "Área",
     "Area colour": "Color del área",
     "Etched": "Grabado",
-    "its border at the chosen year": "su frontera en el año elegido"
+    "its border at the chosen year": "su frontera en el año elegido",
+    "Clickable on the map": "Clicable en el mapa",
+    "The class can open this stop.": "La clase puede abrir esta parada.",
+    "The class sees the name only.": "La clase solo ve el nombre."
 }

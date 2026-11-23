@@ -12,7 +12,7 @@ import maplibregl from './maplibre.js'
 import { mapLocale } from './map-locale.js'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { renderAnnotations, focusLabelLayout } from './map-annotations.js'
-import { placeLabelLayout, placeLabelPaint } from './map-place-label.js'
+import { stopLabelLayout, stopLabelPaint, ensureStopDot, STOP_LABEL } from './map-place-label.js'
 import { mapTextProjector } from './map-text-projector.js'
 import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls, riverPaint, regionLayers, routeLayer } from './map-chart.js'
 import { mapGone } from './map-alive.js'
@@ -30,7 +30,8 @@ import { createTerritoryInk } from './map/territory-ink.js'
 // The fontstack is built locally by scripts/build-glyphs.mjs and served from /fonts.
 const MODERN_FONT = ['inter']
 // Every label layer that gets the hand: the atlas's own labels plus the teacher's.
-const LABEL_LAYERS = ['city-labels', 'hcity-label', 'lesson-labels', 'focus-label']
+// lesson-labels is not here: a voyage stop name keeps its own hand-lettered ink (map-place-label.js STOP_LABEL).
+const LABEL_LAYERS = ['city-labels', 'hcity-label', 'focus-label']
 
 /**
  * The ground. There is one, and it is the watercolour sea chart (map-chart.js).
@@ -268,15 +269,18 @@ export function renderLessonMap (el, opts = {}) {
           // nowhere in particular.
           id: 'lesson-labels', type: 'symbol', source: 'lesson-labels',
           layout: {
-            ...placeLabelLayout({ font: ['inter'], textField: ['get', 'name'] }),
+            // Hand-lettered, beside an inked dot on the exact spot (Bart 2026-11-23).
+            ...stopLabelLayout({ textField: ['get', 'name'] }),
             'text-allow-overlap': true,
             'text-ignore-placement': true,
           },
           paint: {
-            ...placeLabelPaint(),
-            // Hidden until "arrived at" (feature-state shown), then fades in.
+            ...stopLabelPaint(),
+            // Hidden until "arrived at" (feature-state shown), then fades in, the dot with it.
             'text-opacity': revealLabels ? 1 : ['case', ['boolean', ['feature-state', 'shown'], false], 1, 0],
             'text-opacity-transition': { duration: 650, delay: 0 },
+            'icon-opacity': revealLabels ? 1 : ['case', ['boolean', ['feature-state', 'shown'], false], 1, 0],
+            'icon-opacity-transition': { duration: 650, delay: 0 },
           },
         },
       ],
@@ -296,6 +300,9 @@ export function renderLessonMap (el, opts = {}) {
   if (interactive) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
   }
+
+  // The voyage stop dot (lesson-labels' icon) is drawn on demand, so it also returns after a style reload.
+  map.on('styleimagemissing', (e) => { if (e && e.id === STOP_LABEL.dot) ensureStopDot(map) })
 
   // Highlight + fit to the target polity once tiles for this area have loaded.
   // `activeQid` is mutable so a territory can be re-linked in place (setPolity) without
@@ -677,8 +684,6 @@ export function renderLessonMap (el, opts = {}) {
     const paint = (layer, prop, val) => { if (map.getLayer(layer)) { try { map.setPaintProperty(layer, prop, val) } catch (_) {} } }
     paint('hcity-label', 'text-color', GROUND.text)
     paint('hcity-label', 'text-halo-color', GROUND.halo)
-    paint('lesson-labels', 'text-color', GROUND.text)
-    paint('lesson-labels', 'text-halo-color', GROUND.halo)
     const font = (layer) => { if (map.getLayer(layer)) { try { map.setLayoutProperty(layer, 'text-font', MODERN_FONT) } catch (_) {} } }
     LABEL_LAYERS.forEach(font)
     // A focus label writes the PLACE and its note in separate sections of one text-field, so the
