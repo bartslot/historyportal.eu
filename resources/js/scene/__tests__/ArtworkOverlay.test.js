@@ -470,7 +470,39 @@ describe('keeping the canvas steady while a teacher edits', () => {
 
     overlay.syncProps([layer({ width: null })])
 
-    expect(node.style.width).not.toBe('30%')
+    expect(node.style.width).toBe('max-content')
+  })
+
+  /**
+   * THE SQUEEZE. A scale or height repaint on a layer with no width used to clear the node's
+   * inline width to '', which is width:auto: on an absolutely placed box that is shrink-to-fit,
+   * capped by the room left between its left edge and the stage's right edge. The picture's
+   * max-width:100% followed the box down while its height held, so a figure standing on the
+   * right of the stage came back from a save squeezed sideways (lesson 149, scene 5767).
+   */
+  it('keeps a layer with no width on max-content when its scale or height is repainted', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ x: 90 })])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+    const img = node.querySelector('img')
+
+    overlay.setLayerProp(1, 'scale', 1.5)
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.width).toBe('auto')
+    expect(img.style.maxWidth).toBe('none')
+
+    overlay.syncProps([layer({ x: 90, height: 50, scale: 1.5 })])
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.maxWidth).toBe('none')
+  })
+
+  it('never lets the picture of a layer with no width be capped by its box', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(el.querySelector('[data-layer-id="art_1"] img').style.maxWidth).toBe('none')
   })
 })
 

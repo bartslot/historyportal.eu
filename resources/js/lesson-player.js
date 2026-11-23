@@ -2051,6 +2051,7 @@ Alpine.data('lessonGame', (lesson) => ({
           // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
           showCities: cfg.show_cities === true,
           showBorders: cfg.show_borders === true,
+          territory: cfg.territory || null,     // the linked territory's look (map/territory-look.js)
         })
 
         // Map-pinned text labels follow the map as the student pans/zooms.
@@ -2216,6 +2217,9 @@ Alpine.data('lessonGame', (lesson) => ({
         _voyageInstance = null
       }
       if (!_voyageInstance) this._buildVoyageTour(stage, scene)
+      // Texts and pictures pinned on this voyage follow its map as it flies.
+      this._pinTextsToMap()
+      this._pinArtToMap()
       // The itinerary scene: the whole voyage on one screen, no leg sailed. Same branch the editor
       // takes (see step3-scene-configurator) — without it the player sailed leg 0 instead, so a
       // scene the teacher had set to Overview arrived as just another waypoint.
@@ -2571,6 +2575,36 @@ Alpine.data('lessonGame', (lesson) => ({
       this._advanceSceneNow(index)
     },
 
+    /**
+     * The map a pinned text or picture follows: the map block's, or a voyage's (Bart 11-23, a pinned
+     * picture on a voyage scene did not stick to the map). Null when no map is on the stage.
+     */
+    _pinMap () {
+      const m = _mapInstance || _voyageInstance
+      return m && typeof m.textProjector === 'function' && m.map ? m : null
+    },
+
+    _pinTextsToMap () {
+      const m = this._pinMap()
+      const host = document.getElementById('lesson-text-overlay')
+      if (!m || !host || !this._textLayer) return
+      this._textLayer.setProjector(m.textProjector(host))
+      if (!m.map.__textMoveBound) {
+        m.map.__textMoveBound = true
+        m.map.on('move', () => this._textLayer?.refreshPositions())
+      }
+    },
+
+    _pinArtToMap () {
+      const m = this._pinMap()
+      if (!m || !this._artLayer?.host) return
+      this._artLayer.setProjector(m.textProjector(this._artLayer.host))
+      if (!m.map.__artMoveBound) {
+        m.map.__artMoveBound = true
+        m.map.on('move', () => this._artLayer?.refreshPositions())
+      }
+    },
+
     async _renderSceneTexts (scene) {
       const host = document.getElementById('lesson-text-overlay')
       if (!host) return
@@ -2580,10 +2614,7 @@ Alpine.data('lessonGame', (lesson) => ({
       this._textLayer = this._textLayer || new TextOverlayLayer(host, { editable: false })
       this._textLayer.setTexts(texts)
       // The map block may already be up (this import is async) — pin labels to it now.
-      if (_mapInstance) {
-        this._textLayer.setProjector(_mapInstance.textProjector(host))
-        _mapInstance.map.on('move', () => this._textLayer?.refreshPositions())
-      }
+      this._pinTextsToMap()
     },
 
     // Balloons sit in the plate's box, the same box as the figures, so a mouth given in % of it
@@ -2650,13 +2681,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // Layers pinned to a place need the map before they are seeded, or the first paint puts
       // them at whatever x/y the editor's camera happened to leave behind. Same projector, same
       // host box, as the text labels above.
-      if (_mapInstance && typeof _mapInstance.textProjector === 'function') {
-        this._artLayer.setProjector(_mapInstance.textProjector(host))
-        if (!_mapInstance.map.__artMoveBound) {
-          _mapInstance.map.__artMoveBound = true
-          _mapInstance.map.on('move', () => this._artLayer?.refreshPositions())
-        }
-      }
+      this._pinArtToMap()
       // Blend-into-scene samples its colours here; occlusion reads the plate's depth map.
       this._artLayer.setBackdrop(cover?.url, (scene.config || {}).backdrop_depth)
       this._artLayer.setLayers(layers)
@@ -2689,7 +2714,7 @@ Alpine.data('lessonGame', (lesson) => ({
         const t = clock()
         const frame = frameAt(timeline, t)
         if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map })
+        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map, territory: _mapInstance })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)
