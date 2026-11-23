@@ -144,7 +144,9 @@ class GenerateStoryMedia implements ShouldQueue
         // A new name per attempt: the old file may still be on screen (or approved elsewhere) while this one lands.
         $path = "{$dir}/{$item->key}-".now()->format('YmdHis').".{$ext}";
         Storage::disk('public')->put($path, $bytes);
-        if ($item->path !== null && $item->path !== $path && $item->status !== StoryMediaStatus::Approved) {
+        // The previous attempt goes, unless a scene still shows it (a remade world shot stays the scene's picture
+        // until the new one is approved).
+        if ($item->path !== null && $item->path !== $path && ! \App\Models\Scene::where('image_path', $item->path)->exists()) {
             Storage::disk('public')->delete($item->path);
         }
 

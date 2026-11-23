@@ -202,6 +202,24 @@ class StoryVideoPipelineTest extends TestCase
         StoryVideoRun::for($this->lesson)->start(StoryMediaKind::Clip);
     }
 
+    public function test_replanning_a_busy_item_keeps_its_old_input_so_the_change_is_still_seen_later(): void
+    {
+        (new StoryVideoPlanner)->plan($this->lesson);
+        $sheet = $this->lesson->storyMedia()->where('kind', 'character_sheet')->first();
+        $sheet->update(['status' => StoryMediaStatus::Generating, 'generation_id' => 'g']);
+        $outline = $this->lesson->outline;
+        $outline['cast'][0]['colour'] = 'green';
+        $this->lesson->update(['outline' => $outline]);
+
+        (new StoryVideoPlanner)->plan($this->lesson);
+        $this->assertSame('red', $sheet->fresh()->input['colour']);
+
+        $sheet->update(['status' => StoryMediaStatus::Ready, 'generation_id' => null]);
+        (new StoryVideoPlanner)->plan($this->lesson);
+        $this->assertSame('green', $sheet->fresh()->input['colour']);
+        $this->assertSame(StoryMediaStatus::Planned, $sheet->fresh()->status);
+    }
+
     public function test_the_video_panel_reads_the_script_and_starts_the_first_step(): void
     {
         Queue::fake();
