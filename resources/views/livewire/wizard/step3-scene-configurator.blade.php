@@ -489,7 +489,11 @@
             // the seed flow and left the preview blank / with no arrival card).
             if (!inst || !overlayHost || typeof inst.textProjector !== 'function') { layer.setProjector(null); return }
             layer.setProjector(inst.textProjector(overlayHost))
-            inst.map.on('move', () => layer.refreshPositions())
+            // Once per map, like the icons: this runs on every scene load and a listener each time piled up.
+            if (!inst.map.__textMoveBound) {
+                inst.map.__textMoveBound = true
+                inst.map.on('move', () => window.__lessonTextLayer?.refreshPositions())
+            }
         }
 
         // …and so can ICON layers. Same projector, same host box as the layers it positions, so
@@ -721,6 +725,7 @@
                         } catch (_) {}
                     }
                     lastKey = key; lastLeg = legNow; lastVoyageDefStr = defStr; lastOverview = wantsOverview
+                    wireTextProjector()   // a text pinned on this voyage follows its map
                     showMapArt(p)   // keep the clipart layers in sync (a poll/leg switch may add/move one)
                     return
                 }
@@ -806,6 +811,9 @@
                 } else {
                     console.error('[wizard] voyage/gallery renderer unavailable — is the module loaded?')
                 }
+                // Pinned texts follow the voyage map too (Bart 11-23: "it doesn't stick to the map").
+                // The voyage mounts after the destroy() + wire above, so wire the text layer to it now.
+                wireTextProjector()
                 // Clipart layers ride ABOVE the voyage map (never on a standalone gallery scene).
                 if (p.kind === 'voyage') showMapArt(p); else hideMapArt()
                 return
@@ -857,6 +865,7 @@
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        territory: cfg.territory || null,  // the linked territory's look (map/territory-look.js)
                         timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
@@ -880,6 +889,7 @@
                     projection: cfg.projection || 'mercator',
                     showCities: cfg.show_cities === true,
                     showBorders: cfg.show_borders === true,
+                    territory: cfg.territory || null,
                     interactive: true,
                     annotations: cfg.annotations || [],
                     timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
@@ -907,6 +917,8 @@
             if (!inst) return
             inst.setLayerToggles(key === 'show_cities' ? { cities: !!value } : { borders: !!value })
         })
+        // The territory's look (border, fill) from the inspector, applied in place like the switches.
+        window.Livewire.on('territoryLookChanged', ({ look }) => { if (inst?.setTerritoryLook) inst.setTerritoryLook(look) })
 
 
         // Focus-city rename/remove saved server-side → push fresh annotations so marker labels update live.
@@ -1978,7 +1990,9 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    // A map scene's bottom object IS the map: the Map block (Bart 11-23), as the timeline names it.
+                    if (objKind === 'map') items.push({ id: '__bg__', icon: 'map', label: @js(__('Map block')), bg: true, section: 'bg' });
+                    else items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
