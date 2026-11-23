@@ -3087,7 +3087,6 @@
     "Characters, places and a clip for every line, made from the approved script.": "Personages, plekken en een clip voor elke zin, gemaakt uit het goedgekeurde script.",
     "Read the script": "Lees het script",
     "Read the script again": "Lees het script opnieuw",
-    "Add an ElevenLabs key with image and video permission (ELEVENLABS_IMAGE_API_KEY) to make these.": "Voeg een ElevenLabs-sleutel met beeld- en videorechten toe (ELEVENLABS_IMAGE_API_KEY) om deze te maken.",
     "The script names no cast with colours.": "Het script noemt geen personages met kleuren.",
     "Nothing to make in this step.": "Niets te maken in deze stap.",
     "What should change? (optional)": "Wat moet er anders? (optioneel)",
@@ -3096,5 +3095,7 @@
     "Approve the step before this one first.": "Keur eerst de stap hiervoor goed.",
     "Make :count clips (:seconds s)": "Maak :count clips (:seconds s)",
     "Make :count pictures": "Maak :count afbeeldingen",
-    "Approve all :count": "Alle :count goedkeuren"
+    "Approve all :count": "Alle :count goedkeuren",
+    "No clip maker is set up for this step yet.": "Voor deze stap is nog geen clipmaker ingesteld.",
+    "No picture maker is set up yet (the ChatGPT route).": "Er is nog geen afbeeldingsmaker ingesteld (de ChatGPT-route)."
 }

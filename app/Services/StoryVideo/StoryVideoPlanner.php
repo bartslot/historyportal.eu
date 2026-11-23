@@ -185,7 +185,11 @@ final class StoryVideoPlanner
     {
         $item = StoryMediaItem::firstOrNew(['lesson_id' => $lesson->id, 'kind' => $kind->value, 'key' => $key]);
         $changed = $item->exists && $item->input != $input;
-        $item->fill(['scene_id' => $scene?->id, 'position' => $position, 'label' => mb_substr($label, 0, 250), 'input' => $input]);
+        $item->fill(['scene_id' => $scene?->id, 'position' => $position, 'label' => mb_substr($label, 0, 250)]);
+        // A busy item keeps the input its generation was made from, so the next plan still sees the change.
+        if (! $item->exists || ($changed && ! $item->status->isBusy())) {
+            $item->fill(['input' => $input]);
+        }
         if ($changed && ! $item->status->isBusy()) {
             $item->fill(['status' => StoryMediaStatus::Planned, 'prompt' => null, 'generation_id' => null, 'error' => null]);
         }
