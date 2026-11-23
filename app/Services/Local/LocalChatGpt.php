@@ -77,7 +77,12 @@ final class LocalChatGpt
             $name = 'result.png';
             [$w, $h] = array_map('intval', explode('x', $size.'x'));
             $shape = $w > 0 && $h > 0 ? ($w > $h ? 'landscape' : ($w < $h ? 'portrait' : 'square')).", {$w}x{$h} pixels" : '';
-            $intro = $images === [] ? '' : 'Image 1 is the picture to change; any further images are references, in the order given. ';
+            $intro = match (true) {
+                $images === [] => '',
+                self::onlyReferences($images) => 'Make a NEW picture. The attached images are references only, in the order given: '
+                    .'take from them only what the prompt says to take, never their subjects or composition, and do not edit or redraw any of them. ',
+                default => 'Image 1 is the picture to change; any further images are references, in the order given. ',
+            };
             $full = $intro.$prompt."\n\n"
                 .'Generate the image'.($shape !== '' ? " ({$shape})" : '').", and save it in the current folder as {$name}."
                 .($transparent ? ' '.self::GREEN_BACKGROUND : '');
@@ -91,6 +96,25 @@ final class LocalChatGpt
         } finally {
             File::deleteDirectory($dir);
         }
+    }
+
+    /**
+     * Name every input file with this prefix (anywhere in its name) to ask for a new picture with all of them as
+     * references. Without it, image 1 is edited. The name survives the relay (bart, 2026-11-23: story pictures were
+     * sent with the plates first and ChatGPT was told to change the Caesar plate).
+     */
+    public const REFERENCE_MARK = 'styleref-';
+
+    /** @param  list<string>  $images  file paths */
+    public static function onlyReferences(array $images): bool
+    {
+        foreach ($images as $image) {
+            if (! str_contains(basename($image), self::REFERENCE_MARK)) {
+                return false;
+            }
+        }
+
+        return $images !== [];
     }
 
     /** The answer of one `codex exec`: the prompt goes on stdin, because -i takes several values and would swallow it. */
