@@ -13,6 +13,7 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
+import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
@@ -202,9 +203,26 @@ export const animationTimeline = (config = {}) => ({
   /** Bumped whenever the canvas moves something, so fields that read live values re-render. */
   canvasTick: 0,
 
+  /** The background's moving version (SceneLoop): its URL from the server, its length once the browser has read it. */
+  videoLoop: config.loop ?? null,
+  videoLength: null,
+
   init () {
     this.spans = wordSpans(config.alignment ?? [])
     this.refreshObjects()
+    if (this.videoLoop) probeVideoLength(this.videoLoop).then((s) => { this.videoLength = s })
+    // A video dropped on (or removed from) this scene arrives with its next scene:load, while the
+    // panel lives on: follow it, so the clip appears without switching scenes.
+    window.Livewire?.on?.('scene:load', (e) => {
+      const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+      if (!p || p.sceneId !== config.sceneId) return
+      const url = p.imageLoop ?? null
+      if (url === this.videoLoop) return
+      this.videoLoop = url
+      this.videoLength = null
+      this.refreshObjects()
+      if (url) probeVideoLength(url).then((s) => { if (this.videoLoop === url) this.videoLength = s })
+    })
 
     // A live edit still waiting for its pause goes out BEFORE an action that moves the scene on: an
     // undo (fired before its server call) and a scene switch (a capture listener, so it runs before
@@ -418,7 +436,8 @@ export const animationTimeline = (config = {}) => ({
     // A voyage leg's crossing is a clip, under the camera that frames it (Bart 2026-11-21).
     const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
     const listed = [...cameras, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
-      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
+      // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
+      ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = false   // closed until a teacher opens one (Bart 2026-11-04)
     this.applyAppearances()   // an entrance changed elsewhere (Motion tab) shows at once
@@ -669,6 +688,17 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A span as pixels on the lane. Kept above zero so a bar is never invisible. */
+  /** The background video's clip: the whole scene, since it loops until the scene ends. */
+  get videoSpan () { return this.videoLoop ? { from: 0, to: this.duration } : null },
+
+  /** Where the video starts over, as left offsets inside its bar. */
+  get videoRestarts () {
+    const left = this.xOf(0)
+    return loopRestarts(this.duration, this.videoLength).map((t) => Math.round(this.xOf(t) - left))
+  },
+
+  get videoLabel () { return videoLengthLabel(this.videoLength) },
+
   barStyle (span) {
     if (!span) return 'display: none'
     const left = this.xOf(span.from)
