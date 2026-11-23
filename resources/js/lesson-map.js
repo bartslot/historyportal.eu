@@ -20,11 +20,10 @@ import { boxView, openingView, labelsView } from './map-view.js'
 import { openingCamera } from './anim/scene-animation.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
+import { territoryLook, territoryAnim, linePaint, washPaint } from './map/territory-look.js'
+import { createTerritoryInk } from './map/territory-ink.js'
 
-const PALETTE = {
-  highlight: '#c0392b',      // selected-polity border (red)
-  highlightFill: '#c0392b',  // selected-polity red wash, painted over the ground (~0.3 opacity)
-}
+// The linked territory's ink line and etching: map/territory-look.js (Bart 11-23, no more red).
 
 // Labels are set in the app sans: the chart is the drawing, and a hand-lettered name on top of it
 // reads as a costume rather than a label.
@@ -32,7 +31,8 @@ const PALETTE = {
 const MODERN_FONT = ['inter']
 // Every label layer that gets the hand: the atlas's own labels plus the teacher's.
 // lesson-labels is not here: a voyage stop name keeps its own hand-lettered ink (map-place-label.js STOP_LABEL).
-const LABEL_LAYERS = ['city-labels', 'hcity-label', 'focus-label']
+// focus-label is not here either: a teacher's focus city takes the same lettering and inked dot (Bart 11-23).
+const LABEL_LAYERS = ['city-labels', 'hcity-label']
 
 /**
  * The ground. There is one, and it is the watercolour sea chart (map-chart.js).
@@ -46,7 +46,6 @@ const LABEL_LAYERS = ['city-labels', 'hcity-label', 'focus-label']
  * land alike.
  */
 const GROUND = {
-  focus: { color: '#1d1712', halo: 'rgba(246,241,228,0.9)', haloWidth: 1.4 },
   fog: '#f6f1e4',
   water: CHART.seaColor,
   line: '#a08868',   // borders: a light pencil line under the coast ink, not a second ink
@@ -109,6 +108,14 @@ export function renderLessonMap (el, opts = {}) {
   // showBorders). The teacher's own pins (annotations) and place labels always show.
   const { showCities = false, showBorders = false } = opts
   let layerToggles = { cities: showCities, borders: showBorders }
+  // The linked territory's look (map/territory-look.js): the scene's config.territory, and the
+  // timeline's Territory row on top of it (fill and border as 0..1, the year as the year).
+  let look = territoryLook(opts.territory)
+  let anim = territoryAnim()
+  // The OTHER territories' faint lines: a voyage map restyles them (setDetailStyle), never the switch.
+  let others = { otherColor: GROUND.line }
+  // The hand-drawn border and etching (map/territory-ink.js), once the territory layers exist.
+  let ink = null
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // A map scene of a 3D lesson (lesson.json kind 'map'): a highlighted region, a route, and a camera the writer
   // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
@@ -212,12 +219,10 @@ export function renderLessonMap (el, opts = {}) {
           // are just faint 30%-opacity borders so the terrain reads through.
           id: 'boundaries-line', type: 'line', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
-          layout: { 'line-join': 'round', visibility: layerToggles.borders ? 'visible' : 'none' },
-          paint: {
-            'line-color': ['case', ['boolean', ['feature-state', 'highlight'], false], PALETTE.highlight, GROUND.line],
-            'line-width': ['case', ['boolean', ['feature-state', 'highlight'], false], 2.6, 0.6],
-            'line-opacity': ['case', ['boolean', ['feature-state', 'highlight'], false], 1, 0.3],
-          },
+          // Always on: the linked territory's ink line shows whatever the switch says. The switch
+          // decides only whether the OTHER territories draw their faint lines (territory-look.js).
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: linePaint(look, anim, { showOthers: layerToggles.borders, otherColor: GROUND.line }),
         },
         ...chart.over,
         // A scene's route, in the chart's ink, under every name.
@@ -491,21 +496,27 @@ export function renderLessonMap (el, opts = {}) {
     // The mountains are the chart's own painted ridges (map-chart.js), not the Time-Map's ink set.
     Promise.resolve()
       .then(() => {
-        // Red territory wash. Only the highlighted (selected) polity is painted; others stay clear.
+        // The linked territory's wash (territory-look.js; its etching is drawn by hand, below).
+        // The wash also carries the configurator's hover, the soft pre-selection when a
+        // teacher moves over the map to pick a territory (nothing sets `hover` in the player).
         if (map.getLayer('boundaries-fill')) return
+        const below = map.getLayer('city-dots') ? 'city-dots' : undefined
         map.addLayer({
           id: 'boundaries-fill', type: 'fill', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
-          paint: {
-            'fill-color': PALETTE.highlightFill,
-            // hover = the soft pre-selection wash used by the configurator's click-to-link
-            // (nothing ever sets `hover` in the player, so it stays invisible there).
-            'fill-opacity': ['case',
-              ['boolean', ['feature-state', 'highlight'], false], 0.32,
-              ['boolean', ['feature-state', 'hover'], false], 0.12,
-              0],
-          },
-        }, map.getLayer('city-dots') ? 'city-dots' : undefined)
+          paint: washPaint(look, anim),
+        }, below)
+        // The linked territory's border and etching are drawn by hand over the map (Bart 11-23:
+        // "can we make the lines more drawn?"). Its parts come from the tiles the map already has.
+        try {
+          ink = createTerritoryInk(map, {
+            features: () => (activeQid
+              ? map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['all', polityFilter(year), ['==', ['get', 'Wikidata'], activeQid]] })
+              : []),
+            look: () => look,
+            anim: () => anim,
+          })
+        } catch (e) { console.warn('lesson-map: hand-drawn territory unavailable, the map draws the line', e) }
         wirePolityPicking()
       })
       .then(() => paintLateLayers())
@@ -677,13 +688,18 @@ export function renderLessonMap (el, opts = {}) {
     LABEL_LAYERS.forEach(font)
     // A focus label writes the PLACE and its note in separate sections of one text-field, so the
     // hand is baked into the field itself, not just the layer font.
+    //
+    // A focus city looks like a voyage stop (Bart 11-23: "the city name and dot more like we had at the
+    // previous style"): the name hand-lettered beside the inked ring-dot (map-place-label.js STOP_LABEL).
+    // The note under a name stays in type. The plain circle stays, invisible, as what a click hits.
     if (map.getLayer('focus-label')) {
-      try { map.setLayoutProperty('focus-label', 'text-field', focusLabelLayout(MODERN_FONT)['text-field']) } catch (_) {}
+      ensureStopDot(map)
+      const layout = stopLabelLayout({ textField: focusLabelLayout(STOP_LABEL.font)['text-field'] })
+      for (const [k, v] of Object.entries(layout)) { try { map.setLayoutProperty('focus-label', k, v) } catch (_) {} }
+      for (const [k, v] of Object.entries(stopLabelPaint())) paint('focus-label', k, v)
     }
-    paint('focus-label', 'text-color', GROUND.focus.color)
-    paint('focus-label', 'text-halo-color', GROUND.focus.halo)
-    paint('focus-label', 'text-halo-width', GROUND.focus.haloWidth + 0.6)
-    paint('focus-label', 'text-halo-blur', 0.4)
+    paint('focus-dot', 'circle-opacity', 0)
+    paint('focus-dot', 'circle-stroke-opacity', 0)
     // Letterbox bars (map narrower than the stage) match the sea.
     try { el.style.backgroundColor = GROUND.water } catch (_) {}
   }
@@ -697,14 +713,51 @@ export function renderLessonMap (el, opts = {}) {
     // way to read, one of which sat in the Gulf of Guinea back when the curated cities had no
     // coordinates.
     for (const l of ['city-dots', 'city-labels', 'hcity-dot', 'hcity-label']) vis(l, layerToggles.cities)
-    for (const l of ['boundaries-line', 'boundaries-fill']) vis(l, layerToggles.borders)
+    // A territory the teacher linked always shows (Bart 11-23: "Mongol Empire ... there's nothing
+    // shown on this map"). The Territory borders switch is about the atlas's OTHER territories: off,
+    // their faint lines go; the linked one stays. The fills paint only the linked (or hovered)
+    // territory, so they stay visible, which also keeps hover-to-link working with the switch off
+    // (a hidden layer cannot be hovered or clicked).
+    for (const l of ['boundaries-line', 'boundaries-fill']) vis(l, true)
+    paintTerritory()
+  }
+
+  // Put the look, the timeline's fill/border and the switch on the three territory layers.
+  function paintTerritory () {
+    const paint = (layer, props) => {
+      if (!map.getLayer(layer)) return
+      for (const [k, v] of Object.entries(props)) { try { map.setPaintProperty(layer, k, v) } catch (_) {} }
+    }
+    paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders, inked: !!ink }))
+    paint('boundaries-fill', washPaint(look, anim))
+    ink?.redraw()
+  }
+
+  // The timeline's Territory row. Year is keyed as a number and drawn as a whole year; it only
+  // re-filters when the whole year changes, so a slow key does not refilter every frame.
+  let keyedYear = null
+  function setTerritoryValues (values = {}) {
+    const next = territoryAnim({ ...anim, ...values })
+    if (next.fill !== anim.fill || next.border !== anim.border) { anim = next; paintTerritory() }
+    if (Number.isFinite(Number(values.year))) {
+      const y = Math.round(Number(values.year))
+      if (y !== keyedYear) { keyedYear = y; if (y !== year) setYear(y) }
+    }
   }
 
   window.__lessonMap = map // debugging + test assertions (same idea as the Time-Map's __tmMap)
 
-  return {
+  const api = {
     map,
     setYear,
+    /** The linked territory's look (config.territory), applied in place. */
+    setTerritoryLook: (stored) => { look = territoryLook(stored); paintTerritory() },
+    /** The timeline's Territory row at the playhead: { fill, border } 0..1, and/or { year }. */
+    setTerritoryValues,
+    /** What the Territory row shows when nothing is keyed. */
+    territoryValue: (property) => (property === 'year' ? year : anim[property] ?? null),
+    /** Is a territory linked? The timeline lists a Territory row only then. */
+    hasTerritory: () => !!activeQid,
     flyToPolity: fitToPolity,
     /**
      * Projector for map-pinned text labels: converts lng/lat ⇄ percentages of `hostEl`
@@ -734,9 +787,12 @@ export function renderLessonMap (el, opts = {}) {
       if (Number(o.label_size) > 0) set(() => map.setLayoutProperty('lesson-labels', 'text-size', lblSize(Number(o.label_size))))
       if (o.city_color) set(() => map.setPaintProperty('city-labels', 'text-color', o.city_color))
       if (Number(o.city_size) > 0) set(() => map.setLayoutProperty('city-labels', 'text-size', citySize(Number(o.city_size))))
-      if (o.border_color) set(() => map.setPaintProperty('boundaries-line', 'line-color', o.border_color))
-      if (Number(o.border_width) > 0) set(() => map.setPaintProperty('boundaries-line', 'line-width', Number(o.border_width)))
-      if (o.border_opacity != null) set(() => map.setPaintProperty('boundaries-line', 'line-opacity', Number(o.border_opacity)))
+      // The other territories' lines, through the same paint as the switch and the linked territory,
+      // so a voyage's border opacity can never bring lines back with Country borders off.
+      if (o.border_color) others.otherColor = o.border_color
+      if (Number(o.border_width) > 0) others.otherWidth = Number(o.border_width)
+      if (o.border_opacity != null && Number.isFinite(Number(o.border_opacity))) others.otherOpacity = Number(o.border_opacity)
+      set(() => paintTerritory())
     },
     /** Replace the pinned place labels ([{text,lng,lat}]) and re-apply the reveal (setData clears state). */
     setLabels: (arr) => {
@@ -766,6 +822,10 @@ export function renderLessonMap (el, opts = {}) {
       annotations = Array.isArray(o.annotations) ? o.annotations : []
       anno?.update(annotations)
       layerToggles = { cities: o.showCities === true, borders: o.showBorders === true }
+      // This scene's territory look, with its timeline back at rest until the playhead says otherwise.
+      look = territoryLook(o.territory)
+      anim = territoryAnim()
+      keyedYear = null
       applyLayerToggles()
       const y = Number(o.year)
       setYear(Number.isFinite(y) ? y : 1600)
@@ -827,9 +887,14 @@ export function renderLessonMap (el, opts = {}) {
       try { anno?.destroy() } catch (_) {}
       try { untune?.() } catch (_) {}
       try { chartPaper.remove() } catch (_) {}
+      try { ink?.destroy() } catch (_) {}
       try { map.remove() } catch (_) {}
+      if (window.__lessonMapApi === api) window.__lessonMapApi = null
     },
   }
+  // The timeline reaches the Territory row through this (anim/scene-objects.js), as it reaches the camera through __lessonMap.
+  window.__lessonMapApi = api
+  return api
 }
 
 // Expose for inline Alpine/blade use without a bundler import.
