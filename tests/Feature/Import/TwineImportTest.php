@@ -34,12 +34,13 @@ class TwineImportTest extends TestCase
         $this->teacher = User::factory()->teacher()->create();
     }
 
-    private function upload(string $html, string $world = 'test-port')
+    private function upload(string $html, string $world = 'test-port', ?int $age = 12)
     {
-        return $this->actingAs($this->teacher)->post(route('teacher.lessons.import-twine'), [
+        return $this->actingAs($this->teacher)->post(route('teacher.lessons.import-twine'), array_filter([
             'story' => UploadedFile::fake()->createWithContent('story.html', $html),
             'world' => $world,
-        ]);
+            'age' => $age,
+        ], fn ($v) => $v !== null));
     }
 
     private function marcoPolo(): Lesson
@@ -160,6 +161,33 @@ class TwineImportTest extends TestCase
         $this->upload((string) file_get_contents(base_path('tests/Fixtures/twine/marco-polo.html')), 'no-such-world')->assertSessionHasErrors('world');
 
         $this->assertSame(0, Lesson::count());
+    }
+
+    public function test_the_lesson_is_for_the_age_the_teacher_picked_and_in_the_storys_own_language(): void
+    {
+        $this->teacher->update(['teaching_locale' => 'en']);
+        $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
+            .'<tw-passagedata pid="1" name="Ravenna">NARRATOR: Het is de zomer van 1321 en de dichter is dood. Maar zijn boek is niet af, want de laatste hoofdstukken zijn weg.'."\n".'[[Zoek]]</tw-passagedata>'
+            .'<tw-passagedata pid="2" name="Zoek">NARRATOR: Zijn zoon Jacopo zoekt in het huis van zijn vader, maar hij vindt niets.</tw-passagedata>'
+            .'</tw-storydata>';
+
+        $this->upload($html, age: 8)->assertRedirect();
+        $lesson = Lesson::sole();
+
+        $this->assertSame('Age 8', $lesson->grade_level);
+        $this->assertSame('nl', $lesson->language);
+    }
+
+    public function test_the_age_of_the_class_is_asked_never_assumed(): void
+    {
+        $story = (string) file_get_contents(base_path('tests/Fixtures/twine/marco-polo.html'));
+
+        $this->upload($story, age: null)->assertSessionHasErrors('age');
+        $this->upload($story, age: 13)->assertSessionHasErrors('age');   // only the ages quick lesson creation offers
+        $this->assertSame(0, Lesson::count());
+
+        $this->upload($story, age: 14)->assertRedirect();
+        $this->assertSame(['Age 14', 'en'], [Lesson::sole()->grade_level, Lesson::sole()->language]);
     }
 
     public function test_story_code_and_shapes_that_do_not_fit_still_import_with_notes(): void

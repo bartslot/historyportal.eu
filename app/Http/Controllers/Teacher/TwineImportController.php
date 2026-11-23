@@ -16,7 +16,7 @@ class TwineImportController extends Controller
     public function __invoke(ImportTwineRequest $request, TwineImporter $importer): RedirectResponse
     {
         try {
-            $lesson = $importer->import((string) $request->file('story')->get(), $request->user(), $request->string('world')->toString());
+            $lesson = $importer->import((string) $request->file('story')->get(), $request->user(), $request->string('world')->toString(), $request->gradeLevel());
         } catch (InvalidArgumentException $e) {
             return back()->withErrors(['story' => $e->getMessage()])->withInput();
         }

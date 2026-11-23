@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\NarrativeFramework;
 use App\Models\Lesson;
 use App\Models\Scene;
+use App\Services\Lessons\StoryCraft;
 use Illuminate\Support\Collection;
 
 /**
@@ -53,6 +54,9 @@ EXAMPLE;
         $spine = StorySpine::for($framework, $lesson->game_type);
 
         $exemplar = self::EXEMPLAR;
+        // The history-story-writer skill's rules: the class's own age, and words a child can follow.
+        $reading = StoryCraft::readingRules($lesson->grade_level);
+        $craft = StoryCraft::narrationRules();
 
         return <<<SYS
 You are a master history storyteller writing narration for a voice actor. You write ALL
@@ -66,13 +70,20 @@ STORY RULES — these are hard requirements, not suggestions:
 3. At least one line of spoken dialogue or an inner decision ("she knew that...") in every
    two scenes. Short quotes, historically plausible, grounded in the source.
 4. Each scene ends on a hook: an open question, a threat, a decision not yet made — except
-   the final scene, which resolves the story, lands its meaning, and quietly recaps: every
-   learning objective returns as one memorable line the student will carry home. Never a
-   bullet-point summary; the recap stays inside the story's voice, built ONLY from THIS
-   lesson's events — never reuse lines from the example below.
+   the final scene, which resolves the story and lands its meaning: every learning objective
+   returns as one memorable line the student will carry home, inside the story's voice and
+   built ONLY from THIS lesson's events (never reuse lines from the example below). Never a
+   bullet-point summary: the final scene's last sentence is one open question the class can
+   wonder about.
 5. Second person ("you") is allowed as a camera, but the CHARACTERS carry the story. Never
    open a scene with "you are standing" or "you find yourself".
 6. 80–150 words per narration scene. Game scenes get a 40–80 word setup that raises the stakes.
+
+READING LEVEL:
+{$reading}
+
+WORDS AND TRUTH:
+{$craft}
 
 FACT RULES:
 - Only use facts from the provided source text. If uncertain, omit — never invent facts,

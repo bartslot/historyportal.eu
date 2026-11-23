@@ -18,6 +18,7 @@ use App\Services\Stage25d\GroundDistance;
 use App\Services\Stage25d\StageSet;
 use App\Services\Stage25d\StageWorlds;
 use App\Services\Support\ImageStyleTemplate;
+use App\Services\Support\ScriptLanguage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -57,7 +58,10 @@ final class TwineImporter
     /** @var array<string, SvgAsset|null> character by name */
     private array $made = [];
 
-    public function import(string $html, User $teacher, string $worldKey): Lesson
+    /**
+     * @param  string  $gradeLevel  the class the teacher picked ("Age 10"): never assumed, the story is written for it
+     */
+    public function import(string $html, User $teacher, string $worldKey, string $gradeLevel): Lesson
     {
         $preset = StageWorlds::preset($worldKey, $teacher->id)
             ?? throw new InvalidArgumentException(__('Pick a world for the 3D scenes.'));
@@ -81,14 +85,17 @@ final class TwineImporter
             throw new InvalidArgumentException(__('This Twine story has no passages, or too many to import.'));
         }
         $plan = $this->order($story['start'], $parsed);
+        // The lesson's language is the story's own: a Dutch story in an English teacher's account stays Dutch.
+        $language = ScriptLanguage::detect(self::narration($parsed), $teacher->teachingLocale());
 
-        return DB::transaction(function () use ($story, $teacher, $worldKey, $preset, $parsed, $cast, $plan) {
+        return DB::transaction(function () use ($story, $teacher, $worldKey, $preset, $parsed, $cast, $plan, $gradeLevel, $language) {
             $lesson = Lesson::create([
                 'teacher_id' => $teacher->id,
                 'title' => Str::limit($story['name'], Lesson::TITLE_MAX_CHARS, ''),
                 'topic' => Str::limit($story['name'], 255, ''),
                 'subject' => 'history',
-                'grade_level' => 'Age 12',
+                'grade_level' => $gradeLevel,
+                'language' => $language,
                 'tone' => 'storytelling',
                 'source_mode' => 'internet',
                 'image_style' => ImageStyleTemplate::STAGE,
@@ -338,5 +345,24 @@ final class TwineImporter
         }
 
         return $now === '' ? $out : [...$out, $now];
+    }
+
+    /**
+     * Every narrator line of the story, for telling its language.
+     *
+     * @param  array<string, array{lines: list<array{speaker: string, text: string}>}>  $parsed
+     */
+    private static function narration(array $parsed): string
+    {
+        $text = [];
+        foreach ($parsed as $part) {
+            foreach ($part['lines'] as $line) {
+                if (strtoupper($line['speaker']) === 'NARRATOR') {
+                    $text[] = $line['text'];
+                }
+            }
+        }
+
+        return implode(' ', $text);
     }
 }
