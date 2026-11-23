@@ -648,6 +648,8 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
                 // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
                 choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
+                // The background moves (SceneLoop): its row wears the video glyph.
+                loop: !!p.imageLoop,
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
 
@@ -1418,6 +1420,16 @@
                     </div>
                 @endunless
             </x-ui.settings-section>
+
+            {{-- STORY TO VIDEO (bart, 2026-11-23): character sheets, empty places, then one clip per narration beat,
+                 made through ElevenLabs from the approved script, each step checked before the next. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <x-ui.settings-section :title="__('Video')" name="story-video" :open="false" class="-mx-4 mt-2 w-auto! pt-2" data-story-video-section>
+                    <div wire:ignore>
+                        <livewire:wizard.story-video :lesson="$lesson" :key="'story-video-'.$lesson->id" />
+                    </div>
+                </x-ui.settings-section>
+            @endunless
             @endif
         </div>
         </div>{{-- /.lp-panel-content --}}
@@ -1483,6 +1495,7 @@
         group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
         choices: @js(\App\Support\UiIcon::svg('layer-choices', ['class' => 'h-4 w-4'])),
         quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),
+        video: @js(\App\Support\UiIcon::svg('video', ['class' => 'h-4 w-4'])),
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
     // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
@@ -1965,7 +1978,7 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.

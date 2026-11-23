@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Support;
 
 use App\Models\Scene;
+use App\Services\VideoTranscoder;
 use App\Support\MediaUrl;
 
 /**
@@ -16,6 +17,12 @@ use App\Support\MediaUrl;
  * and the loop only plays while that same picture is still the background. A teacher who picks
  * another picture gets the new picture, never the old picture's motion over it, without every
  * background setter having to remember to clear the loop.
+ *
+ * An optional `av1` is the same loop as AV1, beside `src` ("x.mp4" → "x.av1.mp4", see
+ * VideoTranscoder::encodeLoop). It is about a third smaller, but older Safari cannot play it, so
+ * `src` (H.264) stays the loop every browser gets. The URL says an AV1 copy exists with a "#av1"
+ * fragment, which a browser ignores and picture-loop.js reads, so every place that passes a loop URL
+ * around keeps working unchanged.
  */
 final class SceneLoop
 {
@@ -29,7 +36,14 @@ final class SceneLoop
             return null;
         }
 
-        return self::samePicture($loop['poster'], $picturePath) ? MediaUrl::of($loop['src']) : null;
+        if (! self::samePicture($loop['poster'], $picturePath)) {
+            return null;
+        }
+        $url = MediaUrl::of($loop['src']);
+
+        return $url !== null && isset($loop['av1']) && $loop['av1'] === VideoTranscoder::av1PathFor($loop['src'])
+            ? $url.'#av1'
+            : $url;
     }
 
     /** The scene's own picture moves (the flat stage and the inspector ask this). */
@@ -41,7 +55,7 @@ final class SceneLoop
     /**
      * The stored loop, when it is well formed.
      *
-     * @return array{src: string, poster: string}|null
+     * @return array{src: string, poster: string, av1?: string}|null
      */
     public static function of(?Scene $scene): ?array
     {
@@ -49,17 +63,26 @@ final class SceneLoop
         if (! is_array($loop) || ! is_string($loop['src'] ?? null) || ! is_string($loop['poster'] ?? null)) {
             return null;
         }
+        $out = ['src' => $loop['src'], 'poster' => $loop['poster']];
+        if (is_string($loop['av1'] ?? null) && $loop['av1'] !== '') {
+            $out['av1'] = $loop['av1'];
+        }
 
-        return ['src' => $loop['src'], 'poster' => $loop['poster']];
+        return $out;
     }
 
     /**
      * @param  array<string,mixed>  $config
      * @return array<string,mixed>
      */
-    public static function with(array $config, string $src, string $poster): array
+    public static function with(array $config, string $src, string $poster, ?string $av1 = null): array
     {
-        return [...$config, self::KEY => ['src' => $src, 'poster' => $poster]];
+        $loop = ['src' => $src, 'poster' => $poster];
+        if ($av1 !== null && $av1 !== '') {
+            $loop['av1'] = $av1;
+        }
+
+        return [...$config, self::KEY => $loop];
     }
 
     /**

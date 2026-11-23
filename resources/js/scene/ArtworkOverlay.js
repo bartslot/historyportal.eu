@@ -646,6 +646,9 @@ export class ArtworkOverlay {
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
+    // A width of null is "no width of its own", not zero: Number(null) is 0, which drew the layer
+    // as a 0%-wide box the moment a save cleared its width.
+    if (key === 'width' && (value === null || value === '' || value === undefined)) item.width = null
     // An arrow has no box to move or scale: its geometry and ink are repainted from its values.
     if (item.kind === 'arrow') {
       if (ARROW_KEYS.includes(key) || ['x', 'y', 'tint', 'opacity'].includes(key)) {
@@ -682,12 +685,17 @@ export class ArtworkOverlay {
       case 'width': {
         node.style.height = `${this._heightPct(item)}%`
         const w = this._widthPct(item)
-        // Setting the property to '' returns the node to width:max-content, so clearing an
-        // explicit width puts the layer back on its own aspect rather than freezing the last one.
-        node.style.width = w === null ? '' : `${w}%`
+        // No explicit width means `max-content`, written out, never ''. Clearing the inline width
+        // dropped the node to width:auto, which on an absolutely placed box is shrink-to-fit: it
+        // is capped by the room between its left edge and the stage's right edge. The picture's
+        // `max-width:100%` (Tailwind's reset) then followed the box down while its height stayed,
+        // so every scale/height repaint squeezed a figure sideways, worse the further right it
+        // stood. Any save that came back (a drag, a balloon edit) repainted through here.
+        node.style.width = w === null ? 'max-content' : `${w}%`
         const liveImg = node.querySelector('img')
         if (liveImg) {
           liveImg.style.width = w === null ? 'auto' : '100%'
+          liveImg.style.maxWidth = w === null ? 'none' : ''
           liveImg.style.objectFit = w === null ? '' : 'fill'
         }
         this._syncChrome(item)
@@ -1156,8 +1164,10 @@ export class ArtworkOverlay {
     // With no explicit width the node hugs the image and `width:auto` keeps its natural aspect.
     // Once a teacher unlocks the aspect and types a width, the box is theirs and the picture is
     // stretched to it — `contain` would letterbox and leave the ring around empty space.
+    // `max-width:none` because Tailwind's reset caps every img at 100% of its box: should the box
+    // ever be narrower than the picture, the picture must overflow it, never squeeze into it.
     img.style.cssText = this._widthPct(item) === null
-      ? 'height:100%; width:auto; display:block; pointer-events:none; user-select:none;'
+      ? 'height:100%; width:auto; max-width:none; display:block; pointer-events:none; user-select:none;'
       : 'height:100%; width:100%; object-fit:fill; display:block; pointer-events:none; user-select:none;'
     // The node sizes itself to the image's aspect, so the chrome can only be measured once the
     // file has decoded. Without this the ring is a sliver on first paint.

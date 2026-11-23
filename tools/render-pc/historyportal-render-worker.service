@@ -1,0 +1,14 @@
+[Unit]
+Description=History Portal render worker (fetches clips from the server, renders them in ComfyUI, sends them back)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=comfy
+EnvironmentFile=/etc/historyportal/render-worker.env
+ExecStart=/usr/bin/python3 /home/comfy/historyportal/render_worker.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
