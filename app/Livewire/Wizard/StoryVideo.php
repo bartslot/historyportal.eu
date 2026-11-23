@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\StoryMediaItem;
 use App\Services\StoryVideo\Clips\RenderPcClipDriver;
 use App\Services\StoryVideo\RenderPcQueue;
+use App\Services\StoryVideo\StudioQueue;
 use App\Services\StoryVideo\ElevenLabsMedia;
 use App\Services\StoryVideo\StoryVideoPlanner;
 use App\Services\StoryVideo\StoryVideoRun;
@@ -103,6 +104,7 @@ class StoryVideo extends Component
             'seconds' => $kind->isVideo() ? $here->sum(fn ($i) => (int) (($i->input ?? [])['seconds'] ?? 0)) : 0,
             'configured' => self::makerReady($kind),
             'renderPc' => $kind->isVideo() && config('story_video.clip_driver') === RenderPcClipDriver::NAME ? self::renderPcLine() : null,
+            'studio' => self::driverFor($kind) === 'studio' ? self::studioLine() : null,
             'open' => $this->openItem !== null ? $here->firstWhere('id', $this->openItem) : null,
         ]);
     }
@@ -110,14 +112,26 @@ class StoryVideo extends Component
     /** Can this step's driver make anything here? ChatGPT needs its route set up; ElevenLabs a key; the render PC its token. */
     public static function makerReady(StoryMediaKind $kind): bool
     {
-        $driver = $kind->isVideo() ? (string) config('story_video.clip_driver', 'elevenlabs') : (string) config('story_video.picture_driver', 'chatgpt');
-
-        return match ($driver) {
+        return match (self::driverFor($kind)) {
             'elevenlabs' => ElevenLabsMedia::make()->isConfigured(),
             'render_pc' => (string) config('story_video.render_pc.token') !== '',
+            'studio' => (string) config('story_video.studio.token') !== '',
             'chatgpt' => class_exists('App\\Services\\Imaging\\ImageRoute') && ! \call_user_func(['App\\Services\\Imaging\\ImageRoute', 'usesOpenAi']),
             default => true,
         };
+    }
+
+    private static function driverFor(StoryMediaKind $kind): string
+    {
+        return $kind->isVideo() ? (string) config('story_video.clip_driver', 'elevenlabs') : (string) config('story_video.picture_driver', 'chatgpt');
+    }
+
+    /** One line on the ElevenLabs studio route: how much waits for a batch from the Mac, and how much is in one. */
+    private static function studioLine(): string
+    {
+        $status = app(StudioQueue::class)->status();
+
+        return __('Made in the ElevenLabs studio from your Mac: :waiting waiting, :batch in a batch.', ['waiting' => $status['waiting'], 'batch' => $status['in_batch']]);
     }
 
     /** One line on the render PC for the Video step: is it there, and how much waits for it. */

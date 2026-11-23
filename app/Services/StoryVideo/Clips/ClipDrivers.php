@@ -13,6 +13,7 @@ final class ClipDrivers
     private const DRIVERS = [
         'elevenlabs' => ElevenLabsClipDriver::class,
         'render_pc' => RenderPcClipDriver::class,
+        'studio' => StudioClipDriver::class,
     ];
 
     public static function make(?string $name = null): ClipDriver

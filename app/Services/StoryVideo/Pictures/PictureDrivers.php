@@ -13,6 +13,7 @@ final class PictureDrivers
     private const DRIVERS = [
         'chatgpt' => ChatGptPictureDriver::class,
         'elevenlabs' => ElevenLabsPictureDriver::class,
+        'studio' => StudioPictureDriver::class,
     ];
 
     public static function make(?string $name = null): PictureDriver
