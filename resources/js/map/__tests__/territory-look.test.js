@@ -97,3 +97,12 @@ describe('the hand-drawn territory', () => {
     expect(noise2(1.3, 4.2)).toBeLessThanOrEqual(1)
   })
 })
+
+describe('clipToTile', () => {
+  it('keeps only the stretch inside the tile, so neighbours meet end to end', async () => {
+    const { clipToTile } = await import('../territory-ink.js')
+    expect(clipToTile({ x: 4000, y: 10 }, { x: 4160, y: 10 }, 4096)).toEqual([{ x: 4000, y: 10 }, { x: 4096, y: 10 }])
+    expect(clipToTile({ x: -64, y: 10 }, { x: 100, y: 10 }, 4096)).toEqual([{ x: 0, y: 10 }, { x: 100, y: 10 }])
+    expect(clipToTile({ x: -64, y: 10 }, { x: -10, y: 10 }, 4096)).toBeNull()
+  })
+})

@@ -47,6 +47,25 @@ export const isTileCut = (a, b, extent) => (a.x <= 0 && b.x <= 0) || (a.x >= ext
   || (a.y <= 0 && b.y <= 0) || (a.y >= extent && b.y >= extent)
 
 /**
+ * The part of a segment that lies inside the tile's own square (Liang-Barsky), or null.
+ *
+ * Neighbouring tiles both carry the border through their shared buffer, so inked as given the line
+ * ran twice along every tile seam: darker there, and shimmering as the seams moved under a pan.
+ * Cut to the square, each tile inks only its own stretch and the pieces meet end to end.
+ */
+export const clipToTile = (a, b, extent) => {
+  let t0 = 0; let t1 = 1
+  const dx = b.x - a.x; const dy = b.y - a.y
+  for (const [p, q] of [[-dx, a.x], [dx, extent - a.x], [-dy, a.y], [dy, extent - a.y]]) {
+    if (p === 0) { if (q < 0) return null; continue }
+    const r = q / p
+    if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r } else { if (r < t0) return null; if (r < t1) t1 = r }
+  }
+  if (t1 - t0 <= 1e-9) return null
+  return [{ x: a.x + t0 * dx, y: a.y + t0 * dy }, { x: a.x + t1 * dx, y: a.y + t1 * dy }]
+}
+
+/**
  * The territory's parts in tile units, from the most detailed zoom the map has loaded. Lower zooms
  * kept for the cross-fade overlap the same ground and would ink every border twice.
  */
@@ -117,6 +136,7 @@ export function createTerritoryInk (map, source) {
   Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', pointerEvents: 'none' })
   host.appendChild(canvas)
   const mask = document.createElement('canvas')
+  const inkLayer = document.createElement('canvas')   // the border, drawn opaque, then laid down at its alpha
   let hatch = null
   let hatchKey = ''
   let queued = false
@@ -125,7 +145,7 @@ export function createTerritoryInk (map, source) {
   const size = () => {
     const ratio = window.devicePixelRatio || 1
     const w = map.getCanvas().clientWidth; const h = map.getCanvas().clientHeight
-    for (const c of [canvas, mask]) {
+    for (const c of [canvas, mask, inkLayer]) {
       if (c.width !== Math.round(w * ratio) || c.height !== Math.round(h * ratio)) { c.width = Math.round(w * ratio); c.height = Math.round(h * ratio) }
     }
     canvas.style.width = `${w}px`; canvas.style.height = `${h}px`
@@ -148,22 +168,27 @@ export function createTerritoryInk (map, source) {
     const area = new Path2D()
     const edges = []   // [[ [x,y,lng,lat], ... ], ...] runs of real border
     for (const p of parts) {
+      const screen = (pt) => {
+        const [lng, lat] = tileToLngLat(pt.x, pt.y, p.z, p.x, p.y, p.extent)
+        const s = map.project([lng, lat])
+        return [s.x * ratio, s.y * ratio, lng, lat]
+      }
       for (const ring of p.rings) {
         if (ring.length < 3) continue
         let run = null
+        let last = null   // the end of the run so far, in tile units
         for (let i = 0; i < ring.length; i++) {
           const pt = ring[i]
-          const [lng, lat] = tileToLngLat(pt.x, pt.y, p.z, p.x, p.y, p.extent)
-          const s = map.project([lng, lat])
-          const q = [s.x * ratio, s.y * ratio, lng, lat]
-          pt._screen = q
+          const q = screen(pt)
           if (i) area.lineTo(q[0], q[1]); else area.moveTo(q[0], q[1])
-          if (i) {
-            const prev = ring[i - 1]
-            if (isTileCut(prev, pt, p.extent)) { run = null; continue }
-            if (!run) { run = [ring[i - 1]._screen]; edges.push(run) }
-            run.push(q)
-          }
+          if (!i) continue
+          const prev = ring[i - 1]
+          const piece = isTileCut(prev, pt, p.extent) ? null : clipToTile(prev, pt, p.extent)
+          if (!piece) { run = null; continue }
+          const [a, b] = piece
+          if (!run || !last || last.x !== a.x || last.y !== a.y) { run = [screen(a)]; edges.push(run) }
+          run.push(b.x === pt.x && b.y === pt.y ? q : screen(b))
+          last = b
         }
         area.closePath()
       }
@@ -201,8 +226,9 @@ export function createTerritoryInk (map, source) {
       const key = `${look.fill_color}/${ratio}`
       if (hatchKey !== key) { hatch = hatchTile(look.fill_color, ratio); hatchKey = key }
       const pattern = mctx.createPattern(hatch, 'repeat')
+      // Whole device pixels: a pattern laid at a fractional offset is resampled every frame and shimmers.
       const origin = map.project([0, 0])
-      if (pattern?.setTransform) pattern.setTransform(new DOMMatrix().translate(origin.x * ratio, origin.y * ratio))
+      if (pattern?.setTransform) pattern.setTransform(new DOMMatrix().translate(Math.round(origin.x * ratio), Math.round(origin.y * ratio)))
       mctx.globalAlpha = 1
       mctx.globalCompositeOperation = 'source-in'
       mctx.fillStyle = pattern
@@ -214,25 +240,31 @@ export function createTerritoryInk (map, source) {
     }
 
     // ── The border: short pieces, each its own weight, on a line that wanders a hair.
+    // Each pass is drawn OPAQUE on its own layer and laid down once at its alpha: the pieces overlap at
+    // every joint, and at partial alpha each overlap showed as a darker bead that crawled along the line.
     if (look.border_width > 0 && anim.border > 0) {
-      ctx.strokeStyle = look.border_color
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      const ictx = inkLayer.getContext('2d')
       const base = look.border_width * ratio
       for (const pass of [0, 1]) {
-        // The second pass is a lighter, thinner retrace a touch off the first: the double line of a nib.
-        ctx.globalAlpha = (pass ? 0.35 : 0.95) * anim.border
+        ictx.setTransform(1, 0, 0, 1, 0, 0)
+        ictx.clearRect(0, 0, inkLayer.width, inkLayer.height)
+        ictx.strokeStyle = look.border_color
+        ictx.lineCap = 'round'; ictx.lineJoin = 'round'
         for (const run of edges) {
           let prev = null
           for (const q of run) {
             const p = jitter(q, pass ? 41 : 0)
             if (prev) {
               const press = 0.65 + 0.7 * noise2(q[2] * freq * 2 + 9, q[3] * freq * 2)
-              ctx.lineWidth = Math.max(0.5 * ratio, base * press * (pass ? 0.55 : 1))
-              ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(p[0], p[1]); ctx.stroke()
+              ictx.lineWidth = Math.max(0.5 * ratio, base * press * (pass ? 0.55 : 1))
+              ictx.beginPath(); ictx.moveTo(prev[0], prev[1]); ictx.lineTo(p[0], p[1]); ictx.stroke()
             }
             prev = p
           }
         }
+        // The second pass is a lighter, thinner retrace a touch off the first: the double line of a nib.
+        ctx.globalAlpha = (pass ? 0.35 : 0.95) * anim.border
+        ctx.drawImage(inkLayer, 0, 0)
       }
       ctx.globalAlpha = 1
       drewSomething = true
