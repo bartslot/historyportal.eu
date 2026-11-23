@@ -57,6 +57,7 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
   let last = { rail: null, version: null, media: null, target: null, mine: true }
   let lastOwnEdit = 0
   let noticeTimer = 0
+  let live = null   // collab-realtime.js, once connected
 
   const t = (key, name = '') => (config.labels?.[key] ?? key).replace(':name', name)
 
@@ -69,7 +70,11 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
   const post = (url, body) => fetchImpl(url, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': config.csrf, 'X-Requested-With': 'XMLHttpRequest' },
+    headers: {
+      'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': config.csrf, 'X-Requested-With': 'XMLHttpRequest',
+      // Laravel's toOthers(): my own nudge does not come back to me.
+      ...(live?.socketId?.() ? { 'X-Socket-ID': live.socketId() } : {}),
+    },
     body: JSON.stringify(body),
   })
 
@@ -101,6 +106,8 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
         say(t('new_media'))
       }
     }
+
+    if (!sameTarget) live?.clearCursors?.()
 
     if (last.rail !== null && room.rail !== last.rail) window.Livewire?.dispatchTo?.('wizard.scene-rail', 'rail-refresh')
 
@@ -188,6 +195,14 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
     })
   }
 
+  /** Cursors and instant nudges, only when the page names a relay. Loaded late: most pages never need it. */
+  const connectLive = () => {
+    if (!config.realtime) return
+    import('./collab-realtime.js')
+      .then((m) => { live = m.connectRealtime({ config, collab: api, myTarget: () => targetOf(window.__railSel) }) })
+      .catch(() => { /* no relay: the pings carry on alone */ })
+  }
+
   const start = () => {
     if (s.started) return
     s.started = true
@@ -195,9 +210,11 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
     window.addEventListener('rail-selected', onSelected)
     window.addEventListener('pagehide', leave)
     onSelected()
+    connectLive()
   }
 
-  return { state: s, start, stop, ping, takeOver, apply, paintRail }
+  const api = { state: s, start, stop, ping, pingNow: onSelected, takeOver, apply, paintRail }
+  return api
 }
 
 /** Alpine entry: x-init="window.startLessonCollab($wire, config)" in the editor (<x-editor.collab-overlay>). */

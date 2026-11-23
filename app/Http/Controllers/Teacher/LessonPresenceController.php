@@ -32,7 +32,7 @@ final class LessonPresenceController extends Controller
         $target = $request->target();
         abort_if($target === null, 422);
 
-        $this->collab->claim($lesson, $request->user(), $target, force: true);
+        $this->collab->takeOver($lesson, $request->user(), $target);
 
         return response()->json($this->collab->ping($lesson, $request->user(), $target));
     }

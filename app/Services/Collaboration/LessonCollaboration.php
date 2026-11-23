@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collaboration;
 
+use App\Events\LessonRoomChanged;
 use App\Exceptions\SceneClaimTaken;
 use App\Models\Lesson;
 use App\Models\LessonClaim;
@@ -119,6 +120,8 @@ final class LessonCollaboration
     public function ping(Lesson $lesson, User $user, ?string $target): array
     {
         $now = now();
+        $before = LessonPresence::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)
+            ->where('seen_at', '>=', $now->copy()->subSeconds(self::PRESENCE_SECONDS))->first(['target']);
 
         LessonPresence::query()->upsert(
             [['lesson_id' => $lesson->id, 'user_id' => $user->id, 'target' => $target, 'seen_at' => $now]],
@@ -137,6 +140,11 @@ final class LessonCollaboration
 
         $this->sweep($lesson, $now);
 
+        // Arrived, or moved to another scene: the others hear it at once when the relay is on.
+        if ($before === null || $before->target !== $target) {
+            $this->nudge($lesson, $user);
+        }
+
         return $this->room($lesson, $user, $target);
     }
 
@@ -145,6 +153,35 @@ final class LessonCollaboration
     {
         LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->delete();
         LessonPresence::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->delete();
+        $this->nudge($lesson, $user);
+    }
+
+    /** Take over: the target is yours, whoever had it, and they hear so at once when the relay is on. */
+    public function takeOver(Lesson $lesson, User $user, string $target): void
+    {
+        $this->claim($lesson, $user, $target, force: true);
+        $this->nudge($lesson, $user);
+    }
+
+    /**
+     * Tell the other editors to ping now (LessonRoomChanged). Only a nudge: a relay that is down, slow or
+     * over its free limit must never fail a teacher's click, so any error is swallowed.
+     */
+    private function nudge(Lesson $lesson, User $user): void
+    {
+        if (! self::realtimeEnabled()) {
+            return;
+        }
+        rescue(fn () => broadcast(new LessonRoomChanged((int) $lesson->id, (int) $user->id))->toOthers(), report: false);
+    }
+
+    /** The relay is configured (config/broadcasting.php "reverb" pointing somewhere). */
+    public static function realtimeEnabled(): bool
+    {
+        return config('broadcasting.default') === 'reverb'
+            && filled(config('broadcasting.connections.reverb.key'))
+            && filled(config('broadcasting.connections.reverb.secret'))
+            && filled(config('broadcasting.connections.reverb.options.host'));
     }
 
     /**
@@ -254,6 +291,15 @@ final class LessonCollaboration
             'leaveUrl' => route('teacher.lessons.presence.leave', $lesson),
             'csrf' => csrf_token(),
             'intervalMs' => self::PING_SECONDS * 1000,
+            // Cursors and instant notices through the Cloudflare relay; null keeps the editor to its pings.
+            'realtime' => self::realtimeEnabled() ? [
+                'key' => config('broadcasting.connections.reverb.key'),
+                'host' => config('broadcasting.connections.reverb.options.host'),
+                'port' => (int) config('broadcasting.connections.reverb.options.port'),
+                'tls' => config('broadcasting.connections.reverb.options.scheme') === 'https',
+                'channel' => 'lesson.'.$lesson->id,
+                'me' => self::person(auth()->user()),
+            ] : null,
             'labels' => [
                 'took_over' => __(':name took over this scene'),
                 'new_media' => __('A new picture or clip arrived'),

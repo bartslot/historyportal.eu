@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Collaboration;
 
 use App\Enums\LessonStatus;
+use App\Events\LessonRoomChanged;
 use App\Exceptions\SceneClaimTaken;
 use App\Livewire\Wizard\LessonEditors;
 use App\Livewire\Wizard\Step3SceneConfigurator;
@@ -14,6 +15,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Collaboration\LessonCollaboration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -35,8 +37,8 @@ class LessonCollaborationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->owner = User::factory()->create(['name' => 'Bart Slot']);
-        $this->joey = User::factory()->create(['name' => 'Joey']);
+        $this->owner = User::factory()->teacher()->create(['name' => 'Bart Slot']);
+        $this->joey = User::factory()->teacher()->create(['name' => 'Joey']);
         $this->lesson = Lesson::create([
             'teacher_id' => $this->owner->id,
             'topic' => 'Marco Polo', 'subject' => 'history', 'grade_level' => '6',
@@ -100,7 +102,7 @@ class LessonCollaborationTest extends TestCase
         $this->addJoey();
 
         $this->actingAs($this->owner)->postJson(route('teacher.lessons.presence', $this->lesson), ['target' => 'scene:'.$this->one->id])
-            ->assertOk()->assertJson(['mine' => true, 'holder' => null]);
+            ->assertOk()->assertJson(['mine' => true, 'holder' => ['id' => $this->owner->id]]);
 
         $room = $this->actingAs($this->joey)->postJson(route('teacher.lessons.presence', $this->lesson), ['target' => 'scene:'.$this->one->id])
             ->assertOk()->json();
@@ -216,5 +218,60 @@ class LessonCollaborationTest extends TestCase
 
         $this->one->update(['order' => 3]);
         $this->assertNotSame($before, $collab->railSignature($this->lesson));
+    }
+
+    private function relayOn(): void
+    {
+        config([
+            'broadcasting.default' => 'reverb',
+            'broadcasting.connections.reverb.key' => 'hp-editor',
+            'broadcasting.connections.reverb.secret' => 'secret',
+            'broadcasting.connections.reverb.app_id' => 'historyportal',
+            'broadcasting.connections.reverb.options.host' => 'hp-realtime.example.workers.dev',
+        ]);
+    }
+
+    public function test_without_a_relay_the_editor_keeps_to_its_pings(): void
+    {
+        $this->actingAs($this->owner);
+        $this->assertNull(LessonCollaboration::editorConfig($this->lesson)['realtime']);
+    }
+
+    public function test_take_over_nudges_the_others_through_the_relay(): void
+    {
+        $this->relayOn();
+        Event::fake([LessonRoomChanged::class]);
+        $this->addJoey();
+
+        $this->actingAs($this->joey)->postJson(route('teacher.lessons.presence.take-over', $this->lesson), ['target' => 'scene:'.$this->one->id])->assertOk();
+
+        Event::assertDispatched(LessonRoomChanged::class, fn (LessonRoomChanged $e) => $e->lessonId === $this->lesson->id && $e->byUserId === $this->joey->id);
+        $this->actingAs($this->joey);
+        $this->assertSame('lesson.'.$this->lesson->id, LessonCollaboration::editorConfig($this->lesson)['realtime']['channel']);
+    }
+
+    public function test_a_ping_on_the_same_scene_does_not_nudge_again(): void
+    {
+        $this->relayOn();
+        Event::fake([LessonRoomChanged::class]);
+        $collab = app(LessonCollaboration::class);
+
+        $collab->ping($this->lesson, $this->owner, 'scene:'.$this->one->id);
+        $collab->ping($this->lesson, $this->owner, 'scene:'.$this->one->id);
+
+        Event::assertDispatchedTimes(LessonRoomChanged::class, 1);
+    }
+
+    public function test_only_editors_may_join_the_lesson_channel(): void
+    {
+        $this->relayOn();
+        $this->addJoey();
+        $stranger = User::factory()->teacher()->create();
+        $channel = 'presence-lesson.'.$this->lesson->id;
+
+        $this->actingAs($this->joey)->post('/broadcasting/auth', ['socket_id' => '1.2', 'channel_name' => $channel])
+            ->assertOk()->assertJsonStructure(['auth', 'channel_data']);
+        $this->actingAs($stranger)->post('/broadcasting/auth', ['socket_id' => '1.2', 'channel_name' => $channel])
+            ->assertForbidden();
     }
 }
