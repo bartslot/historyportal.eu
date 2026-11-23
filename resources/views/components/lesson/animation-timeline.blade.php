@@ -49,6 +49,8 @@
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
         'sail'      => $timeline['sail'] ?? null,
+        // The background's moving version, drawn as a clip on its row (SceneLoop, video-clip.js).
+        'loop'      => $scene ? \App\Services\Support\SceneLoop::urlForScene($scene) : null,
         'sailLeg'   => $sailLeg,
         'sailLabel' => $sailLeg ? ($scene?->location ? __('Crossing to :place', ['place' => $scene->location]) : __('Crossing')) : null,
         'easingLabels' => [
@@ -578,6 +580,21 @@
                                     <span class="pointer-events-none truncate px-1 text-xs text-base-content/80"
                                           x-text="(Math.round((barOf(object.target).to - barOf(object.target).from) * 10) / 10) + ' s'"></span>
                                     <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
+                                </div>
+                            </template>
+                            {{-- A background that moves: its video as a clip over the whole scene, cut where each
+                                 pass starts again (Bart, 2026-11-23). It only shows; the video plays from 0 and loops. --}}
+                            <template x-if="object.kind === 'bg' && videoSpan">
+                                <div class="pointer-events-none absolute flex items-center overflow-hidden rounded-[3px]"
+                                     data-timeline-video
+                                     :style="barStyle(videoSpan) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                    <template x-for="(x, i) in videoRestarts" :key="i">
+                                        <span class="absolute inset-y-0 w-px bg-base-content/40" :style="`left: ${x}px`" data-timeline-video-restart></span>
+                                    </template>
+                                    <span class="flex min-w-0 items-center gap-1 truncate px-2 text-xs text-base-content/80">
+                                        <span class="grid h-3 w-3 shrink-0 place-items-center [&>svg]:h-3 [&>svg]:w-3" x-html="window.__objIcons?.video ?? ''"></span>
+                                        <span class="truncate" x-text="videoLabel ? @js(__('Video')) + ' · ' + videoLabel : @js(__('Video'))"></span>
+                                    </span>
                                 </div>
                             </template>
                             <template x-if="object.kind === 'bal' || object.kind === 'art'">

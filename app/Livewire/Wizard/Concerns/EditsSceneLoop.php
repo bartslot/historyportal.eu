@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Wizard\Concerns;
 
+use App\Jobs\EncodeSceneLoop;
 use App\Services\Support\SceneLoop;
 use App\Services\Support\WebpEncoder;
 use App\Services\VideoTranscoder;
@@ -99,8 +100,9 @@ trait EditsSceneLoop
             return;
         }
 
+        // The small class files (720p 12 fps H.264 + AV1) are made by a queued job once the scene
+        // points at the upload; until then the upload plays as it is.
         $transcoder = VideoTranscoder::make();
-        $transcoder->transcodeStored($video);   // 720p H.264, fast start; keeps the original on any failure
 
         // The first frame is the scene's still. Without ffmpeg the picture already there stays.
         $frame = $transcoder->firstFrame(Storage::disk('public')->path($video));
@@ -124,6 +126,7 @@ trait EditsSceneLoop
         }
 
         $scene->update(['config' => SceneLoop::with($scene->config ?? [], $video, $scene->image_path)]);
+        EncodeSceneLoop::dispatch($scene->id, $video);
         $this->selectSceneInternal($scene->id);
         $this->dispatch('toast', message: __('The picture moves.'), type: 'success');
     }
