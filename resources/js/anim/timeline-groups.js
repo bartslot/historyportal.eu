@@ -34,6 +34,7 @@ const CAMERA_VIEW = new Set(['heading', 'tilt'])
 /** Which group a property sits in. A registry `group` (a tail, an arrow) wins: it is one shape. */
 const groupIdOf = (kind, property) => {
   if (kind === 'camera') return CAMERA_VIEW.has(property.key) ? 'view' : 'position'
+  if (kind === 'terr') return 'appearance'
   if (property.group) return property.group
   return APPEARANCE.has(property.key) ? 'appearance' : 'transform'
 }
@@ -72,6 +73,8 @@ export const displayOf = (kind, key, { baseM = null } = {}) => {
   const registry = propertyFor(kind, key)
   if (kind === 'camera') return { scale: 1, unit: registry?.unit ?? '', step: key === 'zoom' ? 0.1 : 0.01, decimals: 3 }
   if (kind === 'dio') return { scale: 1, unit: '', step: 1, decimals: 2 }
+  // A territory: fill and border read as a percent of the inspector's look, the year as a whole year.
+  if (kind === 'terr') return key === 'year' ? { scale: 1, unit: '', step: 1, decimals: 0 } : { scale: 100, unit: '%', step: 1, decimals: 0 }
   // A stage25d layer: x is a share of the view (read as a percent), y in metres.
   if (kind === 's25') {
     if (key === 'z') return { scale: 1, unit: 'm', step: 0.25, decimals: 2 }

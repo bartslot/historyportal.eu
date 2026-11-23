@@ -857,6 +857,7 @@
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        territory: cfg.territory || null,  // the linked territory's look (map/territory-look.js)
                         timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
@@ -880,6 +881,7 @@
                     projection: cfg.projection || 'mercator',
                     showCities: cfg.show_cities === true,
                     showBorders: cfg.show_borders === true,
+                    territory: cfg.territory || null,
                     interactive: true,
                     annotations: cfg.annotations || [],
                     timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
@@ -907,6 +909,8 @@
             if (!inst) return
             inst.setLayerToggles(key === 'show_cities' ? { cities: !!value } : { borders: !!value })
         })
+        // The territory's look (border, fill) from the inspector, applied in place like the switches.
+        window.Livewire.on('territoryLookChanged', ({ look }) => { if (inst?.setTerritoryLook) inst.setTerritoryLook(look) })
 
 
         // Focus-city rename/remove saved server-side → push fresh annotations so marker labels update live.

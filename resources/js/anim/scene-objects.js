@@ -90,9 +90,19 @@ export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i
     ? { target: 's25sky:sky', kind: 's25sky', label: i.label, icon: i.icon }   // the back of the backdrop: a row, no properties
     : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id, icon: i.icon }))
 
+/**
+ * The territory a map scene links: one row while one is linked (lesson-map hasTerritory). There is
+ * one per scene, so its target is fixed: 'terr:map'.
+ */
+export const territoryObjects = (label = 'Territory') => (window.__lessonMapApi?.hasTerritory?.()
+  ? [{ target: 'terr:map', kind: 'terr', icon: 'map', label }]
+  : [])
+
 /** Read one animatable property off the live layer, so a row never shows a number nothing uses. */
 export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
+
+  if (kind === 'terr') return window.__lessonMapApi?.territoryValue?.(property) ?? null
 
   if (kind === 'art' || kind === 'arw') {
     const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
@@ -180,6 +190,7 @@ export const writeObjectProperty = (target, property, value) => {
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
   if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
   if (kind === 's25') return void window.__stage25d?.setLayerProp?.(id, property, value)
+  if (kind === 'terr') return void window.__lessonMapApi?.setTerritoryValues?.({ [property]: value })
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })

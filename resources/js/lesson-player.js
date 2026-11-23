@@ -2047,6 +2047,7 @@ Alpine.data('lessonGame', (lesson) => ({
           // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
           showCities: cfg.show_cities === true,
           showBorders: cfg.show_borders === true,
+          territory: cfg.territory || null,     // the linked territory's look (map/territory-look.js)
         })
 
         // Map-pinned text labels follow the map as the student pans/zooms.
@@ -2631,7 +2632,7 @@ Alpine.data('lessonGame', (lesson) => ({
         const t = clock()
         const frame = frameAt(timeline, t)
         if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map })
+        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map, territory: _mapInstance })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

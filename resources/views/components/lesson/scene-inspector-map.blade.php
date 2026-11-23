@@ -114,7 +114,7 @@
         @endif
     </div>
 
-    {{-- Territory picker — link a polity's Wikidata QID for an accurate red boundary. --}}
+    {{-- Territory picker — link a polity's Wikidata QID for an accurate boundary. --}}
     @php $qid = $scene->config['qid'] ?? null; @endphp
     <div class="form-control">
         <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Territory') }}</span>
@@ -123,10 +123,54 @@
             <div class="mt-1 flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
                 <div class="min-w-0">
                     <p class="truncate text-sm text-success">{{ $scene->location ?? $qid }}</p>
-                    <p class="text-prose text-panel-hint">{{ $qid }} · {{ __('red boundary, fit at the chosen year') }}</p>
+                    <p class="text-prose text-panel-hint">{{ $qid }} · {{ __('its border at the chosen year') }}</p>
                 </div>
                 <button type="button" wire:click="unlinkTerritory"
                         class="shrink-0 text-2xs text-error/80 underline hover:text-error">{{ __('Change') }}</button>
+            </div>
+
+            {{-- The territory's look (Bart 11-23): a black pen line and an etched inside by default.
+                 Saved to config.territory; the timeline's Territory row fades fill and border and keys the year. --}}
+            @php
+                $look = \App\Support\TerritoryLook::from($scene->config['territory'] ?? []);
+                $swatch = 'h-5 w-7 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-900';
+            @endphp
+            <div class="mt-2 space-y-1.5 rounded-lg bg-slate-800/30 p-2" data-territory-look>
+                <div class="flex items-center gap-2">
+                    <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Border') }}</span>
+                    <input type="color" value="{{ $look['border_color'] }}"
+                           wire:change="setTerritoryLook('border_color', $event.target.value)"
+                           class="{{ $swatch }}" data-tooltip="{{ __('Border colour') }}" aria-label="{{ __('Border colour') }}" />
+                    <span class="range-panel-knob min-w-0 flex-1">
+                        <input type="range" min="0" max="6" step="0.2" value="{{ $look['border_width'] }}"
+                               wire:change="setTerritoryLook('border_width', $event.target.value)"
+                               class="range range-panel" data-tooltip="{{ __('Border width') }}" aria-label="{{ __('Border width') }}" />
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Area') }}</span>
+                    <select wire:change="setTerritoryLook('fill_style', $event.target.value)"
+                            class="select select-xs select-bordered bg-slate-900 min-w-0 flex-1" aria-label="{{ __('Area') }}">
+                        <option value="none" @selected($look['fill_style'] === 'none')>{{ __('None') }}</option>
+                        <option value="etched" @selected($look['fill_style'] === 'etched')>{{ __('Etched') }}</option>
+                        <option value="wash" @selected($look['fill_style'] === 'wash')>{{ __('Wash') }}</option>
+                    </select>
+                    @if ($look['fill_style'] !== 'none')
+                        <input type="color" value="{{ $look['fill_color'] }}"
+                               wire:change="setTerritoryLook('fill_color', $event.target.value)"
+                               class="{{ $swatch }}" data-tooltip="{{ __('Area colour') }}" aria-label="{{ __('Area colour') }}" />
+                    @endif
+                </div>
+                @if ($look['fill_style'] !== 'none')
+                    <div class="flex items-center gap-2">
+                        <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Strength') }}</span>
+                        <span class="range-panel-knob min-w-0 flex-1">
+                            <input type="range" min="0" max="1" step="0.05" value="{{ $look['fill_strength'] }}"
+                                   wire:change="setTerritoryLook('fill_strength', $event.target.value)"
+                                   class="range range-panel" aria-label="{{ __('Strength') }}" />
+                        </span>
+                    </div>
+                @endif
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"
