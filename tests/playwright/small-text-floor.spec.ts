@@ -113,14 +113,13 @@ const STATES: State[] = [
     prepare: (page) => open(page, page.locator('[aria-label="Add"]')),
   },
   {
-    // The add-scene dialog (a DaisyUI modal). Opened from the Add menu, and only opened: no kind is picked.
+    // The add-scene dialog (a DaisyUI modal). Opened from the rail's add tile, and only opened: no kind is picked.
     name: 'editor: Add a scene dialog',
     url: () => process.env.MAP_WIZARD_URL ?? '',
     ready: '#lesson-canvas-root',
     editor: true,
     prepare: async (page) => {
-      await open(page, page.locator('[aria-label="Add"]'));
-      await open(page, page.getByText('Add Scene', { exact: true }));
+      await open(page, page.locator('[data-rail-add]'));
     },
   },
   { name: 'editor: voyage inspector', url: () => process.env.VOYAGE_WIZARD_URL ?? '', ready: '#lesson-canvas-root', editor: true },

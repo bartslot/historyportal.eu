@@ -313,6 +313,12 @@ class Lesson extends Model
         return $this->hasMany(Scene::class)->orderBy('order');
     }
 
+    /** Story to video: character sheets, world shots and clips (App\Services\StoryVideo\StoryVideoRun). */
+    public function storyMedia(): HasMany
+    {
+        return $this->hasMany(StoryMediaItem::class)->orderBy('position');
+    }
+
     /** "≈ N min" on the lesson card and the player's title screen. Eager-load `scenes` when listing. */
     public function estimatedMinutes(): int
     {
@@ -829,6 +835,18 @@ class Lesson extends Model
     }
 
     /** The title screen's picture: the teacher's choice, else the automatic lead image. */
+    /**
+     * The picture the title screen actually shows: the teacher's own title picture, else the lesson's card picture. The
+     * player has always fallen back like this; the editor's rail did not, so a lesson made of 3D scenes (no title
+     * picture of its own) showed an empty dark title card in the rail over a title screen with a picture on it
+     * (Bart 2026-11-21: "the preview for the title from a 3D scene is not loading").
+     */
+    public function titleScreenImageUrl(): ?string
+    {
+        // The card chain reads the first scene and the source only when they are loaded.
+        return $this->titleBgUrl() ?? $this->loadMissing(['firstScene', 'source'])->cardImageUrl();
+    }
+
     public function titleBgUrl(): ?string
     {
         $chosen = trim((string) ($this->title_image ?? ''));

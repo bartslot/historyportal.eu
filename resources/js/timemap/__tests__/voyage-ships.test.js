@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { projectedMpp } from '../voyage-ships.js'
+import { projectedMpp, fitPictureInDisc } from '../voyage-ships.js'
 
 /**
  * The ships are drawn as world-sized objects, so their apparent size is (metres / metres-per-pixel).
@@ -30,3 +30,17 @@ describe('projectedMpp', () => {
     expect(projectedMpp(far, 0, 0, 1)).toBeGreaterThan(projectedMpp(close, 0, 0, 1));
   });
 });
+
+/** A leg's picture marker shows the whole picture inside its disc, never a crop of it (Bart 2026-11-20). */
+describe('fitPictureInDisc', () => {
+  for (const [w, h] of [[1000, 1000], [1600, 900], [600, 1200]]) {
+    it(`keeps every corner of a ${w}x${h} picture inside the circle, centred, unstretched`, () => {
+      const r = 100
+      const f = fitPictureInDisc(w, h, r)
+      expect(Math.hypot(f.w / 2, f.h / 2)).toBeLessThanOrEqual(r)
+      expect(f.x).toBeCloseTo(-f.w / 2)
+      expect(f.y).toBeCloseTo(-f.h / 2)
+      expect(f.w / f.h).toBeCloseTo(w / h)
+    })
+  }
+})

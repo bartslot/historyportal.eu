@@ -2,8 +2,8 @@
     /** Radio-group name. Must be unique on the page — two groups sharing a name share a selection. */
     'name',
     /**
-     * [[value, label], …] — labels already translated by the caller. A third item is an icon: the
-     * `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
+     * [[value, label], …] — labels already translated by the caller. A third item is an icon: ['ui' => name] for a file in
+     * resources/ui-icons (App\Support\UiIcon), the `d` of a 24px outline path (Heroicons geometry), ['fill' => d, 'viewBox' => …, 'class' => …]
      * for a filled glyph (App\Support\TabIcons), ['motion' => ms, 'factor' => f] for a
      * movement's own curve that plays on hover, or ['moves' => kind] for a picture that moves that
      * way while it shows (.motion-preview in app.css). The tab then shows the icon, and the label becomes
@@ -23,6 +23,8 @@
      * tabs-box's filled pill with a darker one. See `.tabs-panel` in app.css.
      */
     'panel' => false,
+    /** Show an icon tab's label beside its icon, not only as its tooltip. */
+    'labelled' => false,
 ])
 
 {{-- One segmented control for the whole app — DaisyUI `tabs tabs-box`, radio inputs.
@@ -44,20 +46,22 @@
      public site's; inside the teacher app the chosen state is the theme's own lighter surface,
      which is what tabs-box already paints, and the pill is fully rounded like every other control.
      Amber in the teacher app is the exact pattern being removed, so nothing here reintroduces it. --}}
-<div {{ $attributes->class(['tabs tabs-box', 'tabs-panel' => $panel]) }} role="tablist">
+<div {{ $attributes->class(['tabs tabs-box', 'tabs-panel' => $panel, 'flex-nowrap' => $labelled]) }} role="tablist">
     @foreach ($options as $opt)
         @php [$optValue, $optLabel] = $opt; $optIcon = $opt[2] ?? null; @endphp
         @if ($optIcon)
             {{-- DaisyUI's icon tab: a label.tab holding the radio, so the browser still owns the
                  exclusivity and the arrow keys. .tabs-panel styles label:has(:checked). --}}
-            <label class="tab {{ $tabClass }}" data-tooltip="{{ $optLabel }}" data-segment="{{ $optValue }}"
+            <label class="tab {{ $tabClass }} @if ($labelled) min-w-0 flex-nowrap gap-1.5 whitespace-nowrap px-2 @endif" @unless ($labelled) data-tooltip="{{ $optLabel }}" @endunless data-segment="{{ $optValue }}"
                    @if (is_array($optIcon) && isset($optIcon['motion'])) x-on:mouseenter="matchMedia('(prefers-reduced-motion: reduce)').matches || $el.querySelector('animateMotion')?.beginElement()" @endif>
                 <input type="radio" name="{{ $name }}" value="{{ $optValue }}" class="sr-only"
                        aria-label="{{ $optLabel }}"
                        @if ($model) x-model="{{ $model }}" @endif
                        @if ($onChange) x-on:change="{{ $onChange }}" @endif
                        @checked($value !== null && (string) $value === (string) $optValue) />
-                @if (is_array($optIcon) && isset($optIcon['mask']))
+                @if (is_array($optIcon) && isset($optIcon['ui']))
+                    <x-ui.icon :name="$optIcon['ui']" :class="$labelled ? 'h-4 w-4' : 'h-5 w-5'" />
+                @elseif (is_array($optIcon) && isset($optIcon['mask']))
                     <span class="{{ $optIcon['class'] ?? 'h-5 w-5' }} bg-current" aria-hidden="true"
                           style="mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat; -webkit-mask: url('{{ asset($optIcon['mask']) }}') center / contain no-repeat"></span>
                 @elseif (is_array($optIcon) && isset($optIcon['fill']))
@@ -86,6 +90,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $optIcon }}"/>
                     </svg>
+                @endif
+                @if ($labelled)
+                    <span class="text-xs">{{ $optLabel }}</span>
                 @endif
             </label>
         @else

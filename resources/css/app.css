@@ -1068,6 +1068,33 @@
     color: oklch(20% 0.02 264);
 }
 
+/* ─── Painted paper edge on lesson pictures ──────────────────────────────
+   A scene's picture is painted on the page, like the plates in "Van ooit tot onlangs": the wash
+   stops in a soft, irregular edge and the paper shows around it, no hard rectangle. The mask is
+   Bart's own (Mask.webp, 11-21), inverted to alpha-only and cut to 1280 px: 593 KB to 78 KB.
+   scene/paper-edge.js puts .paper-edge on the picture host and .paper-page on the stage behind
+   it; a scene opts out with config.paper_edge = false. Unlayered, so it beats bg-* utilities. */
+.paper-page {
+    background-color: var(--lp-paper);
+    background-image: url('/images/paper/paper.svg');
+    background-size: 512px 512px;
+}
+.paper-edge,
+.paper-edge .lp-split .px-scene {
+    -webkit-mask: var(--paper-edge-mask, url('/images/paper/edge-mask.webp')) center / 100% 100% no-repeat;
+    mask: var(--paper-edge-mask, url('/images/paper/edge-mask.webp')) center / 100% 100% no-repeat;
+}
+/* Comic panels: the host also holds the balloons and figures, so each panel's own picture gets
+   the edge instead of the whole host (a balloon or a face must never fade into the paper). */
+.paper-edge:has(.lp-split) {
+    -webkit-mask: none;
+    mask: none;
+}
+/* The panel's own colour (inline, SplitStage) would show through the edge: paper instead. */
+.paper-edge .lp-split__panel {
+    background: var(--paper-edge-bg, var(--lp-paper) url('/images/paper/paper.svg') 0 0 / 512px 512px) !important;
+}
+
 /* ─── Film grain overlay (add class to any section / card) ───────────── */
 .lp-grain {
     position: relative;

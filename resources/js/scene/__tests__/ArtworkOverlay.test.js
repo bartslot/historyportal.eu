@@ -209,6 +209,31 @@ describe('ArtworkOverlay — pinned to the map', () => {
     expect(saved.at(-1)).toMatchObject({ anchor: 'screen', lng: null, lat: null })
   })
 
+  // Bart 11-22, Bukhara: a picture pinned to a place 4,000 km off the map's view sat off the stage,
+  // and letting go of the pin left it there.
+  it('brings a layer pinned off the map back onto the stage when it is unpinned', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -300, lat: 4 })])   // projects to x -250%
+
+    expect(overlay.togglePin(1)).toBe(false)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 10, y: 54 })
+    expect(node(el).style.left).toBe('10%')
+  })
+
+  it('leaves an unpinned layer where it is when it was already on the stage', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -45, lat: 2 })])     // x 5%, y 52%
+
+    overlay.togglePin(1)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 5, y: 52 })
+  })
+
   it('refuses to pin when there is no map to pin to', () => {
     const el = host()
     const overlay = new ArtworkOverlay(el)
@@ -445,7 +470,39 @@ describe('keeping the canvas steady while a teacher edits', () => {
 
     overlay.syncProps([layer({ width: null })])
 
-    expect(node.style.width).not.toBe('30%')
+    expect(node.style.width).toBe('max-content')
+  })
+
+  /**
+   * THE SQUEEZE. A scale or height repaint on a layer with no width used to clear the node's
+   * inline width to '', which is width:auto: on an absolutely placed box that is shrink-to-fit,
+   * capped by the room left between its left edge and the stage's right edge. The picture's
+   * max-width:100% followed the box down while its height held, so a figure standing on the
+   * right of the stage came back from a save squeezed sideways (lesson 149, scene 5767).
+   */
+  it('keeps a layer with no width on max-content when its scale or height is repainted', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ x: 90 })])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+    const img = node.querySelector('img')
+
+    overlay.setLayerProp(1, 'scale', 1.5)
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.width).toBe('auto')
+    expect(img.style.maxWidth).toBe('none')
+
+    overlay.syncProps([layer({ x: 90, height: 50, scale: 1.5 })])
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.maxWidth).toBe('none')
+  })
+
+  it('never lets the picture of a layer with no width be capped by its box', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(el.querySelector('[data-layer-id="art_1"] img').style.maxWidth).toBe('none')
   })
 })
 

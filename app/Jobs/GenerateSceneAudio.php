@@ -116,6 +116,12 @@ class GenerateSceneAudio implements ShouldQueue
 
             $this->warnIfDowngraded($scene, $provider, $actualProvider, $voiceId, $narrationTiming);
 
+            // A scene that ends in choices: the narrator reads those out too, in this same voice. The job
+            // skips words it already recorded in this voice, so a re-narration costs nothing extra then.
+            if (\App\Services\Lessons\ChoicePrompt::spoken($scene->config) !== '') {
+                GenerateChoicesAudio::dispatch($scene->id)->onQueue('narrate');
+            }
+
             $this->maybeMarkReady($scene->fresh());
         } catch (Throwable $e) {
             // A scene that still has its own recording of this text stays playable: a failed

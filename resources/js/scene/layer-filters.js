@@ -31,6 +31,20 @@ export const isClipartLayer = (l) => !!l && l.asset_id != null && l.kind !== 'co
  */
 export const backdropLayers = (layers) => (Array.isArray(layers) ? layers.filter((l) => !isClipartLayer(l)) : [])
 
+/**
+ * The layers the editor's flat stage (wizard-bridge) may draw for a scene of this kind.
+ *
+ * A map or voyage scene draws its library layers in its own overlay ABOVE the map, positioned
+ * on the map. The flat stage sits UNDER the map, so when it drew them as well, a second copy
+ * lay hidden behind the map at the layer's raw x/y, its edge peeking out past the stage, while
+ * the real one could be far away on the map (Bart 11-22, Bukhara: "the Z index is not good").
+ * There it keeps the backdrop only. Every other scene keeps all its layers.
+ */
+export const flatStageLayers = (kind, layers) => {
+  if (!Array.isArray(layers)) return layers ?? null
+  return kind === 'map' || kind === 'voyage' ? backdropLayers(layers) : layers
+}
+
 /** '#rrggbb' → [r, g, b] in 0..1, the range feColorMatrix works in. */
 export function hexToUnit(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))

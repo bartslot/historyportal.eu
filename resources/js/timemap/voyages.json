@@ -1372,7 +1372,7 @@
       "year_end": 1295,
       "show_from": 1250,
       "show_to": 1350,
-      "label_at": 14,
+      "label_at": 16,
       "waypoints": [
         [
           12.34,
@@ -1385,6 +1385,14 @@
         [
           25,
           36
+        ],
+        [
+          35.07,
+          32.92
+        ],
+        [
+          35.23,
+          31.78
         ],
         [
           35.07,
@@ -1546,11 +1554,35 @@
           "note": "Venice to Acre by galley"
         },
         {
-          "depart": "1271-11-01",
-          "arrive": "1271-11-20",
+          "depart": "1271-06-01",
+          "arrive": "1271-06-10",
           "wp": [
             3,
             4
+          ],
+          "transport": "horse",
+          "note": "Up to Jerusalem for oil from the lamp at the Holy Sepulchre",
+          "depart_precision": "month",
+          "arrive_precision": "month"
+        },
+        {
+          "depart": "1271-06-20",
+          "arrive": "1271-07-01",
+          "wp": [
+            4,
+            5
+          ],
+          "transport": "horse",
+          "note": "Back down to Acre",
+          "depart_precision": "month",
+          "arrive_precision": "month"
+        },
+        {
+          "depart": "1271-11-01",
+          "arrive": "1271-11-20",
+          "wp": [
+            5,
+            6
           ],
           "transport": "sea",
           "note": "Acre to Ayas",
@@ -1560,8 +1592,8 @@
           "depart": "1271-11-20",
           "arrive": "1272-03-15",
           "wp": [
-            4,
-            7
+            6,
+            9
           ],
           "transport": "horse",
           "note": "Anatolian and Armenian highlands",
@@ -1571,8 +1603,8 @@
           "depart": "1272-04-01",
           "arrive": "1272-08-10",
           "wp": [
-            7,
-            10
+            9,
+            12
           ],
           "transport": "camel",
           "note": "Persian desert to Hormuz"
@@ -1581,8 +1613,8 @@
           "depart": "1272-09-01",
           "arrive": "1273-06-01",
           "wp": [
-            10,
-            11
+            12,
+            13
           ],
           "transport": "camel",
           "note": "North again to Balkh"
@@ -1591,8 +1623,8 @@
           "depart": "1273-06-15",
           "arrive": "1273-10-01",
           "wp": [
-            11,
-            13
+            13,
+            15
           ],
           "transport": "camel",
           "note": "Badakhshan and the Pamirs"
@@ -1601,8 +1633,8 @@
           "depart": "1273-10-15",
           "arrive": "1274-03-01",
           "wp": [
-            13,
-            16
+            15,
+            18
           ],
           "transport": "camel",
           "note": "Kashgar, Yarkand, Khotan"
@@ -1611,8 +1643,8 @@
           "depart": "1274-03-15",
           "arrive": "1274-11-01",
           "wp": [
-            16,
-            19
+            18,
+            21
           ],
           "transport": "camel",
           "note": "Taklamakan and the Gobi"
@@ -1621,8 +1653,8 @@
           "depart": "1275-01-01",
           "arrive": "1275-05-01",
           "wp": [
-            19,
-            21
+            21,
+            23
           ],
           "transport": "camel",
           "note": "To Xanadu and Khanbaliq",
@@ -1632,8 +1664,8 @@
           "depart": "1291-01-01",
           "arrive": "1291-02-01",
           "wp": [
-            21,
-            22
+            23,
+            24
           ],
           "transport": "camel",
           "note": "Overland to the port of Zaiton"
@@ -1642,8 +1674,8 @@
           "depart": "1291-02-15",
           "arrive": "1293-11-01",
           "wp": [
-            22,
-            30
+            24,
+            32
           ],
           "transport": "sea",
           "note": "The long sea road home"
@@ -1652,8 +1684,8 @@
           "depart": "1293-12-01",
           "arrive": "1294-02-01",
           "wp": [
-            30,
-            31
+            32,
+            33
           ],
           "transport": "camel",
           "note": "Hormuz back up to Tabriz"
@@ -1662,8 +1694,8 @@
           "depart": "1294-03-01",
           "arrive": "1294-06-01",
           "wp": [
-            31,
-            32
+            33,
+            34
           ],
           "transport": "horse",
           "note": "Over the mountains to the Black Sea"
@@ -1672,8 +1704,8 @@
           "depart": "1294-07-01",
           "arrive": "1295-01-01",
           "wp": [
-            32,
-            37
+            34,
+            39
           ],
           "transport": "sea",
           "note": "Trebizond to Venice"

@@ -14,7 +14,7 @@
     $failed = (bool) $problem;
 @endphp
 
-{{-- Twine (a story with links) as a lesson: one empty 3D scene per passage, links as Decision points. --}}
+{{-- Twine (a story with links) as a lesson: one empty 3D scene per passage, every link a choice that jumps to its scene. --}}
 <details class="group mt-4 rounded-2xl border border-base-content/10 bg-base-200/70" @if ($failed) open @endif data-twine-import>
     <summary class="flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-medium text-base-content [&::-webkit-details-marker]:hidden">
         <x-icons.chevron-right class="size-4 shrink-0 transition-transform group-open:rotate-90" />

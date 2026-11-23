@@ -27,7 +27,9 @@ const EXEMPT = '[data-stage25d-tile], [data-stage25d-picture], [data-stage25d-po
 const wrong = (page: Page, state: string) => page.evaluate(([controls, exempt, name]) => {
   const out: string[] = []
   for (const el of document.querySelectorAll(controls)) {
-    const r = el.getBoundingClientRect()
+    // A segmented choice in a panel (.tabs-panel) is ONE control: its strip is 32, the tabs inside it are smaller
+    // (Bart 2026-11-19: "the same height on all these elements" as the select beside it).
+    const r = (el.closest('.tabs-panel') ?? el).getBoundingClientRect()
     const s = getComputedStyle(el)
     if (!r.width || !r.height || s.visibility === 'hidden' || s.display === 'none' || el.closest('[inert]') || el.matches(exempt)) continue
     const h = Math.round(r.height)

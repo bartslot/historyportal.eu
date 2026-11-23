@@ -47,6 +47,13 @@ class VideoTranscoder
     public function __construct(
         private readonly string $ffmpegPath = 'ffmpeg',
         private readonly string $ffprobePath = 'ffprobe',
+        /**
+         * Threads per encode. SiteGround counts every thread against a cap of 80 processes per
+         * user, and on its 56-core machines x264 and SVT-AV1 left to themselves start more than
+         * that and fail to open ("Generic error in an external library", "Cannot allocate memory").
+         * Measured 2026-11-23 on a 1080p loop: 4 threads for x264, 2 for SVT-AV1, about 4 s each.
+         */
+        private readonly int $threads = 4,
     ) {}
 
     public static function make(): self
@@ -54,6 +61,7 @@ class VideoTranscoder
         return new self(
             (string) config('services.ffmpeg.path', 'ffmpeg'),
             (string) config('services.ffmpeg.probe_path', 'ffprobe'),
+            (int) config('services.ffmpeg.threads', 4),
         );
     }
 
@@ -211,6 +219,235 @@ class VideoTranscoder
                 : null;
         } catch (\Throwable) {
             return null;
+        }
+    }
+
+    /**
+     * Encode a scene's moving picture for class: a 720p, 12 fps, silent H.264 MP4, and an AV1 copy
+     * for browsers that play AV1. Both are NEW files beside the upload ("x.mp4" → "x.loop.mp4" and
+     * "x.loop.av1.mp4"), so no browser keeps playing a cached copy of the file it replaces; the
+     * caller points the scene at them and deletes the upload.
+     *
+     * The settings are the render test of 2026-11-23 on the Hormuz clip: 15 s came out 1.4 MB as
+     * AV1 (CRF 44) and 2.2 MB as H.264 (CRF 29); VP9 was 3 MB and is not worth a third file. The
+     * loops are drawn "on twos", so 12 fps is the real frame rate, not a cut. They play muted, so the
+     * audio track is dropped. AV1 is not on older Safari, which is why H.264 stays the main file.
+     *
+     * Idempotent: an input that is already a ".loop.mp4" is not encoded again; only a missing AV1
+     * copy is made. Nothing is ever deleted here, and a failed encode leaves no file behind.
+     *
+     * @return array{ok: bool, src: ?string, av1: ?string, reason: string, before: int, after: int}
+     */
+    public function encodeLoop(string $path, string $disk = 'public'): array
+    {
+        $storage = Storage::disk($disk);
+        $fail = fn (string $why, int $size = 0) => ['ok' => false, 'src' => null, 'av1' => null, 'reason' => $why, 'before' => $size, 'after' => $size];
+        if (! $storage->exists($path)) {
+            return $fail('file not found');
+        }
+        $before = (int) $storage->size($path);
+        if (! $this->isAvailable()) {
+            return $fail('ffmpeg not available', $before);
+        }
+        $encoders = $this->encoders();
+        $reasons = [];
+
+        $src = self::isEncodedLoop($path) ? $path : self::loopPathFor($path);
+        if ($src !== $path && ! $storage->exists($src)) {
+            if (! in_array('libx264', $encoders, true)) {
+                return $fail('no H.264 encoder', $before);
+            }
+            $ok = $this->runEncode($storage->path($path), $storage->path($src), [
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '29', '-preset', 'slow',
+                '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+            ]);
+            if (! $ok) {
+                return $fail('H.264 encode failed', $before);
+            }
+        }
+
+        $av1 = self::av1PathFor($src);
+        if (! $storage->exists($av1)) {
+            $av1Args = match (true) {
+                in_array('libsvtav1', $encoders, true) => ['-c:v', 'libsvtav1', '-threads', (string) $this->av1Threads(), '-svtav1-params', 'lp='.$this->av1Threads(), '-crf', '44', '-preset', '6', '-pix_fmt', 'yuv420p'],
+                in_array('libaom-av1', $encoders, true) => ['-c:v', 'libaom-av1', '-threads', (string) $this->av1Threads(), '-crf', '44', '-b:v', '0', '-cpu-used', '6', '-row-mt', '1', '-pix_fmt', 'yuv420p'],
+                default => null,
+            };
+            if ($av1Args === null) {
+                $reasons[] = 'no AV1 encoder';
+                $av1 = null;
+            } elseif (! $this->runEncode($storage->path($path), $storage->path($av1), $av1Args)) {
+                $reasons[] = 'AV1 encode failed';
+                $av1 = null;
+            }
+        }
+
+        $after = (int) $storage->size($src);
+        Log::info('[VideoTranscoder] loop encoded', compact('path', 'src', 'av1', 'before', 'after', 'reasons'));
+
+        return ['ok' => true, 'src' => $src, 'av1' => $av1, 'reason' => $reasons === [] ? 'encoded' : implode(', ', $reasons), 'before' => $before, 'after' => $after];
+    }
+
+    /**
+     * Join clips into one film, each cut to its beat: a clip longer than its beat is trimmed, a shorter one holds
+     * its last frame (never loops, bart 2026-11-23). The result is a plain H.264 master at the clips' own size and
+     * frame rate; encodeLoop() then makes the 720p 12 fps H.264 + AV1 class files from it.
+     *
+     * @param  list<array{path: string, seconds: float}>  $parts  paths on the disk, in order
+     * @return array{ok: bool, path: ?string, reason: string}
+     */
+    public function assemble(array $parts, string $out, string $disk = 'public'): array
+    {
+        $storage = Storage::disk($disk);
+        if ($parts === []) {
+            return ['ok' => false, 'path' => null, 'reason' => 'no clips'];
+        }
+        if (! $this->isAvailable() || ! in_array('libx264', $this->encoders(), true)) {
+            return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg with H.264 not available'];
+        }
+        $inputs = [];
+        $filters = [];
+        foreach (array_values($parts) as $i => $part) {
+            if (! $storage->exists($part['path'])) {
+                return ['ok' => false, 'path' => null, 'reason' => "missing clip {$part['path']}"];
+            }
+            $secs = max(0.5, round((float) $part['seconds'], 3));
+            $inputs = [...$inputs, '-i', $storage->path($part['path'])];
+            // Same size and rate for every part (concat needs it), pad with the last frame, then cut to the beat.
+            $filters[] = "[{$i}:v]scale=-2:".self::MAX_HEIGHT.',fps=24,setsar=1,format=yuv420p,'
+                ."tpad=stop_mode=clone:stop_duration={$secs},trim=duration={$secs},setpts=PTS-STARTPTS[v{$i}]";
+        }
+        $labels = implode('', array_map(fn ($i) => "[v{$i}]", array_keys($filters)));
+        $graph = implode(';', $filters).";{$labels}concat=n=".count($filters).':v=1:a=0[out]';
+
+        $final = $storage->path($out);
+        @mkdir(dirname($final), 0775, true);
+        $part = $final.'.part.mp4';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-threads', (string) $this->threads,
+                ...$inputs,
+                '-filter_complex', $graph, '-map', '[out]',
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
+                '-an', '-movflags', '+faststart', $part,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($part) && filesize($part) > 0 && rename($part, $final)) {
+                return ['ok' => true, 'path' => $out, 'reason' => 'joined'];
+            }
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'error' => $e->getMessage()]);
+        }
+        @unlink($part);
+
+        return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg failed'];
+    }
+
+    /** SVT-AV1 runs several threads per "lp", so it gets half: 2 by default. */
+    private function av1Threads(): int
+    {
+        return max(1, intdiv($this->threads, 2));
+    }
+
+    /** The class-ready H.264 loop made from an upload: "x.mp4" → "x.loop.mp4". */
+    public static function loopPathFor(string $path): string
+    {
+        return preg_replace('/\.[^.\/]+$/', '', $path).'.loop.mp4';
+    }
+
+    /** A loop's AV1 copy: "x.loop.mp4" → "x.loop.av1.mp4". */
+    public static function av1PathFor(string $path): string
+    {
+        return preg_replace('/\.mp4$/', '', $path).'.av1.mp4';
+    }
+
+    public static function isEncodedLoop(string $path): bool
+    {
+        return str_ends_with($path, '.loop.mp4');
+    }
+
+    /**
+     * One loop encode into $out: 720p at most, 12 fps, no audio, fast start. True when $out is a
+     * finished, non-empty file; otherwise nothing is left behind.
+     *
+     * @param  list<string>  $codecArgs
+     */
+    private function runEncode(string $in, string $out, array $codecArgs): bool
+    {
+        $final = $out;
+        $out .= '.part.mp4';   // a half-written file must never look like a finished loop
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error',
+                '-threads', (string) $this->threads, '-i', $in,   // the decoder's threads count too
+                '-vf', 'fps=12,scale=-2:min('.self::MAX_HEIGHT.'\,ih)',
+                ...$codecArgs,
+                '-an', '-movflags', '+faststart',
+                $out,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($out) && filesize($out) > 0) {
+                return rename($out, $final);
+            }
+            Log::warning('[VideoTranscoder] loop encode failed', ['out' => $out, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] loop encode failed', ['out' => $out, 'error' => $e->getMessage()]);
+        }
+        @unlink($out);
+
+        return false;
+    }
+
+    /**
+     * The video encoders this ffmpeg was built with. SiteGround's own /usr/local/bin/ffmpeg has
+     * none (checked 2026-11-23: a non-GPL build, decoders only), so the answer decides what runs.
+     *
+     * @return list<string>
+     */
+    public function encoders(): array
+    {
+        try {
+            $process = new Process([$this->ffmpegPath, '-hide_banner', '-encoders']);
+            $process->setTimeout(10);
+            $process->run();
+            preg_match_all('/^\s*V\S*\s+(\S+)/m', $process->getOutput(), $m);
+
+            // The legend above the list (" V..... = Video") matches too; it is not an encoder.
+            return array_values(array_diff($m[1], ['=']));
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * The video's first frame as image bytes (JPEG), or null when ffmpeg is missing or fails.
+     * A moving scene picture keeps a still for everything that needs one (rail thumb, poster).
+     */
+    public function firstFrame(string $absolutePath): ?string
+    {
+        if (! is_file($absolutePath) || ! $this->isAvailable()) {
+            return null;
+        }
+        $out = $absolutePath.'.poster.jpg';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-i', $absolutePath,
+                '-frames:v', '1', '-q:v', '2', $out,
+            ]);
+            $process->setTimeout(60);
+            $process->run();
+            $bytes = $process->isSuccessful() && is_file($out) ? (string) file_get_contents($out) : '';
+
+            return $bytes !== '' ? $bytes : null;
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] first frame failed', ['path' => $absolutePath, 'error' => $e->getMessage()]);
+
+            return null;
+        } finally {
+            @unlink($out);
         }
     }
 

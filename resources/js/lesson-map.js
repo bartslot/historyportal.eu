@@ -17,6 +17,7 @@ import { mapTextProjector } from './map-text-projector.js'
 import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages, addChartPaper, chartTunerControls, riverPaint, regionLayers, routeLayer } from './map-chart.js'
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
+import { openingCamera } from './anim/scene-animation.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
 
@@ -112,9 +113,11 @@ export function renderLessonMap (el, opts = {}) {
   // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
   const regionUrl = REGION_URL.test(opts.region?.url || '') ? opts.region.url : null
   const route = (Array.isArray(opts.route) ? opts.route : []).filter(lngLatOk).map((p) => [Number(p[0]), Number(p[1])])
-  const fixedCamera = lngLatOk(opts.camera?.center) && Number.isFinite(Number(opts.camera?.zoom))
-    ? { center: [Number(opts.camera.center[0]), Number(opts.camera.center[1])], zoom: Number(opts.camera.zoom) }
-    : null
+  // The scene's timeline camera, when it has one, is where the scene OPENS (Bart 11-22: the editor
+  // showed the focus pin's close-up until the playhead moved). It frames the map exactly as a
+  // writer's camera does: the pins and the territory no longer move it. `let`: showScene puts
+  // another map scene, with its own camera, on this same map.
+  let fixedCamera = openingCamera(opts.timeline, opts.camera)
   const revealLabels = opts.revealLabels === true
   // Coerce — the inspector saves the year through a JSON config, so it can arrive as a string.
   let year = Number(opts.year)
@@ -275,6 +278,8 @@ export function renderLessonMap (el, opts = {}) {
     },
     center: opening.center,
     zoom: opening.zoom,
+    bearing: opening.bearing ?? 0,
+    pitch: opening.pitch ?? 0,
     // A labels fit (or the writer's camera) may frame a region closer than the atlas default (see LABELS_MAX_ZOOM).
     maxZoom: maxZoomFor(),
     // A voyage revisits the same water on the way out and the way home, and the default cache is
@@ -328,7 +333,7 @@ export function renderLessonMap (el, opts = {}) {
     // Fit to the LARGEST polygon part so far-flung overseas territories don't zoom the map
     // out to the whole globe (e.g. France 1815–1830 still carried Guiana in South America).
     if (didFit) return
-    if (labelsFit && !force) { didFit = true; return }   // the pins own the camera; borders still draw
+    if ((labelsFit || fixedCamera) && !force) { didFit = true; return }   // the pins, or the scene's camera, own the camera; borders still draw
     const parts = []
     feats.forEach((f) => {
       const g = f.geometry
@@ -759,6 +764,7 @@ export function renderLessonMap (el, opts = {}) {
       applyLayerToggles()
       const y = Number(o.year)
       setYear(Number.isFinite(y) ? y : 1600)
+      fixedCamera = openingCamera(o.timeline, o.camera)
       labelsFit = labelsFitFor(o.fit)
       map.setMaxZoom(maxZoomFor())
       const view = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })

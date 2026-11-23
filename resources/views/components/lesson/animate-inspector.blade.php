@@ -32,6 +32,8 @@
     $routeAnim = ($scene?->config['overview_anim'] ?? []) + ['route' => 'draw', 'duration' => 3.0, 'stops' => true];
     $routeReveals = [
         'draw' => __('Draw the route'),
+        // The whole voyage animated in one scene: the traveller sails every leg in order, each stop numbering as it lands.
+        'sail' => __('Sail the whole voyage'),
         'none' => __('Show it all at once'),
     ];
 
@@ -146,7 +148,7 @@
             </label>
 
             <div @class(['space-y-2', 'pointer-events-none opacity-40' => $routeAnim['route'] === 'none'])>
-                <x-ui.slider-row :label="__('Time')" :min="0.5" :max="10" :step="0.5"
+                <x-ui.slider-row :label="__('Time')" :min="0.5" :max="$routeAnim['route'] === 'sail' ? 90 : 10" :step="0.5"
                                  :value="$routeAnim['duration']"
                                  :display="rtrim(rtrim(number_format((float) $routeAnim['duration'], 1), '0'), '.')" unit="s"
                                  on-change="setOverviewAnim('duration', $event.target.value)" />

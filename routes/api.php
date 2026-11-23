@@ -60,3 +60,22 @@ Route::prefix('image-relay')->name('api.image-relay.')
         Route::post('/{imageRelayRequest}/finish', [ImageRelayController::class, 'finish'])->name('finish');
     });
 
+// ── Render PC: the render PC fetches the clips it has to make and sends them back (App\Services\StoryVideo\RenderPcQueue) ──
+Route::prefix('render-pc')->name('api.render-pc.')
+    ->middleware([\App\Http\Middleware\RenderPcToken::class, 'throttle:120,1'])->group(function () {
+        Route::get('/ping', [\App\Http\Controllers\Api\RenderPcController::class, 'ping'])->name('ping');
+        Route::post('/next', [\App\Http\Controllers\Api\RenderPcController::class, 'next'])->name('next');
+        Route::get('/clips/{clip}/input/{index}', [\App\Http\Controllers\Api\RenderPcController::class, 'input'])->whereNumber('index')->name('input');
+        Route::post('/clips/{clip}/finish', [\App\Http\Controllers\Api\RenderPcController::class, 'finish'])->name('finish');
+        Route::post('/scenes/{scene}/film', [\App\Http\Controllers\Api\RenderPcController::class, 'film'])->name('film');
+    });
+
+// ── ElevenLabs studio: bart's Mac pulls batches for the web studio and sends the results back (App\Services\StoryVideo\StudioQueue) ──
+Route::prefix('studio')->name('api.studio.')
+    ->middleware([\App\Http\Middleware\StudioToken::class, 'throttle:120,1'])->group(function () {
+        Route::get('/status', [\App\Http\Controllers\Api\StudioController::class, 'status'])->name('status');
+        Route::post('/next', [\App\Http\Controllers\Api\StudioController::class, 'next'])->name('next');
+        Route::get('/items/{item}/input/{index}', [\App\Http\Controllers\Api\StudioController::class, 'input'])->whereNumber('index')->name('input');
+        Route::post('/items/{item}/finish', [\App\Http\Controllers\Api\StudioController::class, 'finish'])->name('finish');
+        Route::post('/release', [\App\Http\Controllers\Api\StudioController::class, 'release'])->name('release');
+    });

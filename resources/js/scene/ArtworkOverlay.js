@@ -20,6 +20,7 @@
  */
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
+import { handleCss } from './stage-handle.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
@@ -71,10 +72,8 @@ const HANDLES = [
   { name: 'e', axis: 'x', pos: 'right:-5px; top:calc(50% - 5px);', cursor: 'ew-resize' },
 ]
 
-/** The look of a layer handle on the stage (the corner dots); speech balloons use it too. */
-export const handleCss = (pos, cursor) => `position:absolute; ${pos} width:10px; height:10px; pointer-events:auto;
-  border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:${cursor};
-  box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none;`
+/** The look of a layer handle on the stage (the corner dots); speech balloons and text boxes use it too. */
+export { handleCss }
 
 // Object-list / selection id namespace so artwork ids never collide with text-box ids.
 export const artObjId = (assetId) => `art_${assetId}`
@@ -106,7 +105,7 @@ export const artObjId = (assetId) => `art_${assetId}`
  * nothing on screen, which looks exactly like a save that did not take.
  */
 const SYNCABLE = [
-  'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend',
+  'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend', 'edge',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
   ...SIT_KEYS, 'occlude', ...ARROW_KEYS,
 ]
@@ -130,6 +129,12 @@ const WATCHED = [
   'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
 ]
 
+/** 'painted' or 'straight'. Unset: a whole picture (cover) is painted, a cut-out is not. */
+export function layerEdge(l) {
+  if (l.edge === 'painted' || l.edge === 'straight') return l.edge
+  return l.kind === 'cover' ? 'painted' : 'straight'
+}
+
 export function layersIdentity(layers) {
   return JSON.stringify((Array.isArray(layers) ? layers : []).map(l => [
     l.asset_id,
@@ -144,7 +149,7 @@ export function layersSignature(layers) {
     l.asset_id,
     String(l.url || (l.embed && l.embed.src) || '').split('?')[0],
     l.x, l.y, l.scale, l.height, l.width, l.depth, l.rotation,
-    l.blur, l.opacity, l.blend,
+    l.blur, l.opacity, l.blend, l.edge,
     l.white_key, l.grayscale, l.tint, l.tint_opacity,
     l.anim, l.anim_delay, l.anim_ease, l.anim_duration,
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
@@ -189,6 +194,9 @@ export function normalizeLayer(l) {
         // CSS mix-blend-mode. 'multiply' is what makes a scanned engraving or map sit ON the
         // scene by dropping its white paper, instead of floating in a white box.
         blend: l.blend || 'normal',
+        // The painted paper edge (paper-edge.js): 'painted' or 'straight'. A whole picture (cover)
+        // is painted unless the teacher says otherwise; a cut-out keeps its own outline.
+        edge: layerEdge(l),
         // Colour treatment: knock the paper out, drain the colour, recolour the ink.
         white_key: Number.isFinite(l.white_key) ? l.white_key : 0,
         grayscale: !!l.grayscale,
@@ -237,6 +245,9 @@ export function normalizeLayer(l) {
         title: l.title || (l.embed && l.embed.title) || 'Icon',
   }
 }
+
+/** A stage position (%) off the stage pulled back in, far enough that the picture can be seen and grabbed. */
+const onStage = (v) => (!Number.isFinite(v) ? 50 : v >= 0 && v <= 100 ? v : Math.max(10, Math.min(90, v)))
 
 export class ArtworkOverlay {
   constructor(hostEl, { onChange = null, readonly = false } = {}) {
@@ -442,6 +453,20 @@ export class ArtworkOverlay {
       item.anchor = 'screen'
       item.lng = null
       item.lat = null
+      // Pinned to a place the map is not showing, the layer sits off the stage, and letting go of
+      // the pin would leave it there: unpinned, and still nowhere to be seen. Bring it into view.
+      const x = onStage(item.x)
+      const y = onStage(item.y)
+      if (x !== item.x || y !== item.y) {
+        item.x = x
+        item.y = y
+        const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
+        if (el) {
+          el.style.left = `${item.x}%`
+          el.style.top = `${item.y}%`
+          this._syncChrome(item)
+        }
+      }
     } else {
       const ll = this._projector.unproject(item.x, item.y)
       if (!ll) return false
@@ -621,6 +646,9 @@ export class ArtworkOverlay {
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
+    // A width of null is "no width of its own", not zero: Number(null) is 0, which drew the layer
+    // as a 0%-wide box the moment a save cleared its width.
+    if (key === 'width' && (value === null || value === '' || value === undefined)) item.width = null
     // An arrow has no box to move or scale: its geometry and ink are repainted from its values.
     if (item.kind === 'arrow') {
       if (ARROW_KEYS.includes(key) || ['x', 'y', 'tint', 'opacity'].includes(key)) {
@@ -648,17 +676,26 @@ export class ArtworkOverlay {
       case 'blend':
         node.style.mixBlendMode = item.blend && item.blend !== 'normal' ? item.blend : ''
         break
+      case 'edge':
+        item.edge = layerEdge(item)
+        node.querySelector('img')?.classList.toggle('paper-edge', item.edge === 'painted')
+        break
       case 'scale':
       case 'height':
       case 'width': {
         node.style.height = `${this._heightPct(item)}%`
         const w = this._widthPct(item)
-        // Setting the property to '' returns the node to width:max-content, so clearing an
-        // explicit width puts the layer back on its own aspect rather than freezing the last one.
-        node.style.width = w === null ? '' : `${w}%`
+        // No explicit width means `max-content`, written out, never ''. Clearing the inline width
+        // dropped the node to width:auto, which on an absolutely placed box is shrink-to-fit: it
+        // is capped by the room between its left edge and the stage's right edge. The picture's
+        // `max-width:100%` (Tailwind's reset) then followed the box down while its height stayed,
+        // so every scale/height repaint squeezed a figure sideways, worse the further right it
+        // stood. Any save that came back (a drag, a balloon edit) repainted through here.
+        node.style.width = w === null ? 'max-content' : `${w}%`
         const liveImg = node.querySelector('img')
         if (liveImg) {
           liveImg.style.width = w === null ? 'auto' : '100%'
+          liveImg.style.maxWidth = w === null ? 'none' : ''
           liveImg.style.objectFit = w === null ? '' : 'fill'
         }
         this._syncChrome(item)
@@ -1127,8 +1164,10 @@ export class ArtworkOverlay {
     // With no explicit width the node hugs the image and `width:auto` keeps its natural aspect.
     // Once a teacher unlocks the aspect and types a width, the box is theirs and the picture is
     // stretched to it — `contain` would letterbox and leave the ring around empty space.
+    // `max-width:none` because Tailwind's reset caps every img at 100% of its box: should the box
+    // ever be narrower than the picture, the picture must overflow it, never squeeze into it.
     img.style.cssText = this._widthPct(item) === null
-      ? 'height:100%; width:auto; display:block; pointer-events:none; user-select:none;'
+      ? 'height:100%; width:auto; max-width:none; display:block; pointer-events:none; user-select:none;'
       : 'height:100%; width:100%; object-fit:fill; display:block; pointer-events:none; user-select:none;'
     // The node sizes itself to the image's aspect, so the chrome can only be measured once the
     // file has decoded. Without this the ring is a sliver on first paint.
@@ -1144,6 +1183,8 @@ export class ArtworkOverlay {
     // context, so a blend on the img would only ever mix with the node's own empty backdrop.
     // On the node it mixes with whatever the overlay sits over — which is the point of Multiply.
     if (item.blend && item.blend !== 'normal') node.style.mixBlendMode = item.blend
+    // The painted paper edge masks the picture itself, so the selection ring stays square.
+    if (item.edge === 'painted') img.classList.add('paper-edge')
     // Ambient motion on its own inner wrapper, so it composes with the node's transform (position,
     // rotation, parallax, entrance) instead of replacing it. Origin bottom-centre = the image's base.
     const amb = document.createElement('div')

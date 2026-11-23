@@ -1,4 +1,4 @@
-@props(['scene' => null, 'voyageDef' => null, 'routeLine' => [], 'voyageMap' => ['cities' => true, 'borders' => true, 'labels' => true], 'voyageFog' => [], 'voyageView' => 'flat', 'transports' => [], 'stops' => []])
+@props(['scene' => null, 'voyageDef' => null, 'routeLine' => [], 'voyageMap' => ['cities' => true, 'borders' => true, 'labels' => true], 'voyageFog' => [], 'voyageView' => 'flat', 'transports' => [], 'stops' => [], 'fillableStops' => 0])
 
 @php
     $config = $scene->config ?? [];
@@ -52,6 +52,18 @@
             <span x-show="!wide" class="rounded-full bg-slate-800 px-2 py-0.5 text-2xs font-medium text-panel-hint">{{ __('Waypoint :n / :total', ['n' => $legIndex + 1, 'total' => $legCount]) }}</span>
         @endif
     </div>
+
+    {{-- The voyage's own stop copy (resources/js/timemap/<id>-tour.json) can fill the stops a teacher has not
+         written yet: name, date, title and story (Step3SceneConfigurator::fillVoyageStops), in the lesson's language,
+         also replacing pack text left in another language. Shown only while there is something to fill; it never
+         overwrites what a teacher wrote. --}}
+    @if ($fillableStops > 0)
+        <button type="button" wire:click="fillVoyageStops(true)" wire:loading.attr="disabled" wire:target="fillVoyageStops" data-fill-voyage-stops
+                class="btn btn-sm mt-3 w-full justify-start gap-2">
+            <x-ui.icon name="voyage-overview" />
+            {{ trans_choice('{1} Fill in 1 stop|[2,*] Fill in :count stops', $fillableStops, ['count' => $fillableStops]) }}
+        </button>
+    @endif
 
     {{-- What the editor is looking at: one waypoint, or the whole voyage. Same control as the tab
          row below — same box, same button size — because it is the same kind of choice, and two
@@ -188,8 +200,12 @@
                      by canoe). Drawn on the map as this same round portrait with its ring. --}}
                 <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/40 p-2">
                     @if ($legMarkerImage !== '')
-                        <img src="{{ $legMarkerImage }}" alt=""
-                             class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary" />
+                        {{-- The whole picture, zoomed out inside the disc, as the map draws it (voyage-ships.js
+                             roundTexture). The disc takes the picture's corner colour once it loads. --}}
+                        <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-base-content ring-2 ring-primary">
+                            <img src="{{ $legMarkerImage }}" alt="" class="h-[72%] w-[72%] object-contain"
+                                 x-data x-on:load="(() => { try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage($el, 0, 0, 1, 1, 0, 0, 1, 1); const [r, g, b, a] = x.getImageData(0, 0, 1, 1).data; if (a > 15) $el.parentElement.style.backgroundColor = `rgb(${r},${g},${b})` } catch (e) {} })()" />
+                        </span>
                         <div class="min-w-0 flex-1">
                             <p class="text-prose text-slate-300">{{ __('A picture travels this leg.') }}</p>
                             <div class="mt-1 flex gap-2">
@@ -311,11 +327,13 @@
         {{-- Space intro. The chart is flat, so there is no Flat/Globe view to choose (Bart 10-24: one map). --}}
         <section>
             <div class="mt-2 flex items-end justify-between gap-3">
-                {{-- INTRO — the "from space" fly-in. Only the first leg plays it. --}}
+                {{-- INTRO — the "from space" fly-in. Switching it on keys the scene's camera in the timeline (timeline-panel
+                     introChanged), from the globe down to the stage's view, ending tilted; the player plays those keys. --}}
                 <label class="flex items-center gap-2" data-tooltip="{{ __('Fly in from orbit before departure (first leg only)') }}">
                     <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Space intro') }}</span>
                     <input type="checkbox" @checked($intro)
                            wire:change="setVoyageIntro($event.target.checked)"
+                           x-on:change="$dispatch('voyage-intro-changed', { on: $event.target.checked })"
                            class="toggle toggle-sm toggle-warning" />
                 </label>
             </div>
@@ -504,6 +522,9 @@
                              // Pointer dragging, like the object list: reliable inside this fixed panel.
                              forceFallback: true,
                              fallbackTolerance: 4,
+                             // Typing a stop's new name is not a drag.
+                             filter: 'input',
+                             preventOnFilter: false,
                              onStart: (evt) => { evt.item._stopNext = evt.item.nextSibling },
                              onEnd: (evt) => {
                                  const order = [...evt.to.querySelectorAll('[data-stop-leg]')]
@@ -524,8 +545,19 @@
                              data-stop-leg="{{ $stop['leg'] }}"
                              @if ($stop['scene_id']) wire:click="selectScene({{ $stop['scene_id'] }})" @endif>
                             <span data-stop-number class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-700/70 text-2xs font-semibold text-slate-200">{{ $stop['n'] }}</span>
-                            <span class="flex-1 truncate">
-                                {{ $stop['title'] ?: __('Unnamed stop') }}
+                            {{-- Double-click (or the pencil) to rename the stop in place, scene or no scene. --}}
+                            <span class="flex min-w-0 flex-1 items-center gap-1" x-data="{ editing: false, name: @js($stop['title']),
+                                    edit() { this.editing = true; this.$nextTick(() => { this.$refs.name.focus(); this.$refs.name.select() }) },
+                                    save() { if (!this.editing) return; this.editing = false; if (this.name.trim() !== @js($stop['title'])) $wire.renameVoyageStop({{ $stop['leg'] }}, this.name) } }">
+                                <span x-show="!editing" x-on:dblclick.stop="edit()" class="min-w-0 flex-1 truncate">{{ $stop['title'] ?: __('Unnamed stop') }}</span>
+                                <input x-show="editing" x-cloak x-ref="name" type="text" x-model="name" maxlength="80" data-stop-rename
+                                       x-on:click.stop x-on:keydown.enter.prevent="save()" x-on:keydown.escape.prevent="name = @js($stop['title']); editing = false"
+                                       x-on:blur="save()" aria-label="{{ __('Stop name') }}" class="input input-xs min-w-0 flex-1 select-text" />
+                                <button type="button" data-nodrag data-stop-rename-button x-show="!editing" x-on:click.stop="edit()"
+                                        class="btn btn-ghost btn-xs shrink-0 px-1 text-panel-hint opacity-0 transition group-hover:opacity-100 hover:text-primary focus-visible:opacity-100"
+                                        aria-label="{{ __('Rename this stop') }}" data-tooltip="{{ __('Rename this stop') }}">
+                                    <x-icons.pencil class="h-3.5 w-3.5" />
+                                </button>
                             </span>
                             @if (! $stop['scene_id'])
                                 {{-- A stop the class cannot watch: this leg has no scene. One click makes

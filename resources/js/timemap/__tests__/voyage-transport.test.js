@@ -49,33 +49,39 @@ describe('transportAt', () => {
     expect(transportAt(v, 0.5)).toBe('sea')
   })
 
-  it('puts Marco Polo at sea from Venice to Ayas', () => {
+  it('puts Marco Polo at sea from Venice to Acre', () => {
     expect(atWaypoint(0)).toBe('sea')   // Venice
     expect(atWaypoint(3)).toBe('sea')   // Acre
   })
 
+  it('rides from Acre up to Jerusalem and back before sailing on to Ayas', () => {
+    expect(atWaypoint(3.5)).toBe('horse')  // the road to Jerusalem
+    expect(atWaypoint(4.5)).toBe('horse')  // back down to Acre
+    expect(atWaypoint(5.5)).toBe('sea')    // Acre to Ayas
+  })
+
   it('switches to the horse for the Anatolian and Armenian highlands', () => {
-    expect(atWaypoint(5)).toBe('horse')  // Sivas
-    expect(atWaypoint(6)).toBe('horse')  // Erzurum
+    expect(atWaypoint(7)).toBe('horse')  // Sivas
+    expect(atWaypoint(8)).toBe('horse')  // Erzurum
   })
 
   it('switches to the camel for the deserts and Central Asia', () => {
-    expect(atWaypoint(9)).toBe('camel')   // Kerman
-    expect(atWaypoint(13)).toBe('camel')  // Wakhan / the Pamirs
-    expect(atWaypoint(16)).toBe('camel')  // Khotan
-    expect(atWaypoint(19)).toBe('camel')  // Zhangye, the Gobi
+    expect(atWaypoint(11)).toBe('camel')   // Kerman
+    expect(atWaypoint(15)).toBe('camel')  // Wakhan / the Pamirs
+    expect(atWaypoint(18)).toBe('camel')  // Khotan
+    expect(atWaypoint(21)).toBe('camel')  // Zhangye, the Gobi
   })
 
   it('returns to the sea for the long voyage home', () => {
-    expect(atWaypoint(24)).toBe('sea')  // Malacca Strait
-    expect(atWaypoint(27)).toBe('sea')  // Ceylon
+    expect(atWaypoint(26)).toBe('sea')  // Malacca Strait
+    expect(atWaypoint(29)).toBe('sea')  // Ceylon
   })
 
   it('rides overland again from Hormuz, then sails the last stretch to Venice', () => {
-    expect(atWaypoint(31)).toBe('camel')  // Tabriz
-    expect(atWaypoint(32)).toBe('horse')  // Trebizond, over the mountains
-    expect(atWaypoint(34)).toBe('sea')    // Constantinople
-    expect(atWaypoint(37)).toBe('sea')    // home
+    expect(atWaypoint(33)).toBe('camel')  // Tabriz
+    expect(atWaypoint(34)).toBe('horse')  // Trebizond, over the mountains
+    expect(atWaypoint(36)).toBe('sea')    // Constantinople
+    expect(atWaypoint(39)).toBe('sea')    // home
   })
 
   it('uses both mounts, so neither model is dead weight', () => {

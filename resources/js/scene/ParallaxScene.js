@@ -2,6 +2,7 @@ import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { hideFlatLayers } from './stage-handoff.js'
+import { attachLoop } from './picture-loop.js'
 import { cameraSpec, cameraPose, chainPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
 import { EASE } from '../easing.js'
 
@@ -374,7 +375,10 @@ export class ParallaxScene {
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
       // A split panel's own focus point: which part of the picture its crop keeps.
       if (spec.objectPosition) img.style.objectPosition = spec.objectPosition
-      layer.appendChild(ambientWrap(img, spec, index))
+      const wrap = ambientWrap(img, spec, index)
+      layer.appendChild(wrap)
+      // The picture's moving version plays over its still (picture-loop.js).
+      if (spec.loop) attachLoop(wrap, spec.loop, { objectPosition: spec.objectPosition })
       return this._applyArtisticProps(layer, spec)
     }
 

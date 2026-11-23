@@ -2,11 +2,13 @@ import * as THREE from 'three'
 import { Avatar3DPlayer } from '../avatar-3d.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_BIAS } from './background-fit.js'
 import { mountEmbedBg, embedBgSignature } from './embed-bg.js'
-import { isClipartLayer, backdropLayers } from './layer-filters.js'
+import { loopVideo } from './picture-loop.js'
+import { isClipartLayer, backdropLayers, flatStageLayers } from './layer-filters.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { t } from '../i18n.js'
 import { gradientCanvas, gradientCss } from './background-gradient.js'
 import { cameraSpec } from './camera.js'
+import { applyPaperEdge, paperLook } from './paper-edge.js'
 import { normalizeSplit, paneCount } from './split-layout.js'
 import { singleSource, cropPlates, textureCrop, fade, publishBackgrounds } from './background-crop.js'
 import { balloonOptions, hideStageBalloons, setBalloonScene, showStageBalloons, typingIn } from './editor-balloons.js'
@@ -123,7 +125,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             // path below sets it; anything else (a map, a world, a film) has none to animate.
             _stageBackgrounds = null
             fade(canvasEl, 1)
+            setPaperEdge(null)   // the slideshow path below paints it back on a picture
             try {
+                // Only a flat slideshow picture keeps its loop texture; every other stage lets it go.
+                if (view !== 'slideshow' || payload.config?.diorama || payload.kind === 'stage25d' || payload.kind === 'video' || normalizeSplit(payload.split ?? payload.config?.split)) { wantedLoop = null; stopSlideshowLoop() }
                 if (!payload.config?.diorama) hideDiorama()
                 if (!(payload.kind === 'stage25d' && payload.config?.stage25d)) hideStage25d()
                 if (payload.kind === 'stage25d' && payload.config?.stage25d) {
@@ -155,12 +160,16 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                     await applySlideshowBackground(payload.imageUrl, payload.sceneId ?? 0, payload.duration ?? 10, {
                         backgroundColor: payload.backgroundColor,
                         gradient: payload.backgroundGradient ?? payload.config?.background_gradient,
+                        loop: payload.imageLoop ?? null,
                         focus: payload.focus ?? payload.config?.background_focus,
                         fit: payload.fit ?? payload.config?.background_fit,
-                        layers: firstShot?.layers ?? null,
+                        // A map or voyage draws its figures over the map itself (flatStageLayers).
+                        layers: flatStageLayers(payload.kind, firstShot?.layers ?? null),
                         camera: firstShot?.camera ?? null,
                         entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,
+                        paperEdge: payload.config?.paper_edge !== false,
+                        paperLook: paperLook(payload.config),
                         backdropDepth: payload.config?.backdrop_depth ?? null,
                         sceneId: payload.sceneId ?? 0,
                         isCurrent,
@@ -304,12 +313,15 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const firstShot = (e.detail?.shots && e.detail.shots.length) ? e.detail.shots[0] : null
             await applySlideshowBackground(imageUrl, sceneId ?? 0, duration ?? 10, {
                 backgroundColor: e.detail?.backgroundColor,
+                loop: e.detail?.imageLoop ?? null,
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
                 layers: firstShot?.layers ?? null,
                 camera: firstShot?.camera ?? null,
                 entry: firstShot?.entry ?? null,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
+                paperEdge: e.detail?.config?.paper_edge !== false,
+                paperLook: paperLook(e.detail?.config),
                 backdropDepth: e.detail?.config?.backdrop_depth ?? null,
                 sceneId: sceneId ?? 0,
                 isCurrent,
@@ -445,15 +457,52 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     const slideshowTextureCache = new Map()
     let currentBgFocus = 'center'   // 'top' anchors portrait backgrounds so faces survive the crop
     let currentBgFit   = 'cover'    // 'contain' shows the whole work, letterboxed
+    // The flat picture's moving version, as a texture (picture-loop.js): {url, tex, video}. Kept
+    // across the 3 s scene:load poll so the loop does not restart every time the scene is re-sent.
+    let slideshowLoop = null
+    const pendingLoops = new Map()   // url → Promise: two quick renders share one video, none is orphaned
+    let wantedLoop = null            // the loop the latest flat render asked for
+    function stopSlideshowLoop() {
+        if (!slideshowLoop) return
+        slideshowLoop.video.pause()
+        slideshowLoop.video.removeAttribute('src')
+        slideshowLoop.video.load()
+        slideshowLoop.tex.dispose()
+        slideshowLoop = null
+    }
+    /** A playing loop as a texture, sized like an image so coverScale reads it; null if it will not play. */
+    function loopTexture(loopUrl) {
+        return new Promise(resolve => {
+            const video = loopVideo(loopUrl)
+            const done = (ok) => {
+                clearTimeout(timer)
+                if (!ok) { video.removeAttribute('src'); video.load(); resolve(null); return }
+                video.width = video.videoWidth
+                video.height = video.videoHeight
+                const tex = new THREE.VideoTexture(video)
+                tex.colorSpace = THREE.SRGBColorSpace
+                tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping
+                resolve({ url: loopUrl, tex, video })
+            }
+            const timer = setTimeout(() => done(false), 8000)
+            video.addEventListener('playing', () => done(true), { once: true })
+            video.addEventListener('error', () => done(false), { once: true })
+            video.play?.()?.catch(() => done(false))
+        })
+    }
+
     async function applySlideshowBackground(url, sceneId = 0, durationSec = 10, motion = {}) {
         const isCurrent = motion.isCurrent ?? (() => true)
+        wantedLoop = motion.loop || null
+        if (slideshowLoop && slideshowLoop.url !== motion.loop) stopSlideshowLoop()
         currentBgFocus = motion.focus || 'center'
         currentBgFit   = normalizeFit(motion.fit)
+        setPaperEdge(null)
         // Layered shot (E3c): render via ParallaxScene when the shot carries layers.
         if (Array.isArray(motion.layers) && motion.layers.length) {
             const didShow = await showLayeredSlideshowShot(motion)
             if (!isCurrent()) return
-            if (didShow) return
+            if (didShow) { wantedLoop = null; stopSlideshowLoop(); return }   // the panel plays the loop on its own plane
             // Fall through to flat if layered show fails
         }
         if (!isCurrent()) return
@@ -497,9 +546,29 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 slideshowTextureCache.set(cacheKey, tex)
             }
             if (!isCurrent()) return
+            // The picture's moving version replaces the still once it plays ('contain' keeps the
+            // still: its letterbox is baked into a padded copy, which a video cannot be).
+            if (motion.loop && currentBgFit !== 'contain' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+                const url = motion.loop
+                if (slideshowLoop?.url !== url) {
+                    if (!pendingLoops.has(url)) {
+                        // Adopted once, when it plays, and only if it is still the loop the stage wants;
+                        // a render that was overtaken meanwhile lets it go.
+                        pendingLoops.set(url, loopTexture(url).then(p => {
+                            pendingLoops.delete(url)
+                            if (p && wantedLoop === url) { stopSlideshowLoop(); slideshowLoop = p }
+                            else if (p) { p.video.pause(); p.video.removeAttribute('src'); p.tex.dispose() }
+                        }))
+                    }
+                    await pendingLoops.get(url)
+                }
+                if (!isCurrent()) return
+                if (slideshowLoop?.url === url) tex = slideshowLoop.tex
+            }
             // Hide sphere only after texture is ready — avoids black flash.
             if (activePlayer._skyboxSphere) activePlayer._skyboxSphere.visible = false
             activePlayer._scene.background = tex
+            if (motion.paperEdge) setPaperEdge(canvasEl, motion.paperLook)
 
             // A still picture at a clean fit, as in the player: a scene moves by its shot camera
             // (a camera move makes it a layered shot), never by a Ken Burns drift of its own.
@@ -839,6 +908,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         if (_splitStage) { try { _splitStage.destroy() } catch (_) {} }
         _splitStage = null
         window.__splitPanelAt = null
+        if (_splitHost?.previousElementSibling?.hasAttribute('data-paper-sheet')) _splitHost.previousElementSibling.remove()
         _splitHost?.remove()
         _splitHost = null
         _splitSig = null
@@ -870,6 +940,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             _splitStage.select(panel)
             window.__lessonArtworkLayer = _splitStage.overlay(panel)
             _stageBackgrounds = _splitStage.backgrounds()
+            setPaperEdge(payload.config?.paper_edge !== false ? _splitHost : null, paperLook(payload.config))
             return
         }
         // A figure's value changed (depth, a tint): the stage is rebuilt, and its new overlays held no
@@ -889,6 +960,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         host.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;'
         parent.appendChild(host)
         _splitHost = host
+        // Both panels are painted on one sheet of paper, as in the player (the whole layer host is masked there too).
+        setPaperEdge(payload.config?.paper_edge !== false ? host : null, paperLook(payload.config))
         // A drop on the stage lands in the panel under it, in that panel's own units (__placeIcon).
         window.__splitPanelAt = (x, y) => _splitStage?.panelAt?.(x, y) ?? null
         _splitStage = new _splitMod.SplitStage(host, {
@@ -1225,12 +1298,22 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
         window.dispatchEvent(new CustomEvent('scene-objects-changed'))
     }
 
+    /**
+     * The painted paper edge (paper-edge.js) on whichever element shows this scene's picture: the
+     * layer host for a layered shot, the split host for comic panels, the WebGL canvas for a flat
+     * one. null takes it off all of them. look: the scene's colour behind the edge and its edge shape (paperLook).
+     */
+    function setPaperEdge(target, look = {}) {
+        for (const el of [canvasEl, _wizardLayerHost, _splitHost]) applyPaperEdge(el, !!target && el === target, look)
+    }
+
     function destroyWizardLayers() {
         if (_wizardLayeredScene) {
             try { _wizardLayeredScene.destroy() } catch (_) {}
             _wizardLayeredScene = null
         }
         if (_wizardLayerHost) _wizardLayerHost.style.display = 'none'
+        setPaperEdge(null)
         _bgSig = null
         if (_artworkOverlay) { try { _artworkOverlay.clear() } catch (_) {} }
         if (_artworkHost) _artworkHost.style.display = 'none'
@@ -1257,6 +1340,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             if (!host) return false
 
             host.style.display = ''
+            setPaperEdge(payload.paperEdge && bgLayers.length ? host : null, payload.paperLook)
             if (activePlayer?._skyboxSphere) activePlayer._skyboxSphere.visible = false
             // Figures with no backdrop picture stand on the scene's own gradient or colour, as in the player
             host.style.background = bgLayers.length ? '' : (gradientCss(payload.gradient) || payload.backgroundColor || '#0f172a')
@@ -1273,7 +1357,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             const matte = payload.backgroundColor || null
             // The shot's own camera (camera.js): previewed in a loop, the figures riding along.
             const camera = cameraSpec(payload.camera)
-            const bgSig = JSON.stringify([bgLayers.map(l => stripV(l.url)), fit, matte, camera, payload.entry ?? null])
+            const bgSig = JSON.stringify([bgLayers.map(l => [stripV(l.url), stripV(l.loop)]), fit, matte, camera, payload.entry ?? null])
             if (bgSig !== _bgSig || !_wizardLayeredScene) {
                 _bgSig = bgSig
                 if (_wizardLayeredScene) { try { _wizardLayeredScene.destroy() } catch (_) {} }

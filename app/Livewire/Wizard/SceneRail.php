@@ -33,10 +33,11 @@ final class SceneRail extends Component
     public static function fingerprint(Lesson $lesson, Collection $scenes, array $problemsByScene): string
     {
         return md5((string) json_encode([
-            $lesson->title, $lesson->titleBgUrl(), $problemsByScene,
+            $lesson->title, $lesson->titleScreenImageUrl(), $problemsByScene,
             $scenes->map(fn (Scene $s) => [
                 $s->id, $s->order, $s->status, $s->kind, $s->game_type, $s->year, $s->location, $s->chapter_name,
                 $s->image_path, $s->branch_role, $s->config['overview'] ?? null, $s->config['stage25d']['beat'] ?? null,
+                $s->config['links'] ?? null, $s->config['ending'] ?? null,
             ])->all(),
         ]));
     }
@@ -57,7 +58,7 @@ final class SceneRail extends Component
         return view('livewire.wizard.scene-rail', [
             'scenes' => $lesson->scenes()->ordered()->get(),
             'problems' => $problems,
-            'titleScreen' => ['title' => $lesson->title, 'image' => $lesson->titleBgUrl(), 'selected' => $this->titleSelected],
+            'titleScreen' => ['title' => $lesson->title, 'image' => $lesson->titleScreenImageUrl(), 'selected' => $this->titleSelected],
         ]);
     }
 }

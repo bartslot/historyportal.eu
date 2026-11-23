@@ -453,4 +453,7 @@
 [data-surface="teacher"] :is(.btn, .input, .select) { --size: 2.75rem; }
 [data-surface="teacher"] :is(.btn-xs, .btn-sm, .input-xs, .input-sm, .select-xs, .select-sm) { --size: 2rem; }
 [data-surface="teacher"] .tabs > .tab { --tab-height: 2.75rem; height: 2.75rem; }
-[data-surface="teacher"] :is(.tabs-xs, .tabs-sm, .tabs-panel) > .tab { --tab-height: 2rem; height: 2rem; }
+[data-surface="teacher"] :is(.tabs-xs, .tabs-sm) > .tab { --tab-height: 2rem; height: 2rem; }
+/* A segmented choice in a settings panel is one 32 px control, the height of the select beside it (Bart, 2026-11-19: "the same
+   height on all these elements"): 1 px border + 3 px inset either side leaves 24 px for the tabs. The spec measures the strip. */
+[data-surface="teacher"] .tabs-panel > .tab { --tab-height: 1.5rem; height: 1.5rem; }

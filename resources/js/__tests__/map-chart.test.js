@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { CHART, ISLET_KM2, chartLayers, chartSources, chartImages, chartTunerControls } from '../map-chart.js';
+import { CHART, ISLET_KM2, LAKE_KM2, chartLayers, chartSources, chartImages, chartTunerControls } from '../map-chart.js';
 
 const PUBLIC = resolve(__dirname, '../../../public');
 const ids = (layers) => layers.map((l) => l.id);
@@ -10,7 +10,8 @@ describe('map-chart: the watercolour sea chart', () => {
     it('stacks sea, depth glaze, land, foothills, then ink coast, ridges and waves', () => {
         const { under, over } = chartLayers();
         expect(ids(under)).toEqual(['bg', 'chart-wash-sea', 'chart-glaze', 'chart-sea-grain', 'chart-bleed', 'land', 'chart-wash-land', 'chart-lakes', 'chart-land-edge', 'chart-tufts']);
-        expect(ids(over)).toEqual(['chart-coast-dash', 'coast-bold', 'chart-ridges', 'chart-waves']);
+        expect(ids(over)).toEqual(['chart-coast-dash', 'coast-bold', 'chart-ridges']);   // no wave strokes by default (Bart 2026-11-21)
+        expect(ids(chartLayers({ ...CHART, waveOpacity: 0.8 }).over)).toContain('chart-waves');
     });
 
     it('never stacks ridges and keeps them off the continent view', () => {
@@ -60,10 +61,16 @@ describe('map-chart: the watercolour sea chart', () => {
         const { under, over } = chartLayers();
         expect(under.find((l) => l.id === 'chart-lakes').paint['fill-pattern']).toBe('chart-sea');
         const land = JSON.stringify(under.find((l) => l.id === 'land').paint['fill-opacity']);
-        expect(JSON.stringify(over.find((l) => l.id === 'coast-bold').paint['line-opacity'])).toBe(land);
+        const ink = JSON.stringify(over.find((l) => l.id === 'coast-bold').paint['line-opacity']);
+        expect(ink).toContain('["has","lake"]');              // a lake's ring follows the lake rule, any other the islet rule
+        for (const [, km2] of [...ISLET_KM2, ...LAKE_KM2]) expect(ink).toContain(String(km2));
         expect(land).toContain('"k"');                        // story islands are always kept
         expect(ISLET_KM2.at(-1)[1]).toBe(0);                    // close in, every island is drawn
         for (let i = 1; i < ISLET_KM2.length; i++) expect(ISLET_KM2[i][1]).toBeLessThan(ISLET_KM2[i - 1][1]);
+        // Bart 2026-11-21: "all the lakes are not blue". Lakes keep their own, lower size per zoom: Balkhash on a map of Asia.
+        expect(JSON.stringify(under.find((l) => l.id === 'chart-lakes').paint['fill-opacity'])).toContain(String(LAKE_KM2[0][1]));
+        expect(LAKE_KM2[0][1]).toBeLessThan(20000);
+        expect(LAKE_KM2.at(-1)[1]).toBe(0);
         const dash = JSON.stringify(over.find((l) => l.id === 'chart-coast-dash').filter);
         expect(dash).toContain('["!",["has","lake"]]');      // no dash on lake shores
         expect(dash).toContain('["get","a"]');               // nor round islets (dash ticks read as sparkles)

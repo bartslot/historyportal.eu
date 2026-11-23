@@ -78,6 +78,9 @@
     @if ($tracks->isEmpty())
         <p class="text-xs text-panel-hint">{{ __('The music library is empty.') }}</p>
     @elseif (count($rows) < $sceneCount)
-        <button type="button" class="btn btn-xs btn-outline w-full" wire:click="addRow">{{ __('Add track') }}</button>
+        {{-- Use adds a row with that song from the next free scene. --}}
+        <x-wizard.song-list :tracks="$tracks" action="useTrack" :use-label="__('Add')" class="pt-1" />
+    @else
+        <p class="text-xs text-panel-hint">{{ __('Every scene already starts its own track.') }}</p>
     @endif
 </div>

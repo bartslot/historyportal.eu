@@ -11,6 +11,8 @@
     // does); the field beside the playhead changes one scene. (The JS carries the same default —
     // this is the one that reaches the page.)
     $duration = (float) ($timeline['duration'] ?? ($scene?->lesson?->sceneLengthMs() ?? \App\Models\Lesson::SCENE_LENGTH_MS) / 1000);
+    // A voyage leg's crossing is a clip on this timeline (resources/js/anim/sail-clip.js).
+    $sailLeg = isset($this) && method_exists($this, 'sailLeg') ? $this->sailLeg() : null;
 @endphp
 
 {{-- The wizard's Timeline tab (Figma 1417:1999).
@@ -43,6 +45,11 @@
         'alignment' => $alignment,
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
+        'sail'      => $timeline['sail'] ?? null,
+        // The background's moving version, drawn as a clip on its row (SceneLoop, video-clip.js).
+        'loop'      => $scene ? \App\Services\Support\SceneLoop::urlForScene($scene) : null,
+        'sailLeg'   => $sailLeg,
+        'sailLabel' => $sailLeg ? ($scene?->location ? __('Crossing to :place', ['place' => $scene->location]) : __('Crossing')) : null,
         'easingLabels' => [
             'auto'           => __('Automatic'),
             'linear'         => __('Linear'),
@@ -192,15 +199,13 @@
             </svg>
         </button>
 
-        <span data-timeline-word class="min-w-0 truncate text-2xs italic text-panel-label" x-text="spokenWord"></span>
-
         {{-- Zoom keeps its place at the trailing edge, as the file draws it, but it is shrink-0 and
              wears no word.
 
              The dock is only `window − inspector − rail` wide, and a game scene's inspector is
              48rem — so on a narrower screen the row runs out of space and the LAST thing on it is
-             the first to be squeezed away. That is how the zoom control disappeared. The word
-             readout beside it is the only thing here allowed to shrink. --}}
+             the first to be squeezed away. That is how the zoom control disappeared. The spoken
+             word used to sit here too; it has its own row below now. --}}
         <div class="ml-auto flex shrink-0 items-center gap-2">
             {{-- Logarithmic: every step multiplies the zoom, so it is equally gentle at both ends. --}}
             <span class="range-panel-knob" style="width: 88px" :style="{ '--range-t': zoomSlider / 1000 }">
@@ -211,6 +216,30 @@
                        data-timeline-zoom class="range range-panel" />
             </span>
         </div>
+    </div>
+
+    {{-- ── Narration ──────────────────────────────────────────────────────────────────────── --}}
+    {{-- The sentence being spoken, readable, with the word under the playhead in white (Bart,
+         2026-11-22: "make that row where the sentences are bigger, so we can check what words
+         it's on"). It replaced a 10px italic word squeezed in beside the zoom, which was the only
+         way to tell where a keyframe sits in the script.
+
+         One line that never wraps: a strip that grew a line mid-sentence would shove every track
+         down while the teacher is aiming at one. A long sentence scrolls sideways under its own
+         steam to keep the lit word in view. Each word is a button: pressing it puts the playhead
+         on it, which is the quickest way to land a keyframe on "Samarkand". --}}
+    <div x-show="spans.length" data-timeline-narration
+         x-effect="spokenSentence.current; $nextTick(() => revealSpokenWord($el))"
+         class="no-scrollbar relative flex shrink-0 items-center gap-x-0.5 overflow-x-auto whitespace-nowrap px-4 text-base leading-none"
+         style="height: 48px; background: var(--color-timeline-strip); border-top: 1px solid var(--color-panel-hairline)">
+        <template x-for="(w, i) in spokenSentence.words" :key="w.start">
+            <button type="button" x-on:click="seekToWord(w.start)"
+                    :data-timeline-word="i === spokenSentence.current ? '' : null"
+                    :aria-current="i === spokenSentence.current ? 'true' : null"
+                    :class="i === spokenSentence.current ? 'text-white' : 'text-panel-label hover:text-panel-value'"
+                    class="shrink-0 cursor-pointer rounded px-0.5 py-1 transition-colors duration-75"
+                    x-text="w.word"></button>
+        </template>
     </div>
 
     {{-- ── Tracks ─────────────────────────────────────────────────────────────────────────── --}}
@@ -237,7 +266,9 @@
             {{-- Adding a camera is not part of the empty state. It was, and that meant a map scene
                  with a single caption on it could never be given one: the button was inside the
                  "nothing here" branch, which stopped rendering the moment a layer existed. --}}
-            <div x-show="canHaveCamera && !hasCamera" class="px-4 py-2">
+            {{-- A fixed height, mirrored by a spacer beside the ruler on the lanes' side, so the rows below it still
+                 line up with their bars (the voyage's crossing sat one row above its name). --}}
+            <div x-show="canHaveCamera && !hasCamera" class="flex items-center px-4" style="height: 40px">
                 <button type="button" x-on:click="addCamera()" data-timeline-add-camera
                         class="btn btn-xs rounded-full">{{ __('Add camera') }}</button>
             </div>
@@ -284,7 +315,7 @@
                         </svg>
                         <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
                     </button>
-                    <button type="button" x-on:click="toggleGroup(object.target, $event)"
+                    <button type="button" x-on:click="toggleGroup(object.target, $event)" x-show="object.kind !== 'sail'"
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
                             :aria-label="openGroups[object.target] ? @js(__('Collapse')) : @js(__('Expand'))"
@@ -302,7 +333,7 @@
 
                          The icon CHANGES rather than only its colour, which is what the HIG asks
                          for: not everyone can perceive a tint. --}}
-                    <button type="button" x-on:click="toggleHidden(object.target)"
+                    <button type="button" x-on:click="toggleHidden(object.target)" x-show="object.kind !== 'sail'"
                             :data-timeline-eye="object.target"
                             :aria-pressed="isHidden(object.target) ? 'true' : 'false'"
                             :class="isHidden(object.target) ? 'text-panel-label' : 'text-panel-icon'"
@@ -481,6 +512,8 @@
                     </template>
                 </div>
 
+                <div x-show="canHaveCamera && !hasCamera" style="height: 40px" data-timeline-add-camera-spacer></div>
+
                 <template x-for="object in objects" :key="object.target">
                     <div :class="activeTarget === object.target && 'bg-white/5'">
                         {{-- The object's own lane: one bar covering everything its properties do,
@@ -525,6 +558,34 @@
                                  Effects): from when it appears to the scene's end. Drag a balloon's
                                  to move it, an end to stretch it; drag a figure's to set when it
                                  appears, which gives it an entrance (Bart, 2026-11-10). --}}
+                            {{-- A voyage leg's crossing (Bart 2026-11-21: "I want it to control the time"): the body moves
+                                 when the ship sets off, the ends stretch or squeeze how long it sails. --}}
+                            <template x-if="object.kind === 'sail'">
+                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px]"
+                                     data-timeline-sail
+                                     x-on:pointerdown="startBar($event, object.target)"
+                                     :style="barStyle(barOf(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                    <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-l-[3px] bg-base-content/40"></span>
+                                    <span class="pointer-events-none truncate px-1 text-xs text-base-content/80"
+                                          x-text="(Math.round((barOf(object.target).to - barOf(object.target).from) * 10) / 10) + ' s'"></span>
+                                    <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
+                                </div>
+                            </template>
+                            {{-- A background that moves: its video as a clip over the whole scene, cut where each
+                                 pass starts again (Bart, 2026-11-23). It only shows; the video plays from 0 and loops. --}}
+                            <template x-if="object.kind === 'bg' && videoSpan">
+                                <div class="pointer-events-none absolute flex items-center overflow-hidden rounded-[3px]"
+                                     data-timeline-video
+                                     :style="barStyle(videoSpan) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                    <template x-for="(x, i) in videoRestarts" :key="i">
+                                        <span class="absolute inset-y-0 w-px bg-base-content/40" :style="`left: ${x}px`" data-timeline-video-restart></span>
+                                    </template>
+                                    <span class="flex min-w-0 items-center gap-1 truncate px-2 text-xs text-base-content/80">
+                                        <span class="grid h-3 w-3 shrink-0 place-items-center [&>svg]:h-3 [&>svg]:w-3" x-html="window.__objIcons?.video ?? ''"></span>
+                                        <span class="truncate" x-text="videoLabel ? @js(__('Video')) + ' · ' + videoLabel : @js(__('Video'))"></span>
+                                    </span>
+                                </div>
+                            </template>
                             <template x-if="object.kind === 'bal' || object.kind === 'art'">
                                 <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
                                      :data-timeline-span="object.target"

@@ -63,17 +63,6 @@
             <p class="text-xs text-panel-hint">{{ __('No music plays under this scene.') }}</p>
         @endforelse
 
-        @if (count($music['layers']) < \App\Support\SceneMusic::MAX_LAYERS && $tracks->isNotEmpty())
-            <div class="flex gap-2">
-                <select wire:model="addTrackId" class="select select-xs flex-1" aria-label="{{ __('Choose a track') }}">
-                    <option value="">{{ __('Choose a track') }}</option>
-                    @foreach ($tracks as $t)
-                        <option value="{{ $t->id }}">{{ $t->title }}</option>
-                    @endforeach
-                </select>
-                <button type="button" class="btn btn-xs btn-primary" wire:click="addLayer">{{ __('Add') }}</button>
-            </div>
-        @endif
 
         <x-ui.slider-row :label="__('Crossfade')" :value="$music['crossfade']" min="0" max="10" step="0.5"
                          unit="s" :display="$music['crossfade']" :default="2"
@@ -81,6 +70,11 @@
         <x-ui.slider-row :label="__('Under the voice')" :value="$music['duck']" min="0" max="1" step="0.05"
                          unit="%" :display="(int) round($music['duck'] * 100)" :default="0.4"
                          on-change="$set('music.duck', Number($event.target.value))" />
+    @endif
+
+    {{-- The library to pick from: play a song, Use adds it (on a scene that continued, it starts a mix of its own). --}}
+    @if ($tracks->isNotEmpty() && count($music['layers'] ?? []) < \App\Support\SceneMusic::MAX_LAYERS)
+        <x-wizard.song-list :tracks="$tracks" action="useTrack" :in-use="collect($music['layers'] ?? [])->pluck('track_id')" />
     @endif
 
     {{-- Sound: the ambience bed under the scene (App\Support\SceneAmbience). Its own preview, so it plays without the music. --}}

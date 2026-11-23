@@ -52,7 +52,7 @@ class LibraryLayers
      * `occlude` 1: the parts of the backdrop that are nearer than the layer hide it (its depth map).
      */
     public const LAYER_KEYS = [
-        'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'white_key', 'rotation',
+        'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'edge', 'white_key', 'rotation',
         'blur', 'wobble', 'sway', 'grayscale', 'tint', 'tint_opacity', 'z',
         'anim', 'anim_delay', 'anim_duration', 'anim_ease',
         'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',

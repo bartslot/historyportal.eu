@@ -33,4 +33,10 @@ describe('stage slide auto-advance', () => {
     expect(stageFloorMs({ kind: 'voyage', config: {} })).toBe(STAGE_FLOOR_MS)
     expect(stageFloorMs({ kind: 'gallery', config: { images, estimate_seconds: 90 } })).toBe(90000)
   })
+
+  it('waits for an itinerary that sails the whole voyage to land, and a moment longer', () => {
+    const sail = { kind: 'voyage', config: { overview: true, overview_anim: { route: 'sail', duration: 32 } } }
+    expect(stageFloorMs(sail)).toBe(35000)
+    expect(stageFloorMs({ kind: 'voyage', config: { overview: true, overview_anim: { route: 'draw', duration: 3 } } })).toBe(STAGE_FLOOR_MS)
+  })
 })

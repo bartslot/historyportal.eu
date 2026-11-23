@@ -96,6 +96,19 @@ class SceneMusic extends Component
         $this->save($music);
     }
 
+    /** The song list's Use: this song plays under the scene (a scene that continued gets a mix of its own). */
+    public function useTrack(int $trackId): void
+    {
+        if (! MusicTrack::query()->music()->whereKey($trackId)->exists()) {
+            return;
+        }
+        if (count($this->music['layers'] ?? []) >= SceneMusicShape::MAX_LAYERS) {
+            return;
+        }
+        $this->addTrackId = $trackId;
+        $this->addLayer();
+    }
+
     public function removeLayer(int $index): void
     {
         if ($this->music === null) {

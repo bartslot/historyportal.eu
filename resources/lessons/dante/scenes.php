@@ -61,9 +61,9 @@ return [
     // from off-frame.
     'il-foglio' => [
         'type' => 'story', 'year' => 1283,
-        'backdrop' => "{$h}/backdrops/florence/lungarno",
+        // The street of the greeting itself (watercolour); it has no open sky, so no cloud.
+        'backdrop' => "{$h}/backdrops/dante/strada-saluto",
         'layers' => [
-            $cloud(2, 44, 9, 8),
             $person('dante/beatrice', 68, 100, 64, 0.3, ['depth' => 1.1, 'speaks' => 'beatrice']),
             ['asset' => "{$h}/figures/dante/dante-giovane", 'x' => 24, 'y' => 64, 'height' => 72,
                 'depth' => 1.15, 'anim' => 'slide-right', 'anim_delay' => 0.3, 'speaks' => 'dante'],
@@ -106,7 +106,8 @@ return [
     ],
     'esilio-1302' => [
         'type' => 'story', 'year' => 1302,
-        'backdrop' => "{$h}/backdrops/italy/strada-appennino",
+        // Open Tuscan country outside the city: the same watercolour plate as Campaldino, now empty.
+        'backdrop' => "{$h}/backdrops/dante/campaldino",
         'layers' => [
             $cloud(1, 42, 8, 9),
             $cloud(3, 68, 14, 7),
@@ -140,10 +141,9 @@ return [
     'commedia-galleria' => [
         'type' => 'gallery', 'year' => 1310,
         'images' => [
-            "asset:{$h}/backdrops/dante/selva",           // the dark wood where the poem begins
-            "asset:{$h}/backdrops/commedia/dore-inferno",
-            "asset:{$h}/backdrops/commedia/dore-purgatorio",
-            "asset:{$h}/backdrops/commedia/dore-paradiso",
+            // The dark wood where the poem begins. The black-and-white Doré plates were taken out
+            // (Bart, 2026-11-21): only watercolour pictures in this lesson.
+            "asset:{$h}/backdrops/dante/selva",
         ],
     ],
     'volgare' => [
@@ -159,19 +159,17 @@ return [
     ],
     'ravenna-1321' => [
         'type' => 'story', 'year' => 1321,
-        'backdrop' => "{$h}/backdrops/ravenna/ravenna",
+        // The old poet at his desk (watercolour study); indoors, so no sky, birds or trees.
+        'backdrop' => "{$h}/backdrops/dante/scrittoio-1283",
         'layers' => [
-            $cloud(1, 82, 7, 8),
-            $birds(30, 18),
-            ['asset' => "{$h}/nature/tuscany/cipresso", 'x' => 90, 'y' => 60, 'height' => 50,
-                'depth' => 1.0, 'ambient' => 'breeze'],
-            ['asset' => "{$h}/figures/dante/dante-esule", 'x' => 24, 'y' => 64, 'height' => 72,
-                'depth' => 1.15, 'anim' => 'fade', 'anim_delay' => 0.4, 'anim_duration' => 1800],
+            // At the desk, not in his travelling cloak: he finished the Paradiso here in Ravenna.
+            $person('dante/dante-scrive', 40, 96, 62, 0.4, ['ambient' => 'none', 'anim_duration' => 1800]),
         ],
     ],
     'eredita' => [
         'type' => 'story', 'year' => 2021,
-        'backdrop' => "{$h}/backdrops/commedia/michelino-tre-regni",
+        // The Florentine street where his readers stand: seven centuries on, they still read him.
+        'backdrop' => "{$h}/backdrops/dante/strada-avviso",
         'layers' => [
             ['asset' => "{$h}/props/medieval/corona-alloro", 'x' => 88, 'y' => 16, 'height' => 18,
                 'depth' => 0.8, 'anim' => 'pop', 'anim_delay' => 2.5, 'ambient' => 'bob', 'ambient_amount' => 0.6],

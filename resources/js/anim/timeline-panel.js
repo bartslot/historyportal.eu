@@ -12,9 +12,11 @@
 import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt, toggleKeyframe, baseOf, cameraValueMoves } from './keyframes.js'
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
-import { wordSpans, snapTime, wordAt } from './narration-clock.js'
+import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
+import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
+import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
@@ -22,6 +24,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 /** A track the stage keeps on a layer's keys (stage25d-keys.js), not one of the timeline's own. */
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
+import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -84,7 +87,7 @@ const KEY_MENU_H = 120
  */
 const SESSIONS = new Map()
 
-const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam'
+const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam' || o.kind === 'sail'
 
 const pinStyle = (scrolled, layer) => ` position: relative; z-index: ${layer}; background: var(--color-timeline-ground); transform: translateY(${scrolled}px);`
 
@@ -178,6 +181,8 @@ export const animationTimeline = (config = {}) => ({
   zoom: 100,
   tracks: Array.isArray(config.tracks) ? config.tracks : [],
   targets: Array.isArray(config.targets) ? config.targets : [],
+  /** A voyage leg's crossing as the teacher set it, { start, end } in seconds; null plays the default (sail-clip.js). */
+  sail: storedSail(config),
   spans: [],
   objects: [],
   openGroups: {},
@@ -198,9 +203,26 @@ export const animationTimeline = (config = {}) => ({
   /** Bumped whenever the canvas moves something, so fields that read live values re-render. */
   canvasTick: 0,
 
+  /** The background's moving version (SceneLoop): its URL from the server, its length once the browser has read it. */
+  videoLoop: config.loop ?? null,
+  videoLength: null,
+
   init () {
     this.spans = wordSpans(config.alignment ?? [])
     this.refreshObjects()
+    if (this.videoLoop) probeVideoLength(this.videoLoop).then((s) => { this.videoLength = s })
+    // A video dropped on (or removed from) this scene arrives with its next scene:load, while the
+    // panel lives on: follow it, so the clip appears without switching scenes.
+    window.Livewire?.on?.('scene:load', (e) => {
+      const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+      if (!p || p.sceneId !== config.sceneId) return
+      const url = p.imageLoop ?? null
+      if (url === this.videoLoop) return
+      this.videoLoop = url
+      this.videoLength = null
+      this.refreshObjects()
+      if (url) probeVideoLength(url).then((s) => { if (this.videoLoop === url) this.videoLength = s })
+    })
 
     // A live edit still waiting for its pause goes out BEFORE an action that moves the scene on: an
     // undo (fired before its server call) and a scene switch (a capture listener, so it runs before
@@ -266,6 +288,7 @@ export const animationTimeline = (config = {}) => ({
     // Cmd-Z / Cmd-Shift-Z restored the scene on the server: its timeline is the one to show now,
     // not the copy this panel remembered (which is exactly what the undo took back).
     window.addEventListener('timeline-restored', (event) => this.restore(event.detail?.timeline))
+    window.addEventListener('voyage-intro-changed', (event) => this.introChanged(!!event.detail?.on))
 
     // The stage25d layers keep their keys on the layer: whenever the stage shows a scene, or the server's copy
     // changed under it (undo), the s25 tracks are re-read from the layers.
@@ -286,6 +309,7 @@ export const animationTimeline = (config = {}) => ({
      * its own; the moment a teacher looks at the timeline is the moment to look at the scene.
      */
     this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
+    this.fitSailIntoDuration()
     this.waitForObjects()
     this.listenToCanvas()
     this.$nextTick(() => { if (this.zoomIsMine) this.measureFit(); else this.fit() })
@@ -339,6 +363,9 @@ export const animationTimeline = (config = {}) => ({
       const map = window.__lessonMap
       if (!this.$el?.isConnected) return
       if (!map) { if (tries) setTimeout(() => hookMap(tries - 1), 250); return }
+      // The map opens on the camera at 0 s (lesson-map openingCamera). A playhead this panel
+      // remembered elsewhere puts the camera there once the map has settled, not at the next scrub.
+      if (this.time > 0) map.once('idle', () => { if (this.$el?.isConnected) this.applyFrame() })
       if (map.__timelineHooked) return
       map.__timelineHooked = true
       const panel = () => document.querySelector('[data-timeline]')?._x_dataStack?.[0]
@@ -388,7 +415,7 @@ export const animationTimeline = (config = {}) => ({
       // newer copy. A rebuild reads the config attribute the server last rendered, which can still
       // be the state before the keyframe you just set — and the keyframes vanish off the lane
       // while sitting safely in the database. Measured: two diamonds to none, no action taken.
-      tracks: this.tracks, targets: this.targets,
+      tracks: this.tracks, targets: this.targets, sail: this.sail,
     })
   },
 
@@ -406,8 +433,11 @@ export const animationTimeline = (config = {}) => ({
   refreshObjects () {
     const cameras = this.targets.filter((t) => kindOfTarget(t) === 'camera')
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
-    const listed = [...cameras, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
-      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
+    // A voyage leg's crossing is a clip, under the camera that frames it (Bart 2026-11-21).
+    const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
+    const listed = [...cameras, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+      // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
+      ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = false   // closed until a teacher opens one (Bart 2026-11-04)
     this.applyAppearances()   // an entrance changed elsewhere (Motion tab) shows at once
@@ -423,6 +453,31 @@ export const animationTimeline = (config = {}) => ({
   pinnedStyle (object) { return isPinnedObject(object) ? pinStyle(this.tracksScrolled, 5) : '' },
 
   get canHaveCamera () { return ['map', 'voyage'].includes(config.sceneKind) },
+
+  /** A voyage scene that sails a leg (not the itinerary): its crossing is a clip on this timeline. */
+  get isVoyageLeg () { return !!config.sailLeg },
+
+  /** The crossing on this scene's clock: the teacher's clip, or when the camera is done for as long as the dates say. */
+  sailSpan () { return sailClip({ tracks: this.tracks, sail: this.sail }, config.sailLeg) },
+
+  /** The ruler reaches past the crossing's end, so its end can always be taken. */
+  fitSailIntoDuration () {
+    if (!this.isVoyageLeg) return
+    const end = this.sailSpan().end
+    if (end > this.duration) { this.duration = Math.ceil(end * 10) / 10; this.measureFit() }
+  },
+
+  /** Scrubbing the timeline sails the ship to where it is at that moment, so a teacher sees the crossing they are timing. */
+  previewSail () {
+    if (!this.isVoyageLeg) return
+    const tour = window.__voyageTour
+    if (!tour?.previewSail) return
+    const clip = this.sailSpan()
+    // The scene's own camera frames the shot while its keys play; after them the map follows the ship.
+    const cameraKeys = this.tracks.filter((t) => t.target === 'camera').flatMap((t) => sortedKeys(t).map((k) => k.time))
+    const cameraUntil = cameraKeys.length >= 2 ? Math.max(...cameraKeys) : 0
+    tour.previewSail(sailProgressAt(clip, this.time), { follow: this.time >= cameraUntil })
+  },
   get hasCamera () { return this.targets.includes('camera') },
 
   /**
@@ -435,6 +490,35 @@ export const animationTimeline = (config = {}) => ({
   addCamera () {
     if (this.hasCamera || !this.canHaveCamera) return
     this.targets = [...this.targets, 'camera']
+    this.refreshObjects()
+    this.save()
+  },
+
+  /**
+   * The voyage's "from space" intro, as the scene's camera (Bart 2026-11-20: "i would like to see the camera
+   * automatically when intro is on in the timeline. and the camera should also do the angle"). Switching it
+   * on keys the camera from the whole globe down to the view on the stage now, ending tilted; the player
+   * plays those keys instead of a built-in fly-in, so what the timeline shows is what the class sees.
+   * Switching it off takes the camera away only while it is still the intro's: a camera a teacher keyed stays.
+   */
+  introChanged (on) {
+    if (!this.canHaveCamera) return
+    const mine = isIntroCamera(this.tracks)
+    const keyed = this.tracks.some((t) => t.target === 'camera' && sortedKeys(t).length)
+    if (on) {
+      const map = window.__lessonMap
+      if (!map || (keyed && !mine)) return
+      const tracks = introCameraTracks(cameraFromMap(map))
+      this.tracks = [...this.tracks.filter((t) => t.target !== 'camera'), ...tracks]
+      if (!this.hasCamera) this.targets = [...this.targets, 'camera']
+      const end = Math.max(...tracks.flatMap((t) => t.keyframes.map((k) => k.time)))
+      if (this.duration < end) this.duration = end
+      this.openGroups.camera = true
+    } else if (mine) {
+      this.tracks = this.tracks.filter((t) => t.target !== 'camera')
+      this.targets = this.targets.filter((t) => t !== 'camera')
+    } else return
+    this.fitSailIntoDuration()   // an untouched crossing sets off when the camera lands, so it moved with it
     this.refreshObjects()
     this.save()
   },
@@ -604,6 +688,17 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A span as pixels on the lane. Kept above zero so a bar is never invisible. */
+  /** The background video's clip: the whole scene, since it loops until the scene ends. */
+  get videoSpan () { return this.videoLoop ? { from: 0, to: this.duration } : null },
+
+  /** Where the video starts over, as left offsets inside its bar. */
+  get videoRestarts () {
+    const left = this.xOf(0)
+    return loopRestarts(this.duration, this.videoLength).map((t) => Math.round(this.xOf(t) - left))
+  },
+
+  get videoLabel () { return videoLengthLabel(this.videoLength) },
+
   barStyle (span) {
     if (!span) return 'display: none'
     const left = this.xOf(span.from)
@@ -737,6 +832,36 @@ export const animationTimeline = (config = {}) => ({
   /** The word under the playhead, which is the only readout that means anything to a teacher. */
   get spokenWord () { return wordAt(this.spans, this.time)?.word ?? '' },
 
+  /** The sentence under the playhead and the word lit in it, for the narration strip (Bart, 2026-11-22). */
+  get spokenSentence () { return sentenceAt(this.spans, this.time) },
+
+  /**
+   * Keeps the lit word on screen in the narration strip. A long sentence is wider than the dock, and
+   * the strip does not wrap (a row that grew a line mid-playback would shove the tracks down), so it
+   * scrolls itself sideways instead, only when the word would otherwise sit outside the view.
+   */
+  /**
+   * A word pressed in the narration strip. Playback carries on FROM that word: play() counts from
+   * the moment it started, so a bare seek would be undone on the very next frame.
+   */
+  seekToWord (time) {
+    this.seek(time)
+    if (this.playing) {
+      this._startedFrom = this.time
+      this._startedAt = performance.now()
+    }
+  },
+
+  revealSpokenWord (strip) {
+    const word = strip?.querySelector('[data-timeline-word]')
+    if (!word) return
+    const margin = 48
+    const left = word.offsetLeft
+    const right = left + word.offsetWidth
+    if (left < strip.scrollLeft + margin) strip.scrollLeft = Math.max(0, left - margin)
+    else if (right > strip.scrollLeft + strip.clientWidth - margin) strip.scrollLeft = right - strip.clientWidth + margin
+  },
+
   xOf (t) { return LANE_PAD_PX + t * this.zoom },
 
   /** Seconds under the pointer, unclamped. */
@@ -861,6 +986,7 @@ export const animationTimeline = (config = {}) => ({
   seek (time) {
     this.time = Math.min(this.duration, Math.max(0, time))
     this.applyFrame()
+    this.previewSail()
     this.remember()
     this.announce()
   },
@@ -1045,6 +1171,7 @@ export const animationTimeline = (config = {}) => ({
   /** The live draft while a bar is dragged, else the object's own. */
   barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
+    if (target === 'sail') { const c = this.sailSpan(); return { from: c.start, to: c.end } }
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
     if (o.kind === 'art') return { from: o.entrance?.from ?? 0, to: this.duration }
@@ -1061,7 +1188,7 @@ export const animationTimeline = (config = {}) => ({
     if (!span0) return
     // The bar you take is the layer you work on: selected, so a balloon stays on the stage while
     // its time moves past the playhead (Bart 11-16: it vanished when its bar was dragged).
-    if (this.activeTarget !== target) this.selectObject(target)
+    if (this.activeTarget !== target && target !== 'sail') this.selectObject(target)
     const keys0 = [{ t: span0.from }, { t: span0.to }]
     const bar = event.currentTarget.getBoundingClientRect()
     const EDGE_PX = 8
@@ -1080,7 +1207,8 @@ export const animationTimeline = (config = {}) => ({
       }
       const keys = mode === 'move' ? shiftClip(keys0, dt)
         : stretchClip(keys0, mode, (mode === 'end' ? keys0[1].t : keys0[0].t) + dt)
-      this.spanDraft = { target, from: keys[0].t, to: Math.min(this.duration, keys[1].t) }
+      // The crossing may run past the ruler's end: the ruler grows to take it when it is let go.
+      this.spanDraft = { target, from: keys[0].t, to: target === 'sail' ? keys[1].t : Math.min(this.duration, keys[1].t) }
     }
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
@@ -1094,6 +1222,16 @@ export const animationTimeline = (config = {}) => ({
 
   /** Save a dragged bar: when a figure appears, or a balloon's start and end. */
   commitBar (target, draft) {
+    if (target === 'sail') {
+      // The crossing: when the ship sets off and how long it sails, saved with the timeline.
+      window.dispatchEvent(new CustomEvent('scene:edit-step'))
+      this.sail = { start: Math.round(draft.from * 100) / 100, end: Math.round(draft.to * 100) / 100 }
+      this.spanDraft = null
+      this.fitSailIntoDuration()
+      this.save()
+      this.previewSail()
+      return
+    }
     const o = this.objects.find((x) => x.target === target)
     if (o?.kind === 'art') {
       const from = Math.round(draft.from * 10) / 10
@@ -1318,6 +1456,7 @@ export const animationTimeline = (config = {}) => ({
     const s25 = this.tracks.filter((t) => kindOfTarget(t.target) === 's25')
     this.tracks = [...(Array.isArray(timeline.tracks) ? timeline.tracks : []), ...s25]
     this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
+    this.sail = storedSail(timeline)
     this.selected = []
     this.remember()
     this.refreshObjects()
@@ -2051,7 +2190,7 @@ export const animationTimeline = (config = {}) => ({
   save () {
     this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
-    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
+    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, sail: this.sail, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
   },
 
   /** `{ 'layer-3': keys, 'band-0': keys, sky: keys }` for EVERY row of the stage (an empty list clears a layer's keys), or null with no stage. */

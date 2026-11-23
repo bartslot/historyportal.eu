@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId, isClipartLayer, backdropLayers } from '../layer-filters.js'
+import { filterMarkup, hasTreatment, applyLayerFilter, layerFilterId, isClipartLayer, backdropLayers, flatStageLayers } from '../layer-filters.js'
 
 describe('layer colour treatment', () => {
   it('asks for nothing when the layer is untreated', () => {
@@ -148,5 +148,27 @@ describe('backdropLayers', () => {
 
   it('no layers, no backdrop', () => {
     expect(backdropLayers(null)).toEqual([])
+  })
+})
+
+// Bart 11-22: on a map scene the flat stage under the map drew the figures too, a hidden copy behind
+// the map whose edge peeked out past the stage. The map's own overlay draws them, above the map.
+describe('flatStageLayers', () => {
+  const cover = { url: '/bg.webp', kind: 'cover' }
+  const figure = { url: '/fig.webp', asset_id: 378, kind: 'figure' }
+
+  it('keeps only the backdrop on a map or voyage scene', () => {
+    expect(flatStageLayers('map', [cover, figure])).toEqual([cover])
+    expect(flatStageLayers('voyage', [figure])).toEqual([])
+  })
+
+  it('keeps every layer on any other scene', () => {
+    expect(flatStageLayers('slideshow', [cover, figure])).toEqual([cover, figure])
+    expect(flatStageLayers(undefined, [figure])).toEqual([figure])
+  })
+
+  it('passes "no layers" through unchanged', () => {
+    expect(flatStageLayers('map', null)).toBeNull()
+    expect(flatStageLayers('map', undefined)).toBeNull()
   })
 })
