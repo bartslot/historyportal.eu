@@ -14,7 +14,7 @@ import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeli
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
 import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
@@ -454,7 +454,9 @@ export const animationTimeline = (config = {}) => ({
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
     // A voyage leg's crossing is a clip, under the camera that frames it (Bart 2026-11-21).
     const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
-    const listed = [...cameras, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+    // The map block: its year, and its territory's area and border (Bart 2026-11-23).
+    const territory = config.sceneKind === 'map' ? territoryObjects(config.objectLabels?.mapBlock) : []
+    const listed = [...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
       ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]

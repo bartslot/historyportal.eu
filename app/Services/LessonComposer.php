@@ -746,7 +746,7 @@ class LessonComposer
                     'date_label' => (string) ($s['date_label'] ?? ''),
                     'story' => (string) ($s['story'] ?? ''),
                     'images' => $images,
-                ],
+                ] + (is_bool($s['clickable'] ?? null) ? ['button' => $s['clickable']] : []),
             ],
         ]);
     }

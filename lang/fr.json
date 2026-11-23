@@ -3037,5 +3037,14 @@
     "JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size": "JPG, PNG ou WebP jusqu'à 8 Mo, ou une vidéo MP4 ou WebM jusqu'à :size",
     "A video can only be a scene's moving picture. Choose a picture here.": "Une vidéo ne peut être que l'image animée d'une scène. Choisis une image ici.",
     "Upload your own picture or video": "Importe ta propre image ou vidéo",
-    "Drop a picture or video here, click to choose one or paste with :key": "Dépose une image ou une vidéo ici, clique pour en choisir une ou colle avec :key"
+    "Drop a picture or video here, click to choose one or paste with :key": "Dépose une image ou une vidéo ici, clique pour en choisir une ou colle avec :key",
+    "Border": "Frontière",
+    "Border width": "Épaisseur de la frontière",
+    "Area": "Surface",
+    "Area colour": "Couleur de la surface",
+    "Etched": "Gravé",
+    "its border at the chosen year": "sa frontière à l'année choisie",
+    "Clickable on the map": "Cliquable sur la carte",
+    "The class can open this stop.": "La classe peut ouvrir cette étape.",
+    "The class sees the name only.": "La classe ne voit que le nom."
 }
