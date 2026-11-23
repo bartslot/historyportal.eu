@@ -171,6 +171,16 @@ const REGISTRY = {
     P('fov', 'Zoom', 'linear', '°'),
     P('roll', 'Rotate', 'linear', '°'),
   ],
+  /**
+   * The territory a map scene links (lesson-map setTerritoryValues, map/territory-look.js). Fill and
+   * border are shares of the look the inspector sets, 0 gone to 1 as set; the year steps the borders
+   * through time, so an empire can grow while the narrator speaks (Bart 2026-11-23).
+   */
+  terr: [
+    P('fill', 'Fill', 'linear', ''),
+    P('border', 'Border', 'linear', ''),
+    P('year', 'Year', 'linear', ''),
+  ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.
    *  No Y: nothing leaves the floor. The keys live in the diorama JSON, not in timeline tracks. */
   dio: [

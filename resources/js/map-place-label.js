@@ -123,3 +123,71 @@ export function placeLabelLayout ({ font = ['inter'], textField, size = PLACE_LA
 export function placeLabelPaint ({ color = PLACE_LABEL.ink, halo = 'rgba(255,255,255,0.85)' } = {}) {
   return { 'text-color': color, 'text-halo-color': halo, 'text-halo-width': 1.6, 'text-halo-blur': 0.3 }
 }
+
+/**
+ * A voyage stop's name and the inked dot that marks the exact spot.
+ *
+ * Bart, 2026-11-23: "the city or place name can be nicer on the map" and "there is no point or marker
+ * indication where it is". The name is hand-lettered (ComicRoma Lettering, built into map glyphs by
+ * scripts/build-glyphs.mjs) in brown-black ink on a cream paper halo, and sits beside a small inked
+ * ring with a dot in it: the same ink and paper as the stop's speech bubble (voyage-tour.js).
+ */
+export const STOP_LABEL = {
+  font: ['ComicRoma Lettering'],
+  ink: '#1b1712',
+  paper: '#fbf2d9',
+  size: ['interpolate', ['linear'], ['zoom'], 2, 14, 6, 19],
+  dot: 'stop-dot',
+}
+
+/** The layout for a stop name: the dot at the point, the name beside it. */
+export function stopLabelLayout ({ textField }) {
+  return {
+    ...placeLabelLayout({ font: STOP_LABEL.font, textField, size: STOP_LABEL.size }),
+    'icon-image': STOP_LABEL.dot,
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.8, 6, 1],
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+    // Clears the ring (7px) by a little, so the name is plainly its dot's.
+    'text-radial-offset': 0.75,
+    'text-letter-spacing': 0.02,
+  }
+}
+
+export function stopLabelPaint () {
+  return { 'text-color': STOP_LABEL.ink, 'text-halo-color': STOP_LABEL.paper, 'text-halo-width': 2.4, 'text-halo-blur': 0.2 }
+}
+
+/**
+ * Draw the stop dot: a cream ring, a little uneven, with an ink dot in it. Registered on the map's
+ * `styleimagemissing`, so it comes back by itself after any style reload.
+ */
+export function ensureStopDot (map, { id = STOP_LABEL.dot, ratio = 2 } = {}) {
+  if (!map || typeof map.addImage !== 'function') return id
+  if (map.hasImage?.(id)) return id
+  const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
+  const ctx = canvas && canvas.getContext('2d')
+  if (!ctx) return id
+  const s = 18 * ratio
+  canvas.width = canvas.height = s
+  const c = s / 2
+  // A hand-inked ring: the radius breathes a little round the circle (fixed, so every stop matches).
+  const ring = (r) => {
+    ctx.beginPath()
+    for (let k = 0; k <= 48; k++) {
+      const a = (k / 48) * Math.PI * 2
+      const rr = r * (1 + 0.06 * Math.sin(a * 3 + 0.7) + 0.03 * Math.sin(a * 5))
+      const x = c + rr * Math.cos(a); const y = c + rr * Math.sin(a)
+      if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y)
+    }
+    ctx.closePath()
+  }
+  // Hard ink shadow, then the paper ring, then the dot.
+  ctx.save(); ctx.translate(1.2 * ratio, 1.2 * ratio); ring(5.6 * ratio); ctx.fillStyle = STOP_LABEL.ink; ctx.fill(); ctx.restore()
+  ring(5.6 * ratio)
+  ctx.fillStyle = STOP_LABEL.paper; ctx.fill()
+  ctx.lineWidth = 2 * ratio; ctx.strokeStyle = STOP_LABEL.ink; ctx.lineJoin = 'round'; ctx.stroke()
+  ctx.beginPath(); ctx.arc(c, c, 1.8 * ratio, 0, Math.PI * 2); ctx.fillStyle = STOP_LABEL.ink; ctx.fill()
+  try { map.addImage(id, ctx.getImageData(0, 0, s, s), { pixelRatio: ratio }) } catch (_) { /* added by another map */ }
+  return id
+}

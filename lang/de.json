@@ -3036,6 +3036,15 @@
     "A video can only be a scene's moving picture. Choose a picture here.": "Ein Video kann nur das bewegte Bild einer Szene sein. Wähle hier ein Bild.",
     "Upload your own picture or video": "Eigenes Bild oder Video hochladen",
     "Drop a picture or video here, click to choose one or paste with :key": "Zieh ein Bild oder Video hierher, klicke zum Auswählen oder füge mit :key ein",
+    "Border": "Grenze",
+    "Border width": "Grenzbreite",
+    "Area": "Fläche",
+    "Area colour": "Flächenfarbe",
+    "Etched": "Radiert",
+    "its border at the chosen year": "seine Grenze im gewählten Jahr",
+    "Clickable on the map": "Auf der Karte anklickbar",
+    "The class can open this stop.": "Die Klasse kann diesen Halt öffnen.",
+    "The class sees the name only.": "Die Klasse sieht nur den Namen.",
     "Make it choices": "In Auswahl umwandeln",
     "This decision point is now a Choices layer on the scene.": "Dieser Entscheidungspunkt ist jetzt eine Auswahl-Ebene auf der Szene."
 }
