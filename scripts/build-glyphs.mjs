@@ -19,7 +19,12 @@ const JOBS = [
   { gf: 'Eagle+Lake', family: 'Eagle Lake', weight: 400, style: 'normal', out: 'Eagle Lake' },
   { gf: 'Cinzel:wght@600', family: 'Cinzel', weight: 600, style: 'normal', out: 'Cinzel' },
   { gf: 'Inter:wght@500', family: 'Inter', weight: 500, style: 'normal', out: 'inter' }, // app sans — modern (city) names. lowercase folder = matches existing inter/ webfonts (case-sensitive prod)
+  // The voyage stop names, hand-lettered (Bart 2026-11-23: "the city or place name can be nicer on the map").
+  // A local font, not Google's: `file` is read from disk and inlined.
+  { file: 'public/fonts/comic-lettering/ComicRomaLettering-Bold.ttf', family: 'ComicRoma Lettering', weight: 700, style: 'normal', out: 'ComicRoma Lettering' },
 ]
+// `node scripts/build-glyphs.mjs "ComicRoma Lettering"` rebuilds only the named fontstacks.
+const ONLY = process.argv.slice(2)
 // Basic Latin + Latin-1 + Latin Extended-A/B + IPA + combining/Greek + Latin Extended Additional
 // (that one covers transliterated place names: ḥ ṣ ṭ ā …) + General Punctuation.
 //
@@ -54,11 +59,13 @@ function encode (stack) {
   return Buffer.from(pbf.finish())
 }
 
-const browser = await chromium.launch()
-for (const job of JOBS) {
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
+for (const job of JOBS.filter((j) => !ONLY.length || ONLY.includes(j.out))) {
   const page = await browser.newPage()
-  await page.setContent(`<!doctype html><head>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${job.gf}&display=block"></head><body></body>`)
+  const face = job.file
+    ? `<style>@font-face { font-family: '${job.family}'; font-weight: ${job.weight}; font-style: ${job.style}; src: url(data:font/ttf;base64,${readFileSync(resolve(job.file)).toString('base64')}); }</style>`
+    : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${job.gf}&display=block">`
+  await page.setContent(`<!doctype html><head>${face}</head><body></body>`)
   await page.addScriptTag({ content: tinySdfSrc })
   await page.evaluate(async (f) => { await document.fonts.load(`${f.weight} 24px "${f.family}"`); await document.fonts.ready }, job)
 
