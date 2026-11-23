@@ -22,7 +22,7 @@ return [
     'image_resolution' => env('STORY_VIDEO_IMAGE_RESOLUTION', '2K'),
 
     // Who makes clips (App\Services\StoryVideo\Clips\ClipDrivers): elevenlabs now, render_pc later.
-    'clip_driver' => env('STORY_VIDEO_CLIP_DRIVER', 'elevenlabs'),
+    'clip_driver' => env('STORY_VIDEO_CLIP_DRIVER', 'render_pc'),
 
     // Seedance 2 Fast: 480p / 720p, 4-15 s, up to 9 reference pictures (never together with a start frame).
     'video_model' => env('STORY_VIDEO_VIDEO_MODEL', 'bytedance-seedance-v2-fast'),
@@ -39,6 +39,15 @@ return [
     'poll_image_seconds' => 5,
     'poll_video_seconds' => 15,
     'give_up_after_minutes' => 30,
+
+    // The render PC route (App\Services\StoryVideo\RenderPcQueue): the PC asks for clips with this token and sends
+    // them back. No token: the route does not exist. A clip the PC claimed but never returned goes back in the
+    // queue after `stale_minutes` (one MiniMax clip takes about 28 minutes).
+    'render_pc' => [
+        'token' => env('RENDER_PC_TOKEN'),
+        'stale_minutes' => (int) env('RENDER_PC_STALE_MINUTES', 90),
+        'max_upload_mb' => 200,
+    ],
 
     // A safety cap on one lesson's run, so a runaway script never empties the credit balance.
     'max_clips_per_lesson' => (int) env('STORY_VIDEO_MAX_CLIPS', 80),

@@ -8,6 +8,8 @@ use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Models\Lesson;
 use App\Models\StoryMediaItem;
+use App\Services\StoryVideo\Clips\RenderPcClipDriver;
+use App\Services\StoryVideo\RenderPcQueue;
 use App\Services\StoryVideo\ElevenLabsMedia;
 use App\Services\StoryVideo\StoryVideoPlanner;
 use App\Services\StoryVideo\StoryVideoRun;
@@ -100,20 +102,36 @@ class StoryVideo extends Component
             'busy' => $items->contains(fn (StoryMediaItem $i) => $i->status->isBusy()),
             'seconds' => $kind->isVideo() ? $here->sum(fn ($i) => (int) (($i->input ?? [])['seconds'] ?? 0)) : 0,
             'configured' => self::makerReady($kind),
+            'renderPc' => $kind->isVideo() && config('story_video.clip_driver') === RenderPcClipDriver::NAME ? self::renderPcLine() : null,
             'open' => $this->openItem !== null ? $here->firstWhere('id', $this->openItem) : null,
         ]);
     }
 
-    /** Can this step's driver make anything here? ChatGPT needs its route set up; ElevenLabs needs a key. */
+    /** Can this step's driver make anything here? ChatGPT needs its route set up; ElevenLabs a key; the render PC its token. */
     public static function makerReady(StoryMediaKind $kind): bool
     {
         $driver = $kind->isVideo() ? (string) config('story_video.clip_driver', 'elevenlabs') : (string) config('story_video.picture_driver', 'chatgpt');
 
         return match ($driver) {
             'elevenlabs' => ElevenLabsMedia::make()->isConfigured(),
+            'render_pc' => (string) config('story_video.render_pc.token') !== '',
             'chatgpt' => class_exists('App\\Services\\Imaging\\ImageRoute') && ! \call_user_func(['App\\Services\\Imaging\\ImageRoute', 'usesOpenAi']),
             default => true,
         };
+    }
+
+    /** One line on the render PC for the Video step: is it there, and how much waits for it. */
+    private static function renderPcLine(): string
+    {
+        $status = app(RenderPcQueue::class)->status();
+        $seen = $status['last_seen'];
+        $state = match (true) {
+            $seen === null => __('The render PC has not asked for work yet.'),
+            $seen->diffInMinutes(now()) >= 5 && $status['rendering'] === 0 => __('The render PC last asked for work :ago.', ['ago' => $seen->diffForHumans()]),
+            default => __('The render PC is on.'),
+        };
+
+        return $state.' '.__(':rendering rendering, :waiting waiting.', ['rendering' => $status['rendering'], 'waiting' => $status['waiting']]);
     }
 
     private function firstOpenStep(): StoryMediaKind

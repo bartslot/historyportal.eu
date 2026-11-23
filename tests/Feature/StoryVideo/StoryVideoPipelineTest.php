@@ -36,7 +36,7 @@ class StoryVideoPipelineTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        config(['services.elevenlabs.media_api_key' => 'test-key', 'services.cloudinary.url' => null, 'story_video.picture_driver' => 'elevenlabs']);
+        config(['services.elevenlabs.media_api_key' => 'test-key', 'services.cloudinary.url' => null, 'story_video.picture_driver' => 'elevenlabs', 'story_video.clip_driver' => 'elevenlabs']);
         $this->teacher = User::factory()->create();
         $this->lesson = Lesson::create([
             'teacher_id' => $this->teacher->id, 'topic' => 'Marco Polo', 'subject' => 'history', 'grade_level' => 'Age 12',

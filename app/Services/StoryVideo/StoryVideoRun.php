@@ -161,27 +161,37 @@ final class StoryVideoRun
         ];
     }
 
-    /** @return list<array<string, string>> */
-    private function clipReferences(StoryMediaItem $item): array
+    /**
+     * The pictures a clip is made from, as paths on the public disk: the scene's approved world shot first, then the
+     * approved sheets of the people in the beat (the prompt's image 1, image 2, ...). Every clip driver sends these.
+     *
+     * @return list<string>
+     */
+    public function clipReferencePaths(StoryMediaItem $item): array
     {
         $disk = \Illuminate\Support\Facades\Storage::disk('public');
         $world = $this->lesson->storyMedia()->where('kind', StoryMediaKind::WorldShot->value)->where('scene_id', $item->scene_id)
             ->where('status', StoryMediaStatus::Approved->value)->value('path')
             ?? Scene::whereKey($item->scene_id)->value('image_path');
-        $refs = [];
-        if (is_string($world) && $disk->exists($world)) {
-            $refs[] = ElevenLabsMedia::inline($disk->get($world), $world);
-        }
+        $paths = is_string($world) && $disk->exists($world) ? [$world] : [];
         foreach ($this->sheetsFor($item) as $path) {
-            if (count($refs) >= (int) config('story_video.video_max_references', 9)) {
+            if (count($paths) >= (int) config('story_video.video_max_references', 9)) {
                 break;
             }
             if ($disk->exists($path)) {
-                $refs[] = ElevenLabsMedia::inline($disk->get($path), $path);
+                $paths[] = $path;
             }
         }
 
-        return $refs;
+        return $paths;
+    }
+
+    /** @return list<array<string, string>> */
+    private function clipReferences(StoryMediaItem $item): array
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+
+        return array_map(fn (string $path) => ElevenLabsMedia::inline($disk->get($path), $path), $this->clipReferencePaths($item));
     }
 
     /**

@@ -3097,5 +3097,9 @@
     "Make :count pictures": "Maak :count afbeeldingen",
     "Approve all :count": "Alle :count goedkeuren",
     "No clip maker is set up for this step yet.": "Voor deze stap is nog geen clipmaker ingesteld.",
-    "No picture maker is set up yet (the ChatGPT route).": "Er is nog geen afbeeldingsmaker ingesteld (de ChatGPT-route)."
+    "No picture maker is set up yet (the ChatGPT route).": "Er is nog geen afbeeldingsmaker ingesteld (de ChatGPT-route).",
+    "The render PC has not asked for work yet.": "De render-pc heeft nog niet om werk gevraagd.",
+    "The render PC last asked for work :ago.": "De render-pc vroeg :ago voor het laatst om werk.",
+    "The render PC is on.": "De render-pc staat aan.",
+    ":rendering rendering, :waiting waiting.": ":rendering bezig, :waiting in de wachtrij."
 }
