@@ -50,3 +50,13 @@ Route::prefix('lesson')->name('api.lesson.')->group(function () {
         ->middleware('throttle:telemetry')
         ->name('telemetry.store');
 });
+
+// ── Render PC: the render PC fetches the clips it has to make and sends them back (App\Services\StoryVideo\RenderPcQueue) ──
+Route::prefix('render-pc')->name('api.render-pc.')
+    ->middleware([\App\Http\Middleware\RenderPcToken::class, 'throttle:120,1'])->group(function () {
+        Route::get('/ping', [\App\Http\Controllers\Api\RenderPcController::class, 'ping'])->name('ping');
+        Route::post('/next', [\App\Http\Controllers\Api\RenderPcController::class, 'next'])->name('next');
+        Route::get('/clips/{clip}/input/{index}', [\App\Http\Controllers\Api\RenderPcController::class, 'input'])->whereNumber('index')->name('input');
+        Route::post('/clips/{clip}/finish', [\App\Http\Controllers\Api\RenderPcController::class, 'finish'])->name('finish');
+        Route::post('/scenes/{scene}/film', [\App\Http\Controllers\Api\RenderPcController::class, 'film'])->name('film');
+    });

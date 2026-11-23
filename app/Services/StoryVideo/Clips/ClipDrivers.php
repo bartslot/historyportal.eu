@@ -12,6 +12,7 @@ final class ClipDrivers
     /** @var array<string, class-string<ClipDriver>> */
     private const DRIVERS = [
         'elevenlabs' => ElevenLabsClipDriver::class,
+        'render_pc' => RenderPcClipDriver::class,
     ];
 
     public static function make(?string $name = null): ClipDriver
