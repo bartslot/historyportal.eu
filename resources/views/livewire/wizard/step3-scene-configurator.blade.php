@@ -3392,14 +3392,22 @@
                        :class="depth > 0 ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-900/40 hover:border-primary/60'"
                        class="mb-4 flex h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors lg:mb-0 lg:h-full lg:min-h-[62vh]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-12 w-12 text-primary" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ __('Upload your own image') }}</span>
+                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ $this->pickerTakesVideo() ? __('Upload your own picture or video') : __('Upload your own image') }}</span>
                     <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-2 text-lg font-semibold text-slate-100">
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
-                    <span class="text-sm text-panel-hint"
-                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
-                          x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here.
+                         Two plain branches, no inline php directive: Blade paired one with a later php block and the view stopped compiling. --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture or video here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture or video here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @else
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @endif
                     {{-- The scene's own picture also takes a video, which loops as its moving picture (EditsSceneLoop). --}}
                     @if ($this->pickerTakesVideo())
                         <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size', ['size' => $this->loopVideoLimit()]) }}</span>
