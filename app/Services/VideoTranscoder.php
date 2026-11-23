@@ -288,6 +288,63 @@ class VideoTranscoder
         return ['ok' => true, 'src' => $src, 'av1' => $av1, 'reason' => $reasons === [] ? 'encoded' : implode(', ', $reasons), 'before' => $before, 'after' => $after];
     }
 
+    /**
+     * Join clips into one film, each cut to its beat: a clip longer than its beat is trimmed, a shorter one holds
+     * its last frame (never loops, bart 2026-11-23). The result is a plain H.264 master at the clips' own size and
+     * frame rate; encodeLoop() then makes the 720p 12 fps H.264 + AV1 class files from it.
+     *
+     * @param  list<array{path: string, seconds: float}>  $parts  paths on the disk, in order
+     * @return array{ok: bool, path: ?string, reason: string}
+     */
+    public function assemble(array $parts, string $out, string $disk = 'public'): array
+    {
+        $storage = Storage::disk($disk);
+        if ($parts === []) {
+            return ['ok' => false, 'path' => null, 'reason' => 'no clips'];
+        }
+        if (! $this->isAvailable() || ! in_array('libx264', $this->encoders(), true)) {
+            return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg with H.264 not available'];
+        }
+        $inputs = [];
+        $filters = [];
+        foreach (array_values($parts) as $i => $part) {
+            if (! $storage->exists($part['path'])) {
+                return ['ok' => false, 'path' => null, 'reason' => "missing clip {$part['path']}"];
+            }
+            $secs = max(0.5, round((float) $part['seconds'], 3));
+            $inputs = [...$inputs, '-i', $storage->path($part['path'])];
+            // Same size and rate for every part (concat needs it), pad with the last frame, then cut to the beat.
+            $filters[] = "[{$i}:v]scale=-2:".self::MAX_HEIGHT.',fps=24,setsar=1,format=yuv420p,'
+                ."tpad=stop_mode=clone:stop_duration={$secs},trim=duration={$secs},setpts=PTS-STARTPTS[v{$i}]";
+        }
+        $labels = implode('', array_map(fn ($i) => "[v{$i}]", array_keys($filters)));
+        $graph = implode(';', $filters).";{$labels}concat=n=".count($filters).':v=1:a=0[out]';
+
+        $final = $storage->path($out);
+        @mkdir(dirname($final), 0775, true);
+        $part = $final.'.part.mp4';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-threads', (string) $this->threads,
+                ...$inputs,
+                '-filter_complex', $graph, '-map', '[out]',
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p',
+                '-an', '-movflags', '+faststart', $part,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($part) && filesize($part) > 0 && rename($part, $final)) {
+                return ['ok' => true, 'path' => $out, 'reason' => 'joined'];
+            }
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] assemble failed', ['out' => $out, 'error' => $e->getMessage()]);
+        }
+        @unlink($part);
+
+        return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg failed'];
+    }
+
     /** SVT-AV1 runs several threads per "lp", so it gets half: 2 by default. */
     private function av1Threads(): int
     {
