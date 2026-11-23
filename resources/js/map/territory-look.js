@@ -2,8 +2,8 @@
  * territory-look.js — how a map scene draws the territory the teacher linked.
  *
  * Bart, 2026-11-23: "standard it could be black, border (like a pen drawing)", "fill would be
- * transparent ... or maybe etched". So the default is a black ink line with a lightly etched
- * (hatched) inside, and the teacher can change it per scene (config.territory) and key it on the
+ * transparent". Etched hatching was tried as the default and was "too much", so the default is the
+ * black ink line alone, with Etched and Wash as choices, and the teacher can change it per scene (config.territory) and key it on the
  * timeline (the Territory row: fill, border, year).
  *
  * Only the LINKED territory takes this look. The atlas's other territories keep their faint pencil
@@ -16,9 +16,9 @@ export const FILL_STYLES = ['none', 'etched', 'wash']
 export const TERRITORY_DEFAULTS = Object.freeze({
   border_color: '#1b1712',
   border_width: 1.6,
-  fill_style: 'etched',
+  fill_style: 'none',
   fill_color: '#1b1712',
-  fill_strength: 0.55,
+  fill_strength: 0.3,
 })
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -53,10 +53,10 @@ const HOVER = ['boolean', ['feature-state', 'hover'], false]
  * Paint of the shared boundaries line layer: the linked territory in the look, every other
  * territory a faint pencil line, or nothing with the Territory borders switch off.
  */
-export const linePaint = (look, anim, { showOthers = false, otherColor = '#a08868' } = {}) => ({
+export const linePaint = (look, anim, { showOthers = false, otherColor = '#a08868', otherWidth = 0.6, otherOpacity = 0.3 } = {}) => ({
   'line-color': ['case', HIGHLIGHT, look.border_color, otherColor],
-  'line-width': ['case', HIGHLIGHT, look.border_width, 0.6],
-  'line-opacity': ['case', HIGHLIGHT, look.border_width > 0 ? anim.border : 0, showOthers ? 0.3 : 0],
+  'line-width': ['case', HIGHLIGHT, look.border_width, otherWidth],
+  'line-opacity': ['case', HIGHLIGHT, look.border_width > 0 ? anim.border : 0, showOthers ? otherOpacity : 0],
   // A pen line, not a vector stroke: a hair of softness on its edge.
   'line-blur': ['case', HIGHLIGHT, 0.35, 0],
 })

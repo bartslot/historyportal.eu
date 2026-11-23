@@ -5,9 +5,10 @@ import { propertiesFor } from '../../anim/properties.js'
 
 // Bart 11-23: "standard it could be black, border (like a pen drawing)", "maybe etched".
 describe('territoryLook', () => {
-  it('defaults to a black pen line with an etched inside', () => {
+  // Etched as the default was "too much" (Bart 11-23): the line alone, the inside left clear.
+  it('defaults to a black pen line with nothing inside', () => {
     expect(territoryLook()).toEqual({ ...TERRITORY_DEFAULTS })
-    expect(TERRITORY_DEFAULTS.fill_style).toBe('etched')
+    expect(TERRITORY_DEFAULTS.fill_style).toBe('none')
   })
 
   it('keeps what the teacher set and drops junk', () => {
@@ -30,14 +31,21 @@ describe('territory paint', () => {
 
   it('paints only the chosen fill, scaled by the timeline', () => {
     const half = territoryAnim({ fill: 0.5 })
-    expect(etchPaint(look, half)['fill-opacity'][2]).toBeCloseTo(look.fill_strength * 0.5)
-    expect(washPaint(look, half)['fill-opacity'][2]).toBe(0)
+    const etched = territoryLook({ fill_style: 'etched' })
+    expect(etchPaint(etched, half)['fill-opacity'][2]).toBeCloseTo(etched.fill_strength * 0.5)
+    expect(washPaint(etched, half)['fill-opacity'][2]).toBe(0)
     const wash = territoryLook({ fill_style: 'wash' })
     expect(washPaint(wash, half)['fill-opacity'][2]).toBeCloseTo(wash.fill_strength * 0.5)
     expect(etchPaint(wash, half)['fill-opacity'][2]).toBe(0)
     const none = territoryLook({ fill_style: 'none' })
     expect(washPaint(none, half)['fill-opacity'][2]).toBe(0)
     expect(etchPaint(none, half)['fill-opacity'][2]).toBe(0)
+  })
+
+  it("keeps a voyage's border opacity behind the switch", () => {
+    const styled = { otherOpacity: 0.8, otherWidth: 2, otherColor: '#123456' }
+    expect(caseValue(linePaint(look, territoryAnim(), { ...styled, showOthers: false })['line-opacity'], false)).toBe(0)
+    expect(caseValue(linePaint(look, territoryAnim(), { ...styled, showOthers: true })['line-opacity'], false)).toBe(0.8)
   })
 
   it('fades the border on the timeline', () => {

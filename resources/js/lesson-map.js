@@ -110,6 +110,8 @@ export function renderLessonMap (el, opts = {}) {
   // timeline's Territory row on top of it (fill and border as 0..1, the year as the year).
   let look = territoryLook(opts.territory)
   let anim = territoryAnim()
+  // The OTHER territories' faint lines: a voyage map restyles them (setDetailStyle), never the switch.
+  let others = { otherColor: GROUND.line }
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // A map scene of a 3D lesson (lesson.json kind 'map'): a highlighted region, a route, and a camera the writer
   // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
@@ -721,7 +723,7 @@ export function renderLessonMap (el, opts = {}) {
       if (!map.getLayer(layer)) return
       for (const [k, v] of Object.entries(props)) { try { map.setPaintProperty(layer, k, v) } catch (_) {} }
     }
-    paint('boundaries-line', linePaint(look, anim, { showOthers: layerToggles.borders, otherColor: GROUND.line }))
+    paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders }))
     paint('boundaries-fill', washPaint(look, anim))
     if (map.getLayer('boundaries-etch')) { try { putEtchImage() } catch (_) {} }
     paint('boundaries-etch', etchPaint(look, anim))
@@ -781,9 +783,12 @@ export function renderLessonMap (el, opts = {}) {
       if (Number(o.label_size) > 0) set(() => map.setLayoutProperty('lesson-labels', 'text-size', lblSize(Number(o.label_size))))
       if (o.city_color) set(() => map.setPaintProperty('city-labels', 'text-color', o.city_color))
       if (Number(o.city_size) > 0) set(() => map.setLayoutProperty('city-labels', 'text-size', citySize(Number(o.city_size))))
-      if (o.border_color) set(() => map.setPaintProperty('boundaries-line', 'line-color', o.border_color))
-      if (Number(o.border_width) > 0) set(() => map.setPaintProperty('boundaries-line', 'line-width', Number(o.border_width)))
-      if (o.border_opacity != null) set(() => map.setPaintProperty('boundaries-line', 'line-opacity', Number(o.border_opacity)))
+      // The other territories' lines, through the same paint as the switch and the linked territory,
+      // so a voyage's border opacity can never bring lines back with Country borders off.
+      if (o.border_color) others.otherColor = o.border_color
+      if (Number(o.border_width) > 0) others.otherWidth = Number(o.border_width)
+      if (o.border_opacity != null && Number.isFinite(Number(o.border_opacity))) others.otherOpacity = Number(o.border_opacity)
+      set(() => paintTerritory())
     },
     /** Replace the pinned place labels ([{text,lng,lat}]) and re-apply the reveal (setData clears state). */
     setLabels: (arr) => {

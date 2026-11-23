@@ -7,7 +7,7 @@ namespace App\Support;
 /**
  * How a map scene draws the territory the teacher linked (scene.config.territory).
  *
- * Bart, 2026-11-23: a black border like a pen drawing, and an etched inside rather than a red wash.
+ * Bart, 2026-11-23: a black border like a pen drawing and a transparent inside (etched was "too much").
  * The same defaults and limits live in resources/js/map/territory-look.js, which draws it; this side
  * only cleans what the inspector saves, so a junk value never reaches the map.
  */
@@ -18,9 +18,9 @@ final class TerritoryLook
     public const DEFAULTS = [
         'border_color' => '#1b1712',
         'border_width' => 1.6,
-        'fill_style' => 'etched',
+        'fill_style' => 'none',
         'fill_color' => '#1b1712',
-        'fill_strength' => 0.55,
+        'fill_strength' => 0.3,
     ];
 
     /** A stored look with every field present and in range. */
