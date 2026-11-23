@@ -130,6 +130,9 @@ return [
         'base_url' => 'https://api.elevenlabs.io',
         // Narration voice for the Time-Map "read summary aloud" feature (George by default).
         'voice_id' => env('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb'),
+        // Pictures and video for the story-to-video pipeline (App\Services\StoryVideo\ElevenLabsMedia).
+        // A separate key because it needs the image and video generation permission the voice key lacks.
+        'media_api_key' => env('ELEVENLABS_IMAGE_API_KEY'),
     ],
 
     'tts' => [

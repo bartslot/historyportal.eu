@@ -36,6 +36,24 @@ final class HistoryLineStyle
 
     public const SAFETY = 'No readable text, no letters, no labels, no watermark, no gore.';
 
+    /**
+     * Both passes folded into one text-to-image prompt, for models that paint in one go (Nano Banana 2 through
+     * ElevenLabs). Same rules as INK_PASS + COLOUR_PROMPT + TEXTURE; first written for the ElevenLabs test batch
+     * (scripts/elevenlabs-image-test.php), kept here so there is one copy. Sent with the colour anchors.
+     */
+    public const ONE_PASS = 'Style: a clean educational historical comic illustration in the History Lines style of the reference images. '
+        .'Take only the drawing and painting style from the references, never their subjects or composition. '
+        .'Confident warm black ink line carries the picture: clear closed outer contours of varying weight, only essential interior lines, '
+        .'shadows built from controlled hatching with '.self::HATCHING_RULE.' No solid black fills, no silhouettes, no grey wash. '
+        .'Colour sits beneath the ink as transparent watercolour washes with visible blooms, backruns, granulation, tide-lines and paper tooth. '
+        .'Selective colour: architecture very light in cream, pale sandstone and light ochre; weathered brown wood; muted turquoise water; '
+        .'olive only on vegetation. Roughly 35 to 45% of the picture stays very pale paper. '
+        .'Sky is a very pale blue wash, clouds mostly untouched paper with thin contours. '
+        .'Bright, editorial, like a good European comic album. Natural, respectful, slightly idealised people, faces drawn with a few precise lines, '
+        .'hands with five fingers. Historically accurate clothing, architecture and objects; if unsure, simplify, never invent. '
+        .'No muddy wash, no sepia or antique filter, no glossy or 3D rendering, no airbrush, no blur, no haze. '
+        .'No readable text, no letters, no labels, no signature, no watermark.';
+
     /** Source → line master. Reference order: source first, then the two style anchors. */
     public static function convert(string $constraints = ''): string
     {
