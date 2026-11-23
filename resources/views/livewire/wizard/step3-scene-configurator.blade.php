@@ -648,6 +648,8 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
                 // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
                 choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
+                // The background moves (SceneLoop): its row wears the video glyph.
+                loop: !!p.imageLoop,
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
 
@@ -1483,6 +1485,7 @@
         group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
         choices: @js(\App\Support\UiIcon::svg('layer-choices', ['class' => 'h-4 w-4'])),
         quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),
+        video: @js(\App\Support\UiIcon::svg('video', ['class' => 'h-4 w-4'])),
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
     // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
@@ -1965,7 +1968,7 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
@@ -3397,11 +3400,17 @@
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
-                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here. --}}
-                    @php($dropLine = $this->pickerTakesVideo() ? 'Drop a picture or video here, click to choose one or paste with :key' : 'Drop a picture here, click to choose one or paste with :key')
-                    <span class="text-sm text-panel-hint"
-                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
-                          x-text="@js(__($dropLine)).replace(':key', key)">{{ __($dropLine, ['key' => '⌘V']) }}</span>
+                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here.
+                         Two plain branches, no inline php directive: Blade paired one with a later php block and the view stopped compiling. --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture or video here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture or video here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @else
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @endif
                     {{-- The scene's own picture also takes a video, which loops as its moving picture (EditsSceneLoop). --}}
                     @if ($this->pickerTakesVideo())
                         <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size', ['size' => $this->loopVideoLimit()]) }}</span>
