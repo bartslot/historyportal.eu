@@ -14,10 +14,18 @@ describe('map-chart: the watercolour sea chart', () => {
         expect(ids(chartLayers({ ...CHART, waveOpacity: 0.8 }).over)).toContain('chart-waves');
     });
 
-    it('never stacks ridges and keeps them off the continent view', () => {
+    it('keeps every ridge in its place, sized to the ground, off the continent view', () => {
         const ridges = chartLayers().over.find((l) => l.id === 'chart-ridges');
-        // Bart 2026-10-21: "too much stacked"; 2026-10-20: "they never really work zoomed out".
-        expect(ridges.layout['icon-allow-overlap']).toBeUndefined();
+        // Bart 2026-11-23: "mountains never move". Collision showed a different set at every zoom, so
+        // every ridge shows, and its size doubles per zoom like the land under it (no stacking at any zoom).
+        expect(ridges.layout['icon-allow-overlap']).toBe(true);
+        const size = ridges.layout['icon-size'];
+        expect(size[1]).toEqual(['exponential', 2]);
+        const [z0, , z1, ] = size.slice(3);
+        const factor = (stop) => stop[1][1];
+        expect(factor(size[6]) / factor(size[4])).toBeCloseTo(2 ** (z1 - z0));
+        // Bart 2026-10-20: "they never really work zoomed out".
+        expect(z0).toBeLessThan(z1);
         expect(ridges.minzoom).toBeGreaterThanOrEqual(3);
         // the size is capped by each ridge's own distance to the coast
         expect(JSON.stringify(ridges.layout['icon-size'])).toContain('"fit"');

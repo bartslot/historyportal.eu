@@ -2387,3 +2387,37 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .quiz-answer-1 { background-color: var(--quiz-answer-1); color: #fff; }
 .quiz-answer-2 { background-color: var(--quiz-answer-2); color: #fff; }
 .quiz-answer-3 { background-color: var(--quiz-answer-3); color: #fff; }
+
+/* ─── A voyage stop's button on the map, as a comic speech bubble (Bart 2026-11-23: "how do we make
+   these buttons more comic style?"). Cream paper, a thick ink outline drawn a little unevenly, a hard
+   ink shadow and no glow; the tail that points at the stop's dot is SVG (voyage-tour.js stopBubbleTail).
+   Balloon lettering, as in the lesson's own speech balloons. Content on the map, not app chrome, so its
+   colours are the ink and paper of the drawings rather than theme tokens. */
+.lp-stop-bubble {
+    --stop-ink: #1b1712;
+    --stop-paper: #fbf2d9;
+    position: absolute;
+    padding: 0.5rem 1.05rem 0.45rem;
+    background: var(--stop-paper);
+    color: var(--stop-ink);
+    border: 3px solid var(--stop-ink);
+    border-radius: 20px 24px 18px 26px / 24px 18px 26px 20px;
+    box-shadow: 4px 4px 0 var(--stop-ink);
+    font-family: 'ComicRoma Balloon', 'Comic Neue', 'Comic Sans MS', ui-rounded, sans-serif;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform-origin: 30% 60%;
+}
+.lp-stop-bubble:hover { animation: lp-stop-wiggle 0.45s ease-in-out; }
+.lp-stop-bubble:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+@keyframes lp-stop-wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg) scale(1.03); }
+    55% { transform: rotate(2.5deg) scale(1.03); }
+    80% { transform: rotate(-1deg); }
+}
+@media (prefers-reduced-motion: reduce) { .lp-stop-bubble:hover { animation: none; } }
