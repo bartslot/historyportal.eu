@@ -1,5 +1,6 @@
 import { renderLessonMap } from './lesson-map.js';
 import { renderGallery } from './gallery-scene.js';
+import { stopButtonOn } from './scene/stop-button.js';
 import { EASE, EASING } from './easing.js';
 import { voyageRoutes, smooth, SAMPLES_PER_SEGMENT, arcTable, trailCutAt } from './timemap/voyages.js';
 import { midpointAlong, nearestPointOnPolyline, splitByWaypoints } from './timemap/route-edit.js';
@@ -630,10 +631,13 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // Cleared above, then nothing rebuilt: the itinerary edits no leg.
     if (inOverview) return;
 
-    const gal = galleryData();
+    const galAll = galleryData();
+    // Whether the class can open this stop at all (the stop inspector's switch; unset, only a stop with
+    // a story or a picture opens). Off, the pins stay as pictures and no button is drawn.
+    const gal = galAll && stopButtonOn(L.gallery, L.stopImages) ? galAll : null;
     // Map pins ARE the gallery's own images (first few) — so an image added to the gallery shows on
     // the map immediately. Falls back to the legacy stop_images only when the gallery has none.
-    const galImgs = ((gal && gal.images) || []).map((im) => (typeof im === 'string' ? im : (im && im.url))).filter(Boolean);
+    const galImgs = ((galAll && galAll.images) || []).map((im) => (typeof im === 'string' ? im : (im && im.url))).filter(Boolean);
     const imgs = (galImgs.length ? galImgs : (L.stopImages || [])).slice(0, 3);
     const pins = [];
     imgs.forEach((src, i) => {
@@ -646,7 +650,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       pin._dx = 40 + i * 22 + (Math.random() * 26 - 13);
       pin._dy = -108 + i * 40 + (Math.random() * 30 - 15);
       pin.style.cssText += `width:96px;border:4px solid #fff;transform:rotate(${rot}deg);`
-        + 'transition:transform .18s ease, box-shadow .18s ease;pointer-events:auto;will-change:transform;'
+        + `transition:transform .18s ease, box-shadow .18s ease;pointer-events:${gal ? 'auto' : 'none'};will-change:transform;`
         + (gal ? 'cursor:pointer;' : '');
       pin.onerror = () => { pin.style.display = 'none'; };
       pin.addEventListener('mouseenter', () => { pin.style.transform = 'rotate(0deg) scale(1.14)'; pin.style.zIndex = '30'; pin.style.boxShadow = '0 14px 30px rgba(0,0,0,.45)'; });
@@ -1180,7 +1184,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     // The gallery is opened on demand (hotspot / thumbnail) — never auto-opened, EXCEPT once when a
     // preview "Edit scene" deep-link arrived with its modal open (openGalleryOnArrive), so the editor
     // restores exactly what the teacher was looking at.
-    const gal = galleryData();
+    const gal = stopButtonOn(L.gallery, L.stopImages) ? galleryData() : null;
     if (openGalleryOnArrive && gal) { openGalleryOnArrive = false; try { openGallery(gal); } catch (_) { /* gallery not ready */ } }
     if (onArrived) onArrived();
   };

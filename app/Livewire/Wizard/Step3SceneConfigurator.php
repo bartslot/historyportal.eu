@@ -3336,6 +3336,19 @@ class Step3SceneConfigurator extends Component
         $this->saveSelected();
     }
 
+    /**
+     * The stop inspector's "Clickable on the map" switch (config.gallery.button): off, the class gets no button
+     * to open this stop. See App\Support\VoyageStopButton for the default while it is unset.
+     */
+    public function setStopButton(bool $on): void
+    {
+        if (! $this->selectedScene || ($this->selectedScene['kind'] ?? null) !== 'voyage') {
+            return;
+        }
+        $this->selectedScene['config']['gallery']['button'] = $on;
+        $this->saveSelected();
+    }
+
     /** How gallery images sit in the frame: 'cover' (fill, may crop) or 'fit' (letterbox + blur). */
     public function setGalleryFit(string $fit): void
     {
