@@ -6,7 +6,12 @@ declare(strict_types=1);
  * A small History Lines test batch through the ElevenLabs image API (POST /v1/flows/image).
  * Standalone (no Laravel boot), so it runs from the repo root on any machine with PHP + GD.
  *
- *   php scripts/elevenlabs-image-test.php [out-dir] [--models=gemini-3.1-flash-image,gpt-image-2] [--only=1,3] [--dry]
+ *   php scripts/elevenlabs-image-test.php [out-dir] [--models=gemini-3.1-flash-image,gpt-image-2] [--only=1,3] [--retries=1] [--dry]
+ *
+ * How the look is held on any model: (1) the same History Lines reference pictures in every request,
+ * (2) one fixed style prompt for every model, (3) a style check on each result (the §2 numbers); an
+ * off-style result is redone with a correction naming what was off, up to --retries times. Every
+ * attempt is kept so the eye can still judge (§11: the numbers are a smoke test, not the judge).
  *
  * Key: ELEVENLABS_IMAGE_API_KEY (env or .env), falling back to ELEVENLABS_API_KEY. It needs the
  * image generation permission. Failed generations are not charged (ElevenLabs docs).
@@ -24,6 +29,7 @@ $dry = in_array('--dry', $args, true);
 $out = rtrim(array_values(array_filter($args, fn ($a) => ! str_starts_with($a, '--')))[0] ?? 'storage/app/elevenlabs-test/'.date('Ymd-His'), '/');
 $models = explode(',', $opt('models', 'gemini-3.1-flash-image,gpt-image-2'));
 $only = $opt('only') ? array_map('intval', explode(',', $opt('only'))) : null;
+$retries = (int) $opt('retries', '1');
 
 $root = dirname(__DIR__);
 $key = getenv('ELEVENLABS_IMAGE_API_KEY') ?: envFile($root, 'ELEVENLABS_IMAGE_API_KEY')
@@ -73,10 +79,10 @@ $inline = fn (string $path) => ['type' => 'inline_base64', 'content_base64' => b
 
 @mkdir($out, 0775, true);
 $csv = fopen("{$out}/metrics.csv", 'w');
-fputcsv($csv, ['scene', 'model', 'file', 'ink_pct', 'pale_pct', 'mean_sat', 'seconds']);
+fputcsv($csv, ['scene', 'model', 'file', 'ink_pct', 'pale_pct', 'mean_sat', 'seconds', 'style_check']);
 foreach (array_unique(array_column($scenes, 'ref')) as $ref) {
     $m = metrics(file_get_contents("{$plateDir}/{$ref}"));
-    fputcsv($csv, ['reference', 'marco-polo plate', $ref, ...$m, '']);
+    fputcsv($csv, ['reference', 'marco-polo plate', $ref, ...$m, '', styleCheck($m) ? 'off' : 'on style']);
 }
 
 $results = [];
@@ -94,12 +100,15 @@ foreach ($scenes as $n => $s) {
             'gemini-3.1-flash-image', 'gemini-3-pro-image' => ['resolution' => '2K'],
             default => [],
         };
-        echo "#{$n} {$s['slug']} · {$model} … ";
+        $fix = '';
+        for ($attempt = 0; $attempt <= $retries; $attempt++) {
+        echo "#{$n} {$s['slug']} · {$model}".($attempt ? " (redo {$attempt})" : '')." … ";
         if ($dry) {
             echo "dry run, prompt ".strlen($prompt)." chars\n";
 
-            continue;
+            break;
         }
+        $body['prompt'] = $prompt.$fix;
         $t = microtime(true);
         [$status, $created] = api('POST', '/v1/flows/image', $key, $body);
         if ($status >= 300 || empty($created['id'])) {
@@ -119,12 +128,18 @@ foreach ($scenes as $n => $s) {
         }
         $bytes = file_get_contents($g['content_url']);
         $ext = explode('/', $g['content_mime_type'] ?? 'image/png')[1] ?? 'png';
-        $file = sprintf('%d-%s-%s.%s', $n, $s['slug'], $model, $ext === 'jpeg' ? 'jpg' : $ext);
+        $file = sprintf('%d-%s-%s%s.%s', $n, $s['slug'], $model, $attempt ? "-redo{$attempt}" : '', $ext === 'jpeg' ? 'jpg' : $ext);
         file_put_contents("{$out}/{$file}", $bytes);
         $m = metrics($bytes);
-        fputcsv($csv, [$n, $model, $file, ...$m, $secs]);
+        $off = styleCheck($m);
+        fputcsv($csv, [$n, $model, $file, ...$m, $secs, $off ? implode('; ', array_keys($off)) : 'on style']);
         $results[$n][$model] = "{$out}/{$file}";
-        echo "ok in {$secs}s · ink {$m[0]}% pale {$m[1]}% sat {$m[2]}\n";
+        echo "ok in {$secs}s · ink {$m[0]}% pale {$m[1]}% sat {$m[2]} · ".($off ? 'OFF: '.implode('; ', array_keys($off)) : 'on style')."\n";
+        if (! $off) {
+            break;
+        }
+        $fix = ' Correction, the last attempt was off the History Lines style: '.implode(' ', $off);
+        }
     }
 }
 fclose($csv);
@@ -160,6 +175,24 @@ function api(string $method, string $path, string $key, ?array $body = null): ar
     curl_close($ch);
 
     return [$status, json_decode((string) $raw, true) ?? ['raw' => substr((string) $raw, 0, 500)]];
+}
+
+/**
+ * The style check: the §2 ranges of docs/history-lines-style.md, widened a little for snow and desert
+ * (the Pamir plate runs 5% ink, 75% pale, 0.08). Returns what is off => the correction to ask for.
+ *
+ * @return array<string,string>
+ */
+function styleCheck(array $m): array
+{
+    [$ink, $pale, $sat] = $m;
+
+    return array_filter([
+        'too much black' => $ink > 14 ? 'There is too much black: keep ink to about 10% of the picture, darkness built from hatching lines, no solid black fills or dark frames.' : null,
+        'too little line' => $ink < 4 ? 'The ink line is too weak: draw confident black contours and controlled hatching over the watercolour.' : null,
+        'too little paper' => $pale < 30 ? 'Too little paper shows: leave 35 to 45% of the picture very pale, keep buildings and ground close to white, colour only the focal things.' : null,
+        'too saturated' => $sat > 0.30 ? 'The colour is too strong: use thin transparent washes, selective colour, quieter background.' : null,
+    ]);
 }
 
 /** Smoke test of the style guide §2: dark = luminance < 30%, pale = value > 85% and saturation < 18%. */
