@@ -1424,6 +1424,16 @@
                     </div>
                 @endunless
             </x-ui.settings-section>
+
+            {{-- STORY TO VIDEO (bart, 2026-11-23): character sheets, empty places, then one clip per narration beat,
+                 made through ElevenLabs from the approved script, each step checked before the next. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <x-ui.settings-section :title="__('Video')" name="story-video" :open="false" class="-mx-4 mt-2 w-auto! pt-2" data-story-video-section>
+                    <div wire:ignore>
+                        <livewire:wizard.story-video :lesson="$lesson" :key="'story-video-'.$lesson->id" />
+                    </div>
+                </x-ui.settings-section>
+            @endunless
             @endif
         </div>
         </div>{{-- /.lp-panel-content --}}
