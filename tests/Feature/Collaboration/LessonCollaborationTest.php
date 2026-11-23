@@ -15,6 +15,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\Collaboration\LessonCollaboration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -229,6 +230,10 @@ class LessonCollaborationTest extends TestCase
             'broadcasting.connections.reverb.app_id' => 'historyportal',
             'broadcasting.connections.reverb.options.host' => 'hp-realtime.example.workers.dev',
         ]);
+        // Channels were registered on the broadcaster that was default at boot (null in phpunit.xml):
+        // register them again on the relay's.
+        Broadcast::purge('reverb');
+        require base_path('routes/channels.php');
     }
 
     public function test_without_a_relay_the_editor_keeps_to_its_pings(): void
