@@ -7,6 +7,7 @@ namespace App\Livewire\Wizard;
 use App\Models\Lesson;
 use App\Models\MusicTrack;
 use App\Models\Scene;
+use App\Services\Collaboration\LessonCollaboration;
 use App\Support\LessonMusicCues;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -112,6 +113,8 @@ class LessonMusic extends Component
             return;
         }
         $previous = array_pop($stack);
+        // Music sits on the scenes: one somebody else holds is theirs to change (LessonCollaboration).
+        app(LessonCollaboration::class)->assertNoneHeldByOthers($this->lesson, auth()->user(), array_keys($previous['s'] ?? []));
         DB::transaction(function () use ($previous, $stack) {
             foreach ($previous['s'] ?? [] as $sceneId => $music) {
                 $this->lesson->scenes()->whereKey($sceneId)->first()?->update(['music' => $music]);
@@ -169,6 +172,8 @@ class LessonMusic extends Component
             return;
         }
         $before = collect($scenes)->keyBy('id')->only(array_keys($changes))->map(fn ($s) => $s['music'])->all();
+        // Music sits on the scenes: one somebody else holds is theirs to change (LessonCollaboration).
+        app(LessonCollaboration::class)->assertNoneHeldByOthers($this->lesson, auth()->user(), array_keys($changes));
         DB::transaction(function () use ($changes, $before) {
             foreach ($changes as $sceneId => $music) {
                 Scene::query()->whereKey($sceneId)->first()?->update(['music' => $music]);

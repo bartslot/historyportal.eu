@@ -307,4 +307,16 @@ class LessonCollaborationTest extends TestCase
         $this->addJoey();
         $this->actingAs($this->joey)->get(route('lesson.play', ['lessonCode' => 'COLLAB1']))->assertOk();
     }
+
+    public function test_a_lesson_wide_change_refuses_scenes_somebody_else_holds_and_claims_none(): void
+    {
+        $collab = app(LessonCollaboration::class);
+        $collab->ping($this->lesson, $this->owner, 'scene:'.$this->one->id);
+
+        $collab->assertNoneHeldByOthers($this->lesson, $this->joey, [$this->two->id]);
+        $this->assertNull($collab->holder($this->lesson, 'scene:'.$this->two->id));
+
+        $this->expectException(SceneClaimTaken::class);
+        $collab->assertNoneHeldByOthers($this->lesson, $this->joey, [$this->one->id, $this->two->id]);
+    }
 }

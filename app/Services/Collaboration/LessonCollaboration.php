@@ -112,6 +112,30 @@ final class LessonCollaboration
     }
 
     /**
+     * For a lesson-wide edit that touches several scenes at once (Settings > Music): refused when somebody
+     * else holds any of them. Unlike authorizeEdit() it claims nothing, so the free scenes stay free.
+     *
+     * @param  iterable<int>  $sceneIds
+     */
+    public function assertNoneHeldByOthers(Lesson $lesson, User $user, iterable $sceneIds): void
+    {
+        $targets = collect($sceneIds)->map(fn ($id) => self::sceneTarget((int) $id))->all();
+        if ($targets === []) {
+            return;
+        }
+        $claim = LessonClaim::query()
+            ->where('lesson_id', $lesson->id)->whereIn('target', $targets)
+            ->where('user_id', '!=', $user->id)
+            ->where('seen_at', '>=', now()->subSeconds(self::CLAIM_SECONDS))
+            ->with('user:id,name')
+            ->first();
+
+        if ($claim !== null) {
+            throw new SceneClaimTaken($claim->user->name ?? '', $claim->target);
+        }
+    }
+
+    /**
      * The editor's ping: "I am here, looking at $target". Refreshes presence, holds the target when it is
      * free, lets go of anything else this account held, and reports the room.
      *
