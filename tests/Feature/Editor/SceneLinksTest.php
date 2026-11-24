@@ -109,7 +109,8 @@ class SceneLinksTest extends TestCase
         $this->editor($cargo)
             ->call('addSceneLink', $cargo->id)
             ->call('setSceneEnding', $cargo->id, true)
-            ->assertDontSee('Add choice');
+            // The inspector's Add choice button is gone (the story map's own, drawn by Alpine, is in every page).
+            ->assertDontSeeHtml('wire:click="addSceneLink('.$cargo->id.')"');
 
         $config = $cargo->fresh()->config;
         $this->assertTrue($config['ending']);
