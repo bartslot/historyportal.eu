@@ -53,9 +53,22 @@ class TwineParserTest extends TestCase
         $cast = TwineParser::cast("* Narrator: Warm voice.\n* Marco Polo (17 years old): Curious.\n* Zafar: Trader.");
 
         $this->assertSame([
-            ['name' => 'Marco Polo', 'description' => '17 years old. Curious.'],
-            ['name' => 'Zafar', 'description' => 'Trader.'],
+            ['name' => 'Marco Polo', 'description' => '17 years old. Curious.', 'colour' => ''],
+            ['name' => 'Zafar', 'description' => 'Trader.', 'colour' => ''],
         ], $cast);
+    }
+
+    public function test_a_cast_line_can_name_a_signature_colour_and_a_setting_is_not_spoken(): void
+    {
+        $this->assertSame(
+            [['name' => 'Beatrice', 'description' => 'Always in white.', 'colour' => 'white']],
+            TwineParser::cast('* Beatrice: Always in white. Kleur: white.'),
+        );
+
+        $p = TwineParser::passage("SETTING: Florence, 1283\nA street.\nNARRATOR: She greets him.");
+        $this->assertSame('Florence, 1283', $p['setting']);
+        $this->assertSame('A street.', $p['shot']);
+        $this->assertSame([['speaker' => 'NARRATOR', 'text' => 'She greets him.']], $p['lines']);
     }
 
     public function test_a_passage_name_reads_as_a_title(): void

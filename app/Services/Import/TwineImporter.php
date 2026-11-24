@@ -408,9 +408,14 @@ final class TwineImporter
         $briefs = [];
         foreach ($plan as $order => $name) {
             $part = $parsed[$name];
+            // a capitalised word in the shot names the cast member it would name as a speaker tag ("Dante watches"
+            // is Dante Alighieri), so a silent person in the picture still gets their sheet
+            preg_match_all('/(?<![\p{L}\p{M}])\p{Lu}[\p{L}\p{M}\'’-]+/u', (string) $part['shot'], $words);
+            $inShot = array_values(array_filter(array_map(fn ($w) => self::firstMatch($w, $cast), $words[0])));
             $people = [];
             foreach ($cast as $member) {
-                $named = str_contains(TwineParser::key((string) $part['shot']), TwineParser::key($member['name']));
+                $named = str_contains(TwineParser::key((string) $part['shot']), TwineParser::key($member['name']))
+                    || in_array($member['name'], $inShot, true);
                 $speaks = collect($part['lines'])->contains(fn ($l) => self::firstMatch($l['speaker'], $cast) === $member['name']);
                 if ($named || $speaks) {
                     $people[] = $member['name'];

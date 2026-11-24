@@ -195,7 +195,7 @@ class TwineImportTest extends TestCase
         $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
             .'<tw-passagedata pid="1" name="Node-Ravenna">SETTING: Ravenna, September 1321'."\n".'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'."\n"
             .'NARRATOR: A poet has just died in this little room.'."\n".'JACOPO: The ending is gone.'."\n".'[[Go on | Node-Groet]]</tw-passagedata>'
-            .'<tw-passagedata pid="2" name="Node-Groet">SETTING: Rome and Florence, 1301-1302'."\n".'A street. Beatrice in white greets Dante Alighieri.'."\n"
+            .'<tw-passagedata pid="2" name="Node-Groet">SETTING: Rome and Florence, 1301-1302'."\n".'A street. Beatrice in white greets Dante, and Jacopo watches.'."\n"
             .'NARRATOR: She greets him.'."\n".'DANTE: What does this mean?</tw-passagedata>'
             .'<tw-passagedata pid="3" name="Cast of Characters">* Dante Alighieri (9 to 56): poet from Florence. Colour: red.'."\n"
             .'* Jacopo Alighieri (son): young poet. Colour: turquoise'."\n".'* Beatrice: always in white, as a girl and as a woman. Kleur: white.</tw-passagedata>'
@@ -212,7 +212,8 @@ class TwineImportTest extends TestCase
         [$ravenna, $groet] = $lesson->outline['scene_briefs'];
         $this->assertSame(['order' => 1, 'kind' => 'narration', 'characters' => ['Jacopo Alighieri'], 'location' => 'Ravenna', 'year' => '1321',
             'image_prompt_seed' => 'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'], $ravenna);
-        $this->assertSame(['Dante Alighieri', 'Beatrice'], $groet['characters']);
+        // named in the shot by a first name, or speaking: Jacopo watches without a line and still gets his sheet
+        $this->assertSame(['Dante Alighieri', 'Jacopo Alighieri', 'Beatrice'], $groet['characters']);
         $this->assertSame(['Rome and Florence', '1301'], [$groet['location'], $groet['year']]);
 
         // the setting names the scene's place and year, and is never read aloud
