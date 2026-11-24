@@ -3118,5 +3118,12 @@
     "Weather": "Meteo",
     "Dry": "Asciutto",
     "Snow": "Neve",
-    "Wind": "Vento"
+    "Wind": "Vento",
+    "Cut the scene at the playhead": "Taglia la scena all'indicatore",
+    "Move the playhead away from the ends of the scene to cut it.": "Allontana l'indicatore dall'inizio o dalla fine per tagliare la scena.",
+    "The narration could not be cut. Nothing was changed.": "Non è stato possibile tagliare la narrazione. Non è cambiato nulla.",
+    "Scene cut in two. This is the second part.": "Scena tagliata in due. Questa è la seconda parte.",
+    "Cut undone.": "Taglio annullato.",
+    "Open a scene to cut it.": "Apri una scena per tagliarla.",
+    "A game or a voyage stop cannot be cut.": "Un gioco o una tappa del viaggio non si può tagliare."
 }

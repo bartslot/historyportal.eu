@@ -345,6 +345,43 @@ class VideoTranscoder
         return ['ok' => false, 'path' => null, 'reason' => 'ffmpeg failed'];
     }
 
+    /**
+     * The part of a scene's moving picture from `$from` seconds to its end, as a new H.264 file at
+     * `$out` (the cut tool: the second piece of a cut scene plays on from where the first stopped,
+     * SceneCut). Encoded, not copied: a copied stream can only start on a keyframe, which can be
+     * seconds away. The result is an upload like a dropped video, so EncodeSceneLoop makes its class
+     * files. False when ffmpeg cannot do it; nothing is left behind then.
+     */
+    public function tail(string $path, string $out, float $from, string $disk = 'public'): bool
+    {
+        $storage = Storage::disk($disk);
+        if (! $storage->exists($path) || ! in_array('libx264', $this->encoders(), true)) {
+            return false;
+        }
+        $final = $storage->path($out);
+        @mkdir(dirname($final), 0775, true);
+        $part = $final.'.part.mp4';
+        try {
+            $process = new Process([
+                $this->ffmpegPath, '-y', '-loglevel', 'error', '-threads', (string) $this->threads,
+                '-ss', sprintf('%.3f', max(0.0, $from)), '-i', $storage->path($path),
+                '-c:v', 'libx264', '-threads', (string) $this->threads, '-crf', '18', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
+                '-an', '-movflags', '+faststart', $part,
+            ]);
+            $process->setTimeout(self::TIMEOUT_SECONDS);
+            $process->run();
+            if ($process->isSuccessful() && is_file($part) && filesize($part) > 0 && rename($part, $final)) {
+                return true;
+            }
+            Log::warning('[VideoTranscoder] tail failed', ['path' => $path, 'stderr' => mb_substr($process->getErrorOutput(), -400)]);
+        } catch (\Throwable $e) {
+            Log::warning('[VideoTranscoder] tail failed', ['path' => $path, 'error' => $e->getMessage()]);
+        }
+        @unlink($part);
+
+        return false;
+    }
+
     /** SVT-AV1 runs several threads per "lp", so it gets half: 2 by default. */
     private function av1Threads(): int
     {

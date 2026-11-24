@@ -27,6 +27,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
+import { cutTracks } from './timeline-cut.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -245,6 +246,7 @@ export const animationTimeline = (config = {}) => ({
   scrollLeft: 0,
 
   loop: false,               // playback returns to 0 at the end instead of stopping
+  cutting: false,            // a cut is on its way to the server (cutAtPlayhead)
   autoKey: true,             // a value change records itself at the playhead
   hiddenObjects: {},         // objects the author has taken off the canvas while working
 
@@ -2475,13 +2477,39 @@ export const animationTimeline = (config = {}) => ({
     this.$wire?.setTimeline?.({ duration: this.duration, durationSet: this.durationSet, targets: this.targets, tracks: this.tracks, sail: this.sail, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
   },
 
+  /**
+   * The cut tool (Bart, 2026-11-24): the scene in two at the playhead, so each part can take its own
+   * background. The server says where the cut really falls (on a pause in the narration, never inside
+   * a word), the keys are split there with the sampling that plays them (timeline-cut.js), and the
+   * server makes the second scene and opens it (app/Livewire/Wizard/Concerns/CutsScenes.php). One undo.
+   */
+  async cutAtPlayhead () {
+    if (this.cutting || !this.$wire?.cutPointFor) return
+    if (this.playing) this.pause()
+    this.flushSave()
+    this.cutting = true
+    try {
+      const point = await this.$wire.cutPointFor(this.time)
+      if (!point?.ok) {
+        if (point?.message) window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: point.message } }))
+        return
+      }
+      const at = Number(point.at)
+      const { first, second } = cutTracks(this.tracks, at)
+      const half = (tracks, duration) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks) })
+      await this.$wire.cutSceneAt(at, half(first, at), half(second, Math.max(0, this.duration - at)))
+    } finally {
+      this.cutting = false
+    }
+  },
+
   /** `{ 'layer-3': keys, 'band-0': keys, sky: keys }` for EVERY row of the stage (an empty list clears a layer's keys), or null with no stage. */
-  stage25dKeys () {
+  stage25dKeys (tracks = this.tracks) {
     const stage = window.__stage25d
     if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
     const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera')
     if (!items.length) return null
-    const byLayer = keysFromTracks(this.tracks)
+    const byLayer = keysFromTracks(tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))
   },
 })
