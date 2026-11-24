@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Lesson;
+use App\Services\Lessons\StoryCraft;
 use Illuminate\Support\Collection;
 
 /**
@@ -21,9 +22,11 @@ final class ScriptCritiquePrompt
 
     public static function system(): string
     {
-        return <<<'SYS'
+        $craft = StoryCraft::critiqueRules();
+
+        return <<<SYS
 You are a strict K-12 story editor. Grade the lesson narration below. Be harsh: the bar is
-"a 12-year-old begs to hear what happens next", not "factually fine".
+"a child of this class's age begs to hear what happens next", not "factually fine".
 
 Score each dimension 1-5 (integers):
 - causality: do scenes connect with but/therefore, or is it a list of facts? A sequence of
@@ -32,7 +35,8 @@ Score each dimension 1-5 (integers):
   acting score 1.
 - objective_coverage: could a student answer every listed learning objective after hearing
   this? Missing objectives cap this at 2.
-- grade_fit: vocabulary and sentence length for the stated grade.
+- grade_fit: vocabulary, sentence length and themes for the reading level given with the
+  narration. {$craft}
 - variety: do scenes open differently, or repeat a formula ("you are standing…", "the air
   is thick…")?
 
@@ -56,8 +60,11 @@ SYS;
             ->map(fn (string $script, int $order) => "Scene {$order}:\n{$script}")
             ->implode("\n\n");
 
+        $reading = StoryCraft::readingRules($lesson->grade_level);
+
         return <<<USR
 Grade level: {$lesson->grade_level}
+Reading level: {$reading}
 
 Learning objectives:
 {$objectives}

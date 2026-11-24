@@ -3146,5 +3146,9 @@
     "No edge": "Zonder rand",
     "Light on dark": "Licht op donker",
     "Dark on light": "Donker op licht",
-    "Edge colour": "Kleur rand"
+    "Edge colour": "Kleur rand",
+    "Ages :ages": "Leeftijd :ages",
+    "Pick": "Kies",
+    "Age of your class": "Leeftijd van je klas",
+    "Pick the age of your class.": "Kies de leeftijd van je klas."
 }

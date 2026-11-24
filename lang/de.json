@@ -3079,5 +3079,9 @@
     "No edge": "Ohne Rand",
     "Light on dark": "Hell auf dunkel",
     "Dark on light": "Dunkel auf hell",
-    "Edge colour": "Farbe des Rands"
+    "Edge colour": "Farbe des Rands",
+    "Ages :ages": "Alter :ages",
+    "Pick": "Wählen",
+    "Age of your class": "Alter deiner Klasse",
+    "Pick the age of your class.": "Wähle das Alter deiner Klasse."
 }

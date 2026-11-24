@@ -10,7 +10,8 @@
     }
     // the redirect's errors (ImportTwineRequest): read from the session, the Livewire page has its own bag
     $bag = session('errors')?->getBag('default');
-    $problem = $bag?->first('story') ?: $bag?->first('world');
+    $problem = $bag?->first('story') ?: $bag?->first('world') ?: $bag?->first('age');
+    $ages = \App\Livewire\Teacher\LessonChat::GRADE_CHIP_AGES;
     $failed = (bool) $problem;
 @endphp
 
@@ -21,7 +22,7 @@
         {{ __('Import from Twine') }}
     </summary>
     <form method="POST" action="{{ route('teacher.lessons.import-twine') }}" enctype="multipart/form-data"
-          class="grid gap-3 px-4 pb-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          class="grid gap-3 px-4 pb-4 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end"
           x-data="{ busy: false }" x-on:submit="busy = true">
         @csrf
         <label class="form-control">
@@ -40,12 +41,22 @@
                 @endforeach
             </select>
         </label>
+        {{-- The class's age: the story's words and the lesson's prompts are written for it, never a default. --}}
+        <label class="form-control">
+            <span class="mb-1 text-xs text-base-content/70">{{ __('Age of your class') }}</span>
+            <select name="age" required class="select select-sm select-bordered w-full">
+                <option value="" disabled @selected(old('age') === null)>{{ __('Pick') }}</option>
+                @foreach ($ages as $age)
+                    <option value="{{ $age }}" @selected((int) old('age') === $age)>{{ __('Ages :ages', ['ages' => $age.'–'.min($age + 2, 18)]) }}</option>
+                @endforeach
+            </select>
+        </label>
         <button type="submit" class="btn btn-primary btn-sm" x-bind:disabled="busy">
             <span x-show="!busy">{{ __('Import') }}</span>
             <span x-show="busy" x-cloak class="loading loading-dots loading-sm"></span>
         </button>
         @if ($failed)
-            <p class="text-sm text-error sm:col-span-3" role="alert">{{ $problem }}</p>
+            <p class="text-sm text-error sm:col-span-4" role="alert">{{ $problem }}</p>
         @endif
     </form>
 </details>

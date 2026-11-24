@@ -3079,5 +3079,9 @@
     "No edge": "Sans bord",
     "Light on dark": "Clair sur sombre",
     "Dark on light": "Sombre sur clair",
-    "Edge colour": "Couleur du bord"
+    "Edge colour": "Couleur du bord",
+    "Ages :ages": "Âge :ages",
+    "Pick": "Choisir",
+    "Age of your class": "Âge de ta classe",
+    "Pick the age of your class.": "Choisis l’âge de ta classe."
 }
