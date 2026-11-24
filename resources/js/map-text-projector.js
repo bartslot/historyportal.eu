@@ -12,8 +12,12 @@
  * @param {object} map     live MapLibre instance
  * @param {HTMLElement} hostEl  the text-overlay host the percentages are relative to
  */
-export function mapTextProjector(map, hostEl) {
+export function mapTextProjector(map, hostEl, { refZoom = null } = {}) {
   return {
+    // The map's zoom now, and the zoom the scene opens at: a pinned picture scales between them
+    // (ArtworkOverlay pinZoomFactor). A map with no opening zoom (a voyage) leaves pictures their size.
+    zoom: () => { try { return map.getZoom() } catch (_) { return NaN } },
+    refZoom: () => (refZoom ? refZoom() : NaN),
     project: (lng, lat) => {
       try {
         const pt = map.project([lng, lat])

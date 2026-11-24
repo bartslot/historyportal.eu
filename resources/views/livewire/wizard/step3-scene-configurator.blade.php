@@ -451,10 +451,23 @@
         // (dragging / inserting a waypoint) and toggling map detail all keep the same map instance —
         // we update it in place (playLeg / setVoyageDef / setMapOptions) instead of destroying +
         // rebuilding it, which reset the zoom / centre / globe-flat projection and reloaded every tile.
+        // The lesson's one map (Bart 11-24: "preloaded map per lesson, only the top changes"): once mounted it
+        // is never thrown away while the editor is open. A slide, a voyage or the title only hides it; the
+        // next map scene puts itself on it (showScene), with every tile and picture of the chart still in.
+        let keptMap = null      // the lesson map block
+        let keptInner = null    // its container, a child of host beside any voyage/gallery mount
+        const parkMap = () => {
+            if (!keptInner) return
+            keptInner.style.visibility = 'hidden'
+            try { keptMap.stopItinerary?.() } catch (_) {}
+        }
         const destroy = () => {
-            if (inst) { inst.destroy(); inst = null }
-            host.innerHTML = ''
-            host.style.display = 'none'
+            if (inst && inst !== keptMap) inst.destroy()
+            inst = null
+            for (const c of [...host.children]) if (c !== keptInner) c.remove()
+            parkMap()
+            // Out of sight but laid out, so the map keeps its size (and its tiles) for the next map scene.
+            if (keptInner) { host.style.display = 'block'; host.style.visibility = 'hidden' } else host.style.display = 'none'
             hideMapArt()
             lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
@@ -754,9 +767,10 @@
                 // reading it here threw before the tour ever mounted.
                 lastOverview = !!cfg.overview
                 host.style.display = 'block'
+                host.style.visibility = ''
                 const stageInner = document.createElement('div')
-                stageInner.style.width = '100%'
-                stageInner.style.height = '100%'
+                // Over the kept lesson map (hidden), not below it in the flow.
+                stageInner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
                 host.appendChild(stageInner)
                 const vcfg = p.config || {}
                 if (p.kind === 'voyage' && window.renderVoyageTour) {
@@ -859,10 +873,19 @@
             // scene on the live map (its year, territory, pins, switches, framing) and keep the chart,
             // its images and its tiles. Rebuilding here refetched all of them on every scene click.
             // Only a lesson map has showScene: a voyage or gallery on stage still falls through and swaps.
-            if (inst && typeof inst.showScene === 'function') {
+            if (keptMap) {
+                // A voyage or gallery on stage goes; the map was hidden behind it.
+                if (inst && inst !== keptMap) { destroy(); showMapArt(p) }
+                // Hidden since a slide, voyage or the title: it opens on this scene's frame, no glide.
+                const wasHidden = !inst
+                inst = keptMap
                 lastKey = key
+                host.style.display = 'block'
+                host.style.visibility = ''
+                keptInner.style.visibility = ''
                 try {
                     inst.showScene({
+                        jump: wasHidden,
                         qid: cfg.qid || null,
                         fit: cfg.fit || null,
                         year,
@@ -873,17 +896,19 @@
                         timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
+                wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
                 return
             }
             destroy()                 // clears lastKey…
             lastKey = key             // …so set it after
             showMapArt(p)             // …and re-mounts the layers destroy() just cleared
             host.style.display = 'block'
+            host.style.visibility = ''
             // MapLibre stamps `position:relative` on its container, which would override the host's
             // fixed positioning and collapse it — so mount into a full-size inner child instead.
             const inner = document.createElement('div')
-            inner.style.width = '100%'
-            inner.style.height = '100%'
+            inner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
             host.appendChild(inner)
             if (window.renderLessonMap) {
                 inst = window.renderLessonMap(inner, {
@@ -903,7 +928,10 @@
                     // Click a polity on the map → link it as this block's territory (hover shows its name).
                     onPolityClick: (t) => window.Livewire.dispatch('mapTerritoryClicked', { sceneId: currentSceneId, qid: t.qid, name: t.name }),
                 })
+                keptMap = inst
+                keptInner = inner
                 wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
             } else {
                 // lesson-map.js failed to load — surface it instead of silently leaving an empty host,
                 // which reveals the 3D canvas (narration art) behind and reads as "the map didn't open".
