@@ -84,17 +84,17 @@ class CaptionTranslationRetryTest extends TestCase
 
     public function test_a_429_halves_the_batch(): void
     {
-        $lesson = $this->lesson(44);   // 45 lines: 40 per request
+        $lesson = $this->lesson(104);   // 105 lines: 100 per request
         $this->fake->failures = [new LlmHttpException(429)];
 
-        $this->assertSame(45, $this->captions()->translateMissing($lesson, 'es'));
+        $this->assertSame(105, $this->captions()->translateMissing($lesson, 'es'));
 
-        $this->assertSame([40, 20, 20, 5], array_map('count', $this->fake->calls));
+        $this->assertSame([100, 50, 50, 5], array_map('count', $this->fake->calls));
     }
 
     public function test_a_batch_that_keeps_failing_keeps_the_batches_before_it_and_is_never_resent(): void
     {
-        $lesson = $this->lesson(44);
+        $lesson = $this->lesson(104);
         $this->fake->failures = [null, ...array_fill(0, 4, new LlmHttpException(503))];
 
         try {
@@ -103,7 +103,7 @@ class CaptionTranslationRetryTest extends TestCase
         } catch (LlmHttpException $e) {
             $this->assertSame(503, $e->status);
         }
-        $this->assertSame(40, CaptionTranslation::where('language', 'ja')->count());
+        $this->assertSame(100, CaptionTranslation::where('language', 'ja')->count());
 
         $this->fake->calls = [];
         $this->assertSame(5, $this->captions()->translateMissing($lesson, 'ja'));
@@ -273,5 +273,59 @@ class CaptionTranslationRetryTest extends TestCase
         $this->assertTrue($errors[0]->retryable());
         $this->assertTrue($errors[1]->quotaExhausted());
         $this->assertFalse($errors[1]->retryable());
+    }
+
+    public function test_a_daily_quota_pauses_the_language_instead_of_retrying_all_night(): void
+    {
+        $lesson = $this->lesson(2);
+        $key = TranslateLessonCaptions::statusKey($lesson->id, 'de');
+        $this->fake->failures = [new LlmHttpException(429, retryAfter: 43041)];   // Gemini free tier: "retry in 11h57m"
+
+        $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
+        $job->handle($this->captions());
+
+        $job->assertFailedWith(LlmHttpException::class);
+        $job->assertNotReleased();
+        Sleep::assertNeverSlept();
+        $this->assertSame('paused', Cache::get($key));
+
+        // An open player keeps polling: no new job, and it is not shown as translating.
+        $this->fake->calls = [];
+        $url = route('lesson.captions', ['lessonCode' => $lesson->lesson_code, 'language' => 'de']);
+        $this->getJson($url)->assertOk()->assertJsonPath('pending', true)->assertJsonPath('translating', false);
+        $this->assertSame([], $this->fake->calls);
+
+        $this->travel(TranslateLessonCaptions::MAX_PAUSE_SECONDS + 1)->seconds();
+        $this->assertNull(Cache::get($key), 'paused for six hours at most');
+    }
+
+    public function test_a_line_that_never_translates_is_not_asked_again_every_minute(): void
+    {
+        $lesson = $this->lesson(2);
+        $key = TranslateLessonCaptions::statusKey($lesson->id, 'de');
+        $translator = new class implements TextTranslator
+        {
+            public int $calls = 0;
+
+            public function translate(array $lines, string $from, string $to): array
+            {
+                $this->calls++;
+
+                return array_slice(array_map(fn ($l) => "[{$to}] {$l}", $lines), 1, null, true);   // drops the first line every time
+            }
+        };
+        $this->app->instance(TextTranslator::class, $translator);
+        $this->app->forgetInstance(CaptionTranslator::class);
+
+        (new TranslateLessonCaptions($lesson->id, 'de'))->handle(app(CaptionTranslator::class));
+        $this->assertSame('retry', Cache::get($key), 'first run translated two lines: try the third again soon');
+
+        $this->travel(TranslateLessonCaptions::RETRY_AFTER_SECONDS + 1)->seconds();
+        (new TranslateLessonCaptions($lesson->id, 'de'))->handle(app(CaptionTranslator::class));
+        $this->assertSame('paused', Cache::get($key), 'nothing new: wait an hour, not a minute');
+
+        $url = route('lesson.captions', ['lessonCode' => $lesson->lesson_code, 'language' => 'de']);
+        $this->getJson($url)->assertOk()->assertJsonPath('pending', true)->assertJsonPath('translating', false);
+        $this->assertSame(2, $translator->calls);
     }
 }
