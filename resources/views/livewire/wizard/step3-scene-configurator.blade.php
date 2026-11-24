@@ -2162,11 +2162,16 @@
             // removed (the background, fixed scenery) have no menu, so the browser's own stays away too.
             menuObj: null,
             canPaste: false,
+            pasteOnly: false,
             openMenu(obj, e) {
-                if (!obj || obj.bg || (obj.s25sky && !obj.removable)) return;
-                this.select(obj);
-                this.menuObj = obj;
+                if (!obj) return;
                 this.canPaste = !!window.__objectClipboard?.has();
+                // The background and the pinned rows can't be copied or deleted, but an empty scene has only those, and it is
+                // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
+                this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
+                if (this.pasteOnly && !this.canPaste) return;
+                if (!this.pasteOnly) this.select(obj);
+                this.menuObj = obj;
                 const m = this.$refs.objMenu;
                 m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
                 m.style.top = Math.min(e.clientY, innerHeight - 180) + 'px';
@@ -2845,7 +2850,7 @@
         <ul popover x-ref="objMenu" data-obj-menu wire:ignore
             class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
                 <button type="button" @click="$refs.objMenu.hidePopover(); copyObject(menuObj)">
                     <x-ui.icon name="copy" />
                     {{ __('Copy') }}
@@ -2859,14 +2864,14 @@
                     <span class="ml-auto opacity-60">⌘V</span>
                 </button>
             </li>
-            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky">
                 <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
-            <li>
+            <li x-show="!pasteOnly">
                 <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
                     <x-ui.icon name="delete" />
                     {{ __('Delete') }}

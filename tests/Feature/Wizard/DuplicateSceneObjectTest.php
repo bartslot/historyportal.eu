@@ -154,6 +154,15 @@ class DuplicateSceneObjectTest extends TestCase
         $this->assertCount(3, $tracks, 'the other object\'s keys stay where they were');
     }
 
+    public function test_the_timeline_panel_is_handed_the_copied_keys(): void
+    {
+        $this->keyScene();
+
+        $this->editor()->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['txt_title'], $this->scene->id)
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => count($params['timeline']['tracks']) === 1 && $params['keepSelection'] === true);
+    }
+
     public function test_a_paste_adds_its_keys_to_the_tracks_already_there(): void
     {
         $this->keyScene();

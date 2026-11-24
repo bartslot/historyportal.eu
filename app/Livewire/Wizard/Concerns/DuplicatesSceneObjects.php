@@ -118,6 +118,9 @@ trait DuplicatesSceneObjects
 
         $target->update(['shots' => $shots, 'config' => $config]);
         $this->selectSceneInternal($target->id);   // re-fires scene:load → canvas + object list repaint
+        // The Timeline tab keeps its own copy of the tracks (timeline-panel.js): hand it the ones with the copy's keys,
+        // as an undo does, or the keys only showed after a reload.
+        $this->dispatch('timeline-restored', timeline: $config['timeline'] ?? [], keepSelection: true);
         $this->dispatch('scene:objects-duplicated', sceneId: $target->id, objectIds: $newIds);
     }
 
