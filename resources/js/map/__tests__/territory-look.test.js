@@ -106,3 +106,15 @@ describe('clipToTile', () => {
     expect(clipToTile({ x: -64, y: 10 }, { x: -10, y: 10 }, 4096)).toBeNull()
   })
 })
+
+describe('the ink sits under the names (Bart 11-24: "the text is over the venice label")', () => {
+  it('goes under the voyage route when there is one', async () => {
+    const { inkBeforeId } = await import('../territory-ink.js')
+    expect(inkBeforeId([{ id: 'land', type: 'fill' }, { id: 'chart-ridges', type: 'symbol' }, { id: 'lesson-route', type: 'line' }, { id: 'lesson-labels', type: 'symbol' }])).toBe('lesson-route')
+  })
+  it('else under the first name or dot', async () => {
+    const { inkBeforeId } = await import('../territory-ink.js')
+    expect(inkBeforeId([{ id: 'land', type: 'fill' }, { id: 'city-dots', type: 'circle' }, { id: 'city-labels', type: 'symbol' }])).toBe('city-dots')
+    expect(inkBeforeId([])).toBeUndefined()
+  })
+})

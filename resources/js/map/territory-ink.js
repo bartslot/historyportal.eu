@@ -1,5 +1,5 @@
 /**
- * territory-ink.js — the linked territory drawn by hand, on a canvas over the map.
+ * territory-ink.js — the linked territory drawn by hand, laid into the map under its names.
  *
  * Bart, 2026-11-23, on a vector line with hatching over the whole area: "it's too much", "maybe
  * etched in the middle should be faded out and more natural", "like only the edges have it. can we
@@ -11,6 +11,12 @@
  *  - the ETCHING is hand-drawn hatch strokes, kept to a band along the inside of the border and
  *    fading towards the middle: the border is stroked wide (three widths, one over the other) INSIDE
  *    a clip to the territory, and the hatching is painted through that mask.
+ *
+ * The drawing happens on a 2D canvas, but that canvas is not laid over the map: it is handed to the
+ * map as a layer of its own, just under the route and every name (Bart, 2026-11-24, on Lesson 129:
+ * "the text is over the venice label" -- a canvas on top of the map inked straight through the
+ * hand-lettered stop names and the city labels). Inside the map it is drawn in the map's own frame,
+ * so it also never trails a pan.
  *
  * The shapes come from the same vector tiles the map draws (querySourceFeatures). A tile hands back
  * its part of the territory cut at the tile's edge, so a cut edge is not a border: a segment that
@@ -123,37 +129,91 @@ const hatchTile = (color, ratio) => {
   return c
 }
 
+/** The layer the ink goes under: the voyage route, else the first name or dot on the map. */
+export const inkBeforeId = (layers) => {
+  const list = layers || []
+  if (list.some((l) => l.id === 'lesson-route')) return 'lesson-route'
+  return list.find((l) => l.type === 'symbol' || l.type === 'circle')?.id
+}
+
+const VERTEX = 'attribute vec2 a_pos; varying vec2 v_uv;'
+  + 'void main() { v_uv = vec2((a_pos.x + 1.0) * 0.5, (1.0 - a_pos.y) * 0.5); gl_Position = vec4(a_pos, 0.0, 1.0); }'
+const FRAGMENT = 'precision mediump float; uniform sampler2D u_ink; varying vec2 v_uv;'
+  + 'void main() { gl_FragColor = texture2D(u_ink, v_uv); }'
+
+/** A full-screen quad that lays a premultiplied canvas into the map's frame. */
+const makeQuad = (gl) => {
+  const shader = (type, src) => {
+    const sh = gl.createShader(type)
+    gl.shaderSource(sh, src); gl.compileShader(sh)
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh) || 'territory ink shader')
+    return sh
+  }
+  const program = gl.createProgram()
+  gl.attachShader(program, shader(gl.VERTEX_SHADER, VERTEX))
+  gl.attachShader(program, shader(gl.FRAGMENT_SHADER, FRAGMENT))
+  gl.linkProgram(program)
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'territory ink program')
+  const buffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
+  const texture = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  const aPos = gl.getAttribLocation(program, 'a_pos')
+  const uInk = gl.getUniformLocation(program, 'u_ink')
+  return {
+    draw (canvas) {
+      gl.disable(gl.DEPTH_TEST); gl.disable(gl.STENCIL_TEST); gl.disable(gl.CULL_FACE)
+      gl.enable(gl.BLEND)
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+      gl.useProgram(program)
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+      gl.uniform1i(uInk, 0)
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+      gl.enableVertexAttribArray(aPos)
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+      gl.disableVertexAttribArray(aPos)
+    },
+    destroy () {
+      gl.deleteTexture(texture); gl.deleteBuffer(buffer); gl.deleteProgram(program)
+    },
+  }
+}
+
 /**
- * Put a hand-drawn territory over a MapLibre map.
+ * Put a hand-drawn territory into a MapLibre map, under the route and the names.
  *
  * @param {object} map
  * @param {{ features: () => object[], look: () => object, anim: () => {fill:number,border:number} }} source
  */
 export function createTerritoryInk (map, source) {
-  const host = map.getCanvasContainer()
-  const canvas = document.createElement('canvas')
-  canvas.className = 'territory-ink'
-  Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', pointerEvents: 'none' })
-  host.appendChild(canvas)
+  const canvas = document.createElement('canvas')   // drawn here, then laid into the map by the layer below
   const mask = document.createElement('canvas')
   const inkLayer = document.createElement('canvas')   // the border, drawn opaque, then laid down at its alpha
   let hatch = null
   let hatchKey = ''
-  let queued = false
   let drewSomething = false
 
   const size = () => {
-    const ratio = window.devicePixelRatio || 1
+    const ratio = (map.getPixelRatio ? map.getPixelRatio() : 0) || window.devicePixelRatio || 1
     const w = map.getCanvas().clientWidth; const h = map.getCanvas().clientHeight
     for (const c of [canvas, mask, inkLayer]) {
       if (c.width !== Math.round(w * ratio) || c.height !== Math.round(h * ratio)) { c.width = Math.round(w * ratio); c.height = Math.round(h * ratio) }
     }
-    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`
     return { ratio, w, h }
   }
 
   const draw = () => {
-    queued = false
     const { ratio } = size()
     const ctx = canvas.getContext('2d')
     ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -271,20 +331,31 @@ export function createTerritoryInk (map, source) {
     }
   }
 
-  // Drawn in the map's own frame (render fires once it has painted), so the ink never trails a pan.
-  const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(draw) } }
-  map.on('render', draw)
-  map.on('resize', redraw)
-  redraw()
+  // A layer of the map's own, under the route and every name: drawn in the map's frame, so the ink
+  // never trails a pan, and the names are painted after it, on top.
+  const LAYER_ID = 'territory-ink'
+  let quad = null
+  map.addLayer({
+    id: LAYER_ID,
+    type: 'custom',
+    renderingMode: '2d',
+    onAdd (_map, gl) { quad = makeQuad(gl) },
+    render (gl) {
+      // A failed frame of ink must never stop the map painting the rest.
+      try { draw() } catch (e) { drewSomething = false; console.warn('territory-ink: frame skipped', e) }
+      if (drewSomething && quad) quad.draw(canvas)
+    },
+    onRemove () { try { quad?.destroy() } catch (_) {} quad = null },
+  }, inkBeforeId(map.getStyle()?.layers))
+
+  const redraw = () => map.triggerRepaint()
 
   return {
     redraw,
     /** Did the last frame draw the territory? While it has not (tiles still loading), the map's own line stays. */
     get drawn () { return drewSomething },
     destroy () {
-      map.off('render', draw)
-      map.off('resize', redraw)
-      canvas.remove()
+      if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID)
     },
   }
 }
