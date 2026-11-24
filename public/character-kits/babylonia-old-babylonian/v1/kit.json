@@ -17,7 +17,8 @@
   "ochre",
   "mouth",
   "iris",
-  "brow"
+  "brow",
+  "hose"
  ],
  "kindDefaults": {
   "white": "#fcfaf4",
@@ -31,7 +32,8 @@
   "cord": "rope",
   "apron": "apron",
   "head-cloth": "ochre",
-  "band": "apron"
+  "band": "apron",
+  "hose": "hose"
  },
  "swatches": [
   {
@@ -1912,6 +1914,52 @@
      }
     },
     {
+     "id": "outfit/venice-tunic-satchel",
+     "slot": "outfit",
+     "label": "Tunic, belt and satchel",
+     "period": "venice-1271",
+     "kinds": [
+      "skin",
+      "tunic",
+      "rope",
+      "tie",
+      "hose"
+     ],
+     "box": [
+      444,
+      91,
+      1129,
+      2934
+     ],
+     "files": {
+      "svg": "outfit-venice-tunic-satchel.svg?v=6cdc9a8c4c",
+      "under": "outfit/base-kilt"
+     }
+    },
+    {
+     "id": "outfit/venice-fur-coat",
+     "slot": "outfit",
+     "label": "Fur-lined coat",
+     "period": "venice-1271",
+     "kinds": [
+      "skin",
+      "tunic",
+      "rope",
+      "tie",
+      "ochre"
+     ],
+     "box": [
+      444,
+      91,
+      1129,
+      2934
+     ],
+     "files": {
+      "svg": "outfit-venice-fur-coat.svg?v=ca5c903423",
+      "under": "outfit/base-kilt"
+     }
+    },
+    {
      "id": "face/man",
      "slot": "face",
      "label": "Man",
@@ -2023,6 +2071,23 @@
      ],
      "files": {
       "svg": "hair-man-straight-bowl.svg?v=a43827a766"
+     }
+    },
+    {
+     "id": "hair/man-wavy-jaw",
+     "slot": "hair",
+     "label": "Wavy to the jaw",
+     "kinds": [
+      "hair"
+     ],
+     "box": [
+      781,
+      35,
+      432,
+      530
+     ],
+     "files": {
+      "svg": "hair-man-wavy-jaw.svg?v=ec77ce6d96"
      }
     },
     {
@@ -2483,6 +2548,56 @@
      "second": "madder-red",
      "cord": "dark-wool-brown",
      "head-cloth": "yellow-ochre"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "marco-polo",
+   "label": "Marco Polo",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Marco Polo",
+    "body": "man",
+    "face": "man",
+    "outfit": "venice-tunic-satchel",
+    "parts": [
+     "hair/man-wavy-jaw"
+    ],
+    "skin": "s2",
+    "hair_colour": "brown",
+    "height_m": 1.66,
+    "zones": {
+     "garment": "raw-linen",
+     "cord": "dark-wool-brown",
+     "hose": "camel-brown"
+    },
+    "facing": 1
+   }
+  },
+  {
+   "id": "marco-polo-snow",
+   "label": "Marco Polo in the snow",
+   "recipe": {
+    "kit": "babylonia-old-babylonian",
+    "kitVersion": 1,
+    "view": "front34",
+    "role": "Marco Polo in the snow",
+    "body": "man",
+    "face": "man",
+    "outfit": "venice-fur-coat",
+    "parts": [
+     "hair/man-wavy-jaw"
+    ],
+    "skin": "s2",
+    "hair_colour": "brown",
+    "height_m": 1.66,
+    "zones": {
+     "garment": "raw-linen",
+     "cord": "dark-wool-brown",
+     "head-cloth": "undyed-wool"
     },
     "facing": 1
    }

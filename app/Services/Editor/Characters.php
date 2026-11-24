@@ -39,7 +39,7 @@ final class Characters
         'Character', 'Who', 'Body', 'Face', 'Hair', 'Clothes', 'Extra', 'Random', 'Whole figure', 'Expression',
         'Calm', 'Curious', 'Sad', 'Angry', 'Amazed', 'Name', 'People of this time', 'Skin', 'Eyes', 'Mouth', 'Hair colour',
         'Beard', 'Headwear', 'Jewellery', 'None', 'Own eyes', 'Own mouth', 'No hair', 'No beard', 'Nothing on the head',
-        'Cloth', 'Shawl', 'Cord', 'Apron', 'Band', 'Trim', 'Girl', 'Woman', 'Man', 'The character kit could not be loaded.', 'New character', 'Head cloth',
+        'Cloth', 'Shawl', 'Cord', 'Apron', 'Band', 'Trim', 'Girl', 'Woman', 'Man', 'The character kit could not be loaded.', 'New character', 'Head cloth', 'Hose',
     ];
 
     /** The kit's colours by id, as the tab names them. */
