@@ -2653,6 +2653,7 @@
     "Own cut-out": "Ritaglio personale",
     "Cut-out": "Ritaglio",
     "Pencil": "Matita",
+    "Eraser": "Gomma",
     "Done": "Fatto",
     "Clear all": "Cancella tutto",
     "Cut-out of :name": "Ritaglio di :name",
@@ -3062,6 +3063,9 @@
     "Territory name": "Nome del territorio",
     "Label position": "Posizione dell'etichetta",
     "Morph between years": "Trasforma tra gli anni",
+    "Paste": "Incolla",
+    "Stage layers paste into a 3D World scene only.": "I livelli del palco si incollano solo in una scena Mondo 3D.",
+    "A picture from another period's library was left out: it does not load on this stage.": "Un'immagine dalla libreria di un altro periodo è stata esclusa: non si carica su questo palco.",
     "Make it choices": "Trasforma in scelte",
     "This decision point is now a Choices layer on the scene.": "Questo momento di scelta ora è un livello di scelte sulla scena."
 }

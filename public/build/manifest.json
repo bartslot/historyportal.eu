@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Dmwkmy7r.js",
+    "file": "assets/app-Bybq8sf7.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -315,7 +315,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-dEjGzi1F.js",
+    "file": "assets/cutout-dialog-D-nAj7mj.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -341,7 +341,7 @@
     ]
   },
   "resources/js/editor/draw-layer.js": {
-    "file": "assets/draw-layer-BQm0oGam.js",
+    "file": "assets/draw-layer-B6sQ0rnj.js",
     "name": "draw-layer",
     "src": "resources/js/editor/draw-layer.js",
     "isDynamicEntry": true,
@@ -372,7 +372,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DQG4h0sJ.js",
+    "file": "assets/lesson-player-VW7SK18A.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -546,7 +546,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-B0lFsFal.js",
+    "file": "assets/index-b9HfBy4m.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -677,7 +677,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BCEg-iBD.js",
+    "file": "assets/recorder-C756LNk-.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

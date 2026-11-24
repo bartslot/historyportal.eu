@@ -2183,15 +2183,28 @@
             // Right-click on a row: select it and open Duplicate / Delete at the pointer. Rows that can't be
             // removed (the background, fixed scenery) have no menu, so the browser's own stays away too.
             menuObj: null,
+            canPaste: false,
+            pasteOnly: false,
             openMenu(obj, e) {
-                if (!obj || obj.bg || (obj.s25sky && !obj.removable)) return;
-                this.select(obj);
+                if (!obj) return;
+                this.canPaste = !!window.__objectClipboard?.has();
+                // The background and the pinned rows can't be copied or deleted, but an empty scene has only those, and it is
+                // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
+                this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
+                if (this.pasteOnly && !this.canPaste) return;
+                if (!this.pasteOnly) this.select(obj);
                 this.menuObj = obj;
                 const m = this.$refs.objMenu;
                 m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
-                m.style.top = Math.min(e.clientY, innerHeight - 96) + 'px';
+                m.style.top = Math.min(e.clientY, innerHeight - 180) + 'px';
                 m.showPopover();
             },
+            // Copy / Paste: the same object copy as Cmd-C / Cmd-V, so a paste in another scene lands where it was.
+            copyObject(obj) {
+                if (!obj || obj.bg) return;
+                window.__objectClipboard?.copy([obj.id]);
+            },
+            pasteObjects() { window.__objectClipboard?.paste(); },
             // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
             duplicateObject(obj) {
                 if (!obj || obj.bg) return;
@@ -2476,8 +2489,9 @@
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'eraser' && 'btn-primary'" x-on:click="pick('tool', 'eraser')" data-draw-eraser>{{ __('Eraser') }}</button>
                 </div>
-                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}" :class="tool === 'eraser' && 'opacity-40'">
                     <template x-for="c in colours" :key="c">
                         <button type="button" class="h-8 w-8 rounded-full border-2" :style="`background:${c}`"
                                 :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
@@ -2859,14 +2873,28 @@
         <ul popover x-ref="objMenu" data-obj-menu wire:ignore
             class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
+                <button type="button" @click="$refs.objMenu.hidePopover(); copyObject(menuObj)">
+                    <x-ui.icon name="copy" />
+                    {{ __('Copy') }}
+                    <span class="ml-auto opacity-60">⌘C</span>
+                </button>
+            </li>
+            <li x-show="canPaste">
+                <button type="button" @click="$refs.objMenu.hidePopover(); pasteObjects()">
+                    <x-ui.icon name="paste" />
+                    {{ __('Paste') }}
+                    <span class="ml-auto opacity-60">⌘V</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky">
                 <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
-            <li>
+            <li x-show="!pasteOnly">
                 <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
                     <x-ui.icon name="delete" />
                     {{ __('Delete') }}
@@ -2971,6 +2999,19 @@
             e.preventDefault();
         });
         const pasteObjects = () => window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+        // The object copy as the Object list's right-click menu uses it (Copy / Paste), the same copy as Cmd-C / Cmd-V.
+        // A menu click is a user gesture, so execCommand('copy') fires the copy event that marks the system clipboard
+        // as ours, exactly as Cmd-C does.
+        window.__objectClipboard = {
+            copy(ids) {
+                objClipboard = { ids, sceneId: (window.__objScene || {}).sceneId ?? null };
+                ownCopy = true;
+                try { document.execCommand('copy'); } catch (_) {}
+                ownCopy = false;
+            },
+            has: () => !!objClipboard,
+            paste: () => { if (objClipboard) pasteObjects(); },
+        };
 
         // Cmd/Ctrl-V. The paste EVENT decides (window.__routePaste, resources/js/ui/paste-router.js):
         // only it can see what is on the system clipboard, without a permission prompt. An image goes
