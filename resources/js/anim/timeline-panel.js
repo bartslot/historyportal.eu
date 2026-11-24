@@ -130,7 +130,9 @@ const lastKeyTime = (tracks) => {
   return last
 }
 
-const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam' || o.kind === 'sail'
+/** How long the Choices clip reads at the end of the ruler: the card comes when the scene is over. */
+const CHOICES_CLIP_S = 1.5
+const isPinnedObject = (o) => o.kind === 'choices' || o.kind === 'camera' || o.kind === 's25cam' || o.kind === 'sail'
 
 const pinStyle = (scrolled, layer) => ` position: relative; z-index: ${layer}; background: var(--color-timeline-ground); transform: translateY(${scrolled}px);`
 
@@ -351,7 +353,7 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('stage25d-synced', () => { this.adoptStage25d(); this.refreshObjects(); this.applyFrame() })
     this.adoptStage25d()
 
-    for (const event of ['scene-objects-changed', 'objscene-changed', 'stage25d-edited']) {
+    for (const event of ['scene-objects-changed', 'objscene-changed', 'stage25d-edited', 'scene-choices']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
     }
 
@@ -494,7 +496,9 @@ export const animationTimeline = (config = {}) => ({
     const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
     // The map block: its year, and its territory's area and border (Bart 2026-11-23).
     const territory = config.sceneKind === 'map' ? territoryObjects(config.objectLabels?.mapBlock) : []
-    const listed = [...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+    // The Choices layer (scene-links.js): it fades in when the scene is over, so its clip sits at the end (Bart 2026-11-24).
+    const choices = window.__objScene?.choices ? [{ target: 'choices', kind: 'choices', icon: 'choices', label: config.objectLabels?.choices ?? 'Choices' }] : []
+    const listed = [...choices, ...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
       ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
@@ -1422,6 +1426,7 @@ export const animationTimeline = (config = {}) => ({
   barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
     if (target === 'sail') { const c = this.sailSpan(); return { from: c.start, to: c.end } }
+    if (target === 'choices') return { from: Math.max(0, this.duration - CHOICES_CLIP_S), to: this.duration }
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
     if (o.kind === 'art') return { from: o.entrance?.from ?? 0, to: this.duration }
@@ -2003,6 +2008,7 @@ export const animationTimeline = (config = {}) => ({
     if (id === 's25_sky') return 's25sky:sky'
     if (String(id).startsWith('s25_')) return `s25:${String(id).slice(4)}`
     if (String(id).startsWith('bg_')) return `bg:${String(id).slice(3)}`
+    if (id === '__choices__') return this.objects.some((o) => o.target === 'choices') ? 'choices' : null
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
@@ -2048,6 +2054,11 @@ export const animationTimeline = (config = {}) => ({
     else if (kind === 's25sky') window.__stage25d?.select?.('sky')
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
     // the background has no selection of its own: choosing its row lets go of whatever was selected on the stage
+    // the Choices layer: the stage shows its card, the object list and the Choices panel follow
+    else if (kind === 'choices') {
+      window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: '__choices__' } }))
+      window.dispatchEvent(new CustomEvent('inspector-open'))
+    }
     else if (kind === 'bg') window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `bg_${id}` } }))
   },
 
