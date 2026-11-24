@@ -3105,5 +3105,15 @@
     "Label position": "Posición de la etiqueta",
     "Morph between years": "Transformar entre años",
     "Make it choices": "Convertir en opciones",
-    "This decision point is now a Choices layer on the scene.": "Este momento de decisión ahora es una capa de opciones en la escena."
+    "This decision point is now a Choices layer on the scene.": "Este momento de decisión ahora es una capa de opciones en la escena.",
+    "Match narration": "Igual que la narración",
+    "Narration": "Narración",
+    "Mute narration": "Silenciar la narración",
+    "Unmute narration": "Activar la narración",
+    "Narration volume": "Volumen de la narración",
+    "Make the timeline as long as the narration": "Hacer la línea de tiempo tan larga como la narración",
+    "Eraser": "Borrador",
+    "Paste": "Pegar",
+    "Stage layers paste into a 3D World scene only.": "Las capas del escenario solo se pegan en una escena de Mundo 3D.",
+    "A picture from another period's library was left out: it does not load on this stage.": "Se ha omitido una imagen de la biblioteca de otra época: no se carga en este escenario."
 }

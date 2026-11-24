@@ -135,6 +135,98 @@ class DuplicateSceneObjectTest extends TestCase
         $this->assertCount(3, $this->scene->fresh()->shots[0]['layers'], 'the source scene is untouched');
     }
 
+    public function test_a_paste_into_another_scene_brings_the_timeline_keys_along(): void
+    {
+        $this->keyScene();
+
+        $this->editor()
+            ->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['art_'.$this->asset->id, 'txt_title'], $this->scene->id);
+
+        $other = $this->otherScene->fresh();
+        $artId = $other->shots[0]['layers'][0]['asset_id'];
+        $textId = $other->config['texts'][0]['id'];
+        $tracks = collect($other->config['timeline']['tracks'])->keyBy(fn ($t) => $t['target'].'/'.$t['property']);
+        $this->assertEquals(12.0, $other->config['timeline']['duration'], 'a scene with no timeline takes the source length');
+        $this->assertEquals([['time' => 0.0, 'value' => 40.0], ['time' => 4.0, 'value' => 70.0, 'easing' => 'linear']], $tracks["art:{$artId}/x"]['keyframes'], 'the same keys, not moved');
+        $this->assertEquals(0.5, $tracks["art:{$artId}/opacity"]['base']);
+        $this->assertArrayHasKey("text:{$textId}/opacity", $tracks->all());
+        $this->assertCount(3, $tracks, 'the other object\'s keys stay where they were');
+    }
+
+    public function test_the_timeline_panel_is_handed_the_copied_keys(): void
+    {
+        $this->keyScene();
+
+        $this->editor()->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['txt_title'], $this->scene->id)
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => count($params['timeline']['tracks']) === 1 && $params['keepSelection'] === true);
+    }
+
+    public function test_a_paste_adds_its_keys_to_the_tracks_already_there(): void
+    {
+        $this->keyScene();
+        $this->otherScene->update(['config' => ['timeline' => ['duration' => 6.0, 'targets' => ['camera:main'], 'tracks' => [
+            ['target' => 'text:txt_own', 'property' => 'y', 'keyframes' => [['time' => 1.0, 'value' => 5.0]]],
+        ]]]]);
+
+        $this->editor()
+            ->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['txt_title'], $this->scene->id);
+
+        $timeline = $this->otherScene->fresh()->config['timeline'];
+        $this->assertEquals(6.0, $timeline['duration'], 'the scene keeps its own length');
+        $this->assertSame(['camera:main'], $timeline['targets']);
+        $this->assertSame(['text:txt_own', 'text:'.$this->otherScene->fresh()->config['texts'][0]['id']], array_column($timeline['tracks'], 'target'));
+    }
+
+    public function test_a_duplicate_keeps_its_keys_moved_along_with_it(): void
+    {
+        $this->keyScene();
+
+        $this->editor()->call('duplicateObjects', ['art_'.$this->asset->id]);
+
+        $scene = $this->scene->fresh();
+        $copyId = $scene->shots[0]['layers'][2]['asset_id'];
+        $track = collect($scene->config['timeline']['tracks'])->firstWhere('target', "art:{$copyId}");
+        $this->assertSame('x', $track['property']);
+        $this->assertEquals([43.0, 73.0], array_column($track['keyframes'], 'value'), 'its path runs beside the original\'s');
+        $this->assertCount(6, $scene->config['timeline']['tracks'], 'the original keeps its keys, the copy gets its own two');
+    }
+
+    public function test_several_objects_keep_their_stacking_in_the_other_scene(): void
+    {
+        $this->editor()
+            ->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['art_1500000000', 'art_'.$this->asset->id], $this->scene->id);
+
+        $srcIds = array_column($this->otherScene->fresh()->shots[0]['layers'], 'src_asset_id');
+        $this->assertSame([$this->asset->id, null], $srcIds, 'the windmill stays behind the video');
+    }
+
+    public function test_a_paste_is_one_undo_step(): void
+    {
+        $this->editor()
+            ->call('selectScene', $this->otherScene->id)
+            ->call('duplicateObjects', ['txt_title'], $this->scene->id)
+            ->call('undoLastEdit');
+
+        $this->assertEmpty($this->otherScene->fresh()->config['texts'] ?? []);
+    }
+
+    /** Keys on the windmill and the title (the ones copied) and on the panel (not copied). */
+    private function keyScene(): void
+    {
+        $config = $this->scene->config;
+        $config['timeline'] = ['duration' => 12.0, 'targets' => [], 'tracks' => [
+            ['target' => 'art:'.$this->asset->id, 'property' => 'x', 'keyframes' => [['time' => 0.0, 'value' => 40.0], ['time' => 4.0, 'value' => 70.0, 'easing' => 'linear']]],
+            ['target' => 'art:'.$this->asset->id, 'property' => 'opacity', 'keyframes' => [['time' => 2.0, 'value' => 1.0]], 'base' => 0.5],
+            ['target' => 'text:txt_title', 'property' => 'opacity', 'keyframes' => [['time' => 1.0, 'value' => 0.0]]],
+            ['target' => 'rect:rect_panel', 'property' => 'opacity', 'keyframes' => [['time' => 1.0, 'value' => 0.2]]],
+        ]];
+        $this->scene->update(['config' => $config]);
+    }
+
     public function test_a_scene_from_another_lesson_cannot_be_pasted_from(): void
     {
         $stranger = User::factory()->create();

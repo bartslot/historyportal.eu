@@ -3063,5 +3063,15 @@
     "Label position": "Position des Labels",
     "Morph between years": "Zwischen Jahren überblenden",
     "Make it choices": "In Auswahl umwandeln",
-    "This decision point is now a Choices layer on the scene.": "Dieser Entscheidungspunkt ist jetzt eine Auswahl-Ebene auf der Szene."
+    "This decision point is now a Choices layer on the scene.": "Dieser Entscheidungspunkt ist jetzt eine Auswahl-Ebene auf der Szene.",
+    "Match narration": "Wie die Erzählung",
+    "Narration": "Erzählung",
+    "Mute narration": "Erzählung stummschalten",
+    "Unmute narration": "Erzählung einschalten",
+    "Narration volume": "Lautstärke der Erzählung",
+    "Make the timeline as long as the narration": "Die Zeitleiste so lang wie die Erzählung machen",
+    "Eraser": "Radierer",
+    "Paste": "Einfügen",
+    "Stage layers paste into a 3D World scene only.": "Bühnenebenen lassen sich nur in eine 3D-Welt-Szene einfügen.",
+    "A picture from another period's library was left out: it does not load on this stage.": "Ein Bild aus der Bibliothek einer anderen Epoche wurde weggelassen: Es lädt auf dieser Bühne nicht."
 }
