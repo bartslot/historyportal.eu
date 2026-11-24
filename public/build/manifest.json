@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-wyo2luQf.js",
+    "file": "assets/app-B6yUsAWI.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -283,8 +283,8 @@
     "dynamicImports": [
       "resources/js/scene/music-mixer.js",
       "resources/js/scene/tempo.js",
-      "resources/js/editor/collab-realtime.js",
       "resources/js/editor/cutout-dialog.js",
+      "resources/js/editor/collab.js",
       "resources/js/test-session/recorder.js",
       "_quick-mask-Dp4H61tD.js",
       "resources/js/lesson-map.js",
@@ -324,8 +324,20 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
+  "resources/js/editor/collab.js": {
+    "file": "assets/collab-BVk9t0bu.js",
+    "name": "collab",
+    "src": "resources/js/editor/collab.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vite-helpers-DqutJMZx.js"
+    ],
+    "dynamicImports": [
+      "resources/js/editor/collab-realtime.js"
+    ]
+  },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-BSi8sYI4.js",
+    "file": "assets/cutout-dialog-BU-JfYHn.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -556,7 +568,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-EYycIA7R.js",
+    "file": "assets/index-BOHfuNVl.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -687,7 +699,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-Bwhh26-M.js",
+    "file": "assets/recorder-CzvWJ8NR.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
