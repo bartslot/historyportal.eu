@@ -510,6 +510,7 @@ class ImageRestyler
             str_contains($m, 'insufficient_quota'), str_contains($m, 'billing_hard_limit'), str_contains($m, 'exceeded your current quota'), str_contains($m, 'returned 402') => 'credits',
             str_contains($m, 'moderation'), str_contains($m, 'content_policy'), str_contains($m, 'safety system') => 'blocked',
             str_contains($m, 'returned 429'), str_contains($m, 'rate_limit') => 'busy',
+            str_contains($m, 'nobody picked up the picture'), str_contains($m, 'chatgpt is not available') => 'offline',
             default => 'failed',
         };
     }

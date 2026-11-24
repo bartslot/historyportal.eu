@@ -8,6 +8,7 @@ use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Models\StoryMediaItem;
 use App\Services\Art\StyleCheck;
+use App\Services\Local\LocalChatGpt;
 use App\Services\StoryVideo\StoryMediaFiles;
 use App\Services\StoryVideo\StoryVideoPrompts;
 use App\Services\StoryVideo\StoryVideoRun;
@@ -89,8 +90,8 @@ class GenerateStoryPicture implements ShouldQueue
     }
 
     /**
-     * The History Lines plates, in attach order. ChatGPT edits the first image it is given, so the prompt's
-     * "take only the style from the references" carries the rest.
+     * The History Lines plates, in attach order, all marked as references (LocalChatGpt::REFERENCE_MARK) so ChatGPT
+     * makes a new picture with them instead of editing the first one.
      *
      * @return list<array{bytes: string, name: string}>
      */
@@ -100,7 +101,7 @@ class GenerateStoryPicture implements ShouldQueue
         foreach ($kind === StoryMediaKind::CharacterSheet ? StoryVideoPrompts::SHEET_ANCHORS : StoryVideoPrompts::IMAGE_ANCHORS as $file) {
             $path = \App\Services\Art\HistoryLineStyle::anchorPath($file);
             if (is_file($path)) {
-                $out[] = ['bytes' => (string) file_get_contents($path), 'name' => $file];
+                $out[] = ['bytes' => (string) file_get_contents($path), 'name' => LocalChatGpt::REFERENCE_MARK.$file];
             }
         }
 

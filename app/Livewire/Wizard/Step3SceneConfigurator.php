@@ -67,6 +67,7 @@ use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
 use App\Support\TerritoryLook;
+use App\Support\TextStylePresets;
 use App\Support\UploadLimit;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -127,7 +128,7 @@ class Step3SceneConfigurator extends Component
     public const BRAND_BACKGROUND = '#0f172a';
 
     /** A stage text's fonts (resources/js/scene/TextOverlayLayer.js FONTS); anything else falls back. */
-    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic-america'];
+    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic', 'comic-america'];
 
     /** A teacher's time estimate for a scene the student paces: ten seconds to an hour. */
     private const ESTIMATE_MIN_SECONDS = 10;
@@ -1237,6 +1238,41 @@ class Step3SceneConfigurator extends Component
         unset($this->activeText);
 
         $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $text);
+    }
+
+    /** Put one of the ready-made looks (App\Support\TextStylePresets) on a text layer: one click, one save. */
+    public function applyTextStyle(string $textId, string $presetId): void
+    {
+        if (! $this->selectedSceneId || $textId === '') {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $texts = array_values((array) ($config['texts'] ?? []));
+        $index = collect($texts)->search(fn ($text) => is_array($text) && ($text['id'] ?? null) === $textId);
+
+        if ($index === false || ! is_array($texts[$index]) || ($texts[$index]['kind'] ?? null) === 'rect') {
+            return;
+        }
+
+        $text = TextStylePresets::apply($texts[$index], $presetId);
+        if ($text === null) {
+            return;
+        }
+
+        $texts[$index] = $text;
+        $config['texts'] = $texts;
+        $scene->update(['config' => $config]);
+
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        unset($this->activeText);
+
+        // The canvas merges a patch into what it has, so a look field the preset dropped goes as null.
+        $patch = [...array_fill_keys(TextStylePresets::LOOK_FIELDS, null), ...$text];
+        $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $patch);
     }
 
     public function deleteSceneText(string $textId): void
@@ -2515,7 +2551,7 @@ class Step3SceneConfigurator extends Component
      * A timeline from the browser as it is stored, rebuilt field by field.
      *
      * @param  array<string, mixed>  $timeline
-     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
+     * @return array{duration: float, durationSet?: true, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
      */
     private function storedTimeline(array $timeline): array
     {
@@ -2596,6 +2632,10 @@ class Step3SceneConfigurator extends Component
         }
 
         $stored = ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+        // The teacher typed a Length; without it a scene with narration is as long as its clip (timeline-panel.js followNarration).
+        if (($timeline['durationSet'] ?? false) === true) {
+            $stored['durationSet'] = true;
+        }
 
         // A voyage leg's crossing as a clip (resources/js/anim/sail-clip.js): when the ship sets off, when it lands.
         $sail = $timeline['sail'] ?? null;

@@ -7,8 +7,6 @@ namespace App\Services\StoryVideo;
 use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Models\StoryMediaItem;
-use App\Services\Art\HistoryLineStyle;
-use App\Services\Art\StyleCheck;
 use App\Services\StoryVideo\Clips\StudioClipDriver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
@@ -17,8 +15,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * The ElevenLabs web studio's side of story to video (bart, 2026-11-23). Items queued for the `studio` driver wait
- * here; bart's Mac claims them in small batches (tools/studio/studio.py pull), Claude makes each one in the studio in
+ * The ElevenLabs web studio's side of story to video (bart, 2026-11-23). Clips only: pictures come from ChatGPT
+ * (bart, 2026-11-23, after the Recraft test was not History Lines). Clips queued for the `studio` driver wait here; bart's Mac claims them in small batches (tools/studio/studio.py pull), Claude makes each one in the studio in
  * bart's own Chrome, and the Mac sends the downloads back (studio.py push). Every item of a batch carries the batch's
  * claim, so a push hours later cannot overwrite an item that was handed out again or redone in the meantime.
  *
@@ -30,7 +28,7 @@ final class StudioQueue
     private const CLAIM_PREFIX = 'studio:';
 
     /**
-     * Claim up to $max waiting items (pictures before clips, oldest first) under one batch claim.
+     * Claim up to $max waiting clips (oldest first) under one batch claim.
      *
      * @return array{claim: string, items: list<StoryMediaItem>}|null null when nothing waits
      */
@@ -41,7 +39,6 @@ final class StudioQueue
 
         return DB::transaction(function () use ($max): ?array {
             $items = $this->mine()->where('status', StoryMediaStatus::Queued->value)->whereNotNull('prompt')
-                ->orderByRaw("case when kind = ? then 1 else 0 end", [StoryMediaKind::Clip->value])
                 ->orderBy('started_at')->orderBy('id')->limit($max)->lockForUpdate()->with('lesson')->get()
                 ->filter(fn (StoryMediaItem $i) => $i->lesson !== null)->values();
             if ($items->isEmpty()) {
@@ -66,64 +63,38 @@ final class StudioQueue
     /**
      * What to set in the studio for this item, in the words of its picker.
      *
-     * @return array{model: string, aspect_ratio: string, resolution: string, seconds: int|null, audio: bool}
+     * @return array{model: string, aspect_ratio: string, resolution: string, seconds: int, audio: bool}
      */
     public function settings(StoryMediaItem $item): array
     {
-        $video = $item->kind->isVideo();
-
         return [
-            'model' => (string) config($video ? 'story_video.studio.video_model' : 'story_video.studio.image_model'),
+            'model' => (string) config('story_video.studio.video_model'),
             'aspect_ratio' => '16:9',
-            'resolution' => $video ? (string) config('story_video.video_resolution', '720p') : (string) config('story_video.image_resolution', '2K'),
-            'seconds' => $video ? max((int) config('story_video.clip_min_seconds', 4), min((int) config('story_video.clip_max_seconds', 15), (int) (($item->input ?? [])['seconds'] ?? 5))) : null,
+            'resolution' => (string) config('story_video.video_resolution', '720p'),
+            'seconds' => max((int) config('story_video.clip_min_seconds', 4), min((int) config('story_video.clip_max_seconds', 15), (int) (($item->input ?? [])['seconds'] ?? 5))),
             'audio' => false,   // narration and sound come from the lesson
         ];
     }
 
     /**
-     * The reference pictures to attach, in the prompt's order. Pictures: the History Lines plates. Clips: the scene's
-     * approved world shot, then the approved sheets of the people in the beat.
+     * The reference pictures to attach, in the prompt's order: the scene's approved world shot, then the approved
+     * sheets of the people in the beat.
      *
      * @return list<array{name: string, disk: string|null, path: string}> disk null = a file under resources/
      */
     public function references(StoryMediaItem $item): array
     {
-        if ($item->kind->isVideo()) {
-            $paths = $item->lesson ? StoryVideoRun::for($item->lesson)->clipReferencePaths($item) : [];
+        $paths = $item->lesson ? StoryVideoRun::for($item->lesson)->clipReferencePaths($item) : [];
 
-            return array_map(fn (string $p) => ['name' => basename($p), 'disk' => 'public', 'path' => $p], $paths);
-        }
-        $out = [];
-        foreach ($item->kind === StoryMediaKind::CharacterSheet ? StoryVideoPrompts::SHEET_ANCHORS : StoryVideoPrompts::IMAGE_ANCHORS as $file) {
-            $path = HistoryLineStyle::anchorPath($file);
-            if (is_file($path)) {
-                $out[] = ['name' => $file, 'disk' => null, 'path' => $path];
-            }
-        }
-
-        return $out;
+        return array_map(fn (string $p) => ['name' => basename($p), 'disk' => 'public', 'path' => $p], $paths);
     }
 
-    /**
-     * The Mac delivers what the studio made. A picture gets the History Lines style check (no automatic redo: the
-     * teacher redoes it with a note if it is off); a clip is stored like any clip. Either then waits for the teacher.
-     */
+    /** The Mac delivers what the studio made: stored like any clip, then it waits for the teacher. */
     public function finish(StoryMediaItem $item, UploadedFile $file): string
     {
-        $bytes = (string) $file->get();
         $mime = (string) ($file->getMimeType() ?: $file->getClientMimeType());
-        $path = StoryMediaFiles::store($item, $bytes, $mime);
-
-        if ($item->kind->isVideo()) {
-            StoryVideoRun::for($item->lesson)->clipFinished($item, $path);
-
-            return $path;
-        }
-        $metrics = StyleCheck::metrics($bytes);
-        $problems = StyleCheck::problems($metrics, sheet: $item->kind === StoryMediaKind::CharacterSheet);
-        $item->update(['path' => $path, 'style' => [...$metrics, 'problems' => $problems], 'status' => StoryMediaStatus::Ready,
-            'generation_id' => null, 'error' => null]);
+        $path = StoryMediaFiles::store($item, (string) $file->get(), $mime);
+        StoryVideoRun::for($item->lesson)->clipFinished($item, $path);
 
         return $path;
     }
@@ -154,16 +125,12 @@ final class StudioQueue
             ->update(['status' => StoryMediaStatus::Queued->value, 'generation_id' => null]);
     }
 
-    /** @return array{waiting: int, in_batch: int, pictures_waiting: int, clips_waiting: int} */
+    /** @return array{waiting: int, in_batch: int} */
     public function status(): array
     {
-        $waiting = $this->mine()->where('status', StoryMediaStatus::Queued->value);
-
         return [
-            'waiting' => (clone $waiting)->count(),
+            'waiting' => $this->mine()->where('status', StoryMediaStatus::Queued->value)->count(),
             'in_batch' => $this->mine()->where('status', StoryMediaStatus::Generating->value)->count(),
-            'pictures_waiting' => (clone $waiting)->where('kind', '!=', StoryMediaKind::Clip->value)->count(),
-            'clips_waiting' => (clone $waiting)->where('kind', StoryMediaKind::Clip->value)->count(),
         ];
     }
 
@@ -181,6 +148,6 @@ final class StudioQueue
     /** @return Builder<StoryMediaItem> */
     private function mine(): Builder
     {
-        return StoryMediaItem::query()->where('model', StudioClipDriver::NAME);
+        return StoryMediaItem::query()->where('model', StudioClipDriver::NAME)->where('kind', StoryMediaKind::Clip->value);
     }
 }

@@ -109,3 +109,13 @@ describe('undo and redo of a removed keyframe', () => {
     expect(p.keysOf(ART, 'y').map((k) => k.time)).toEqual([0, 3])
   })
 })
+
+describe('A restored timeline (undo, paste)', () => {
+  it('takes the stored length, so keys a paste brought past the old end stay reachable', () => {
+    const p = panel()
+    p.fit = () => {}
+    p.restore({ duration: 12, targets: [], tracks: [track([{ time: 0, value: 25 }, { time: 11, value: 80 }])] })
+    expect(p.duration).toBe(12)
+    expect(p.keysOf(ART, 'x').map((k) => k.time)).toEqual([0, 11])
+  })
+})

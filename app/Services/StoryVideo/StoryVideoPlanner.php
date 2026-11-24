@@ -42,7 +42,7 @@ final class StoryVideoPlanner
         foreach ($scenes as $scene) {
             $brief = self::brief($outline, $scene);
             $keep[] = $this->upsert($lesson, $scene, StoryMediaKind::WorldShot, "scene-{$scene->id}", $position++,
-                $scene->chapterName(), ['brief' => $brief, 'fallback' => (string) ($scene->image_prompt ?? $scene->location ?? '')]);
+                $scene->chapterName(), ['brief' => $brief, 'fallback' => self::placeHint($scene)]);
         }
 
         $clips = 0;
@@ -121,6 +121,24 @@ final class StoryVideoPlanner
         }
 
         return array_filter(['location' => $scene->location, 'year' => $scene->year === null ? null : (string) $scene->year]);
+    }
+
+    /**
+     * What the place looks like when the outline has no brief for the scene (a Twine import, an older lesson): the
+     * scene's picture prompt, else the Twine shot line, else its location, else the opening of its narration. Without
+     * this the world shot prompt named no place at all (lesson 129, 2026-11-23).
+     */
+    public static function placeHint(Scene $scene): string
+    {
+        $config = is_array($scene->config) ? $scene->config : [];
+        foreach ([$scene->image_prompt, $config['shot_note'] ?? null, $scene->location] as $hint) {
+            if (is_string($hint) && trim($hint) !== '') {
+                return trim($hint);
+            }
+        }
+        $story = trim((string) $scene->script_segment);
+
+        return $story !== '' ? 'The place where this happens: '.Str::limit(preg_replace('/\s+/', ' ', $story), 400, '') : '';
     }
 
     public static function narrated(Scene $scene): bool

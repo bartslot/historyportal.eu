@@ -67,7 +67,9 @@ def call(path: str, *, method: str = "GET", data: bytes | None = None, headers: 
         die("STUDIO_TOKEN is not set (put it in tools/studio/studio.env or the environment).")
     url = path if path.startswith("http") else f"{SERVER}/api/studio{path}"
     req = urllib.request.Request(url, data=data, method=method,
-                                 headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/json", **(headers or {})})
+                                 headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/json",
+                                          # SiteGround refuses urllib's default agent with 403.
+                                          "User-Agent": "HistoryPortal-studio/1.0", **(headers or {})})
     return urllib.request.urlopen(req, timeout=timeout)
 
 
@@ -135,7 +137,7 @@ def cmd_status(_args) -> None:
     code, body = call_json("/status", method="GET")
     if code != 200:
         die(f"Server answered {code}: {body.get('message', '')}")
-    print(f"Waiting: {body['waiting']} ({body['pictures_waiting']} pictures, {body['clips_waiting']} clips). In a batch: {body['in_batch']}.")
+    print(f"Clips waiting: {body['waiting']}. In a batch: {body['in_batch']}.")
 
 
 def cmd_pull(args) -> None:

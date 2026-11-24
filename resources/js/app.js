@@ -42,6 +42,7 @@ import { drawTool } from './editor/draw-layer.js';
 import { startLessonCollab } from './editor/collab.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
+import './scene/choices-preview.js';   // the Choices layer shown on the editor's stage while it is selected
 
 window.Sortable = Sortable;
 // The editor's object list: which band of the stage a dropped row lands in (object-list-drop.test.js).

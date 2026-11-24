@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Support;
 
 /**
- * How a scene text looks beyond its font: colour, scale, rotation, blur, blend, opacity and
- * grayscale (Figma 1674:4695, the text layer's Appearance and Layer sections).
+ * How a scene text looks beyond its font: colour, edge (shadow / outline), scale, rotation, blur,
+ * blend, opacity and grayscale (Figma 1674:4695, the text layer's Appearance and Layer sections).
  *
  * ONE place for the fields and their ranges, because two server paths write a text: the Format
  * panel (updateSceneText) and the canvas's own save (sceneTextsChanged), which rebuilds every item
@@ -17,6 +17,9 @@ final class TextLayerStyle
 {
     public const BLENDS = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'];
 
+    /** What edges the letters: the soft dark shadow (the default), a hard outline or a soft glow in effectColor, or nothing. */
+    public const EFFECTS = ['shadow', 'outline', 'glow', 'none'];
+
     /** @var array<string, array{0: float, 1: float}> */
     public const RANGES = [
         'colorOpacity' => [0.0, 1.0],
@@ -24,16 +27,19 @@ final class TextLayerStyle
         'rotation' => [-180.0, 180.0],
         'blur' => [0.0, 2.5],
         'opacity' => [0.05, 1.0],
+        // The outline / glow thickness, in em of the text's own size.
+        'effectWidth' => [0.02, 0.2],
     ];
 
-    public const FIELDS = ['color', 'colorOpacity', 'scale', 'rotation', 'blur', 'blend', 'opacity', 'grayscale'];
+    public const FIELDS = ['color', 'colorOpacity', 'scale', 'rotation', 'blur', 'blend', 'opacity', 'grayscale', 'effect', 'effectColor', 'effectWidth'];
 
     /** A field's clean value, or null when the input is not one (the caller keeps what it had). */
     public static function value(string $field, mixed $value): string|float|bool|null
     {
         return match (true) {
-            $field === 'color' => is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? strtolower($value) : null,
+            $field === 'color', $field === 'effectColor' => is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? strtolower($value) : null,
             $field === 'blend' => in_array($value, self::BLENDS, true) ? $value : null,
+            $field === 'effect' => in_array($value, self::EFFECTS, true) ? $value : null,
             $field === 'grayscale' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
             isset(self::RANGES[$field]) => is_numeric($value)
                 ? round(max(self::RANGES[$field][0], min(self::RANGES[$field][1], (float) $value)), 3)
