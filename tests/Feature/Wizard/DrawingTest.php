@@ -146,4 +146,40 @@ class DrawingTest extends TestCase
         $this->assertSame(0, SvgAsset::count());
         $this->assertNull(Drawings::clean(['tool' => 'pen', 'colour' => '#fff', 'width' => 4, 'points' => [[0, 0], [1, 1]]]));
     }
+
+    public function test_a_drawing_on_a_map_is_pinned_to_its_place_and_the_eraser_still_rubs_it_out(): void
+    {
+        [$scene, $editor] = $this->editor();
+        // drawn at zoom 5 on a 600 px tall stage, the line's middle over Venice
+        $map = ['zoom' => 5, 'px' => 600, 'pins' => [], 'centre' => ['x' => 30, 'y' => 30, 'lng' => 12.33, 'lat' => 45.44]];
+        $pen = ['tool' => 'pen', 'colour' => '#111827', 'width' => 4, 'points' => array_map(fn ($x) => [$x, 30], range(10, 50, 2))];
+        $id = $editor->call('addDrawing', $pen, 16 / 9, null, $map)->get('activeLayerId');
+
+        $layer = $scene->fresh()->shots[0]['layers'][0];
+        $this->assertSame('map', $layer['anchor']);
+        $this->assertEqualsWithDelta([12.33, 45.44], [$layer['lng'], $layer['lat']], 0.0001);
+        $this->assertEqualsWithDelta([30, 30], [$layer['x'], $layer['y']], 0.01, 'the layer is centred on that place');
+        $this->assertEquals([5, 600], [$layer['geo_zoom'], $layer['geo_px']]);
+
+        // without the map's view the server cannot tell where the pinned drawing is: left alone
+        $editor->call('eraseDrawing', [[30, 20], [30, 40]], 40)->assertReturned(['ok' => false]);
+
+        // the map zoomed in one step and moved the place to (40, 50): the drawing shows twice as big there
+        $view = ['zoom' => 6, 'px' => 600, 'pins' => [$id => ['x' => 40, 'y' => 50, 'f' => 2]]];
+        $editor->call('eraseDrawing', [[40, 40], [40, 60]], 40, 16 / 9, $view)->assertReturned(['ok' => true]);
+        $layer = $scene->fresh()->shots[0]['layers'][0];
+        $this->assertCount(2, $layer['strokes'], 'rubbed through the middle: two pieces');
+        $this->assertLessThan(40, max(array_column($layer['strokes'][0]['points'], 0)));
+        $this->assertLessThan(5, min(array_column($layer['strokes'][0]['points'], 0)), 'twice as long as drawn, around (40, 50)');
+        $this->assertSame('map', $layer['anchor']);
+        $this->assertEqualsWithDelta([12.33, 45.44], [$layer['lng'], $layer['lat']], 0.0001, 'still on Venice');
+        $this->assertEqualsWithDelta([40, 50], [$layer['x'], $layer['y']], 0.01, 'its middle stays on the place');
+        $this->assertEquals([6, 600, 1], [$layer['geo_zoom'], $layer['geo_px'], $layer['scale']], 'measured afresh at this zoom');
+
+        // a next line goes onto the same pinned layer
+        $editor->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[60, 50], [70, 50]]], 16 / 9, $id,
+            ['zoom' => 6, 'px' => 600, 'pins' => [$id => ['x' => 40, 'y' => 50, 'f' => 1]]])->assertReturned(['ok' => true, 'id' => $id]);
+        $this->assertCount(1, $scene->fresh()->shots[0]['layers']);
+        $this->assertCount(3, $scene->fresh()->shots[0]['layers'][0]['strokes']);
+    }
 }

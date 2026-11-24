@@ -155,7 +155,7 @@ export function layersSignature(layers) {
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
-    l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
+    l.anchor, l.lng, l.lat, l.geo_zoom, l.geo_px, l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
     l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
@@ -240,6 +240,9 @@ export function normalizeLayer(l) {
         anchor: l.anchor === 'map' && l.kind !== 'arrow' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
+        // A drawing pinned to the map scales exactly with it: the zoom and stage height (px) it was drawn at.
+        geo_zoom: Number.isFinite(l.geo_zoom) ? l.geo_zoom : null,
+        geo_px: Number.isFinite(l.geo_px) && l.geo_px > 0 ? l.geo_px : null,
         // A vector arrow (arrow-shape.js): its end and its shape. Every other kind ignores these.
         ...(l.kind === 'arrow' ? arrowParams(l) : {}),
         title: l.title || (l.embed && l.embed.title) || 'Icon',
@@ -257,6 +260,17 @@ export function pinZoomFactor(projector) {
   const ref = projector?.refZoom?.()
   if (!Number.isFinite(z) || !Number.isFinite(ref)) return 1
   return Math.max(PIN_SCALE_MIN, Math.min(PIN_SCALE_MAX, PIN_ZOOM_GROWTH ** (z - ref)))
+}
+
+/**
+ * The size factor for a drawing pinned to the map (Bart 11-24: "should be stuck on the map"): exactly the map's own, so a
+ * route drawn from Venice to Alexandria stays on both at every zoom and on every screen. 1 at the zoom and stage height
+ * it was drawn at; the map doubles per zoom step, and a taller stage at the same zoom shows the same place smaller.
+ */
+export function geoZoomFactor(projector, item, stagePx) {
+  const z = projector?.zoom?.()
+  if (!Number.isFinite(z) || !(stagePx > 0) || !Number.isFinite(item?.geo_zoom) || !(item?.geo_px > 0)) return 1
+  return Math.max(0.01, Math.min(100, 2 ** (z - item.geo_zoom) * item.geo_px / stagePx))
 }
 
 /** A stage position (%) off the stage pulled back in, far enough that the picture can be seen and grabbed. */
@@ -462,7 +476,10 @@ export class ArtworkOverlay {
     const item = this._layers.find((l) => String(l.asset_id) === String(assetId))
     if (!item || !this._projector) return false
 
+    // A drawing that scales with the map keeps the size it has on screen now, pinned or not.
+    const geo = Number.isFinite(item.geo_zoom) && item.geo_px > 0
     if (item.anchor === 'map') {
+      if (geo) item.scale *= this._mapFactor(item)
       item.anchor = 'screen'
       item.lng = null
       item.lat = null
@@ -486,6 +503,7 @@ export class ArtworkOverlay {
       item.anchor = 'map'
       item.lng = ll.lng
       item.lat = ll.lat
+      if (geo) item.scale /= this._mapFactor(item)
     }
     this._emit(item)
     return item.anchor === 'map'
@@ -562,7 +580,9 @@ export class ArtworkOverlay {
    * times as big, held between PIN_SCALE_MIN and PIN_SCALE_MAX so it never fills the stage or vanishes.
    */
   _mapFactor(item) {
-    return item?.anchor === 'map' ? pinZoomFactor(this._projector) : 1
+    if (item?.anchor !== 'map') return 1
+    if (Number.isFinite(item.geo_zoom) && item.geo_px > 0) return geoZoomFactor(this._projector, item, this.host.getBoundingClientRect().height)
+    return pinZoomFactor(this._projector)
   }
 
   /**

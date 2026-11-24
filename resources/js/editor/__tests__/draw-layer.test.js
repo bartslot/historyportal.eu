@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { thin, shape, isStroke, distanceTo, mountDraw, drawTool, eraserSize } from '../draw-layer.js'
+import { thin, shape, isStroke, distanceTo, mountDraw, drawTool, eraserSize, drawMapView } from '../draw-layer.js'
+import { geoZoomFactor } from '../../scene/ArtworkOverlay.js'
 
 describe('drawing over the lesson: strokes as data', () => {
   it('keeps a pen trail light but never loses its end', () => {
@@ -115,5 +116,30 @@ describe('drawing over the lesson: in the editor', () => {
     await t._queue
     expect(calls.slice(3)).toEqual([43, null])
     t.stop()
+  })
+})
+
+describe('a drawing on a map sticks to the map', () => {
+  const projector = { zoom: () => 6, unproject: (x, y) => ({ lng: x / 10, lat: y / 10 }) }
+  const overlay = {
+    _projector: projector,
+    host: { getBoundingClientRect: () => ({ height: 600 }) },
+    _layers: [{ asset_id: 7, anchor: 'map', x: 40, y: 50 }, { asset_id: 8, anchor: 'screen', x: 1, y: 1 }],
+    _mapFactor: () => 2,
+  }
+
+  it('sends the zoom, the stage height, every pinned layer and the place under a new line', () => {
+    expect(drawMapView(overlay, [[10, 20], [30, 40]])).toEqual({
+      zoom: 6, px: 600, pins: { 7: { x: 40, y: 50, f: 2 } }, centre: { x: 20, y: 30, lng: 2, lat: 3 },
+    })
+    expect(drawMapView({ ...overlay, _projector: null })).toBeNull()
+  })
+
+  it('scales exactly with the map: double per zoom step, smaller on a taller stage', () => {
+    const item = { geo_zoom: 5, geo_px: 600 }
+    expect(geoZoomFactor(projector, item, 600)).toBe(2)
+    expect(geoZoomFactor(projector, item, 1200)).toBe(1)
+    expect(geoZoomFactor({ zoom: () => 3 }, item, 600)).toBe(0.25)
+    expect(geoZoomFactor(projector, {}, 600)).toBe(1)
   })
 })

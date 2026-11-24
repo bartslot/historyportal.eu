@@ -69,9 +69,10 @@ final class Drawings
      * around all of them together.
      *
      * @param  non-empty-list<array{tool:string, colour:string, width:float, points:list<array{0:float,1:float}>}>  $strokes
+     * @param  array{0:float,1:float}|null  $centre  the box's middle (stage %), for a drawing pinned to a place
      * @return array{svg:string, x:float, y:float, height:float, width:float}
      */
-    public static function svgMany(array $strokes, float $aspect): array
+    public static function svgMany(array $strokes, float $aspect, ?array $centre = null): array
     {
         $aspect = max(0.2, min(5.0, $aspect));
         $x0 = $y0 = INF;
@@ -85,6 +86,14 @@ final class Drawings
                 $y0 = min($y0, $p[1] - $pad);
                 $y1 = max($y1, $p[1] + $pad);
             }
+        }
+        if ($centre !== null) {
+            // a drawing pinned to a place keeps its middle on that place: the box grows evenly around it
+            $cx = (float) $centre[0] * $aspect;
+            $cy = (float) $centre[1];
+            $hw = max($cx - $x0, $x1 - $cx);
+            $hh = max($cy - $y0, $y1 - $cy);
+            [$x0, $x1, $y0, $y1] = [$cx - $hw, $cx + $hw, $cy - $hh, $cy + $hh];
         }
         $w = $x1 - $x0;
         $h = $y1 - $y0;
@@ -124,11 +133,19 @@ final class Drawings
         return ['svg' => $svg, 'x' => ($x0 + $w / 2) / $aspect, 'y' => $y0 + $h / 2, 'height' => $h, 'width' => $w / $aspect];
     }
 
-    /** A layer that holds its strokes (drawn since 2026-11-24), so more can be drawn on it and parts rubbed out. */
+    /**
+     * A layer that holds its strokes (drawn since 2026-11-24), so more can be drawn on it and parts rubbed out. One
+     * pinned to the map counts too: the editor tells the server where the map puts it now (EditsDrawings).
+     */
     public static function isDrawingLayer(array $layer): bool
     {
         return is_array($layer['strokes'] ?? null) && $layer['strokes'] !== [] && is_array($layer['drawn'] ?? null)
-            && ($layer['anchor'] ?? 'stage') !== 'map' && ! isset($layer['embed']);
+            && ! isset($layer['embed']);
+    }
+
+    public static function isPinned(array $layer): bool
+    {
+        return ($layer['anchor'] ?? null) === 'map';
     }
 
     /** @param  list<array{points:list<mixed>}>  $strokes */
@@ -310,9 +327,9 @@ final class Drawings
      * @param  non-empty-list<array{tool:string, colour:string, width:float, points:list<array{0:float,1:float}>}>  $strokes
      * @return array<string,mixed>
      */
-    public static function relayer(User $user, array $layer, array $strokes, float $aspect): array
+    public static function relayer(User $user, array $layer, array $strokes, float $aspect, ?array $centre = null): array
     {
-        $drawn = self::svgMany($strokes, $aspect);
+        $drawn = self::svgMany($strokes, $aspect, $centre);
         $box = ['x' => round($drawn['x'], 3), 'y' => round($drawn['y'], 3), 'width' => round($drawn['width'], 3), 'height' => round($drawn['height'], 3)];
         unset($layer['flip_x'], $layer['flip_y']);
 

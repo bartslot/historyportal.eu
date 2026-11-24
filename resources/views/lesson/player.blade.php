@@ -222,6 +222,9 @@
                         'anchor'  => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                         'lng'     => isset($l['lng']) ? (float) $l['lng'] : null,
                         'lat'     => isset($l['lat']) ? (float) $l['lat'] : null,
+                        // A drawing pinned to the map: the zoom and stage height (px) it was drawn at, so it scales exactly with the map.
+                        'geo_zoom' => isset($l['geo_zoom']) ? (float) $l['geo_zoom'] : null,
+                        'geo_px' => isset($l['geo_px']) ? (float) $l['geo_px'] : null,
                         'wobble'  => isset($l['wobble']) ? (int) $l['wobble'] : null,
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.
