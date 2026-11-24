@@ -190,6 +190,38 @@ class TwineImportTest extends TestCase
         $this->assertSame(['Age 14', 'en'], [Lesson::sole()->grade_level, Lesson::sole()->language]);
     }
 
+    public function test_the_story_becomes_an_outline_with_the_cast_colours_and_a_brief_per_scene(): void
+    {
+        $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
+            .'<tw-passagedata pid="1" name="Node-Ravenna">SETTING: Ravenna, September 1321'."\n".'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'."\n"
+            .'NARRATOR: A poet has just died in this little room.'."\n".'JACOPO: The ending is gone.'."\n".'[[Go on | Node-Groet]]</tw-passagedata>'
+            .'<tw-passagedata pid="2" name="Node-Groet">SETTING: Rome and Florence, 1301-1302'."\n".'A street. Beatrice in white greets Dante Alighieri.'."\n"
+            .'NARRATOR: She greets him.'."\n".'DANTE: What does this mean?</tw-passagedata>'
+            .'<tw-passagedata pid="3" name="Cast of Characters">* Dante Alighieri (9 to 56): poet from Florence. Colour: red.'."\n"
+            .'* Jacopo Alighieri (son): young poet. Colour: turquoise'."\n".'* Beatrice: always in white, as a girl and as a woman. Kleur: white.</tw-passagedata>'
+            .'</tw-storydata>';
+
+        $this->upload($html)->assertRedirect();
+        $lesson = Lesson::sole();
+
+        $this->assertSame([
+            ['name' => 'Dante Alighieri', 'colour' => 'red', 'look' => '9 to 56. poet from Florence.'],
+            ['name' => 'Jacopo Alighieri', 'colour' => 'turquoise', 'look' => 'son. young poet.'],
+            ['name' => 'Beatrice', 'colour' => 'white', 'look' => 'always in white, as a girl and as a woman.'],
+        ], $lesson->outline['cast']);
+        [$ravenna, $groet] = $lesson->outline['scene_briefs'];
+        $this->assertSame(['order' => 1, 'kind' => 'narration', 'characters' => ['Jacopo Alighieri'], 'location' => 'Ravenna', 'year' => '1321',
+            'image_prompt_seed' => 'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'], $ravenna);
+        $this->assertSame(['Dante Alighieri', 'Beatrice'], $groet['characters']);
+        $this->assertSame(['Rome and Florence', '1301'], [$groet['location'], $groet['year']]);
+
+        // the setting names the scene's place and year, and is never read aloud
+        $scenes = $this->scenes($lesson);
+        $this->assertSame(['Ravenna', '1321'], [$scenes['Ravenna']->location, $scenes['Ravenna']->year]);
+        $this->assertSame('A poet has just died in this little room.', $scenes['Ravenna']->script_segment);
+        $this->assertStringNotContainsString('SETTING', $scenes['Ravenna']->config['shot_note']);
+    }
+
     public function test_story_code_and_shapes_that_do_not_fit_still_import_with_notes(): void
     {
         $html = '<tw-storydata name="Gold" startnode="1" format="Harlowe">'
