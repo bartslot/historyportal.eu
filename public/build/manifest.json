@@ -251,7 +251,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DVPCD3BM.css",
+    "file": "assets/app-BE_qfnXR.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CLRDgO2Q.js",
+    "file": "assets/app-DE1L0G3L.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -285,6 +285,7 @@
       "resources/js/scene/tempo.js",
       "resources/js/editor/cutout-dialog.js",
       "resources/js/editor/collab.js",
+      "resources/js/editor/story-map.js",
       "resources/js/test-session/recorder.js",
       "_quick-mask-Dp4H61tD.js",
       "resources/js/lesson-map.js",
@@ -337,7 +338,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-CIZlcaVr.js",
+    "file": "assets/cutout-dialog-DiPLZw2l.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -374,6 +375,12 @@
       "_i18n-DoByrmTl.js"
     ]
   },
+  "resources/js/editor/story-map.js": {
+    "file": "assets/story-map-Ca3L5L-V.js",
+    "name": "story-map",
+    "src": "resources/js/editor/story-map.js",
+    "isDynamicEntry": true
+  },
   "resources/js/gallery-scene.js": {
     "file": "assets/gallery-scene-CZTxGtNk.js",
     "name": "gallery-scene",
@@ -394,7 +401,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-D5PK6V-F.js",
+    "file": "assets/lesson-player-CzJX1jN1.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -568,7 +575,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Dgd-pwT7.js",
+    "file": "assets/index-CJk0VSCb.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -699,7 +706,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BJWW2djZ.js",
+    "file": "assets/recorder-BOI1r85w.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

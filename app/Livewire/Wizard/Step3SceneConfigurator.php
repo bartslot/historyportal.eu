@@ -28,6 +28,7 @@ use App\Livewire\Wizard\Concerns\EditsSceneLinks;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsStoryMap;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
@@ -78,6 +79,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
 use App\Services\Collaboration\LessonCollaboration;
@@ -103,6 +105,7 @@ class Step3SceneConfigurator extends Component
     use EditsStage25d;
     use EditsSceneLinks;
     use EditsStoryGame;
+    use EditsStoryMap;
     use EditsTeamGame;
     use EditsTitleScreen;
     use EditsWithSpark;
@@ -6406,8 +6409,26 @@ class Step3SceneConfigurator extends Component
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }
 
+        $wasFresh = $scene?->hasFreshAudio() ?? false;
         $this->selectedScene['script_segment'] = $after;
         $this->saveSelected();
+
+        // Only punctuation, capitals or spaces changed (Bart 11-24: "if it's just one word, or a . ... it's really
+        // crazy we need to redo a whole paragraph"): the narrator says the same words, so the recording stays and
+        // counts as matching the script. Nothing to re-narrate, and the panel is told so.
+        if ($wasFresh && $scene !== null && self::spokenWords($before) === self::spokenWords($after)) {
+            $scene->refresh();
+            $scene->forceFill(['audio_script_hash' => sha1((string) $scene->script_segment)])->saveQuietly();
+            $this->dispatch('scene:audio-still-fresh', sceneId: $scene->id);
+        }
+    }
+
+    /** The words a narrator says, without punctuation, capitals or spacing: "Ravenna, 1321." = "ravenna 1321". */
+    public static function spokenWords(string $text): string
+    {
+        $words = preg_replace('/[\p{P}\p{S}]+/u', ' ', mb_strtolower($text)) ?? '';
+
+        return trim(preg_replace('/\s+/u', ' ', $words) ?? '');
     }
 
     /**
@@ -6457,6 +6478,30 @@ class Step3SceneConfigurator extends Component
      * Flips the scene to "generating"; the status poll re-fires scene:load with the
      * fresh audio URL, and the Script panel reloads its waveform from that payload.
      */
+    /**
+     * The Script panel asks this every 2 s while it waits for a re-narration. The editor's own poll answers only
+     * when the selected scene's status changes and only every few seconds, and a recording that came back in two
+     * seconds could slip past it: Bart 11-24, one word changed, the audio was on the server two seconds later and
+     * the panel kept spinning for minutes. No render, one row.
+     *
+     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string}
+     */
+    #[Renderless]
+    public function narrationState(int $sceneId): array
+    {
+        $scene = $this->lesson->scenes()->find($sceneId);
+        if (! $scene) {
+            return ['status' => 'gone'];
+        }
+
+        return [
+            'status' => (string) $scene->status,
+            'audioUrl' => $scene->audioUrl(),
+            'audioFresh' => $scene->hasFreshAudio(),
+            'errorMessage' => $scene->error_message,
+        ];
+    }
+
     #[On('scene:renarrate')]
     public function renarrateScene(int $sceneId): void
     {

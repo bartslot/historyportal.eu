@@ -2412,6 +2412,14 @@
             <x-ui.icon name="play" class="h-6 w-6" />
         </button>
 
+        {{-- Story map: every scene and choice as cards with lines between them (components/lesson/story-map). --}}
+        <button type="button" data-story-map-open
+                onclick="window.dispatchEvent(new CustomEvent('story-map-open'))"
+                class="grid h-11 w-11 place-items-center rounded-xl text-panel-icon transition hover:bg-base-200 hover:text-primary"
+                data-tooltip="{{ __('Story map') }}" aria-label="{{ __('Story map') }}">
+            <x-ui.icon name="story-map" class="h-6 w-6" />
+        </button>
+
         {{-- Add and Draw: two buttons, because adding a layer and drawing are different acts. Add puts a
              layer on the scene (scenes are added in the rail, where they live); Draw is a mode you switch
              on and off: pen, line and arrow over the scene, each line its own layer (editor/draw-layer.js). --}}
@@ -3810,6 +3818,8 @@
             <x-icons.x-mark class="h-5 w-5" />
         </button>
     </div>
+
+    <x-lesson.story-map />
 
     {{-- Scenes payload as inert JSON so we don't string-interpolate it into JS. Built in PHP
          (scenesData(), batched asset titles) and wire:ignore'd — the preview bridge reads it once on

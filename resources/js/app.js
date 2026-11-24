@@ -61,6 +61,8 @@ window.drawTool = drawTool;
 // Several accounts in one lesson: who is where, scene locks, Take over (editor/collab.js).
 // Loaded only when an editor page asks for it, so pages without the editor do not carry it.
 window.startLessonCollab = (wire, config) => import('./editor/collab.js').then((m) => m.startLessonCollab(wire, config));
+// The story map: the lesson's scenes and choices as cards and lines (editor/story-map.js), fetched the first time it opens.
+window.loadStoryMap = () => import('./editor/story-map.js');
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The
