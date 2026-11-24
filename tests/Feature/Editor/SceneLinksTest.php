@@ -231,4 +231,41 @@ class SceneLinksTest extends TestCase
         $this->editor($venice->fresh())->call('saveSceneLink', $venice->id, 1, 'label', 'Help the sailors');
         $this->assertNull(\App\Services\Lessons\ChoicePrompt::audioUrl($venice->fresh()));
     }
+
+    public function test_an_old_decision_point_becomes_the_choices_layer(): void
+    {
+        [$venice, $question, $first, $second] = $this->scenes;
+        $question->update(['branch_group' => 1, 'branch_role' => 'question']);
+        $first->update(['branch_group' => 1, 'branch_role' => 'option_a', 'branch_choice_label' => 'Eerste keuze']);
+        $second->update(['branch_group' => 1, 'branch_role' => 'option_b', 'branch_choice_label' => '']);
+        $after = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 5, 'kind' => 'narration', 'chapter_name' => 'Hormuz', 'script_segment' => 'On.', 'status' => 'ready']);
+
+        $this->editor($first)
+            ->assertSeeHtml('data-convert-decision')
+            ->call('convertDecisionToChoices', $first->id)
+            ->assertSeeHtml('data-scene-links-inspector');
+
+        $this->assertSame([['label' => 'Eerste keuze', 'to' => $first->id], ['label' => 'Embark', 'to' => $second->id]], $question->fresh()->config['links']);
+        $this->assertSame([['label' => '', 'to' => $after->id]], $first->fresh()->config['links']);   // past the other option
+        $this->assertArrayNotHasKey('links', $second->fresh()->config ?? []);                           // runs on into Hormuz
+        $this->assertSame(0, $this->lesson->scenes()->whereNotNull('branch_group')->count());
+        $this->assertSame(5, $this->lesson->scenes()->count());                                         // nothing deleted
+    }
+
+    public function test_an_option_of_several_scenes_plays_as_one_run(): void
+    {
+        [$venice, $a1, $a2, $b1] = $this->scenes;
+        $venice->update(['branch_group' => 2, 'branch_role' => 'question']);
+        $a1->update(['branch_group' => 2, 'branch_role' => 'option_a', 'branch_choice_label' => 'Sail']);
+        $a2->update(['branch_group' => 2, 'branch_role' => 'option_a']);
+        $b1->update(['branch_group' => 2, 'branch_role' => 'option_b', 'branch_choice_label' => 'Stay']);
+        $after = Scene::create(['lesson_id' => $this->lesson->id, 'order' => 5, 'kind' => 'narration', 'chapter_name' => 'Hormuz', 'script_segment' => 'On.', 'status' => 'ready']);
+
+        $this->editor($venice)->call('convertDecisionToChoices', $venice->id);
+
+        $this->assertSame([['label' => 'Sail', 'to' => $a1->id], ['label' => 'Stay', 'to' => $b1->id]], $venice->fresh()->config['links']);
+        $this->assertArrayNotHasKey('links', $a1->fresh()->config ?? []);                 // on into its own next scene
+        $this->assertSame([['label' => '', 'to' => $after->id]], $a2->fresh()->config['links']);   // the run's end skips Stay
+        $this->assertArrayNotHasKey('links', $b1->fresh()->config ?? []);
+    }
 }
