@@ -2598,6 +2598,12 @@ class Step3SceneConfigurator extends Component
             }
         }
 
+        // When the narration starts on the scene's clock (timeline-panel.js startNarrationDrag); 0 is not stored.
+        $narrationStart = $timeline['narrationStart'] ?? null;
+        if (is_numeric($narrationStart) && (float) $narrationStart > 0) {
+            $stored['narrationStart'] = min(3600.0, round((float) $narrationStart, 2));
+        }
+
         return $stored;
     }
 

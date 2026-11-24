@@ -23,6 +23,7 @@ import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
 import { hasAnimation, frameAt, applyFrameTo, cameraEnd } from './anim/scene-animation.js'
 import { storedSail } from './anim/sail-clip.js'
+import { storedNarrationStart } from './anim/narration-start.js'
 import { renderGallery } from './gallery-scene.js'
 import { mountStage25d } from './scene/stage25d/mount.js'
 import { isStage25d } from './scene/stage25d/config.js'
@@ -1216,7 +1217,7 @@ Alpine.data('lessonGame', (lesson) => ({
         _diorama = new _dioramaMod.DioramaStage(host)
         _diorama.show(scene.config.diorama, { ...assets, ...(scene.diorama_assets ?? {}) })
         // Keyframes follow the narration clock, like the speech balloons.
-        _diorama.play(() => this._audio?.currentTime ?? 0)
+        _diorama.play(() => this._sceneTime())
       } catch (e) {
         console.warn('lesson-player: diorama failed, falling back to flat', e)
         this._showFlatScene(scene.image_url, scene.image_loop)
@@ -1242,7 +1243,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (_bgCanvas) _bgCanvas.style.opacity = '0'
         host.style.opacity = '1'
         if (this._kbInterval) { clearInterval(this._kbInterval); this._kbInterval = null }
-        stage.play(() => this._audio?.currentTime ?? 0, () => this.playbackPaused)
+        stage.play(() => this._sceneTime(), () => this.playbackPaused)
         window.__stage25d = stage   // balloon tails ask it where a speaker's head is (BalloonLayer)
         this._preloadNextStage(stage, scene)
       } catch (e) {
@@ -1326,8 +1327,8 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       this._updateCaptions()
-      this._balloons?.update(this._audio.currentTime)
-      _split?.setTime(this._audio.currentTime)
+      this._balloons?.update(this._sceneTime())
+      _split?.setTime(this._sceneTime())
 
       if (!this._shotPlan || this._shotPlan.length < 2) return
 
@@ -1658,6 +1659,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this._noAudioHold?.cancel()
       this._leadInHold?.cancel()
       this._leadInHold = null
+      this._preVoiceHold?.cancel()
+      this._preVoiceHold = null
       this._cancelChapterCard()
       clearTimeout(this._exitTimer)
       if (!a) return
@@ -1887,8 +1890,23 @@ Alpine.data('lessonGame', (lesson) => ({
       })
     },
     _voiceToken: 0,
+    /** Where this scene's narration starts on its clock, in seconds (the editor's dragged clip, storedNarrationStart). */
+    _voiceOffset: 0,
+    /** The wait before a narration that starts later in its scene; the scene's clock runs on it meanwhile. */
+    _preVoiceHold: null,
 
-    _beginSceneVoice (index, scene, leadIn = false) {
+    /**
+     * The scene's clock in seconds, which the keyframes, the stage and the balloons follow: the narration's own time
+     * moved along by where the clip starts, and while the voice waits to come in, the time waited.
+     * Captions and shot anchors stay on the voice's own time (this._audio.currentTime).
+     */
+    _sceneTime () {
+      if (this._preVoiceHold) return this._preVoiceHold.elapsed() / 1000
+      return this._audio ? this._voiceOffset + this._audio.currentTime : 0
+    },
+
+    _beginSceneVoice (index, scene, leadIn = false, waitForStart = true) {
+      this._voiceOffset = scene.audio_url ? storedNarrationStart(scene.config?.timeline) : 0
       // No narration audio (e.g. a not-yet-narrated scene): hold on the visual for its set duration
       // (or a short default), then advance — never build `new Audio(null)`, which would hang the queue.
       if (!scene.audio_url) {
@@ -1910,6 +1928,18 @@ Alpine.data('lessonGame', (lesson) => ({
           this._beginSceneVoice(index, scene, false)
           if (this.playbackPaused) this._audio?.pause()
         }, NARRATOR_LEAD_IN_MS, { paused: this.playbackPaused })
+        return
+      }
+
+      // A clip the teacher dragged later in the scene: the scene plays on its own clock until the voice comes in.
+      // Not when the class lands mid-scene (a seek is on the voice's own time).
+      if (waitForStart && this._voiceOffset > 0 && !(this._seekOnStart > 0)) {
+        this._preVoiceHold?.cancel()
+        this._preVoiceHold = createPausableTimeout(() => {
+          this._preVoiceHold = null
+          this._beginSceneVoice(index, scene, false, false)
+          if (this.playbackPaused) this._audio?.pause()
+        }, this._voiceOffset * 1000, { paused: this.playbackPaused })
         return
       }
 
@@ -2668,7 +2698,7 @@ Alpine.data('lessonGame', (lesson) => ({
     _refreshBalloonText () {
       if (_split) {   // a split scene: the same words, in its panels
         _split.setLines(this._splitLines(_sceneQueue[this._sceneIndex]?.config?.lines))
-        if (this._audio) _split.setTime(this._audio.currentTime)
+        if (this._audio) _split.setTime(this._sceneTime())
       }
       const host = document.getElementById('lesson-balloons')
       if (!this._balloons || !host) return
@@ -2677,7 +2707,7 @@ Alpine.data('lessonGame', (lesson) => ({
       host.lang = lang
       host.dir = this.ccDir(lang)
       this._balloons.setLines(this._splitLines(this._balloonSource))
-      if (this._audio) this._balloons.update(this._audio.currentTime)
+      if (this._audio) this._balloons.update(this._sceneTime())
     },
 
     // Read-only clipart layers a teacher placed ON TOP of a voyage map. Same %-coordinate box as
@@ -2735,7 +2765,7 @@ Alpine.data('lessonGame', (lesson) => ({
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
       const camEnd = cameraEnd(timeline)
-      const clock = () => (scene.audio_url && this._audio ? this._audio.currentTime : (performance.now() - started) / 1000)
+      const clock = () => (scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : (performance.now() - started) / 1000)
       const step = () => {
         if (epoch !== this._playEpoch) return
         const t = clock()
@@ -3443,7 +3473,7 @@ Alpine.data('lessonGame', (lesson) => ({
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
 
       // A silent scene's hold and a timed map's hold wait with the class instead of moving on.
-      for (const hold of [this._noAudioHold, _mapTimer, this._chapterCardHold, this._leadInHold]) {
+      for (const hold of [this._noAudioHold, _mapTimer, this._chapterCardHold, this._leadInHold, this._preVoiceHold]) {
         if (this.playbackPaused) hold?.pause()
         else hold?.resume()
       }

@@ -740,6 +740,39 @@ describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
     expect(p.$wire.setTimeline).toHaveBeenCalledWith(expect.objectContaining({ durationSet: false }))
   })
 
+  it('a clip dragged later starts the voice when the playhead reaches it (Bart, 2026-11-24)', () => {
+    const p = voiced({ narrationStart: 2 })
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(5)
+    expect(p.duration).toBe(7)                       // the Length runs to the clip's new end
+    expect(p.narrationSpan).toEqual({ from: 2, to: 7 })
+    p.time = 1
+    p.play()
+    const audio = FakeAudio.made[0]
+    expect(audio.paused).toBe(true)                  // before the clip: quiet
+    p._startedAt = performance.now() - 1200          // 1.2 s later the playhead is at 2.2
+    frame()
+    expect(audio.paused).toBe(false)
+    expect(audio.currentTime).toBeCloseTo(0.2, 1)    // the clip's own time
+    audio.currentTime = 1
+    frame()
+    expect(p.time).toBeCloseTo(3, 1)                 // and the playhead follows it, moved along
+    p.pause()
+  })
+
+  it('moving the clip moves its words and is saved with the timeline', () => {
+    const p = voiced()
+    p.audioSpans = [{ word: 'Hi', start: 0.5, end: 0.8 }]
+    p.setNarrationStart(0)
+    expect(p.spans[0].start).toBe(0.5)
+    p.setNarrationStart(1.25)
+    p.save()
+    expect(p.spans[0].start).toBe(1.75)
+    expect(p.$wire.setTimeline).toHaveBeenCalledWith(expect.objectContaining({ narrationStart: 1.25 }))
+    p.setNarrationStart(-3)
+    expect(p.narrationStart).toBe(0)                 // never before the scene starts
+  })
+
   it('a scene without audio keeps its length and plays silently', () => {
     const p = voiced({ audioUrl: null })
     p.listenToNarration()
