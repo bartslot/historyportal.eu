@@ -18,13 +18,15 @@ import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, faceAt, viewWidthAt, ba
 import { legShareOf } from '../../anim/presets.js'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
+/** At most this many plants chosen for one floor (EditsStage25d STREW_PLANTS_MAX). */
+const STREW_PLANTS_MAX = 16
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stage25d/stage25d/daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { farEdgeOf, farEdgeOptions } from '@stage25d/stage25d/far-edge'
 import { libraryUrl } from './config.js'
 import { layerOverCut } from './cut-layer.js'
-import { assetIcon, layerLabel, numbered } from './labels.js'
+import { assetIcon, layerLabel, numbered, plantLabel } from './labels.js'
 import { libraryTiles, membersOf, charactersOf, sameStanceIn, poseOf, seriesOf } from './series.js'
 import { createAlphaMaps } from './alpha.js'
 import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
@@ -372,9 +374,12 @@ export async function createStage25d (host, opts = {}) {
   /** The backdrop painted under a canvas point (CSS px) where no standing picture is: the nearest ground band or far
    *  strip whose paint is there, else the sky. Selected like a row; null when there is nothing to select. */
   const backdropAt = (x, y) => {
-    const hit = stage?.pickBackdrops?.(x, y).find((h) => !hidden.has(h.band !== undefined ? `band-${h.band}` : `layer-${h.index}`) && alpha.opaque(h.asset, h.u, h.v))
+    // the floor in front of a far strip hides the strip there: a press on it is on the floor (Bart 11-24: a click on the
+    // meadow selected the farmland backdrop behind it, so the floor's own flowers could not be reached)
+    const under = terrainSlot() && stage ? groundUnderRay(stage.pointerRay(x, y), 0) : null
+    const hit = stage?.pickBackdrops?.(x, y).find((h) => !hidden.has(h.band !== undefined ? `band-${h.band}` : `layer-${h.index}`) && !(h.band === undefined && under && h.z > under[1]) && alpha.opaque(h.asset, h.u, h.v))
     // nothing painted there: the bare floor is the terrain, above it the sky
-    const floor = !hit && terrainSlot() && stage ? groundUnderRay(stage.pointerRay(x, y), 0) : null
+    const floor = !hit ? under : null
     const id = hit ? (hit.band !== undefined ? `band-${hit.band}` : `layer-${hit.index}`) : floor ? 'terrain' : (hasSky(setNow()) ? 'sky' : null)
     if (id) api.select(id)
     return hit?.band !== undefined ? (bandDrag(id, x, y) ?? true) : !!id
@@ -1198,6 +1203,37 @@ export async function createStage25d (host, opts = {}) {
       hidden = keep
       redraw()
       if (api.sceneId != null) opts.onGroundSlots?.(slots, api.sceneId)
+      window.dispatchEvent(new CustomEvent('stage25d-synced'))
+    },
+    /** The Plants list under Terrain (Bart 11-24): every low plant of the library with where its picture sits (a sheet
+     *  cell), which ones grow now, and whether the teacher chose them (else the ground's tags do). Null before a scene. */
+    strewInfo () {
+      const o = stage?.strewOptions
+      if (!cfg || !libData || !o) return null
+      const chosen = Array.isArray(cfg.set?.strew?.plants) ? cfg.set.strew.plants : null
+      const on = new Set(chosen ?? o.auto)
+      const lang = (document.documentElement.lang || 'en').slice(0, 2)
+      return {
+        own: chosen !== null,
+        seed: Number(cfg.set?.strew?.seed) || 0,
+        plants: ((labels) => o.all.map((p, i) => ({ key: p.key, on: on.has(p.key), url: libData.base + p.file, cell: p.cell, label: labels[i] })))(numbered(o.all.map((p) => plantLabel(p, assets.get(p.asset), lang)))),
+      }
+    },
+    /** The teacher's plants (keys; null: the ground's own again) and a new throw (seed): rebuilt on stage, saved (onStrew). */
+    async setStrew ({ plants, seed } = {}) {
+      if (!cfg) return
+      const was = cfg.set?.strew ?? {}
+      const next = { ...was }
+      if (plants !== undefined) { if (plants === null) delete next.plants; else next.plants = [...new Set(plants.map(String))].slice(0, STREW_PLANTS_MAX) }
+      if (seed !== undefined) { if (seed) next.seed = Math.max(1, Math.min(999999, Math.round(Number(seed)) || 1)); else delete next.seed }
+      const strew = Object.keys(next).length ? next : null
+      const { strew: _old, ...rest } = liveSet()
+      const keep = hidden
+      cfg = { ...cfg, set: strew ? { ...cfg.set, strew } : (({ strew: _x, ...r }) => r)(cfg.set ?? {}) }
+      await api.show({ ...cfg, look: lookNow, set: strew ? { ...rest, strew } : rest })
+      hidden = keep
+      redraw()
+      if (api.sceneId != null) opts.onStrew?.(strew, api.sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** The Horizon choice: what stands on an empty horizon (far-edge.ts). value '' = automatic, 'none', or a piece. */

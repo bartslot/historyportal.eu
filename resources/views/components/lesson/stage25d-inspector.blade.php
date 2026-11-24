@@ -321,6 +321,28 @@
             </x-ui.settings-section>
         </template>
 
+        {{-- The terrain's plants (Bart 11-24: "it's impossible for me to adjust this"): every low plant of the library, a
+             click switches it on or off for this floor (the first click makes the list the teacher's own); Shuffle throws
+             the same plants on new spots; Automatic gives the choice back to the terrain. How many: the World's Grass slider. --}}
+        <template x-if="info?.role === 'terrain' && strew && strew.plants.length">
+            <x-ui.settings-section :title="__('Plants')" :open="true" class="-mx-4 w-auto!" data-stage25d-plants>
+                <div class="grid grid-cols-3 gap-2">
+                    <template x-for="p in strew.plants" :key="p.key">
+                        <button type="button" class="flex flex-col items-stretch gap-1 rounded-md border bg-base-200 p-1 text-left transition-colors hover:border-base-content/40"
+                                :class="p.on ? 'border-base-content' : 'border-panel-hairline opacity-60'" :aria-pressed="p.on ? 'true' : 'false'"
+                                :aria-label="p.label" :data-stage25d-plant="p.key" x-on:click="togglePlant(p.key)">
+                            <span class="block aspect-square w-full rounded-xs" :style="plantCell(p)"></span>
+                            <span class="truncate text-xs font-semibold text-base-content" x-text="p.label"></span>
+                        </button>
+                    </template>
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                    <button type="button" class="btn btn-sm flex-1" data-stage25d-plants-shuffle x-on:click="shufflePlants()">{{ __('Shuffle') }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-stage25d-plants-auto x-show="strew.own" x-cloak x-on:click="setStrew({ plants: null })">{{ __('Automatic') }}</button>
+                </div>
+            </x-ui.settings-section>
+        </template>
+
         {{-- The terrain's slots, near to far (Bart 11-11: the old ground layers, now inside the terrain): each a picture
              from its distance on, the nearest from the camera; each brings its own billboards (strew). --}}
         <template x-if="info?.role === 'terrain' && ground && ground.options.length">

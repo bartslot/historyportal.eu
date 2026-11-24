@@ -50,7 +50,7 @@ final class StageWorlds
         unset($stage['world']);   // a splat world (no longer offered) goes too
         $stage['bundle'] = $preset['bundle'];
         $stage['world_id'] = $key;
-        unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight'], $set['soil']);   // the world's sky and soil, not the scene's own
+        unset($set['ground'], $set['groundBands'], $set['skyLayer'], $set['daylight'], $set['soil'], $set['strew']);   // the world's sky, soil and plants, not the scene's own
         $set = ['sky' => $parts['sky'] ?? null, 'groundSlots' => $parts['groundSlots']]
             + (is_array($parts['daylight'] ?? null) ? ['daylight' => $parts['daylight']] : [])
             + (is_string($parts['soil'] ?? null) ? ['soil' => $parts['soil']] : [])

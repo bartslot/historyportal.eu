@@ -470,6 +470,42 @@ trait EditsStage25d
         $this->storeStage25dConfig($scene, $config);
     }
 
+    /** At most this many plants chosen for one floor (stage25d/engine.js STREW_PLANTS_MAX). */
+    private const STREW_PLANTS_MAX = 16;
+
+    /**
+     * The terrain's plants (config.stage25d.set.strew, Bart 11-24): plants, the library plants strewn on the floor
+     * instead of the ones its ground picks (an asset id, a sprite-sheet cell as 'asset#n'; [] strews none); seed, a new
+     * throw of the same plants. Null, or nothing left in it, gives the choice back to the terrain.
+     *
+     * @param  array<string,mixed>|null  $strew
+     */
+    #[On('stage25d:strew')]
+    public function saveStage25dStrew(?array $strew, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId) {
+            return;
+        }
+        $clean = [];
+        if (is_array($strew['plants'] ?? null)) {
+            $plants = array_values(array_unique(array_filter($strew['plants'], fn ($k) => is_string($k) && preg_match('/^[a-z0-9][a-z0-9-]{0,80}(#\d{1,3})?$/', $k) === 1)));
+            $clean['plants'] = array_slice($plants, 0, self::STREW_PLANTS_MAX);
+        }
+        if (is_numeric($strew['seed'] ?? null) && (int) $strew['seed'] > 0) {
+            $clean['seed'] = min(999999, (int) $strew['seed']);
+        }
+        $config = $scene->config;
+        if ($clean === []) {
+            unset($config['stage25d']['set']['strew']);
+        } else {
+            $config['stage25d']['set']['strew'] = $clean;
+        }
+        if ($config !== $scene->config) {
+            $this->storeStage25dConfig($scene, $config);
+        }
+    }
+
     /**
      * The scene's time of day (config.stage25d.set.daylight, the Sky panel): the whole block, held to what the stage reads
      * (Daylight::clean). Null takes it away: the scene's sky picture again, lit as its tags say.

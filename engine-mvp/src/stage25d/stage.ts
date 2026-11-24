@@ -35,9 +35,9 @@ import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type Ground
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { waterOf } from './water'
 import { glintSheet, makeWaterMask, type WaterMask } from './water-gl'
-import { spritesOf } from './scatter'
+import { lowPlants, spritesOf, type Sprite } from './scatter'
 import { makeStrewn, type Strewn } from './scatter-gl'
-import { strewPlan } from './strew'
+import { strewPlan, type StrewChoice } from './strew'
 import { LessonDoc } from './edits'
 import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
@@ -94,7 +94,7 @@ export class Stage {
   private pictureToken = 0
   /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
   private strewn: Strewn[] = []
-  private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture> } | null = null
+  private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture>; choice: StrewChoice | null } | null = null
   private strewKey = ''
   private hasSky = true
   /** the scene's own sky (set.daylight), and its clouds; off for a scene with a painted sky picture */
@@ -326,7 +326,8 @@ export class Stage {
     const bandTags = s.set.groundBands?.length ? [...new Set(s.set.groundBands.flatMap((g) => resolveAsset(lib, { asset: g.asset }, 'ground_band')?.tags ?? []))] : null
     const sprites = spritesOf(lib), front = cameraFront(s)
     const slotsOf = slotsNext.map((sl) => ({ asset: sl.asset, from: sl.from }))
-    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front }).flatMap((p) => p.picks.flatMap((pk) => pk.lod ? [pk.file, pk.lod] : [pk.file])))]
+    const strewChoice = s.set.strew ?? null
+    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front, choice: strewChoice }).flatMap((p) => p.picks.flatMap((pk) => pk.lod ? [pk.file, pk.lod] : [pk.file])))]
     const strewTex = new Map<string, RawTexture>()
     await Promise.all(wantFiles.map(async (f) => { const t = await loadPremultiplied(lib.base + f, this.scene).catch(() => null); if (t) strewTex.set(f, t) }))
     // the clouds an own sky can show, loaded now so a change of cloud or Amount never waits on a file
@@ -371,7 +372,7 @@ export class Stage {
     this.soilKey = null
     this.resoil(s)
     this.makeClouds()
-    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex }
+    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex, choice: strewChoice }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
@@ -510,9 +511,18 @@ export class Stage {
     return { grass: strewPlan({ ...src, grass: 1, bushes: 0 }).length > 0, bushes: strewPlan({ ...src, grass: 0, bushes: 1 }).length > 0 }
   }
 
+  /** The Plants list under Terrain: every low plant of the library (lowPlants), and the ones the ground's own tags pick,
+   *  which grow while the teacher has chosen none (set.strew.plants unset). Null before a scene is built. */
+  get strewOptions(): { all: Sprite[]; auto: string[] } | null {
+    const src = this.strewSrc
+    if (!src) return null
+    const auto = new Set(strewPlan({ ...src, choice: null, grass: 1, bushes: 0 }).flatMap((p) => p.picks.map((k) => k.key)))
+    return { all: lowPlants(src.sprites), auto: [...auto] }
+  }
+
   private strew(grass: number, bushes: number) {
     const src = this.strewSrc
-    const key = src ? `${src.sceneId}:${grass}:${bushes}:${src.slots.length}` : ''
+    const key = src ? `${src.sceneId}:${grass}:${bushes}:${src.slots.length}:${JSON.stringify(src.choice)}` : ''
     if (key === this.strewKey) return
     this.strewKey = key
     this.strewn.forEach((m) => m.dispose())
@@ -581,8 +591,9 @@ export class Stage {
   }
 
   /** The backdrops under a point (CSS px), nearest first: ground bands (`band`: its index in set.groundBands) and far
-   *  strips (`index` in set.layers), with where on the picture the point lands. The editor checks the picture's alpha. */
-  pickBackdrops(x: number, y: number): { band?: number; index?: number; asset: Asset; u: number; v: number }[] {
+   *  strips (`index` in set.layers), with where on the picture the point lands and how far out (z, metres). The editor
+   *  checks the picture's alpha. */
+  pickBackdrops(x: number, y: number): { band?: number; index?: number; asset: Asset; u: number; v: number; z: number }[] {
     const bandOf = (m: unknown) => this.bands.find((b) => b.handle.mesh === m && b.index >= 0)   // a terrain's horizon is not a row
     const stripOf = (m: unknown) => this.built.find((b) => b.handle.mesh === m && b.index >= 0 && b.asset.layer === 'bg')
     const hits = [...(this.scene.multiPick(x, y, (m) => !!bandOf(m) || !!stripOf(m)) ?? [])].sort((a, b) => a.distance - b.distance)
@@ -590,9 +601,10 @@ export class Stage {
       const uv = hit.getTextureCoordinates()
       if (!uv) return []
       const band = bandOf(hit.pickedMesh)
-      if (band) return [{ band: band.index, asset: band.asset, u: bombU(uv.x * band.n), v: uv.y }]
+      const z = hit.pickedPoint?.z ?? Infinity
+      if (band) return [{ band: band.index, asset: band.asset, u: bombU(uv.x * band.n), v: uv.y, z }]
       const strip = stripOf(hit.pickedMesh)!
-      return [{ index: strip.index, asset: strip.asset, u: tileU(uv.x, strip.uRepeat, true), v: uv.y }]
+      return [{ index: strip.index, asset: strip.asset, u: tileU(uv.x, strip.uRepeat, true), v: uv.y, z }]
     })
   }
 

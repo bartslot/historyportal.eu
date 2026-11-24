@@ -37,3 +37,24 @@ describe('strewPlan: the clumps follow the scene\'s ground', () => {
     expect(plan[0].clumps.every((c) => c.z >= 20)).toBe(true)
   })
 })
+
+describe('strewPlan: the teacher\'s own plants (set.strew, Bart 11-24)', () => {
+  it('chosen plants grow on every slot instead of the ground\'s own; none chosen strews nothing', () => {
+    const plan = strewPlan({ ...base, choice: { plants: ['heather-01'] } })
+    expect(plan[0].picks.map((s) => s.key)).toEqual(['heather-01'])
+    expect(strewPlan({ ...base, choice: { plants: [] }, bushes: 0 })).toEqual([])
+  })
+  it('a tree or a bush is never a clump, even when chosen; an unknown key is skipped', () => {
+    expect(strewPlan({ ...base, choice: { plants: ['shrub-juniper-01', 'gone-01'] }, bushes: 0 })).toEqual([])
+  })
+  it('a seed throws the same plants on other spots; no seed is the old throw', () => {
+    const one = strewPlan({ ...base, choice: { seed: 3 } })[0]
+    expect(one.picks).toEqual(strewPlan(base)[0].picks)
+    expect(one.clumps).not.toEqual(strewPlan(base)[0].clumps)
+    expect(strewPlan({ ...base, choice: {} })).toEqual(strewPlan(base))
+  })
+  it('a sheet cell is named asset#n', () => {
+    const sheet = spritesOf({ version: 1, bundle: 't', assets: [{ ...a('sprites-01', ['sheet'], 1), kind: 'sheet', cells: [{ tags: ['grass'], height_m: 1, rect: [0, 0, 0.5, 1] }, { tags: ['heather'], height_m: 0.5, rect: [0.5, 0, 0.5, 1] }] } as Asset] })
+    expect(sheet.map((s) => s.key)).toEqual(['sprites-01#0', 'sprites-01#1'])
+  })
+})

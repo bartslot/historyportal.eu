@@ -1658,7 +1658,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, strew: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1681,6 +1681,7 @@
                 }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.ground = id === 'terrain' ? (stage.groundSlots?.() ?? null) : null;
+                this.strew = id === 'terrain' ? (stage.strewInfo?.() ?? null) : null;
                 this.skies = id === 'sky' ? (stage.skyOptions?.() ?? []) : null;
                 this.sky = id === 'sky' ? (stage.daylightInfo?.() ?? null) : null;
                 if (id === 'sky') this.drift = (stage.lookControls?.() ?? []).find((c) => c.key === 'cloudDrift')?.value ?? this.drift;
@@ -1839,6 +1840,11 @@
             addGround() { const last = this.ground.rows.at(-1); this.setGround([...this.ground.rows, { asset: last?.asset ?? this.ground.options[0]?.id, from_m: (last?.from_m ?? 0) + 40 }]); },
             removeGround(i) { this.terrainAt = 0; window.__stage25d?.pickTerrainSlot?.(0); this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
             optionOf(id) { return this.ground?.options.find((o) => o.id === id) ?? null; },
+            // the terrain's plants (Bart 11-24): which grow (on/off per plant, all as the teacher chose them) and a new throw
+            async setStrew(patch) { await window.__stage25d?.setStrew?.(patch); window.__stage25d?.select?.('terrain'); this.sync(); },
+            togglePlant(key) { const on = this.strew.plants.filter((p) => p.on).map((p) => p.key); this.setStrew({ plants: on.includes(key) ? on.filter((k) => k !== key) : [...on, key] }); },
+            shufflePlants() { this.setStrew({ seed: (this.strew.seed % 999999) + 1 }); },
+            plantCell(p) { const [u, v, du, dv] = p.cell; const x = du < 1 ? (u / (1 - du)) * 100 : 0, y = dv < 1 ? (v / (1 - dv)) * 100 : 0; return `background-image: url('${p.url}'); background-size: ${100 / du}% ${100 / dv}%; background-position: ${x}% ${y}%; background-repeat: no-repeat`; },
             /** A tile is the one the Assets tab replaces: picked, the tab opens on terrain pictures. */
             pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); },
             /** The Sky and Terrain panels carry their own grid of pictures (Bart 11-11), not a trip to the Assets tab. */
