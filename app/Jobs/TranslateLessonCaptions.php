@@ -37,6 +37,16 @@ class TranslateLessonCaptions implements ShouldQueue
     /** Seconds before each re-queue after a retryable refusal: 2, 5 and 15 minutes. */
     public const RELEASE_DELAYS = [120, 300, 900];
 
+    /**
+     * When the provider asks for a longer wait than the last re-queue (Gemini's free daily quota:
+     * "retry in 11h57m", prod 2026-11-24), the language is paused this long at most, so an open
+     * player stops queuing a job every two minutes that can only be refused again.
+     */
+    public const MAX_PAUSE_SECONDS = 6 * 3600;
+
+    /** After a run that ended cleanly but translated nothing new, the next try waits this long. */
+    public const STALL_PAUSE_SECONDS = 3600;
+
     public function __construct(public int $lessonId, public string $language) {}
 
     public static function statusKey(int $lessonId, string $language): string
@@ -50,13 +60,15 @@ class TranslateLessonCaptions implements ShouldQueue
     public function handle(CaptionTranslator $captions): void
     {
         $lesson = Lesson::find($this->lessonId);
+        $saved = 0;
         try {
             if ($lesson) {
-                $captions->translateMissing($lesson, $this->language);
+                $saved = $captions->translateMissing($lesson, $this->language);
             }
         } catch (Throwable $e) {
             $delay = self::RELEASE_DELAYS[$this->attempts() - 1] ?? null;
-            if ($e instanceof LlmHttpException && $e->retryable() && $delay !== null && $this->attempts() < $this->tries && $this->onRealQueue()) {
+            $longWait = $e instanceof LlmHttpException && $e->retryAfter !== null && $e->retryAfter > max(self::RELEASE_DELAYS);
+            if ($e instanceof LlmHttpException && $e->retryable() && ! $longWait && $delay !== null && $this->attempts() < $this->tries && $this->onRealQueue()) {
                 // Keep the language marked as translating while it waits, so a class's polls do
                 // not queue a second copy; the key outlives the delay in case no worker is free.
                 Cache::put(self::statusKey($this->lessonId, $this->language), 'running', now()->addSeconds($delay + 600));
@@ -72,7 +84,12 @@ class TranslateLessonCaptions implements ShouldQueue
             // garbled output, or the last re-queue spent. Fail it explicitly, since with tries
             // left the worker would otherwise run it again at once, sending the same request to
             // a provider that just refused it.
-            $this->releaseKey($captions, $lesson);
+            $this->releaseKey($captions, $lesson, progressed: true);
+            if ($longWait) {
+                // 'paused' blocks a new dispatch (the controller's Cache::add) but is not shown
+                // as translating: the player keeps the original lines until the quota is back.
+                Cache::put(self::statusKey($this->lessonId, $this->language), 'paused', now()->addSeconds(min($e->retryAfter, self::MAX_PAUSE_SECONDS)));
+            }
             if (! $this->onRealQueue()) {
                 throw $e;
             }
@@ -81,18 +98,27 @@ class TranslateLessonCaptions implements ShouldQueue
 
             return;
         }
-        $this->releaseKey($captions, $lesson);
+        $this->releaseKey($captions, $lesson, progressed: $saved > 0);
     }
 
     /**
      * Done: release the key. Lines still missing: hold it a minute ("retry", which the player
      * still shows as translating and keeps polling), so the next request after that tries again,
      * without every poll of a whole class hitting the provider.
+     *
+     * A run that finished without an error yet saved nothing (a line whose protected name or
+     * script never survives translation) would otherwise be asked again every minute for as long
+     * as a player stays open: 'paused' for STALL_PAUSE_SECONDS instead.
      */
-    private function releaseKey(CaptionTranslator $captions, ?Lesson $lesson): void
+    private function releaseKey(CaptionTranslator $captions, ?Lesson $lesson, bool $progressed): void
     {
         $key = self::statusKey($this->lessonId, $this->language);
         if ($lesson && $captions->cached($lesson, $this->language)['missing'] > 0) {
+            if (! $progressed) {
+                Cache::put($key, 'paused', now()->addSeconds(self::STALL_PAUSE_SECONDS));
+
+                return;
+            }
             Cache::put($key, 'retry', now()->addSeconds(self::RETRY_AFTER_SECONDS));
         } else {
             Cache::forget($key);

@@ -36,8 +36,12 @@ final class CaptionTranslator
 
     public const RTL = ['ar'];
 
-    /** Lines per request: keeps each answer well under the output-token cap. */
-    private const BATCH = 40;
+    /**
+     * Lines per request. Gemini's free tier counts requests, not tokens (500 a day on flash-lite,
+     * used up on prod 2026-11-24), so fewer, larger requests stretch it; a lesson of 30-50 scenes
+     * is one or two. LlmTextTranslator's maxTokens leaves room for an answer this size.
+     */
+    private const BATCH = 100;
 
     /** A 429 halves the batch, never below this. */
     private const MIN_BATCH = 10;
