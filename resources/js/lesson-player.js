@@ -163,12 +163,31 @@ let _bgCanvas       = null   // module-level ref so both Alpine instances share 
 let _sceneQueue     = []   // [{kind, config, audio_url, script, image_url, alignment}] for scene-based playback
 let _mapInstance    = null   // MapLibre map block instance (lives outside Alpine's proxy)
 let _mapTimer       = null   // timed-mode auto-advance timer
-let _mapKey         = null   // what the live map was built with that showScene cannot change (see mapKeyOf)
+let _mapShown       = false  // the map block is the scene on screen (it stays mounted, hidden, between map scenes)
+let _mapLoading     = null   // the one mount in flight (preload or first map scene)
 const MAP_NARRATION_BEAT_MS = 600  // a narrated map moves on this long after its narrator stops
-// The parts of a map scene that only a fresh mount can draw. Two map scenes in a row that agree on all of
-// them share one live map: the next one goes on with showScene instead of reloading the whole chart.
-const mapKeyOf = (cfg = {}) => JSON.stringify([cfg.projection || 'mercator', cfg.playback_mode === 'timed',
-  cfg.labels || null, cfg.region || null, cfg.route || null, cfg.camera || null])
+// ONE map per lesson (Bart 11-24: "preloaded map per lesson, only the top changes. we don't do different
+// styles so it doesn't make sense to reload tiles"). It mounts, hidden, as the lesson loads, and every map
+// scene goes on it with showScene; between map scenes it is only hidden. These are a scene's map options.
+const mapSceneOpts = (cfg = {}) => ({
+  qid: cfg.qid || null,
+  fit: cfg.fit || null,                 // 'labels' → frame the pins, not the polity
+  year: cfg.year ?? 1600,
+  annotations: cfg.annotations || [],   // read-only focus cities for students
+  // A 3D lesson's map scene (LessonImporter): place names without a dot, a highlighted region,
+  // a route and the writer's camera; its names show at once.
+  labels: cfg.labels || [],
+  revealLabels: Array.isArray(cfg.labels),
+  region: cfg.region || null,
+  route: cfg.route || null,
+  camera: cfg.camera || null,
+  timeline: cfg.timeline || null,       // a timeline camera: the scene opens on its first frame
+  // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
+  showCities: cfg.show_cities === true,
+  showBorders: cfg.show_borders === true,
+  territory: cfg.territory || null,     // the linked territory's look (map/territory-look.js)
+  interactive: cfg.playback_mode !== 'timed',
+})
 let _voyageInstance = null   // voyage tour instance (kind 'voyage'; outside Alpine's proxy)
 let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outside Alpine's proxy)
 const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
@@ -1370,6 +1389,9 @@ Alpine.data('lessonGame', (lesson) => ({
       this.chapters = buildChapters(_sceneQueue, n => t('Chapter :number', { number: n + 1 }))
       if (TITLE_PREVIEW) return
 
+      // The lesson's map, mounted out of sight while the title is up, with the first map scenes' tiles.
+      this._preloadMap()
+
       // Warm the next narrated scenes, BEFORE the early return below — a lesson can open with
       // a quiz or map scene that has no audio of its own, and those lessons need warming most.
       this._warmNarration(this._startSceneIndex ?? 0)
@@ -1991,72 +2013,22 @@ Alpine.data('lessonGame', (lesson) => ({
       const cfg = scene.config || {}
       const mode = cfg.playback_mode === 'timed' ? 'timed' : 'interactive'
 
-      // Load the MapLibre map block (+ its ~1 MB volcanoes/terrain chunk) on demand — it is no
-      // longer eagerly bundled with the player. The module sets window.renderLessonMap on import.
-      if (!window.renderLessonMap) {
-        try {
-          await import('./lesson-map.js')
-        } catch (e) {
-          console.warn('lesson-player: map block failed to load — skipping map scene', e)
-          this._advanceScene(index)
-          return
-        }
+      // The lesson's one map (see mapSceneOpts): mounted as the lesson loaded, or now if it was not.
+      const fresh = !_mapInstance
+      const epoch = this._playEpoch
+      const live = await this._ensureMap(cfg)
+      if (epoch !== this._playEpoch) return   // the class moved on while the map mounted
+      if (!live) { console.warn('lesson-player: map block failed to load, skipping map scene'); this._advanceScene(index); return }
+      if (!fresh || _mapLoading?.cfg !== cfg) {
+        // Out of sight until now (another kind of scene, or the title): open on this scene's frame, no glide.
+        live.showScene({ ...mapSceneOpts(cfg), jump: !_mapShown })
       }
-
-      const stage = document.getElementById('lesson-map-stage')
-      if (_mapInstance && _mapKey === mapKeyOf(cfg)) {
-        // The map before this one is still up (the teardown kept it): put this scene on it.
-        _mapInstance.showScene({
-          qid: cfg.qid || null,
-          fit: cfg.fit || null,
-          year: cfg.year ?? 1600,
-          annotations: cfg.annotations || [],
-          showCities: cfg.show_cities === true,
-          showBorders: cfg.show_borders === true,
-          camera: cfg.camera || null,
-          timeline: cfg.timeline || null,
-        })
-        const textHost = document.getElementById('lesson-text-overlay')
-        if (this._textLayer && textHost) this._textLayer.setProjector(_mapInstance.textProjector(textHost))
-      } else if (stage && window.renderLessonMap) {
-        if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} }
-        _mapKey = mapKeyOf(cfg)
-        stage.style.display = 'block'
-        stage.innerHTML = ''
-        // Inner child: MapLibre stamps position:relative on its container, which would collapse
-        // a full-bleed host to height 0.
-        const inner = document.createElement('div')
-        inner.style.width = '100%'
-        inner.style.height = '100%'
-        stage.appendChild(inner)
-        _mapInstance = window.renderLessonMap(inner, {
-          qid: cfg.qid || null,
-          fit: cfg.fit || null,                 // 'labels' → frame the pins, not the polity
-          year: cfg.year ?? 1600,
-          projection: cfg.projection || 'mercator',
-          interactive: mode === 'interactive',
-          annotations: cfg.annotations || [],   // read-only focus cities for students
-          // A 3D lesson's map scene (LessonImporter): place names without a dot, a highlighted region,
-          // a route and the writer's camera; its names show at once.
-          labels: cfg.labels || [],
-          revealLabels: Array.isArray(cfg.labels),
-          region: cfg.region || null,
-          route: cfg.route || null,
-          camera: cfg.camera || null,
-          timeline: cfg.timeline || null,       // a timeline camera: the scene opens on its first frame
-          // Atlas place names + territory: off unless the teacher turned them on (Bart 10-26).
-          showCities: cfg.show_cities === true,
-          showBorders: cfg.show_borders === true,
-          territory: cfg.territory || null,     // the linked territory's look (map/territory-look.js)
-        })
-
-        // Map-pinned text labels follow the map as the student pans/zooms.
-        const textHost = document.getElementById('lesson-text-overlay')
-        if (this._textLayer && textHost) {
-          this._textLayer.setProjector(_mapInstance.textProjector(textHost))
-          _mapInstance.map.on('move', () => this._textLayer?.refreshPositions())
-        }
-      }
+      this._showMapHost(true)
+      // Texts and pictures pinned to a place follow the map as the class pans and zooms.
+      this._pinTextsToMap()
+      this._pinArtToMap()
+      // This scene's camera move, and the next map scene's frames: fetched now, so no tile loads on screen.
+      this._prefetchMapViews(index)
 
       // Narrate the map as a VOICE-OVER, exactly as a voyage leg does. A map scene is paced by the
       // map itself (interactive Continue, or the timed hold below), never by the length of the
@@ -2084,6 +2056,91 @@ Alpine.data('lessonGame', (lesson) => ({
       }
 
       this.showMapContinue = (mode === 'interactive')
+    },
+
+    /**
+     * The host the lesson's one map lives in: beside the voyage/gallery stage (which empties itself
+     * between scenes), the same box and layer, shown only while a map scene plays.
+     */
+    _mapKeepHost () {
+      let keep = document.getElementById('lesson-map-keep')
+      if (keep) return keep
+      const stage = document.getElementById('lesson-map-stage')
+      if (!stage) return null
+      keep = document.createElement('div')
+      keep.id = 'lesson-map-keep'
+      keep.className = stage.className
+      keep.setAttribute('lang', stage.getAttribute('lang') || '')
+      keep.style.visibility = 'hidden'
+      keep.style.pointerEvents = 'none'
+      keep.setAttribute('aria-hidden', 'true')
+      stage.parentNode.insertBefore(keep, stage)
+      return keep
+    },
+
+    _showMapHost (on) {
+      const keep = document.getElementById('lesson-map-keep')
+      _mapShown = !!on
+      if (!keep) return
+      keep.style.visibility = on ? 'visible' : 'hidden'
+      keep.style.pointerEvents = on ? '' : 'none'
+      keep.setAttribute('aria-hidden', on ? 'false' : 'true')
+      if (on) { try { _mapInstance?.map?.resize() } catch (_) {} }
+    },
+
+    /** Mount the lesson's map (once), on `cfg`'s scene. Resolves to the map block, or null. */
+    _ensureMap (cfg) {
+      if (_mapInstance) return Promise.resolve(_mapInstance)
+      if (_mapLoading) return _mapLoading.promise
+      const loading = { cfg, promise: null }
+      _mapLoading = loading
+      loading.promise = (async () => {
+        // The MapLibre map block (+ its ~1 MB chunk) loads on demand; the module sets window.renderLessonMap.
+        if (!window.renderLessonMap) {
+          try { await import('./lesson-map.js') } catch (e) {
+            console.warn('lesson-player: map block failed to load', e)
+            if (_mapLoading === loading) _mapLoading = null
+            return null
+          }
+        }
+        if (_mapLoading !== loading) return _mapInstance   // torn down meanwhile
+        const keep = this._mapKeepHost()
+        if (!keep || !window.renderLessonMap) return null
+        keep.innerHTML = ''
+        // Inner child: MapLibre stamps position:relative on its container, which would collapse
+        // a full-bleed host to height 0.
+        const inner = document.createElement('div')
+        inner.style.width = '100%'
+        inner.style.height = '100%'
+        keep.appendChild(inner)
+        _mapInstance = window.renderLessonMap(inner, { ...mapSceneOpts(cfg), projection: 'mercator', interactive: true })
+        _mapInstance.setInteractive?.(cfg.playback_mode !== 'timed')
+        return _mapInstance
+      })()
+      return loading.promise
+    },
+
+    /** As the lesson loads: mount the map behind the title, then load the first map scenes' ground. */
+    async _preloadMap () {
+      const first = _sceneQueue.findIndex(s => s.kind === 'map')
+      if (first < 0) return
+      const live = await this._ensureMap(_sceneQueue[first].config || {})
+      if (live && !_mapShown) this._warmNextMap(_sceneQueue[first])
+    },
+
+    /** While the map is out of sight: fly it through the next map scene's frames, so their tiles are in. */
+    _warmNextMap (from) {
+      if (!_mapInstance?.warmScene) return
+      const start = from ? _sceneQueue.indexOf(from) : this._sceneIndex + 1
+      const next = _sceneQueue.slice(Math.max(0, start)).find(s => s.kind === 'map')
+      if (next) _mapInstance.warmScene(next.config || {}).catch(() => {})
+    },
+
+    /** On screen: fetch (never fly to) this map scene's camera frames and the next map scene's. */
+    _prefetchMapViews (index) {
+      if (!_mapInstance?.prefetchScene) return
+      const next = _sceneQueue.slice(index + 1).find(s => s.kind === 'map')
+      for (const s of [_sceneQueue[index], next]) if (s) _mapInstance.prefetchScene(s.config || {}).catch(() => {})
     },
 
     /**
@@ -2327,14 +2384,16 @@ Alpine.data('lessonGame', (lesson) => ({
       this._playScene(i)
     },
 
-    // `next`: the scene about to play. A map scene the live map can show keeps that map (see mapKeyOf).
+    // `next`: the scene about to play. The lesson keeps its one map (see mapSceneOpts); a map scene next keeps it on screen.
     _teardownStageScene (full = false, next = null) {
       _mapTimer?.cancel()
       _mapTimer = null
       this._cancelVoyageAuto()
-      if (!full && _mapInstance && next?.kind === 'map' && mapKeyOf(next.config || {}) === _mapKey) {
-        this.showMapContinue = false
-        return
+      // The map stays mounted (one per lesson): the next map scene puts itself on it. Any other scene hides it.
+      if (_mapInstance && !full) {
+        try { _mapInstance.stopItinerary?.() } catch (_) {}
+        if (next?.kind === 'map') { this.showMapContinue = false; return }
+        if (_mapShown) { this._textLayer?.setProjector(null); this._showMapHost(false); this._warmNextMap(next) }
       }
       // A lesson that sails keeps ONE persistent map across all legs — between scenes we only stop the
       // sail (playLeg re-drives it) and keep the map alive. Full teardown runs at lesson end /
@@ -2342,7 +2401,11 @@ Alpine.data('lessonGame', (lesson) => ({
       if (_voyageInstance && this._sails && !full) { this.showMapContinue = false; return }
       if (_galleryInstance) { try { _galleryInstance.destroy() } catch (_) {} _galleryInstance = null }
       this._textLayer?.setProjector(null)   // map gone — pinned labels fall back to screen spots
-      if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} _mapInstance = null; _mapKey = null }
+      if (full) {
+        if (_mapInstance) { try { _mapInstance.destroy() } catch (_) {} }
+        _mapInstance = null; _mapShown = false; _mapLoading = null
+        document.getElementById('lesson-map-keep')?.remove()
+      }
       if (_voyageInstance) { try { _voyageInstance.destroy() } catch (_) {} _voyageInstance = null }
       const stage = document.getElementById('lesson-map-stage')
       if (stage) { stage.style.display = 'none'; stage.innerHTML = '' }
@@ -2522,7 +2585,7 @@ Alpine.data('lessonGame', (lesson) => ({
      * picture on a voyage scene did not stick to the map). Null when no map is on the stage.
      */
     _pinMap () {
-      const m = _mapInstance || _voyageInstance
+      const m = (_mapShown ? _mapInstance : null) || _voyageInstance
       return m && typeof m.textProjector === 'function' && m.map ? m : null
     },
 
@@ -2656,7 +2719,7 @@ Alpine.data('lessonGame', (lesson) => ({
         const t = clock()
         const frame = frameAt(timeline, t)
         if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: _mapInstance?.map ?? _voyageInstance?.map, territory: _mapInstance })
+        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)
@@ -3875,7 +3938,8 @@ Alpine.data('lessonGame', (lesson) => ({
       try { _mapInstance?.destroy?.() } catch (_) {}
       try { _voyageInstance?.destroy?.() } catch (_) {}
       _bgInstance = null
-      _mapInstance = null; _mapKey = null
+      _mapInstance = null; _mapShown = false; _mapLoading = null
+      document.getElementById('lesson-map-keep')?.remove()
       _voyageInstance = null
       _initDone = false  // allow a later mount (e.g. opening another lesson) to re-init
     },
