@@ -166,4 +166,57 @@ class CaptionTranslationRetryTest extends TestCase
         }
         Http::assertSentCount(1);
     }
+
+    public function test_a_busy_provider_puts_the_job_back_on_the_queue_instead_of_failing_it(): void
+    {
+        $lesson = $this->lesson(2);
+        $this->fake->failures = array_fill(0, 4, new LlmHttpException(503));
+
+        $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
+        $job->handle($this->captions());
+
+        $job->assertReleased(delay: TranslateLessonCaptions::RELEASE_DELAYS[0]);
+        $job->assertNotFailed();
+        $this->assertSame('running', Cache::get(TranslateLessonCaptions::statusKey($lesson->id, 'de')), 'no second copy queued while it waits');
+    }
+
+    public function test_an_empty_openai_quota_fails_the_job_at_once(): void
+    {
+        $lesson = $this->lesson(2);
+        $this->fake->failures = [new LlmHttpException(429, errorCode: LlmHttpException::QUOTA_EXHAUSTED)];
+
+        $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
+        try {
+            $job->handle($this->captions());
+            $this->fail('an empty quota reaches failed_jobs');
+        } catch (LlmHttpException $e) {
+            $this->assertTrue($e->quotaExhausted());
+            $this->assertSame('OpenAI API returned 429 (insufficient_quota)', $e->getMessage());
+        }
+        $job->assertNotReleased();
+        Sleep::assertNeverSlept();
+        $this->assertSame('retry', Cache::get(TranslateLessonCaptions::statusKey($lesson->id, 'de')));
+    }
+
+    public function test_the_llm_client_tells_an_openai_rate_limit_from_an_empty_quota(): void
+    {
+        Http::fake(['*' => Http::sequence()
+            ->push(['error' => ['message' => 'Rate limit reached', 'type' => 'requests', 'code' => 'rate_limit_exceeded']], 429)
+            ->push(['error' => ['message' => 'You exceeded your current quota', 'type' => 'insufficient_quota', 'code' => 'insufficient_quota']], 429)]);
+        config(['llm.roles.translate' => 'openai']);
+
+        $errors = [];
+        foreach ([1, 2] as $_) {
+            try {
+                app(\App\Services\Llm\LlmRouter::class)->for('translate')->json('s', 'u');
+            } catch (LlmHttpException $e) {
+                $errors[] = $e;
+            }
+        }
+
+        $this->assertSame('rate_limit_exceeded', $errors[0]->errorCode);
+        $this->assertTrue($errors[0]->retryable());
+        $this->assertTrue($errors[1]->quotaExhausted());
+        $this->assertFalse($errors[1]->retryable());
+    }
 }
