@@ -14,7 +14,7 @@ import type { Scene } from '@babylonjs/core/scene'
 import type { Asset, BlinkEye, MotionSpec, Puppet } from './types'
 import { SHADE_COLOUR, SUN_COLOUR, type Alive, type Aquarel, type Paper } from './look'
 import { BOMB_SEAM, BOMB_SPAN, MOTION_CODE } from './layout'
-import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
+import { bottomColour, groundLine, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
 import { jointShade } from './joint-shade'
@@ -476,6 +476,8 @@ const textures = new WeakMap<Scene, Map<string, Promise<RawTexture>>>()
 export const edgeColours = new Map<string, [number, number, number]>()
 /** Per url: where its land starts (landTop), for set.horizon 'auto'. */
 export const landTops = new Map<string, number>()
+/** Per url: a far strip's ground line (groundLine), where the far ground meets what stands on it. */
+export const groundLines = new Map<string, number>()
 /** Per url: a ground band's skyline (skylineRow), where its crest is measured from. */
 export const skylines = new Map<string, number>()
 /** Per url: how dark its ink is (inkLevel), for line normalisation (look.ts inkScale). */
@@ -503,6 +505,7 @@ export function loadPremultiplied(url: string, scene: Scene): Promise<RawTexture
       if (edge) edgeColours.set(url, edge)
       bandColours.set(url, rowBands(data, c.width, c.height))
       landTops.set(url, landTop(data, c.width, c.height))
+      groundLines.set(url, groundLine(data, c.width, c.height))
       skylines.set(url, skylineRow(data, c.width, c.height))
       const ink = inkLevel(data, c.width, c.height)
       if (ink !== null) inkLevels.set(url, ink)
