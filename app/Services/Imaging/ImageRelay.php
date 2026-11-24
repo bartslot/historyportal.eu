@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Imaging;
 
 use App\Models\ImageRelayRequest;
-use Illuminate\Support\Facades\Sleep;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use RuntimeException;
 
 /**
@@ -56,6 +56,12 @@ final class ImageRelay
                 Sleep::for(self::POLL_MS)->milliseconds();
             }
         } finally {
+            // Whatever ended the wait (an answer, a timeout, an exception), the pictures go. A request still open
+            // would be claimed by the Mac later and fail on its missing source (2026-11-24: three restyles died this
+            // way and the Mac then got a 404 for each), so it is closed first.
+            ImageRelayRequest::query()->whereKey($row->id)
+                ->whereIn('status', [ImageRelayRequest::PREPARING, ImageRelayRequest::QUEUED, ImageRelayRequest::RUNNING])
+                ->update(['status' => ImageRelayRequest::FAILED, 'error' => 'the waiting job stopped']);
             $disk->deleteDirectory($row->dir());
         }
     }

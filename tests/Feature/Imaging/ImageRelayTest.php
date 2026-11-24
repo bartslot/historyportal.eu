@@ -14,6 +14,7 @@ use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -74,6 +75,24 @@ class ImageRelayTest extends TestCase
     public function test_a_request_whose_pictures_are_still_being_written_is_not_handed_out(): void
     {
         ImageRelayRequest::create(['prompt' => 'x', 'size' => '1024x1024', 'status' => ImageRelayRequest::PREPARING]);
+        $this->postJson(route('api.image-relay.next'), [], $this->mac())->assertOk()->assertJson(['request' => null]);
+    }
+
+    public function test_a_job_that_stops_waiting_leaves_nothing_for_the_mac_to_claim(): void
+    {
+        Sleep::fake();
+        Sleep::whenFakingSleep(fn () => throw new \RuntimeException('worker stopped'));
+
+        try {
+            app(ImageRelay::class)->make('Restyle it', '1024x1024', false, [['bytes' => 'SOURCE', 'name' => 'source.png']]);
+            $this->fail('the wait should have ended in the exception');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('worker stopped', $e->getMessage());
+        }
+
+        $row = ImageRelayRequest::query()->latest('id')->first();
+        $this->assertSame(ImageRelayRequest::FAILED, $row->status);
+        Storage::disk('local')->assertMissing($row->dir());
         $this->postJson(route('api.image-relay.next'), [], $this->mac())->assertOk()->assertJson(['request' => null]);
     }
 
