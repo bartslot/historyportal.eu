@@ -2478,3 +2478,12 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 @media (prefers-reduced-motion: reduce) {
   .lp-mp * { animation: none !important; }
 }
+
+/* ── The linked territory's label on the map (resources/js/map/territory-label.js): the voyage stop's lettering, ink on
+   a paper halo, so it reads over sea, land and the territory's own hatching. Above the map's paper grain (z 1). */
+.lp-territory-label { position: absolute; z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 0.05em;
+  font-family: 'ComicRoma Lettering', 'Comic Neue', sans-serif; line-height: 1.05; color: #1b1712; max-width: 45%;
+  text-shadow: 0 0 2px #fbf2d9, 0 0 4px #fbf2d9, 0 0 6px #fbf2d9, 0 0 10px #fbf2d9; }
+.lp-territory-label[hidden] { display: none; }
+.lp-territory-label-name { font-size: 1em; }
+.lp-territory-label-name + .lp-territory-label-line { font-size: 0.8em; }

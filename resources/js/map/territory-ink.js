@@ -23,6 +23,8 @@
  * runs along the outside of the tile is filled but never inked.
  */
 
+import { signedField, blendFields, zeroContours, morphProgress } from './territory-morph.js'
+
 /** Smooth value noise on the plane, 0..1: the pen's wobble and pressure, the same everywhere for the same spot. */
 const hash = (x, y) => {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
@@ -221,6 +223,9 @@ export const waveLine = (pts, { amp, wavelength, step }) => {
   return out
 }
 
+/** A shape's fingerprint: the same record in the same tiles gives the same key, another year's outline another. */
+export const partsKey = (parts) => (parts || []).map((p) => `${p.z}/${p.x}/${p.y}:` + p.rings.map((r) => `${r.length}@${r[0]?.x},${r[0]?.y}`).join(';')).join('|')
+
 /** The layer the ink goes under: the voyage route, else the first name or dot on the map. */
 export const inkBeforeId = (layers) => {
   const list = layers || []
@@ -295,6 +300,36 @@ export function createTerritoryInk (map, source) {
   let hatch = null
   let hatchKey = ''
   let drewSomething = false
+  // The shape a year change starts from (territory-morph.js), and the parts drawn last.
+  const MORPH_MS = 900
+  let morph = null
+  let lastParts = []
+  const grid = document.createElement('canvas')
+
+  /** Old and new areas blended `t` of the way, read back as an area and its border loops. */
+  const morphShape = (fromArea, toArea, t, ratio) => {
+    const cell = 4 * ratio
+    const w = Math.max(2, Math.ceil(canvas.width / cell)); const h = Math.max(2, Math.ceil(canvas.height / cell))
+    if (grid.width !== w || grid.height !== h) { grid.width = w; grid.height = h }
+    const g = grid.getContext('2d', { willReadFrequently: true })
+    const maskOf = (path) => {
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h)
+      g.setTransform(1 / cell, 0, 0, 1 / cell, 0, 0); g.fillStyle = '#000'; g.fill(path, 'nonzero')
+      const data = g.getImageData(0, 0, w, h).data
+      const m = new Uint8Array(w * h)
+      for (let i = 0; i < w * h; i++) m[i] = data[i * 4 + 3] > 127 ? 1 : 0
+      return m
+    }
+    const field = blendFields(signedField(maskOf(fromArea), w, h), signedField(maskOf(toArea), w, h), t)
+    const area = new Path2D()
+    const edges = zeroContours(field, w, h).map((loop) => loop.map(([gx, gy], i) => {
+      const x = (gx + 0.5) * cell; const y = (gy + 0.5) * cell
+      if (i) area.lineTo(x, y); else area.moveTo(x, y)
+      const ll = map.unproject([x / ratio, y / ratio])
+      return [x, y, ll.lng, ll.lat]
+    }))
+    return { area, edges }
+  }
 
   const size = () => {
     const ratio = (map.getPixelRatio ? map.getPixelRatio() : 0) || window.devicePixelRatio || 1
@@ -314,36 +349,63 @@ export function createTerritoryInk (map, source) {
     const look = source.look()
     const anim = source.anim()
     const parts = territoryParts(source.features())
-    if (!parts.length) return
 
     // Screen paths: the area (every ring, cuts included) and the border (real edges only).
-    const area = new Path2D()
-    const edges = []   // [[ [x,y,lng,lat], ... ], ...] runs of real border
-    for (const p of parts) {
-      const screen = (pt) => {
-        const [lng, lat] = tileToLngLat(pt.x, pt.y, p.z, p.x, p.y, p.extent)
-        const s = map.project([lng, lat])
-        return [s.x * ratio, s.y * ratio, lng, lat]
-      }
-      for (const ring of p.rings) {
-        if (ring.length < 3) continue
-        let run = null
-        let last = null   // the end of the run so far, in tile units
-        for (let i = 0; i < ring.length; i++) {
-          const pt = ring[i]
-          const q = screen(pt)
-          if (i) area.lineTo(q[0], q[1]); else area.moveTo(q[0], q[1])
-          if (!i) continue
-          const prev = ring[i - 1]
-          const piece = isTileCut(prev, pt, p.extent) ? null : clipToTile(prev, pt, p.extent)
-          if (!piece) { run = null; continue }
-          const [a, b] = piece
-          if (!run || !last || last.x !== a.x || last.y !== a.y) { run = [screen(a)]; edges.push(run) }
-          run.push(b.x === pt.x && b.y === pt.y ? q : screen(b))
-          last = b
+    const shapeOf = (list) => {
+      const area = new Path2D()
+      const edges = []   // [[ [x,y,lng,lat], ... ], ...] runs of real border
+      for (const p of list) {
+        const screen = (pt) => {
+          const [lng, lat] = tileToLngLat(pt.x, pt.y, p.z, p.x, p.y, p.extent)
+          const s = map.project([lng, lat])
+          return [s.x * ratio, s.y * ratio, lng, lat]
         }
-        area.closePath()
+        for (const ring of p.rings) {
+          if (ring.length < 3) continue
+          let run = null
+          let last = null   // the end of the run so far, in tile units
+          for (let i = 0; i < ring.length; i++) {
+            const pt = ring[i]
+            const q = screen(pt)
+            if (i) area.lineTo(q[0], q[1]); else area.moveTo(q[0], q[1])
+            if (!i) continue
+            const prev = ring[i - 1]
+            const piece = isTileCut(prev, pt, p.extent) ? null : clipToTile(prev, pt, p.extent)
+            if (!piece) { run = null; continue }
+            const [a, b] = piece
+            if (!run || !last || last.x !== a.x || last.y !== a.y) { run = [screen(a)]; edges.push(run) }
+            run.push(b.x === pt.x && b.y === pt.y ? q : screen(b))
+            last = b
+          }
+          area.closePath()
+        }
       }
+      return { area, edges }
+    }
+
+    // A year change flows from the last shape into this one (territory-morph.js), unless the switch is off.
+    let shape
+    // Most year steps keep the same record (a period runs for years): nothing to flow into, so no morph.
+    if (morph && partsKey(morph.from) === partsKey(parts)) { morph = null; source.onMorph?.(false) }
+    if (morph && look.morph !== false && (morph.from.length || parts.length)) {
+      const t = morphProgress(performance.now(), morph.start, MORPH_MS)
+      if (t >= 1) { morph = null; source.onMorph?.(false) }
+      shape = morph ? morphShape(shapeOf(morph.from).area, shapeOf(parts).area, t, ratio) : shapeOf(parts)
+      if (morph) map.triggerRepaint()
+    } else {
+      if (morph) { morph = null; source.onMorph?.(false) }
+      shape = shapeOf(parts)
+    }
+    lastParts = parts
+    const { area, edges } = shape
+    if (!edges.length) return
+
+    // While morphing, the wash is painted here (the map's own fill would jump straight to the new year).
+    if (morph && look.fill_style === 'wash' && look.fill_strength > 0 && anim.fill > 0) {
+      ctx.globalAlpha = look.fill_strength * anim.fill
+      ctx.fillStyle = look.fill_color
+      ctx.fill(area, 'nonzero')
+      ctx.globalAlpha = 1
     }
 
     const zoom = map.getZoom()
@@ -474,6 +536,13 @@ export function createTerritoryInk (map, source) {
 
   return {
     redraw,
+    /** The year is about to change: the next frames flow from the shape on screen now into the new one. */
+    morphFromHere () {
+      if (!lastParts.length && !drewSomething) return
+      morph = { from: lastParts, start: performance.now() }
+      source.onMorph?.(true)
+      map.triggerRepaint()
+    },
     /** Did the last frame draw the territory? While it has not (tiles still loading), the map's own line stays. */
     get drawn () { return drewSomething },
     destroy () {

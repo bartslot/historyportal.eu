@@ -3056,5 +3056,10 @@
     "Draw, then fill": "Zeichnen, dann füllen",
     "Grow over time": "Mit der Zeit wachsen",
     "Scene transition": "Szenenübergang",
-    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Richte das Bild ein, auf dem die Bewegung enden soll, und wähle dann eine Bewegung. Sie landet auf der Zeitleiste am Abspielkopf, wo du sie anpassen kannst."
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Richte das Bild ein, auf dem die Bewegung enden soll, und wähle dann eine Bewegung. Sie landet auf der Zeitleiste am Abspielkopf, wo du sie anpassen kannst.",
+    "Centre left": "Mitte links",
+    "Centre right": "Mitte rechts",
+    "Territory name": "Name des Gebiets",
+    "Label position": "Position des Labels",
+    "Morph between years": "Zwischen Jahren überblenden"
 }

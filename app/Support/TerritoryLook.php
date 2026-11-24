@@ -18,6 +18,9 @@ final class TerritoryLook
     /** Bart, 2026-11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". */
     public const BORDER_STYLES = ['ink', 'solid', 'dashed', 'wavy'];
 
+    /** Where the territory's label sits on the stage (Bart 11-24: the year and/or the name, off by default). */
+    public const LABEL_POSITIONS = ['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+
     public const DEFAULTS = [
         'border_color' => '#1b1712',
         'border_width' => 1.6,
@@ -25,6 +28,10 @@ final class TerritoryLook
         'fill_style' => 'etched',
         'fill_color' => '#1b1712',
         'fill_strength' => 0.3,
+        'label_year' => false,
+        'label_name' => false,
+        'label_position' => 'top-left',
+        'morph' => true,
     ];
 
     /** A stored look with every field present and in range. */
@@ -45,7 +52,7 @@ final class TerritoryLook
     }
 
     /** One field, cleaned, or null when the key is unknown or the value unusable. */
-    public static function clean(string $key, mixed $value): string|float|null
+    public static function clean(string $key, mixed $value): string|float|bool|null
     {
         return match ($key) {
             'border_color', 'fill_color' => is_string($value) && preg_match('/^#[0-9a-f]{6}$/i', $value) ? strtolower($value) : null,
@@ -53,6 +60,8 @@ final class TerritoryLook
             'fill_strength' => is_numeric($value) ? max(0.0, min(1.0, round((float) $value, 2))) : null,
             'fill_style' => in_array($value, self::FILL_STYLES, true) ? $value : null,
             'border_style' => in_array($value, self::BORDER_STYLES, true) ? $value : null,
+            'label_year', 'label_name', 'morph' => is_bool($value) ? $value : (in_array($value, [1, 0, '1', '0', 'true', 'false'], true) ? in_array($value, [1, '1', 'true'], true) : null),
+            'label_position' => in_array($value, self::LABEL_POSITIONS, true) ? $value : null,
             default => null,
         };
     }

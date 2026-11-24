@@ -3123,5 +3123,10 @@
     "Draw, then fill": "Tekenen, dan vullen",
     "Grow over time": "Groeien in de tijd",
     "Scene transition": "Scèneovergang",
-    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Kader het beeld waarop de beweging moet eindigen en kies dan een beweging. Ze komt op de tijdlijn bij de afspeelkop, waar je haar kunt bijstellen."
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Kader het beeld waarop de beweging moet eindigen en kies dan een beweging. Ze komt op de tijdlijn bij de afspeelkop, waar je haar kunt bijstellen.",
+    "Centre left": "Midden links",
+    "Centre right": "Midden rechts",
+    "Territory name": "Naam van het gebied",
+    "Label position": "Positie van het label",
+    "Morph between years": "Vloeiend tussen jaren"
 }

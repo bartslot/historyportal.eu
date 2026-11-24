@@ -22,6 +22,7 @@ import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
 import { territoryLook, territoryAnim, linePaint, washPaint } from './map/territory-look.js'
 import { createTerritoryInk } from './map/territory-ink.js'
+import { createTerritoryLabel } from './map/territory-label.js'
 
 // The linked territory's ink line and etching: map/territory-look.js (Bart 11-23, no more red).
 
@@ -111,6 +112,10 @@ export function renderLessonMap (el, opts = {}) {
   // The linked territory's look (map/territory-look.js): the scene's config.territory, and the
   // timeline's Territory row on top of it (fill and border as 0..1, the year as the year).
   let look = territoryLook(opts.territory)
+  // The territory's label (map/territory-label.js) and the name it shows, from the tiles.
+  let label = null
+  let inkMorphing = false
+  let polityName = null
   let anim = territoryAnim()
   // The OTHER territories' faint lines: a voyage map restyles them (setDetailStyle), never the switch.
   let others = { otherColor: GROUND.line }
@@ -403,6 +408,8 @@ export function renderLessonMap (el, opts = {}) {
       highlighted = newQid
     }
     activeQid = newQid
+    polityName = null
+    updateLabel()
     if (newQid && !polityInView(newQid)) {
       didFit = false
       fitToPolity(true)
@@ -517,6 +524,8 @@ export function renderLessonMap (el, opts = {}) {
               : []),
             look: () => look,
             anim: () => anim,
+            // While it morphs, the ink paints the wash too: the map's own fill would jump to the new year.
+            onMorph: (on) => requestAnimationFrame(() => { inkMorphing = on; paintTerritory() }),
           })
         } catch (e) { console.warn('lesson-map: hand-drawn territory unavailable, the map draws the line', e) }
         wirePolityPicking()
@@ -653,7 +662,12 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   function setYear (y) {
-    year = Math.round(Number(y))
+    const next = Math.round(Number(y))
+    // The border flows into the new year's shape (Bart 11-24), unless the teacher switched Morph off.
+    const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (next !== year && look.morph !== false && !calm) ink?.morphFromHere?.()
+    year = next
+    updateLabel()
     if (!map.getLayer('boundaries-line')) return
     map.setFilter('boundaries-line', polityFilter(year))
     if (map.getLayer('boundaries-fill')) map.setFilter('boundaries-fill', polityFilter(year))
@@ -725,13 +739,36 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   // Put the look, the timeline's fill/border and the switch on the three territory layers.
+  // The territory's label (map/territory-label.js): its name from the tiles, the year the map shows.
+  function updateLabel () {
+    if (!look.label_year && !look.label_name && !label) return
+    if (!label) { try { label = createTerritoryLabel(map.getContainer()) } catch (_) { return } }
+    if (look.label_name && activeQid && map.getSource('cliopatria')) {
+      const f = map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['all', polityFilter(year), ['==', ['get', 'Wikidata'], activeQid]] })
+      const name = f.find((x) => x.properties?.Name)?.properties?.Name
+      if (name) polityName = name
+    }
+    label.update({
+      showName: look.label_name && !!activeQid,
+      showYear: look.label_year,
+      name: polityName,
+      year,
+      lang: document.documentElement.lang || 'en',
+      position: look.label_position,
+    })
+  }
+  // The name arrives with the tiles: ask again once they have.
+  map.on('idle', () => { if (look.label_name && !polityName) updateLabel() })
+  map.once('load', () => updateLabel())
+
   function paintTerritory () {
+    updateLabel()
     const paint = (layer, props) => {
       if (!map.getLayer(layer)) return
       for (const [k, v] of Object.entries(props)) { try { map.setPaintProperty(layer, k, v) } catch (_) {} }
     }
     paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders, inked: !!ink }))
-    paint('boundaries-fill', washPaint(look, anim))
+    paint('boundaries-fill', washPaint(look, inkMorphing ? { ...anim, fill: 0 } : anim))
     ink?.redraw()
   }
 
@@ -853,6 +890,8 @@ export function renderLessonMap (el, opts = {}) {
         highlighted = id
       }
       activeQid = id
+      polityName = null
+      updateLabel()
       didFit = false
       if (id) requestAfterTiles(fitToPolity)
     },
@@ -899,6 +938,7 @@ export function renderLessonMap (el, opts = {}) {
       try { untune?.() } catch (_) {}
       try { chartPaper.remove() } catch (_) {}
       try { ink?.destroy() } catch (_) {}
+      try { label?.destroy() } catch (_) {}
       try { map.remove() } catch (_) {}
       if (window.__lessonMapApi === api) window.__lessonMapApi = null
     },

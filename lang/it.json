@@ -3056,5 +3056,10 @@
     "Draw, then fill": "Disegna, poi riempi",
     "Grow over time": "Crescere nel tempo",
     "Scene transition": "Transizione di scena",
-    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Inquadra la scena su cui deve finire il movimento, poi scegli un movimento. Arriva sulla timeline alla testina, dove puoi ritoccarlo."
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Inquadra la scena su cui deve finire il movimento, poi scegli un movimento. Arriva sulla timeline alla testina, dove puoi ritoccarlo.",
+    "Centre left": "Centro sinistra",
+    "Centre right": "Centro destra",
+    "Territory name": "Nome del territorio",
+    "Label position": "Posizione dell'etichetta",
+    "Morph between years": "Trasforma tra gli anni"
 }

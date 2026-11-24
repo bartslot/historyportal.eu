@@ -243,7 +243,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CE2QFWMq.css",
+    "file": "assets/app-CBCORwBt.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -252,7 +252,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-C_hO5qKb.js",
+    "file": "assets/app-DUzxVW7v.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -306,7 +306,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-DPxqaXKx.js",
+    "file": "assets/cutout-dialog-CNbxQekX.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -347,7 +347,7 @@
     "isEntry": true
   },
   "resources/js/lesson-map.js": {
-    "file": "assets/lesson-map-DF2REevp.js",
+    "file": "assets/lesson-map-CtDqMvgB.js",
     "name": "lesson-map",
     "src": "resources/js/lesson-map.js",
     "isEntry": true,
@@ -360,7 +360,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-D9Or8gDw.js",
+    "file": "assets/lesson-player-CDz22WHU.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -528,7 +528,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-BSFdK4Px.js",
+    "file": "assets/index-CagdCbud.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -656,7 +656,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-DniCoGzN.js",
+    "file": "assets/recorder-yeZYosJh.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -707,7 +707,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-DqDRhdzC.js",
+    "file": "assets/voyage-tour-CU1ujRQx.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
