@@ -251,11 +251,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-<<<<<<< HEAD
-    "file": "assets/app-DMhwGdmt.css",
-=======
-    "file": "assets/app-Bwe3ULbJ.css",
->>>>>>> origin/main
+    "file": "assets/app-BsCUrZpA.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -264,11 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-<<<<<<< HEAD
-    "file": "assets/app-Dmwkmy7r.js",
-=======
-    "file": "assets/app-CXD43_gZ.js",
->>>>>>> origin/main
+    "file": "assets/app-CWwTWCxy.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -323,11 +315,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-<<<<<<< HEAD
-    "file": "assets/cutout-dialog-dEjGzi1F.js",
-=======
-    "file": "assets/cutout-dialog-Bxq6X4Hh.js",
->>>>>>> origin/main
+    "file": "assets/cutout-dialog-DSmn8owN.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -353,11 +341,7 @@
     ]
   },
   "resources/js/editor/draw-layer.js": {
-<<<<<<< HEAD
-    "file": "assets/draw-layer-BQm0oGam.js",
-=======
-    "file": "assets/draw-layer-D3OJjjEb.js",
->>>>>>> origin/main
+    "file": "assets/draw-layer-B6sQ0rnj.js",
     "name": "draw-layer",
     "src": "resources/js/editor/draw-layer.js",
     "isDynamicEntry": true,
@@ -388,11 +372,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-<<<<<<< HEAD
-    "file": "assets/lesson-player-DQG4h0sJ.js",
-=======
-    "file": "assets/lesson-player-CJZ9qWD0.js",
->>>>>>> origin/main
+    "file": "assets/lesson-player-VW7SK18A.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -566,11 +546,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-<<<<<<< HEAD
-    "file": "assets/index-B0lFsFal.js",
-=======
-    "file": "assets/index-D0JQ8NG-.js",
->>>>>>> origin/main
+    "file": "assets/index-DZbU7-CO.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -701,11 +677,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-<<<<<<< HEAD
-    "file": "assets/recorder-BCEg-iBD.js",
-=======
-    "file": "assets/recorder-BOFPx4S_.js",
->>>>>>> origin/main
+    "file": "assets/recorder-T7ATChzu.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
