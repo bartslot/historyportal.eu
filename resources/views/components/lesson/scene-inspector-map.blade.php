@@ -142,10 +142,21 @@
                            wire:change="setTerritoryLook('border_color', $event.target.value)"
                            class="{{ $swatch }}" data-tooltip="{{ __('Border colour') }}" aria-label="{{ __('Border colour') }}" />
                     <span class="range-panel-knob min-w-0 flex-1">
-                        <input type="range" min="0" max="6" step="0.2" value="{{ $look['border_width'] }}"
+                        <input type="range" min="0" max="12" step="0.2" value="{{ $look['border_width'] }}"
                                wire:change="setTerritoryLook('border_width', $event.target.value)"
                                class="range range-panel" data-tooltip="{{ __('Border width') }}" aria-label="{{ __('Border width') }}" />
                     </span>
+                </div>
+                {{-- Bart 11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". --}}
+                <div class="flex items-center gap-2">
+                    <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Style') }}</span>
+                    <select wire:change="setTerritoryLook('border_style', $event.target.value)"
+                            class="select select-xs select-bordered bg-slate-900 min-w-0 flex-1" aria-label="{{ __('Border style') }}">
+                        <option value="ink" @selected($look['border_style'] === 'ink')>{{ __('Ink') }}</option>
+                        <option value="solid" @selected($look['border_style'] === 'solid')>{{ __('Solid') }}</option>
+                        <option value="dashed" @selected($look['border_style'] === 'dashed')>{{ __('Dashed') }}</option>
+                        <option value="wavy" @selected($look['border_style'] === 'wavy')>{{ __('Wavy') }}</option>
+                    </select>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Area') }}</span>
@@ -171,6 +182,44 @@
                         </span>
                     </div>
                 @endif
+
+                {{-- Bart 11-24: a year change "morphs to the new vector so you can see it expanding". On unless switched off. --}}
+                <x-ui.toggle-row :label="__('Morph between years')" :checked="$look['morph']"
+                                 on-change="setTerritoryLook('morph', $event.target.checked)" />
+
+                {{-- The territory's label (Bart 11-24): its name and/or the year it is shown for, off by default, placed
+                     at one of nine spots like the title (resources/js/map/territory-label.js). --}}
+                <details class="border-t border-slate-700/50 pt-1.5" data-territory-label @if ($look['label_year'] || $look['label_name']) open @endif>
+                    <summary class="cursor-pointer text-2xs text-panel-hint">{{ __('Label') }}</summary>
+                    <div class="mt-1 space-y-1">
+                        <x-ui.toggle-row :label="__('Territory name')" :checked="$look['label_name']"
+                                         on-change="setTerritoryLook('label_name', $event.target.checked)" />
+                        <x-ui.toggle-row :label="__('Year')" :checked="$look['label_year']"
+                                         on-change="setTerritoryLook('label_year', $event.target.checked)" />
+                        @if ($look['label_year'] || $look['label_name'])
+                            <span class="block pt-1 text-2xs text-panel-hint">{{ __('Position') }}</span>
+                            <div class="grid max-w-56 grid-cols-3 gap-1.5" role="radiogroup" aria-label="{{ __('Label position') }}">
+                                @foreach (\App\Support\TerritoryLook::LABEL_POSITIONS as $pos)
+                                    @php
+                                        $posLabel = ['top-left' => __('Top left'), 'top-center' => __('Top centre'), 'top-right' => __('Top right'),
+                                            'center-left' => __('Centre left'), 'center' => __('Centre'), 'center-right' => __('Centre right'),
+                                            'bottom-left' => __('Bottom left'), 'bottom-center' => __('Bottom centre'), 'bottom-right' => __('Bottom right')][$pos];
+                                        $isOn = $pos === $look['label_position'];
+                                        [$v, $h] = str_contains($pos, '-') ? explode('-', $pos) : ['center', 'center'];
+                                        $bar = trim(match ($v) { 'top' => 'top-1', 'bottom' => 'bottom-1', default => 'top-1/2 -translate-y-1/2' }
+                                            .' '.match ($h) { 'left' => 'left-1', 'right' => 'right-1', default => 'left-1/2 -translate-x-1/2' });
+                                    @endphp
+                                    <button type="button" role="radio" aria-checked="{{ $isOn ? 'true' : 'false' }}"
+                                            wire:click="setTerritoryLook('label_position', '{{ $pos }}')" data-label-position="{{ $pos }}"
+                                            aria-label="{{ $posLabel }}" data-tooltip="{{ $posLabel }}"
+                                            @class(['relative aspect-video rounded bg-base-300 ring-1 transition', 'ring-2 ring-primary' => $isOn, 'ring-base-content/20 hover:ring-base-content/40' => ! $isOn])>
+                                        <span @class(['absolute h-1 w-1/3 rounded-full', $bar, 'bg-primary' => $isOn, 'bg-base-content/40' => ! $isOn])></span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </details>
             </div>
         @else
             <input type="search" wire:model.live.debounce.400ms="territoryQuery"

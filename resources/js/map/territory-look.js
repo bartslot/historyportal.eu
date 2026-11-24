@@ -12,14 +12,24 @@
  */
 
 export const FILL_STYLES = ['none', 'etched', 'wash']
+/** Bart, 2026-11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". */
+export const BORDER_STYLES = ['ink', 'solid', 'dashed', 'wavy']
+/** Where the territory's label sits on the stage (App\Support\TerritoryLook::LABEL_POSITIONS). */
+export const LABEL_POSITIONS = ['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right']
 
 /** The ink of the History Lines drawings: near-black, a touch warm. */
 export const TERRITORY_DEFAULTS = Object.freeze({
   border_color: '#1b1712',
   border_width: 1.6,
+  border_style: 'ink',
   fill_style: 'etched',
   fill_color: '#1b1712',
   fill_strength: 0.3,
+  label_year: false,
+  label_name: false,
+  label_position: 'top-left',
+  // A year change flows from the old border into the new one (Bart 11-24: "Make this a switch. (always on)").
+  morph: true,
 })
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -35,9 +45,14 @@ export const territoryLook = (stored = {}) => {
   return {
     border_color: HEX.test(String(s.border_color ?? '')) ? s.border_color : d.border_color,
     border_width: clamp(s.border_width, 0, 12, d.border_width),
+    border_style: BORDER_STYLES.includes(s.border_style) ? s.border_style : d.border_style,
     fill_style: FILL_STYLES.includes(s.fill_style) ? s.fill_style : d.fill_style,
     fill_color: HEX.test(String(s.fill_color ?? '')) ? s.fill_color : d.fill_color,
     fill_strength: clamp(s.fill_strength, 0, 1, d.fill_strength),
+    label_year: s.label_year === true || s.label_year === 1 || s.label_year === '1',
+    label_name: s.label_name === true || s.label_name === 1 || s.label_name === '1',
+    label_position: LABEL_POSITIONS.includes(s.label_position) ? s.label_position : d.label_position,
+    morph: !(s.morph === false || s.morph === 0 || s.morph === '0'),
   }
 }
 
@@ -45,6 +60,9 @@ export const territoryLook = (stored = {}) => {
 export const territoryAnim = (values = {}) => ({
   fill: clamp(values.fill, 0, 1, 1),
   border: clamp(values.border, 0, 1, 1),
+  // How much of the border is drawn, 0 none to 1 all the way round (Bart 11-24: "the line that is drawn around a
+  // territory from 0% to 100%").
+  draw: clamp(values.draw, 0, 1, 1),
 })
 
 const HIGHLIGHT = ['boolean', ['feature-state', 'highlight'], false]

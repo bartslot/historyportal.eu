@@ -1246,7 +1246,20 @@
                 @endunless
 
                 <div x-show="tab === 'animate'" x-cloak>
-                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @if ($sceneModel->kind === 'map')
+                        {{-- The Map block is what is selected here, so its Motion tab holds the map's own presets
+                             (Bart 11-24: "presets about the selection ... not about the scene animations"). How the
+                             scene replaces the one before it folds away underneath. --}}
+                        <x-lesson.map-motion-presets :scene="$sceneModel" />
+                        <details class="mt-4 border-t border-panel-border pt-3" data-scene-transition>
+                            <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Scene transition') }}</summary>
+                            <div class="pt-2">
+                                <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                            </div>
+                        </details>
+                    @else
+                        <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @endif
                 </div>
 
                 <div x-show="tab === 'format'">

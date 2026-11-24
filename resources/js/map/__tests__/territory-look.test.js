@@ -55,12 +55,12 @@ describe('territory paint', () => {
 })
 
 describe('the Territory row on the timeline', () => {
-  it('keys fill, border and year', () => {
-    expect(propertiesFor('terr').map((p) => p.key)).toEqual(['fill', 'border', 'year'])
+  it('keys fill, border, draw and year', () => {
+    expect(propertiesFor('terr').map((p) => p.key)).toEqual(['fill', 'border', 'draw', 'year'])
   })
 
   it('groups the Map block as Year, then Territory', () => {
-    expect(groupsFor('terr').map((g) => [g.id, g.props.map((p) => p.key)])).toEqual([['year', ['year']], ['territory', ['fill', 'border']]])
+    expect(groupsFor('terr').map((g) => [g.id, g.props.map((p) => p.key)])).toEqual([['year', ['year']], ['territory', ['fill', 'border', 'draw']]])
   })
 
   it('hands its frame to the map in the player', () => {
@@ -104,5 +104,56 @@ describe('clipToTile', () => {
     expect(clipToTile({ x: 4000, y: 10 }, { x: 4160, y: 10 }, 4096)).toEqual([{ x: 4000, y: 10 }, { x: 4096, y: 10 }])
     expect(clipToTile({ x: -64, y: 10 }, { x: 100, y: 10 }, 4096)).toEqual([{ x: 0, y: 10 }, { x: 100, y: 10 }])
     expect(clipToTile({ x: -64, y: 10 }, { x: -10, y: 10 }, 4096)).toBeNull()
+  })
+})
+
+describe('the ink sits under the names (Bart 11-24: "the text is over the venice label")', () => {
+  it('goes under the voyage route when there is one', async () => {
+    const { inkBeforeId } = await import('../territory-ink.js')
+    expect(inkBeforeId([{ id: 'land', type: 'fill' }, { id: 'chart-ridges', type: 'symbol' }, { id: 'lesson-route', type: 'line' }, { id: 'lesson-labels', type: 'symbol' }])).toBe('lesson-route')
+  })
+  it('else under the first name or dot', async () => {
+    const { inkBeforeId } = await import('../territory-ink.js')
+    expect(inkBeforeId([{ id: 'land', type: 'fill' }, { id: 'city-dots', type: 'circle' }, { id: 'city-labels', type: 'symbol' }])).toBe('city-dots')
+    expect(inkBeforeId([])).toBeUndefined()
+  })
+})
+
+describe('border styles (Bart 11-24: "solid, ink, dashed, wavy")', () => {
+  it('keeps the four styles, and an old scene draws ink', () => {
+    expect(territoryLook({}).border_style).toBe('ink')
+    for (const s of ['ink', 'solid', 'dashed', 'wavy']) expect(territoryLook({ border_style: s }).border_style).toBe(s)
+    expect(territoryLook({ border_style: 'dotted' }).border_style).toBe('ink')
+  })
+  it('joins tile runs into one chain, and starts a loop at its westernmost point', async () => {
+    const { joinRuns } = await import('../territory-ink.js')
+    const P = (lng, lat) => [lng * 10, lat * 10, lng, lat]
+    expect(joinRuns([[P(0, 0), P(1, 0)], [P(1, 0), P(2, 0)]])).toEqual([[P(0, 0), P(1, 0), P(2, 0)]])
+    const loop = joinRuns([[P(5, 5), P(6, 5), P(6, 6)], [P(6, 6), P(4, 6), P(5, 5)]])
+    expect(loop).toHaveLength(1)
+    expect(loop[0][0]).toEqual(P(4, 6))
+    expect(loop[0].at(-1)).toEqual(P(4, 6))
+  })
+  it('a wavy line swings to both sides of the border, no further than its amplitude', async () => {
+    const { waveLine } = await import('../territory-ink.js')
+    const ys = waveLine([[0, 0], [100, 0]], { amp: 3, wavelength: 20, step: 1 }).map((p) => p[1])
+    expect(Math.max(...ys)).toBeGreaterThan(2.5)
+    expect(Math.min(...ys)).toBeLessThan(-2.5)
+    expect(Math.max(...ys.map(Math.abs))).toBeLessThanOrEqual(3.0001)
+  })
+})
+
+describe('the border draws on (Bart 11-24: "from 0% to 100%. that line starts at 0")', () => {
+  it('cuts each chain to its share of its own length', async () => {
+    const { trimChains } = await import('../territory-ink.js')
+    const chain = [[0, 0, 0, 0], [10, 0, 1, 0], [10, 10, 1, 1]]
+    expect(trimChains([chain], 1)).toEqual([chain])
+    expect(trimChains([chain], 0)).toEqual([])
+    expect(trimChains([chain], 0.25)).toEqual([[[0, 0, 0, 0], [5, 0, 0.5, 0]]])
+    expect(trimChains([chain], 0.75)).toEqual([[[0, 0, 0, 0], [10, 0, 1, 0], [10, 5, 1, 0.5]]])
+  })
+  it('Draw is 1 (all of it) unless keyed', () => {
+    expect(territoryAnim({}).draw).toBe(1)
+    expect(territoryAnim({ draw: 0.3 }).draw).toBe(0.3)
   })
 })
