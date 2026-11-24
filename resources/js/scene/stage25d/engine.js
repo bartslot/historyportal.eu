@@ -22,7 +22,7 @@ import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/grou
 const STREW_PLANTS_MAX = 16
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stage25d/stage25d/daylight'
-import { WEATHER_DEFAULTS } from '@stage25d/stage25d/weather'
+import { WEATHER_DEFAULTS, weatherOf } from '@stage25d/stage25d/weather'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { farEdgeOf, farEdgeOptions } from '@stage25d/stage25d/far-edge'
 import { libraryUrl } from './config.js'
@@ -114,6 +114,14 @@ function libraryOf (bundle) {
 }
 
 /** Under a splat world the world is the sky: the scene keeps its time of day's light, never a sky of its own over it. */
+/** The Weather section's values: the kind and its sliders as saved, also at Amount 0 (the stage draws nothing then, but
+ *  the panel keeps Snow or Rain and its wind, size and speed, so the amount can go up again). Dry: the defaults. */
+const weatherPanel = (w) => {
+  const now = w ? weatherOf({ ...w, amount: 1 }) : null
+  if (!now) return { kind: null, ...WEATHER_DEFAULTS }
+  const amount = Number(w.amount ?? WEATHER_DEFAULTS.amount)
+  return { ...now, amount: Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : WEATHER_DEFAULTS.amount }
+}
 const worldDaylight = (d) => (d ? { ...d, painted: true } : undefined)
 
 /** The director's scene fields the stage reads, from config.stage25d. */
@@ -1156,7 +1164,7 @@ export async function createStage25d (host, opts = {}) {
         clouds: cloudArt(libData).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: BUILT_IN_CLOUDS.includes(a) ? BUILT_IN_CLOUD_BASE + a.file : thumbOf(a), on: !chosen || chosen.includes(a.id) })),
         times: TIMES.map((t) => ({ id: t, sky: PRESETS[t].sky })),
         // snow or rain (weather.ts): the values as the stage draws them, with a dry scene's defaults ready for the sliders
-        weather: light.weather ?? { kind: null, ...WEATHER_DEFAULTS },
+        weather: weatherPanel(daylightNow?.weather),
       }
     },
     /** Change the time of day: live on the stage and saved (onDaylight). A patch merges into the scene's set.daylight
