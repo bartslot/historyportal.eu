@@ -386,6 +386,11 @@
                         // Say so and give the button back — this used to spin for ever.
                         if (p.status === 'failed') this.narrationFailed(p.errorMessage);
                     });
+                    // Only punctuation or spacing changed: the recording still says these words, nothing to re-narrate.
+                    this._unwatchFresh = window.Livewire.on('scene:audio-still-fresh', (e) => {
+                        const p = Array.isArray(e) ? e[0] : e;
+                        if (p && p.sceneId === this.sceneId && !this.regenerating && this.hasAudio) this._clearDirty();
+                    });
                     // Regenerate-paragraph result: the server rewrites one paragraph and hands it back.
                     this._unwatchPara = window.Livewire.on('scene:paragraph-result', (e) => {
                         const p = Array.isArray(e) ? e[0] : e;
@@ -522,6 +527,7 @@
                     if (this._ro) this._ro.disconnect();
                     if (this._waveRo) this._waveRo.disconnect();
                     if (this._unwatchAudio) { try { this._unwatchAudio(); } catch (_) {} }
+                    if (this._unwatchFresh) { try { this._unwatchFresh(); } catch (_) {} }
                     if (this._unwatchPara) { try { this._unwatchPara(); } catch (_) {} }
                     if (this._unwatchSummary) { try { this._unwatchSummary(); } catch (_) {} }
                     if (this._unwatchRejected) { try { this._unwatchRejected(); } catch (_) {} }

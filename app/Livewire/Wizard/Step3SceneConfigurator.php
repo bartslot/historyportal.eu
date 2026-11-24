@@ -6355,8 +6355,26 @@ class Step3SceneConfigurator extends Component
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }
 
+        $wasFresh = $scene?->hasFreshAudio() ?? false;
         $this->selectedScene['script_segment'] = $after;
         $this->saveSelected();
+
+        // Only punctuation, capitals or spaces changed (Bart 11-24: "if it's just one word, or a . ... it's really
+        // crazy we need to redo a whole paragraph"): the narrator says the same words, so the recording stays and
+        // counts as matching the script. Nothing to re-narrate, and the panel is told so.
+        if ($wasFresh && $scene !== null && self::spokenWords($before) === self::spokenWords($after)) {
+            $scene->refresh();
+            $scene->forceFill(['audio_script_hash' => sha1((string) $scene->script_segment)])->saveQuietly();
+            $this->dispatch('scene:audio-still-fresh', sceneId: $scene->id);
+        }
+    }
+
+    /** The words a narrator says, without punctuation, capitals or spacing: "Ravenna, 1321." = "ravenna 1321". */
+    public static function spokenWords(string $text): string
+    {
+        $words = preg_replace('/[\p{P}\p{S}]+/u', ' ', mb_strtolower($text)) ?? '';
+
+        return trim(preg_replace('/\s+/u', ' ', $words) ?? '');
     }
 
     /**

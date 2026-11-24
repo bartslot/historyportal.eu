@@ -46,4 +46,29 @@ class NarrationStateTest extends TestCase
 
         $this->assertSame('gone', $component->instance()->narrationState(999999)['status']);
     }
+
+    public function test_a_punctuation_only_edit_keeps_the_recording_and_a_new_word_does_not(): void
+    {
+        Storage::fake('public');
+        $teacher = User::factory()->create();
+        $scene = app(LessonComposer::class)->build([
+            'key' => 'Punctuation edit', 'language' => 'nl',
+            'scenes' => [['type' => 'story', 'script' => 'Dante schrijft in Ravenna']],
+        ], $teacher, narrate: false)->scenes()->firstOrFail();
+        $scene->update(['audio_path' => "lessons/{$scene->lesson_id}/scenes/{$scene->id}/audio.mp3", 'audio_script_hash' => sha1((string) $scene->script_segment), 'status' => 'ready']);
+
+        $editor = Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson])->call('selectScene', $scene->id);
+
+        $editor->dispatch('scene:update-script', text: 'Dante schrijft, in Ravenna.', sceneId: $scene->id)->assertDispatched('scene:audio-still-fresh');
+        $this->assertTrue($scene->fresh()->hasFreshAudio());
+
+        $editor->dispatch('scene:update-script', text: 'Dante schrijft, in Florence.', sceneId: $scene->id);
+        $this->assertFalse($scene->fresh()->hasFreshAudio());
+    }
+
+    public function test_spoken_words_ignore_punctuation_capitals_and_spacing(): void
+    {
+        $this->assertSame('ravenna 1321 dante', Step3SceneConfigurator::spokenWords("Ravenna,  1321. Dante!"));
+        $this->assertNotSame(Step3SceneConfigurator::spokenWords('Dante schrijft'), Step3SceneConfigurator::spokenWords('Dante schreef'));
+    }
 }
