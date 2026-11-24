@@ -128,6 +128,17 @@ export function groundLine(data: Uint8ClampedArray | Uint8Array, w: number, h: n
   return best > GROUND_LINE_STEP ? at / h : top
 }
 
+/** Ground lines measured by eye for the far strips the luminance step misses (share of the height, from the top),
+ *  used when library.json carries no ground_line of its own. Kept here because the live library is edited on the
+ *  server, not in the repo. */
+export const GROUND_LINES: Readonly<Record<string, number>> = {
+  'trb-forest-backdrop-01': 0.88,
+  'bb-town-skyline-01': 0.62,
+  'pa-snowy-peaks-backdrop-01': 0.92,
+  'river-euphrates-01': 0.37,
+  'bg-mohua-01': 0.62,
+}
+
 /** Eye height of the house camera (layout HOUSE.y): a flat stain is foreshortened by eye / distance. */
 const EYE_M = 1.6
 /** On screen a stain is this share of its width tall, at any distance. */

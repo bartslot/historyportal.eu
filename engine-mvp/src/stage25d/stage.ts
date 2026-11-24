@@ -31,7 +31,7 @@ import { blinker, blinkOf, seedOf } from './blink'
 import { bandColours, edgeColours, figureWash, groundLines, inkLevels, landTops, loadPremultiplied, makeLayer, pictureTexture, restDrawing, shadeMask, skylines, type LayerHandle } from './layer'
 import { alphaOf, bindMappedPicture, bindPicture, bindPuppet, puppetOf, type BentPicture, type BentPuppet } from './bones'
 import { contactKeys, footLockOffset, heldBones, heldY, type Side } from './foot-lock'
-import { bandAt, defaultNear, featherOf, GROUND_TILE_M, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
+import { bandAt, defaultNear, featherOf, GROUND_TILE_M, GROUND_LINES, groundSlots, type GroundSlot, hexRgb, slotAt, PAPER as PAPER_HEX, resolveGround, STAIN_DEFAULT, stainSize } from './ground'
 import { makeGround, makeStain, nearWrapU, type FloorSlot, type GroundLook } from './ground-gl'
 import { waterOf } from './water'
 import { glintSheet, makeWaterMask, type WaterMask } from './water-gl'
@@ -316,7 +316,7 @@ export class Stage {
     // the first strip in the scene's own order (loads finish in any order), not a prop placed far off
     const far = next.filter((b) => b.asset.layer === 'bg').sort((a, b) => a.index - b.index)[0]
     const farUrl = far ? urlOf(lib, far.asset, far.layer) : ''
-    const strip = far ? { top: far.layer.land_top ?? landTops.get(farUrl) ?? 0, ground: far.asset.ground_line ?? groundLines.get(farUrl) ?? far.layer.land_top ?? landTops.get(farUrl) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
+    const strip = far ? { top: far.layer.land_top ?? landTops.get(farUrl) ?? 0, ground: far.asset.ground_line ?? GROUND_LINES[far.asset.id] ?? groundLines.get(farUrl) ?? far.layer.land_top ?? landTops.get(farUrl) ?? 0, h: placeLayer(far.asset, far.layer, far.order).h, order: far.order } : null
     // under a strip the floor fades into the strip's own ground colour; with no strip, into the sky's colour where it
     // meets the floor (eye height on the sky plane), so the sky never ends on a hard line against a paper band
     const sky = next.find((b) => b.index === -1)
@@ -384,7 +384,7 @@ export class Stage {
   /** The floor's look: art tiled in world metres (or a paper wash), fading toward the far landscape into the colour
    *  that landscape's own ground is painted in. The wash is mostly that colour already: perspective squeezes the far
    *  half of the floor into a thin line, so a pale floor fading to a dark horizon reads as a band. */
-  private groundLook(slots: FloorSlot[], tint: [number, number, number] | null, lib: Library, wash?: string, ambient: RGB = WHITE, tintIsSky = false): GroundLook {
+  private groundLook(slots: FloorSlot[], tint: [number, number, number] | null, lib: Library, wash?: string, ambient: RGB = WHITE, tintIsSky = false, underStrip = false): GroundLook {
     const paper = hexRgb(wash ?? lib.paper ?? PAPER_HEX)
     const horizon = tint ?? paper
     // the floor shader lights its own colours (base); the horizon it fades into is lit here when it is ground (a far
@@ -393,6 +393,7 @@ export class Stage {
       slots,
       base: mix3(paper, horizon, GROUND_WASH), tint: tint && tintIsSky ? horizon : mul3(horizon, ambient),
       fadeNear: DEPTH_Z.fg, fadeFar: DEPTH_Z.bg * 0.75, grain: slots.length ? 0.5 : 1,   // flat tint before the strip: no step at its edge
+      tintFar: underStrip ? DEPTH_Z.bg : DEPTH_Z.bg * 0.75 * 3,
     }
   }
 
@@ -418,7 +419,7 @@ export class Stage {
     // under the world's far piece it fades into the soil instead (the scene's soil colour, else the piece's own
     // ground), so no blue shows between the floor and the ridge (Bart 11-13)
     const tint = g.far !== undefined ? g.far : g.pieceEdge ? g.soil ?? g.pieceEdge : skyHaze
-    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !g.pieceEdge && !!skyHaze)
+    const look = this.groundLook(g.slots, tint, g.lib, g.wash, amb, g.far === undefined && !g.pieceEdge && !!skyHaze, g.far != null)
     this.horizonTint = look.tint
     this.footTint = g.tileFoot ?? look.base
     this.hazeTint = skyHaze ?? look.tint
@@ -928,7 +929,7 @@ export class Stage {
     const horizon = this.horizonOf(s)
     // where pictures on the far ground stand: the strip's ground line (the foot of its trees), not where its paint
     // starts (the treetops), which only places the strip in the frame (horizonOf)
-    const land = landHeight(horizon, this.strip && { top: this.strip.ground, h: this.strip.h })
+    const land = Math.max(0, landHeight(horizon, this.strip && { top: this.strip.ground, h: this.strip.h }))
     this.land = land
     this.poseGrid(land)
     const front = cameraFront(s)   // a band stands in front of the farthest-forward camera of the scene

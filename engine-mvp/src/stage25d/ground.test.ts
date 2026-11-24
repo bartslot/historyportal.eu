@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, groundLine, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize, groundSlots, GROUND_SLOTS_MAX, slotAt, grainOctave } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, groundLine, GROUND_LINES, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize, groundSlots, GROUND_SLOTS_MAX, slotAt, grainOctave } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -247,5 +247,12 @@ describe('groundLine: where a far strip\'s ground meets its treeline (Bart 11-24
   })
   it('a step far under the land start is not looked for', () => {
     expect(groundLine(strip(40, 200, 0.1, 0.7), 40, 200)).toBeCloseTo(0.1, 2)
+  })
+})
+
+describe('GROUND_LINES', () => {
+  it('holds a share of the height for each far strip the step misses', () => {
+    for (const v of Object.values(GROUND_LINES)) expect(v > 0 && v < 1).toBe(true)
+    expect(GROUND_LINES['trb-forest-backdrop-01']).toBe(0.88)
   })
 })
