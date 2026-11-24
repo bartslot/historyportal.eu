@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { animationTimeline } from '../timeline-panel.js'
+import { animationTimeline, audioPeaks, peaksPath } from '../timeline-panel.js'
 import { keyframeKinds, propertiesFor } from '../properties.js'
 
 /**
@@ -641,11 +641,144 @@ describe('pressing a word in the narration strip', () => {
     now.mockRestore()
   })
 
-  it('just moves the playhead while paused', () => {
+  it('starts playback from that word while paused', () => {
     const p = panel([])
     p.seek = (t) => { p.time = t }
+    p.revealPlayhead = () => {}
     p.seekToWord(3)
     expect(p.time).toBe(3)
-    expect(p.playing).toBe(false)
+    expect(p.playing).toBe(true)
+    p.pause()
+  })
+})
+
+/** A stand-in <audio>: jsdom has no media playback. */
+class FakeAudio {
+  static made = []
+  constructor () { this.paused = true; this.ended = false; this.error = null; this.currentTime = 0; this.duration = NaN; this.readyState = 0; this.listeners = {}; FakeAudio.made.push(this) }
+  play () { this.paused = false; return Promise.resolve() }
+  pause () { this.paused = true }
+  addEventListener (name, fn) { this.listeners[name] = fn }
+  loaded (duration) { this.duration = duration; this.readyState = 1; this.listeners.loadedmetadata?.() }
+}
+
+describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
+  let frame = null
+  let scene = 100
+  const voiced = (extra = {}) => {
+    const p = animationTimeline({ sceneId: `voiced-${scene++}`, tracks: [], targets: [], duration: 6, audioUrl: '/storage/a.mp3', ...extra })
+    p.$wire = { setTimeline: vi.fn() }
+    p.seek = (t) => { p.time = t }
+    p.revealPlayhead = () => {}
+    return p
+  }
+  beforeEach(() => {
+    FakeAudio.made = []
+    vi.stubGlobal('Audio', FakeAudio)
+    vi.stubGlobal('requestAnimationFrame', (fn) => { frame = fn; return 1 })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+  })
+  afterEach(() => { vi.unstubAllGlobals(); frame = null })
+
+  it('play starts the voice at the playhead, and pause stops it', () => {
+    const p = voiced()
+    p.time = 2
+    p.play()
+    const audio = FakeAudio.made[0]
+    expect(audio.paused).toBe(false)
+    expect(audio.currentTime).toBe(2)
+    p.pause()
+    expect(audio.paused).toBe(true)
+  })
+
+  it('the playhead follows the voice while it plays', () => {
+    const p = voiced()
+    p.play()
+    FakeAudio.made[0].currentTime = 1.5
+    frame()
+    expect(p.time).toBeCloseTo(1.5, 1)
+    p.pause()
+  })
+
+  it('pressing a word plays the voice from that word', () => {
+    const p = voiced()
+    p.seekToWord(4.2)
+    expect(p.playing).toBe(true)
+    expect(FakeAudio.made[0].currentTime).toBe(4.2)
+    expect(FakeAudio.made[0].paused).toBe(false)
+    p.pause()
+  })
+
+  it('the length follows the clip, but never cuts off a key', () => {
+    const p = voiced()
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(11.37)
+    expect(p.duration).toBeCloseTo(11.37)
+
+    const q = voiced({ tracks: [{ target: 'text:1', property: 'x', keyframes: [{ time: 0, value: 0 }, { time: 14, value: 9 }] }] })
+    q.listenToNarration()
+    FakeAudio.made[1].loaded(11.37)
+    expect(q.duration).toBe(14)
+  })
+
+  it('never cuts a voyage crossing short', () => {
+    const p = voiced({ sailLeg: { from: [0, 0], to: [1, 1] } })
+    p.sailSpan = () => ({ start: 0, end: 20 })
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(5)
+    expect(p.duration).toBe(20)
+  })
+
+  it('a Length the teacher typed stays, until they hand it back', () => {
+    const p = voiced({ durationSet: true })
+    p.fit = () => {}
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(11.37)
+    expect(p.duration).toBe(6)
+    p.matchNarration()
+    expect(p.duration).toBeCloseTo(11.37)
+    expect(p.$wire.setTimeline).toHaveBeenCalledWith(expect.objectContaining({ durationSet: false }))
+  })
+
+  it('a scene without audio keeps its length and plays silently', () => {
+    const p = voiced({ audioUrl: null })
+    p.listenToNarration()
+    p.play()
+    expect(FakeAudio.made).toHaveLength(0)
+    expect(p.duration).toBe(6)
+    p.pause()
+  })
+})
+
+describe('the narration lane (Bart, 2026-11-24)', () => {
+  afterEach(() => { vi.unstubAllGlobals(); try { localStorage.clear() } catch {} })
+
+  it('turns samples into peaks scaled to the loudest', () => {
+    const peaks = audioPeaks(new Float32Array([0, 0.1, -0.5, 0.2, 0.25, -0.05]), 3)
+    expect(peaks.map((x) => Math.round(x * 100) / 100)).toEqual([0.2, 1, 0.5])
+    expect(peaksPath([1, 0])).toBe('M0.5 4.0v92.0M1.5 49.5v1.0')
+  })
+
+  it('the volume slider sets the voice and is remembered; the speaker mutes', () => {
+    vi.stubGlobal('Audio', FakeAudio)
+    FakeAudio.made = []
+    const p = animationTimeline({ sceneId: 'vol-1', tracks: [], targets: [], duration: 6, audioUrl: '/a.mp3' })
+    const audio = p.narration()
+    p.setNarrationVolume(0.4)
+    expect(audio.volume).toBe(0.4)
+    expect(localStorage.getItem('timeline-narration-volume')).toBe('0.4')
+    p.toggleNarrationMute()
+    expect(audio.volume).toBe(0)
+    p.toggleNarrationMute()
+    expect(audio.volume).toBe(0.4)
+  })
+
+  it('Space lets go of a focused button, so its keyup does not press it again', () => {
+    const p = animationTimeline({ sceneId: 'kb-1', tracks: [], targets: [], duration: 6 })
+    p.play = vi.fn()
+    const button = { tagName: 'BUTTON', blur: vi.fn(), closest: () => null }
+    p.onKeydown({ code: 'Space', target: button, preventDefault: () => {} })
+    expect(button.blur).toHaveBeenCalled()
+    expect(p.play).toHaveBeenCalled()
   })
 })

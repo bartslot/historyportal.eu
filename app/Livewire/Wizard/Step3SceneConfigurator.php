@@ -2463,7 +2463,7 @@ class Step3SceneConfigurator extends Component
      * A timeline from the browser as it is stored, rebuilt field by field.
      *
      * @param  array<string, mixed>  $timeline
-     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
+     * @return array{duration: float, durationSet?: true, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
      */
     private function storedTimeline(array $timeline): array
     {
@@ -2544,6 +2544,10 @@ class Step3SceneConfigurator extends Component
         }
 
         $stored = ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+        // The teacher typed a Length; without it a scene with narration is as long as its clip (timeline-panel.js followNarration).
+        if (($timeline['durationSet'] ?? false) === true) {
+            $stored['durationSet'] = true;
+        }
 
         // A voyage leg's crossing as a clip (resources/js/anim/sail-clip.js): when the ship sets off, when it lands.
         $sail = $timeline['sail'] ?? null;
