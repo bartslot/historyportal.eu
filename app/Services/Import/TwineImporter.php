@@ -32,7 +32,9 @@ use InvalidArgumentException;
  * with no links is an ending. What did not fit (story code, a link to a missing passage) is a note the teacher reads.
  *
  * Per scene: the narrator's lines are the script, word for word; the shot description is the scene's note; every
- * other speaker is a character standing on the ground, and their lines are silent balloons, one after the other.
+ * other speaker is a character standing on the ground, and their lines are silent balloons, one after the other. A
+ * "SETTING: Florence, 1283" line is the scene's place and year. The lesson's outline gets the cast with their
+ * signature colours and a brief per scene, so story to video can draw the sheets and the empty places.
  */
 final class TwineImporter
 {
@@ -125,6 +127,10 @@ final class TwineImporter
                 }
                 $scene->update(['config' => $config]);
             }
+            // The story as an outline, so the rest of the app reads it like a generated lesson: the cast with
+            // their signature colours (story to video draws a sheet each) and a brief per scene (who is in it,
+            // where and when, and the shot as the picture's seed).
+            $lesson->update(['outline' => self::outline($plan, $parsed, $cast)]);
             $auto = collect($this->made)->filter(fn (?SvgAsset $a) => $a !== null && ! empty($a->character['auto']))->keys();
             if ($auto->isNotEmpty()) {
                 $this->notes[] = __(':names got a plain body. Open each in the Character tab to dress them.', ['names' => $auto->implode(', ')]);
@@ -253,6 +259,7 @@ final class TwineImporter
             'order' => $order,
             'kind' => 'stage25d',
             'chapter_name' => Str::limit(TwineParser::title($passage), 120, ''),
+            ...self::setting($part['setting'] ?? ''),
             'script_segment' => implode("\n\n", array_column(array_filter($lines, fn ($l) => $l['speaker'] === 'narrator'), 'text')),
             'image_style' => ImageStyleTemplate::STAGE,
             'status' => 'ready',
@@ -364,5 +371,82 @@ final class TwineImporter
         }
 
         return implode(' ', $text);
+    }
+
+    /**
+     * "Ravenna, september 1321" as the scene's place and year: the year is the first one named ("1301-1302" is
+     * 1301), the place what stands before the date. A setting with no year is all place.
+     *
+     * @return array{location?: string, year?: string}
+     */
+    private static function setting(string $setting): array
+    {
+        $setting = trim($setting);
+        if ($setting === '') {
+            return [];
+        }
+        $year = preg_match('/(?<!\d)(\d{3,4})(?!\d)/u', $setting, $y) === 1 ? $y[1] : null;
+        $place = $year === null ? $setting : trim((string) preg_replace('/,?[^,]*\d{3,4}.*$/u', '', $setting), ' ,');
+        if ($place === '' && $year !== null) {   // "Florence 1283": no comma before the date
+            $place = trim((string) preg_replace('/\d{3,4}.*$/u', '', $setting), ' ,');
+        }
+
+        return array_filter(['location' => Str::limit($place, 255, ''), 'year' => $year], fn ($v) => $v !== null && $v !== '');
+    }
+
+    /**
+     * The lesson outline a Twine story gives: its cast (name, signature colour, look) and one brief per scene in
+     * order (the cast who speak or are named in the shot, the setting, the shot as the picture's seed).
+     *
+     * @param  list<string>  $plan
+     * @param  array<string, array<string,mixed>>  $parsed
+     * @param  list<array{name:string, description:string, colour?:string}>  $cast
+     * @return array{cast: list<array{name:string, colour:string, look:string}>, scene_briefs: list<array<string,mixed>>}
+     */
+    private static function outline(array $plan, array $parsed, array $cast): array
+    {
+        $briefs = [];
+        foreach ($plan as $order => $name) {
+            $part = $parsed[$name];
+            $people = [];
+            foreach ($cast as $member) {
+                $named = str_contains(TwineParser::key((string) $part['shot']), TwineParser::key($member['name']));
+                $speaks = collect($part['lines'])->contains(fn ($l) => self::firstMatch($l['speaker'], $cast) === $member['name']);
+                if ($named || $speaks) {
+                    $people[] = $member['name'];
+                }
+            }
+            $briefs[] = array_filter([
+                'order' => $order + 1,
+                'kind' => 'narration',
+                'characters' => $people,
+                ...self::setting((string) ($part['setting'] ?? '')),
+                'image_prompt_seed' => (string) $part['shot'],
+            ], fn ($v) => $v !== '' && $v !== []);
+        }
+
+        return [
+            'cast' => array_values(array_map(fn ($c) => [
+                'name' => $c['name'], 'colour' => (string) ($c['colour'] ?? ''), 'look' => $c['description'],
+            ], $cast)),
+            'scene_briefs' => $briefs,
+        ];
+    }
+
+    /**
+     * The cast member a speaker tag names first (the same rule as person()): MARCO is Marco Polo.
+     *
+     * @param  list<array{name:string, description:string}>  $cast
+     */
+    private static function firstMatch(string $speaker, array $cast): ?string
+    {
+        $key = TwineParser::key($speaker);
+        foreach ($cast as $member) {
+            if (TwineParser::key($member['name']) === $key || in_array($key, explode(' ', TwineParser::key($member['name'])), true)) {
+                return $member['name'];
+            }
+        }
+
+        return null;
     }
 }
