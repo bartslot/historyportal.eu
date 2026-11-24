@@ -123,14 +123,14 @@ describe('a drawing on a map sticks to the map', () => {
   const projector = { zoom: () => 6, unproject: (x, y) => ({ lng: x / 10, lat: y / 10 }) }
   const overlay = {
     _projector: projector,
-    host: { getBoundingClientRect: () => ({ height: 600 }) },
+    host: { getBoundingClientRect: () => ({ height: 600, width: 1000 }) },
     _layers: [{ asset_id: 7, anchor: 'map', x: 40, y: 50 }, { asset_id: 8, anchor: 'screen', x: 1, y: 1 }],
-    _mapFactor: () => 2,
+    _mapFactor: (item, axis) => (axis === 'x' ? 1.5 : 2),
   }
 
   it('sends the zoom, the stage height, every pinned layer and the place under a new line', () => {
     expect(drawMapView(overlay, [[10, 20], [30, 40]])).toEqual({
-      zoom: 6, px: 600, pins: { 7: { x: 40, y: 50, f: 2 } }, centre: { x: 20, y: 30, lng: 2, lat: 3 },
+      zoom: 6, px: 600, w: 1000, pins: { 7: { x: 40, y: 50, f: 2, fx: 1.5 } }, centre: { x: 20, y: 30, lng: 2, lat: 3 },
     })
     expect(drawMapView({ ...overlay, _projector: null })).toBeNull()
   })
@@ -141,5 +141,7 @@ describe('a drawing on a map sticks to the map', () => {
     expect(geoZoomFactor(projector, item, 1200)).toBe(1)
     expect(geoZoomFactor({ zoom: () => 3 }, item, 600)).toBe(0.25)
     expect(geoZoomFactor(projector, {}, 600)).toBe(1)
+    // across: against the width it was drawn on
+    expect(geoZoomFactor(projector, { geo_zoom: 5, geo_px: 600, geo_w: 1000 }, 500, 'x')).toBe(4)
   })
 })

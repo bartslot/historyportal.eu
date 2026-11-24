@@ -242,15 +242,16 @@ export function mountDraw (host, { onStroke = () => {}, onErase = () => {}, keep
 export function drawMapView (overlay, points = null) {
   const projector = overlay?._projector
   const zoom = projector?.zoom?.()
-  const px = overlay?.host?.getBoundingClientRect().height
+  const box = overlay?.host?.getBoundingClientRect()
+  const px = box?.height
   if (!projector || !Number.isFinite(zoom) || !(px > 0)) return null
   const pins = {}
   for (const item of overlay._layers ?? []) {
     if (item.anchor === 'map' && Number.isFinite(item.x) && Number.isFinite(item.y)) {
-      pins[item.asset_id] = { x: item.x, y: item.y, f: overlay._mapFactor(item) }
+      pins[item.asset_id] = { x: item.x, y: item.y, f: overlay._mapFactor(item), fx: overlay._mapFactor(item, 'x') }
     }
   }
-  const view = { zoom, px, pins }
+  const view = { zoom, px, w: box.width, pins }
   if (points?.length) {
     const xs = points.map((p) => p[0])
     const ys = points.map((p) => p[1])

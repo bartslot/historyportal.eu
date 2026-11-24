@@ -359,12 +359,14 @@
                     const ll = (inst && host && typeof inst.textProjector === 'function')
                         ? inst.textProjector(host).unproject(t.x, t.y)
                         : null
+                    // Let go of the pin (the inspector's toggle): say so, or the next save pins it again.
+                    const free = t.anchor === 'screen'
                     window.Livewire.dispatch('artwork:move', {
                         assetId, x: t.x, y: t.y, scale: t.scale,
                         rotation: t.rotation,
-                        anchor: ll ? 'map' : null,
-                        lng: ll ? ll.lng : null,
-                        lat: ll ? ll.lat : null,
+                        anchor: free ? 'screen' : (ll ? 'map' : null),
+                        lng: !free && ll ? ll.lng : null,
+                        lat: !free && ll ? ll.lat : null,
                     })
                 },
             })

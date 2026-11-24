@@ -225,6 +225,7 @@
                         // A drawing pinned to the map: the zoom and stage height (px) it was drawn at, so it scales exactly with the map.
                         'geo_zoom' => isset($l['geo_zoom']) ? (float) $l['geo_zoom'] : null,
                         'geo_px' => isset($l['geo_px']) ? (float) $l['geo_px'] : null,
+                        'geo_w' => isset($l['geo_w']) ? (float) $l['geo_w'] : null,
                         'wobble'  => isset($l['wobble']) ? (int) $l['wobble'] : null,
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.
