@@ -39,6 +39,10 @@ STYLES = {
     'man-curly-short': dict(body='man', label='Curly short', kind='curly', volume=10, curl=16, fringe=11, nape_drop=0, seed=4),
     # longer curls down to the collar
     'man-curly-long': dict(body='man', label='Curly long', kind='curly', volume=18, curl=19, fringe=11, nape_drop=95, seed=9),
+    # Marco Polo's own (his character sheet, Bart 2026-11-24): soft waves over the ears, down to the jaw and the nape
+    'man-wavy-jaw': dict(body='man', label='Wavy to the jaw', kind='wavy', volume=20, curl=22, fringe=12, nape_drop=150, seed=7,
+                         hairline=[(1158, 176), (1112, 182), (1052, 192), (996, 206), (958, 232), (944, 262), (936, 300),
+                                   (930, 350), (926, 410), (912, 452), (884, 470), (862, 468)]),
     # a smooth cap cut level at the ear: the bowl cut a Venetian boy of 1271 would wear
     'man-straight-bowl': dict(body='man', label='Straight bowl', kind='smooth', volume=14, curl=0, fringe=0, nape_drop=0, seed=2),
 }
@@ -96,7 +100,7 @@ def path(pts, close=True) -> str:
 
 
 def style_svg(sid: str, s: dict) -> tuple[str, list[int]]:
-    head = HEADS[s['body']]
+    head = {**HEADS[s['body']], **({'hairline': s['hairline']} if 'hairline' in s else {})}
     radius, c = skull(s['body'])
     rnd = random.Random(s['seed'])
     front, nape = head['hairline'][0], (head['nape'][0], head['nape'][1] + s['nape_drop'])
@@ -111,7 +115,28 @@ def style_svg(sid: str, s: dict) -> tuple[str, list[int]]:
     cap = [front] + edge + [nape] + head['hairline'][::-1][:-1]
     shapes = [f'<path d="{path(cap)}"/>']
     marks = []
-    if s['kind'] == 'curly':
+    if s['kind'] == 'wavy':
+        # soft waves: a scalloped edge, and long S-shaped strands from the crown out to it
+        for (x, y) in resample(edge + [nape], s['curl'] * 1.5):
+            shapes.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{s["curl"] * rnd.uniform(0.8, 1.05):.1f}"/>')
+        for (x, y) in resample(head['hairline'][:5], s['fringe'] * 1.8):
+            shapes.append(f'<circle cx="{x:.1f}" cy="{y + 2:.1f}" r="{s["fringe"] * rnd.uniform(0.85, 1.1):.1f}"/>')
+        crown = (c[0] - 10, c[1] - radius[90] * 0.62)
+        for i, (x, y) in enumerate(resample(edge, 42)[1:-1]):
+            for f0, f1 in (((0.3, 0.66), (0.6, 0.96)) if i % 2 else ((0.5, 0.95),)):
+                ax, ay = crown[0] + (x - crown[0]) * f0, crown[1] + (y - crown[1]) * f0
+                ex, ey = crown[0] + (x - crown[0]) * f1, crown[1] + (y - crown[1]) * f1
+                nx, ny = -(ey - ay), ex - ax
+                ln = math.hypot(nx, ny) or 1
+                w = rnd.uniform(6, 11) / ln
+                marks.append(f'<path d="M {ax:.1f},{ay:.1f} C {ax + (ex - ax) * 0.33 + nx * w:.1f},{ay + (ey - ay) * 0.33 + ny * w:.1f} '
+                             f'{ax + (ex - ax) * 0.66 - nx * w:.1f},{ay + (ey - ay) * 0.66 - ny * w:.1f} {ex:.1f},{ey:.1f}"/>')
+        # the fringe swept to the side: a few strands from the parting down over the forehead
+        part_at = (c[0] + 40, c[1] - radius[90] * 0.82)
+        for k, (x, y) in enumerate(resample(head['hairline'][:5], 34)):
+            sx, sy = part_at[0] - 26 * k, part_at[1] + 4 * k
+            marks.append(f'<path d="M {sx:.1f},{sy:.1f} Q {(sx + x) / 2 + 18:.1f},{(sy + y) / 2 - 8:.1f} {x:.1f},{y - 8:.1f}"/>')
+    elif s['kind'] == 'curly':
         for i, (x, y) in enumerate(resample(edge + [nape], s['curl'] * 1.25)):
             r = s['curl'] * rnd.uniform(0.85, 1.15)
             shapes.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}"/>')

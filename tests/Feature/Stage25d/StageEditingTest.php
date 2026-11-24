@@ -563,6 +563,23 @@ class StageEditingTest extends TestCase
         $this->assertArrayNotHasKey('soil', $sibling->fresh()->config['stage25d']['set']);
     }
 
+    public function test_the_terrain_plants_save_the_teachers_choice_and_go_back_to_automatic(): void
+    {
+        // Bart 11-24: the clumps on the floor could not be changed at all.
+        $scene = $this->scene();
+        $editor = $this->editor($scene)->call('saveStage25dStrew', ['plants' => ['ground-sprites-01#2', 'grass-tall-01', 'Bad Key!', 'grass-tall-01'], 'seed' => 4], $scene->id);
+        $this->assertSame(['plants' => ['ground-sprites-01#2', 'grass-tall-01'], 'seed' => 4], $scene->fresh()->config['stage25d']['set']['strew']);
+
+        $editor->call('saveStage25dStrew', ['plants' => []], $scene->id + 1);
+        $this->assertSame(4, $scene->fresh()->config['stage25d']['set']['strew']['seed'], 'another scene: nothing saved');
+
+        $editor->call('saveStage25dStrew', ['plants' => []], $scene->id);
+        $this->assertSame(['plants' => []], $scene->fresh()->config['stage25d']['set']['strew'], 'none chosen strews nothing');
+
+        $editor->call('saveStage25dStrew', null, $scene->id);
+        $this->assertArrayNotHasKey('strew', $scene->fresh()->config['stage25d']['set']);
+    }
+
     public function test_the_horizon_takes_a_far_piece_of_the_period_none_or_back_to_automatic(): void
     {
         Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [

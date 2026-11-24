@@ -132,14 +132,18 @@ class TwineImportTest extends TestCase
         $this->assertNotContains('narrator', $lines->pluck('speaker')->all());
         $this->assertSame('Father... even our breath freezes! And why won\'t our campfire burn properly up here?', $scenes['Pamir']->config['lines'][0]['text']);
 
-        // a figure layer is one of the teacher's characters, made from a kit body and marked to dress later
+        // a figure layer is one of the teacher's characters; Marco has a look of his own, already dressed
         $layer = collect($scenes['Venice']->config['stage25d']['set']['layers'])->firstWhere('figure', 'marco-polo');
         $marco = SvgAsset::find(Characters::idOf($layer['asset']));
         $this->assertSame('Marco Polo', $marco->title);
         $this->assertSame($this->teacher->id, $marco->user_id);
-        $this->assertTrue($marco->character['auto']);
+        $this->assertArrayNotHasKey('auto', $marco->character);
         $this->assertSame('man', $marco->character['recipe']['body']);
+        $this->assertSame('venice-tunic-satchel', $marco->character['recipe']['outfit']);
         $this->assertSame(7.0, (float) $layer['z']);
+        // anyone else is made from a kit body and marked to dress later
+        $niccolo = Characters::of($this->teacher)->firstWhere('title', 'Niccolò Polo');
+        $this->assertTrue($niccolo->character['auto']);
         $this->assertSame(4, Characters::of($this->teacher)->count());
     }
 
@@ -153,6 +157,18 @@ class TwineImportTest extends TestCase
         $this->assertSame(4, Characters::of($this->teacher)->count());
         $this->assertSame(['Marco Polo', 'Niccolò Polo', 'Zafar', 'Kublai Khan'], array_column($lesson->import_report['cast'], 'name'));
         $this->assertFalse($lesson->import_report['seen']);
+    }
+
+    public function test_a_marco_made_before_his_own_look_is_dressed_in_it_keeping_his_id(): void
+    {
+        $old = Characters::starter($this->teacher, 'Zafar', 'man');
+        $old->update(['title' => 'Marco']);
+        $this->artisan('characters:dress-named', ['email' => $this->teacher->email])->assertSuccessful();
+
+        $marco = $old->refresh();
+        $this->assertSame('venice-tunic-satchel', $marco->character['recipe']['outfit']);
+        $this->assertArrayNotHasKey('auto', $marco->character);
+        $this->assertSame(1, Characters::of($this->teacher)->count());
     }
 
     public function test_a_file_that_is_not_a_twine_story_is_refused(): void

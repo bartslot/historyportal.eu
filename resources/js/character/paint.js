@@ -45,6 +45,41 @@ export function shadeLayer (shade, fill, ink) {
   return out
 }
 
+/**
+ * The shade's red (how much shade) softened in place: a box blur twice over, `r` px, through the paint only (the air
+ * neither darkens nor lightens it). A hard-edged band of shade along an outline glazed into a dark stripe beside the
+ * line, and where an arm meets the shoulder or the shawl the robe it read as a seam (Bart 11-24). G and B (eyes, face)
+ * stay as they are.
+ */
+export function softShade (data, w, h, r) {
+  if (r < 1) return data
+  const n = w * h
+  let v = new Float32Array(n), a = new Float32Array(n)
+  for (let i = 0; i < n; i++) { a[i] = data[i * 4 + 3] > 0 ? 1 : 0; v[i] = a[i] ? data[i * 4] : 0 }
+  const pass = (src, horizontal) => {
+    const out = new Float32Array(n)
+    const len = horizontal ? w : h, lines = horizontal ? h : w
+    for (let l = 0; l < lines; l++) {
+      const at = (k) => (horizontal ? l * w + k : k * w + l)
+      let sum = 0
+      for (let k = -r; k <= r; k++) if (k >= 0 && k < len) sum += src[at(k)]
+      for (let k = 0; k < len; k++) {
+        out[at(k)] = sum
+        const add = k + r + 1, drop = k - r
+        if (add < len) sum += src[at(add)]
+        if (drop >= 0) sum -= src[at(drop)]
+      }
+    }
+    return out
+  }
+  for (let t = 0; t < 2; t++) {
+    v = pass(pass(v, true), false)
+    a = pass(pass(a, true), false)
+  }
+  for (let i = 0; i < n; i++) if (data[i * 4 + 3] > 0 && a[i] > 0) data[i * 4] = Math.round(v[i] / a[i])
+  return data
+}
+
 /** The shade a piece casts on what lies under it, as red only (drawn with 'lighten': the eyes and face channels stay). */
 export function castLayer (cast) {
   const n = cast.width * cast.height
