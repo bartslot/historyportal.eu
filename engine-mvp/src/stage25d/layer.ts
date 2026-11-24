@@ -17,6 +17,7 @@ import { BOMB_SEAM, BOMB_SPAN, MOTION_CODE } from './layout'
 import { bottomColour, inkLevel, landTop, rowBands, skylineRow } from './ground'
 import { GL_NOISE, HATCH_GLSL } from './ground-gl'
 import type { BentPicture } from './bones'
+import { jointShade } from './joint-shade'
 import { WATER_GLSL, glintRate, waterOmega, type Water } from './water'
 
 /** Line by depth (look.ts), shared with the puppet figures (S3): `lineByDepth` takes a STRAIGHT colour, how much of
@@ -654,12 +655,41 @@ export function restDrawing(puppet: Puppet, scene: Scene): Promise<RawTexture> {
 export function shadeMaskUrl(atlas: string): string {
   return atlas.replace(/(\.\w+)?(\?.*)?$/, (_m, ext?: string, query?: string) => `-shade${ext ?? '.webp'}${query ?? ''}`)
 }
-export function shadeMask(atlas: string, scene: Scene): Promise<Texture> {
+export function shadeMask(atlas: string, scene: Scene, puppet?: Puppet): Promise<Texture> {
   const url = shadeMaskUrl(atlas)
+  if (puppet) return jointShadeMask(url, atlas, puppet, scene)
   return new Promise((resolve, reject) => {
     const t = new Texture(url, scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, () => resolve(t), () => reject(new Error(`shade mask ${url} did not load`)))
     t.wrapU = Texture.CLAMP_ADDRESSMODE
     t.wrapV = Texture.CLAMP_ADDRESSMODE
+  })
+}
+
+/** A figure of parts' shade mask with no shade along the cuts between its parts (joint-shade.ts): read with the atlas,
+ *  changed, made a texture. Row 0 at the top, as the plain mask. */
+function jointShadeMask(url: string, atlas: string, puppet: Puppet, scene: Scene): Promise<Texture> {
+  const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error(`${src} did not load`))
+    img.src = src
+  })
+  return Promise.all([load(url), load(atlas)]).then(([s, a]) => {
+    const w = s.naturalWidth, h = s.naturalHeight
+    const pixels = (img: HTMLImageElement) => {
+      const c = document.createElement('canvas')
+      c.width = w; c.height = h
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      g.drawImage(img, 0, 0, w, h)
+      return g.getImageData(0, 0, w, h).data
+    }
+    const shade = pixels(s)
+    jointShade(shade, pixels(a), w, h, puppet)
+    const tex = new RawTexture(shade, w, h, Constants.TEXTUREFORMAT_RGBA, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE)
+    tex.wrapU = Texture.CLAMP_ADDRESSMODE
+    tex.wrapV = Texture.CLAMP_ADDRESSMODE
+    return tex
   })
 }
 
