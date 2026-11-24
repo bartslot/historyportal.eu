@@ -179,10 +179,12 @@ trait CutsScenes
             if ($second) {
                 $second->update(['order' => $this->parkingOrder()]);
                 $second->delete();
-                foreach ($this->lesson->scenes()->ordered()->get() as $i => $s) {
+                // One list for both passes: read again after the first, the negative orders sort backwards.
+                $remaining = $this->lesson->scenes()->ordered()->get();
+                foreach ($remaining as $i => $s) {
                     $s->update(['order' => -1 * ($i + 1)]);
                 }
-                foreach ($this->lesson->scenes()->ordered()->get() as $i => $s) {
+                foreach ($remaining as $i => $s) {
                     $s->update(['order' => $i + 1]);
                 }
             }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { cutTracks } from '../timeline-cut.js'
+import { sampleFrame } from '../properties.js'
 
 const track = (target, property, keyframes) => ({ target, property, keyframes })
 
@@ -9,7 +10,29 @@ describe('cutTracks', () => {
       { time: 0, value: 0, easing: 'linear' }, { time: 4, value: 1 },
     ])], 2)
     expect(first[0].keyframes).toEqual([{ time: 0, value: 0, easing: 'linear' }, { time: 2, value: 0.5 }])
-    expect(second[0].keyframes).toEqual([{ time: 0, value: 0.5 }, { time: 2, value: 1 }])
+    expect(second[0].keyframes).toEqual([{ time: 0, value: 0.5, easing: 'linear' }, { time: 2, value: 1 }])
+  })
+
+  it('plays the same motion after the cut as the whole scene did', () => {
+    const whole = [track('text:t1', 'opacity', [{ time: 0, value: 0, easing: 'linear' }, { time: 4, value: 1 }])]
+    const { second } = cutTracks(whole, 2)
+    // 2.5 s in the scene is 0.5 s into the second part: 0.625 on a straight line from 0 to 1 over 4 s.
+    expect(sampleFrame(second, 0.5)['text:t1'].opacity).toBeCloseTo(sampleFrame(whole, 2.5)['text:t1'].opacity)
+  })
+
+  it('keeps the positional easing a segment had when the cut moves it to an end', () => {
+    const whole = [track('art:3', 'x', [{ time: 0, value: 0 }, { time: 3, value: 30 }, { time: 6, value: 60 }])]
+    const { first } = cutTracks(whole, 3)
+    expect(first[0].keyframes[0].easing).toBe('easeInCubic')
+    expect(sampleFrame(first, 1)['art:3'].x).toBeCloseTo(sampleFrame(whole, 1)['art:3'].x)
+  })
+
+  it('blends a colour at the cut instead of stepping it', () => {
+    const { first, second } = cutTracks([track('text:t1', 'color', [
+      { time: 0, value: '#000000', easing: 'linear' }, { time: 4, value: '#ffffff' },
+    ])], 2)
+    expect(first[0].keyframes[1].value).toBe('#808080')
+    expect(second[0].keyframes[0].value).toBe('#808080')
   })
 
   it('moves the keys after the cut earlier by the cut', () => {
@@ -24,14 +47,14 @@ describe('cutTracks', () => {
     const { first, second } = cutTracks([track('art:3', 'x', [
       { time: 0, value: 0 }, { time: 3, value: 30, easing: 'hold' }, { time: 6, value: 60 },
     ])], 3)
-    expect(first[0].keyframes).toEqual([{ time: 0, value: 0 }, { time: 3, value: 30 }])
-    expect(second[0].keyframes[0]).toEqual({ easing: 'hold', time: 0, value: 30 })
+    expect(first[0].keyframes.map((k) => k.time)).toEqual([0, 3])
+    expect(second[0].keyframes[0]).toEqual({ time: 0, value: 30, easing: 'hold' })
   })
 
   it('holds a row that only moves on one side', () => {
     const { first, second } = cutTracks([track('art:1', 'scale', [{ time: 6, value: 1 }, { time: 8, value: 2 }])], 3)
     expect(first[0].keyframes).toEqual([{ time: 3, value: 1 }])
-    expect(second[0].keyframes).toEqual([{ time: 0, value: 1 }, { time: 3, value: 1 }, { time: 5, value: 2 }])
+    expect(second[0].keyframes.map((k) => [k.time, k.value])).toEqual([[0, 1], [3, 1], [5, 2]])
   })
 
   it('keeps a track\'s base, and leaves the input alone', () => {

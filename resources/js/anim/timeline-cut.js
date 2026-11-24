@@ -6,8 +6,8 @@
  *
  * Pure: tracks in, two new lists of tracks out.
  */
-import { sortedKeys, sameTime } from './keyframes.js'
-import { sampleFrame } from './properties.js'
+import { sortedKeys, sameTime, segmentEasing } from './keyframes.js'
+import { sampleFrame, propertyFor, kindOfTarget } from './properties.js'
 
 /** The key in force at `time`: a word row (an expression) steps from key to key, it never blends. */
 const stepAt = (keys, time) => {
@@ -15,12 +15,25 @@ const stepAt = (keys, time) => {
   return (before.length ? before[before.length - 1] : keys[0]).value
 }
 
-/** What a track shows at `time`: the shared sampler's value for a number, the key in force for a word or a row it does not know. */
+/** What a track shows at `time`: the shared sampler's value (numbers and colours blend), the key in force for a row that steps. */
 const valueAt = (track, keys, time) => {
-  if (keys.some((k) => typeof k.value !== 'number')) return stepAt(keys, time)
+  const descriptor = propertyFor(kindOfTarget(track.target), track.property)
+  if (!descriptor || descriptor.interpolate === 'step') return stepAt(keys, time)
   const sampled = sampleFrame([track], time)[track.target]?.[track.property]
-  return Number.isFinite(sampled) ? sampled : stepAt(keys, time)
+  return Number.isFinite(sampled) || (typeof sampled === 'string' && sampled !== '') ? sampled : stepAt(keys, time)
 }
+
+/**
+ * The easing each segment had in the whole scene, written onto a piece's keys only where the piece
+ * would otherwise pick another default (keyframes.js segmentEasing goes by position: a segment that
+ * was in the middle becomes the first or the last). Untouched segments play exactly as before; the
+ * segment the cut falls in keeps its curve on both sides. A key that ends the piece carries none.
+ */
+const keepEasing = (track, keys) => keys.map(({ was, ...k }, i) => {
+  if (i === keys.length - 1) return was?.chosen ? { ...k, easing: was.easing } : k
+  if (k.easing || !was) return k
+  return segmentEasing(k, i, keys.length - 1, track) === was.easing ? k : { ...k, easing: was.easing }
+})
 
 const round = (t) => Math.round(t * 1000) / 1000
 
@@ -40,16 +53,21 @@ export const cutTracks = (tracks, at) => {
     const before = keys.filter((k) => k.time < at && !sameTime(k.time, at))
     const after = keys.filter((k) => k.time > at && !sameTime(k.time, at))
     const { keyframes: _, ...rest } = track
+    // The easing that leaves each key in the whole scene, and the segment the cut falls in.
+    const was = (k) => {
+      const i = keys.indexOf(k)
+      return i < keys.length - 1 ? { easing: segmentEasing(k, i, keys.length - 1, track), chosen: Boolean(k.easing) } : (k.easing ? { easing: k.easing, chosen: true } : null)
+    }
+    const straddle = before.length && !on ? was(before[before.length - 1]) : null
+    const leaving = on ? was(on) : straddle
 
-    // The key on the cut keeps its easing in the second piece: it is the one that leaves from there.
-    const atCut = { time: round(at), value: hold }
-    first.push({ ...rest, keyframes: [...before, atCut] })
+    first.push({ ...rest, keyframes: keepEasing(track, [...before.map((k) => ({ ...k, was: was(k) })), { time: round(at), value: hold }]) })
     second.push({
       ...rest,
-      keyframes: [
-        { ...(on?.easing ? { easing: on.easing } : {}), time: 0, value: hold },
-        ...after.map((k) => ({ ...k, time: round(k.time - at) })),
-      ],
+      keyframes: keepEasing(track, [
+        { time: 0, value: hold, ...(leaving?.chosen ? { easing: leaving.easing } : {}), was: after.length ? leaving : null },
+        ...after.map((k) => ({ ...k, time: round(k.time - at), was: was(k) })),
+      ]),
     })
   }
   return { first, second }
