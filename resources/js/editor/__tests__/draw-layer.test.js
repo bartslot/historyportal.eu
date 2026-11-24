@@ -106,6 +106,14 @@ describe('drawing over the lesson: in the editor', () => {
     drag(t.surface.canvas, [20, 20], [60, 20])
     await t._queue
     expect(calls).toEqual([null, 42, null])
+
+    // Klaar while a stroke still saves: the next session does not draw on that layer
+    drag(t.surface.canvas, [20, 40], [60, 40])
+    t.stop()
+    t.start()
+    drag(t.surface.canvas, [20, 80], [60, 80])
+    await t._queue
+    expect(calls.slice(3)).toEqual([43, null])
     t.stop()
   })
 })

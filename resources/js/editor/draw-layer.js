@@ -250,8 +250,10 @@ export function drawTool () {
     on: false, tool: 'pen', colour: COLOURS[0], width: WIDTHS[1], busy: 0,
     tools: TOOLS, colours: COLOURS, widths: WIDTHS,
     surface: null,
-    /** The drawing layer (asset id) this session draws on; null until the first stroke and after Klaar. */
-    into: null,
+    /** Counts drawing sessions: each Klaar starts a new one. */
+    session: 0,
+    /** The drawing layer (asset id) each session draws on, by session; none until its first stroke is saved. */
+    layers: {},
     /** Whether this scene has something to draw on: the bar's Draw button greys out when it has not. */
     available: true,
     /** What the pen lies on: the 2D scene's layers, or its stage until the first line makes them. The 3D stage has none. */
@@ -281,11 +283,15 @@ export function drawTool () {
         // one at a time, in order: a quick second stroke waits for the first to have made the layer it goes on
         // each its own undo step: the marker goes right before the save, since a queued save can be sent after the
         // next stroke's press already sent its marker (edit-steps.js)
-        onStroke: (stroke) => this.queue(async () => {
-          await this.$wire.startEditStep?.()
-          const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.into)
-          if (res?.ok) this.into = res.id
-        }),
+        onStroke: (stroke) => {
+          // the layer belongs to the session the stroke was drawn in: a save that lands after Klaar never hands it on
+          const session = this.session
+          return this.queue(async () => {
+            await this.$wire.startEditStep?.()
+            const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.layers[session] ?? null)
+            if (res?.ok) this.layers[session] = res.id
+          })
+        },
         onErase: (path, size) => this.queue(async () => {
           await this.$wire.startEditStep?.()
           return this.$wire.eraseDrawing(path, size, this.aspect(host))
@@ -302,7 +308,7 @@ export function drawTool () {
       return run
     },
     remount () { if (this.on && !this.surface?.canvas.isConnected) this.mount() },
-    stop () { this.surface?.destroy(); this.surface = null; this.on = false; this.into = null },
+    stop () { this.surface?.destroy(); this.surface = null; this.on = false; this.session++ },
     apply () { this.surface?.setTool(this.tool); this.surface?.setColour(this.colour); this.surface?.setWidth(this.width) },
     pick (key, value) { this[key] = value; this.apply() },
   }

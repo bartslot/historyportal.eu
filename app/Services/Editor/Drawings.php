@@ -224,12 +224,35 @@ final class Drawings
 
             return $out;
         };
+        // a pen line as the picture draws it (svgMany): quadratic curves through the midpoints, flattened
+        $curve = function (array $pts): array {
+            $n = count($pts);
+            if ($n <= 2) {
+                return $pts;
+            }
+            $out = [$pts[0]];
+            $from = $pts[0];
+            for ($i = 1; $i < $n - 1; $i++) {
+                $c = $pts[$i];
+                $to = [($pts[$i][0] + $pts[$i + 1][0]) / 2, ($pts[$i][1] + $pts[$i + 1][1]) / 2];
+                for ($k = 1; $k <= 6; $k++) {
+                    $t = $k / 6;
+                    $u = 1 - $t;
+                    $out[] = [$u * $u * $from[0] + 2 * $u * $t * $c[0] + $t * $t * $to[0], $u * $u * $from[1] + 2 * $u * $t * $c[1] + $t * $t * $to[1]];
+                }
+                $from = $to;
+            }
+            $out[] = $pts[$n - 1];
+
+            return $out;
+        };
         $step = max(0.2, $radius / 2);
 
         $out = [];
         foreach ($strokes as $s) {
             $reach = $radius + $s['width'] / 20;                     // the eraser's edge meets the line's edge
-            $pts = $dense(array_map($toH, $s['points']), $step);
+            $mapped = array_map($toH, $s['points']);
+            $pts = $dense($s['tool'] === 'pen' ? $curve($mapped) : $mapped, $step);
             if ($s['tool'] !== 'pen') {
                 foreach ($pts as $q) {
                     if ($near($q, $reach)) {
@@ -266,8 +289,13 @@ final class Drawings
                 if (count($run) > 1 && end($kept) !== end($run)) {
                     $kept[] = end($run);
                 }
-                if (count($kept) >= 2) {
-                    $out[] = [...$s, 'points' => array_map(fn ($q) => [round($q[0] / $aspect, 3), round($q[1], 3)], array_slice($kept, 0, self::MAX_POINTS))];
+                if (count($kept) < 2) {
+                    continue;
+                }
+                $kept = array_map(fn ($q) => [round($q[0] / $aspect, 3), round($q[1], 3)], $kept);
+                // a long piece goes in several strokes that meet end to end, never cut short
+                for ($at = 0; $at < count($kept) - 1; $at += self::MAX_POINTS - 1) {
+                    $out[] = [...$s, 'points' => array_slice($kept, $at, self::MAX_POINTS)];
                 }
             }
         }
