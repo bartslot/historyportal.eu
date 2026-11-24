@@ -3105,10 +3105,9 @@
     "Label position": "Posición de la etiqueta",
     "Morph between years": "Transformar entre años",
     "Styles": "Estilos",
-    "Outline colour": "Color del contorno",
-    "Comic title": "Título de cómic",
-    "Place and year": "Lugar y año",
-    "Gold title": "Título dorado",
-    "Ink caption": "Tinta sobre papel",
-    "Parchment label": "Pergamino"
+    "Glow": "Halo",
+    "No edge": "Sin borde",
+    "Light on dark": "Claro sobre oscuro",
+    "Dark on light": "Oscuro sobre claro",
+    "Edge colour": "Color del borde"
 }

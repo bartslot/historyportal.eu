@@ -3130,10 +3130,9 @@
     "Label position": "Positie van het label",
     "Morph between years": "Vloeiend tussen jaren",
     "Styles": "Stijlen",
-    "Outline colour": "Kleur omlijning",
-    "Comic title": "Striptitel",
-    "Place and year": "Plaats en jaar",
-    "Gold title": "Gouden titel",
-    "Ink caption": "Inkt op papier",
-    "Parchment label": "Perkament"
+    "Glow": "Gloed",
+    "No edge": "Zonder rand",
+    "Light on dark": "Licht op donker",
+    "Dark on light": "Donker op licht",
+    "Edge colour": "Kleur rand"
 }

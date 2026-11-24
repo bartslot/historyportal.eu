@@ -350,7 +350,7 @@
    * fill itself: there it eats into the letters. No blur anywhere, the drop is hard ink.
    */
   .lp-comic-america {
-    --lp-ca-outline: 0.11em;
+    --lp-ca-outline: var(--lp-ca-outline-w, 0.11em);   /* a text layer's Thickness sets --lp-ca-outline-w */
     position: relative;
     display: inline-block;
     font-family: 'Luckiest Guy', var(--font-history), sans-serif;

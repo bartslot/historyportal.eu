@@ -12,14 +12,14 @@
  * texts: [{ id, text, x, y, w, font, size, list, anchor, lng, lat }]
  *   x/y    — 0-100 percentages of the host (always kept; the screen position).
  *   w      — optional width as a % of the host (from the resize handle); text wraps to it.
- *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps) |
+ *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps) | 'comic' (Comic Relief) |
  *            'comic-america' (ComicAmerica letters, brand-kit.css .lp-comic-america).
  *   size   — 'sm' | 'md' | 'lg' | 'xl'.
  *   list   — 'none' (default) | 'bullet' | 'number': each \n line is one list item.
  *   align  — 'left' (default) | 'center' | 'right' text alignment inside the box.
  *   bg     — 'glass' adds a frosted-glass card behind the text (blurs the scene image).
  *   bgColor/bgOpacity — colour + opacity of that glass card (defaults #0f172a / 0.3).
- *   color/colorOpacity, effect/effectColor, scale, rotation, blur, blend, opacity, grayscale — the text's look
+ *   color/colorOpacity, effect/effectColor/effectWidth, scale, rotation, blur, blend, opacity, grayscale — the text's look
  *            (App\Services\Support\TextLayerStyle). Absent = white, 1x, upright, sharp, normal.
  *   anchor — 'screen' (default) or 'map': pinned to a lng/lat, repositioned on
  *            every map move via the host-provided projector.
@@ -49,6 +49,7 @@ const FONTS = {
   sans:    { label: 'Clean',   stack: "'Inter', ui-sans-serif, sans-serif", weight: 600 },
   history: { label: 'History', stack: "'History', serif",                   weight: 700 },
   cinzel:  { label: 'Classic', stack: "'Cinzel', serif",                    weight: 700 },
+  comic:   { label: 'Comic',   stack: "'Comic Relief', 'Comic Neue', sans-serif", weight: 700 },
   'comic-america': { label: 'ComicAmerica', stack: "'Luckiest Guy', sans-serif", weight: 400 },
 }
 const SIZES = {
@@ -120,11 +121,15 @@ const HEX = /^#[0-9a-f]{6}$/i
  */
 export function edgeOf (item) {
   if (isComicAmerica(item) || item.effect === 'none') return 'none'
-  if (item.effect !== 'outline') return SOFT_SHADOW
+  if (item.effect !== 'outline' && item.effect !== 'glow') return SOFT_SHADOW
   const ink = HEX.test(item.effectColor) ? item.effectColor : '#000000'
-  const d = '0.06em'
-  return [`${d} 0`, `-${d} 0`, `0 ${d}`, `0 -${d}`, `${d} ${d}`, `-${d} ${d}`, `${d} -${d}`, `-${d} -${d}`, '0.03em 0.09em']
-    .map((o) => `${o} 0 ${ink}`).join(', ')
+  const width = num(item.effectWidth) ?? 0.06
+  const em = (k) => `${Math.round(width * k * 1000) / 1000}em`
+  const ring = (d) => [`${d} 0`, `-${d} 0`, `0 ${d}`, `0 -${d}`, `${d} ${d}`, `-${d} ${d}`, `${d} -${d}`, `-${d} -${d}`]
+    .map((o) => `${o} 0 ${ink}`)
+  // A glow is a thin ring in the ink with a soft halo round it: the map labels' lettering ("Southern Song").
+  if (item.effect === 'glow') return [...ring(em(0.5)), `0 0 ${em(3)} ${ink}`, `0 0 ${em(3)} ${ink}`].join(', ')
+  return ring(em(1)).join(', ')
 }
 
 /** A colour `share` of the way from `hex` to `to`, as #rrggbb. */
@@ -142,7 +147,7 @@ const mix = (hex, to, share) => {
  * or goes when the edge is 'none'. Unset leaves the stylesheet's white and black.
  */
 export function comicLook (item, node, strength = num(item.colorOpacity)) {
-  const props = ['--lp-ca-fill', '--lp-ca-shade', '--lp-ca-ink']
+  const props = ['--lp-ca-fill', '--lp-ca-shade', '--lp-ca-ink', '--lp-ca-outline-w']
   for (const p of props) node.style.removeProperty(p)
   if (!isComicAmerica(item)) return
   if (HEX.test(item.color) || strength !== null) {
@@ -151,7 +156,10 @@ export function comicLook (item, node, strength = num(item.colorOpacity)) {
     node.style.setProperty('--lp-ca-shade', hexToRgba(mix(fill, '#2f3a4a', 0.38), strength ?? 1))
   }
   if (item.effect === 'none') node.style.setProperty('--lp-ca-ink', 'transparent')
-  else if (item.effect === 'outline' && HEX.test(item.effectColor)) node.style.setProperty('--lp-ca-ink', item.effectColor)
+  else if ((item.effect === 'outline' || item.effect === 'glow') && HEX.test(item.effectColor)) node.style.setProperty('--lp-ca-ink', item.effectColor)
+  // Its outline is a stroke, drawn about twice as wide as the ring the other fonts get for the same thickness.
+  const width = num(item.effectWidth)
+  if (width !== null && item.effect !== 'none') node.style.setProperty('--lp-ca-outline-w', `${Math.round(width * 1.8 * 1000) / 1000}em`)
 }
 
 const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? item.align : 'left'

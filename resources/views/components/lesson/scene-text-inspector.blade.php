@@ -76,32 +76,34 @@
 
     <div x-show="tab === 'format'" class="-mx-4 -mb-4 text-sm">
 
-        {{-- Ready-made looks (App\Support\TextStylePresets): one click sets font, size, colour, edge and card.
-             Each tile is its own name drawn in that look, on a scrap of a History Lines painting (or on
-             paper, for the ink styles), so the tile is the label. Every field stays editable below. --}}
+        {{-- Text styles (App\Support\TextStylePresets): how the letters look (colour, edge, box), not which font.
+             Bart 2026-11-24: "lettertype is the font type, the text style is how it looks". Each tile draws the
+             word "Text" in this layer's own font and that look, on a scrap of a History Lines painting. 2 x 3. --}}
         @php
             $currentStyle = \App\Support\TextStylePresets::current($text);
             $sceneThumb = asset('images/editor/text-style-scene.webp');
-            $paperBg = "background: #efe6d2 url('".asset('images/paper/paper.svg')."') 0 0 / 256px 256px";
+            $sample = __('Text');
         @endphp
         <x-ui.settings-section :title="__('Styles')" name="text-styles">
-            <div class="grid grid-cols-2 gap-1.5" role="group" aria-label="{{ __('Styles') }}" data-text-styles>
+            <div class="grid grid-cols-3 gap-x-1.5 gap-y-2" role="group" aria-label="{{ __('Styles') }}" data-text-styles>
                 @foreach (\App\Support\TextStylePresets::labels() as $styleId => $styleLabel)
-                    @php($look = \App\Support\TextStylePresets::preview($styleId))
+                    @php($look = \App\Support\TextStylePresets::preview($styleId, (string) $val('font', 'sans')))
                     <button type="button" data-text-style="{{ $styleId }}"
                             wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
-                            aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}"
-                            aria-label="{{ $styleLabel }}" data-tooltip="{{ $styleLabel }}"
-                            class="relative grid h-11 min-w-0 place-items-center overflow-hidden rounded-md px-1.5 ring-inset transition
-                                   {{ $currentStyle === $styleId ? 'ring-2 ring-base-content' : 'ring-1 ring-panel-hairline hover:ring-base-content/40' }}"
-                            style="{{ $look['paper'] ? $paperBg : "background: url('{$sceneThumb}') center / cover" }}">
-                        <span class="block max-w-full truncate leading-tight" style="{{ $look['card'] }}">
-                            @if ($look['comic'])
-                                <span class="lp-comic-america text-base" data-t="{{ $styleLabel }}" style="{{ $look['text'] }}"><span>{{ $styleLabel }}</span></span>
-                            @else
-                                <span class="text-sm" style="{{ $look['text'] }}">{{ $styleLabel }}</span>
-                            @endif
+                            aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}" aria-label="{{ $styleLabel }}"
+                            class="group flex min-w-0 flex-col items-stretch gap-1">
+                        <span class="relative grid h-12 place-items-center overflow-hidden rounded-md px-1 ring-inset transition
+                                     {{ $currentStyle === $styleId ? 'ring-2 ring-base-content' : 'ring-1 ring-panel-hairline group-hover:ring-base-content/40' }}"
+                              style="background: url('{{ $sceneThumb }}') center / cover">
+                            <span class="block max-w-full truncate leading-tight" style="{{ $look['card'] }}">
+                                @if ($look['comic'])
+                                    <span class="lp-comic-america text-base" data-t="{{ $sample }}" style="{{ $look['text'] }}"><span>{{ $sample }}</span></span>
+                                @else
+                                    <span class="text-base" style="{{ $look['text'] }}">{{ $sample }}</span>
+                                @endif
+                            </span>
                         </span>
+                        <span class="truncate text-xs {{ $currentStyle === $styleId ? 'text-panel-value' : 'text-panel-label' }}">{{ $styleLabel }}</span>
                     </button>
                 @endforeach
             </div>
@@ -114,7 +116,7 @@
                     <div class="min-w-0 flex-1">
                         <select wire:change="{{ $save('font') }}" aria-label="{{ __('Font type') }}"
                                 style="height: var(--settings-panel-row-h, 2rem)" class="select select-xs w-full text-2xs">
-                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display'), 'comic-america' => __('ComicAmerica')] as $fv => $fl)
+                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display'), 'comic' => __('Comic'), 'comic-america' => __('ComicAmerica')] as $fv => $fl)
                                 <option value="{{ $fv }}" @selected($val('font', 'sans') === $fv)>{{ $fl }}</option>
                             @endforeach
                         </select>
@@ -158,17 +160,21 @@
                     :on-opacity-change="$save('colorOpacity', '$event.target.value / 100')"
                     :keyframe-target="$target" color-property="color" opacity-property="colorOpacity" />
 
-                {{-- What edges the letters: the soft shadow (default), a hard outline, or nothing for ink on paper. --}}
+                {{-- What edges the letters: the soft shadow (default), a hard outline, a soft glow, or nothing.
+                     Bart 2026-11-24: "Every text now has a outline. this needs a setting too." --}}
                 <span class="block pt-1 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Edge') }}</span>
-                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !text-xs !font-semibold uppercase tracking-wide" :value="$val('effect', 'shadow')"
-                                :options="[['shadow', __('Shadow')], ['outline', __('Outline')], ['none', __('None')]]"
+                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !px-1 !text-xs !font-semibold" :value="$val('effect', 'shadow')"
+                                :options="[['shadow', __('Shadow')], ['outline', __('Outline')], ['glow', __('Glow')], ['none', __('None')]]"
                                 on-change="$wire.call('updateSceneText', {{ $tid }}, 'effect', $event.target.value)" />
-                @if ($val('effect', 'shadow') === 'outline')
+                @if (in_array($val('effect', 'shadow'), ['outline', 'glow'], true))
                     <x-ui.color-field
                         :color="$val('effectColor', '#000000')" :with-opacity="false"
-                        :color-label="__('Outline colour')"
+                        :color-label="__('Edge colour')"
                         :on-color-input="$live('effectColor', '$event.target.value')"
                         :on-color-change="$save('effectColor')" />
+                    <x-ui.slider-row :label="__('Thickness')" :min="0.02" :max="0.2" :step="0.01"
+                                     :display-scale="100" :value="$val('effectWidth', 0.06)" :display="$num(((float) $val('effectWidth', 0.06)) * 100, 0)" :default="0.06"
+                                     :on-input="$live('effectWidth')" :on-change="$save('effectWidth')" />
                 @endif
 
                 <div class="divider my-0" role="presentation"></div>

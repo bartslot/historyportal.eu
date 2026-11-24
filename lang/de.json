@@ -3063,10 +3063,9 @@
     "Label position": "Position des Labels",
     "Morph between years": "Zwischen Jahren überblenden",
     "Styles": "Stile",
-    "Outline colour": "Farbe des Umrisses",
-    "Comic title": "Comic-Titel",
-    "Place and year": "Ort und Jahr",
-    "Gold title": "Goldener Titel",
-    "Ink caption": "Tinte auf Papier",
-    "Parchment label": "Pergament"
+    "Glow": "Schein",
+    "No edge": "Ohne Rand",
+    "Light on dark": "Hell auf dunkel",
+    "Dark on light": "Dunkel auf hell",
+    "Edge colour": "Farbe des Rands"
 }

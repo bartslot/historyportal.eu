@@ -3063,10 +3063,9 @@
     "Label position": "Posizione dell'etichetta",
     "Morph between years": "Trasforma tra gli anni",
     "Styles": "Stili",
-    "Outline colour": "Colore del contorno",
-    "Comic title": "Titolo fumetto",
-    "Place and year": "Luogo e anno",
-    "Gold title": "Titolo dorato",
-    "Ink caption": "Inchiostro su carta",
-    "Parchment label": "Pergamena"
+    "Glow": "Alone",
+    "No edge": "Senza bordo",
+    "Light on dark": "Chiaro su scuro",
+    "Dark on light": "Scuro su chiaro",
+    "Edge colour": "Colore del bordo"
 }

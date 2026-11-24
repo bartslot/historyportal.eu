@@ -17,8 +17,8 @@ final class TextLayerStyle
 {
     public const BLENDS = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'];
 
-    /** What edges the letters: the soft dark shadow (the default), a hard outline in effectColor, or nothing. */
-    public const EFFECTS = ['shadow', 'outline', 'none'];
+    /** What edges the letters: the soft dark shadow (the default), a hard outline or a soft glow in effectColor, or nothing. */
+    public const EFFECTS = ['shadow', 'outline', 'glow', 'none'];
 
     /** @var array<string, array{0: float, 1: float}> */
     public const RANGES = [
@@ -27,9 +27,11 @@ final class TextLayerStyle
         'rotation' => [-180.0, 180.0],
         'blur' => [0.0, 2.5],
         'opacity' => [0.05, 1.0],
+        // The outline / glow thickness, in em of the text's own size.
+        'effectWidth' => [0.02, 0.2],
     ];
 
-    public const FIELDS = ['color', 'colorOpacity', 'scale', 'rotation', 'blur', 'blend', 'opacity', 'grayscale', 'effect', 'effectColor'];
+    public const FIELDS = ['color', 'colorOpacity', 'scale', 'rotation', 'blur', 'blend', 'opacity', 'grayscale', 'effect', 'effectColor', 'effectWidth'];
 
     /** A field's clean value, or null when the input is not one (the caller keeps what it had). */
     public static function value(string $field, mixed $value): string|float|bool|null

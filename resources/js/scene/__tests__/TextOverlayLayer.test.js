@@ -30,7 +30,7 @@ describe('TextOverlayLayer (readonly / player)', () => {
   it('falls back to the default font for unknown keys', () => {
     const el = host()
     const layer = new TextOverlayLayer(el)
-    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, font: 'comic', size: 'gigantic' }])
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, font: 'wingdings', size: 'gigantic' }])
 
     const node = el.querySelector('[data-text-id="a"]')
     expect(node.style.fontFamily).toContain('Inter')
@@ -186,6 +186,16 @@ describe('a text layer\'s look', () => {
     const outlined = nodeFor({ effect: 'outline', effectColor: '#3b2412' }).style.textShadow
     expect(outlined).toContain('#3b2412')
     expect(outlined).not.toContain('12px')
+    expect(nodeFor({ effect: 'outline', effectWidth: 0.12 }).style.textShadow).toContain('0.12em')
+    expect(nodeFor({ effect: 'glow', effectColor: '#fdf6e3' }).style.textShadow).toContain('0 0 0.18em')
+  })
+
+  it('draws the comic lettering in Comic Relief', () => {
+    expect(nodeFor({ font: 'comic' }).style.fontFamily).toContain('Comic Relief')
+  })
+
+  it('thickens the ComicAmerica stroke with the edge thickness', () => {
+    expect(nodeFor({ font: 'comic-america', effect: 'outline', effectWidth: 0.1 }).style.getPropertyValue('--lp-ca-outline-w')).toBe('0.18em')
   })
 
   // Bart 2026-11-22: "color doesn't work anymore". ComicAmerica letters are a gradient clipped to the

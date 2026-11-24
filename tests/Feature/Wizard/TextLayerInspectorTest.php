@@ -139,59 +139,73 @@ class TextLayerInspectorTest extends TestCase
             ->assertDontSee(__('Edit content directly on the canvas. Adjust its appearance here.'));
     }
 
-    // Bart 2026-11-22: "it would be nice to get a bunch of presets". One click writes the whole look.
-    public function test_a_style_preset_writes_the_whole_look_and_keeps_the_rest(): void
+    // Bart 2026-11-22: "it would be nice to get a bunch of presets". 2026-11-24: a style is the look (colour,
+    // edge, box), never the font: "lettertype is the font type, the text style is how it looks".
+    public function test_a_style_writes_the_look_and_keeps_the_font_and_the_rest(): void
     {
         $wizard = $this->wizard()
             ->call('updateSceneText', 'txt_a', 'x', 12)
-            ->call('applyTextStyle', 'txt_a', 'comic-title');
+            ->call('updateSceneText', 'txt_a', 'font', 'cinzel')
+            ->call('applyTextStyle', 'txt_a', 'light-on-dark');
 
         $t = $this->text();
-        $this->assertSame('comic-america', $t['font']);
+        $this->assertSame('cinzel', $t['font']);
         $this->assertSame('#ffffff', $t['color']);
-        $this->assertSame('outline', $t['effect']);
-        $this->assertSame('#000000', $t['effectColor']);
+        $this->assertSame('glass', $t['bg']);
+        $this->assertSame('#000000', $t['bgColor']);
         $this->assertSame('Batavia, 1642', $t['text']);
         $this->assertEquals(12.0, $t['x']);
 
-        // The next preset replaces the look: no comic outline left behind.
-        $wizard->call('applyTextStyle', 'txt_a', 'ink-caption');
+        // The next style replaces the look: no box left behind.
+        $wizard->call('applyTextStyle', 'txt_a', 'outline');
         $t = $this->text();
-        $this->assertSame('history', $t['font']);
-        $this->assertSame('none', $t['effect']);
-        $this->assertArrayNotHasKey('effectColor', $t);
-        $this->assertSame('ink-caption', \App\Support\TextStylePresets::current($t));
+        $this->assertSame('cinzel', $t['font']);
+        $this->assertSame('none', $t['bg']);
+        $this->assertSame('outline', $t['effect']);
+        $this->assertSame('outline', \App\Support\TextStylePresets::current($t));
     }
 
-    public function test_an_unknown_preset_or_a_backing_panel_is_left_alone(): void
+    public function test_the_comic_style_brings_the_comic_lettering(): void
+    {
+        $this->wizard()->call('applyTextStyle', 'txt_a', 'comic');
+
+        $t = $this->text();
+        $this->assertSame('comic', $t['font']);
+        $this->assertSame('glow', $t['effect']);
+        $this->assertSame('comic', \App\Support\TextStylePresets::current($t));
+    }
+
+    public function test_an_unknown_style_or_a_backing_panel_is_left_alone(): void
     {
         $before = $this->scene->fresh()->config;
         $this->wizard()
             ->call('applyTextStyle', 'txt_a', 'bounce')
-            ->call('applyTextStyle', 'rect_a', 'comic-title');
+            ->call('applyTextStyle', 'rect_a', 'outline');
 
         $this->assertEquals($before, $this->scene->fresh()->config);
     }
 
-    public function test_the_edge_and_its_colour_are_kept_through_a_canvas_save(): void
+    public function test_the_edge_its_colour_and_thickness_are_kept_through_a_canvas_save(): void
     {
         $wizard = $this->wizard()
-            ->call('updateSceneText', 'txt_a', 'effect', 'outline')
+            ->call('updateSceneText', 'txt_a', 'effect', 'glow')
             ->call('updateSceneText', 'txt_a', 'effectColor', '#3B2412')
-            ->call('updateSceneText', 'txt_a', 'effect', 'glow');   // not an edge: ignored
+            ->call('updateSceneText', 'txt_a', 'effectWidth', 0.9)   // clamped
+            ->call('updateSceneText', 'txt_a', 'effect', 'sparkle');   // not an edge: ignored
 
         $wizard->dispatch('sceneTextsChanged', sceneId: $this->scene->id, texts: [array_merge($this->text(), ['x' => 50]), $this->text('rect_a')]);
 
         $t = $this->text();
-        $this->assertSame('outline', $t['effect']);
+        $this->assertSame('glow', $t['effect']);
         $this->assertSame('#3b2412', $t['effectColor']);
+        $this->assertEquals(0.2, $t['effectWidth']);
     }
 
-    public function test_the_styles_strip_marks_the_look_in_use(): void
+    public function test_the_styles_grid_marks_the_look_in_use(): void
     {
-        $this->wizard()->call('applyTextStyle', 'txt_a', 'gold-title')->set('activeTextId', 'txt_a')
+        $this->wizard()->call('applyTextStyle', 'txt_a', 'dark-on-light')->set('activeTextId', 'txt_a')
             ->assertSee(__('Styles'))
-            ->assertSeeHtml('data-text-style="gold-title"')
-            ->assertSeeHtml('data-text-style="comic-title"');
+            ->assertSeeHtml('data-text-style="dark-on-light" wire:click')
+            ->assertSeeHtml('data-text-style="comic"');
     }
 }

@@ -125,7 +125,7 @@ class Step3SceneConfigurator extends Component
     public const BRAND_BACKGROUND = '#0f172a';
 
     /** A stage text's fonts (resources/js/scene/TextOverlayLayer.js FONTS); anything else falls back. */
-    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic-america'];
+    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic', 'comic-america'];
 
     /** A teacher's time estimate for a scene the student paces: ten seconds to an hour. */
     private const ESTIMATE_MIN_SECONDS = 10;

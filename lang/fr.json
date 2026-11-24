@@ -3063,10 +3063,9 @@
     "Label position": "Position de l'étiquette",
     "Morph between years": "Transformer entre les années",
     "Styles": "Styles",
-    "Outline colour": "Couleur du contour",
-    "Comic title": "Titre BD",
-    "Place and year": "Lieu et année",
-    "Gold title": "Titre doré",
-    "Ink caption": "Encre sur papier",
-    "Parchment label": "Parchemin"
+    "Glow": "Halo",
+    "No edge": "Sans bord",
+    "Light on dark": "Clair sur sombre",
+    "Dark on light": "Sombre sur clair",
+    "Edge colour": "Couleur du bord"
 }
