@@ -16,7 +16,7 @@
     <template x-ref="map">
 <div x-data="storyMap()" x-init="show()"
      x-on:story-map-open.window="show()"
-     x-on:keydown.window="keydown($event)">
+     x-on:keydown.window.capture="keydown($event)">
     <div x-show="open" x-cloak
          class="fixed inset-0 z-[200] flex flex-col bg-card-surface"
          role="dialog" aria-modal="true" aria-label="{{ __('Story map') }}">

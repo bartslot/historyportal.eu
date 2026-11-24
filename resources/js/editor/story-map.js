@@ -316,6 +316,7 @@ export function storyMap () {
     wiring: null,            // { from, path, over }
     undoStack: [],
     _drag: null,
+    _ok: true,               // the last Livewire call went through
     _shown: false,           // the layout on screen came from this opening (and is newer than the saved one)
     SIZE,
 
@@ -371,9 +372,11 @@ export function storyMap () {
         // Plain copies: Alpine's proxies are not data a request can carry.
         const out = await this.$wire.call(method, ...args.map((a) => (a && typeof a === 'object' ? JSON.parse(JSON.stringify(a)) : a)))
         this.failed = false
+        this._ok = true
         return out
       } catch (e) {
         this.failed = true
+        this._ok = false
         return null
       } finally {
         this.busy--
@@ -383,8 +386,11 @@ export function storyMap () {
     /** A change to the story, then the map read again; `undo` puts it back. */
     async change (method, args, undo = null) {
       await this.call(method, ...args)
-      if (undo) this.undoStack.push(undo)
+      const ok = this._ok
+      // Only a change that was saved can be undone; a failed one keeps "Not saved" up after the map is read again.
+      if (ok && undo) this.undoStack.push(undo)
       await this.reload()
+      if (!ok) this.failed = true
     },
 
     async undo () {
@@ -396,8 +402,13 @@ export function storyMap () {
         await this.call('saveStoryMapLayout', step.layout)
         return
       }
-      await this.call(step.method, ...step.args)
+      for (const [method, args] of step.calls ?? [[step.method, step.args]]) {
+        await this.call(method, ...args)
+        if (!this._ok) break
+      }
+      const ok = this._ok
       await this.reload()
+      if (!ok) this.failed = true
     },
 
     // ── What the template draws ─────────────────────────────────────────────────────────────────
@@ -570,8 +581,13 @@ export function storyMap () {
       this.fit()
     },
 
+    /**
+     * Keys while the map is open. Bound on the window in the capture phase, so it runs before the scene editor's own
+     * shortcuts (its undo, Delete) and keeps every key away from them: the scene behind the map is not being edited.
+     */
     keydown (ev) {
       if (!this.open || window.__isTypingTarget?.(ev.target)) return
+      ev.stopPropagation()
       if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.selected ? (this.selected = null) : this.close() }
       else if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); ev.stopPropagation(); this.undo() }
       else if (ev.key === 'Enter' && this.selected) { ev.preventDefault(); this.openScene(this.selected.id) }
@@ -580,7 +596,9 @@ export function storyMap () {
     // ── The inspector ──────────────────────────────────────────────────────────────────────────
 
     async addChoices (id) {
-      await this.change('addChoicesToScene', [id], { method: 'removeSceneChoices', args: [id] })
+      // Undo puts back where the scene went before: the next scene, a straight jump or the end.
+      const was = nextOf(this.byId.get(id))
+      await this.change('addChoicesToScene', [id], { calls: [['removeSceneChoices', [id]], ['setSceneNext', [id, was]]] })
       if (hasButtons(this.byId.get(id))) this.selected = { type: 'choice', id }
     },
 

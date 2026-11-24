@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
-  SIZE, hasButtons, mapEdges, nextOf, autoLayout, placeAll, edgePath, edgeEnds, mapBounds, openingView, zoomViewAt, choiceHeight,
+  SIZE, hasButtons, mapEdges, nextOf, autoLayout, placeAll, edgePath, edgeEnds, mapBounds, openingView, zoomViewAt, choiceHeight, storyMap,
 } from '../story-map.js'
 
 const scene = (id, number, extra = {}) => ({ id, number, name: `S${id}`, kind: 'narration', image: null, ending: false, links: [], prompt: '', canChoose: true, ...extra })
@@ -142,5 +142,43 @@ describe('story map: drawing', () => {
 
   it('a choice card is as tall as its rows', () => {
     expect(choiceHeight(story()[1])).toBe(SIZE.choiceHead + 2 * SIZE.rowH + SIZE.choicePad)
+  })
+})
+
+describe('story map: saving and undo', () => {
+  const make = (wire) => {
+    const m = storyMap()
+    m.$wire = wire
+    m.$nextTick = () => {}
+    m.open = true
+    return m
+  }
+  const payload = (scenes) => ({ scenes, layout: { scenes: {}, choices: {} } })
+
+  it('a change that failed stays "Not saved" and cannot be undone', async () => {
+    const wire = { call: vi.fn(async (method) => { if (method === 'setSceneNext') throw new Error('500'); return payload(story()) }) }
+    const m = make(wire)
+    await m.reload()
+    await m.setNext(1, 'end')
+    expect(m.saveState).toBe('failed')
+    expect(m.undoStack).toHaveLength(0)
+  })
+
+  it('undoing Add choices puts back the jump the scene had', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return payload([scene(1, 1, { links: [{ label: '', to: 3 }] }), scene(2, 2), scene(3, 3)]) }) }
+    const m = make(wire)
+    await m.reload()
+    await m.addChoices(1)
+    calls.length = 0
+    await m.undo()
+    expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['removeSceneChoices', 1], ['setSceneNext', 1, 3]])
+  })
+
+  it('keeps the scene editor away from keys while the map is open', () => {
+    const m = make({ call: vi.fn() })
+    const ev = { key: 'Delete', target: document.body, stopPropagation: vi.fn(), preventDefault: vi.fn() }
+    m.keydown(ev)
+    expect(ev.stopPropagation).toHaveBeenCalled()
   })
 })
