@@ -1842,8 +1842,9 @@
             optionOf(id) { return this.ground?.options.find((o) => o.id === id) ?? null; },
             // the terrain's plants (Bart 11-24): which grow (on/off per plant, all as the teacher chose them) and a new throw
             async setStrew(patch) { await window.__stage25d?.setStrew?.(patch); window.__stage25d?.select?.('terrain'); this.sync(); },
-            togglePlant(key) { const on = this.strew.plants.filter((p) => p.on).map((p) => p.key); this.setStrew({ plants: on.includes(key) ? on.filter((k) => k !== key) : [...on, key] }); },
-            shufflePlants() { this.setStrew({ seed: (this.strew.seed % 999999) + 1 }); },
+            // the tile and the seed change here at once, so a second click before the rebuild is done builds on the first
+            togglePlant(key) { this.strew = { ...this.strew, own: true, plants: this.strew.plants.map((p) => (p.key === key ? { ...p, on: !p.on } : p)) }; this.setStrew({ plants: this.strew.plants.filter((p) => p.on).map((p) => p.key) }); },
+            shufflePlants() { this.strew = { ...this.strew, seed: (this.strew.seed % 999999) + 1 }; this.setStrew({ seed: this.strew.seed }); },
             plantCell(p) { const [u, v, du, dv] = p.cell; const x = du < 1 ? (u / (1 - du)) * 100 : 0, y = dv < 1 ? (v / (1 - dv)) * 100 : 0; return `background-image: url('${p.url}'); background-size: ${100 / du}% ${100 / dv}%; background-position: ${x}% ${y}%; background-repeat: no-repeat`; },
             /** A tile is the one the Assets tab replaces: picked, the tab opens on terrain pictures. */
             pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); },

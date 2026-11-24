@@ -1222,6 +1222,7 @@ export async function createStage25d (host, opts = {}) {
     /** The teacher's plants (keys; null: the ground's own again) and a new throw (seed): rebuilt on stage, saved (onStrew). */
     async setStrew ({ plants, seed } = {}) {
       if (!cfg) return
+      const sceneId = api.sceneId   // the scene it was chosen on: another may be open by the time the rebuild is done
       const was = cfg.set?.strew ?? {}
       const next = { ...was }
       if (plants !== undefined) { if (plants === null) delete next.plants; else next.plants = [...new Set(plants.map(String))].slice(0, STREW_PLANTS_MAX) }
@@ -1233,7 +1234,7 @@ export async function createStage25d (host, opts = {}) {
       await api.show({ ...cfg, look: lookNow, set: strew ? { ...rest, strew } : rest })
       hidden = keep
       redraw()
-      if (api.sceneId != null) opts.onStrew?.(strew, api.sceneId)
+      if (sceneId != null) opts.onStrew?.(strew, sceneId)
       window.dispatchEvent(new CustomEvent('stage25d-synced'))
     },
     /** The Horizon choice: what stands on an empty horizon (far-edge.ts). value '' = automatic, 'none', or a piece. */
