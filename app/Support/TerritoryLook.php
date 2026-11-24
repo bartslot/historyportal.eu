@@ -15,9 +15,13 @@ final class TerritoryLook
 {
     public const FILL_STYLES = ['none', 'etched', 'wash'];
 
+    /** Bart, 2026-11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". */
+    public const BORDER_STYLES = ['ink', 'solid', 'dashed', 'wavy'];
+
     public const DEFAULTS = [
         'border_color' => '#1b1712',
         'border_width' => 1.6,
+        'border_style' => 'ink',
         'fill_style' => 'etched',
         'fill_color' => '#1b1712',
         'fill_strength' => 0.3,
@@ -48,6 +52,7 @@ final class TerritoryLook
             'border_width' => is_numeric($value) ? max(0.0, min(12.0, round((float) $value, 2))) : null,
             'fill_strength' => is_numeric($value) ? max(0.0, min(1.0, round((float) $value, 2))) : null,
             'fill_style' => in_array($value, self::FILL_STYLES, true) ? $value : null,
+            'border_style' => in_array($value, self::BORDER_STYLES, true) ? $value : null,
             default => null,
         };
     }

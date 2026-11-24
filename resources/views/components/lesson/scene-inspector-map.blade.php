@@ -142,10 +142,21 @@
                            wire:change="setTerritoryLook('border_color', $event.target.value)"
                            class="{{ $swatch }}" data-tooltip="{{ __('Border colour') }}" aria-label="{{ __('Border colour') }}" />
                     <span class="range-panel-knob min-w-0 flex-1">
-                        <input type="range" min="0" max="6" step="0.2" value="{{ $look['border_width'] }}"
+                        <input type="range" min="0" max="12" step="0.2" value="{{ $look['border_width'] }}"
                                wire:change="setTerritoryLook('border_width', $event.target.value)"
                                class="range range-panel" data-tooltip="{{ __('Border width') }}" aria-label="{{ __('Border width') }}" />
                     </span>
+                </div>
+                {{-- Bart 11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". --}}
+                <div class="flex items-center gap-2">
+                    <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Style') }}</span>
+                    <select wire:change="setTerritoryLook('border_style', $event.target.value)"
+                            class="select select-xs select-bordered bg-slate-900 min-w-0 flex-1" aria-label="{{ __('Border style') }}">
+                        <option value="ink" @selected($look['border_style'] === 'ink')>{{ __('Ink') }}</option>
+                        <option value="solid" @selected($look['border_style'] === 'solid')>{{ __('Solid') }}</option>
+                        <option value="dashed" @selected($look['border_style'] === 'dashed')>{{ __('Dashed') }}</option>
+                        <option value="wavy" @selected($look['border_style'] === 'wavy')>{{ __('Wavy') }}</option>
+                    </select>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="w-12 shrink-0 text-2xs text-panel-hint">{{ __('Area') }}</span>

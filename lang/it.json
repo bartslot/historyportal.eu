@@ -3044,5 +3044,8 @@
     "its border at the chosen year": "il suo confine nell'anno scelto",
     "Clickable on the map": "Cliccabile sulla mappa",
     "The class can open this stop.": "La classe può aprire questa tappa.",
-    "The class sees the name only.": "La classe vede solo il nome."
+    "The class sees the name only.": "La classe vede solo il nome.",
+    "Dashed": "Tratteggiato",
+    "Wavy": "Ondulato",
+    "Border style": "Stile del confine"
 }

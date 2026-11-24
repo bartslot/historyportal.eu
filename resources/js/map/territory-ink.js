@@ -129,6 +129,75 @@ const hatchTile = (color, ratio) => {
   return c
 }
 
+/**
+ * Join the border's runs end to end into chains. Each tile inks only its own stretch, so a border
+ * that crosses three tiles is three runs; a dash pattern or a wave started over at every seam, which
+ * showed as a kink where two tiles meet. Points are matched on the ground (lng/lat), not the screen.
+ * A closed chain starts at its westernmost point, so its pattern holds still while the map pans.
+ *
+ * @param {Array<Array<[number, number, number, number]>>} runs  [x, y, lng, lat] points
+ */
+export const joinRuns = (runs) => {
+  const key = (q) => `${q[2].toFixed(6)},${q[3].toFixed(6)}`
+  const left = runs.filter((r) => r.length >= 2).map((r) => r.slice())
+  const byStart = new Map()
+  left.forEach((r, i) => { const k = key(r[0]); if (!byStart.has(k)) byStart.set(k, i) })
+  const used = new Set()
+  const hasPredecessor = new Set()
+  left.forEach((r, i) => { const j = byStart.get(key(r[r.length - 1])); if (j !== undefined && j !== i) hasPredecessor.add(j) })
+  const chains = []
+  const follow = (i) => {
+    const chain = left[i].slice(); used.add(i)
+    for (;;) {
+      const j = byStart.get(key(chain[chain.length - 1]))
+      if (j === undefined || used.has(j)) break
+      used.add(j); chain.push(...left[j].slice(1))
+    }
+    return chain
+  }
+  // Open chains first, from their real beginnings; whatever is left is a closed loop.
+  left.forEach((_, i) => { if (!used.has(i) && !hasPredecessor.has(i)) chains.push(follow(i)) })
+  left.forEach((_, i) => {
+    if (used.has(i)) return
+    const loop = follow(i)
+    const closed = loop.length > 2 && key(loop[0]) === key(loop[loop.length - 1])
+    if (!closed) { chains.push(loop); return }
+    const body = loop.slice(0, -1)
+    let w = 0
+    body.forEach((q, k) => { if (q[2] < body[w][2] || (q[2] === body[w][2] && q[3] < body[w][3])) w = k })
+    const turned = body.slice(w).concat(body.slice(0, w))
+    turned.push(turned[0])
+    chains.push(turned)
+  })
+  return chains
+}
+
+/**
+ * A chain as a wavy line: resampled every `step` px and pushed off along its normal by a sine of the
+ * distance travelled. Screen points [x, y] in, screen points out.
+ */
+export const waveLine = (pts, { amp, wavelength, step }) => {
+  if (pts.length < 2) return pts.slice()
+  const even = [pts[0]]
+  let carry = 0
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1]; const [bx, by] = pts[i]
+    const len = Math.hypot(bx - ax, by - ay)
+    let t = step - carry
+    while (t <= len) { even.push([ax + ((bx - ax) * t) / len, ay + ((by - ay) * t) / len]); t += step }
+    carry = len - (t - step)
+  }
+  even.push(pts[pts.length - 1])
+  const out = []
+  for (let i = 0; i < even.length; i++) {
+    const a = even[Math.max(0, i - 2)]; const b = even[Math.min(even.length - 1, i + 2)]
+    const tx = b[0] - a[0]; const ty = b[1] - a[1]; const tl = Math.hypot(tx, ty) || 1
+    const off = amp * Math.sin((2 * Math.PI * i * step) / wavelength)
+    out.push([even[i][0] - (ty / tl) * off, even[i][1] + (tx / tl) * off])
+  }
+  return out
+}
+
 /** The layer the ink goes under: the voyage route, else the first name or dot on the map. */
 export const inkBeforeId = (layers) => {
   const list = layers || []
@@ -299,32 +368,59 @@ export function createTerritoryInk (map, source) {
       drewSomething = true
     }
 
-    // ── The border: short pieces, each its own weight, on a line that wanders a hair.
-    // Each pass is drawn OPAQUE on its own layer and laid down once at its alpha: the pieces overlap at
-    // every joint, and at partial alpha each overlap showed as a darker bead that crawled along the line.
+    // ── The border, in the style the teacher picked (Bart 11-24: "solid, ink, dashed, wavy").
+    // Each is drawn OPAQUE on its own layer and laid down once at its alpha: pieces overlap at every
+    // joint, and at partial alpha each overlap showed as a darker bead that crawled along the line.
     if (look.border_width > 0 && anim.border > 0) {
       const ictx = inkLayer.getContext('2d')
       const base = look.border_width * ratio
-      for (const pass of [0, 1]) {
+      const begin = () => {
         ictx.setTransform(1, 0, 0, 1, 0, 0)
         ictx.clearRect(0, 0, inkLayer.width, inkLayer.height)
+        ictx.setLineDash([])
         ictx.strokeStyle = look.border_color
         ictx.lineCap = 'round'; ictx.lineJoin = 'round'
-        for (const run of edges) {
-          let prev = null
-          for (const q of run) {
-            const p = jitter(q, pass ? 41 : 0)
-            if (prev) {
-              const press = 0.65 + 0.7 * noise2(q[2] * freq * 2 + 9, q[3] * freq * 2)
-              ictx.lineWidth = Math.max(0.5 * ratio, base * press * (pass ? 0.55 : 1))
-              ictx.beginPath(); ictx.moveTo(prev[0], prev[1]); ictx.lineTo(p[0], p[1]); ictx.stroke()
+      }
+      const lay = (alpha) => { ctx.globalAlpha = alpha * anim.border; ctx.drawImage(inkLayer, 0, 0) }
+      const style = look.border_style || 'ink'
+
+      if (style === 'ink') {
+        // Short pieces, each its own weight, on a line that wanders a hair.
+        for (const pass of [0, 1]) {
+          begin()
+          for (const run of edges) {
+            let prev = null
+            for (const q of run) {
+              const p = jitter(q, pass ? 41 : 0)
+              if (prev) {
+                const press = 0.65 + 0.7 * noise2(q[2] * freq * 2 + 9, q[3] * freq * 2)
+                ictx.lineWidth = Math.max(0.5 * ratio, base * press * (pass ? 0.55 : 1))
+                ictx.beginPath(); ictx.moveTo(prev[0], prev[1]); ictx.lineTo(p[0], p[1]); ictx.stroke()
+              }
+              prev = p
             }
-            prev = p
           }
+          // The second pass is a lighter, thinner retrace a touch off the first: the double line of a nib.
+          lay(pass ? 0.35 : 0.95)
         }
-        // The second pass is a lighter, thinner retrace a touch off the first: the double line of a nib.
-        ctx.globalAlpha = (pass ? 0.35 : 0.95) * anim.border
-        ctx.drawImage(inkLayer, 0, 0)
+      } else {
+        // One even line along whole chains, so a dash or a wave runs on across the tile seams.
+        const chains = joinRuns(edges)
+        begin()
+        ictx.lineWidth = Math.max(0.5 * ratio, base)
+        if (style === 'dashed') {
+          // Round caps grow each dash by the line's width, so the gap allows for it.
+          ictx.setLineDash([Math.max(3, look.border_width * 2.5) * ratio, (Math.max(4, look.border_width * 2.2) + look.border_width) * ratio])
+        }
+        ictx.beginPath()
+        for (const chain of chains) {
+          const pts = style === 'wavy'
+            ? waveLine(chain, { amp: Math.max(1.6, look.border_width * 1.1) * ratio, wavelength: Math.max(12, look.border_width * 7) * ratio, step: 1.5 * ratio })
+            : chain
+          pts.forEach((q, i) => { if (i) ictx.lineTo(q[0], q[1]); else ictx.moveTo(q[0], q[1]) })
+        }
+        ictx.stroke()
+        lay(0.95)
       }
       ctx.globalAlpha = 1
       drewSomething = true

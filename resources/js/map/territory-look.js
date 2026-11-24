@@ -12,11 +12,14 @@
  */
 
 export const FILL_STYLES = ['none', 'etched', 'wash']
+/** Bart, 2026-11-24: "border has a couple of settings. it should be solid, ink, dashed, wavy". */
+export const BORDER_STYLES = ['ink', 'solid', 'dashed', 'wavy']
 
 /** The ink of the History Lines drawings: near-black, a touch warm. */
 export const TERRITORY_DEFAULTS = Object.freeze({
   border_color: '#1b1712',
   border_width: 1.6,
+  border_style: 'ink',
   fill_style: 'etched',
   fill_color: '#1b1712',
   fill_strength: 0.3,
@@ -35,6 +38,7 @@ export const territoryLook = (stored = {}) => {
   return {
     border_color: HEX.test(String(s.border_color ?? '')) ? s.border_color : d.border_color,
     border_width: clamp(s.border_width, 0, 12, d.border_width),
+    border_style: BORDER_STYLES.includes(s.border_style) ? s.border_style : d.border_style,
     fill_style: FILL_STYLES.includes(s.fill_style) ? s.fill_style : d.fill_style,
     fill_color: HEX.test(String(s.fill_color ?? '')) ? s.fill_color : d.fill_color,
     fill_strength: clamp(s.fill_strength, 0, 1, d.fill_strength),

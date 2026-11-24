@@ -118,3 +118,27 @@ describe('the ink sits under the names (Bart 11-24: "the text is over the venice
     expect(inkBeforeId([])).toBeUndefined()
   })
 })
+
+describe('border styles (Bart 11-24: "solid, ink, dashed, wavy")', () => {
+  it('keeps the four styles, and an old scene draws ink', () => {
+    expect(territoryLook({}).border_style).toBe('ink')
+    for (const s of ['ink', 'solid', 'dashed', 'wavy']) expect(territoryLook({ border_style: s }).border_style).toBe(s)
+    expect(territoryLook({ border_style: 'dotted' }).border_style).toBe('ink')
+  })
+  it('joins tile runs into one chain, and starts a loop at its westernmost point', async () => {
+    const { joinRuns } = await import('../territory-ink.js')
+    const P = (lng, lat) => [lng * 10, lat * 10, lng, lat]
+    expect(joinRuns([[P(0, 0), P(1, 0)], [P(1, 0), P(2, 0)]])).toEqual([[P(0, 0), P(1, 0), P(2, 0)]])
+    const loop = joinRuns([[P(5, 5), P(6, 5), P(6, 6)], [P(6, 6), P(4, 6), P(5, 5)]])
+    expect(loop).toHaveLength(1)
+    expect(loop[0][0]).toEqual(P(4, 6))
+    expect(loop[0].at(-1)).toEqual(P(4, 6))
+  })
+  it('a wavy line swings to both sides of the border, no further than its amplitude', async () => {
+    const { waveLine } = await import('../territory-ink.js')
+    const ys = waveLine([[0, 0], [100, 0]], { amp: 3, wavelength: 20, step: 1 }).map((p) => p[1])
+    expect(Math.max(...ys)).toBeGreaterThan(2.5)
+    expect(Math.min(...ys)).toBeLessThan(-2.5)
+    expect(Math.max(...ys.map(Math.abs))).toBeLessThanOrEqual(3.0001)
+  })
+})
