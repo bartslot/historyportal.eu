@@ -2523,35 +2523,49 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 @media (prefers-reduced-motion: reduce) { .lp-stop-bubble:hover { animation: none; } }
 
 /* ── The Map block's motion preset tiles (components/lesson/map-motion-presets.blade.php) ─────────────────────────
-   Each little picture rests on the move's last frame and plays the move while the pointer (or focus) is on it. */
-.lp-mp-frame { position: relative; display: block; aspect-ratio: 8 / 5; overflow: hidden; border-radius: 0.25rem; perspective: 120px; background: var(--color-base-300); }
-.lp-mp-frame svg { display: block; width: 100%; height: 100%; }
-.lp-mp-view { transform-origin: 47% 35%; overflow: visible; }
-.lp-mp-sea { fill: color-mix(in oklab, var(--color-info) 45%, var(--color-base-100)); }
-.lp-mp-land { fill: color-mix(in oklab, var(--color-success) 35%, var(--color-base-100)); }
-.lp-mp-coast { fill: none; stroke: var(--color-base-content); stroke-width: 0.8; opacity: 0.7; }
-.lp-mp-dot { fill: var(--color-base-content); opacity: 0.6; }
-.lp-mp-pin { fill: var(--color-base-100); stroke: var(--color-base-content); stroke-width: 1; }
-.lp-mp-globe { position: absolute; inset: 0; margin: auto; width: 1.6rem; height: 1.6rem; border-radius: 9999px; opacity: 0;
-  background: radial-gradient(circle at 35% 35%, color-mix(in oklab, var(--color-info) 60%, var(--color-base-100)), var(--color-info)); }
-.lp-mp-a { position: absolute; left: 47%; top: 35%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: 700; color: var(--color-base-content); opacity: 0; }
-.lp-mp-terr-fill { fill: var(--color-base-content); opacity: 0.18; }
-.lp-mp-terr-line { fill: none; stroke: var(--color-base-content); stroke-width: 1.4; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
-.lp-mp-terr { transform-origin: 31px 20px; transform-box: view-box; }
-.lp-mp-frame svg:not(.lp-mp-view) .lp-mp-land { fill: color-mix(in oklab, var(--color-success) 30%, var(--color-base-100)); }
-.lp-mp-terr-fadeOut .lp-mp-terr { opacity: 0.25; }
+   Blues and white only (Bart 11-24). Each rests on a picture of its move (.lp-mp-cue over the map) and plays the move
+   while the pointer (or focus) is on it: the cue fades and the map does what the camera will. */
+.lp-mp { --mp-sea: color-mix(in oklab, var(--color-info) 30%, #0b1a33); --mp-land: color-mix(in oklab, var(--color-info) 55%, #ffffff); }
+.lp-mp-frame { position: relative; display: block; aspect-ratio: 8 / 5; overflow: hidden; border-radius: 0.25rem; perspective: 220px; background: var(--mp-sea); }
+.lp-mp-frame svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
+.lp-mp-sea { fill: var(--mp-sea); }
+.lp-mp-land { fill: var(--mp-land); }
+.lp-mp-coast { fill: none; stroke: #ffffff; stroke-width: 0.8; stroke-linejoin: round; }
+.lp-mp-country { fill: #ffffff; fill-opacity: 0.35; stroke: #ffffff; stroke-width: 1; stroke-linejoin: round; }
+.lp-mp-pin { fill: var(--mp-sea); stroke: #ffffff; stroke-width: 1.5; }
+.lp-mp-cue { pointer-events: none; transition: opacity 0.25s; z-index: 1; transform: translateZ(40px); }
+.lp-mp-space { fill: #0b1a33; }
+.lp-mp-globe { fill: var(--mp-sea); stroke: #ffffff; stroke-width: 1.5; }
+.lp-mp-globe-land { fill: var(--mp-land); }
+.lp-mp-cue-dot { fill: #ffffff; }
+.lp-mp-cue-box { fill: none; stroke: #ffffff; stroke-width: 1.6; stroke-dasharray: 4 3; }
+.lp-mp-cue-line { fill: none; stroke: #ffffff; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+.lp-mp-cue-route { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-dasharray: 5 3.5; stroke-linecap: round; }
+.lp-mp-cue-text { fill: #ffffff; font: 700 12px system-ui, sans-serif; paint-order: stroke; stroke: var(--mp-sea); stroke-width: 3px; }
+/* The tilt tile rests tilted; the zoom-out tile rests close in. */
+.lp-mp-cam-tiltZoomOut .lp-mp-view { transform: rotateX(58deg) scale(1.6); }
+.lp-mp-cam-zoomOut .lp-mp-view { transform: scale(1.9); }
+.lp-mp-cam-zoomOut .lp-mp-cue { opacity: 0.9; }
 
-.lp-mp:is(:hover, :focus-visible) .lp-mp-view, .lp-mp:is(:hover, :focus-visible) .lp-mp-terr,
-.lp-mp:is(:hover, :focus-visible) .lp-mp-terr-line, .lp-mp:is(:hover, :focus-visible) .lp-mp-terr-fill,
-.lp-mp:is(:hover, :focus-visible) .lp-mp-globe, .lp-mp:is(:hover, :focus-visible) .lp-mp-a {
-  animation-duration: 2.6s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-fill-mode: both;
+.lp-mp-terr-fill { fill: #ffffff; fill-opacity: 0.35; }
+.lp-mp-terr-line { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
+.lp-mp-terr-goal { fill: none; stroke: #ffffff; stroke-width: 1; stroke-dasharray: 3 2.5; opacity: 0.7; }
+.lp-mp-terr { transform-box: view-box; }
+/* Rest: a picture of each move. */
+.lp-mp-terr-draw .lp-mp-terr-line { stroke-dashoffset: 58; }
+.lp-mp-terr-draw .lp-mp-terr-fill, .lp-mp-terr-drawThenFill .lp-mp-terr-fill { fill-opacity: 0; }
+.lp-mp-terr-fade .lp-mp-terr { opacity: 0.45; }
+.lp-mp-terr-grow .lp-mp-terr { transform: scale(0.45); }
+.lp-mp-terr-fadeOut .lp-mp-terr { opacity: 0.3; }
+
+.lp-mp:is(:hover, :focus-visible) .lp-mp-cue { opacity: 0; }
+.lp-mp:is(:hover, :focus-visible) :is(.lp-mp-view, .lp-mp-terr, .lp-mp-terr-line, .lp-mp-terr-fill) {
+  animation-duration: 2.8s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-fill-mode: both;
 }
 .lp-mp-cam-fromSpace:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-from-space; }
-.lp-mp-cam-fromSpace:is(:hover, :focus-visible) .lp-mp-globe { animation-name: lp-mp-globe; }
 .lp-mp-cam-zoomIn:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-zoom-in; }
 .lp-mp-cam-zoomOut:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-zoom-out; }
 .lp-mp-cam-aToB:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-a-to-b; }
-.lp-mp-cam-aToB:is(:hover, :focus-visible) .lp-mp-a { animation-name: lp-mp-a; }
 .lp-mp-cam-tiltZoomOut:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-tilt-out; }
 .lp-mp-cam-drift:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-drift; animation-timing-function: linear; }
 .lp-mp-terr-draw:is(:hover, :focus-visible) .lp-mp-terr-line { animation-name: lp-mp-draw; }
@@ -2561,19 +2575,17 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .lp-mp-terr-grow:is(:hover, :focus-visible) .lp-mp-terr { animation-name: lp-mp-grow; }
 .lp-mp-terr-fadeOut:is(:hover, :focus-visible) .lp-mp-terr { animation-name: lp-mp-fade-out; }
 
-@keyframes lp-mp-from-space { 0%, 25% { transform: scale(0.2); opacity: 0; } 40% { opacity: 1; } 85%, 100% { transform: rotateX(28deg) scale(1.05); } }
-@keyframes lp-mp-globe { 0%, 20% { opacity: 1; transform: scale(1); } 40%, 100% { opacity: 0; transform: scale(2.2); } }
-@keyframes lp-mp-zoom-in { 0%, 10% { transform: scale(0.45); } 80%, 100% { transform: scale(1); } }
-@keyframes lp-mp-zoom-out { 0%, 10% { transform: scale(1.8); } 80%, 100% { transform: scale(1); } }
-@keyframes lp-mp-a-to-b { 0%, 10% { transform: translate(-45%, 30%); } 45% { transform: translate(-22%, 15%) scale(0.7); } 85%, 100% { transform: none; } }
-@keyframes lp-mp-a { 0%, 15% { opacity: 1; } 45%, 100% { opacity: 0; } }
-@keyframes lp-mp-tilt-out { 0%, 10% { transform: rotateX(48deg) rotate(-14deg) scale(1.7); } 85%, 100% { transform: none; } }
-@keyframes lp-mp-drift { 0% { transform: none; } 100% { transform: scale(1.18) rotate(6deg); } }
+@keyframes lp-mp-from-space { 0%, 15% { transform: scale(0.12); } 80%, 100% { transform: rotateX(30deg) scale(1.1); } }
+@keyframes lp-mp-zoom-in { 0%, 10% { transform: scale(0.45); } 80%, 100% { transform: scale(1.6); } }
+@keyframes lp-mp-zoom-out { 0%, 10% { transform: scale(1.9); } 80%, 100% { transform: scale(0.6); } }
+@keyframes lp-mp-a-to-b { 0%, 10% { transform: translateX(26%) scale(1.3); } 45% { transform: translateX(13%) scale(1); } 85%, 100% { transform: scale(1.3); } }
+@keyframes lp-mp-tilt-out { 0%, 10% { transform: rotateX(58deg) scale(1.6); } 85%, 100% { transform: none; } }
+@keyframes lp-mp-drift { 0% { transform: none; } 100% { transform: scale(1.2) rotate(7deg); } }
 @keyframes lp-mp-draw { 0%, 8% { stroke-dashoffset: 100; } 70%, 100% { stroke-dashoffset: 0; } }
-@keyframes lp-mp-fill-after { 0%, 70% { opacity: 0; } 92%, 100% { opacity: 0.18; } }
+@keyframes lp-mp-fill-after { 0%, 70% { fill-opacity: 0; } 92%, 100% { fill-opacity: 0.35; } }
 @keyframes lp-mp-fade-in { 0%, 10% { opacity: 0; } 70%, 100% { opacity: 1; } }
 @keyframes lp-mp-grow { 0%, 10% { transform: scale(0.3); } 80%, 100% { transform: scale(1); } }
-@keyframes lp-mp-fade-out { 0%, 15% { opacity: 1; } 75%, 100% { opacity: 0.25; } }
+@keyframes lp-mp-fade-out { 0%, 15% { opacity: 1; } 75%, 100% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .lp-mp * { animation: none !important; }
