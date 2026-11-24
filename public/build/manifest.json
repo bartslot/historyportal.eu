@@ -251,11 +251,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-<<<<<<< HEAD
-    "file": "assets/app-ClODAeQV.css",
-=======
-    "file": "assets/app-BsCUrZpA.css",
->>>>>>> origin/main
+    "file": "assets/app-BK2SnlIf.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -264,11 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-<<<<<<< HEAD
-    "file": "assets/app-CmGHazrD.js",
-=======
-    "file": "assets/app-CWwTWCxy.js",
->>>>>>> origin/main
+    "file": "assets/app-DpvXcIfS.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -323,11 +315,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-<<<<<<< HEAD
-    "file": "assets/cutout-dialog-srSLaBXy.js",
-=======
-    "file": "assets/cutout-dialog-DSmn8owN.js",
->>>>>>> origin/main
+    "file": "assets/cutout-dialog-Bc6_4JGW.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -384,11 +372,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-<<<<<<< HEAD
-    "file": "assets/lesson-player-BQ1-y607.js",
-=======
-    "file": "assets/lesson-player-VW7SK18A.js",
->>>>>>> origin/main
+    "file": "assets/lesson-player-dfkWB-Ig.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -562,11 +546,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-<<<<<<< HEAD
-    "file": "assets/index-BjaPLFGV.js",
-=======
-    "file": "assets/index-DZbU7-CO.js",
->>>>>>> origin/main
+    "file": "assets/index-BGHXSzt6.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -697,11 +677,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-<<<<<<< HEAD
-    "file": "assets/recorder-CDiCWDNw.js",
-=======
-    "file": "assets/recorder-T7ATChzu.js",
->>>>>>> origin/main
+    "file": "assets/recorder-Ch7wQ0Gr.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
