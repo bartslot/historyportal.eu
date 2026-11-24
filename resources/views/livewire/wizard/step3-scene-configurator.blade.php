@@ -2454,8 +2454,9 @@
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'eraser' && 'btn-primary'" x-on:click="pick('tool', 'eraser')" data-draw-eraser>{{ __('Eraser') }}</button>
                 </div>
-                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}" :class="tool === 'eraser' && 'opacity-40'">
                     <template x-for="c in colours" :key="c">
                         <button type="button" class="h-8 w-8 rounded-full border-2" :style="`background:${c}`"
                                 :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
