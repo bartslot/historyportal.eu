@@ -58,6 +58,8 @@ window.addEventListener('image-edit:open', (e) => {
 });
 // Tekenen: pen, line and arrow over the scene, each saved as its own layer: x-data="drawTool()".
 window.drawTool = drawTool;
+// The story map: the lesson's scenes and choices as cards and lines (editor/story-map.js), fetched the first time it opens.
+window.loadStoryMap = () => import('./editor/story-map.js');
 
 // Geometry for <x-ui.floating-window>, exposed as globals for the same reason as the factories
 // below: the component's x-data has to call them without depending on alpine:init ordering. The

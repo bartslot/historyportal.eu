@@ -251,7 +251,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BgwG0sCp.css",
+    "file": "assets/app-CvASlLLq.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DHa8DTxn.js",
+    "file": "assets/app-hDU2zSCw.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -284,6 +284,7 @@
       "resources/js/scene/music-mixer.js",
       "resources/js/scene/tempo.js",
       "resources/js/editor/cutout-dialog.js",
+      "resources/js/editor/story-map.js",
       "resources/js/test-session/recorder.js",
       "_quick-mask-Dp4H61tD.js",
       "resources/js/lesson-map.js",
@@ -315,7 +316,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-DNf5W39k.js",
+    "file": "assets/cutout-dialog-BYRTl1LO.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -351,6 +352,12 @@
       "_dom-DByCrY2T.js",
       "_i18n-DoByrmTl.js"
     ]
+  },
+  "resources/js/editor/story-map.js": {
+    "file": "assets/story-map-Ca3L5L-V.js",
+    "name": "story-map",
+    "src": "resources/js/editor/story-map.js",
+    "isDynamicEntry": true
   },
   "resources/js/gallery-scene.js": {
     "file": "assets/gallery-scene-CZTxGtNk.js",
@@ -546,7 +553,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-aSZnj7Yq.js",
+    "file": "assets/index-CndkYixc.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -677,7 +684,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-BcLHtOA_.js",
+    "file": "assets/recorder-DUG-lVB4.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

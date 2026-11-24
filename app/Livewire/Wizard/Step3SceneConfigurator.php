@@ -28,6 +28,7 @@ use App\Livewire\Wizard\Concerns\EditsSceneLinks;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsStoryMap;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
@@ -102,6 +103,7 @@ class Step3SceneConfigurator extends Component
     use EditsStage25d;
     use EditsSceneLinks;
     use EditsStoryGame;
+    use EditsStoryMap;
     use EditsTeamGame;
     use EditsTitleScreen;
     use EditsWithSpark;

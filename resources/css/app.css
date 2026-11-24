@@ -2499,3 +2499,23 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .lp-territory-label[hidden] { display: none; }
 .lp-territory-label-name { font-size: 1em; }
 .lp-territory-label-name + .lp-territory-label-line { font-size: 0.8em; }
+
+/* ── The story map (resources/js/editor/story-map.js): the lesson's scenes as cards with lines between them. The paper is
+   a dot grid that moves with the map; the lines are the panel greys, the ones touching the selected card go white, and
+   "the next scene in the list" is dashed because nobody drew it: it is what happens when a scene has no links. */
+@layer components {
+  .story-map-grid {
+    background-color: var(--color-card-surface);
+    background-image: radial-gradient(circle, var(--color-panel-hairline) 1.2px, transparent 1.4px);
+  }
+  .story-map-edge { fill: none; stroke: var(--color-panel-label); stroke-width: 1.5; stroke-linecap: round; }
+  .story-map-edge.is-next { stroke-dasharray: 4 6; opacity: 0.7; }
+  .story-map-edge.is-lit { stroke: var(--color-panel-value); stroke-width: 2; opacity: 1; }
+  .story-map-edge.is-wiring { stroke: var(--color-panel-value); stroke-width: 2; stroke-dasharray: 6 5; }
+  .story-map-dot { position: absolute; display: grid; place-items: center; width: 32px; height: 32px; top: 50%; translate: 0 -50%; cursor: crosshair; }
+  .story-map-dot::before { content: ''; width: 12px; height: 12px; border-radius: 9999px; border: 1.5px solid var(--color-panel-label);
+    background: var(--color-card-surface); transition: background-color 120ms, border-color 120ms; }
+  .story-map-dot:hover::before, .story-map-dot:focus-visible::before { background: var(--color-panel-value); border-color: var(--color-panel-value); }
+  .story-map-dot.is-in { cursor: default; pointer-events: none; }
+  .story-map-dot.is-in::before { width: 8px; height: 8px; }
+}
