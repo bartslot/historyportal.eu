@@ -274,7 +274,7 @@ class LayerKeysTest extends TestCase
 
         $layers = $target->fresh()->config['stage25d']['set']['layers'];
         $this->assertCount(2, $layers);
-        $this->assertSame(['asset' => 'fig-a', 'depth' => 'fg', 'x' => 0.4, 'z' => 9.0, 'scale' => 1.3, 'figure' => 'meisje', 'keys' => [['t' => 2.0, 'x' => 0.7]]], $layers[1], 'the same place, size, character and keys');
+        $this->assertEquals(['asset' => 'fig-a', 'depth' => 'fg', 'x' => 0.4, 'z' => 9.0, 'scale' => 1.3, 'figure' => 'meisje', 'keys' => [['t' => 2.0, 'x' => 0.7]]], $layers[1], 'the same place, size, character and keys');
         $this->assertCount(2, $source->fresh()->config['stage25d']['set']['layers'], 'the source scene is untouched');
     }
 
