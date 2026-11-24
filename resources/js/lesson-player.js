@@ -53,6 +53,8 @@ const CHROME_IDLE = { idleMs: 1000, fadeInMs: 150, fadeOutMs: 400, topBandPx: 88
 
 // How long the challenge clock owns the middle of the stage before it shrinks to the corner HUD.
 const BIG_TIMER_MS = 5000
+/** Seconds of picture before the narrator starts a scene (Bart 11-24: "it needs a good second"). */
+const NARRATOR_LEAD_IN_MS = 1000
 // Two minutes left turns the clock red. Otherwise the brand amber, as on the corner HUD: the same
 // number in the same colour, whichever of the two places it is being read in.
 const BIG_TIMER_RED_FROM_SECS = 120
@@ -1654,6 +1656,8 @@ Alpine.data('lessonGame', (lesson) => ({
       // a scene waiting on its layers to leave: if the student jumps, that wait is now for a scene
       // nobody is looking at, and letting it fire would advance them a second time.
       this._noAudioHold?.cancel()
+      this._leadInHold?.cancel()
+      this._leadInHold = null
       this._cancelChapterCard()
       clearTimeout(this._exitTimer)
       if (!a) return
@@ -1863,7 +1867,8 @@ Alpine.data('lessonGame', (lesson) => ({
 
       // The first scene of a new chapter opens on its chapter card; the voice starts as the card fades.
       const card = chapterCardFor(this.chapters, index, { from: cameFrom, at: this._seekOnStart })
-      const voice = () => this._voiceWhenSet(index, scene, stageShown)
+      // after a chapter card the narrator starts as it fades: the card was the breath already
+      const voice = () => this._voiceWhenSet(index, scene, stageShown, !card)
       if (card) this._showChapterCard(card, scene, voice)
       else voice()
     },
@@ -1872,18 +1877,18 @@ Alpine.data('lessonGame', (lesson) => ({
      * A stage scene's voice (the stage's clock) starts once its set is shown, or after STAGE_HOLD_MS; any other scene's
      * at once. A jump meanwhile (_stopAudio) drops the wait; a class that paused meanwhile stays paused.
      */
-    _voiceWhenSet (index, scene, shown) {
-      if (!shown) { this._beginSceneVoice(index, scene); return }
+    _voiceWhenSet (index, scene, shown, leadIn = true) {
+      if (!shown) { this._beginSceneVoice(index, scene, leadIn); return }
       const token = this._voiceToken
       whenStageReady(shown).then(() => {
         if (this._voiceToken !== token) return   // the class moved on
-        this._beginSceneVoice(index, scene)
+        this._beginSceneVoice(index, scene, leadIn)
         if (this.playbackPaused) this._audio?.pause()
       })
     },
     _voiceToken: 0,
 
-    _beginSceneVoice (index, scene) {
+    _beginSceneVoice (index, scene, leadIn = false) {
       // No narration audio (e.g. a not-yet-narrated scene): hold on the visual for its set duration
       // (or a short default), then advance — never build `new Audio(null)`, which would hang the queue.
       if (!scene.audio_url) {
@@ -1892,6 +1897,19 @@ Alpine.data('lessonGame', (lesson) => ({
         this._noAudioHold?.cancel()
         this._noAudioHold = createPausableTimeout(() => this._afterSceneAudio(index, scene), holdMs, { paused: this.playbackPaused })
         if (isStage25d(scene)) _stageSound.play(_sceneQueue, index)
+        return
+      }
+
+      // A breath before the narrator speaks (Bart 11-24: "it needs a good second"): the picture is on screen for
+      // NARRATOR_LEAD_IN_MS first. Not when the class lands mid-scene (a seek) or after a chapter card. Pausable,
+      // and a jump cancels it like any other hold (_stopAudio).
+      if (leadIn && !(this._seekOnStart > 0)) {
+        this._leadInHold?.cancel()
+        this._leadInHold = createPausableTimeout(() => {
+          this._leadInHold = null
+          this._beginSceneVoice(index, scene, false)
+          if (this.playbackPaused) this._audio?.pause()
+        }, NARRATOR_LEAD_IN_MS, { paused: this.playbackPaused })
         return
       }
 
@@ -3425,7 +3443,7 @@ Alpine.data('lessonGame', (lesson) => ({
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
 
       // A silent scene's hold and a timed map's hold wait with the class instead of moving on.
-      for (const hold of [this._noAudioHold, _mapTimer, this._chapterCardHold]) {
+      for (const hold of [this._noAudioHold, _mapTimer, this._chapterCardHold, this._leadInHold]) {
         if (this.playbackPaused) hold?.pause()
         else hold?.resume()
       }
