@@ -2,7 +2,7 @@
  * The kit's pictures in the browser: loaded once, recoloured once per colour set (paint.js), stacked on canvases with
  * drawImage. A preview draws at screen size; Save draws at the rig's size (1 canvas px per puppet px) and cuts.
  */
-import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood } from './paint.js'
+import { recolour, shadeLayer, softShade, castLayer, partLabels, kindIndex, hoodMask, isHood } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
 import { svgRaw, overRaw } from './svg-piece.js'
 
@@ -100,7 +100,12 @@ export async function layersOf (kit, recipe, expression = 'calm') {
     return { id, slot: piece.slot, box: piece.box, ...(await paintedOf(kit, body, piece, palette)) }
   }))
   const hood = layers.find((l) => l.slot === 'headwear' && isHood(l.id))
-  return hood ? layers.map((l) => (l.slot === 'hair' ? underHood(body, l, hood) : l)) : layers
+  const collar = layers.find((l) => l.slot === 'outfit' && Number.isFinite(pieceOf(body, l.id).collar))
+  return layers.map((l) => {
+    if (hood && l.slot === 'hair') return underHood(body, l, hood)
+    if (collar && (l.slot === 'face' || l.slot === 'expression')) return underCollar(body, l, collar, pieceOf(body, collar.id).collar, kit.kinds.length)
+    return l
+  })
 }
 
 const hoods = new Map()       // body + hair + hood -> the hair's covered pixels
@@ -114,7 +119,39 @@ function underHood (body, hair, hood) {
     hoods.set(key, hoodMask(hair.box, hood.raw, hood.box))
     if (hoods.size > HOODS_MAX) hoods.delete(hoods.keys().next().value)
   }
-  const mask = hoods.get(key)
+  return cutLayer(hair, hoods.get(key))
+}
+
+const collars = new Map()     // body + face + outfit -> the face's pixels under a drawn collar
+/** A face (or expression) under an outfit whose drawing has a collar: below the line `collar` (canvas px), the face's
+ *  neck is taken out wherever the outfit paints cloth (not skin), so a fur or linen collar drawn round the neck stays
+ *  on top of the plain neck the face piece carries (kit_outfit_ink.py). */
+function underCollar (body, face, outfit, collar, kindsCount) {
+  const key = `${body.id}:${face.id}:${outfit.id}`
+  if (!collars.has(key)) {
+    const [fx, fy, w, h] = face.box, [ox, oy, ow, oh] = outfit.box
+    const of = outfit.raw.fill.data
+    const mask = new Uint8Array(w * h)
+    for (let y = Math.max(0, collar - fy); y < h; y++) {
+      const cy = fy + y - oy
+      if (cy < 0 || cy >= oh) continue
+      for (let x = 0; x < w; x++) {
+        const cx = fx + x - ox
+        if (cx < 0 || cx >= ow) continue
+        const o = (cy * ow + cx) * 4
+        if (of[o + 3] > 100 && kindIndex(of[o], kindsCount) !== 0) mask[y * w + x] = 1
+      }
+    }
+    collars.set(key, mask)
+    if (collars.size > HOODS_MAX) collars.delete(collars.keys().next().value)
+  }
+  return cutLayer(face, collars.get(key))
+}
+
+/** A layer with the pixels of `mask` taken out of every canvas and of the raw fill and ink, so the preview, the edge,
+ *  Save and the rig all agree. */
+function cutLayer (layer, mask) {
+  if (!mask.some((v) => v)) return layer
   const cut = (data) => {
     const out = new Uint8ClampedArray(data)
     for (let i = 0; i < mask.length; i++) if (mask[i]) out[i * 4 + 3] = 0
@@ -126,16 +163,16 @@ function underHood (body, hair, hood) {
     for (let i = 0; i < mask.length; i++) if (mask[i]) out[i * 4 + channel] = 0
     return { width: img.width, height: img.height, data: out }
   }
-  const { width: w, height: h } = hair.raw.fill
+  const { width: w, height: h } = layer.raw.fill
   const canvasCut = (c) => {
     if (!c) return c
     const g = c.getContext('2d', { willReadFrequently: true })
     return put(cut(g.getImageData(0, 0, w, h).data), w, h)
   }
   return {
-    ...hair,
-    raw: { ...hair.raw, fill: cutRaw(hair.raw.fill, 3), ink: cutRaw(hair.raw.ink, 0) },
-    colour: canvasCut(hair.colour), flat: canvasCut(hair.flat), shade: canvasCut(hair.shade), cast: canvasCut(hair.cast),
+    ...layer,
+    raw: { ...layer.raw, fill: cutRaw(layer.raw.fill, 3), ink: cutRaw(layer.raw.ink, 0) },
+    colour: canvasCut(layer.colour), flat: canvasCut(layer.flat), shade: canvasCut(layer.shade), cast: canvasCut(layer.cast),
   }
 }
 
@@ -269,8 +306,11 @@ export async function savePixels (kit, recipe, rig, labelsImg, scale = 1 / rig.s
   const label = partLabels(small, labels, rig, kit.kinds)
   const under = new Uint8Array(W * H)
   for (let i = 0; i < W * H; i++) under[i] = labels.data[i * 4 + 2]
-  return { width: W, height: H, colour: grab('colour'), flat: grab('flat'), shade: grab('shade'), label, under }
+  return { width: W, height: H, colour: grab('colour'), flat: grab('flat'), shade: softShade(grab('shade'), W, H, shadeSoftPx(scale)), label, under }
 }
+
+/** How far the saved shade is softened, in saved px: 6 px of the kit's own canvas (softShade). */
+const shadeSoftPx = (scale) => Math.max(1, Math.round(6 * scale))
 
 /** The same person with an expression, only round the head (the rest is the person as saved): for Puppet.faces. */
 export async function facePixels (kit, recipe, expression, rig, region, scale = 1 / rig.scale) {
@@ -282,7 +322,7 @@ export async function facePixels (kit, recipe, expression, rig, region, scale = 
     drawLayers(g, layers, [x / scale, y / scale, w / scale, h / scale], [0, 0, w, h], what)
     return g.getImageData(0, 0, w, h).data
   }
-  return { x0: x, y0: y, w, h, colour: grab('colour'), shade: grab('shade') }
+  return { x0: x, y0: y, w, h, colour: grab('colour'), shade: softShade(grab('shade'), w, h, shadeSoftPx(scale)) }
 }
 
 /** Pixels as a WebP data url; a lossy atlas a little smaller each step until it fits under `max` characters. */
