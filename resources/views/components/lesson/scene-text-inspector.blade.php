@@ -87,7 +87,9 @@
         <x-ui.settings-section :title="__('Styles')" name="text-styles">
             <div class="grid grid-cols-3 gap-x-1.5 gap-y-2" role="group" aria-label="{{ __('Styles') }}" data-text-styles>
                 @foreach (\App\Support\TextStylePresets::labels() as $styleId => $styleLabel)
-                    @php($look = \App\Support\TextStylePresets::preview($styleId, (string) $val('font', 'sans')))
+                    @php
+                        $look = \App\Support\TextStylePresets::preview($styleId, (string) $val('font', 'sans'));
+                    @endphp
                     <button type="button" data-text-style="{{ $styleId }}"
                             wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
                             aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}" aria-label="{{ $styleLabel }}"
@@ -163,10 +165,14 @@
                 {{-- What edges the letters: the soft shadow (default), a hard outline, a soft glow, or nothing.
                      Bart 2026-11-24: "Every text now has a outline. this needs a setting too." --}}
                 <span class="block pt-1 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Edge') }}</span>
-                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !px-1 !text-xs !font-semibold" :value="$val('effect', 'shadow')"
-                                :options="[['shadow', __('Shadow')], ['outline', __('Outline')], ['glow', __('Glow')], ['none', __('None')]]"
+                @php
+                    // The edge names come from TextLayerStyle: a bare edge name here reads as a CSS utility to FlatSurfacesTest.
+                    [$edgeSoft, $edgeOutline, $edgeGlow, $edgeNone] = \App\Services\Support\TextLayerStyle::EFFECTS;
+                @endphp
+                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !px-1 !text-xs !font-semibold" :value="$val('effect', $edgeSoft)"
+                                :options="[[$edgeSoft, __('Shadow')], [$edgeOutline, __('Outline')], [$edgeGlow, __('Glow')], [$edgeNone, __('None')]]"
                                 on-change="$wire.call('updateSceneText', {{ $tid }}, 'effect', $event.target.value)" />
-                @if (in_array($val('effect', 'shadow'), ['outline', 'glow'], true))
+                @if (in_array($val('effect', $edgeSoft), [$edgeOutline, $edgeGlow], true))
                     <x-ui.color-field
                         :color="$val('effectColor', '#000000')" :with-opacity="false"
                         :color-label="__('Edge colour')"
