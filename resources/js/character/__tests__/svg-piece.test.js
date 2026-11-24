@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { passSvg } from '../svg-piece.js'
+import { passSvg, overRaw } from '../svg-piece.js'
 
 const KINDS = ['skin', 'tunic', 'shawl', 'hair', 'rope', 'tie', 'white', 'grey', 'apron', 'ochre']
 const helmet = readFileSync(resolve(process.cwd(), 'public/character-kits/babylonia-old-babylonian/v1/man/headwear-man-helmet.svg'), 'utf8')
@@ -29,5 +29,20 @@ describe('passSvg: an SVG kit piece as the layers a baked piece has', () => {
   it('refuses a kind the kit does not know, instead of painting it as the first kind', () => {
     const bad = '<svg xmlns="http://www.w3.org/2000/svg"><g class="fill"><path data-kind="gold" d="M0 0h4v4z"/></g></svg>'
     expect(() => passSvg(bad, 'fill', KINDS, [4, 4])).toThrow(/gold/)
+  })
+})
+
+describe('overRaw: an SVG outfit laid over the body\'s plain one', () => {
+  const img = (px) => ({ width: px.length, height: 1, data: new Uint8ClampedArray(px.flat()) })
+  it('takes fill, line and shade from the SVG where it paints, and keeps the skin and its line elsewhere', () => {
+    const under = { fill: img([[10, 10, 10, 255], [10, 10, 10, 255]]), ink: img([[200, 200, 200, 255], [90, 90, 90, 255]]), shade: img([[50, 50, 50, 255], [60, 60, 60, 255]]), cast: null }
+    const top = { fill: img([[28, 28, 28, 255], [0, 0, 0, 0]]), ink: img([[0, 0, 0, 255], [150, 150, 150, 255]]), shade: img([[5, 5, 5, 255], [0, 0, 0, 255]]), cast: null }
+    const out = overRaw(under, top)
+    expect([...out.fill.data.slice(0, 4)]).toEqual([28, 28, 28, 255])      // the tunic covers the kilt
+    expect(out.ink.data[0]).toBe(0)                                          // and the kilt's line under it is gone
+    expect([...out.fill.data.slice(4, 8)]).toEqual([10, 10, 10, 255])      // bare skin stays
+    expect(out.ink.data[4]).toBe(150)                                        // with the stronger of the two lines
+    expect(out.shade.data[4]).toBe(60)
+    expect(out.cast).toBeNull()
   })
 })

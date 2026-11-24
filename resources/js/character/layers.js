@@ -4,7 +4,7 @@
  */
 import { recolour, shadeLayer, castLayer, partLabels, kindIndex, hoodMask, isHood } from './paint.js'
 import { bodyOf, paletteOf, pieceOf, stackOf } from './recipe.js'
-import { svgRaw } from './svg-piece.js'
+import { svgRaw, overRaw } from './svg-piece.js'
 
 const loaded = new Map()      // url -> Promise<ImageData>
 const painted = new Map()     // piece + colours -> { colour, flat, shade, cast } canvases
@@ -60,7 +60,12 @@ export async function rigOf (kit, bodyId) {
 /** One piece's raw pixels: fill (kinds), ink, shade and the shade it casts. */
 async function rawOf (kit, body, piece) {
   const at = (f) => `${kit.base}${body.id}/${f}`
-  if (piece.files.svg) return svgRaw(at(piece.files.svg), kit.kinds, piece.box)   // one SVG, drawn in code (svg-piece.js)
+  if (piece.files.svg) {   // one SVG, drawn in code (svg-piece.js)
+    const top = await svgRaw(at(piece.files.svg), kit.kinds, piece.box)
+    const under = piece.files.under && pieceOf(body, piece.files.under)
+    // an SVG outfit over the body's plain one: the skin it leaves bare (neck, hands) comes from there
+    return under && !under.files.under ? overRaw(await rawOf(kit, body, under), top) : top
+  }
   const [fill, ink, shade, cast] = await Promise.all([imageData(at(piece.files.fill)), imageData(at(piece.files.ink)), imageData(at(piece.files.shade)),
     piece.files.cast ? imageData(at(piece.files.cast)) : null])
   return { fill, ink, shade, cast }

@@ -33,6 +33,7 @@ from scipy import ndimage
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit_presets as P  # noqa: E402
+import kit_outfit_svg  # noqa: E402
 from img_io import find  # noqa: E402
 from kit_parts import ANA, K, MOUTH_ZONE, PATCHES, compose, part as part_of  # noqa: E402
 
@@ -46,7 +47,8 @@ LOSSY_Q = 82                    # ink, shade, cast: soft masks; the fill stays l
 
 # colour kinds kit_render paints (its KINDS + iris, brow), each given a key colour R = 10 + 18 i, so the browser can read
 # the kind from the red channel alone (layers.js kindOf) and recolour it
-KINDS = ['skin', 'tunic', 'shawl', 'hair', 'rope', 'tie', 'white', 'grey', 'apron', 'ochre', 'mouth', 'iris', 'brow']
+# hose (13, the last that fits in red): leggings, a colour of their own that follows the legs (paint.js CLOTH_ON_LEGS)
+KINDS = ['skin', 'tunic', 'shawl', 'hair', 'rope', 'tie', 'white', 'grey', 'apron', 'ochre', 'mouth', 'iris', 'brow', 'hose']
 KEY = {k: (10 + 18 * i, 250 - 18 * i, 128) for i, k in enumerate(KINDS)}
 KIND_DEFAULT = {'white': '#fcfaf4', 'tie': '#b0754f', 'mouth': '#7a3a2c', 'iris': '#6e3c1e'}
 
@@ -548,7 +550,7 @@ def presets() -> list[dict]:
                   'outfit': p['outfit'], 'parts': parts, 'eyes': p.get('eyes'), 'mouth': p.get('mouth'), 'skin': p['skin'],
                   'hair_colour': p['hair_colour'], 'height_m': p['height_m'], 'zones': p['zones'], 'facing': 1}
         out.append({'id': pid, 'label': p['role'], 'recipe': {k: v for k, v in recipe.items() if v is not None}})
-    return out
+    return out + kit_outfit_svg.preset_entries(KIT_ID)      # the people in SVG outfits (Marco Polo)
 
 
 def write_rig(body: str) -> None:
@@ -596,6 +598,10 @@ def main() -> None:
     kept = {b['id']: b for b in old.get('bodies', []) if b['id'] not in made}
     for b, made_body in made.items():
         svg_pieces(b, made_body['pieces'])
+        # pieces that are only an SVG (kit_hair_svg.py, kit_outfit_svg.py) are not baked here: keep them as they were
+        baked = {pc['id'] for pc in made_body['pieces']}
+        was = next((ob for ob in old.get('bodies', []) if ob['id'] == b), {'pieces': []})
+        made_body['pieces'] += [pc for pc in was['pieces'] if 'svg' in pc['files'] and pc['id'] not in baked]
     kit = {
         'id': KIT_ID, 'version': 1, 'view': 'front34', 'paper': '#f6f5ee', 'ink': '#191410',
         'kinds': KINDS, 'kindDefaults': KIND_DEFAULT,

@@ -21,7 +21,7 @@ const HEAD_PAD = 0.12                 // of the head box: room round the head in
 const RAIL = { who: 'character', body: 'body', face: 'face', hair: 'hair', clothes: 'clothes', extra: 'extra', random: 'random' }
 export const PART_LABELS = { who: 'Who', body: 'Body', face: 'Face', hair: 'Hair', clothes: 'Clothes', extra: 'Extra' }
 export const EXPRESSION_LABELS = { calm: 'Calm', curious: 'Curious', sad: 'Sad', angry: 'Angry', amazed: 'Amazed' }
-const ZONE_LABELS = { garment: 'Cloth', second: 'Shawl', cord: 'Cord', apron: 'Apron', band: 'Band', 'head-cloth': 'Trim' }
+const ZONE_LABELS = { garment: 'Cloth', second: 'Shawl', cord: 'Cord', apron: 'Apron', band: 'Band', 'head-cloth': 'Trim', hose: 'Hose' }
 const BODY_LABELS = { girl: 'Girl', woman: 'Woman', man: 'Man' }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
