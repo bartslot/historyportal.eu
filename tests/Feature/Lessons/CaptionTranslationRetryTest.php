@@ -16,6 +16,7 @@ use App\Services\Captions\TextTranslator;
 use App\Services\Llm\LlmHttpException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Tests\TestCase;
@@ -186,16 +187,70 @@ class CaptionTranslationRetryTest extends TestCase
         $this->fake->failures = [new LlmHttpException(429, errorCode: LlmHttpException::QUOTA_EXHAUSTED)];
 
         $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
-        try {
-            $job->handle($this->captions());
-            $this->fail('an empty quota reaches failed_jobs');
-        } catch (LlmHttpException $e) {
-            $this->assertTrue($e->quotaExhausted());
-            $this->assertSame('OpenAI API returned 429 (insufficient_quota)', $e->getMessage());
-        }
+        $job->handle($this->captions());
+
+        $job->assertFailedWith(LlmHttpException::class);
         $job->assertNotReleased();
         Sleep::assertNeverSlept();
         $this->assertSame('retry', Cache::get(TranslateLessonCaptions::statusKey($lesson->id, 'de')));
+        $this->assertSame('OpenAI API returned 429 (insufficient_quota)', (new LlmHttpException(429, errorCode: 'insufficient_quota'))->getMessage());
+    }
+
+    public function test_any_other_error_fails_the_job_at_once_and_still_frees_the_language(): void
+    {
+        $lesson = $this->lesson(2);
+        $this->fake->failures = [new \RuntimeException('OpenAI API request failed: connection reset')];
+        $key = TranslateLessonCaptions::statusKey($lesson->id, 'de');
+        Cache::put($key, 'running', now()->addMinutes(10));
+
+        $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
+        $job->handle($this->captions());
+
+        $job->assertFailedWith(\RuntimeException::class);
+        $job->assertNotReleased();
+        $this->assertSame('retry', Cache::get($key), 'held a minute, not the ten the controller set');
+    }
+
+    public function test_the_last_try_fails_instead_of_re_queuing_again(): void
+    {
+        $lesson = $this->lesson(2);
+        $this->fake->failures = array_fill(0, 4, new LlmHttpException(503));
+
+        $job = (new TranslateLessonCaptions($lesson->id, 'de'))->withFakeQueueInteractions();
+        $job->job->attempts = 4;
+        $job->handle($this->captions());
+
+        $job->assertFailedWith(LlmHttpException::class);
+        $job->assertNotReleased();
+    }
+
+    /** Through a real database queue and worker: what prod's cron queue:work does. */
+    private function work(): void
+    {
+        $this->artisan('queue:work', ['connection' => 'database', '--once' => true, '--stop-when-empty' => true])->assertSuccessful();
+    }
+
+    public function test_on_the_worker_a_busy_provider_waits_on_the_queue_and_an_empty_quota_fails_once(): void
+    {
+        config(['queue.default' => 'database']);
+        $lesson = $this->lesson(2);
+
+        $this->fake->failures = array_fill(0, 4, new LlmHttpException(503));
+        TranslateLessonCaptions::dispatch($lesson->id, 'de');
+        $this->work();
+        $this->assertSame(1, DB::table('jobs')->count(), 'back on the queue');
+        $this->assertSame(0, DB::table('failed_jobs')->count());
+        $this->assertGreaterThan(now()->addSeconds(100)->getTimestamp(), (int) DB::table('jobs')->value('available_at'));
+        DB::table('jobs')->delete();
+
+        $this->fake->failures = [new LlmHttpException(429, errorCode: LlmHttpException::QUOTA_EXHAUSTED)];
+        $this->fake->calls = [];
+        TranslateLessonCaptions::dispatch($lesson->id, 'fr');
+        $this->work();
+        $this->work();   // nothing left to run: the worker must not try it again
+        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(1, DB::table('failed_jobs')->count());
+        $this->assertCount(1, $this->fake->calls, 'one request to a provider with no credit, not four');
     }
 
     public function test_the_llm_client_tells_an_openai_rate_limit_from_an_empty_quota(): void
