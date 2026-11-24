@@ -3061,5 +3061,8 @@
     "Centre right": "Centro destra",
     "Territory name": "Nome del territorio",
     "Label position": "Posizione dell'etichetta",
-    "Morph between years": "Trasforma tra gli anni"
+    "Morph between years": "Trasforma tra gli anni",
+    "Paste": "Incolla",
+    "Stage layers paste into a 3D World scene only.": "I livelli del palco si incollano solo in una scena Mondo 3D.",
+    "A picture from another period's library was left out: it does not load on this stage.": "Un'immagine dalla libreria di un altro periodo è stata esclusa: non si carica su questo palco."
 }
