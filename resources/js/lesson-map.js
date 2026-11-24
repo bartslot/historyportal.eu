@@ -500,7 +500,9 @@ export function renderLessonMap (el, opts = {}) {
         // The wash also carries the configurator's hover, the soft pre-selection when a
         // teacher moves over the map to pick a territory (nothing sets `hover` in the player).
         if (map.getLayer('boundaries-fill')) return
-        const below = map.getLayer('city-dots') ? 'city-dots' : undefined
+        // Under the route (and so under the hand-drawn ink, which goes in just below the route
+        // next): the wash must never paint over its own pen line.
+        const below = map.getLayer('lesson-route') ? 'lesson-route' : (map.getLayer('city-dots') ? 'city-dots' : undefined)
         map.addLayer({
           id: 'boundaries-fill', type: 'fill', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
