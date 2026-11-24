@@ -13,9 +13,11 @@ declare(strict_types=1);
 
 return [
     // Who makes character sheets and world shots (App\Services\StoryVideo\Pictures\PictureDrivers): chatgpt (the
-    // ChatGPT route of ImageRoute, never paid credits), studio (the ElevenLabs web studio, see 'studio' below) or elevenlabs (needs the ElevenLabs Pro plan; bart stayed on
+    // ChatGPT route of ImageRoute, never paid credits) or elevenlabs (needs the ElevenLabs Pro plan; bart stayed on
     // Creator, 2026-11-23).
-    'picture_driver' => env('STORY_VIDEO_PICTURE_DRIVER', 'chatgpt'),
+    // Pictures never go to the ElevenLabs studio (bart, 2026-11-23: the Recraft test was not History Lines, "we need
+    // to use a image from chatgpt"). A leftover STORY_VIDEO_PICTURE_DRIVER=studio falls back to ChatGPT.
+    'picture_driver' => env('STORY_VIDEO_PICTURE_DRIVER', 'chatgpt') === 'studio' ? 'chatgpt' : env('STORY_VIDEO_PICTURE_DRIVER', 'chatgpt'),
 
     // Nano Banana 2 (elevenlabs driver): takes up to 14 reference pictures, which carry the History Lines look.
     'image_model' => env('STORY_VIDEO_IMAGE_MODEL', 'gemini-3.1-flash-image'),
@@ -51,7 +53,7 @@ return [
 
     // The studio route (App\Services\StoryVideo\StudioQueue): bart's Mac pulls a batch with tools/studio/studio.py,
     // Claude makes each job in the ElevenLabs web studio in bart's own Chrome (one at a time, bart OKs each batch),
-    // and studio.py sends the downloads back. Set picture_driver and/or clip_driver to `studio`. No token: no route.
+    // and studio.py sends the downloads back. Clips only: set clip_driver to `studio`. No token: no route.
     // bart chose this on 2026-11-23 knowing it breaks ElevenLabs' Prohibited Use Policy s12; never add anything that
     // hides the automation from ElevenLabs (no stealth browser, no captcha solving): the run stops at the first check.
     'studio' => [
@@ -60,8 +62,7 @@ return [
         'stale_minutes' => (int) env('STUDIO_STALE_MINUTES', 720),
         'max_batch' => (int) env('STUDIO_MAX_BATCH', 10),
         'max_upload_mb' => 200,
-        // The model names as the studio's picker shows them.
-        'image_model' => env('STUDIO_IMAGE_MODEL', 'Recraft 4.1'),
+        // The model name as the studio's picker shows it. Pictures come from ChatGPT, never the studio.
         'video_model' => env('STUDIO_VIDEO_MODEL', 'MiniMax H3'),
     ],
 
