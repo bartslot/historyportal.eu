@@ -193,7 +193,7 @@ class TwineImportTest extends TestCase
     public function test_the_story_becomes_an_outline_with_the_cast_colours_and_a_brief_per_scene(): void
     {
         $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
-            .'<tw-passagedata pid="1" name="Node-Ravenna">SETTING: Ravenna, September 1321'."\n".'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'."\n"
+            .'<tw-passagedata pid="1" name="Node-Ravenna">SETTING: Ravenna, September 1321'."\n".'Night, a narrow room. Jacopo Alighieri in a turquoise cloak leans over loose pages.'."\n"
             .'NARRATOR: A poet has just died in this little room.'."\n".'JACOPO: The ending is gone.'."\n".'[[Go on | Node-Groet]]</tw-passagedata>'
             .'<tw-passagedata pid="2" name="Node-Groet">SETTING: Rome and Florence, 1301-1302'."\n".'A street. Beatrice in white greets Dante, and Jacopo watches.'."\n"
             .'NARRATOR: She greets him.'."\n".'DANTE: What does this mean?</tw-passagedata>'
@@ -210,8 +210,9 @@ class TwineImportTest extends TestCase
             ['name' => 'Beatrice', 'colour' => 'white', 'look' => 'always in white, as a girl and as a woman.'],
         ], $lesson->outline['cast']);
         [$ravenna, $groet] = $lesson->outline['scene_briefs'];
+        // a full name in the shot is one person: Jacopo Alighieri never names Dante through the surname
         $this->assertSame(['order' => 1, 'kind' => 'narration', 'characters' => ['Jacopo Alighieri'], 'location' => 'Ravenna', 'year' => '1321',
-            'image_prompt_seed' => 'Night, a narrow room. A young man in a turquoise cloak leans over loose pages.'], $ravenna);
+            'image_prompt_seed' => 'Night, a narrow room. Jacopo Alighieri in a turquoise cloak leans over loose pages.'], $ravenna);
         // named in the shot by a first name, or speaking: Jacopo watches without a line and still gets his sheet
         $this->assertSame(['Dante Alighieri', 'Jacopo Alighieri', 'Beatrice'], $groet['characters']);
         $this->assertSame(['Rome and Florence', '1301'], [$groet['location'], $groet['year']]);
