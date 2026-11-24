@@ -106,6 +106,12 @@ class GenerateLessonScript implements ShouldQueue
         }
     }
 
+    /** Output tokens for a whole-lesson script: about 400 per scene, 4096 to 16384 (gpt-4o-mini's cap). */
+    public static function scriptTokens(int $scenes): int
+    {
+        return max(4096, min(16384, $scenes * 400));
+    }
+
     /**
      * One whole-lesson LLM call. Retries once internally when the model skips a scene —
      * a missing script would otherwise surface as a silent empty narration downstream.
@@ -129,6 +135,9 @@ class GenerateLessonScript implements ShouldQueue
             $result = $llm->json(
                 system: LessonScriptPrompt::system($lesson),
                 user: LessonScriptPrompt::user($lesson, $scenes, $briefs, $sourceText, $critiqueIssues),
+                // The whole lesson in one answer: the 2048 default cut 30-50 scenes short, which
+                // read as "orders missing" or non-JSON on prod (2026-11-02, 11-22).
+                maxTokens: self::scriptTokens($scenes->count()),
             );
 
             $scripts = collect($result['scenes'] ?? [])

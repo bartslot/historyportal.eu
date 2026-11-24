@@ -328,4 +328,15 @@ class CaptionTranslationRetryTest extends TestCase
         $this->getJson($url)->assertOk()->assertJsonPath('pending', true)->assertJsonPath('translating', false);
         $this->assertSame(2, $translator->calls);
     }
+
+    public function test_a_cut_off_answer_is_asked_again_in_halves_without_waiting(): void
+    {
+        $lesson = $this->lesson(104);   // 105 lines
+        $this->fake->failures = [new \App\Services\Llm\LlmBadJsonException('OpenAI returned non-JSON')];
+
+        $this->assertSame(105, $this->captions()->translateMissing($lesson, 'en'));
+
+        $this->assertSame([100, 50, 50, 5], array_map('count', $this->fake->calls));
+        Sleep::assertNeverSlept();
+    }
 }
