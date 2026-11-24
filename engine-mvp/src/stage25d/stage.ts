@@ -268,7 +268,7 @@ export class Stage {
       // a figure painted flat (plan 11): the shader colours its baked shade and paints its watercolour (no mask: drawn flat)
       const flatFigure = rest && puppet?.paint === 'flat'
       const wash = flatFigure ? figureWash(this.scene) : undefined
-      const shade = flatFigure ? await shadeMask(layer.src ?? puppet!.atlas, this.scene).catch(() => undefined) : undefined
+      const shade = flatFigure ? await shadeMask(layer.src ?? puppet!.atlas, this.scene, layer.src ? { ...puppet!, atlas: layer.src } : puppet!).catch(() => undefined) : undefined
       if (token !== this.buildToken) return
       const handle = makeLayer(asset, tex, p.w, p.h, p.uRepeat, this.scene, rest, blinkTex ? { tex: blinkTex, eyes: blinkSrc!.eyes } : undefined, { cast: casts, wash, shade })
       if (p.uRepeat !== 1 && !asset.tileable_x) tex.wrapU = nearWrapU(false)   // a far strip repeated to stay sharp: mirrored, no seam
