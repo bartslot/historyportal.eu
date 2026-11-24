@@ -77,6 +77,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -6405,6 +6406,30 @@ class Step3SceneConfigurator extends Component
      * Flips the scene to "generating"; the status poll re-fires scene:load with the
      * fresh audio URL, and the Script panel reloads its waveform from that payload.
      */
+    /**
+     * The Script panel asks this every 2 s while it waits for a re-narration. The editor's own poll answers only
+     * when the selected scene's status changes and only every few seconds, and a recording that came back in two
+     * seconds could slip past it: Bart 11-24, one word changed, the audio was on the server two seconds later and
+     * the panel kept spinning for minutes. No render, one row.
+     *
+     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string}
+     */
+    #[Renderless]
+    public function narrationState(int $sceneId): array
+    {
+        $scene = $this->lesson->scenes()->find($sceneId);
+        if (! $scene) {
+            return ['status' => 'gone'];
+        }
+
+        return [
+            'status' => (string) $scene->status,
+            'audioUrl' => $scene->audioUrl(),
+            'audioFresh' => $scene->hasFreshAudio(),
+            'errorMessage' => $scene->error_message,
+        ];
+    }
+
     #[On('scene:renarrate')]
     public function renarrateScene(int $sceneId): void
     {
