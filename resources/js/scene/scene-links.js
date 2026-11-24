@@ -64,8 +64,12 @@ const PICK_HOLD_MS = 420
  *   hover lifts a button; the picked one swells and brightens while the others sink away, then the jump.
  * Reduced motion, or no WAAPI: everything simply appears and a pick jumps at once.
  * Keys 1-6 pick the matching choice, for a teacher at the board with a clicker or keyboard.
+ *
+ * opts.preview: the editor's picture of the card (choices-preview.js): same look and entrance, but it takes
+ * no clicks, no keys and leaves the stage's pointer events alone, so the teacher keeps working under it.
  */
-export function showLinkChoices (host, links, queue, onPick) {
+export function showLinkChoices (host, links, queue, onPick, opts = {}) {
+  const preview = opts.preview === true
   const motion = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function'
     && !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   const play = (node, frames, opts) => (motion ? node.animate(frames, { fill: 'both', ...opts }) : null)
@@ -74,6 +78,7 @@ export function showLinkChoices (host, links, queue, onPick) {
   // stays visible under a soft shade, the buttons rise into place.
   const wrap = el('div', 'absolute inset-0 z-40 flex items-end justify-center p-6 pb-32 bg-linear-to-t from-base-300/80 via-base-300/30 to-transparent')
   wrap.dataset.sceneLinks = '1'
+  if (preview) { wrap.dataset.sceneLinksPreview = '1'; wrap.style.pointerEvents = 'none' }
   const card = el('div', 'w-full max-w-2xl')
   // Monochrome over a colourful picture (history-portal-ui): the scene is the colour, the card is not.
   const label = el('p', 'lp-card-label text-center text-white/70 mb-3', t('What do you do?'))
@@ -106,7 +111,7 @@ export function showLinkChoices (host, links, queue, onPick) {
       text)
     btn.type = 'button'
     btn.dataset.sceneLink = String(link.to)
-    btn.addEventListener('click', () => pick(link, btn))
+    if (!preview) btn.addEventListener('click', () => pick(link, btn))
     buttons.push(btn)
     row.appendChild(btn)
   })
@@ -117,11 +122,11 @@ export function showLinkChoices (host, links, queue, onPick) {
     e.preventDefault()
     pick(links[n - 1], buttons[n - 1])
   }
-  window.addEventListener('keydown', onKey)
+  if (!preview) window.addEventListener('keydown', onKey)
   card.appendChild(row)
   wrap.appendChild(card)
   const before = host.style.pointerEvents
-  host.style.pointerEvents = 'auto'
+  if (!preview) host.style.pointerEvents = 'auto'
   host.appendChild(wrap)
 
   // Enter: the shade, then the question, then the buttons one after another.
@@ -138,7 +143,7 @@ export function showLinkChoices (host, links, queue, onPick) {
     window.removeEventListener('keydown', onKey)
     if (!wrap.parentNode) return
     wrap.remove()
-    host.style.pointerEvents = before || 'none'
+    if (!preview) host.style.pointerEvents = before || 'none'
   }
   return close
 }

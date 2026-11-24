@@ -65,6 +65,8 @@ use App\Support\NarrationBudget;
 use App\Support\PolityCapitals;
 use App\Support\PortraitFocus;
 use App\Support\SafeOutboundUrl;
+use App\Support\TerritoryLook;
+use App\Support\TextStylePresets;
 use App\Support\UploadLimit;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -123,7 +125,7 @@ class Step3SceneConfigurator extends Component
     public const BRAND_BACKGROUND = '#0f172a';
 
     /** A stage text's fonts (resources/js/scene/TextOverlayLayer.js FONTS); anything else falls back. */
-    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic-america'];
+    public const TEXT_FONTS = ['sans', 'history', 'cinzel', 'comic', 'comic-america'];
 
     /** A teacher's time estimate for a scene the student paces: ten seconds to an hour. */
     private const ESTIMATE_MIN_SECONDS = 10;
@@ -1186,6 +1188,41 @@ class Step3SceneConfigurator extends Component
         $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $text);
     }
 
+    /** Put one of the ready-made looks (App\Support\TextStylePresets) on a text layer: one click, one save. */
+    public function applyTextStyle(string $textId, string $presetId): void
+    {
+        if (! $this->selectedSceneId || $textId === '') {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $texts = array_values((array) ($config['texts'] ?? []));
+        $index = collect($texts)->search(fn ($text) => is_array($text) && ($text['id'] ?? null) === $textId);
+
+        if ($index === false || ! is_array($texts[$index]) || ($texts[$index]['kind'] ?? null) === 'rect') {
+            return;
+        }
+
+        $text = TextStylePresets::apply($texts[$index], $presetId);
+        if ($text === null) {
+            return;
+        }
+
+        $texts[$index] = $text;
+        $config['texts'] = $texts;
+        $scene->update(['config' => $config]);
+
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        unset($this->activeText);
+
+        // The canvas merges a patch into what it has, so a look field the preset dropped goes as null.
+        $patch = [...array_fill_keys(TextStylePresets::LOOK_FIELDS, null), ...$text];
+        $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $patch);
+    }
+
     public function deleteSceneText(string $textId): void
     {
         if (! $this->selectedSceneId || $textId === '') {
@@ -1503,6 +1540,27 @@ class Step3SceneConfigurator extends Component
         $this->selectedScene['config'][$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
         $this->saveSelected();
         $this->dispatch('mapDetailChanged', key: $key, value: $this->selectedScene['config'][$key]);
+    }
+
+    /**
+     * Map block: one field of the linked territory's look (config.territory, see App\Support\TerritoryLook).
+     * The live map takes the whole cleaned look at once, so the preview and the save never disagree.
+     */
+    public function setTerritoryLook(string $key, $value): void
+    {
+        if (! $this->selectedScene) {
+            return;
+        }
+        $clean = TerritoryLook::clean($key, $value);
+        if ($clean === null) {
+            return;
+        }
+        $stored = $this->selectedScene['config']['territory'] ?? [];
+        $stored = is_array($stored) ? $stored : [];
+        $stored[$key] = $clean;
+        $this->selectedScene['config']['territory'] = $stored;
+        $this->saveSelected();
+        $this->dispatch('territoryLookChanged', look: TerritoryLook::from($stored));
     }
 
     /** Map block: flip the projection between flat 2D (mercator) and 3D globe; persists in scene.config. */
@@ -2441,7 +2499,7 @@ class Step3SceneConfigurator extends Component
      * A timeline from the browser as it is stored, rebuilt field by field.
      *
      * @param  array<string, mixed>  $timeline
-     * @return array{duration: float, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
+     * @return array{duration: float, durationSet?: true, targets: list<string>, tracks: list<array<string, mixed>>, sail?: array{start: float, end: float}}
      */
     private function storedTimeline(array $timeline): array
     {
@@ -2522,6 +2580,10 @@ class Step3SceneConfigurator extends Component
         }
 
         $stored = ['duration' => $duration, 'targets' => array_values(array_unique($targets)), 'tracks' => $tracks];
+        // The teacher typed a Length; without it a scene with narration is as long as its clip (timeline-panel.js followNarration).
+        if (($timeline['durationSet'] ?? false) === true) {
+            $stored['durationSet'] = true;
+        }
 
         // A voyage leg's crossing as a clip (resources/js/anim/sail-clip.js): when the ship sets off, when it lands.
         $sail = $timeline['sail'] ?? null;
@@ -3333,6 +3395,19 @@ class Step3SceneConfigurator extends Component
         } else {
             $this->selectedScene['config']['gallery']['images'] = array_values($imgs);
         }
+        $this->saveSelected();
+    }
+
+    /**
+     * The stop inspector's "Clickable on the map" switch (config.gallery.button): off, the class gets no button
+     * to open this stop. See App\Support\VoyageStopButton for the default while it is unset.
+     */
+    public function setStopButton(bool $on): void
+    {
+        if (! $this->selectedScene || ($this->selectedScene['kind'] ?? null) !== 'voyage') {
+            return;
+        }
+        $this->selectedScene['config']['gallery']['button'] = $on;
         $this->saveSelected();
     }
 

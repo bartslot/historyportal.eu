@@ -97,6 +97,9 @@
         <div id="lesson-game-overlay" class="absolute inset-0 pointer-events-none"></div>
         {{-- Teacher text annotations (Freeform-style, draggable). z-[7]: above scene art + map. --}}
         <div id="lesson-text-overlay" class="absolute inset-0 z-7"></div>
+        {{-- The Choices layer while it is selected (resources/js/scene/choices-preview.js): a picture of the card
+             the class gets when the scene is over. Above the art, under the scene's edge; it takes no clicks. --}}
+        <div id="lesson-choices-preview" class="pointer-events-none absolute inset-0 z-[44] overflow-hidden" wire:ignore></div>
         {{-- Map block preview — overlays the canvas when a map/voyage/gallery scene is selected.
              It fills the 16:9 STAGE, not the work area: a fixed child of this fixed stage escaped
              the stage and painted the map into the black bars. absolute inset-0 + overflow-hidden
@@ -448,10 +451,23 @@
         // (dragging / inserting a waypoint) and toggling map detail all keep the same map instance —
         // we update it in place (playLeg / setVoyageDef / setMapOptions) instead of destroying +
         // rebuilding it, which reset the zoom / centre / globe-flat projection and reloaded every tile.
+        // The lesson's one map (Bart 11-24: "preloaded map per lesson, only the top changes"): once mounted it
+        // is never thrown away while the editor is open. A slide, a voyage or the title only hides it; the
+        // next map scene puts itself on it (showScene), with every tile and picture of the chart still in.
+        let keptMap = null      // the lesson map block
+        let keptInner = null    // its container, a child of host beside any voyage/gallery mount
+        const parkMap = () => {
+            if (!keptInner) return
+            keptInner.style.visibility = 'hidden'
+            try { keptMap.stopItinerary?.() } catch (_) {}
+        }
         const destroy = () => {
-            if (inst) { inst.destroy(); inst = null }
-            host.innerHTML = ''
-            host.style.display = 'none'
+            if (inst && inst !== keptMap) inst.destroy()
+            inst = null
+            for (const c of [...host.children]) if (c !== keptInner) c.remove()
+            parkMap()
+            // Out of sight but laid out, so the map keeps its size (and its tiles) for the next map scene.
+            if (keptInner) { host.style.display = 'block'; host.style.visibility = 'hidden' } else host.style.display = 'none'
             hideMapArt()
             lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
@@ -489,7 +505,11 @@
             // the seed flow and left the preview blank / with no arrival card).
             if (!inst || !overlayHost || typeof inst.textProjector !== 'function') { layer.setProjector(null); return }
             layer.setProjector(inst.textProjector(overlayHost))
-            inst.map.on('move', () => layer.refreshPositions())
+            // Once per map, like the icons: this runs on every scene load and a listener each time piled up.
+            if (!inst.map.__textMoveBound) {
+                inst.map.__textMoveBound = true
+                inst.map.on('move', () => window.__lessonTextLayer?.refreshPositions())
+            }
         }
 
         // …and so can ICON layers. Same projector, same host box as the layers it positions, so
@@ -648,6 +668,7 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
                 // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
                 choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
+                links: Array.isArray(_vcfg.links) ? _vcfg.links : [],   // the stage's picture of the card (choices-preview.js)
                 // The background moves (SceneLoop): its row wears the video glyph.
                 loop: !!p.imageLoop,
             }
@@ -721,6 +742,7 @@
                         } catch (_) {}
                     }
                     lastKey = key; lastLeg = legNow; lastVoyageDefStr = defStr; lastOverview = wantsOverview
+                    wireTextProjector()   // a text pinned on this voyage follows its map
                     showMapArt(p)   // keep the clipart layers in sync (a poll/leg switch may add/move one)
                     return
                 }
@@ -745,9 +767,10 @@
                 // reading it here threw before the tour ever mounted.
                 lastOverview = !!cfg.overview
                 host.style.display = 'block'
+                host.style.visibility = ''
                 const stageInner = document.createElement('div')
-                stageInner.style.width = '100%'
-                stageInner.style.height = '100%'
+                // Over the kept lesson map (hidden), not below it in the flow.
+                stageInner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
                 host.appendChild(stageInner)
                 const vcfg = p.config || {}
                 if (p.kind === 'voyage' && window.renderVoyageTour) {
@@ -806,6 +829,9 @@
                 } else {
                     console.error('[wizard] voyage/gallery renderer unavailable — is the module loaded?')
                 }
+                // Pinned texts follow the voyage map too (Bart 11-23: "it doesn't stick to the map").
+                // The voyage mounts after the destroy() + wire above, so wire the text layer to it now.
+                wireTextProjector()
                 // Clipart layers ride ABOVE the voyage map (never on a standalone gallery scene).
                 if (p.kind === 'voyage') showMapArt(p); else hideMapArt()
                 return
@@ -847,30 +873,42 @@
             // scene on the live map (its year, territory, pins, switches, framing) and keep the chart,
             // its images and its tiles. Rebuilding here refetched all of them on every scene click.
             // Only a lesson map has showScene: a voyage or gallery on stage still falls through and swaps.
-            if (inst && typeof inst.showScene === 'function') {
+            if (keptMap) {
+                // A voyage or gallery on stage goes; the map was hidden behind it.
+                if (inst && inst !== keptMap) { destroy(); showMapArt(p) }
+                // Hidden since a slide, voyage or the title: it opens on this scene's frame, no glide.
+                const wasHidden = !inst
+                inst = keptMap
                 lastKey = key
+                host.style.display = 'block'
+                host.style.visibility = ''
+                keptInner.style.visibility = ''
                 try {
                     inst.showScene({
+                        jump: wasHidden,
                         qid: cfg.qid || null,
                         fit: cfg.fit || null,
                         year,
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        territory: cfg.territory || null,  // the linked territory's look (map/territory-look.js)
                         timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
+                wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
                 return
             }
             destroy()                 // clears lastKey…
             lastKey = key             // …so set it after
             showMapArt(p)             // …and re-mounts the layers destroy() just cleared
             host.style.display = 'block'
+            host.style.visibility = ''
             // MapLibre stamps `position:relative` on its container, which would override the host's
             // fixed positioning and collapse it — so mount into a full-size inner child instead.
             const inner = document.createElement('div')
-            inner.style.width = '100%'
-            inner.style.height = '100%'
+            inner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
             host.appendChild(inner)
             if (window.renderLessonMap) {
                 inst = window.renderLessonMap(inner, {
@@ -880,6 +918,7 @@
                     projection: cfg.projection || 'mercator',
                     showCities: cfg.show_cities === true,
                     showBorders: cfg.show_borders === true,
+                    territory: cfg.territory || null,
                     interactive: true,
                     annotations: cfg.annotations || [],
                     timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
@@ -889,7 +928,10 @@
                     // Click a polity on the map → link it as this block's territory (hover shows its name).
                     onPolityClick: (t) => window.Livewire.dispatch('mapTerritoryClicked', { sceneId: currentSceneId, qid: t.qid, name: t.name }),
                 })
+                keptMap = inst
+                keptInner = inner
                 wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
             } else {
                 // lesson-map.js failed to load — surface it instead of silently leaving an empty host,
                 // which reveals the 3D canvas (narration art) behind and reads as "the map didn't open".
@@ -907,6 +949,8 @@
             if (!inst) return
             inst.setLayerToggles(key === 'show_cities' ? { cities: !!value } : { borders: !!value })
         })
+        // The territory's look (border, fill) from the inspector, applied in place like the switches.
+        window.Livewire.on('territoryLookChanged', ({ look }) => { if (inst?.setTerritoryLook) inst.setTerritoryLook(look) })
 
 
         // Focus-city rename/remove saved server-side → push fresh annotations so marker labels update live.
@@ -1234,7 +1278,20 @@
                 @endunless
 
                 <div x-show="tab === 'animate'" x-cloak>
-                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @if ($sceneModel->kind === 'map')
+                        {{-- The Map block is what is selected here, so its Motion tab holds the map's own presets
+                             (Bart 11-24: "presets about the selection ... not about the scene animations"). How the
+                             scene replaces the one before it folds away underneath. --}}
+                        <x-lesson.map-motion-presets :scene="$sceneModel" />
+                        <details class="mt-4 border-t border-panel-border pt-3" data-scene-transition>
+                            <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Scene transition') }}</summary>
+                            <div class="pt-2">
+                                <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                            </div>
+                        </details>
+                    @else
+                        <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @endif
                 </div>
 
                 <div x-show="tab === 'format'">
@@ -1271,6 +1328,17 @@
                 @endif
 
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
+                {{-- An old Decision point (three scenes): one click makes it the Choices layer on its question scene. --}}
+                @if ($sceneModel->kind !== 'game' && $sceneModel->branch_group !== null)
+                    <div data-convert-decision class="mt-4 flex h-8 items-center justify-between border-t border-base-content/10 pt-3">
+                        <h4 class="lp-card-label text-panel-label">{{ __('Decision point') }}</h4>
+                        <button type="button" class="btn btn-ghost btn-sm text-panel-link"
+                                wire:click="convertDecisionToChoices({{ $sceneModel->id }})">
+                            <span class="h-4 w-4" x-html="window.__objIcons?.choices"></span> {{ __('Make it choices') }}
+                        </button>
+                    </div>
+                @endif
+
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />
                 @endif
@@ -1978,7 +2046,9 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    // A map scene's bottom object IS the map: the Map block (Bart 11-23), as the timeline names it.
+                    if (objKind === 'map') items.push({ id: '__bg__', icon: 'map', label: @js(__('Map block')), bg: true, section: 'bg' });
+                    else items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
@@ -2072,6 +2142,13 @@
                     try { window.dispatchEvent(new CustomEvent('voyage-obj-focus', { detail: { which: obj.voyage } })); } catch (_) { /* noop */ }
                     return;
                 }
+                if (obj.section === 'choices') {
+                    // The Choices layer is a selection of its own: the stage shows its card and the timeline
+                    // lights its row. Going through the background's select gave the row back to the map.
+                    window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: '__choices__' } }));
+                    this.locate(obj);
+                    return;
+                }
                 if (obj.bg) {
                     window.__lessonTextLayer?.select?.('__bg__');   // clears any canvas object ring
                     this.locate(obj);                                // open Settings on its section
@@ -2106,15 +2183,28 @@
             // Right-click on a row: select it and open Duplicate / Delete at the pointer. Rows that can't be
             // removed (the background, fixed scenery) have no menu, so the browser's own stays away too.
             menuObj: null,
+            canPaste: false,
+            pasteOnly: false,
             openMenu(obj, e) {
-                if (!obj || obj.bg || (obj.s25sky && !obj.removable)) return;
-                this.select(obj);
+                if (!obj) return;
+                this.canPaste = !!window.__objectClipboard?.has();
+                // The background and the pinned rows can't be copied or deleted, but an empty scene has only those, and it is
+                // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
+                this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
+                if (this.pasteOnly && !this.canPaste) return;
+                if (!this.pasteOnly) this.select(obj);
                 this.menuObj = obj;
                 const m = this.$refs.objMenu;
                 m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
-                m.style.top = Math.min(e.clientY, innerHeight - 96) + 'px';
+                m.style.top = Math.min(e.clientY, innerHeight - 180) + 'px';
                 m.showPopover();
             },
+            // Copy / Paste: the same object copy as Cmd-C / Cmd-V, so a paste in another scene lands where it was.
+            copyObject(obj) {
+                if (!obj || obj.bg) return;
+                window.__objectClipboard?.copy([obj.id]);
+            },
+            pasteObjects() { window.__objectClipboard?.paste(); },
             // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
             duplicateObject(obj) {
                 if (!obj || obj.bg) return;
@@ -2399,8 +2489,9 @@
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'eraser' && 'btn-primary'" x-on:click="pick('tool', 'eraser')" data-draw-eraser>{{ __('Eraser') }}</button>
                 </div>
-                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}" :class="tool === 'eraser' && 'opacity-40'">
                     <template x-for="c in colours" :key="c">
                         <button type="button" class="h-8 w-8 rounded-full border-2" :style="`background:${c}`"
                                 :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
@@ -2782,14 +2873,28 @@
         <ul popover x-ref="objMenu" data-obj-menu wire:ignore
             class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
+                <button type="button" @click="$refs.objMenu.hidePopover(); copyObject(menuObj)">
+                    <x-ui.icon name="copy" />
+                    {{ __('Copy') }}
+                    <span class="ml-auto opacity-60">⌘C</span>
+                </button>
+            </li>
+            <li x-show="canPaste">
+                <button type="button" @click="$refs.objMenu.hidePopover(); pasteObjects()">
+                    <x-ui.icon name="paste" />
+                    {{ __('Paste') }}
+                    <span class="ml-auto opacity-60">⌘V</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky">
                 <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
-            <li>
+            <li x-show="!pasteOnly">
                 <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
                     <x-ui.icon name="delete" />
                     {{ __('Delete') }}
@@ -2894,6 +2999,19 @@
             e.preventDefault();
         });
         const pasteObjects = () => window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+        // The object copy as the Object list's right-click menu uses it (Copy / Paste), the same copy as Cmd-C / Cmd-V.
+        // A menu click is a user gesture, so execCommand('copy') fires the copy event that marks the system clipboard
+        // as ours, exactly as Cmd-C does.
+        window.__objectClipboard = {
+            copy(ids) {
+                objClipboard = { ids, sceneId: (window.__objScene || {}).sceneId ?? null };
+                ownCopy = true;
+                try { document.execCommand('copy'); } catch (_) {}
+                ownCopy = false;
+            },
+            has: () => !!objClipboard,
+            paste: () => { if (objClipboard) pasteObjects(); },
+        };
 
         // Cmd/Ctrl-V. The paste EVENT decides (window.__routePaste, resources/js/ui/paste-router.js):
         // only it can see what is on the system clipboard, without a permission prompt. An image goes

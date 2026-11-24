@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\NarrativeFramework;
 use App\Models\Lesson;
 use App\Models\StrategyGame;
+use App\Services\Lessons\StoryCraft;
 
 final class LessonOutlinePrompt
 {
@@ -19,6 +20,7 @@ final class LessonOutlinePrompt
               ."\n- No scene may depict students, quizzes, tests, or classroom activities — every scene"
               .' stays inside the historical story itself.';
         $storyGameBlock = $gameType === 'story_game' ? self::storyGameBlock() : '';
+        $castRules = StoryCraft::castRules();
 
         return <<<SYS
 You are a K-12 curriculum writer producing structured lesson outlines.
@@ -31,6 +33,13 @@ Return ONLY a JSON object with this exact shape — no markdown, no prose, no ex
       "id": string ("LO1", "LO2", ...),
       "text": string (specific and testable — "The student can explain why X led to Y", never "learn about X"),
       "bloom": "remember" | "understand" | "apply" | "analyze"
+    }
+  ],
+  "cast": [
+    {
+      "name": string (exactly as it appears in the briefs' "characters"),
+      "colour": string (their ONE signature colour, e.g. "red", "white", "turquoise"),
+      "look": string (one short line: age range across the lesson, face, hair, the garment that carries the colour)
     }
   ],
   "scene_briefs": [
@@ -73,7 +82,9 @@ Rules:
 - Every scene needs "characters" (named people from the source who ACT in it) and a "conflict"
   (what is at stake). History without people deciding things is a museum plaque, not a lesson.
 - The LAST narration scene is the resolution AND the recap: it lands the story's meaning and
-  revisits every learning objective as one memorable line each — never a dry summary list.
+  revisits every learning objective as one memorable line each — never a dry summary list — and
+  its beat ends on one open question the class can wonder about.
+- The FIRST scene's beat opens on a question or a mystery, never an introduction.
 - Produce AT LEAST 3 narration scenes — single-scene outlines are forbidden. Break the story into
   distinct beats (e.g. setup → rising action → climax → resolution); use the "phase" field to mark them.
 - Aim for roughly one narration scene per 60–90 seconds of target duration; the user message gives an
@@ -82,7 +93,11 @@ Rules:
 - If the source text is short, expand by using each historical fact / actor / location as a separate
   scene rather than collapsing everything together.
 - Only use facts from the provided source text. If uncertain, omit — never invent.
-- Match the requested grade-level vocabulary and tone.
+- Match the "Reading level" in the user message: the age of THIS class decides the words, the themes
+  and how heavy a scene may be. Never assume an age the user message does not give.
+- When the source tells something as a legend or a later account, the brief says so ("as Boccaccio
+  tells it"), so the narration can too.
+{$castRules}
 - historicalFacts must be verifiable from the source text — no fabrication.
 - visualEvidence must be period-accurate: no anachronisms.
 - avoidList must include obvious anachronisms for the period (modern vehicles, electricity, etc.).{$gameNote}
@@ -213,10 +228,13 @@ SG;
             $focusBlock = 'FOCUS: '.implode(' ', $focusParts);
         }
 
+        $reading = StoryCraft::readingRules($lesson->grade_level);
+
         return <<<USR
 Topic: {$lesson->topic}
 Subject: {$lesson->subject}
 Grade level: {$lesson->grade_level}
+Reading level: {$reading}
 Tone: {$lesson->tone}
 Teacher details: {$lesson->details}
 Target duration: {$duration} minutes

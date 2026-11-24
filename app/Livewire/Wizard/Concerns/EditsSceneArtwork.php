@@ -1015,7 +1015,10 @@ trait EditsSceneArtwork
 
                 return array_merge($l, [
                     'title' => $asset->title,
-                    'url' => $asset->url(),
+                    // a drawing is drawn again on its layer with every line (EditsDrawings): show that picture
+                    'url' => \App\Services\Editor\Drawings::isDrawingLayer($l) && is_string($l['path'] ?? null)
+                        ? \Illuminate\Support\Facades\Storage::disk('public')->url($l['path'])
+                        : $asset->url(),
                 ]);
             })
             ->filter()
