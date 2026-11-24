@@ -169,7 +169,7 @@ def simplify(line: list, tol: float) -> list:
 # Area (km2) an island needs before it is drawn at a zoom. MUST equal ISLET_KM2 in
 # resources/js/map-chart.js (asserted by map-chart.test.js): the glaze tiles leave out the shallows of
 # exactly the islands the map leaves out, or a pale halo floats on the sea with nothing in it.
-ISLET_KM2 = [(0, 20000), (2.5, 3000), (3.5, 800), (4.5, 100), (5.5, 40), (6.5, 0)]
+ISLET_KM2 = [(0, 20000), (2.5, 3000), (3.5, 800), (4.5, 40), (5, 10), (5.5, 0)]
 
 
 def islet_km2(zoom: float) -> float:

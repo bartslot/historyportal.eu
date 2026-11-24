@@ -124,6 +124,9 @@ const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5
  * An illustrator draws a few meaningful islands, not every speck (Bart 10-26: "small islands … look like
  * bugs"). A ring shows from the zoom where it is big enough to read; the voyages' landfalls (k=1) always.
  * Returned as a paint value (opacity), since a zoom expression may not sit inside a filter.
+ * Bart 11-24 ("certain islands from the netherlands are not shown"): a country view draws its islands, so the
+ * Wadden islands (Texel 130 km2 to Schiermonnikoog 19 km2) are all in from z5. Only the rows from z3.5 on changed,
+ * which the glaze tiles never read (TILE_ZOOM_RULE stops at z2.5), so no tile needed baking again.
  */
 // MUST equal ISLET_KM2 in scripts/build-chart-data.py (the glaze tiles bake the same rule).
 // The outlines are already simplified and smoothed at build time. MapLibre's own per-tile
@@ -131,7 +134,7 @@ const coastWidth = (w) => ['interpolate', ['linear'], ['zoom'], 2, w * 0.35, 3.5
 // whole zooms: stair-stepped coasts at z3.3-3.8, the editor's default framing (tester 10-26).
 export const GEOJSON_TOLERANCE = 0.2
 
-export const ISLET_KM2 = [[0, 20000], [2.5, 3000], [3.5, 800], [4.5, 100], [5.5, 40], [6.5, 0]]
+export const ISLET_KM2 = [[0, 20000], [2.5, 3000], [3.5, 800], [4.5, 40], [5, 10], [5.5, 0]]
 const shownAtZoom = (on = 1) => ['step', ['zoom'],
   ...ISLET_KM2.flatMap(([z, km2], i) => [...(i ? [z] : []), ['case', ['any', ['==', ['get', 'k'], 1], ['>=', ['get', 'a'], km2]], on, 0]])]
 
