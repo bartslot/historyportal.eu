@@ -3115,5 +3115,11 @@
     "Eraser": "Borrador",
     "Paste": "Pegar",
     "Stage layers paste into a 3D World scene only.": "Las capas del escenario solo se pegan en una escena de Mundo 3D.",
-    "A picture from another period's library was left out: it does not load on this stage.": "Se ha omitido una imagen de la biblioteca de otra época: no se carga en este escenario."
+    "A picture from another period's library was left out: it does not load on this stage.": "Se ha omitido una imagen de la biblioteca de otra época: no se carga en este escenario.",
+    "Styles": "Estilos",
+    "Glow": "Halo",
+    "No edge": "Sin borde",
+    "Light on dark": "Claro sobre oscuro",
+    "Dark on light": "Oscuro sobre claro",
+    "Edge colour": "Color del borde"
 }

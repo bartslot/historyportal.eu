@@ -251,7 +251,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BsCUrZpA.css",
+    "file": "assets/app-BK2SnlIf.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CWwTWCxy.js",
+    "file": "assets/app-DpvXcIfS.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -315,7 +315,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-DSmn8owN.js",
+    "file": "assets/cutout-dialog-Bc6_4JGW.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -372,7 +372,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-VW7SK18A.js",
+    "file": "assets/lesson-player-dfkWB-Ig.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -518,7 +518,7 @@
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-LtUUNc4z.js",
+    "file": "assets/TextOverlayLayer-DvTazVWX.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true,
@@ -546,7 +546,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DZbU7-CO.js",
+    "file": "assets/index-BGHXSzt6.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -677,7 +677,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-T7ATChzu.js",
+    "file": "assets/recorder-Ch7wQ0Gr.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

@@ -3073,5 +3073,11 @@
     "Eraser": "Gomma",
     "Paste": "Incolla",
     "Stage layers paste into a 3D World scene only.": "I livelli del palco si incollano solo in una scena Mondo 3D.",
-    "A picture from another period's library was left out: it does not load on this stage.": "Un'immagine dalla libreria di un altro periodo è stata esclusa: non si carica su questo palco."
+    "A picture from another period's library was left out: it does not load on this stage.": "Un'immagine dalla libreria di un altro periodo è stata esclusa: non si carica su questo palco.",
+    "Styles": "Stili",
+    "Glow": "Alone",
+    "No edge": "Senza bordo",
+    "Light on dark": "Chiaro su scuro",
+    "Dark on light": "Scuro su chiaro",
+    "Edge colour": "Colore del bordo"
 }

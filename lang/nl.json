@@ -3140,5 +3140,11 @@
     "Eraser": "Gum",
     "Paste": "Plakken",
     "Stage layers paste into a 3D World scene only.": "Lagen van het podium plak je alleen in een 3D-wereldscène.",
-    "A picture from another period's library was left out: it does not load on this stage.": "Een plaatje uit de bibliotheek van een andere periode is weggelaten: het laadt niet op dit podium."
+    "A picture from another period's library was left out: it does not load on this stage.": "Een plaatje uit de bibliotheek van een andere periode is weggelaten: het laadt niet op dit podium.",
+    "Styles": "Stijlen",
+    "Glow": "Gloed",
+    "No edge": "Zonder rand",
+    "Light on dark": "Licht op donker",
+    "Dark on light": "Donker op licht",
+    "Edge colour": "Kleur rand"
 }

@@ -3073,5 +3073,11 @@
     "Eraser": "Gomme",
     "Paste": "Coller",
     "Stage layers paste into a 3D World scene only.": "Les calques de scène se collent uniquement dans une scène Monde 3D.",
-    "A picture from another period's library was left out: it does not load on this stage.": "Une image de la bibliothèque d'une autre époque a été laissée de côté : elle ne se charge pas sur cette scène."
+    "A picture from another period's library was left out: it does not load on this stage.": "Une image de la bibliothèque d'une autre époque a été laissée de côté : elle ne se charge pas sur cette scène.",
+    "Styles": "Styles",
+    "Glow": "Halo",
+    "No edge": "Sans bord",
+    "Light on dark": "Clair sur sombre",
+    "Dark on light": "Sombre sur clair",
+    "Edge colour": "Couleur du bord"
 }
