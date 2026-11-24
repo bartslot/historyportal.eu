@@ -18,6 +18,8 @@ import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObject
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
+import { applyMapPreset, MAP_PRESET_PROPERTIES, MAP_EXIT_PRESETS } from './map-presets.js'
+import { applyCameraPreset } from './map-camera-presets.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
 
@@ -276,6 +278,9 @@ export const animationTimeline = (config = {}) => ({
       setLayerKeys: (target, keys) => this.replaceLayerKeys(target, keys),
       // a text's motion preset (Motion tab, text-presets.js): keys on its rows at the playhead, one edit, played once
       textPreset: (target, id) => this.applyTextPreset(target, id),
+      // the Map block's motion presets (Motion tab with the map selected): its territory rows, and its camera
+      mapPreset: (id) => this.applyMapPreset(id),
+      cameraPreset: (id) => this.applyCameraPreset(id),
       seek: (time) => this.seek(time),
       refresh: () => this.applyFrame(),
       // the Object list's type icon: the same hidden state as this panel's eye
@@ -1092,6 +1097,68 @@ export const animationTimeline = (config = {}) => ({
       const old = before.find((t) => t.target === target && t.property === p)
       if (old) writeObjectProperty(target, p, baseOf(old) ?? readObjectProperty(target, p))
     }
+    this.save()
+    this.announce()
+    playStretch(done.from, done.to, this.reducedMotion)
+  },
+
+  /**
+   * A Map block territory preset laid into its rows at the playhead (map-presets.js), the same way as a text's: one
+   * edit, one undo, played once; another one picked where the last one ended takes its place (Bart 11-24).
+   */
+  applyMapPreset (id) {
+    const target = 'terr:map'
+    if (!window.__lessonMapApi?.hasTerritory?.()) return
+    this.stopEasingPreview()
+    this.pause()
+    const api = window.__lessonMapApi
+    const rest = (p) => {
+      if (p === 'from') return api.territoryFromYear?.() ?? null
+      const track = this.trackFor(target, p)
+      return track ? baseOf(track) : readObjectProperty(target, p)
+    }
+    const last = this._lastPreset
+    const exit = MAP_EXIT_PRESETS.includes(id)
+    const start = last?.target === target && last.exit === exit && sameTime(this.time, last.to) ? last.from : this.time
+    const done = applyMapPreset(this.tracks, target, id, { start, duration: this.duration, rest })
+    if (!done) return
+    this._lastPreset = { target, exit, from: done.from, to: done.to }
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))
+    const before = this.tracks
+    this.tracks = done.tracks
+    for (const p of MAP_PRESET_PROPERTIES) {
+      if (sortedKeys(this.trackFor(target, p)).length >= 2) continue
+      const old = before.find((t) => t.target === target && t.property === p)
+      if (old) writeObjectProperty(target, p, baseOf(old) ?? readObjectProperty(target, p))
+    }
+    this.openGroups[target] = true
+    this.refreshObjects()
+    this.save()
+    this.announce()
+    playStretch(done.from, done.to, this.reducedMotion)
+  },
+
+  /**
+   * A map camera preset (map-camera-presets.js), ending on the shot framed on the stage now: it replaces every camera
+   * key (a scene's camera makes one move), from the playhead, and lengthens the scene when the move runs past its end.
+   */
+  applyCameraPreset (id) {
+    const map = window.__lessonMap
+    if (!map || !this.canHaveCamera) return
+    this.stopEasingPreview()
+    this.pause()
+    const view = cameraFromMap(map)
+    const start = this._lastCameraPreset && sameTime(this.time, this._lastCameraPreset.to) ? this._lastCameraPreset.from : this.time
+    const done = applyCameraPreset(this.tracks, id, view, { start, focus: window.__lessonMapApi?.focusPoints?.() ?? [] })
+    if (!done) return
+    this._lastCameraPreset = { from: done.from, to: done.to }
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))
+    this.tracks = done.tracks
+    if (!this.hasCamera) this.targets = [...this.targets, 'camera']
+    if (this.duration < done.to) this.duration = done.to
+    this.openGroups.camera = true
+    this.fitSailIntoDuration?.()
+    this.refreshObjects()
     this.save()
     this.announce()
     playStretch(done.from, done.to, this.reducedMotion)
