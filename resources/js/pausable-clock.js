@@ -75,5 +75,9 @@ export function createPausableTimeout (fn, ms, opts = {}) {
       done = true
       clear(handle)
     },
+    /** Milliseconds it has run so far, pauses excluded. */
+    elapsed () {
+      return clock.elapsed()
+    },
   }
 }

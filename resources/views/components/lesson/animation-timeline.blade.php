@@ -49,6 +49,7 @@
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
         'sail'      => $timeline['sail'] ?? null,
+        'narrationStart' => $timeline['narrationStart'] ?? 0,
         // The background's moving version, drawn as a clip on its row (SceneLoop, video-clip.js).
         'loop'      => $scene ? \App\Services\Support\SceneLoop::urlForScene($scene) : null,
         'sailLeg'   => $sailLeg,
@@ -721,11 +722,15 @@
                 <template x-if="hasNarration">
                     <div class="relative cursor-col-resize border-t border-panel-hairline" style="height: 40px" data-timeline-narration-lane
                          x-on:pointerdown.stop="startScrub($event)">
-                        <div x-show="narrationSpan" class="pointer-events-none absolute overflow-hidden rounded-[3px]"
-                             data-timeline-narration-clip
+                        {{-- Drag the clip left or right to start the voice later in the scene (Bart, 2026-11-24). --}}
+                        <div x-show="narrationSpan" class="absolute cursor-grab overflow-hidden rounded-[3px] active:cursor-grabbing"
+                             data-timeline-narration-clip :title="@js(__('Drag to move the narration'))"
+                             x-on:pointerdown.stop="startNarrationDrag($event)"
                              :style="barStyle(narrationSpan) + '; top: 5px; height: 30px; background: var(--color-timeline-bar-group)'">
-                            <svg x-show="wavePath" class="absolute inset-0 h-full w-full text-panel-value/70" preserveAspectRatio="none"
-                                 :viewBox="`0 0 ${waveBuckets || 1} 100`" aria-hidden="true">
+                            {{-- view-box.camel: HTML lowercases a bound :viewBox to "viewbox", which SVG ignores, and the
+                                 peaks were then drawn one pixel per column from the left instead of across the clip. --}}
+                            <svg x-show="wavePath" class="pointer-events-none absolute inset-0 h-full w-full text-panel-value/70" preserveAspectRatio="none"
+                                 :view-box.camel="`0 0 ${waveBuckets || 1} 100`" aria-hidden="true">
                                 <path :d="wavePath" stroke="currentColor" stroke-width="0.6" fill="none" vector-effect="non-scaling-stroke"/>
                             </svg>
                         </div>
