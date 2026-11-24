@@ -1525,6 +1525,14 @@ export const animationTimeline = (config = {}) => ({
     const s25 = this.tracks.filter((t) => kindOfTarget(t.target) === 's25')
     this.tracks = [...(Array.isArray(timeline.tracks) ? timeline.tracks : []), ...s25]
     this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
+    // The stored length too: a paste into a scene with no timeline yet takes the source's, and a panel left at its old
+    // length hid the later keys and clamped them on its next save.
+    const duration = Number(timeline.duration)
+    if (duration > 0 && !sameTime(duration, this.duration)) {
+      this.duration = Math.min(3600, duration)
+      if (this.time > this.duration) this.seek(this.duration)
+      if (this.zoomIsMine) this.measureFit(); else this.fit()
+    }
     this.sail = storedSail(timeline)
     this.selected = []
     this.remember()
