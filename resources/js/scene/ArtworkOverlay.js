@@ -246,6 +246,19 @@ export function normalizeLayer(l) {
   }
 }
 
+/** How much bigger a pinned picture gets for each zoom step in (the map itself doubles). */
+export const PIN_ZOOM_GROWTH = Math.SQRT2
+export const PIN_SCALE_MIN = 0.4
+export const PIN_SCALE_MAX = 2.5
+
+/** The size factor for a pinned picture under this projector: 1 at the scene's opening zoom. */
+export function pinZoomFactor(projector) {
+  const z = projector?.zoom?.()
+  const ref = projector?.refZoom?.()
+  if (!Number.isFinite(z) || !Number.isFinite(ref)) return 1
+  return Math.max(PIN_SCALE_MIN, Math.min(PIN_SCALE_MAX, PIN_ZOOM_GROWTH ** (z - ref)))
+}
+
 /** A stage position (%) off the stage pulled back in, far enough that the picture can be seen and grabbed. */
 const onStage = (v) => (!Number.isFinite(v) ? 50 : v >= 0 && v <= 100 ? v : Math.max(10, Math.min(90, v)))
 
@@ -487,6 +500,10 @@ export class ArtworkOverlay {
       if (el && el !== this._dragNode) {
         el.style.left = `${item.x}%`
         el.style.top = `${item.y}%`
+        // It grows with the map too (_mapFactor); only its size, never `max-content` (see the scale case).
+        el.style.height = `${this._heightPct(item)}%`
+        const w = this._widthPct(item)
+        if (w !== null) el.style.width = `${w}%`
         this._syncChrome(item)
       }
     }
@@ -528,14 +545,24 @@ export class ArtworkOverlay {
     return `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))${spin}${mirror}`
   }
 
-  // On-screen height of the node = base height × user scale, as a % of the stage.
+  // On-screen height of the node = base height × user scale (× the map's zoom, when pinned), as a % of the stage.
   _heightPct(item) {
-    return item.height * item.scale
+    return item.height * item.scale * this._mapFactor(item)
   }
 
   // On-screen width, or null when the layer has none of its own.
   _widthPct(item) {
-    return Number.isFinite(item.width) ? item.width * item.scale : null
+    return Number.isFinite(item.width) ? item.width * item.scale * this._mapFactor(item) : null
+  }
+
+  /**
+   * A picture pinned to a place grows and shrinks with the map, by a set amount (Bart 11-24: "if they
+   * are pinned to the map, they need to be scaled to a certain amount"). Its saved size is its size at
+   * the scene's opening frame; a map zoomed in one step (twice as close) makes it PIN_ZOOM_GROWTH
+   * times as big, held between PIN_SCALE_MIN and PIN_SCALE_MAX so it never fills the stage or vanishes.
+   */
+  _mapFactor(item) {
+    return item?.anchor === 'map' ? pinZoomFactor(this._projector) : 1
   }
 
   /**
