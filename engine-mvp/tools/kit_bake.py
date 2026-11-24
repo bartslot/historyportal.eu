@@ -600,8 +600,8 @@ def main() -> None:
         svg_pieces(b, made_body['pieces'])
         # pieces that are only an SVG (kit_hair_svg.py, kit_outfit_svg.py) are not baked here: keep them as they were
         baked = {pc['id'] for pc in made_body['pieces']}
-        was = next((ob for ob in old.get('bodies', []) if ob['id'] == b), {'pieces': []})
-        made_body['pieces'] += [pc for pc in was['pieces'] if 'svg' in pc['files'] and pc['id'] not in baked]
+        # pieces that are only an SVG (kit_hair_svg.py, kit_outfit_svg.py) or cut from a drawing (kit_outfit_ink.py, `made`) are not baked here: keep them
+        made_body['pieces'] += [pc for pc in was['pieces'] if ('svg' in pc['files'] or 'made' in pc) and pc['id'] not in baked]
     kit = {
         'id': KIT_ID, 'version': 1, 'view': 'front34', 'paper': '#f6f5ee', 'ink': '#191410',
         'kinds': KINDS, 'kindDefaults': KIND_DEFAULT,

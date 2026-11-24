@@ -52,11 +52,15 @@ BODIES = {
 
 OUTFITS = {
     # Marco Polo, Venice 1271: cream knee tunic laced at the neck, belt, satchel across the chest, hose and knee boots
-    'venice-tunic-satchel': dict(body='man', label='Tunic, belt and satchel', period='venice-1271', coat=False,
-                                 hem=2232, hem_sag=30, flare=(640, 1372), belt=True, satchel=True, seed=3),
+    'venice-tunic-satchel': dict(body='man', label='Tunic, belt and satchel', period='venice-1271', coat=False, drawing='kit-drawings/marco-tunic-ink.webp',
+                                 hem=2232, hem_sag=30, flare=(640, 1372), belt=True, satchel=True, seed=3,
+                                 drawn=dict(waist=1236, strap=[(1182, 598), (1075, 942), (812, 1440)], strap_hw=24,
+                                            bag=[(640, 1420), (820, 1405), (836, 1430), (836, 1650), (815, 1668), (650, 1672), (632, 1650), (630, 1440)])),     # the ChatGPT drawing's own belt (kit_outfit_ink.py)
     # the same in the snow (the Pamir): a long coat lined and trimmed with fur over it
-    'venice-fur-coat': dict(body='man', label='Fur-lined coat', period='venice-1271', coat=True,
-                            hem=2470, hem_sag=34, flare=(596, 1418), belt=False, satchel=True, seed=5),
+    'venice-fur-coat': dict(body='man', label='Fur-lined coat', period='venice-1271', coat=True, drawing='kit-drawings/marco-coat-ink.webp',
+                            hem=2470, hem_sag=34, flare=(596, 1418), belt=False, satchel=True, seed=5,
+                            drawn=dict(hem=2150, belt=True, waist=1236, strap=[(1240, 732), (1122, 930), (985, 1180), (860, 1420)], strap_hw=20,
+                                       bag=[(640, 1400), (850, 1385), (866, 1410), (866, 1700), (845, 1718), (650, 1722), (632, 1700), (630, 1420)])),   # its coat ends at the knee, the belt shows
 }
 
 # Ready-made people in these outfits (kit.json presets; kit_bake.py keeps them through a re-bake). Marco keeps one
@@ -67,7 +71,7 @@ PRESETS = {
                        zones={'garment': 'raw-linen', 'cord': 'dark-wool-brown', 'hose': 'camel-brown'}),
     'marco-polo-snow': dict(role='Marco Polo in the snow', body='man', face='man', outfit='venice-fur-coat', parts=['hair/man-wavy-jaw'],
                             skin='s2', hair_colour='brown', height_m=1.66,
-                            zones={'garment': 'raw-linen', 'cord': 'dark-wool-brown', 'head-cloth': 'undyed-wool'}),
+                            zones={'garment': 'raw-linen', 'cord': 'dark-wool-brown', 'head-cloth': 'undyed-wool', 'hose': 'camel-brown'}),
 }
 
 
@@ -185,7 +189,7 @@ def fur_edge(m: np.ndarray, rnd, tuft=11) -> str:
 
 # --- one outfit -------------------------------------------------------------------------------------------------------
 
-def outfit_svg(oid: str, o: dict, kit: dict) -> tuple[str, list[int], list[str]]:
+def outfit_svg(oid: str, o: dict, kit: dict, masks_only: bool = False):
     b = BODIES[o['body']]
     rnd = random.Random(o['seed'])
     lab, parts = labels_of(o['body'])
@@ -203,7 +207,7 @@ def outfit_svg(oid: str, o: dict, kit: dict) -> tuple[str, list[int], list[str]]
     sleeve = {s: tidy(arm[s] & side((H, W), *b['wrist'][s])) for s in 'nf'}
 
     # the body garment: chest + a skirt from the waist to the hem, flared, its hem sagging toward the front
-    wy = b['waist']
+    wy = o.get('waist', b['waist'])
     wl, wr = edge_x(chest | hips, wy, True), edge_x(chest | hips, wy, False)
     hl, hr = o['flare']
     hem = o['hem']
@@ -234,14 +238,12 @@ def outfit_svg(oid: str, o: dict, kit: dict) -> tuple[str, list[int], list[str]]
                              (wr + 10, wy + 18), (b['front'], wy + 38), (wl - 10, wy + 22)])
         over.append(('belt', 'rope', band & body))
     if o['satchel']:
-        s0, s1 = (1172, 606), (792, 1440)      # far shoulder -> near hip
-        nx, ny = -(s1[1] - s0[1]), s1[0] - s0[0]
-        ln = math.hypot(nx, ny)
-        hw = 21
-        strap = poly((H, W), [(s0[0] + nx / ln * hw, s0[1] + ny / ln * hw), (s1[0] + nx / ln * hw, s1[1] + ny / ln * hw),
-                              (s1[0] - nx / ln * hw, s1[1] - ny / ln * hw), (s0[0] - nx / ln * hw, s0[1] - ny / ln * hw)])
+        pts = o.get('strap', [(1172, 606), (792, 1440)])      # far shoulder -> near hip
+        strap = np.zeros((H, W), np.uint8)
+        cv2.polylines(strap, [np.round(np.array(pts)).astype(np.int32)], False, 1, thickness=2 * o.get('strap_hw', 21))
+        strap = strap.astype(bool)
         over.append(('strap', 'rope', strap & (body | chest) & ~arms & (yy > 596)))
-        bag = [(706, 1436), (884, 1420), (898, 1440), (904, 1640), (886, 1662), (720, 1672), (702, 1652), (698, 1458)]
+        bag = o.get('bag', [(706, 1436), (884, 1420), (898, 1440), (904, 1640), (886, 1662), (720, 1672), (702, 1652), (698, 1458)])
         over.append(('satchel', 'rope', poly((H, W), chaikin(bag, 2)) & ~arms))
 
     # the coat's fur: collar and front edge, hem band, cuffs
@@ -269,6 +271,8 @@ def outfit_svg(oid: str, o: dict, kit: dict) -> tuple[str, list[int], list[str]]
     stack += [(f'sleeve-{s}', 'tunic', sleeve[s]) for s in 'nf']
     if fur is not None:
         stack += [('fur-cuffs', 'ochre', fur & arms)]
+    if masks_only:      # the shapes alone, back to front (kit_outfit_ink.py colours a drawing by them)
+        return stack
     vis = []
     for i, (name, kind, m) in enumerate(stack):
         top = np.zeros((H, W), bool)
@@ -434,6 +438,8 @@ def main() -> None:
     kit_path = KIT / 'kit.json'
     kit = json.loads(kit_path.read_text())
     for oid, o in OUTFITS.items():
+        if 'drawing' in o:      # drawn by ChatGPT: kit_outfit_ink.py makes that piece; the shapes here only colour it
+            continue
         svg, box, kinds = outfit_svg(oid, o, kit)
         out = KIT / o['body'] / f'outfit-{oid}.svg'
         out.write_text(svg)

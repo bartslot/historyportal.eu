@@ -46,3 +46,25 @@ describe('overRaw: an SVG outfit laid over the body\'s plain one', () => {
     expect(out.cast).toBeNull()
   })
 })
+
+describe('softShade', () => {
+  it('softens a hard band of shade inside the paint and leaves the air, eyes and face alone', async () => {
+    const { softShade } = await import('../paint.js')
+    const w = 20, h = 4
+    const d = new Uint8ClampedArray(w * h * 4)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4
+      if (x < 16) { d[o + 3] = 255; d[o + 1] = 7; d[o + 2] = 9 }
+      if (x >= 8 && x < 16) d[o] = 255
+    }
+    softShade(d, w, h, 2)
+    const r = (x) => d[(1 * w + x) * 4]
+    expect(r(0)).toBe(0)
+    expect(r(7)).toBeGreaterThan(0)
+    expect(r(8)).toBeLessThan(255)
+    expect(r(15)).toBe(255)              // the air beside the paint does not lighten its edge
+    expect(r(18)).toBe(0)
+    expect(d[(1 * w + 10) * 4 + 1]).toBe(7)
+    expect(d[(1 * w + 10) * 4 + 2]).toBe(9)
+  })
+})

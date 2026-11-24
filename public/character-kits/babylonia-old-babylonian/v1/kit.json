@@ -1926,14 +1926,17 @@
       "hose"
      ],
      "box": [
-      444,
+      441,
       91,
-      1129,
-      2934
+      1121,
+      2930
      ],
+     "collar": 544,
+     "made": "kit_outfit_ink.py",
      "files": {
-      "svg": "outfit-venice-tunic-satchel.svg?v=6cdc9a8c4c",
-      "under": "outfit/base-kilt"
+      "fill": "outfit-venice-tunic-satchel.webp",
+      "ink": "outfit-venice-tunic-satchel-ink.webp",
+      "shade": "outfit-venice-tunic-satchel-shade.webp"
      }
     },
     {
@@ -1946,17 +1949,21 @@
       "tunic",
       "rope",
       "tie",
-      "ochre"
+      "ochre",
+      "hose"
      ],
      "box": [
-      444,
+      431,
       91,
-      1129,
-      2934
+      1141,
+      2930
      ],
+     "collar": 466,
+     "made": "kit_outfit_ink.py",
      "files": {
-      "svg": "outfit-venice-fur-coat.svg?v=ca5c903423",
-      "under": "outfit/base-kilt"
+      "fill": "outfit-venice-fur-coat.webp",
+      "ink": "outfit-venice-fur-coat-ink.webp",
+      "shade": "outfit-venice-fur-coat-shade.webp"
      }
     },
     {
@@ -2597,7 +2604,8 @@
     "zones": {
      "garment": "raw-linen",
      "cord": "dark-wool-brown",
-     "head-cloth": "undyed-wool"
+     "head-cloth": "undyed-wool",
+     "hose": "camel-brown"
     },
     "facing": 1
    }
