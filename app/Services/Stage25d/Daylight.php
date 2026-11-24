@@ -6,8 +6,8 @@ namespace App\Services\Stage25d;
 
 /**
  * A scene's time of day (config.stage25d.set.daylight, read by engine-mvp/src/stage25d/daylight.ts): dawn, day, dusk
- * or night, the teacher's own sky colours, which cloud cut-outs and how many, and where the sun stands. What the Sky
- * panel sends is held to exactly that shape; anything else is dropped.
+ * or night, the teacher's own sky colours, which cloud cut-outs and how many, where the sun stands, and snow or rain
+ * (weather.ts). What the Sky panel sends is held to exactly that shape; anything else is dropped.
  */
 final class Daylight
 {
@@ -17,6 +17,11 @@ final class Daylight
     public const BUILT_IN_CLOUDS = ['cloud-cumulus-large-01', 'cloud-cumulus-small-01', 'cloud-bank-01', 'cloud-cirrus-01', 'cloud-rain-01'];
 
     private const COLOURS = ['top', 'mid', 'horizon'];
+
+    /** Snow or rain and the range of each slider (engine-mvp stage25d/weather.ts WEATHER_RANGE). */
+    public const WEATHER_KINDS = ['snow', 'rain'];
+
+    private const WEATHER_RANGE = ['amount' => [0.0, 1.0], 'wind' => [-1.0, 1.0], 'size' => [0.4, 2.5], 'speed' => [0.25, 2.5]];
 
     /** More cloud ids than any bundle has: a longer list is not from the panel. */
     private const MAX_CLOUD_IDS = 20;
@@ -68,6 +73,16 @@ final class Daylight
         $sun = $raw['sun'] ?? null;
         if (is_array($sun) && self::isNumber($sun['x'] ?? null) && self::isNumber($sun['height'] ?? null)) {
             $out['sun'] = ['x' => self::unit($sun['x']), 'height' => self::unit($sun['height'])];
+        }
+
+        $weather = $raw['weather'] ?? null;
+        if (is_array($weather) && in_array($weather['kind'] ?? null, self::WEATHER_KINDS, true)) {
+            $out['weather'] = ['kind' => $weather['kind']];
+            foreach (self::WEATHER_RANGE as $key => [$min, $max]) {
+                if (self::isNumber($weather[$key] ?? null)) {
+                    $out['weather'][$key] = round(max($min, min($max, (float) $weather[$key])), 3);
+                }
+            }
         }
 
         if (($raw['painted'] ?? false) === true) {

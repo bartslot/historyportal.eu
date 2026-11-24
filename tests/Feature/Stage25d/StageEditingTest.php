@@ -482,6 +482,24 @@ class StageEditingTest extends TestCase
         $this->assertEquals(['cloudDrift' => 1, 'housePitch' => 4.5], $scene->fresh()->config['stage25d']['look'], 'birds and smoke are gone (Bart 11-10)');
     }
 
+    public function test_snow_or_rain_saves_with_the_time_of_day_held_to_the_sliders_ranges(): void
+    {
+        $scene = $this->scene();
+        $editor = $this->editor($scene);
+
+        $editor->call('saveStage25dDaylight', [
+            'time' => 'day', 'painted' => true,
+            'weather' => ['kind' => 'snow', 'amount' => 3, 'wind' => -4, 'size' => 1.2, 'speed' => 'fast', 'colour' => '#fff'],
+        ], $scene->id);
+        $this->assertEquals([
+            'time' => 'day', 'painted' => true,
+            'weather' => ['kind' => 'snow', 'amount' => 1.0, 'wind' => -1.0, 'size' => 1.2],
+        ], $scene->fresh()->config['stage25d']['set']['daylight']);
+
+        $editor->call('saveStage25dDaylight', ['time' => 'day', 'weather' => ['kind' => 'hail', 'amount' => 0.5]], $scene->id);
+        $this->assertArrayNotHasKey('weather', $scene->fresh()->config['stage25d']['set']['daylight'], 'no such weather: dry');
+    }
+
     public function test_a_time_of_day_saves_held_to_what_the_stage_reads_and_opens_the_sky_row(): void
     {
         Storage::disk('public')->put('library/nl-prehistory/library.json', json_encode(['assets' => [
