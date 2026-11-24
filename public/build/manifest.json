@@ -260,7 +260,11 @@
     ]
   },
   "resources/js/app.js": {
+<<<<<<< HEAD
     "file": "assets/app-CWwTWCxy.js",
+=======
+    "file": "assets/app-Bybq8sf7.js",
+>>>>>>> dee7af46078ff101c6df9964c21487fa9e380bf2
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -315,7 +319,11 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
+<<<<<<< HEAD
     "file": "assets/cutout-dialog-DSmn8owN.js",
+=======
+    "file": "assets/cutout-dialog-D-nAj7mj.js",
+>>>>>>> dee7af46078ff101c6df9964c21487fa9e380bf2
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -546,7 +554,11 @@
     ]
   },
   "resources/js/scene/index.js": {
+<<<<<<< HEAD
     "file": "assets/index-DZbU7-CO.js",
+=======
+    "file": "assets/index-b9HfBy4m.js",
+>>>>>>> dee7af46078ff101c6df9964c21487fa9e380bf2
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -677,7 +689,11 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
+<<<<<<< HEAD
     "file": "assets/recorder-T7ATChzu.js",
+=======
+    "file": "assets/recorder-C756LNk-.js",
+>>>>>>> dee7af46078ff101c6df9964c21487fa9e380bf2
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
