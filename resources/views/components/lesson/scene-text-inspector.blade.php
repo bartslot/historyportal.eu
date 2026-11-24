@@ -90,8 +90,7 @@
                     @php
                         $look = \App\Support\TextStylePresets::preview($styleId, (string) $val('font', 'sans'));
                     @endphp
-                    <button type="button" data-text-style="{{ $styleId }}"
-                            wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
+                    <button type="button" data-text-style="{{ $styleId }}" wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
                             aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}" aria-label="{{ $styleLabel }}"
                             class="group flex min-w-0 flex-col items-stretch gap-1">
                         <span class="relative grid h-12 place-items-center overflow-hidden rounded-md px-1 ring-inset transition
