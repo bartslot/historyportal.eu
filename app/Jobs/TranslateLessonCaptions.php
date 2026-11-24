@@ -12,6 +12,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Translate a lesson's missing subtitle lines into one language. LessonCaptionsController queues
@@ -21,8 +22,8 @@ use Illuminate\Support\Facades\Log;
  *
  * When the provider is still busy after that (a 429 or 503 that outlasts the in-run wait), the
  * job goes back on the queue a few minutes later instead of landing in failed_jobs: prod logged
- * four such failures on 2026-11-24. Only a refusal that waiting cannot fix (an empty quota, a
- * 4xx) or the last try fails the job, so ops:check shows something worth a look.
+ * four such failures on 2026-11-24. Anything else (an empty quota, a 4xx, a connection error) or
+ * the last try fails the job at once, so ops:check shows something worth a look.
  */
 class TranslateLessonCaptions implements ShouldQueue
 {
@@ -53,9 +54,9 @@ class TranslateLessonCaptions implements ShouldQueue
             if ($lesson) {
                 $captions->translateMissing($lesson, $this->language);
             }
-        } catch (LlmHttpException $e) {
+        } catch (Throwable $e) {
             $delay = self::RELEASE_DELAYS[$this->attempts() - 1] ?? null;
-            if ($e->retryable() && $delay !== null && $this->attempts() < $this->tries && $this->onRealQueue()) {
+            if ($e instanceof LlmHttpException && $e->retryable() && $delay !== null && $this->attempts() < $this->tries && $this->onRealQueue()) {
                 // Keep the language marked as translating while it waits, so a class's polls do
                 // not queue a second copy; the key outlives the delay in case no worker is free.
                 Cache::put(self::statusKey($this->lessonId, $this->language), 'running', now()->addSeconds($delay + 600));
@@ -66,8 +67,19 @@ class TranslateLessonCaptions implements ShouldQueue
 
                 return;
             }
+
+            // Anything else ends this job for good: an empty quota, a 4xx, a connection error,
+            // garbled output, or the last re-queue spent. Fail it explicitly, since with tries
+            // left the worker would otherwise run it again at once, sending the same request to
+            // a provider that just refused it.
             $this->releaseKey($captions, $lesson);
-            throw $e;
+            if (! $this->onRealQueue()) {
+                throw $e;
+            }
+            report($e);
+            $this->fail($e);
+
+            return;
         }
         $this->releaseKey($captions, $lesson);
     }
