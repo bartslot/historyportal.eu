@@ -489,6 +489,31 @@
                     </div>
                 </div>
             </template>
+
+            {{-- The narration clip, at the bottom (Bart, 2026-11-24), with the editor's own listening
+                 volume: the speaker mutes, the slider sets the level. It is not the lesson's volume;
+                 the class sets that on the player's deck. --}}
+            <template x-if="hasNarration">
+                <div class="flex items-center gap-2 border-t border-panel-hairline pl-4 pr-3" style="height: 40px" data-timeline-narration-label>
+                    <button type="button" x-on:click="toggleNarrationMute()" data-timeline-narration-mute
+                            class="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded hover:text-white"
+                            :class="narrationMuted ? 'text-panel-label opacity-40' : 'text-panel-icon'"
+                            :aria-pressed="narrationMuted ? 'true' : 'false'"
+                            :aria-label="narrationMuted ? @js(__('Unmute narration')) : @js(__('Mute narration'))"
+                            :data-tooltip="narrationMuted ? @js(__('Unmute narration')) : @js(__('Mute narration'))">
+                        <x-ui.icon name="sound" class="h-3.5 w-3.5" />
+                    </button>
+                    <span class="min-w-0 flex-1 truncate text-2xs font-semibold text-panel-value">{{ __('Narration') }}</span>
+                    <span class="range-panel-knob w-16 shrink-0" :style="`--range-t: ${narrationMuted ? 0 : narrationVolume}`">
+                        <input type="range" min="0" max="1" step="0.05" data-timeline-narration-volume
+                               :value="narrationMuted ? 0 : narrationVolume"
+                               x-on:input="setNarrationVolume($event.target.value)"
+                               x-on:change="$el.blur()"
+                               aria-label="{{ __('Narration volume') }}"
+                               class="range range-panel" />
+                    </span>
+                </div>
+            </template>
         </div>
 
         {{-- Right: the lanes, and the playhead over them.
@@ -673,6 +698,23 @@
                                 </template>
                             </div>
                         </template>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- The narration clip with its waveform. It plays with the timeline: play (or Space,
+                     wherever the pointer is) plays the voice in sync, and pressing the clip moves
+                     the playhead there, like the ruler. --}}
+                <template x-if="hasNarration">
+                    <div class="relative cursor-col-resize border-t border-panel-hairline" style="height: 40px" data-timeline-narration-lane
+                         x-on:pointerdown.stop="startScrub($event)">
+                        <div x-show="narrationSpan" class="pointer-events-none absolute overflow-hidden rounded-[3px]"
+                             data-timeline-narration-clip
+                             :style="barStyle(narrationSpan) + '; top: 5px; height: 30px; background: var(--color-timeline-bar-group)'">
+                            <svg x-show="wavePath" class="absolute inset-0 h-full w-full text-panel-value/70" preserveAspectRatio="none"
+                                 :viewBox="`0 0 ${waveBuckets || 1} 100`" aria-hidden="true">
+                                <path :d="wavePath" stroke="currentColor" stroke-width="0.6" fill="none" vector-effect="non-scaling-stroke"/>
+                            </svg>
                         </div>
                     </div>
                 </template>

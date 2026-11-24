@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { animationTimeline } from '../timeline-panel.js'
+import { animationTimeline, audioPeaks, peaksPath } from '../timeline-panel.js'
 import { keyframeKinds, propertiesFor } from '../properties.js'
 
 /**
@@ -747,5 +747,38 @@ describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
     expect(FakeAudio.made).toHaveLength(0)
     expect(p.duration).toBe(6)
     p.pause()
+  })
+})
+
+describe('the narration lane (Bart, 2026-11-24)', () => {
+  afterEach(() => { vi.unstubAllGlobals(); try { localStorage.clear() } catch {} })
+
+  it('turns samples into peaks scaled to the loudest', () => {
+    const peaks = audioPeaks(new Float32Array([0, 0.1, -0.5, 0.2, 0.25, -0.05]), 3)
+    expect(peaks.map((x) => Math.round(x * 100) / 100)).toEqual([0.2, 1, 0.5])
+    expect(peaksPath([1, 0])).toBe('M0.5 4.0v92.0M1.5 49.5v1.0')
+  })
+
+  it('the volume slider sets the voice and is remembered; the speaker mutes', () => {
+    vi.stubGlobal('Audio', FakeAudio)
+    FakeAudio.made = []
+    const p = animationTimeline({ sceneId: 'vol-1', tracks: [], targets: [], duration: 6, audioUrl: '/a.mp3' })
+    const audio = p.narration()
+    p.setNarrationVolume(0.4)
+    expect(audio.volume).toBe(0.4)
+    expect(localStorage.getItem('timeline-narration-volume')).toBe('0.4')
+    p.toggleNarrationMute()
+    expect(audio.volume).toBe(0)
+    p.toggleNarrationMute()
+    expect(audio.volume).toBe(0.4)
+  })
+
+  it('Space lets go of a focused button, so its keyup does not press it again', () => {
+    const p = animationTimeline({ sceneId: 'kb-1', tracks: [], targets: [], duration: 6 })
+    p.play = vi.fn()
+    const button = { tagName: 'BUTTON', blur: vi.fn(), closest: () => null }
+    p.onKeydown({ code: 'Space', target: button, preventDefault: () => {} })
+    expect(button.blur).toHaveBeenCalled()
+    expect(p.play).toHaveBeenCalled()
   })
 })

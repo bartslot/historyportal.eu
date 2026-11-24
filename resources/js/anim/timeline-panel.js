@@ -96,6 +96,33 @@ const SESSIONS = new Map()
  */
 const NARRATION = new Map()
 
+/** The narration's preview volume in the editor, per teacher (not the lesson's: the class sets its own on the deck). */
+const VOLUME_KEY = 'timeline-narration-volume'
+const storedVolume = () => {
+  try { const v = Number(localStorage.getItem(VOLUME_KEY)); return localStorage.getItem(VOLUME_KEY) !== null && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1 } catch { return 1 }
+}
+
+/** The clip as peaks for the narration lane: one 0..1 loudness per bucket, at most `max` buckets. */
+export const audioPeaks = (samples, buckets) => {
+  const n = Math.max(1, Math.floor(buckets))
+  const size = Math.max(1, Math.floor(samples.length / n))
+  const peaks = []
+  let top = 0
+  for (let i = 0; i < n && i * size < samples.length; i++) {
+    let peak = 0
+    for (let j = i * size, end = Math.min(samples.length, j + size); j < end; j++) { const v = Math.abs(samples[j]); if (v > peak) peak = v }
+    peaks.push(peak)
+    if (peak > top) top = peak
+  }
+  return top > 0 ? peaks.map((p) => p / top) : peaks
+}
+
+/** Peaks as one SVG path in a `0 0 {peaks.length} 100` box: a bar per bucket, mirrored about the middle. */
+export const peaksPath = (peaks) => peaks.map((p, i) => {
+  const h = Math.max(1, p * 92)
+  return `M${i + 0.5} ${(50 - h / 2).toFixed(1)}v${h.toFixed(1)}`
+}).join('')
+
 /** The latest key on any track, so a timeline that follows the narration never cuts a key off. */
 const lastKeyTime = (tracks) => {
   let last = 0
@@ -198,6 +225,12 @@ export const animationTimeline = (config = {}) => ({
   durationSet: !!config.durationSet,
   /** Seconds of narration audio, once known; 0 for a scene without any. */
   narrationLength: 0,
+  /** The narration lane's waveform, as an SVG path over `waveBuckets` columns; '' until decoded. */
+  wavePath: '',
+  waveBuckets: 0,
+  /** The editor's preview volume for the narration, 0..1, and whether it is muted. */
+  narrationVolume: storedVolume(),
+  narrationMuted: false,
   zoom: 100,
   tracks: Array.isArray(config.tracks) ? config.tracks : [],
   targets: Array.isArray(config.targets) ? config.targets : [],
@@ -860,6 +893,7 @@ export const animationTimeline = (config = {}) => ({
       audio.src = config.audioUrl
       NARRATION.set(config.sceneId, audio)
     }
+    audio.volume = this.narrationMuted ? 0 : this.narrationVolume
     return audio
   },
 
@@ -869,6 +903,7 @@ export const animationTimeline = (config = {}) => ({
     this.followNarration()   // from the word timings at once, so the ruler does not jump later
     const audio = this.narration()
     if (!audio) return
+    this.drawWaveform()
     if (audio.readyState >= 1) this.followNarration()
     else audio.addEventListener('loadedmetadata', () => { if (this.$el?.isConnected !== false) this.followNarration() }, { once: true })
   },
@@ -900,6 +935,53 @@ export const animationTimeline = (config = {}) => ({
     if (this.time > this.duration) this.seek(this.duration)
     if (this.$refs?.lanes) { if (this.zoomIsMine) this.measureFit(); else this.fit() }
     this.remember()
+  },
+
+  /** Whether the timeline has a narration lane: a scene with audio. */
+  get hasNarration () { return !!config.audioUrl },
+
+  /** The narration clip on the lane, from 0 to the clip's end. */
+  get narrationSpan () {
+    const end = this.narrationLength || (this.spans.length ? this.spans[this.spans.length - 1].end : 0)
+    return end > 0 ? { from: 0, to: end } : null
+  },
+
+  /**
+   * Draw the clip's waveform on its lane (Bart, 2026-11-24: the sound clip at the bottom of the
+   * timeline). Decoded once from the same file the voice plays; a clip that will not decode keeps
+   * a plain bar, which still says where the voice runs.
+   */
+  async drawWaveform () {
+    if (this.wavePath || !config.audioUrl || typeof fetch === 'undefined') return
+    const Ctx = window.AudioContext ?? window.webkitAudioContext
+    if (!Ctx) return
+    try {
+      const bytes = await (await fetch(config.audioUrl)).arrayBuffer()
+      const ctx = new Ctx()
+      const buffer = await ctx.decodeAudioData(bytes)
+      ctx.close?.()
+      // ~25 columns a second: fine enough to see the words, few enough to stay one light path.
+      const peaks = audioPeaks(buffer.getChannelData(0), Math.min(4000, Math.ceil(buffer.duration * 25)))
+      this.waveBuckets = peaks.length
+      this.wavePath = peaksPath(peaks)
+    } catch { /* no waveform: the bar stays plain */ }
+  },
+
+  /** The lane's volume slider: the editor's own listening level, remembered for this teacher. */
+  setNarrationVolume (value) {
+    this.narrationVolume = Math.min(1, Math.max(0, Number(value) || 0))
+    this.narrationMuted = this.narrationVolume === 0
+    try { localStorage.setItem(VOLUME_KEY, String(this.narrationVolume)) } catch { /* private mode: this visit only */ }
+    const audio = NARRATION.get(config.sceneId)
+    if (audio) audio.volume = this.narrationMuted ? 0 : this.narrationVolume
+  },
+
+  /** The speaker on the lane mutes and unmutes, keeping the level to come back to. */
+  toggleNarrationMute () {
+    this.narrationMuted = !this.narrationMuted
+    if (!this.narrationMuted && this.narrationVolume === 0) this.narrationVolume = 1
+    const audio = NARRATION.get(config.sceneId)
+    if (audio) audio.volume = this.narrationMuted ? 0 : this.narrationVolume
   },
 
   /** Hand the Length back to the narration after the teacher typed one. */
@@ -1509,6 +1591,9 @@ export const animationTimeline = (config = {}) => ({
     if (!isPlayPauseKey(event)) return
 
     event.preventDefault()   // only now that the key is ours: Space must not also scroll the page
+    // A button just pressed with the mouse (play, a word) still has focus, and the browser presses it
+    // again on Space's keyup: play-then-pause. Letting go of it leaves the key to the timeline.
+    if (event.target?.tagName === 'BUTTON') event.target.blur?.()
     if (this.playing) this.pause()
     else this.play()
   },
