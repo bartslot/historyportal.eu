@@ -103,6 +103,40 @@
         </div>
     </x-ui.settings-section>
 
+    {{-- Weather (Bart 11-24): snow or rain in the air in front of the camera, a painted or an own sky alike. The flakes
+         stand in the scene, so a close-up shows them bigger and a wide shot finer, with no setting per shot. --}}
+    <x-ui.settings-section :title="__('Weather')" :open="true" class="-mx-4 w-auto!" data-stage25d-weather>
+        <div class="space-y-1">
+            <div class="grid grid-cols-3 gap-2 pb-1" role="radiogroup" aria-label="{{ __('Weather') }}">
+                @foreach (['' => __('Dry'), 'snow' => __('Snow'), 'rain' => __('Rain')] as $kind => $label)
+                    <button type="button" role="radio" class="flex h-11 flex-col items-center justify-center gap-0.5 rounded-md border"
+                            :class="(sky?.weather?.kind ?? '') === '{{ $kind }}' ? 'border-base-content ring-1 ring-base-content' : 'border-panel-hairline'"
+                            :aria-checked="(sky?.weather?.kind ?? '') === '{{ $kind }}'" aria-label="{{ $label }}"
+                            data-stage25d-weather-kind="{{ $kind === '' ? 'none' : $kind }}" x-on:click="setWeatherKind('{{ $kind }}')">
+                        @if ($kind === 'snow')
+                            <x-icons.snowflake class="h-4 w-4" />
+                        @elseif ($kind === 'rain')
+                            <x-icons.cloud-rain class="h-4 w-4" />
+                        @else
+                            <x-icons.sun class="h-4 w-4" />
+                        @endif
+                        <span class="text-xs font-semibold leading-none">{{ $label }}</span>
+                    </button>
+                @endforeach
+            </div>
+            @foreach (['amount' => [__('Amount'), 0, 1], 'wind' => [__('Wind'), -1, 1], 'size' => [__('Size'), 0.4, 2.5], 'speed' => [__('Speed'), 0.25, 2.5]] as $field => [$label, $min, $max])
+                <x-ui.panel-row :label="$label" stacked x-show="sky?.weather?.kind" x-cloak>
+                    <span class="range-panel-knob min-w-0 flex-1" :style="fill(weatherShare('{{ $field }}', {{ $min }}, {{ $max }}))">
+                        <input type="range" class="range range-panel" min="{{ $min }}" max="{{ $max }}" step="0.01" aria-label="{{ $label }}"
+                               data-stage25d-weather-field="{{ $field }}" :value="sky?.weather?.{{ $field }}"
+                               :style="fill(weatherShare('{{ $field }}', {{ $min }}, {{ $max }}))" x-on:input="setWeather('{{ $field }}', Number($event.target.value))" />
+                    </span>
+                    <span class="w-11 shrink-0 text-right text-xs font-medium text-panel-value" x-text="Math.round((sky?.weather?.{{ $field }} ?? 0) * 100)"></span>
+                </x-ui.panel-row>
+            @endforeach
+        </div>
+    </x-ui.settings-section>
+
     {{-- The period's painted skies: one over the scene instead of its own; its light still follows the time above. --}}
     <x-ui.settings-section :title="__('Painted sky')" :open="false" class="-mx-4 w-auto!" data-stage25d-painted-sky>
         <template x-if="skies && skies.length">

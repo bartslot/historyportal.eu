@@ -22,6 +22,7 @@ import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/grou
 const STREW_PLANTS_MAX = 16
 import { STAGE_LOOK } from '@stage25d/stage25d/stage'
 import { daylightOf, hasSky, isDynamic, PRESETS, TIMES, timeOfTags } from '@stage25d/stage25d/daylight'
+import { WEATHER_DEFAULTS } from '@stage25d/stage25d/weather'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt } from '@stage25d/stage25d/clouds'
 import { farEdgeOf, farEdgeOptions } from '@stage25d/stage25d/far-edge'
 import { libraryUrl } from './config.js'
@@ -1154,6 +1155,8 @@ export async function createStage25d (host, opts = {}) {
         amount: daylightNow?.clouds?.amount ?? 0.4,
         clouds: cloudArt(libData).map((a) => ({ id: a.id, label: layerLabel({}, a, lang), thumb: BUILT_IN_CLOUDS.includes(a) ? BUILT_IN_CLOUD_BASE + a.file : thumbOf(a), on: !chosen || chosen.includes(a.id) })),
         times: TIMES.map((t) => ({ id: t, sky: PRESETS[t].sky })),
+        // snow or rain (weather.ts): the values as the stage draws them, with a dry scene's defaults ready for the sliders
+        weather: light.weather ?? { kind: null, ...WEATHER_DEFAULTS },
       }
     },
     /** Change the time of day: live on the stage and saved (onDaylight). A patch merges into the scene's set.daylight
@@ -1165,7 +1168,7 @@ export async function createStage25d (host, opts = {}) {
       // a scene with a painted sky keeps it: a time lights it, Own sky (painted: false) replaces it
       const base = daylightNow ?? { time: daylightOf(setNow(), skyAsset()).time, ...(cfg.set?.sky ? { painted: true } : {}) }
       const next = { ...base, ...patch }
-      for (const k of ['colours', 'sun', 'clouds']) if (next[k] === null) delete next[k]
+      for (const k of ['colours', 'sun', 'clouds', 'weather']) if (next[k] === null) delete next[k]
       if (patch.painted === false) delete next.painted
       daylightNow = next
       cfg = { ...cfg, set: { ...cfg.set, daylight: next } }   // a rebuild (a layer added, a sky picked) starts from cfg

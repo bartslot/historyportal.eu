@@ -1795,6 +1795,14 @@
             setSun(axis, v) { this.daylight({ sun: { ...(this.sky?.sun ?? {}), [axis]: v } }); },
             autoSun() { this.daylight({ sun: null }); },
             ownSky() { this.daylight({ painted: false }); },
+            /** Snow, rain or dry (''): the values the sliders hold stay with it, so Snow after Rain keeps the amount. */
+            setWeatherKind(kind) {
+                const w = this.sky?.weather ?? {};
+                this.daylight({ weather: kind ? { kind, amount: w.amount, wind: w.wind, size: w.size, speed: w.speed } : null });
+            },
+            setWeather(field, v) { if (this.sky?.weather?.kind) this.daylight({ weather: { ...this.sky.weather, [field]: v } }); },
+            /** A weather slider's fill: its value as a share of its range (wind runs -1..1). */
+            weatherShare(field, min, max) { return ((this.sky?.weather?.[field] ?? min) - min) / (max - min); },
             /** The last cloud cut-out that is on stays on (Cloud cover 0 is the clear sky). */
             lastCloud(c) { return c.on && (this.sky?.clouds ?? []).filter((x) => x.on).length === 1; },
             /** Put a library world under the scene, or none: live, and saved. */
