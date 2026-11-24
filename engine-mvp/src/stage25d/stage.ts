@@ -42,6 +42,7 @@ import { LessonDoc } from './edits'
 import { daylightOf, elevationOf, isDynamic, type Light, type RGB } from './daylight'
 import { BUILT_IN_CLOUD_BASE, BUILT_IN_CLOUDS, cloudArt, cloudPlan, type CloudSpot } from './clouds'
 import { makeSky } from './sky-gl'
+import { makeWeather } from './weather-gl'
 import { isSoil, NO_RECOLOUR, soilRecolour } from './soil'
 import { farEdgeOf, farPieceScale } from './far-edge'
 import { lodLow } from './lod'
@@ -99,6 +100,7 @@ export class Stage {
   private hasSky = true
   /** the scene's own sky (set.daylight), and its clouds; off for a scene with a painted sky picture */
   private ownSky: ReturnType<typeof makeSky>
+  private weather: ReturnType<typeof makeWeather>
   private dynamicSky = false
   private clouds: Cloud[] = []
   private cloudSrc: { sceneId: string; art: Asset[]; tex: Map<string, RawTexture> } | null = null
@@ -142,6 +144,7 @@ export class Stage {
     this.sceneLib = lib
     this.ownSky = makeSky(this.scene)
     this.ownSky.mesh.setEnabled(false)
+    this.weather = makeWeather(this.scene)
     this.ground = makeGround(this.scene)
     this.ground.set(this.groundLook([], null, lib))
     createLookChain(this.scene, this.camera, {
@@ -925,6 +928,8 @@ export class Stage {
     const run = Math.hypot(this.sunDir.x, this.sunDir.z) || 1
     const sunGround = [this.sunDir.x / run, this.sunDir.z / run] as const   // the light's direction along the ground
     this.poseSky(s, c, clock, renderH, paper)
+    // snow or rain in the air in front of the camera (weather-gl.ts): it moves with the shot, nothing to key per shot
+    this.weather.update(this.light.weather, this.calm ? 0 : clock, this.camera, renderH, lit.ambient)   // reduced motion: it hangs still
     const bandK = lookNum(this.look, 'bandHeight')
     const horizon = this.horizonOf(s)
     // where pictures on the far ground stand: the strip's ground line (the foot of its trees), not where its paint

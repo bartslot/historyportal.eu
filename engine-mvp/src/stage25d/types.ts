@@ -176,7 +176,13 @@ export interface Daylight {
   /** where the sun stands: x 0..1 across the frame, height 0..1 over the horizon; unset = the time's own */
   sun?: { x: number; height: number }
   painted?: boolean
+  /** snow or rain falling through the scene (weather.ts, weather-gl.ts); unset = dry */
+  weather?: Weather
 }
+
+export type WeatherKind = 'snow' | 'rain'
+/** amount 0..1 of the most flakes; wind -1 (blowing left) .. 1 (right); size and speed are factors (weather.ts ranges) */
+export interface Weather { kind: WeatherKind; amount?: number; wind?: number; size?: number; speed?: number }
 
 export interface CamPose { x: number; y: number; z: number; fov: number }
 export type Ease = 'linear' | 'in' | 'out' | 'inOut'
