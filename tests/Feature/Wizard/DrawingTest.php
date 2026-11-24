@@ -79,7 +79,8 @@ class DrawingTest extends TestCase
     {
         [$scene, $editor] = $this->editor();
         $id = $editor->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 10], [30, 10]]])->get('activeLayerId');
-        $editor->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 50], [30, 50]]], 16 / 9, $id);
+        // the editor marks every stroke as a step of its own (draw-layer.js), as edit-steps.js does for a press
+        $editor->call('startEditStep')->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 50], [30, 50]]], 16 / 9, $id);
         $this->assertCount(2, $scene->fresh()->shots[0]['layers'][0]['strokes']);
 
         $editor->call('undoLastEdit');
@@ -88,7 +89,7 @@ class DrawingTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($layer['path']), 'the earlier picture is still there');
 
         // drawing on after the undo goes onto the same layer again
-        $editor->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 80], [30, 80]]], 16 / 9, $id);
+        $editor->call('startEditStep')->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 80], [30, 80]]], 16 / 9, $id);
         $this->assertCount(1, $scene->fresh()->shots[0]['layers']);
         $this->assertCount(2, $scene->fresh()->shots[0]['layers'][0]['strokes']);
     }
@@ -105,7 +106,7 @@ class DrawingTest extends TestCase
         $editor->call('addDrawing', ['tool' => 'line', 'colour' => '#111827', 'width' => 8, 'points' => [[10, 90], [12, 90]]], 16 / 9, $id);
         $old = $scene->fresh()->shots[0]['layers'][0]['strokes'][0]['points'];
         $this->assertEqualsWithDelta([[50, 50], [90, 50]], $old, 0.01, 'the first line is where the teacher sees it');
-        $this->assertSame(1.0, $scene->fresh()->shots[0]['layers'][0]['scale']);
+        $this->assertEquals(1, $scene->fresh()->shots[0]['layers'][0]['scale'], 'drawn again at scale 1');
     }
 
     public function test_the_eraser_rubs_out_part_of_a_pen_line_and_a_whole_arrow(): void

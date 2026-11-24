@@ -279,11 +279,17 @@ export function drawTool () {
       this.surface?.destroy()
       this.surface = mountDraw(host, {
         // one at a time, in order: a quick second stroke waits for the first to have made the layer it goes on
+        // each its own undo step: the marker goes right before the save, since a queued save can be sent after the
+        // next stroke's press already sent its marker (edit-steps.js)
         onStroke: (stroke) => this.queue(async () => {
+          await this.$wire.startEditStep?.()
           const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.into)
           if (res?.ok) this.into = res.id
         }),
-        onErase: (path, size) => this.queue(() => this.$wire.eraseDrawing(path, size, this.aspect(host))),
+        onErase: (path, size) => this.queue(async () => {
+          await this.$wire.startEditStep?.()
+          return this.$wire.eraseDrawing(path, size, this.aspect(host))
+        }),
       })
       this.apply()
       return true
