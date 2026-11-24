@@ -2014,15 +2014,14 @@ Alpine.data('lessonGame', (lesson) => ({
       const mode = cfg.playback_mode === 'timed' ? 'timed' : 'interactive'
 
       // The lesson's one map (see mapSceneOpts): mounted as the lesson loaded, or now if it was not.
-      const fresh = !_mapInstance
       const epoch = this._playEpoch
       const live = await this._ensureMap(cfg)
       if (epoch !== this._playEpoch) return   // the class moved on while the map mounted
       if (!live) { console.warn('lesson-player: map block failed to load, skipping map scene'); this._advanceScene(index); return }
-      if (!fresh || _mapLoading?.cfg !== cfg) {
-        // Out of sight until now (another kind of scene, or the title): open on this scene's frame, no glide.
-        live.showScene({ ...mapSceneOpts(cfg), jump: !_mapShown })
-      }
+      // Always, even on a map just mounted for this scene: showScene also ends a warm still flying the hidden
+      // map through frames (the preload's), and puts the camera back on this scene's opening.
+      // Out of sight until now (another kind of scene, or the title): open on this scene's frame, no glide.
+      live.showScene({ ...mapSceneOpts(cfg), jump: !_mapShown })
       this._showMapHost(true)
       // Texts and pictures pinned to a place follow the map as the class pans and zooms.
       this._pinTextsToMap()
@@ -2390,15 +2389,20 @@ Alpine.data('lessonGame', (lesson) => ({
       _mapTimer = null
       this._cancelVoyageAuto()
       // The map stays mounted (one per lesson): the next map scene puts itself on it. Any other scene hides it.
+      const keepMap = !full && next?.kind === 'map'
       if (_mapInstance && !full) {
         try { _mapInstance.stopItinerary?.() } catch (_) {}
-        if (next?.kind === 'map') { this.showMapContinue = false; return }
-        if (_mapShown) { this._textLayer?.setProjector(null); this._showMapHost(false); this._warmNextMap(next) }
+        if (!keepMap && _mapShown) { this._textLayer?.setProjector(null); this._showMapHost(false); this._warmNextMap(next) }
       }
       // A lesson that sails keeps ONE persistent map across all legs — between scenes we only stop the
       // sail (playLeg re-drives it) and keep the map alive. Full teardown runs at lesson end /
       // player unmount (below), or when leaving voyage for a different scene kind.
-      if (_voyageInstance && this._sails && !full) { this.showMapContinue = false; return }
+      if (_voyageInstance && this._sails && !full) {
+        // The voyage's stage sits over the map's host: out of the way for a map scene (the next leg shows it again).
+        if (keepMap) { const st = document.getElementById('lesson-map-stage'); if (st) st.style.display = 'none' }
+        this.showMapContinue = false
+        return
+      }
       if (_galleryInstance) { try { _galleryInstance.destroy() } catch (_) {} _galleryInstance = null }
       this._textLayer?.setProjector(null)   // map gone — pinned labels fall back to screen spots
       if (full) {
