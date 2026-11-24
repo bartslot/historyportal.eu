@@ -173,6 +173,29 @@ export const joinRuns = (runs) => {
 }
 
 /**
+ * Each chain cut to `share` of its own length (0..1), from its start: the border drawing on (the timeline's Draw row).
+ * Every chain draws at once, so an empire's main border and its islands close together.
+ */
+export const trimChains = (chains, share) => {
+  if (share >= 1) return chains
+  if (share <= 0) return []
+  return chains.map((chain) => {
+    const lens = [0]
+    for (let i = 1; i < chain.length; i++) lens.push(lens[i - 1] + Math.hypot(chain[i][0] - chain[i - 1][0], chain[i][1] - chain[i - 1][1]))
+    const stop = lens[lens.length - 1] * share
+    const out = [chain[0]]
+    for (let i = 1; i < chain.length; i++) {
+      if (lens[i] <= stop) { out.push(chain[i]); continue }
+      const t = (stop - lens[i - 1]) / ((lens[i] - lens[i - 1]) || 1)
+      const a = chain[i - 1]; const b = chain[i]
+      out.push(a.map((v, k) => v + (b[k] - v) * t))
+      break
+    }
+    return out
+  }).filter((c) => c.length >= 2)
+}
+
+/**
  * A chain as a wavy line: resampled every `step` px and pushed off along its normal by a sine of the
  * distance travelled. Screen points [x, y] in, screen points out.
  */
@@ -362,7 +385,8 @@ export function createTerritoryInk (map, source) {
       mctx.globalCompositeOperation = 'source-in'
       mctx.fillStyle = pattern
       mctx.fillRect(0, 0, mask.width, mask.height)
-      ctx.globalAlpha = Math.min(1, look.fill_strength * 2.5) * anim.fill
+      // While the border draws on, its etching comes up with it rather than waiting fully drawn ahead of the pen.
+      ctx.globalAlpha = Math.min(1, look.fill_strength * 2.5) * anim.fill * (Number.isFinite(anim.draw) ? anim.draw : 1)
       ctx.drawImage(mask, 0, 0)
       ctx.globalAlpha = 1
       drewSomething = true
@@ -383,12 +407,15 @@ export function createTerritoryInk (map, source) {
       }
       const lay = (alpha) => { ctx.globalAlpha = alpha * anim.border; ctx.drawImage(inkLayer, 0, 0) }
       const style = look.border_style || 'ink'
+      // Drawn on: whole chains, so the line travels on across the tile seams as it draws.
+      const draw = Number.isFinite(anim.draw) ? anim.draw : 1
+      const chains = trimChains(joinRuns(edges), draw)
 
       if (style === 'ink') {
         // Short pieces, each its own weight, on a line that wanders a hair.
         for (const pass of [0, 1]) {
           begin()
-          for (const run of edges) {
+          for (const run of chains) {
             let prev = null
             for (const q of run) {
               const p = jitter(q, pass ? 41 : 0)
@@ -405,7 +432,6 @@ export function createTerritoryInk (map, source) {
         }
       } else {
         // One even line along whole chains, so a dash or a wave runs on across the tile seams.
-        const chains = joinRuns(edges)
         begin()
         ictx.lineWidth = Math.max(0.5 * ratio, base)
         if (style === 'dashed') {

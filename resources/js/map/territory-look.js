@@ -49,6 +49,9 @@ export const territoryLook = (stored = {}) => {
 export const territoryAnim = (values = {}) => ({
   fill: clamp(values.fill, 0, 1, 1),
   border: clamp(values.border, 0, 1, 1),
+  // How much of the border is drawn, 0 none to 1 all the way round (Bart 11-24: "the line that is drawn around a
+  // territory from 0% to 100%").
+  draw: clamp(values.draw, 0, 1, 1),
 })
 
 const HIGHLIGHT = ['boolean', ['feature-state', 'highlight'], false]

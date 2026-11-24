@@ -55,12 +55,12 @@ describe('territory paint', () => {
 })
 
 describe('the Territory row on the timeline', () => {
-  it('keys fill, border and year', () => {
-    expect(propertiesFor('terr').map((p) => p.key)).toEqual(['fill', 'border', 'year'])
+  it('keys fill, border, draw and year', () => {
+    expect(propertiesFor('terr').map((p) => p.key)).toEqual(['fill', 'border', 'draw', 'year'])
   })
 
   it('groups the Map block as Year, then Territory', () => {
-    expect(groupsFor('terr').map((g) => [g.id, g.props.map((p) => p.key)])).toEqual([['year', ['year']], ['territory', ['fill', 'border']]])
+    expect(groupsFor('terr').map((g) => [g.id, g.props.map((p) => p.key)])).toEqual([['year', ['year']], ['territory', ['fill', 'border', 'draw']]])
   })
 
   it('hands its frame to the map in the player', () => {
@@ -140,5 +140,20 @@ describe('border styles (Bart 11-24: "solid, ink, dashed, wavy")', () => {
     expect(Math.max(...ys)).toBeGreaterThan(2.5)
     expect(Math.min(...ys)).toBeLessThan(-2.5)
     expect(Math.max(...ys.map(Math.abs))).toBeLessThanOrEqual(3.0001)
+  })
+})
+
+describe('the border draws on (Bart 11-24: "from 0% to 100%. that line starts at 0")', () => {
+  it('cuts each chain to its share of its own length', async () => {
+    const { trimChains } = await import('../territory-ink.js')
+    const chain = [[0, 0, 0, 0], [10, 0, 1, 0], [10, 10, 1, 1]]
+    expect(trimChains([chain], 1)).toEqual([chain])
+    expect(trimChains([chain], 0)).toEqual([])
+    expect(trimChains([chain], 0.25)).toEqual([[[0, 0, 0, 0], [5, 0, 0.5, 0]]])
+    expect(trimChains([chain], 0.75)).toEqual([[[0, 0, 0, 0], [10, 0, 1, 0], [10, 5, 1, 0.5]]])
+  })
+  it('Draw is 1 (all of it) unless keyed', () => {
+    expect(territoryAnim({}).draw).toBe(1)
+    expect(territoryAnim({ draw: 0.3 }).draw).toBe(0.3)
   })
 })

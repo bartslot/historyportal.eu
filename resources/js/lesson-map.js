@@ -740,7 +740,7 @@ export function renderLessonMap (el, opts = {}) {
   let keyedYear = null
   function setTerritoryValues (values = {}) {
     const next = territoryAnim({ ...anim, ...values })
-    if (next.fill !== anim.fill || next.border !== anim.border) { anim = next; paintTerritory() }
+    if (next.fill !== anim.fill || next.border !== anim.border || next.draw !== anim.draw) { anim = next; paintTerritory() }
     if (Number.isFinite(Number(values.year))) {
       const y = Math.round(Number(values.year))
       if (y !== keyedYear) { keyedYear = y; if (y !== year) setYear(y) }
@@ -760,6 +760,15 @@ export function renderLessonMap (el, opts = {}) {
     territoryValue: (property) => (property === 'year' ? year : anim[property] ?? null),
     /** Is a territory linked? The timeline lists a Territory row only then. */
     hasTerritory: () => !!activeQid,
+    /** The linked territory's first year in the loaded tiles (the map presets' Grow starts there), or null. */
+    territoryFromYear: () => {
+      if (!activeQid) return null
+      const years = map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['==', ['get', 'Wikidata'], activeQid] })
+        .map((f) => Number(f.properties?.FromYear)).filter(Number.isFinite)
+      return years.length ? Math.min(...years) : null
+    },
+    /** The teacher's focus places, [lng, lat] each: where the map presets' A to B can start. */
+    focusPoints: () => (annotations || []).map((a) => [Number(a?.lng), Number(a?.lat)]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)),
     flyToPolity: fitToPolity,
     /**
      * Projector for map-pinned text labels: converts lng/lat ⇄ percentages of `hostEl`

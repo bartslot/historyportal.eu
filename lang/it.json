@@ -3047,5 +3047,14 @@
     "The class sees the name only.": "La classe vede solo il nome.",
     "Dashed": "Tratteggiato",
     "Wavy": "Ondulato",
-    "Border style": "Stile del confine"
+    "Border style": "Stile del confine",
+    "From space": "Dallo spazio",
+    "A to B": "Da A a B",
+    "Tilt and zoom out": "Inclina e allontana",
+    "Slow drift": "Deriva lenta",
+    "Draw the border": "Disegna il confine",
+    "Draw, then fill": "Disegna, poi riempi",
+    "Grow over time": "Crescere nel tempo",
+    "Scene transition": "Transizione di scena",
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Inquadra la scena su cui deve finire il movimento, poi scegli un movimento. Arriva sulla timeline alla testina, dove puoi ritoccarlo."
 }
