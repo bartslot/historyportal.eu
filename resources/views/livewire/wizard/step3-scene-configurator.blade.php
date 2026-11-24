@@ -97,6 +97,9 @@
         <div id="lesson-game-overlay" class="absolute inset-0 pointer-events-none"></div>
         {{-- Teacher text annotations (Freeform-style, draggable). z-[7]: above scene art + map. --}}
         <div id="lesson-text-overlay" class="absolute inset-0 z-7"></div>
+        {{-- The Choices layer while it is selected (resources/js/scene/choices-preview.js): a picture of the card
+             the class gets when the scene is over. Above the art, under the scene's edge; it takes no clicks. --}}
+        <div id="lesson-choices-preview" class="pointer-events-none absolute inset-0 z-[44] overflow-hidden" wire:ignore></div>
         {{-- Map block preview — overlays the canvas when a map/voyage/gallery scene is selected.
              It fills the 16:9 STAGE, not the work area: a fixed child of this fixed stage escaped
              the stage and painted the map into the black bars. absolute inset-0 + overflow-hidden
@@ -652,6 +655,7 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
                 // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
                 choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
+                links: Array.isArray(_vcfg.links) ? _vcfg.links : [],   // the stage's picture of the card (choices-preview.js)
                 // The background moves (SceneLoop): its row wears the video glyph.
                 loop: !!p.imageLoop,
             }
@@ -2095,6 +2099,13 @@
                     // (Gallery also scrolls to its section). The voyage inspector listens for this.
                     try { window.dispatchEvent(new CustomEvent('inspector-open')); } catch (_) { /* noop */ }
                     try { window.dispatchEvent(new CustomEvent('voyage-obj-focus', { detail: { which: obj.voyage } })); } catch (_) { /* noop */ }
+                    return;
+                }
+                if (obj.section === 'choices') {
+                    // The Choices layer is a selection of its own: the stage shows its card and the timeline
+                    // lights its row. Going through the background's select gave the row back to the map.
+                    window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: '__choices__' } }));
+                    this.locate(obj);
                     return;
                 }
                 if (obj.bg) {

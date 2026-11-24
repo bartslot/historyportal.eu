@@ -65,6 +65,8 @@ trait EditsSceneLinks
             $this->selectScene($scene->id);
         }
         $this->dispatch('inspector-open');
+        // The new layer is the selection: its card shows on the stage (choices-preview.js).
+        $this->dispatch('scene-object-selected', id: '__choices__');
         $this->dispatch('toast', message: __('Two choices added. Set where each one goes.'));
     }
 
@@ -146,6 +148,8 @@ trait EditsSceneLinks
         unset($this->selectedSceneModel, $this->scenes);
         $this->selectScene($question->id);
         $this->dispatch('inspector-open');
+        // The new layer is the selection: its card shows on the stage (choices-preview.js).
+        $this->dispatch('scene-object-selected', id: '__choices__');
         $this->dispatch('toast', message: __('This decision point is now a Choices layer on the scene.'));
     }
 
@@ -254,7 +258,7 @@ trait EditsSceneLinks
         // The inspector and the rail read these per request: let them see the new links.
         unset($this->selectedSceneModel, $this->scenes);
         // The object list shows a Choices row while the scene has the layer.
-        $this->dispatch('scene-choices', sceneId: $scene->id, has: $links !== [] || $ending);
+        $this->dispatch('scene-choices', sceneId: $scene->id, has: $links !== [] || $ending, links: array_values((array) (($scene->config ?? [])['links'] ?? [])));
 
         // saveSelected() writes the whole config back from the inspector's copy: keep it in step,
         // or the next edit of anything else in this scene would put the old links back.

@@ -62,7 +62,7 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
-        'objectLabels' => ['background' => __('Background'), 'mapBlock' => __('Map block')],
+        'objectLabels' => ['background' => __('Background'), 'mapBlock' => __('Map block'), 'choices' => __('Choices')],
         'propertyLabels' => [
             'bone:head' => __('Neck'), 'bone:chest' => __('Upper body'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),
@@ -317,7 +317,7 @@
                         </svg>
                         <span class="truncate text-2xs font-semibold text-panel-value" x-text="object.label"></span>
                     </button>
-                    <button type="button" x-on:click="toggleGroup(object.target, $event)" x-show="object.kind !== 'sail'"
+                    <button type="button" x-on:click="toggleGroup(object.target, $event)" x-show="object.kind !== 'sail' && object.kind !== 'choices'"
                             :data-timeline-toggle="object.target"
                             :aria-expanded="openGroups[object.target] ? 'true' : 'false'"
                             :aria-label="openGroups[object.target] ? @js(__('Collapse')) : @js(__('Expand'))"
@@ -335,7 +335,7 @@
 
                          The icon CHANGES rather than only its colour, which is what the HIG asks
                          for: not everyone can perceive a tint. --}}
-                    <button type="button" x-on:click="toggleHidden(object.target)" x-show="object.kind !== 'sail'"
+                    <button type="button" x-on:click="toggleHidden(object.target)" x-show="object.kind !== 'sail' && object.kind !== 'choices'"
                             :data-timeline-eye="object.target"
                             :aria-pressed="isHidden(object.target) ? 'true' : 'false'"
                             :class="isHidden(object.target) ? 'text-panel-label' : 'text-panel-icon'"
@@ -571,6 +571,19 @@
                                     <span class="pointer-events-none truncate px-1 text-xs text-base-content/80"
                                           x-text="(Math.round((barOf(object.target).to - barOf(object.target).from) * 10) / 10) + ' s'"></span>
                                     <span class="pointer-events-none h-full w-1.5 cursor-ew-resize rounded-r-[3px] bg-base-content/40"></span>
+                                </div>
+                            </template>
+                            {{-- The Choices layer: the card comes when the scene is over, so its clip closes the ruler.
+                                 A press selects it (the stage shows the card); it has no time of its own to drag. --}}
+                            <template x-if="object.kind === 'choices'">
+                                <div class="absolute flex cursor-pointer items-center overflow-hidden rounded-[3px]"
+                                     data-timeline-choices
+                                     x-on:pointerdown.stop="selectObject(object.target)"
+                                     :style="barStyle(barOf(object.target)) + '; top: 5px; height: var(--timeline-lane-h); background: var(--color-timeline-bar-group)'">
+                                    <span class="flex min-w-0 items-center gap-1 truncate px-2 text-xs text-base-content/80">
+                                        <span class="grid h-3 w-3 shrink-0 place-items-center [&>svg]:h-3 [&>svg]:w-3" x-html="window.__objIcons?.choices ?? ''"></span>
+                                        <span class="truncate">{{ __('Choices') }}</span>
+                                    </span>
                                 </div>
                             </template>
                             {{-- A background that moves: its video as a clip over the whole scene, cut where each
