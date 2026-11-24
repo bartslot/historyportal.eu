@@ -19,6 +19,9 @@ export interface Asset {
   tileable_x?: boolean
   /** a terrain painted from eye height down to the horizon, laid through the house camera (ground-gl slotTile) */
   perspective?: boolean
+  /** A far strip's ground line (share of its height, from the top) where the automatic one (ground.ts groundLine)
+   *  misses: the foot of its trees, town or hills, where the far ground lies. */
+  ground_line?: number
   /** A terrain's own far edge: the id of a low hazy strip the stage stands far out over the terrain's horizon */
   horizon?: string
   motion?: MotionKind
