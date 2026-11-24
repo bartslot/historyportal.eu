@@ -3088,5 +3088,22 @@
     "its border at the chosen year": "su frontera en el año elegido",
     "Clickable on the map": "Clicable en el mapa",
     "The class can open this stop.": "La clase puede abrir esta parada.",
-    "The class sees the name only.": "La clase solo ve el nombre."
+    "The class sees the name only.": "La clase solo ve el nombre.",
+    "Dashed": "Discontinuo",
+    "Wavy": "Ondulado",
+    "Border style": "Estilo del borde",
+    "From space": "Desde el espacio",
+    "A to B": "De A a B",
+    "Tilt and zoom out": "Inclinar y alejar",
+    "Slow drift": "Deriva lenta",
+    "Draw the border": "Dibujar el borde",
+    "Draw, then fill": "Dibujar y luego rellenar",
+    "Grow over time": "Crecer con el tiempo",
+    "Scene transition": "Transición de escena",
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Encuadra la toma en la que debe terminar y elige un movimiento. Aparece en la línea de tiempo en el cabezal, donde puedes ajustarlo.",
+    "Centre left": "Centro izquierda",
+    "Centre right": "Centro derecha",
+    "Territory name": "Nombre del territorio",
+    "Label position": "Posición de la etiqueta",
+    "Morph between years": "Transformar entre años"
 }

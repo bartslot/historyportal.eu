@@ -3046,5 +3046,22 @@
     "its border at the chosen year": "sa frontière à l'année choisie",
     "Clickable on the map": "Cliquable sur la carte",
     "The class can open this stop.": "La classe peut ouvrir cette étape.",
-    "The class sees the name only.": "La classe ne voit que le nom."
+    "The class sees the name only.": "La classe ne voit que le nom.",
+    "Dashed": "Tirets",
+    "Wavy": "Ondulé",
+    "Border style": "Style de frontière",
+    "From space": "Depuis l'espace",
+    "A to B": "De A à B",
+    "Tilt and zoom out": "Incliner et dézoomer",
+    "Slow drift": "Lente dérive",
+    "Draw the border": "Tracer la frontière",
+    "Draw, then fill": "Tracer, puis remplir",
+    "Grow over time": "Grandir avec le temps",
+    "Scene transition": "Transition de scène",
+    "Frame the shot it should end on, then pick a move. It lands on the timeline at the playhead, where you can tweak it.": "Cadrez le plan sur lequel le mouvement doit finir, puis choisissez un mouvement. Il arrive sur la timeline à la tête de lecture, où vous pouvez l'ajuster.",
+    "Centre left": "Centre gauche",
+    "Centre right": "Centre droit",
+    "Territory name": "Nom du territoire",
+    "Label position": "Position de l'étiquette",
+    "Morph between years": "Transformer entre les années"
 }
