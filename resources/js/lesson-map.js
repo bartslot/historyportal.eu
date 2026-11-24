@@ -515,6 +515,11 @@ export function renderLessonMap (el, opts = {}) {
               : []),
             look: () => look,
             anim: () => anim,
+          }, {
+            // Under the city dots and every name: a voyage stop label (Venice) stays readable
+            // where the border runs through it (Bart 11-24).
+            beforeId: ['city-dots', 'lesson-labels'].find((id) => map.getLayer(id))
+              ?? map.getStyle().layers.find((l) => l.type === 'symbol')?.id,
           })
         } catch (e) { console.warn('lesson-map: hand-drawn territory unavailable, the map draws the line', e) }
         wirePolityPicking()

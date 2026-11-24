@@ -1,5 +1,5 @@
 /**
- * territory-ink.js — the linked territory drawn by hand, on a canvas over the map.
+ * territory-ink.js — the linked territory drawn by hand, as a layer of the map under its names.
  *
  * Bart, 2026-11-23, on a vector line with hatching over the whole area: "it's too much", "maybe
  * etched in the middle should be faded out and more natural", "like only the edges have it. can we
@@ -123,37 +123,44 @@ const hatchTile = (color, ratio) => {
   return c
 }
 
+/** A quad over the whole viewport that lays the ink canvas down, premultiplied, at map pixels. */
+const VERT = 'attribute vec2 a_pos; varying vec2 v_uv;'
+  + 'void main () { v_uv = vec2(a_pos.x * 0.5 + 0.5, 0.5 - a_pos.y * 0.5); gl_Position = vec4(a_pos, 0.0, 1.0); }'
+const FRAG = 'precision mediump float; uniform sampler2D u_ink; varying vec2 v_uv;'
+  + 'void main () { gl_FragColor = texture2D(u_ink, v_uv); }'
+
+export const INK_LAYER_ID = 'territory-ink'
+
 /**
- * Put a hand-drawn territory over a MapLibre map.
+ * Put a hand-drawn territory into a MapLibre map, as a layer of its own.
+ *
+ * It used to be a canvas laid over the whole map, so it covered every name: Bart, 2026-11-24, on
+ * the Marco Polo map, "the text is over the venice label". The ink is still drawn on a 2D canvas,
+ * but that canvas is now handed to the map as a custom layer, put in the layer order under the
+ * city dots and the names (`beforeId`), the same place the map's own territory line had.
  *
  * @param {object} map
  * @param {{ features: () => object[], look: () => object, anim: () => {fill:number,border:number} }} source
+ * @param {{ beforeId?: string }} [opts] the layer the ink goes under (the names); on top when unset
  */
-export function createTerritoryInk (map, source) {
-  const host = map.getCanvasContainer()
+export function createTerritoryInk (map, source, { beforeId } = {}) {
   const canvas = document.createElement('canvas')
-  canvas.className = 'territory-ink'
-  Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', pointerEvents: 'none' })
-  host.appendChild(canvas)
   const mask = document.createElement('canvas')
   const inkLayer = document.createElement('canvas')   // the border, drawn opaque, then laid down at its alpha
   let hatch = null
   let hatchKey = ''
-  let queued = false
   let drewSomething = false
 
   const size = () => {
-    const ratio = window.devicePixelRatio || 1
+    const ratio = map.getPixelRatio?.() || window.devicePixelRatio || 1
     const w = map.getCanvas().clientWidth; const h = map.getCanvas().clientHeight
     for (const c of [canvas, mask, inkLayer]) {
       if (c.width !== Math.round(w * ratio) || c.height !== Math.round(h * ratio)) { c.width = Math.round(w * ratio); c.height = Math.round(h * ratio) }
     }
-    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`
     return { ratio, w, h }
   }
 
   const draw = () => {
-    queued = false
     const { ratio } = size()
     const ctx = canvas.getContext('2d')
     ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -271,20 +278,66 @@ export function createTerritoryInk (map, source) {
     }
   }
 
-  // Drawn in the map's own frame (render fires once it has painted), so the ink never trails a pan.
-  const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(draw) } }
-  map.on('render', draw)
-  map.on('resize', redraw)
-  redraw()
+  // The map's own layer: drawn in the map's frame (so it never trails a pan) and at its place in the
+  // layer order (so the names stay on top). The 2D canvas is uploaded as a texture each frame.
+  let gl = null; let program = null; let quad = null; let texture = null; let aPos = -1
+  const layer = {
+    id: INK_LAYER_ID,
+    type: 'custom',
+    renderingMode: '2d',
+    onAdd (_map, context) {
+      gl = context
+      const shader = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); return sh }
+      program = gl.createProgram()
+      gl.attachShader(program, shader(gl.VERTEX_SHADER, VERT))
+      gl.attachShader(program, shader(gl.FRAGMENT_SHADER, FRAG))
+      gl.linkProgram(program)
+      aPos = gl.getAttribLocation(program, 'a_pos')
+      quad = gl.createBuffer()
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad)
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
+      texture = gl.createTexture()
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      // Any size (not a power of two), one canvas pixel to one map pixel.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    },
+    render (context) {
+      draw()
+      if (!drewSomething || !program) return
+      const g = context
+      g.useProgram(program)
+      g.activeTexture(g.TEXTURE0)
+      g.bindTexture(g.TEXTURE_2D, texture)
+      // The canvas is premultiplied, and so is the map's blending (one, one-minus-src-alpha).
+      // MapLibre marks its GL state dirty after a custom layer, so nothing needs putting back.
+      g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+      g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, false)
+      g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, canvas)
+      g.uniform1i(g.getUniformLocation(program, 'u_ink'), 0)
+      g.bindBuffer(g.ARRAY_BUFFER, quad)
+      g.enableVertexAttribArray(aPos)
+      g.vertexAttribPointer(aPos, 2, g.FLOAT, false, 0, 0)
+      g.drawArrays(g.TRIANGLE_STRIP, 0, 4)
+    },
+    onRemove () {
+      if (!gl) return
+      gl.deleteTexture(texture); gl.deleteBuffer(quad); gl.deleteProgram(program)
+      gl = program = quad = texture = null
+    },
+  }
+  map.addLayer(layer, beforeId && map.getLayer(beforeId) ? beforeId : undefined)
+
+  const redraw = () => map.triggerRepaint()
 
   return {
     redraw,
     /** Did the last frame draw the territory? While it has not (tiles still loading), the map's own line stays. */
     get drawn () { return drewSomething },
     destroy () {
-      map.off('render', draw)
-      map.off('resize', redraw)
-      canvas.remove()
+      try { if (map.getLayer(INK_LAYER_ID)) map.removeLayer(INK_LAYER_ID) } catch (_) {}
     },
   }
 }
