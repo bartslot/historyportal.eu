@@ -28,8 +28,10 @@ export const slotPicks = (sprites: Sprite[], groundTags: string[], choice?: Stre
   choice?.plants ? lowPlants(sprites).filter((s) => choice.plants!.includes(s.key)) : clumpPicks(sprites, groundTags)
 
 /** grass, bushes: the look's Gras and Horizon (0..1). front: the scene's cameraFront. With ground bands there is no
- *  horizon row: the farthest band's painted crest is the horizon, and bushes behind it would never show. */
-export function strewPlan(o: { sceneId: string; slots: GroundSlot[]; bandTags: string[] | null; sprites: Sprite[]; grass: number; bushes: number; front: number; choice?: StrewChoice | null }): StrewPlan[] {
+ *  horizon row: the farthest band's painted crest is the horizon, and bushes behind it would never show. Nor with a far
+ *  strip (strip: the scene has a painted far landscape): the bushes stood 60-300 m out, behind the strip at 70 m, and
+ *  were drawn over its treetops and roofs in the sky (Bart 11-24: "the horizon line is not correct"). */
+export function strewPlan(o: { sceneId: string; slots: GroundSlot[]; bandTags: string[] | null; sprites: Sprite[]; grass: number; bushes: number; front: number; choice?: StrewChoice | null; strip?: boolean }): StrewPlan[] {
   const out: StrewPlan[] = []
   const span = Math.log(GRASS_RANGE[1] / GRASS_RANGE[0])
   o.slots.forEach((slot, i) => {
@@ -41,7 +43,7 @@ export function strewPlan(o: { sceneId: string; slots: GroundSlot[]; bandTags: s
     out.push({ picks, clumps: scatter({ picks, count, from, to, front: o.front, seed: seedOf(`${o.sceneId}:grass:${i}${throwOf}`) }) })
   })
   const last = o.slots[o.slots.length - 1]
-  if (last && !o.bandTags) {
+  if (last && !o.bandTags && !o.strip) {
     const picks = horizonPicks(o.sprites, last.asset.tags)
     out.push({ picks, horizon: true, clumps: scatter({ picks, count: o.bushes * HORIZON_MAX, from: HORIZON_RANGE[0], to: HORIZON_RANGE[1], front: o.front, size: HORIZON_SIZE, seed: seedOf(`${o.sceneId}:horizon`) }) })
   }

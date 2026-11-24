@@ -94,7 +94,7 @@ export class Stage {
   private pictureToken = 0
   /** grass clumps and horizon bushes (look Gras / Horizon), and what they are strewn from */
   private strewn: Strewn[] = []
-  private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture>; choice: StrewChoice | null } | null = null
+  private strewSrc: { sceneId: string; slots: GroundSlot[]; colours: [number, number, number][]; bandTags: string[] | null; front: number; sprites: ReturnType<typeof spritesOf>; tex: Map<string, RawTexture>; choice: StrewChoice | null; strip: boolean } | null = null
   private strewKey = ''
   private hasSky = true
   /** the scene's own sky (set.daylight), and its clouds; off for a scene with a painted sky picture */
@@ -327,7 +327,7 @@ export class Stage {
     const sprites = spritesOf(lib), front = cameraFront(s)
     const slotsOf = slotsNext.map((sl) => ({ asset: sl.asset, from: sl.from }))
     const strewChoice = s.set.strew ?? null
-    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front, choice: strewChoice }).flatMap((p) => p.picks.flatMap((pk) => pk.lod ? [pk.file, pk.lod] : [pk.file])))]
+    const wantFiles = [...new Set(strewPlan({ sceneId: s.id, slots: slotsOf, bandTags, sprites, grass: 1, bushes: 1, front, choice: strewChoice, strip: !!strip }).flatMap((p) => p.picks.flatMap((pk) => pk.lod ? [pk.file, pk.lod] : [pk.file])))]
     const strewTex = new Map<string, RawTexture>()
     await Promise.all(wantFiles.map(async (f) => { const t = await loadPremultiplied(lib.base + f, this.scene).catch(() => null); if (t) strewTex.set(f, t) }))
     // the clouds an own sky can show, loaded now so a change of cloud or Amount never waits on a file
@@ -372,7 +372,7 @@ export class Stage {
     this.soilKey = null
     this.resoil(s)
     this.makeClouds()
-    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex, choice: strewChoice }
+    this.strewSrc = { sceneId: s.id, slots: slotsOf, colours: slotsNext.map((sl) => sl.colour), bandTags, front, sprites, tex: strewTex, choice: strewChoice, strip: !!strip }
     this.strewKey = ''   // strewn on the next pose, with the look's Gras and Horizon
     this.missed.set(s.id, misses)   // replaced per scene: a rebuild never doubles them
     if (misses.length) {
@@ -809,7 +809,9 @@ export class Stage {
     if (!g || g.land === land) return
     this.gridMeshes.forEach((m) => m.dispose())
     const fade = (z: number) => GRID_ALPHA * Math.min(1, Math.max(0, (GRID_FADE_END_M - z) / (GRID_FADE_END_M - GRID_FADE_START_M)))
-    this.gridMeshes = g.pieces.map((piece, i) => {
+    // behind a far strip the ground is painted: rows there were drawn across its trees and roofs (Bart 11-24)
+    const shown = this.strip ? g.pieces.filter((piece) => piece.z <= DEPTH_Z.bg) : g.pieces
+    this.gridMeshes = shown.map((piece, i) => {
       const lines = piece.lines.map((line) => line.map(([x, z]) => new Vector3(x, groundHeight(z, land), z)))
       const colors = piece.lines.map((line) => line.map(([, z]) => new Color4(g.rgb[0], g.rgb[1], g.rgb[2], fade(z))))
       const mesh = MeshBuilder.CreateLineSystem(`grid-${i}`, { lines, colors, useVertexAlpha: true }, this.scene)

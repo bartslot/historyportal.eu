@@ -58,3 +58,11 @@ describe('strewPlan: the teacher\'s own plants (set.strew, Bart 11-24)', () => {
     expect(sheet.map((s) => s.key)).toEqual(['sprites-01#0', 'sprites-01#1'])
   })
 })
+
+describe('strewPlan: a painted far landscape has no horizon row (Bart 11-24)', () => {
+  it('with a far strip only the floor\'s own clumps, no bushes behind the strip', () => {
+    const plan = strewPlan({ ...base, strip: true })
+    expect(plan.some((p) => p.horizon)).toBe(false)
+    expect(plan[0].picks.length).toBeGreaterThan(0)
+  })
+})
