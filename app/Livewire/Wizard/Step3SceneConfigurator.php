@@ -34,6 +34,7 @@ use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
+use App\Livewire\Wizard\Concerns\GroupsStage25dLayers;
 use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
 use App\Livewire\Wizard\Concerns\LocksSceneObjects;
 use App\Livewire\Wizard\Concerns\RestylesImages;
@@ -113,6 +114,7 @@ class Step3SceneConfigurator extends Component
     use EditsTitleScreen;
     use EditsWithSpark;
     use FixesLessonProblems;
+    use GroupsStage25dLayers;
     use GuardsLessonClaims;
     use LocksSceneObjects;
     use RestylesImages;
@@ -1131,7 +1133,7 @@ class Step3SceneConfigurator extends Component
         }
 
         // A stage25d layer (the stage selects 's25_layer-<n>'): its own Format panel.
-        if (preg_match('/^s25_(layer-(\d+)|band-(\d+)|sky|terrain|camera|world)$/', $objectId, $m) === 1) {
+        if (preg_match('/^s25_(layer-(\d+)|band-(\d+)|group-([A-Za-z0-9_-]+)|sky|terrain|camera|world)$/', $objectId, $m) === 1) {
             $set = $this->selectedScene['config']['stage25d']['set'] ?? [];
             $exists = match (true) {
                 $m[1] === 'camera', $m[1] === 'world' => isset($this->selectedScene['config']['stage25d']),
@@ -1139,6 +1141,7 @@ class Step3SceneConfigurator extends Component
                 // Strips alone are terrain too: the stage builds its slot from them (engine.js terrainSlot).
                 $m[1] === 'terrain' => ! empty($set['groundSlots']) || ! empty($set['groundBands']) || ! str_starts_with((string) ($set['ground'] ?? '#'), '#'),
                 str_starts_with($m[1], 'band-') => isset($set['groundBands'][(int) $m[3]]),
+                str_starts_with($m[1], 'group-') => collect($set['groups'] ?? [])->contains('id', $m[4]),
                 default => isset($set['layers'][(int) $m[2]]),
             };
             if ($exists) {
@@ -1336,6 +1339,11 @@ class Step3SceneConfigurator extends Component
         }
         if (preg_match('/^s25_layer-(\d+)$/', $objectId, $m) === 1) {
             $this->removeStage25dLayer((int) $m[1]);
+
+            return;
+        }
+        if (preg_match('/^s25_group-([A-Za-z0-9_-]+)$/', $objectId, $m) === 1) {
+            $this->removeStage25dGroup($m[1]);   // the group with its layers, as in Photoshop
 
             return;
         }

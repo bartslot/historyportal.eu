@@ -1102,7 +1102,12 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     // ...and the panel's own memory of it goes too, so a click on the same backdrop (the sky) opens its panel again
     window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) { window.__stage25d?.clearSelection?.(); window.__clearLayerGuard?.() } })
     window.addEventListener('stage25d:deselect', () => window.__stage25d?.clearSelection?.())
-    window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
+    // the server picked a row (a group just made): after the scene:load of the same response has handed the stage the new set
+    // The server picks a row once the stage has the change: a layer by its index, or a row by its id (a new group).
+    window.addEventListener('stage25d:select', (e) => {
+      const id = e.detail?.id ?? (Number.isInteger(e.detail?.index) ? `layer-${e.detail.index}` : null)
+      if (id) setTimeout(() => window.__stage25d?.select?.(id), 600)
+    })
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0
@@ -1206,7 +1211,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             host.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--color-panel);'   // only the stage's own canvas takes the pointer; the 2D canvas under it never shows through
             parent.appendChild(host)
             _stage25dHost = host
-            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onStrew: (strew, sceneId) => window.Livewire?.dispatch('stage25d:strew', { strew, sceneId }), onWorldPick: (world, sceneId) => window.Livewire?.dispatch('stage25d:world-pick', { world, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onDaylight: (daylight, sceneId) => { if (sceneId != null) stage25dDaylightSaves.schedule(String(sceneId), { daylight, sceneId }) }, onSoil: (soil, sceneId) => { if (sceneId != null) stage25dSoilSaves.schedule(String(sceneId), { soil, sceneId }) }, onFarEdge: (farEdge, sceneId) => window.Livewire?.dispatch('stage25d:far-edge', { farEdge, sceneId }), onWorld: (key, value, sceneId) => { if (sceneId != null) stage25dWorldSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
+            _stage25d = mountStage25d(host, { editable: true, onGroundSlots: (slots, sceneId) => window.Livewire?.dispatch('stage25d:ground-slots', { slots, sceneId }), onStrew: (strew, sceneId) => window.Livewire?.dispatch('stage25d:strew', { strew, sceneId }), onWorldPick: (world, sceneId) => window.Livewire?.dispatch('stage25d:world-pick', { world, sceneId }), onLook: (key, value, sceneId) => { if (sceneId != null) stage25dLookSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onDaylight: (daylight, sceneId) => { if (sceneId != null) stage25dDaylightSaves.schedule(String(sceneId), { daylight, sceneId }) }, onSoil: (soil, sceneId) => { if (sceneId != null) stage25dSoilSaves.schedule(String(sceneId), { soil, sceneId }) }, onFarEdge: (farEdge, sceneId) => window.Livewire?.dispatch('stage25d:far-edge', { farEdge, sceneId }), onWorld: (key, value, sceneId) => { if (sceneId != null) stage25dWorldSaves.schedule(`${sceneId}:${key}`, { key, value, sceneId }) }, onCommit: (index, patch, sceneId) => { stage25dLayerSaves.schedule(`${sceneId}:${index}:${patch.group ? `group:${patch.group.id}:${Object.keys(patch.group).join(',')}` : Object.keys(patch)[0]}`, { index, patch, sceneId }); window.dispatchEvent(new CustomEvent('stage25d-edited')) } })
         }
         const mounting = _stage25d
         try {

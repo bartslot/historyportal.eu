@@ -3,15 +3,21 @@
  * uses for the rows. Pure, so the editor, the engine and the tests agree on one definition.
  */
 
-/** Layer fields that move or restyle a built picture (play: an animation's speed and start; water: water.ts), whether the canvas takes presses (`locked`), and the speaker handle a balloon points at (`figure`: the stage
+/** Layer fields that move or restyle a built picture (play: an animation's speed and start; water: water.ts), whether the canvas takes presses (`locked`), the group it moves with (`group`), and the speaker handle a balloon points at (`figure`: the stage
  *  only reads it to find a head). Anything else (asset, depth, need, flat) is a rebuild. */
-export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play', 'outline', 'etch', 'water', 'locked']
+export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play', 'outline', 'etch', 'water', 'locked', 'group']
 
 /** A bone's turn (`bone:head`) is an editable field too: which bones a figure has is up to its puppet. */
 export const isBoneField = (field) => field.startsWith('bone:')
 
 /** The bone fields of a layer, as they are. */
 export const boneFields = (layer) => Object.fromEntries(Object.entries(layer ?? {}).filter(([k]) => isBoneField(k)))
+
+/** 'group-g2' -> 'g2' (a group's row); anything else -> null. */
+export const groupId = (id) => {
+  const m = /^group-([A-Za-z0-9_-]+)$/.exec(String(id))
+  return m ? m[1] : null
+}
 
 /** 'layer-3' -> 3; anything else (the camera) -> -1. */
 export const layerIndex = (id) => {
@@ -28,7 +34,7 @@ const ownSky = (daylight) => !!daylight && !daylight.painted
  *  sliders and the time of day: equal signatures = the same set, nothing to rebuild. Only whether the scene paints its
  *  own sky is structure (a painted sky has a picture to load). */
 export const structureSig = (cfg) => {
-  const { layers = [], groundBands = [], skyLayer = {}, daylight, soil, ...rest } = cfg?.set ?? {}   // the soil colour is live (stage.ts resoil), never a rebuild
+  const { layers = [], groundBands = [], skyLayer = {}, daylight, soil, groups, ...rest } = cfg?.set ?? {}   // the soil colour and the groups are live (stage.ts resoil, layout.ts inGroup), never a rebuild
   const { camera, camera_more, camera_motion, look, ...unframed } = cfg ?? {}   // the camera is framed live (framing.js), never a rebuild
   return JSON.stringify({ ...unframed, set: { ...rest, ownSky: ownSky(daylight), layers: layers.map(without), groundBands: groundBands.map(without), skyLayer: without(skyLayer) } })
 }
@@ -39,7 +45,7 @@ const edits = (l) => [...EDITABLE.map((f) => l?.[f] ?? null), boneFields(l)]
  *  changes (undo, redo, import). */
 export const editSig = (cfg) => JSON.stringify([
   (cfg?.set?.layers ?? []).map(edits), (cfg?.set?.groundBands ?? []).map(edits), edits(cfg?.set?.skyLayer), cfg?.camera ?? null, cfg?.camera_more ?? [], cfg?.camera_motion ?? null,
-  cfg?.set?.daylight ?? null, cfg?.look ?? {}, cfg?.set?.soil ?? null,
+  cfg?.set?.daylight ?? null, cfg?.look ?? {}, cfg?.set?.soil ?? null, cfg?.set?.groups ?? [],
 ])
 
 /** A picture set below the floor (its y, or any key's, under 0): a close-up framed by the teacher, a portrait or a bust,

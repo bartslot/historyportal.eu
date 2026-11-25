@@ -3140,5 +3140,7 @@
     "Edit with others": "Gemeinsam bearbeiten",
     "Lock": "Sperren",
     "Unlock": "Entsperren",
-    "Unpin from map": "Von der Karte lösen"
+    "Unpin from map": "Von der Karte lösen",
+    "Group": "Gruppieren",
+    "Ungroup": "Gruppierung aufheben"
 }

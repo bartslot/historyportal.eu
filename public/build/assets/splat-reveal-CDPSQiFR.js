@@ -1,4 +1,4 @@
-import{l as r}from"./babylon-ClnPoGlu.js";import{W as l}from"./engine-ChSt5p5k.js";import"./vite-helpers-DqutJMZx.js";import"./water-BvkhMi10.js";import"./scene-animation-C-gJag00.js";import"./easing-HS2C6-zA.js";import"./puppet-sheet-B0KaX9MG.js";import"./load-image-DngxJD_v.js";import"./config-DwQUN7uY.js";import"./stage-handle-Ckz2xOyo.js";import"./ambient-CnaWjG1w.js";import"./projection-CL24asTn.js";const a=`
+import{l as r}from"./babylon-ClnPoGlu.js";import{W as l}from"./engine-BDxjlSHV.js";import"./vite-helpers-DqutJMZx.js";import"./water-q7N-YNyp.js";import"./scene-animation-C-gJag00.js";import"./easing-HS2C6-zA.js";import"./puppet-sheet-B0KaX9MG.js";import"./load-image-DngxJD_v.js";import"./config-DwQUN7uY.js";import"./stage-handle-Ckz2xOyo.js";import"./ambient-CnaWjG1w.js";import"./projection-CL24asTn.js";const a=`
 {
   float t = revealT;
   vec3 p = splat.center.xyz;

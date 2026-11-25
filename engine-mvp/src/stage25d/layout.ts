@@ -1,6 +1,6 @@
 // Pure stage maths: where a layer stands, how big it is, and where the camera is at time t.
 // Metres everywhere. The house camera stands at x 0, eye height, looking down +z with a small fixed tilt.
-import type { Asset, CamPose, CameraMotion, CameraMotionKind, CameraMove, Depth, Ease, GroundBand, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
+import type { Asset, CamPose, CameraMotion, CameraMotionKind, CameraMove, Depth, Ease, GroundBand, LayerGroup, LayerKey, MotionKind, MotionSpec, Scene, SceneLayer } from './types'
 import { isBust } from './blink'
 
 /** Distance from the house camera to each depth plane. Wide gaps between them = strong parallax on a truck. */
@@ -298,6 +298,11 @@ const LAYER_FIELDS = ['x', 'y', 'z', 'scale', 'opacity', 'rotation'] as const
 /** A layer's x/y/scale/opacity/rotation at time t: its own values, moved by keyframes (eased in-out between keys).
  *  Each field moves along the keys that name it, so a key that only sets x leaves y's own run alone. */
 export function layerAt(layer: SceneLayer, t: number): LayerNow {
+  const own = ownAt(layer, t)
+  return layer._group ? inGroup(own, distanceOf({ depth: layer.depth, z: own.z }), layer._group, t) : own
+}
+
+function ownAt(layer: Pick<SceneLayer, 'x' | 'y' | 'z' | 'scale' | 'opacity' | 'rotation' | 'keys'>, t: number): LayerNow {
   const base: LayerNow = { z: layer.z, x: layer.x ?? 0.5, y: layer.y ?? 0, scale: layer.scale ?? 1, opacity: layer.opacity ?? 1, rotation: layer.rotation ?? 0 }
   const all = layer.keys ?? []
   if (!all.length) return base
@@ -307,6 +312,41 @@ export function layerAt(layer: SceneLayer, t: number): LayerNow {
     if (keyed !== null) out[f] = keyed
   }
   return out
+}
+
+/** Nearer than this a grouped layer is never carried (a group pulled through the camera). */
+const GROUP_NEAR_M = 0.5
+
+/** A group's own values at time t (its keys eased like a layer's): where its middle stands, its size, turn and fade. */
+export function groupAt(group: LayerGroup, t: number): Required<LayerNow> {
+  const now = ownAt({ ...group, x: group.x ?? group.rest.x, z: group.z ?? group.rest.z }, t)
+  return { ...now, z: now.z ?? group.rest.z }
+}
+
+/** One layer's values carried by its group, as a parent node carries its children in Babylon (TransformNode): in metres,
+ *  so the group keeps its depth (a near child stays near). The child stands where it stood relative to the group's
+ *  middle at rest, scaled about that middle, turned about it on screen (clockwise), then moved with it. */
+export function inGroup(child: LayerNow, childZ: number, group: LayerGroup, t: number): LayerNow {
+  const g = groupAt(group, t)
+  const rx = (group.rest.x - 0.5) * viewWidthAt(group.rest.z)
+  const dx = ((child.x - 0.5) * viewWidthAt(childZ) - rx) * g.scale
+  const dy = child.y * g.scale
+  const dz = (childZ - group.rest.z) * g.scale
+  const a = (g.rotation * Math.PI) / 180
+  const x = (g.x - 0.5) * viewWidthAt(g.z) + dx * Math.cos(a) + dy * Math.sin(a)
+  const z = Math.max(GROUP_NEAR_M, g.z + dz)
+  return {
+    z, x: x / viewWidthAt(z) + 0.5, y: g.y - dx * Math.sin(a) + dy * Math.cos(a),
+    scale: child.scale * g.scale, rotation: child.rotation + g.rotation, opacity: child.opacity * g.opacity,
+  }
+}
+
+/** The scene's layers with their groups resolved (layer._group), for the stage: a layer of a group that is not there
+ *  stands on its own. */
+export function withGroups<L extends SceneLayer>(layers: readonly L[], groups: readonly LayerGroup[] | undefined): L[] {
+  if (!groups?.length) return layers.map((l) => (l._group ? { ...l, _group: undefined } : l))
+  const byId = new Map(groups.map((g) => [g.id, g]))
+  return layers.map((l) => ({ ...l, _group: (l.group && byId.get(l.group)) || undefined }))
 }
 
 /** One field along the keys that name it, eased in-out between them; null when no key names it. The editor's cut tool

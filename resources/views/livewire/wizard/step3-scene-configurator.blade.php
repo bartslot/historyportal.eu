@@ -1970,9 +1970,23 @@
                 this.$nextTick(() => this.initSortable());
                 // The canvas right-click menu: one document listener for the page's life, pointed at the live list.
                 window.__layerMenuCanvas = (e) => this.canvasMenu(e);
+                // Cmd-G groups the picked stage layers (or the selected one), Shift-Cmd-G takes the selected group apart.
+                window.__layerGroupKey = (e) => {
+                    const obj = this.items.find((i) => i.id === this.selectedId) ?? this.items.find((i) => i.id === this.picked[0]);
+                    if (!obj) return;
+                    if (e.shiftKey && this.groupOf(obj)) { e.preventDefault(); this.ungroup(obj); return; }
+                    if (!e.shiftKey && this.canPick(obj)) { e.preventDefault(); this.groupLayers(this.picked.length > 1 ? this.items.find((i) => i.id === this.picked[0]) : obj); }
+                };
                 if (!window.__layerMenuCanvasMounted) {
                     window.__layerMenuCanvasMounted = true;
                     document.addEventListener('contextmenu', (e) => window.__layerMenuCanvas?.(e));
+                    // What had focus before the press: a right-press puts focus in a text box itself, so only a text that was
+                    // already being typed in keeps the browser's own menu (spelling).
+                    document.addEventListener('pointerdown', () => { window.__layerMenuFocus = document.activeElement; }, true);
+                    window.addEventListener('keydown', (e) => {
+                        if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'g' || window.__isTypingTarget?.(e.target)) return;
+                        window.__layerGroupKey?.(e);
+                    });
                 }
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
@@ -2032,9 +2046,21 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
                 // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
-                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery)
+                const s25All = window.__stage25d?.items?.() ?? [];
+                const s25Sorted = [...s25All].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery && !i.isGroup)
                     .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
-                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true, locked: !!i.locked }));
+                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true, locked: !!i.locked, inGroup: !!i.group, groupId: i.group ?? null }));
+                // A group (Bart 11-25, as in Photoshop) is a row of its own, where its front-most layer stands, with its layers
+                // indented under it. It stacks by depth like them, so it is never dragged (data-s25group).
+                const s25Groups = new Map(s25All.filter((i) => i.isGroup).map((g) => [g.id.slice(6), { id: 's25_' + g.id, icon: 'group', label: g.label, bg: false, s25: true, s25group: true, groupId: g.id.slice(6) }]));
+                const s25Items = [];
+                const s25Done = new Set();
+                for (const row of s25Sorted) {
+                    if (s25Done.has(row.id)) continue;
+                    if (!row.groupId || !s25Groups.has(row.groupId)) { s25Items.push({ ...row, inGroup: false }); continue; }
+                    s25Items.push(s25Groups.get(row.groupId));
+                    for (const m of s25Sorted.filter((r) => r.groupId === row.groupId)) { s25Items.push(m); s25Done.add(m.id); }
+                }
                 // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 // Grouped under "World" (Bart, 2026-11-10/11): one ground and one sky, never copied or deleted, only swapped.
@@ -2084,7 +2110,7 @@
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
-                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label + ':' + (i.locked ? 'L' : '') + (i.pinnable ? 'p' : '') + (i.pinned ? 'P' : '')).join('|');
+                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label + ':' + (i.locked ? 'L' : '') + (i.pinnable ? 'p' : '') + (i.pinned ? 'P' : '') + (i.groupId ?? '')).join('|');
                 if (sig === this._sig) return;
                 this._sig = sig;
                 this.items = items;
@@ -2101,7 +2127,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal], [data-s25group]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -2167,6 +2193,7 @@
             // (the layer broadcasts back so canvas↔list stay in sync), and scroll it into view.
             select(obj) {
                 this.selectedId = obj.id;
+                this.picked = [];
                 if (obj.voyage) {
                     // Route waypoint layers → open the Format inspector and focus the Waypoint tab
                     // (Gallery also scrolls to its section). The voyage inspector listens for this.
@@ -2228,13 +2255,16 @@
                 // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
                 this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
                 if (this.pasteOnly && !this.canPaste) return false;
-                if (!this.pasteOnly) this.select(obj);
+                if (!this.pasteOnly && !this.picked.includes(obj.id)) this.select(obj);   // a picked row keeps the others picked (Group)
                 this.menuObj = obj;
                 const m = this.menuEl();
                 if (!m) return false;
                 m.style.left = Math.min(e.clientX, innerWidth - 200) + 'px';
                 m.style.top = Math.min(e.clientY, innerHeight - 260) + 'px';
-                m.showPopover();
+                // On a Mac the menu event comes on the press: shown then, the release would light-dismiss it at once. Wait for it.
+                const show = () => { try { m.showPopover(); } catch (_) {} };
+                if (e.buttons) window.addEventListener('pointerup', () => setTimeout(show), { once: true, capture: true });
+                else show();
                 return true;
             },
             /**
@@ -2246,7 +2276,7 @@
             canvasMenu(e) {
                 const t = e.target;
                 if (!t?.closest?.('#lesson-canvas-root') || this.$wire?.titleSelected) return;
-                if (t.closest('[contenteditable="true"], input, textarea')?.contains(document.activeElement)) return;
+                if (t.closest('[contenteditable="true"], input, textarea')?.contains(window.__layerMenuFocus ?? document.activeElement)) return;
                 this._sig = null;
                 this.refresh();
                 const id = this.objectIdAt(e);
@@ -2266,13 +2296,33 @@
             },
             // Lock: text boxes save it with the texts (TextOverlayLayer.setLocked); pictures and stage layers on the server
             // (LocksSceneObjects). Either way one Cmd-Z takes it back.
-            canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky)); },
+            canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky && !obj.s25group)); },
             setLocked(obj, locked) {
                 if (!this.canLock(obj)) return;
                 obj.locked = locked;
                 const relist = () => { this._sig = null; this.refresh(); };
                 if (obj.text) { window.__lessonTextLayer?.setLocked?.(obj.id, locked); relist(); }
                 else this.$wire.lockObject(obj.id, locked).then(relist);
+            },
+            // Several stage layers picked at once (Shift- or Cmd-click on their rows), for Group.
+            picked: [],
+            canPick(obj) { return !!obj?.s25 && !obj.s25sky && !obj.s25group; },
+            togglePicked(obj) {
+                const now = this.picked.length ? this.picked : (this.selectedId && this.items.find((i) => i.id === this.selectedId && this.canPick(i)) ? [this.selectedId] : []);
+                this.picked = now.includes(obj.id) ? now.filter((id) => id !== obj.id) : [...now, obj.id];
+            },
+            // Group: the picked layers when the menu is on one of them, else the layer under it. Ungroup: a group, or a layer's own group.
+            canGroup(obj) { return this.canPick(obj); },
+            groupOf(obj) { return obj?.s25group ? obj.groupId : (obj?.inGroup ? obj.groupId : null); },
+            groupLayers(obj) {
+                const ids = this.picked.includes(obj?.id) && this.picked.length > 1 ? this.picked : [obj?.id];
+                const indexes = ids.filter((id) => /^s25_layer-\d+$/.test(id ?? '')).map((id) => Number(id.slice(10)));
+                if (indexes.length) this.$wire.groupStage25dLayers(indexes);
+                this.picked = [];
+            },
+            ungroup(obj) {
+                const id = this.groupOf(obj);
+                if (id) this.$wire.ungroupStage25d(id);
             },
             // Pin to map: the same toggle as the inspector's switch (togglePin on the overlay), so the two always agree.
             togglePin(obj) {
@@ -2928,13 +2978,13 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null" :data-s25group="obj.s25group ? '1' : null"
                      data-obj-row
-                     @click="select(obj)"
+                     @click="($event.shiftKey || $event.metaKey || $event.ctrlKey) && canPick(obj) ? togglePicked(obj) : select(obj)"
                      @contextmenu.prevent="openMenu(obj, $event)"
                      :class="[
                         obj.bg || obj.bal || obj.dio || obj.s25sky ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
-                        selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
+                        selectedId === obj.id || picked.includes(obj.id) ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                         obj.inGroup ? 'pl-6' : '', obj.group ? 'cursor-default! hover:bg-transparent' : '',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
@@ -2978,7 +3028,7 @@
         <ul popover data-obj-menu
             class="menu m-0 hidden w-52 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio && !menuObj.s25group">
                 <button type="button" @click="closeMenu(); copyObject(menuObj)">
                     <x-ui.icon name="copy" />
                     {{ __('Copy') }}
@@ -2992,7 +3042,7 @@
                     <span class="ml-auto opacity-60">⌘V</span>
                 </button>
             </li>
-            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.s25group">
                 <button type="button" @click="closeMenu(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
@@ -3004,6 +3054,20 @@
                     <span x-show="!menuObj?.locked"><x-ui.icon name="lock" /></span>
                     <span x-show="menuObj?.locked" x-cloak><x-ui.icon name="unlock" /></span>
                     <span x-text="menuObj?.locked ? @js(__('Unlock')) : @js(__('Lock'))"></span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && canGroup(menuObj)">
+                <button type="button" @click="closeMenu(); groupLayers(menuObj)" data-obj-menu-group>
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Group') }}
+                    <span class="ml-auto opacity-60">⌘G</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && groupOf(menuObj)">
+                <button type="button" @click="closeMenu(); ungroup(menuObj)" data-obj-menu-ungroup>
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Ungroup') }}
+                    <span class="ml-auto opacity-60">⇧⌘G</span>
                 </button>
             </li>
             <li x-show="!pasteOnly && menuObj?.pinnable">

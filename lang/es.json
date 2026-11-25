@@ -3182,5 +3182,7 @@
     "Edit with others": "Editar con otros",
     "Lock": "Bloquear",
     "Unlock": "Desbloquear",
-    "Unpin from map": "Soltar del mapa"
+    "Unpin from map": "Soltar del mapa",
+    "Group": "Agrupar",
+    "Ungroup": "Desagrupar"
 }

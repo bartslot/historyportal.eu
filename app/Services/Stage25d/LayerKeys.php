@@ -216,6 +216,8 @@ final class LayerKeys
             $path = match (true) {
                 preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => ['layers', (int) $m[1]],
                 preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => ['groundBands', (int) $m[1]],
+                // a group's row (LayerGroups): its place in the list of groups, by its id
+                preg_match('/^group-([A-Za-z0-9_-]+)$/', (string) $id, $m) === 1 => (($at = array_search($m[1], array_column((array) data_get($config, 'stage25d.set.groups', []), 'id'), true)) === false ? null : ['groups', $at]),
                 default => null,
             };
             $row = $path === null ? null : data_get($config, ['stage25d', 'set', ...$path]);

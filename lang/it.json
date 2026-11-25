@@ -3140,5 +3140,7 @@
     "Edit with others": "Modifica con altri",
     "Lock": "Blocca",
     "Unlock": "Sblocca",
-    "Unpin from map": "Stacca dalla mappa"
+    "Unpin from map": "Stacca dalla mappa",
+    "Group": "Raggruppa",
+    "Ungroup": "Separa"
 }

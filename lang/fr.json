@@ -3140,5 +3140,7 @@
     "Edit with others": "Modifier à plusieurs",
     "Lock": "Verrouiller",
     "Unlock": "Déverrouiller",
-    "Unpin from map": "Détacher de la carte"
+    "Unpin from map": "Détacher de la carte",
+    "Group": "Grouper",
+    "Ungroup": "Dissocier"
 }
