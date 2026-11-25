@@ -2266,7 +2266,7 @@
             },
             // Lock: text boxes save it with the texts (TextOverlayLayer.setLocked); pictures and stage layers on the server
             // (LocksSceneObjects). Either way one Cmd-Z takes it back.
-            canLock(obj) { return !!obj && !this.pasteOnly && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky)); },
+            canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky)); },
             setLocked(obj, locked) {
                 if (!this.canLock(obj)) return;
                 if (obj.text) window.__lessonTextLayer?.setLocked?.(obj.id, locked);
@@ -3000,7 +3000,7 @@
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
-            <li x-show="canLock(menuObj)">
+            <li x-show="!pasteOnly && canLock(menuObj)">
                 <button type="button" @click="closeMenu(); setLocked(menuObj, !menuObj.locked)">
                     <span x-show="!menuObj?.locked"><x-ui.icon name="lock" /></span>
                     <span x-show="menuObj?.locked" x-cloak><x-ui.icon name="unlock" /></span>

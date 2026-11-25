@@ -1463,10 +1463,13 @@ export class ArtworkOverlay {
 
   /** Hand a press on empty pixels to whatever is under it: another layer, or the stage. */
   _passDown(node, e) {
+    // Kept out until the press has been handed on: a layer under this one that passes it too hands it on further, never back.
     node.style.pointerEvents = 'none'
-    const under = document.elementFromPoint(e.clientX, e.clientY)
-    node.style.pointerEvents = 'auto'
-    under?.dispatchEvent(new PointerEvent(e.type, e))
+    try {
+      document.elementFromPoint(e.clientX, e.clientY)?.dispatchEvent(new PointerEvent(e.type, e))
+    } finally {
+      node.style.pointerEvents = 'auto'
+    }
   }
 
   _wireDrag(item, node) {

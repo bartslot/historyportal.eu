@@ -323,10 +323,13 @@ export class TextOverlayLayer {
   _passLocked(item, node, e) {
     if (!item.locked) return false
     e.preventDefault()
+    // Kept out until the press has been handed on: a locked box under this one then hands it on further, never back.
     node.style.pointerEvents = 'none'
-    const under = document.elementFromPoint(e.clientX, e.clientY)
-    node.style.pointerEvents = 'auto'
-    under?.dispatchEvent(new PointerEvent(e.type, e))
+    try {
+      document.elementFromPoint(e.clientX, e.clientY)?.dispatchEvent(new PointerEvent(e.type, e))
+    } finally {
+      node.style.pointerEvents = 'auto'
+    }
     return true
   }
 

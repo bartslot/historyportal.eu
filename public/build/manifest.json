@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DKwO6xtU.js",
+    "file": "assets/app-CowB3GpN.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -338,7 +338,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-B9vXymaL.js",
+    "file": "assets/cutout-dialog-CFn85Poc.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -401,7 +401,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-CdkfL6FL.js",
+    "file": "assets/lesson-player-HqDikIti.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -467,7 +467,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-RBx9iN9T.js",
+    "file": "assets/ArtworkOverlay-BmnsXEGs.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -514,7 +514,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-ROf9n-gD.js",
+    "file": "assets/SplitStage-BHyKiIAf.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -547,7 +547,7 @@
     ]
   },
   "resources/js/scene/TextOverlayLayer.js": {
-    "file": "assets/TextOverlayLayer-Bz_bmwE1.js",
+    "file": "assets/TextOverlayLayer-xrygUSxO.js",
     "name": "TextOverlayLayer",
     "src": "resources/js/scene/TextOverlayLayer.js",
     "isDynamicEntry": true,
@@ -575,7 +575,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DwsNvnp5.js",
+    "file": "assets/index-CChdlaqq.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -706,7 +706,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-D-oUh0Ga.js",
+    "file": "assets/recorder-B2PeZCpC.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

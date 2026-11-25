@@ -259,3 +259,22 @@ describe('TextOverlayLayer lock (the layer menu)', () => {
     el.remove()
   })
 })
+
+describe('TextOverlayLayer lock: overlapping locked boxes', () => {
+  it('a press on two locked boxes on top of each other goes on to what is under both, once', () => {
+    const el = host()
+    document.body.appendChild(el)
+    const layer = new TextOverlayLayer(el, { editable: true })
+    layer.setTexts([{ id: 'a', text: 'A', x: 10, y: 10, locked: 1 }, { id: 'b', text: 'B', x: 10, y: 10, locked: 1 }])
+    const [a, b] = ['a', 'b'].map((id) => el.querySelector(`[data-text-id="${id}"]`))
+    const floor = document.createElement('div')
+    const reached = vi.fn()
+    floor.addEventListener('pointerdown', reached)
+    // what is under the point: the first box that still takes presses, else the floor
+    document.elementFromPoint = () => [b, a].find((n) => n.style.pointerEvents !== 'none') ?? floor
+    b.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(reached).toHaveBeenCalledTimes(1)
+    expect(layer._selectedId).toBeNull()
+    el.remove()
+  })
+})
