@@ -21,6 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
 import { handleCss } from './stage-handle.js'
+import { passPress } from './pass-press.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
@@ -107,7 +108,7 @@ export const artObjId = (assetId) => `art_${assetId}`
 const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend', 'edge',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
-  ...SIT_KEYS, 'occlude', ...ARROW_KEYS,
+  ...SIT_KEYS, 'occlude', ...ARROW_KEYS, 'locked',
 ]
 
 /**
@@ -157,7 +158,7 @@ export function layersSignature(layers) {
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, JSON.stringify(l.geo || null), l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
-    l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style,
+    l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style, !!l.locked,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
     l.frames ? JSON.stringify(l.frames) : null,
   ]))
@@ -232,6 +233,8 @@ export function normalizeLayer(l) {
         ...Object.fromEntries(SIT_KEYS.map(k => [k, Number.isFinite(l[k]) ? l[k] : null])),
         // Hidden where the backdrop is nearer (occlusion.js): 1 on, 0 off.
         occlude: l.occlude ? 1 : 0,
+        // Locked on the canvas (the right-click menu's Lock): a press goes through to what is under it.
+        locked: !!l.locked,
         // A sprite sheet over the picture (layer-frames.js): {url, count, columns, play, fps} or null.
         frames: l.frames && typeof l.frames === 'object' ? l.frames : null,
         // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
@@ -691,7 +694,7 @@ export class ArtworkOverlay {
     if (!item || !node) return
 
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
-    const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
+    const BOOLEAN = ['grayscale', 'flip_x', 'flip_y', 'locked']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
     // A width of null is "no width of its own", not zero: Number(null) is 0, which drew the layer
     // as a 0%-wide box the moment a save cleared its width.
@@ -1361,6 +1364,7 @@ export class ArtworkOverlay {
   /** Drag the arrow's body: the whole arrow moves, start and end together. */
   _wireArrowBody(item, el) {
     el.addEventListener('pointerdown', (e) => {
+      if (item.locked) return
       this.select(artObjId(item.asset_id))
       const [sx, sy] = this._pointPct(e)
       const origin = { x: item.x, y: item.y, ex: item.end_x, ey: item.end_y }
@@ -1392,6 +1396,7 @@ export class ArtworkOverlay {
   _wireArrowHandle(item, el, name) {
     el.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
+      if (item.locked) return
       this.select(artObjId(item.asset_id))
       let moved = false
       const onMove = (ev) => {
@@ -1458,12 +1463,7 @@ export class ArtworkOverlay {
   }
 
   /** Hand a press on empty pixels to whatever is under it: another layer, or the stage. */
-  _passDown(node, e) {
-    node.style.pointerEvents = 'none'
-    const under = document.elementFromPoint(e.clientX, e.clientY)
-    node.style.pointerEvents = 'auto'
-    under?.dispatchEvent(new PointerEvent(e.type, e))
-  }
+  _passDown(node, e) { passPress(node, e) }
 
   _wireDrag(item, node) {
     if (!this.readonly && item.url && !item.embed && !this._masks.has(item.url)) {
@@ -1474,6 +1474,8 @@ export class ArtworkOverlay {
       if (!e.buttons) node.style.cursor = this._onEmptyPixels(item, node, e) ? 'default' : 'grab'
     })
     node.addEventListener('pointerdown', (e) => {
+      // Locked: not this layer's press at all, as if it were not there (Figma's lock). The layer list unlocks it.
+      if (item.locked) { this._passDown(node, e); return }
       if (e.target === node || e.target.tagName === 'IMG') {
         if (this._onEmptyPixels(item, node, e)) { this._passDown(node, e); return }
       }
@@ -1546,6 +1548,7 @@ export class ArtworkOverlay {
     handle.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
+      if (item.locked) return   // a locked layer keeps its size and angle
       this.select(artObjId(item.asset_id))
       this._dragNode = node   // pause parallax drift while resizing
       node.style.transform = this._transform(item)   // drop any parallax offset first
@@ -1617,6 +1620,7 @@ export class ArtworkOverlay {
     handle.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
+      if (item.locked) return   // a locked layer keeps its size and angle
       this.select(artObjId(item.asset_id))
       this._dragNode = node
 

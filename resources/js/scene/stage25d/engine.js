@@ -522,6 +522,7 @@ export async function createStage25d (host, opts = {}) {
           onChange: (i, prop, v, opts) => api.moveLayer(`layer-${i}`, prop, v, opts),
           inPlace: (i) => closeUp(i) && !scaleKeyed(i),
           onResize: resizeInPlace,
+          isLocked: (i) => !!layers[i]?.locked,
         })
       }
       if ((pointer?.selected ?? -1) >= layers.length) pointer.select(null)   // its layer is gone (a delete, an undo)
@@ -721,6 +722,8 @@ export async function createStage25d (host, opts = {}) {
     /** The selected backdrop row ('sky', 'band-<n>'), or null. */
     get backdrop () { return backdrop },
     get selection () { return pointer?.selected ?? null },
+    /** The layer painted under a page point ('layer-3'), locked ones too: what the canvas right-click menu is about. */
+    pickAt (clientX, clientY) { const i = pointer?.pickAt?.(clientX, clientY); return i === null || i === undefined ? null : `layer-${i}` },
     /** Another scene is opening: nothing stays selected from the one before. */
     clearSelection () { pointer?.select(null); api.frameCamera(false) },
     /** The canvas's pointer moves the camera at the playhead (the Camera row is selected), or picks layers again. */
@@ -1360,7 +1363,7 @@ export async function createStage25d (host, opts = {}) {
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [
-        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)) })),
+        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)), locked: !!l.locked })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
         ...(terrainSlot() || bands.length ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
         ...(hasSky(setNow()) ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),

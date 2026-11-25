@@ -1968,6 +1968,12 @@
                     this.refresh();
                 });
                 this.$nextTick(() => this.initSortable());
+                // The canvas right-click menu: one document listener for the page's life, pointed at the live list.
+                window.__layerMenuCanvas = (e) => this.canvasMenu(e);
+                if (!window.__layerMenuCanvasMounted) {
+                    window.__layerMenuCanvasMounted = true;
+                    document.addEventListener('contextmenu', (e) => window.__layerMenuCanvas?.(e));
+                }
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
                 // position:fixed drag ghost, offsetting/clipping it and breaking layer reordering.
@@ -2011,9 +2017,11 @@
                 // insertion order. Mirrors the canvas stacking so the list reads like a layers panel.
                 const withZ = texts.map((t, i) => ({ t, i, z: this.effZ(t) }));
                 withZ.sort((a, b) => (b.z - a.z) || (b.i - a.i));
+                // locked: the canvas lets presses through (the right-click menu's Lock); pinnable/pinned: Pin to map, on a live map only.
+                const textPin = !!window.__lessonTextLayer?.canPin?.();
                 const textItems = withZ.map(({ t }) => t.kind === 'rect'
-                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false }
-                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false });
+                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false, text: true, locked: !!t.locked }
+                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false, text: true, locked: !!t.locked, pinnable: textPin, pinned: t.anchor === 'map' });
                 // Clipart / artwork / embed layers (own overlay, drag-reorderable). _layers is bottom-first
                 // (last painted = on top), so reverse it to list front-most first like the text rows.
                 const objKind = (window.__objScene || {}).kind;
@@ -2026,7 +2034,7 @@
                 // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
                 const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery)
                     .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
-                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true }));
+                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true, locked: !!i.locked }));
                 // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 // Grouped under "World" (Bart, 2026-11-10/11): one ground and one sky, never copied or deleted, only swapped.
@@ -2037,9 +2045,11 @@
                 const s25Sky = s25Backdrop.length ? [{ id: 's25_world', icon: 'group', label: @js(__('World')), bg: false, s25: true, s25sky: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
+                const artPin = !!artLayer?.canPin?.();
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
-                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
+                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true,
+                       locked: !!a.locked, pinnable: artPin && a.kind !== 'arrow', pinned: a.anchor === 'map' }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
@@ -2074,7 +2084,7 @@
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
-                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label).join('|');
+                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label + ':' + (i.locked ? 'L' : '') + (i.pinnable ? 'p' : '') + (i.pinned ? 'P' : '')).join('|');
                 if (sig === this._sig) return;
                 this._sig = sig;
                 this.items = items;
@@ -2207,19 +2217,70 @@
             menuObj: null,
             canPaste: false,
             pasteOnly: false,
+            // The menu is teleported to <body> (x-teleport) so it opens over the canvas with the list hidden: found by its attribute.
+            menuEl() { return document.querySelector('[data-obj-menu]'); },
+            closeMenu() { try { this.menuEl()?.hidePopover(); } catch (_) {} },
+            // Returns whether it opened, so the canvas keeps the browser's own menu when there is nothing to offer.
             openMenu(obj, e) {
-                if (!obj) return;
+                if (!obj) return false;
                 this.canPaste = !!window.__objectClipboard?.has();
                 // The background and the pinned rows can't be copied or deleted, but an empty scene has only those, and it is
                 // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
                 this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
-                if (this.pasteOnly && !this.canPaste) return;
+                if (this.pasteOnly && !this.canPaste) return false;
                 if (!this.pasteOnly) this.select(obj);
                 this.menuObj = obj;
-                const m = this.$refs.objMenu;
-                m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
-                m.style.top = Math.min(e.clientY, innerHeight - 180) + 'px';
+                const m = this.menuEl();
+                if (!m) return false;
+                m.style.left = Math.min(e.clientX, innerWidth - 200) + 'px';
+                m.style.top = Math.min(e.clientY, innerHeight - 260) + 'px';
                 m.showPopover();
+                return true;
+            },
+            /**
+             * Right-click on the canvas (Bart 2026-11-25, "as in Photoshop"): the same menu as a row's, for the layer under
+             * the pointer. A text box, a balloon or a picture is the element under it; on the 2.5D stage it is the picture
+             * painted there (stage25d/interact.js pickAt), locked ones too, so a locked layer can be unlocked where it is.
+             * Nothing there: Paste alone, with a copy waiting. Typing in a text keeps the browser's menu (spelling).
+             */
+            canvasMenu(e) {
+                const t = e.target;
+                if (!t?.closest?.('#lesson-canvas-root') || this.$wire?.titleSelected) return;
+                if (t.closest('[contenteditable="true"], input, textarea')?.contains(document.activeElement)) return;
+                this._sig = null;
+                this.refresh();
+                const id = this.objectIdAt(e);
+                const obj = (id && this.items.find((i) => i.id === id)) || { id: '__stage__', bg: true };
+                if (this.openMenu(obj, e)) e.preventDefault();
+            },
+            objectIdAt(e) {
+                const t = e.target;
+                const text = t.closest('[data-text-id]');
+                if (text) return text.dataset.textId;
+                const bal = t.closest('[data-balloon-id]');
+                if (bal) return bal.dataset.balloonId;
+                const art = t.closest('[data-layer-id^="art_"]');
+                if (art) return art.dataset.layerId;
+                const s25 = window.__stage25d?.pickAt?.(e.clientX, e.clientY);
+                return s25 ? 's25_' + s25 : null;
+            },
+            // Lock: text boxes save it with the texts (TextOverlayLayer.setLocked); pictures and stage layers on the server
+            // (LocksSceneObjects). Either way one Cmd-Z takes it back.
+            canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky)); },
+            setLocked(obj, locked) {
+                if (!this.canLock(obj)) return;
+                obj.locked = locked;
+                const relist = () => { this._sig = null; this.refresh(); };
+                if (obj.text) { window.__lessonTextLayer?.setLocked?.(obj.id, locked); relist(); }
+                else this.$wire.lockObject(obj.id, locked).then(relist);
+            },
+            // Pin to map: the same toggle as the inspector's switch (togglePin on the overlay), so the two always agree.
+            togglePin(obj) {
+                if (!obj?.pinnable) return;
+                if (obj.art) this.artOverlay()?.togglePin?.(Number(obj.id.slice(4)));
+                else window.__lessonTextLayer?.togglePin?.(obj.id);
+                this._sig = null;
+                this.refresh();
             },
             // Copy / Paste: the same object copy as Cmd-C / Cmd-V, so a paste in another scene lands where it was.
             copyObject(obj) {
@@ -2851,7 +2912,7 @@
          block for SortableJS's position:fixed reorder ghost and break the layer-drag interaction. --}}
     <style>
         [data-objlist-col][data-compact] [data-obj-label] { display: none !important; }
-        [data-objlist-col][data-compact] [data-obj-eye] { display: none !important; }
+        [data-objlist-col][data-compact] [data-obj-eye], [data-objlist-col][data-compact] [data-obj-lock] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-row] { justify-content: center; padding-left: 0.25rem; padding-right: 0.25rem; gap: 0; }
     </style>
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
@@ -2896,45 +2957,71 @@
                             <span x-show="isHidden(obj)" x-cloak>{!! \App\Support\UiIcon::svg('hidden', ['class' => 'h-4 w-4']) !!}</span>
                         </button>
                     </template>
+                    {{-- Locked: a lock that stays on the row's right edge (after the eye, so a hover never moves it); a click unlocks (Figma's layer list). --}}
+                    <template x-if="obj.locked">
+                        <button type="button" @click.stop="setLocked(obj, false)" data-obj-lock
+                                aria-label="{{ __('Unlock') }}" data-tooltip="{{ __('Unlock') }}"
+                                class="-my-1.5 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
+                            {!! \App\Support\UiIcon::svg('lock', ['class' => 'h-4 w-4']) !!}
+                        </button>
+                    </template>
                 </div>
             </template>
         </div>
-        {{-- Duplicate and Delete: a right-click on a row, as in Figma's and Keynote's layer lists (Bart 2026-11-19: the
-             row's "..." clashed with the eye). The row keeps one hover action, the eye; ⌘D and ⌫ do the same as these
-             items. One native popover for the whole list, opened at the pointer: the top layer, so the panel's overflow
-             never clips it, and Escape or a click outside closes it. wire:ignore: a Livewire morph after select() would reset its position. --}}
-        <ul popover x-ref="objMenu" data-obj-menu wire:ignore
-            class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
+        {{-- The layer menu: a right-click on a row, as in Figma's and Keynote's layer lists (Bart 2026-11-19: the row's "..."
+             clashed with the eye), and on the layer itself on the canvas (Bart 2026-11-25, as in Photoshop). ⌘C, ⌘V, ⌘D and ⌫
+             do the same as these items. One native popover, opened at the pointer: the top layer, so no overflow clips it, and
+             Escape or a click outside closes it. Teleported to <body>: it opens over the canvas while the list is hidden, and
+             a Livewire morph never resets its position. --}}
+        <div wire:ignore>
+        <template x-teleport="body">
+        <ul popover data-obj-menu
+            class="menu m-0 hidden w-52 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
             <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio">
-                <button type="button" @click="$refs.objMenu.hidePopover(); copyObject(menuObj)">
+                <button type="button" @click="closeMenu(); copyObject(menuObj)">
                     <x-ui.icon name="copy" />
                     {{ __('Copy') }}
                     <span class="ml-auto opacity-60">⌘C</span>
                 </button>
             </li>
             <li x-show="canPaste">
-                <button type="button" @click="$refs.objMenu.hidePopover(); pasteObjects()">
+                <button type="button" @click="closeMenu(); pasteObjects()">
                     <x-ui.icon name="paste" />
                     {{ __('Paste') }}
                     <span class="ml-auto opacity-60">⌘V</span>
                 </button>
             </li>
             <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky">
-                <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
+                <button type="button" @click="closeMenu(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
+            <li x-show="!pasteOnly && canLock(menuObj)">
+                <button type="button" @click="closeMenu(); setLocked(menuObj, !menuObj.locked)">
+                    <span x-show="!menuObj?.locked"><x-ui.icon name="lock" /></span>
+                    <span x-show="menuObj?.locked" x-cloak><x-ui.icon name="unlock" /></span>
+                    <span x-text="menuObj?.locked ? @js(__('Unlock')) : @js(__('Lock'))"></span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && menuObj?.pinnable">
+                <button type="button" @click="closeMenu(); togglePin(menuObj)">
+                    <x-ui.icon name="pin" />
+                    <span x-text="menuObj?.pinned ? @js(__('Unpin from map')) : @js(__('Pin to map'))"></span>
+                </button>
+            </li>
             <li x-show="!pasteOnly">
-                <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
+                <button type="button" class="text-error" @click="closeMenu(); deleteObject(menuObj)">
                     <x-ui.icon name="delete" />
                     {{ __('Delete') }}
                     <span class="ml-auto opacity-60">⌫</span>
                 </button>
             </li>
         </ul>
+        </template>
+        </div>
     </div>
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to
