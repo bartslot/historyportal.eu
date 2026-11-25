@@ -1103,8 +1103,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     window.addEventListener('timeline-restored', (e) => { if (!e.detail?.keepSelection) { window.__stage25d?.clearSelection?.(); window.__clearLayerGuard?.() } })
     window.addEventListener('stage25d:deselect', () => window.__stage25d?.clearSelection?.())
     // the server picked a row (a group just made): after the scene:load of the same response has handed the stage the new set
-    window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(e.detail?.id), 60))
-    window.addEventListener('stage25d:select', (e) => setTimeout(() => window.__stage25d?.select?.(`layer-${e.detail?.index}`), 600))
+    // The server picks a row once the stage has the change: a layer by its index, or a row by its id (a new group).
+    window.addEventListener('stage25d:select', (e) => {
+      const id = e.detail?.id ?? (Number.isInteger(e.detail?.index) ? `layer-${e.detail.index}` : null)
+      if (id) setTimeout(() => window.__stage25d?.select?.(id), 600)
+    })
     let _stage25d = null
     let _stage25dHost = null
     let _stage25dReq = 0
