@@ -136,12 +136,12 @@ describe('a drawing on a map sticks to the map', () => {
   })
 
   it('scales exactly with the map: double per zoom step, smaller on a taller stage', () => {
-    const item = { geo_zoom: 5, geo_px: 600 }
+    const item = { geo: { zoom: 5, px: 600, w: 1000 } }
     expect(geoZoomFactor(projector, item, 600)).toBe(2)
     expect(geoZoomFactor(projector, item, 1200)).toBe(1)
     expect(geoZoomFactor({ zoom: () => 3 }, item, 600)).toBe(0.25)
     expect(geoZoomFactor(projector, {}, 600)).toBe(1)
     // across: against the width it was drawn on
-    expect(geoZoomFactor(projector, { geo_zoom: 5, geo_px: 600, geo_w: 1000 }, 500, 'x')).toBe(4)
+    expect(geoZoomFactor(projector, item, 500, 'x')).toBe(4)
   })
 })

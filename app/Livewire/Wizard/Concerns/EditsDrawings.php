@@ -13,8 +13,8 @@ use App\Services\Editor\Drawings;
  * Each line and each rub is one save, so Cmd-Z takes back one at a time.
  *
  * On a map a drawing belongs to the map (Bart, 2026-11-24: "should be stuck on the map automatically"): its first line
- * pins the layer to the place under its middle, and `geo_zoom` / `geo_px` (the map's zoom and the stage's height in px
- * when it was drawn, and `geo_w` its width) let ArtworkOverlay grow and shrink it exactly with the map, on any screen. The editor sends the
+ * pins the layer to the place under its middle, and `geo` (the map's zoom and the stage's height and width in px
+ * when it was drawn: zoom, px, w) lets ArtworkOverlay grow and shrink it exactly with the map, on any screen. The editor sends the
  * map's view with every line and rub (`$map`: zoom, px, and where each pinned layer sits now), because only the
  * browser knows where the map puts a place.
  */
@@ -54,7 +54,7 @@ trait EditsDrawings
         $box = ['x' => round($drawn['x'], 3), 'y' => round($drawn['y'], 3), 'width' => round($drawn['width'], 3), 'height' => round($drawn['height'], 3)];
         $fields = ['height' => $box['height'], 'width' => $box['width'], 'strokes' => [$clean], 'drawn' => $box];
         if ($pin) {
-            $fields += ['x' => $box['x'], 'y' => $box['y'], 'geo_zoom' => $view['zoom'], 'geo_px' => $view['px'], 'geo_w' => $view['w']];
+            $fields += ['x' => $box['x'], 'y' => $box['y'], 'geo' => self::geo($view)];
         }
         // its box exactly: the same request, so one Cmd-Z takes the whole line back (SceneHistory merges them)
         $this->writeLayerFields($asset->id, $fields, unsetNull: false);
@@ -104,7 +104,7 @@ trait EditsDrawings
      * same middle, so it stays on its place; its size is measured afresh at this zoom. One the browser did not place
      * is left alone.
      *
-     * @param  array{zoom:float, px:float, pins:array<int, array{x:float, y:float, f:float}>}|null  $view
+     * @param  array{zoom:float, px:float, w:float, pins:array<int, array{x:float, y:float, f:float, fx:float}>}|null  $view
      * @param  callable(array<string,mixed>): ?list<array<string,mixed>>  $change
      */
     private function redrawDrawings(float $aspect, ?array $view, callable $change): bool
@@ -125,8 +125,9 @@ trait EditsDrawings
                     continue;
                 }
                 $id = $layer['asset_id'] ?? null;
-                $pin = Drawings::isPinned($layer) ? ($view['pins'][(int) $id] ?? null) : null;
-                if (Drawings::isPinned($layer) && $pin === null) {
+                $pinned = ($layer['anchor'] ?? null) === 'map';
+                $pin = $pinned ? ($view['pins'][(int) $id] ?? null) : null;
+                if ($pinned && $pin === null) {
                     $layers[] = $layer;
 
                     continue;
@@ -140,7 +141,7 @@ trait EditsDrawings
                         $strokes === null => false,
                         $strokes === [] => null,
                         $pin !== null => [...Drawings::relayer(auth()->user(), $now, $strokes, $aspect, [$pin['x'], $pin['y']]),
-                            'x' => $pin['x'], 'y' => $pin['y'], 'geo_zoom' => $view['zoom'], 'geo_px' => $view['px'], 'geo_w' => $view['w']],
+                            'x' => $pin['x'], 'y' => $pin['y'], 'geo' => self::geo($view)],
                         default => Drawings::relayer(auth()->user(), $layer, $strokes, $aspect),
                     };
                 }
@@ -178,13 +179,16 @@ trait EditsDrawings
             return null;
         }
         $px = round(max(50.0, min(10000.0, (float) $map['px'])), 1);
-        $w = $num($map['w'] ?? null) ? round(max(50.0, min(20000.0, (float) $map['w'])), 1) : round($px * 16 / 9, 1);
+        if (! $num($map['w'] ?? null)) {
+            return null;
+        }
+        $w = round(max(50.0, min(20000.0, (float) $map['w'])), 1);
         $view = ['zoom' => round(max(0.0, min(24.0, (float) $map['zoom'])), 4), 'px' => $px, 'w' => $w, 'pins' => []];
         foreach (array_slice(is_array($map['pins'] ?? null) ? $map['pins'] : [], 0, 200, true) as $id => $p) {
-            if (is_numeric($id) && is_array($p) && $num($p['x'] ?? null) && $num($p['y'] ?? null) && $num($p['f'] ?? null) && (float) $p['f'] > 0) {
+            if (is_numeric($id) && is_array($p) && $num($p['x'] ?? null) && $num($p['y'] ?? null) && $num($p['f'] ?? null) && (float) $p['f'] > 0 && $num($p['fx'] ?? null) && (float) $p['fx'] > 0) {
                 $f = max(0.01, min(100.0, (float) $p['f']));
                 $view['pins'][(int) $id] = ['x' => max(-500.0, min(600.0, (float) $p['x'])), 'y' => max(-500.0, min(600.0, (float) $p['y'])), 'f' => $f,
-                    'fx' => $num($p['fx'] ?? null) && (float) $p['fx'] > 0 ? max(0.01, min(100.0, (float) $p['fx'])) : $f];
+                    'fx' => max(0.01, min(100.0, (float) $p['fx']))];
             }
         }
         $c = $map['centre'] ?? null;
@@ -194,5 +198,11 @@ trait EditsDrawings
         }
 
         return $view;
+    }
+
+    /** @param  array{zoom:float, px:float, w:float}  $view */
+    private static function geo(array $view): array
+    {
+        return ['zoom' => $view['zoom'], 'px' => $view['px'], 'w' => $view['w']];
     }
 }

@@ -325,11 +325,6 @@ export function drawTool () {
       this.apply()
       return true
     },
-    /**
-     * On a map: the map's view for the server (EditsDrawings::mapView), so a drawing sticks to the map (Bart, 2026-11-24:
-     * "should be stuck on the map automatically"). The zoom and the stage's height in px, where each pinned layer sits
-     * now, and with `points` (a new line) the place under the middle of that line. Null off a map.
-     */
     mapView (points = null) { return drawMapView(window.__artOverlay?.() ?? null, points) },
     aspect (host) { const r = host.getBoundingClientRect(); return r.height ? r.width / r.height : 16 / 9 },
     queue (job) {

@@ -353,10 +353,7 @@ class Step3SceneConfigurator extends Component
                 'anchor' => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
-                // A drawing pinned to the map: the zoom and stage height (px) it was drawn at, so it scales exactly with the map.
-                'geo_zoom' => isset($l['geo_zoom']) ? (float) $l['geo_zoom'] : null,
-                'geo_px' => isset($l['geo_px']) ? (float) $l['geo_px'] : null,
-                'geo_w' => isset($l['geo_w']) ? (float) $l['geo_w'] : null,
+                'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.

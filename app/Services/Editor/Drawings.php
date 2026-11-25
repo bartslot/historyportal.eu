@@ -143,11 +143,6 @@ final class Drawings
             && ! isset($layer['embed']);
     }
 
-    public static function isPinned(array $layer): bool
-    {
-        return ($layer['anchor'] ?? null) === 'map';
-    }
-
     /** @param  list<array{points:list<mixed>}>  $strokes */
     public static function pointCount(array $strokes): int
     {
