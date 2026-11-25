@@ -12,6 +12,7 @@ use App\Jobs\GenerateSkyboxCandidates;
 use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
+use App\Livewire\Wizard\Concerns\CutsScenes;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsCharacters;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
@@ -87,6 +88,7 @@ use Livewire\WithFileUploads;
 class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
+    use CutsScenes;
     use DuplicatesSceneObjects;
     use EditsCharacters;
     use EditsDiorama;
@@ -6114,6 +6116,12 @@ class Step3SceneConfigurator extends Component
      */
     public function undoLastEdit(): void
     {
+        // A cut made after every other edit goes first: it took one scene and made two.
+        if ($this->cutIsNewest()) {
+            $this->undoSceneCut();
+
+            return;
+        }
         // A deleted scene waits while the open scene holds a NEWER edit: delete a scene, then a layer,
         // and Cmd-Z brought the scene back and left the layer gone (Bart 11-19).
         $editAt = $this->selectedSceneId ? SceneHistory::lastStepAt($this->selectedSceneId) : null;
