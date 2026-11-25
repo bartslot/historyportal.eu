@@ -302,6 +302,34 @@ export class TextOverlayLayer {
     return item.anchor === 'map'
   }
 
+  /** Is this text box or panel locked on the canvas? */
+  isLocked(id) {
+    return !!this._texts.find((t) => t.id === id)?.locked
+  }
+
+  /**
+   * Lock or unlock a text box or panel (the right-click menu's Lock, the layer list's lock). Saved with the texts, so
+   * one Cmd-Z takes it back. A locked one ignores presses on the canvas: they go through to what is under it.
+   */
+  setLocked(id, locked) {
+    const item = this._texts.find((t) => t.id === id)
+    if (!item || !!item.locked === !!locked) return
+    if (locked) item.locked = 1
+    else delete item.locked
+    this._emitChange()
+  }
+
+  /** A press on a locked box: hand it to whatever is under it (another layer, or the stage) and say so. */
+  _passLocked(item, node, e) {
+    if (!item.locked) return false
+    e.preventDefault()
+    node.style.pointerEvents = 'none'
+    const under = document.elementFromPoint(e.clientX, e.clientY)
+    node.style.pointerEvents = 'auto'
+    under?.dispatchEvent(new PointerEvent(e.type, e))
+    return true
+  }
+
   /** Reposition map-anchored labels — call on every map move/zoom. */
   refreshPositions() {
     if (!this._projector) return
@@ -484,7 +512,7 @@ export class TextOverlayLayer {
     node.dataset.textId = item.id
     node.style.cssText = this._rectStyle(item) +
       'pointer-events:auto; cursor:pointer;'
-    node.addEventListener('pointerdown', () => this.select(item.id))
+    node.addEventListener('pointerdown', (e) => { if (!this._passLocked(item, node, e)) this.select(item.id) })
     return node
   }
 
@@ -609,6 +637,7 @@ export class TextOverlayLayer {
 
     // Drag anywhere on the box; a press that doesn't move stays a click-to-edit.
     node.addEventListener('pointerdown', (e) => {
+      if (this._passLocked(item, node, e)) return
       this.select(item.id)
       const editingPress = edit.contains(e.target) && edit.contains(document.activeElement)
       const startX = e.clientX, startY = e.clientY
@@ -702,6 +731,7 @@ export class TextOverlayLayer {
       handle.addEventListener('pointerdown', (e) => {
         e.stopPropagation()
         e.preventDefault()
+        if (item.locked) return   // a locked box keeps its width
         this.select(item.id)
         const rect = this.host.getBoundingClientRect()
         if (!rect.width) return

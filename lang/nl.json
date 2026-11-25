@@ -3204,5 +3204,8 @@
     "Remove :name": ":name verwijderen",
     "No teacher account uses this email address.": "Geen docentaccount gebruikt dit e-mailadres.",
     "This is the lesson's owner.": "Dit is de eigenaar van de les.",
-    "Edit with others": "Samen bewerken"
+    "Edit with others": "Samen bewerken",
+    "Lock": "Vergrendelen",
+    "Unlock": "Ontgrendelen",
+    "Unpin from map": "Losmaken van de kaart"
 }

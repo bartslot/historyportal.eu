@@ -83,7 +83,7 @@ export function nearestJoint (joints, x, y, w, h) {
   return best
 }
 
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {} }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {}, isLocked = () => false }) {
   let selected = null
   let drag = null
   let hoverQueued = false
@@ -219,11 +219,12 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onDown = (e) => {
     if (e.button !== 0) return
     const { x, y } = local(e)
-    const { hit: painted, next: down } = pickOf(hitsAt(x, y), selected)
+    // a locked layer is not there for a press (the right-click menu and the layer list still reach it)
+    const { hit: painted, next: down } = pickOf(hitsAt(x, y).filter((h) => !isLocked(h.index)), selected)
     // The selected picture's whole box is it, the air in it too: between a figure's legs, a small flame, even with a nearer
     // picture painted there. It stays selected and drags; a click without a drag goes on to that nearer picture
     const was = rectOf()
-    const inBox = was && x >= was.left && x <= was.left + was.width && y >= was.top && y <= was.top + was.height
+    const inBox = was && !isLocked(selected) && x >= was.left && x <= was.left + was.width && y >= was.top && y <= was.top + was.height
     const hit = inBox ? { index: selected } : painted
     const next = inBox && painted && painted.index !== selected ? painted.index : down
     if (!hit) {
@@ -252,7 +253,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   /** A press on a handle: scale about the middle of the box, or turn about it. */
   const onHandleDown = (mode) => (e) => {
-    if (e.button !== 0 || selected === null) return
+    if (e.button !== 0 || selected === null || isLocked(selected)) return
     const b = rectOf()
     if (!b) return
     e.stopPropagation()
@@ -275,7 +276,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. Handles
    *  overlap on a small figure, so the press goes to the handle whose dot is nearest, not to the one on top. */
   function onBoneDown (e) {
-    if (e.button !== 0 || selected === null) return
+    if (e.button !== 0 || selected === null || isLocked(selected)) return
     const seen = stage()?.jointsOnScreen?.(selected)
     const r = canvas.getBoundingClientRect()
     const { x, y } = local(e)
@@ -384,6 +385,11 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     /** Select by editor id ('layer-3') without announcing it again; null clears. */
     select: (index, announce = false) => select(index, announce),
     get selected () { return selected },
+    /** The layer painted under a page point, nearest first, locked ones too (the canvas right-click menu); null for none. */
+    pickAt (clientX, clientY) {
+      const r = canvas.getBoundingClientRect()
+      return pickOf(hitsAt(clientX - r.left, clientY - r.top), null).hit?.index ?? null
+    },
     place,
     destroy () {
       window.removeEventListener('scene-object-selected', onOther)

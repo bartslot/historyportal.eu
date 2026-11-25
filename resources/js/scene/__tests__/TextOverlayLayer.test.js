@@ -233,3 +233,29 @@ describe('a text layer\'s look', () => {
     expect(el.querySelector('[data-text-id="a"]').style.transform).toBe('rotate(-30deg)')
   })
 })
+
+describe('TextOverlayLayer lock (the layer menu)', () => {
+  it('a lock is saved with the texts, an unlock takes the flag away', () => {
+    const onChange = vi.fn()
+    const layer = new TextOverlayLayer(host(), { editable: true, onChange })
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10 }])
+    layer.setLocked('a', true)
+    expect(layer.isLocked('a')).toBe(true)
+    expect(onChange.mock.calls.at(-1)[0][0].locked).toBe(1)
+    layer.setLocked('a', false)
+    expect(onChange.mock.calls.at(-1)[0][0]).not.toHaveProperty('locked')
+    layer.setLocked('a', false)   // no change, no save
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('a press on a locked box does not select it', () => {
+    const el = host()
+    document.body.appendChild(el)
+    document.elementFromPoint = () => null
+    const layer = new TextOverlayLayer(el, { editable: true })
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, locked: 1 }])
+    el.querySelector('[data-text-id="a"]').dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(layer._selectedId).toBeNull()
+    el.remove()
+  })
+})
