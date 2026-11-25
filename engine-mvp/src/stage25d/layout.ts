@@ -309,8 +309,9 @@ export function layerAt(layer: SceneLayer, t: number): LayerNow {
   return out
 }
 
-/** One field along the keys that name it, eased in-out between them; null when no key names it. */
-function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): number | null {
+/** One field along the keys that name it, eased in-out between them; null when no key names it. The editor's cut tool
+ *  samples a stage row with it too, so a cut lands on exactly what the stage shows (resources/js/anim/timeline-cut.js). */
+export function keyedAt(all: readonly LayerKey[], field: keyof LayerKey, t: number): number | null {
   const keys = all.filter((k) => k[field] !== undefined).sort((a, b) => a.t - b.t)
   if (!keys.length) return null
   const first = keys[0], last = keys[keys.length - 1]

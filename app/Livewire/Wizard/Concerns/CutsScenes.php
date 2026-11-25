@@ -339,6 +339,10 @@ trait CutsScenes
                 $config['stage25d']['dur_s'] = $span;
             }
             $config = LayerKeys::applyTo($config, (array) ($timeline['stage25dKeys'] ?? []), $span);
+            // The camera's half, split in the browser with the stage's framing code (timeline-cut.js cutCamera).
+            if (is_array($timeline['stage25dCamera'] ?? null)) {
+                $config = $this->configWithCamera($config, $timeline['stage25dCamera']['camera'] ?? null, $timeline['stage25dCamera']['camera_more'] ?? []);
+            }
         }
 
         return $config;

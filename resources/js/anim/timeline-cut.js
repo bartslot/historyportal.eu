@@ -4,10 +4,15 @@
  * this splits the scene's keys between them with the very sampling that plays them, so neither piece
  * jumps at the cut: the first ends on the value the scene had there, the second starts on it.
  *
+ * A 2.5D stage row (s25:…) is sampled with the stage's own key code (layout.ts keyedAt), and the stage's
+ * camera is split with its framing code (framing.js), because that is what plays them.
+ *
  * Pure: tracks in, two new lists of tracks out.
  */
+import { keyedAt } from '@stage25d/stage25d/layout'
 import { sortedKeys, sameTime, segmentEasing } from './keyframes.js'
 import { sampleFrame, propertyFor, kindOfTarget } from './properties.js'
+import { cameraPoseAt, shotsOfKeys, withCameraKey } from '../scene/stage25d/framing.js'
 
 /** The key in force at `time`: a word row (an expression) steps from key to key, it never blends. */
 const stepAt = (keys, time) => {
@@ -15,8 +20,14 @@ const stepAt = (keys, time) => {
   return (before.length ? before[before.length - 1] : keys[0]).value
 }
 
-/** What a track shows at `time`: the shared sampler's value (numbers and colours blend), the key in force for a row that steps. */
+const isStageRow = (track) => kindOfTarget(track.target) === 's25'
+
+/** What a track shows at `time`: the stage's value for a stage row, the shared sampler's for the rest (numbers and colours
+ *  blend), the key in force for a row that steps. */
 const valueAt = (track, keys, time) => {
+  if (isStageRow(track) && keys.every((k) => Number.isFinite(k.value))) {
+    return keyedAt(keys.map((k) => ({ t: k.time, [track.property]: k.value, ...(k.ease ? { ease: k.ease } : {}) })), track.property, time)
+  }
   const descriptor = propertyFor(kindOfTarget(track.target), track.property)
   if (!descriptor || descriptor.interpolate === 'step') return stepAt(keys, time)
   const sampled = sampleFrame([track], time)[track.target]?.[track.property]
@@ -61,6 +72,14 @@ export const cutTracks = (tracks, at) => {
     const straddle = before.length && !on ? was(before[before.length - 1]) : null
     const leaving = on ? was(on) : straddle
 
+    if (isStageRow(track)) {
+      // The stage eases every segment in-out, or smooth from the key's own `ease`: the key on the cut keeps the ease of
+      // the segment it splits, and nothing else changes.
+      const ease = (on ?? before[before.length - 1])?.ease
+      first.push({ ...rest, keyframes: [...before, { time: round(at), value: hold }] })
+      second.push({ ...rest, keyframes: [{ time: 0, value: hold, ...(ease ? { ease } : {}) }, ...after.map((k) => ({ ...k, time: round(k.time - at) }))] })
+      continue
+    }
     first.push({ ...rest, keyframes: keepEasing(track, [...before.map((k) => ({ ...k, was: was(k) })), { time: round(at), value: hold }]) })
     second.push({
       ...rest,
@@ -71,4 +90,19 @@ export const cutTracks = (tracks, at) => {
     })
   }
   return { first, second }
+}
+
+/**
+ * The stage's camera cut at `at` (framing.js keys: `[{ t, pose }]`, as the stage's cameraInfo() gives them), as the shots
+ * of each piece: the first ends on the framing at the cut, the second starts on it and keeps the keys after it, earlier
+ * by `at`. Null with no camera keys.
+ */
+export const cutCamera = (keys, at, dur) => {
+  if (!keys?.length) return null
+  const [cam = null, ...more] = shotsOfKeys(keys)
+  const pose = cameraPoseAt(cam, more, at, dur)
+  const firstKeys = withCameraKey(keys.filter((k) => k.t < at), at, pose)
+  const secondKeys = withCameraKey(keys.filter((k) => k.t > at).map((k) => ({ ...k, t: round(k.t - at) })), 0, pose)
+  const shots = (list) => { const [camera = null, ...rest] = shotsOfKeys(list); return { camera, camera_more: rest } }
+  return { first: shots(firstKeys), second: shots(secondKeys) }
 }

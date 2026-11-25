@@ -223,22 +223,36 @@ trait EditsStage25d
 
     private function storeStage25dCamera(Scene $scene, mixed $camera, mixed $more = []): void
     {
-        $config = $scene->config;
-        unset($config['stage25d']['camera_more']);
-        if (! is_array($camera)) {
-            unset($config['stage25d']['camera']);
-        } else {
-            $old = (array) ($scene->config['stage25d']['camera'] ?? []);
-            $config['stage25d']['camera'] = ['move' => 'framed', 'ease' => 'inOut', 'at_s' => 0, ...$old, ...self::cameraShot($camera)];
-            $shots = array_map(fn (mixed $s): array => ['move' => 'framed', 'ease' => 'inOut', ...self::cameraShot((array) $s)], array_slice(array_values((array) $more), 0, self::CAMERA_MAX_SHOTS));
-            if ($shots !== []) {
-                $config['stage25d']['camera_more'] = $shots;
-            }
-        }
+        $config = $this->configWithCamera($scene->config, $camera, $more);
         if ($config === $scene->config) {
             return;
         }
         $this->storeStage25dConfig($scene, $config);
+    }
+
+    /**
+     * `$config` with the stage camera's shots set: the first shot, the rest as camera_more, each cleaned (cameraShot).
+     * Not an array: no camera. The timeline's camera panel and the cut tool both write it here.
+     *
+     * @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    private function configWithCamera(array $config, mixed $camera, mixed $more = []): array
+    {
+        $old = (array) ($config['stage25d']['camera'] ?? []);
+        unset($config['stage25d']['camera_more']);
+        if (! is_array($camera)) {
+            unset($config['stage25d']['camera']);
+
+            return $config;
+        }
+        $config['stage25d']['camera'] = ['move' => 'framed', 'ease' => 'inOut', 'at_s' => 0, ...$old, ...self::cameraShot($camera)];
+        $shots = array_map(fn (mixed $s): array => ['move' => 'framed', 'ease' => 'inOut', ...self::cameraShot((array) $s)], array_slice(array_values((array) $more), 0, self::CAMERA_MAX_SHOTS));
+        if ($shots !== []) {
+            $config['stage25d']['camera_more'] = $shots;
+        }
+
+        return $config;
     }
 
     /** What a ground band takes from a layer: it stands on the floor, so no Y and no angle. */

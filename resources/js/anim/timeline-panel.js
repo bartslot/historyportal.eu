@@ -28,7 +28,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
-import { cutTracks } from './timeline-cut.js'
+import { cutTracks, cutCamera } from './timeline-cut.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -2569,8 +2569,10 @@ export const animationTimeline = (config = {}) => ({
       }
       const at = Number(point.at)
       const { first, second } = cutTracks(this.tracks, at)
-      const half = (tracks, duration) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks) })
-      await this.$wire.cutSceneAt(at, half(first, at), half(second, Math.max(0, this.duration - at)))
+      const stage = window.__stage25d
+      const camera = stage && String(stage.sceneId) === String(config.sceneId) ? cutCamera(stage.cameraInfo?.()?.keys, at, this.duration) : null
+      const half = (tracks, duration, cam) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks), ...(cam ? { stage25dCamera: cam } : {}) })
+      await this.$wire.cutSceneAt(at, half(first, at, camera?.first), half(second, Math.max(0, this.duration - at), camera?.second))
     } finally {
       this.cutting = false
     }
