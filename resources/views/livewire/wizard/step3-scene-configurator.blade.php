@@ -198,6 +198,11 @@
             const w = window.__step3Wire();
             if (w && typeof w.undoSceneDelete === 'function') { try { w.undoSceneDelete(); } catch (_) {} }
         });
+        // The timeline's cut tool (CutsScenes): the toast's Undo makes the two scenes one again.
+        window.addEventListener('scene:undo-cut', () => {
+            const w = window.__step3Wire();
+            if (w && typeof w.undoSceneCut === 'function') { try { w.undoSceneCut(); } catch (_) {} }
+        });
         // "Add credits" on the out-of-allowance toast. A full navigation, not wire:navigate: the
         // teacher is leaving the editor for Stripe and comes back to a fresh page either way.
         // The lesson travels along so the buy screen can offer the way back to it.

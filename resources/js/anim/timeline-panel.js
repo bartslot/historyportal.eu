@@ -13,6 +13,7 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
+import { storedNarrationStart } from './narration-start.js'
 import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
@@ -27,6 +28,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
+import { cutTracks } from './timeline-cut.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -122,6 +124,9 @@ export const peaksPath = (peaks) => peaks.map((p, i) => {
   const h = Math.max(1, p * 92)
   return `M${i + 0.5} ${(50 - h / 2).toFixed(1)}v${h.toFixed(1)}`
 }).join('')
+
+/** Word spans on the scene's clock: the clip's own times moved along by where the clip starts. */
+export const shiftSpans = (spans, by) => (by ? spans.map((w) => ({ ...w, start: w.start + by, end: w.end + by })) : spans)
 
 /** The latest key on any track, so a timeline that follows the narration never cuts a key off. */
 const lastKeyTime = (tracks) => {
@@ -227,6 +232,10 @@ export const animationTimeline = (config = {}) => ({
   durationSet: !!config.durationSet,
   /** Seconds of narration audio, once known; 0 for a scene without any. */
   narrationLength: 0,
+  /** Where the clip starts on the scene's clock, in seconds; the teacher drags it (storedNarrationStart). */
+  narrationStart: storedNarrationStart(config),
+  /** The words on the clip's own clock, as the alignment gives them; `spans` is these moved to narrationStart. */
+  audioSpans: [],
   /** The narration lane's waveform, as an SVG path over `waveBuckets` columns; '' until decoded. */
   wavePath: '',
   waveBuckets: 0,
@@ -245,6 +254,7 @@ export const animationTimeline = (config = {}) => ({
   scrollLeft: 0,
 
   loop: false,               // playback returns to 0 at the end instead of stopping
+  cutting: false,            // a cut is on its way to the server (cutAtPlayhead)
   autoKey: true,             // a value change records itself at the playhead
   hiddenObjects: {},         // objects the author has taken off the canvas while working
 
@@ -263,7 +273,8 @@ export const animationTimeline = (config = {}) => ({
   videoLength: null,
 
   init () {
-    this.spans = wordSpans(config.alignment ?? [])
+    this.audioSpans = wordSpans(config.alignment ?? [])
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
     this.refreshObjects()
     if (this.videoLoop) probeVideoLength(this.videoLoop).then((s) => { this.videoLength = s })
     // A video dropped on (or removed from) this scene arrives with its next scene:load, while the
@@ -475,6 +486,7 @@ export const animationTimeline = (config = {}) => ({
       // be the state before the keyframe you just set — and the keyframes vanish off the lane
       // while sitting safely in the database. Measured: two diamonds to none, no action taken.
       tracks: this.tracks, targets: this.targets, sail: this.sail,
+      narrationStart: this.narrationStart, spans: this.spans,
     })
   },
 
@@ -927,13 +939,13 @@ export const animationTimeline = (config = {}) => ({
     if (!config.audioUrl) return
     const audio = NARRATION.get(config.sceneId)
     const fromAudio = Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : 0
-    const length = fromAudio || (this.spans.length ? this.spans[this.spans.length - 1].end : 0)
+    const length = fromAudio || (this.audioSpans.length ? this.audioSpans[this.audioSpans.length - 1].end : 0)
     if (!(length > 0)) return
     this.narrationLength = length
     if (this.durationSet) return
     // Nor shorter than a voyage leg's crossing, or the ship's landing falls off the ruler.
     const crossing = this.isVoyageLeg ? this.sailSpan().end : 0
-    const want = Math.round(Math.max(length, lastKeyTime(this.tracks), crossing) * 100) / 100
+    const want = Math.round(Math.max(this.narrationStart + length, lastKeyTime(this.tracks), crossing) * 100) / 100
     if (Math.abs(want - this.duration) < 0.01) return
     this.duration = Math.min(3600, want)
     if (this.time > this.duration) this.seek(this.duration)
@@ -944,10 +956,55 @@ export const animationTimeline = (config = {}) => ({
   /** Whether the timeline has a narration lane: a scene with audio. */
   get hasNarration () { return !!config.audioUrl },
 
-  /** The narration clip on the lane, from 0 to the clip's end. */
+  /** The narration clip on the lane, from where it starts to the clip's end (dragged: the draft). */
   get narrationSpan () {
-    const end = this.narrationLength || (this.spans.length ? this.spans[this.spans.length - 1].end : 0)
-    return end > 0 ? { from: 0, to: end } : null
+    const length = this.narrationLength || (this.audioSpans.length ? this.audioSpans[this.audioSpans.length - 1].end : 0)
+    const from = this.narrationDraft ?? this.narrationStart
+    return length > 0 ? { from, to: from + length } : null
+  },
+
+  /** The clip's start while it is being dragged; null otherwise. */
+  narrationDraft: null,
+
+  /**
+   * Pressing the narration clip drags it left or right: when the voice starts on the scene's clock (Bart, 2026-11-24).
+   * A press that does not move scrubs, as the lane always did. Saved with the timeline, so one undo takes it back.
+   */
+  startNarrationDrag (event) {
+    if (event.button !== 0) return
+    const startX = event.clientX
+    const from = this.narrationStart
+    let moved = false
+    const onMove = (e) => {
+      if (!moved && Math.abs(e.clientX - startX) < 4) return
+      if (!moved) { moved = true; this.pause() }
+      const want = from + (e.clientX - startX) / this.zoom
+      // Back to the start of the scene when it is dropped close to it; else to a twentieth of a second.
+      this.narrationDraft = want < 4 / this.zoom ? 0 : Math.min(3600, Math.round(want * 20) / 20)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      const draft = this.narrationDraft
+      this.narrationDraft = null
+      if (!moved || draft === null || Math.abs(draft - from) < 0.001) return
+      window.dispatchEvent(new CustomEvent('scene:edit-step'))
+      this.setNarrationStart(draft)
+      this.save()
+    }
+    if (!this.narrationLength && !this.audioSpans.length) return this.startScrub(event)
+    event.stopPropagation()
+    // Not moved by release: the lane's own press, which scrubs.
+    const scrubUnlessMoved = (e) => { if (!moved) this.seek(this.timeFromEvent(e)) }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', (e) => { scrubUnlessMoved(e); onUp() }, { once: true })
+  },
+
+  /** Move the clip's start, and with it the words, and the Length when the narration decides it. */
+  setNarrationStart (start) {
+    this.narrationStart = Math.max(0, Math.min(3600, Math.round(start * 100) / 100))
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
+    this.followNarration()
+    this.remember()
   },
 
   /**
@@ -995,13 +1052,26 @@ export const animationTimeline = (config = {}) => ({
     this.save()
   },
 
-  /** Play the voice from a time on the timeline; past the clip's end it simply stays quiet. */
+  /**
+   * Play the voice from a time on the timeline; before the clip starts, or past its end, it simply stays quiet
+   * (play() starts it when the playhead reaches the clip).
+   */
   speakFrom (time) {
     const audio = this.narration()
     if (!audio) return
-    if (Number.isFinite(audio.duration) && time >= audio.duration - 0.02) { audio.pause(); return }
-    try { audio.currentTime = Math.max(0, time) } catch { /* not seekable yet: plays from the start */ }
+    const at = time - this.narrationStart
+    if (at < 0 || (Number.isFinite(audio.duration) && at >= audio.duration - 0.02)) { audio.pause(); return }
+    try { audio.currentTime = at } catch { /* not seekable yet: plays from the start */ }
     audio.play()?.catch?.(() => {})   // blocked or missing: the timeline still plays, silently
+  },
+
+  /** Whether the playhead has just reached the clip while the voice waits: play() starts it then. */
+  voiceDue (t) {
+    if (this._voiceTried || !config.audioUrl) return false
+    const audio = NARRATION.get(config.sceneId)
+    if (!audio || !audio.paused) return false
+    const end = this.narrationStart + (this.narrationLength || Infinity)
+    return t >= this.narrationStart && t < end - 0.05
   },
 
   /** The voice while it is actually playing, which is the clock playback follows. */
@@ -1517,6 +1587,7 @@ export const animationTimeline = (config = {}) => ({
     window.dispatchEvent(new CustomEvent('timeline-playing', { detail: true }))
     this._startedFrom = this.time >= this.duration ? 0 : this.time
     this._startedAt = performance.now()
+    this._voiceTried = false
     this.speakFrom(this._startedFrom)
     const step = () => {
       if (!this.playing) return
@@ -1524,7 +1595,7 @@ export const animationTimeline = (config = {}) => ({
       // clip stalls to buffer. Past its end (or with none) the frame clock carries on from there.
       const voice = this.speakingVoice()
       if (voice) {
-        this._startedFrom = voice.currentTime
+        this._startedFrom = this.narrationStart + voice.currentTime
         this._startedAt = performance.now()
       }
       const elapsed = (performance.now() - this._startedAt) / 1000
@@ -1539,8 +1610,11 @@ export const animationTimeline = (config = {}) => ({
         t %= this.duration
         this._startedFrom = 0
         this._startedAt = performance.now() - t * 1000
+        this._voiceTried = false
         this.speakFrom(t)
       }
+      // The playhead reached a clip that starts later in the scene: the voice comes in now, once.
+      if (!voice && this.voiceDue(t)) { this._voiceTried = true; this.speakFrom(t) }
       this.seek(t)
       this.revealPlayhead()
       this._raf = requestAnimationFrame(step)
@@ -1733,6 +1807,7 @@ export const animationTimeline = (config = {}) => ({
       if (this.zoomIsMine) this.measureFit(); else this.fit()
     }
     this.sail = storedSail(timeline)
+    this.setNarrationStart(storedNarrationStart(timeline))
     this.selected = []
     this.remember()
     this.refreshObjects()
@@ -2472,16 +2547,42 @@ export const animationTimeline = (config = {}) => ({
   save () {
     this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
-    this.$wire?.setTimeline?.({ duration: this.duration, durationSet: this.durationSet, targets: this.targets, tracks: this.tracks, sail: this.sail, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
+    this.$wire?.setTimeline?.({ duration: this.duration, durationSet: this.durationSet, targets: this.targets, tracks: this.tracks, sail: this.sail, narrationStart: this.narrationStart, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
+  },
+
+  /**
+   * The cut tool (Bart, 2026-11-24): the scene in two at the playhead, so each part can take its own
+   * background. The server says where the cut really falls (on a pause in the narration, never inside
+   * a word), the keys are split there with the sampling that plays them (timeline-cut.js), and the
+   * server makes the second scene and opens it (app/Livewire/Wizard/Concerns/CutsScenes.php). One undo.
+   */
+  async cutAtPlayhead () {
+    if (this.cutting || !this.$wire?.cutPointFor) return
+    if (this.playing) this.pause()
+    this.flushSave()
+    this.cutting = true
+    try {
+      const point = await this.$wire.cutPointFor(this.time)
+      if (!point?.ok) {
+        if (point?.message) window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: point.message } }))
+        return
+      }
+      const at = Number(point.at)
+      const { first, second } = cutTracks(this.tracks, at)
+      const half = (tracks, duration) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks) })
+      await this.$wire.cutSceneAt(at, half(first, at), half(second, Math.max(0, this.duration - at)))
+    } finally {
+      this.cutting = false
+    }
   },
 
   /** `{ 'layer-3': keys, 'band-0': keys, sky: keys }` for EVERY row of the stage (an empty list clears a layer's keys), or null with no stage. */
-  stage25dKeys () {
+  stage25dKeys (tracks = this.tracks) {
     const stage = window.__stage25d
     if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
     const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera')
     if (!items.length) return null
-    const byLayer = keysFromTracks(this.tracks)
+    const byLayer = keysFromTracks(tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))
   },
 })
