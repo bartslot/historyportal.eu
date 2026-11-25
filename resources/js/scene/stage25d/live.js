@@ -3,9 +3,9 @@
  * uses for the rows. Pure, so the editor, the engine and the tests agree on one definition.
  */
 
-/** Layer fields that move or restyle a built picture (play: an animation's speed and start; water: water.ts), and the speaker handle a balloon points at (`figure`: the stage
+/** Layer fields that move or restyle a built picture (play: an animation's speed and start; water: water.ts), whether the canvas takes presses (`locked`), and the speaker handle a balloon points at (`figure`: the stage
  *  only reads it to find a head). Anything else (asset, depth, need, flat) is a rebuild. */
-export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play', 'outline', 'etch', 'water']
+export const EDITABLE = ['x', 'y', 'z', 'scale', 'rotation', 'opacity', 'keys', 'figure', 'play', 'outline', 'etch', 'water', 'locked']
 
 /** A bone's turn (`bone:head`) is an editable field too: which bones a figure has is up to its puppet. */
 export const isBoneField = (field) => field.startsWith('bone:')
