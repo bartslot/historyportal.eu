@@ -920,10 +920,7 @@ class LessonChat extends Component
         ]);
 
         $this->createdLessonId = $lesson->id;
-        $this->redirect(
-            route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 4]),
-            navigate: true,
-        );
+        $this->redirectToWizard($lesson->id, 4);
     }
 
     /**
@@ -961,10 +958,10 @@ class LessonChat extends Component
         ];
     }
 
-    private function redirectToWizard(int $lessonId): void
+    private function redirectToWizard(int $lessonId, int $step = 3): void
     {
         $this->redirect(
-            route('teacher.lessons.wizard', ['lesson' => $lessonId, 'step' => 3]),
+            route('teacher.lessons.wizard', ['lesson' => $lessonId, 'step' => $step]),
             navigate: true,
         );
     }
