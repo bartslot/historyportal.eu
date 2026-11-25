@@ -353,6 +353,7 @@ class Step3SceneConfigurator extends Component
                 'anchor' => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
+                'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.
