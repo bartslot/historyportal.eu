@@ -21,6 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
 import { handleCss } from './stage-handle.js'
+import { passPress } from './pass-press.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
@@ -1462,15 +1463,7 @@ export class ArtworkOverlay {
   }
 
   /** Hand a press on empty pixels to whatever is under it: another layer, or the stage. */
-  _passDown(node, e) {
-    // Kept out until the press has been handed on: a layer under this one that passes it too hands it on further, never back.
-    node.style.pointerEvents = 'none'
-    try {
-      document.elementFromPoint(e.clientX, e.clientY)?.dispatchEvent(new PointerEvent(e.type, e))
-    } finally {
-      node.style.pointerEvents = 'auto'
-    }
-  }
+  _passDown(node, e) { passPress(node, e) }
 
   _wireDrag(item, node) {
     if (!this.readonly && item.url && !item.embed && !this._masks.has(item.url)) {

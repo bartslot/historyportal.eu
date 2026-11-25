@@ -32,6 +32,7 @@ import { t } from '../i18n.js'
 import { letterComicAmerica } from '../comic-america.js'
 import { applyReveal, clearReveal } from './text-reveal.js'
 import { handleCss } from './stage-handle.js'
+import { passPress } from './pass-press.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -323,13 +324,7 @@ export class TextOverlayLayer {
   _passLocked(item, node, e) {
     if (!item.locked) return false
     e.preventDefault()
-    // Kept out until the press has been handed on: a locked box under this one then hands it on further, never back.
-    node.style.pointerEvents = 'none'
-    try {
-      document.elementFromPoint(e.clientX, e.clientY)?.dispatchEvent(new PointerEvent(e.type, e))
-    } finally {
-      node.style.pointerEvents = 'auto'
-    }
+    passPress(node, e)
     return true
   }
 

@@ -2246,7 +2246,7 @@
             canvasMenu(e) {
                 const t = e.target;
                 if (!t?.closest?.('#lesson-canvas-root') || this.$wire?.titleSelected) return;
-                if (t.closest('[contenteditable="true"], input, textarea') && document.activeElement?.contains?.(t)) return;
+                if (t.closest('[contenteditable="true"], input, textarea')?.contains(document.activeElement)) return;
                 this._sig = null;
                 this.refresh();
                 const id = this.objectIdAt(e);
@@ -2269,11 +2269,10 @@
             canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky)); },
             setLocked(obj, locked) {
                 if (!this.canLock(obj)) return;
-                if (obj.text) window.__lessonTextLayer?.setLocked?.(obj.id, locked);
-                else window.Livewire.dispatch('scene:lock-object', { objectId: obj.id, locked });
                 obj.locked = locked;
-                this._sig = null;
-                setTimeout(() => { this._sig = null; this.refresh(); }, 400);
+                const relist = () => { this._sig = null; this.refresh(); };
+                if (obj.text) { window.__lessonTextLayer?.setLocked?.(obj.id, locked); relist(); }
+                else this.$wire.lockObject(obj.id, locked).then(relist);
             },
             // Pin to map: the same toggle as the inspector's switch (togglePin on the overlay), so the two always agree.
             togglePin(obj) {
@@ -2913,7 +2912,7 @@
          block for SortableJS's position:fixed reorder ghost and break the layer-drag interaction. --}}
     <style>
         [data-objlist-col][data-compact] [data-obj-label] { display: none !important; }
-        [data-objlist-col][data-compact] [data-obj-eye] { display: none !important; }
+        [data-objlist-col][data-compact] [data-obj-eye], [data-objlist-col][data-compact] [data-obj-lock] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-row] { justify-content: center; padding-left: 0.25rem; padding-right: 0.25rem; gap: 0; }
     </style>
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
@@ -2947,14 +2946,6 @@
                          working state, never saved. Shown on hover, and always while the object is hidden so a hidden row says so.
                          NOT data-nodrag: a press that moves still drags the row (Sortable starts after 4 px). Kinds the eye
                          cannot hide (camera, World, sky, terrain, diorama items) have none. --}}
-                    {{-- Locked: a lock that stays on the row; a click unlocks (Figma's layer list). --}}
-                    <template x-if="obj.locked">
-                        <button type="button" @click.stop="setLocked(obj, false)" data-obj-eye data-obj-lock
-                                aria-label="{{ __('Unlock') }}" data-tooltip="{{ __('Unlock') }}"
-                                class="-my-1.5 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
-                            {!! \App\Support\UiIcon::svg('lock', ['class' => 'h-4 w-4']) !!}
-                        </button>
-                    </template>
                     <template x-if="hideTarget(obj)">
                         <button type="button" @click.stop="toggleHidden(obj)" data-obj-eye
                                 :aria-pressed="isHidden(obj) ? 'true' : 'false'"
@@ -2964,6 +2955,14 @@
                                 class="-my-1.5 h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
                             <span x-show="!isHidden(obj)">{!! \App\Support\UiIcon::svg('visible', ['class' => 'h-4 w-4']) !!}</span>
                             <span x-show="isHidden(obj)" x-cloak>{!! \App\Support\UiIcon::svg('hidden', ['class' => 'h-4 w-4']) !!}</span>
+                        </button>
+                    </template>
+                    {{-- Locked: a lock that stays on the row's right edge (after the eye, so a hover never moves it); a click unlocks (Figma's layer list). --}}
+                    <template x-if="obj.locked">
+                        <button type="button" @click.stop="setLocked(obj, false)" data-obj-lock
+                                aria-label="{{ __('Unlock') }}" data-tooltip="{{ __('Unlock') }}"
+                                class="-my-1.5 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
+                            {!! \App\Support\UiIcon::svg('lock', ['class' => 'h-4 w-4']) !!}
                         </button>
                     </template>
                 </div>
