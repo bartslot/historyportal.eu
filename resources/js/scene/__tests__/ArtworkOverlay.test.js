@@ -596,3 +596,11 @@ describe('how far a figure has moved from its saved spot', () => {
     expect(overlay.shiftPx(1)).toEqual([0, 0])
   })
 })
+
+describe('ArtworkOverlay lock (the layer menu)', () => {
+  it('a lock changes the signature, so the canvas picks it up', () => {
+    const l = { asset_id: 1, url: 'a.webp', x: 10, y: 10 }
+    expect(layersSignature([l])).not.toBe(layersSignature([{ ...l, locked: true }]))
+    expect(layersIdentity([l])).toBe(layersIdentity([{ ...l, locked: true }]))
+  })
+})

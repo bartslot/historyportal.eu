@@ -21,7 +21,7 @@ const WORDS = {
   ice: ['ice', 'ijs'], sheet: ['sheet', 'laag'], path: ['path', 'pad'], sand: ['sand', 'zand'], hunebed: ['hunebed', 'hunebed'],
   long: ['long', 'lange'], short: ['short', 'korte'], wheat: ['wheat', 'tarwe'], patch: ['patch', 'veld'],
   clearing: ['clearing', 'open plek'], stumps: ['stumps', 'stronken'], fire: ['fire', 'vuur'], pit: ['pit', 'kuil'],
-  campfire: ['campfire', 'kampvuur'],
+  campfire: ['campfire', 'kampvuur'], moss: ['moss', 'mos'], fern: ['fern', 'varen'], undergrowth: ['undergrowth', 'struikgewas'],
   sky: ['sky', 'lucht'], summer: ['summer', 'zomer'], autumn: ['autumn', 'herfst'], bg: ['backdrop', 'achtergrond'],
   farmland: ['farmland', 'akkerland'], trb: ['TRB', 'TRB'], lbk: ['LBK', 'LBK'],
 }
@@ -43,6 +43,14 @@ export function assetLabel (asset, lang = 'en') {
   const front = rest.filter((w) => ADJECTIVES.has(w))
   const body = rest.filter((w) => !ADJECTIVES.has(w))
   return capital([...front, ...body].map((w) => pick(w, nl)).join(' '))
+}
+
+/** A plant the ground can be strewn with (scatter.ts Sprite): a library picture by its name, a cell of a sprite sheet by
+ *  its first tag that names a plant (a sheet cell has no name of its own). */
+export function plantLabel (sprite, asset, lang = 'en') {
+  if (sprite.key === sprite.asset) return assetLabel(asset ?? { id: sprite.asset }, lang)
+  const word = sprite.tags.find((t) => WORDS[t] && !['forest', 'edge', 'ground'].includes(t)) ?? sprite.tags[0] ?? ''
+  return capital(pick(word, lang === 'nl'))
 }
 
 /** A character id as a name: "meisje" -> "Meisje", "dorpeling-b" -> "Dorpeling B". */

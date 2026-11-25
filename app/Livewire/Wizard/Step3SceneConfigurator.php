@@ -12,6 +12,7 @@ use App\Jobs\GenerateSkyboxCandidates;
 use App\Jobs\GenerateSkyboxImage;
 use App\Jobs\GenerateWorldLabsScene;
 use App\Livewire\Wizard\Concerns\BlocksGuestDemoSpending;
+use App\Livewire\Wizard\Concerns\CutsScenes;
 use App\Livewire\Wizard\Concerns\DuplicatesSceneObjects;
 use App\Livewire\Wizard\Concerns\EditsCharacters;
 use App\Livewire\Wizard\Concerns\EditsDiorama;
@@ -23,15 +24,19 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
-use App\Livewire\Wizard\Concerns\EditsSceneLoop;
 use App\Livewire\Wizard\Concerns\EditsSceneLinks;
+use App\Livewire\Wizard\Concerns\EditsSceneLoop;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
+use App\Livewire\Wizard\Concerns\EditsStoryMap;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
+use App\Livewire\Wizard\Concerns\GroupsStage25dLayers;
+use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
+use App\Livewire\Wizard\Concerns\LocksSceneObjects;
 use App\Livewire\Wizard\Concerns\RestylesImages;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
@@ -77,14 +82,17 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
+use App\Services\Collaboration\LessonCollaboration;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
 class Step3SceneConfigurator extends Component
 {
     use BlocksGuestDemoSpending;
+    use CutsScenes;
     use DuplicatesSceneObjects;
     use EditsCharacters;
     use EditsDiorama;
@@ -95,16 +103,20 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsSceneBackground;
-    use EditsSceneLoop;
     use EditsSceneBalloons;
+    use EditsSceneLinks;
+    use EditsSceneLoop;
     use EditsSplitPanels;
     use EditsStage25d;
-    use EditsSceneLinks;
     use EditsStoryGame;
+    use EditsStoryMap;
     use EditsTeamGame;
     use EditsTitleScreen;
     use EditsWithSpark;
     use FixesLessonProblems;
+    use GroupsStage25dLayers;
+    use GuardsLessonClaims;
+    use LocksSceneObjects;
     use RestylesImages;
     use UndoesSceneEdits;
     use WithFileUploads;
@@ -182,7 +194,7 @@ class Step3SceneConfigurator extends Component
 
     public function mount(Lesson $lesson, bool $playOnOpen = false): void
     {
-        abort_unless(auth()->user()?->canManage($lesson), 403);
+        abort_unless(auth()->user()?->canEdit($lesson), 403);
         $this->lesson = $lesson;
         $this->playOnOpen = $playOnOpen;
         // Editing is not unpublishing. This used to set Configuring unconditionally, so a teacher
@@ -216,6 +228,55 @@ class Step3SceneConfigurator extends Component
         $this->titleSelected = ! $deepScene;
         $this->refreshTitleFrame();
         $this->openModalOnLoad = request()->boolean('modal');
+    }
+
+    // ── Several accounts in one lesson (GuardsLessonClaims, LessonCollaboration) ──────────────────────
+
+    protected function claimLesson(): ?Lesson
+    {
+        return $this->lesson ?? null;
+    }
+
+    protected function claimTarget(): ?string
+    {
+        if ($this->titleSelected) {
+            return LessonCollaboration::TITLE;
+        }
+
+        return $this->selectedSceneId ? LessonCollaboration::sceneTarget((int) $this->selectedSceneId) : null;
+    }
+
+    /** Looking, picking, opening a picker, and the lesson-wide edits that touch no single scene. */
+    protected function claimFreeMethods(): array
+    {
+        return [
+            '$refresh', 'startEditStep', 'poll', 'pollWorldStatus', 'pollRestyle', 'sparkStatus', 'sparkPending',
+            'selectScene', 'loadStageScene', 'selectTitle', 'refreshTitleFrame', 'showProblemScene', 'openProblems',
+            'selectInspectorTarget', 'clearActiveText', 'setActiveLayer', 'clearActiveLayer', 'clearActiveBalloon', 'selectPanel',
+            'scenesData', 'territoryResults', 'cityResults', 'paintingResults', 'pickerEra', 'pickerShelves',
+            'preparePaintings', 'loadLibraryCollection', 'originalOfEdited', 'canUndoVoyage',
+            'openAddScenePicker', 'openAddSceneAfter', 'openPaintingPicker', 'openImageLibrary', 'openStopImagePicker',
+            'openModelPicker', 'openMarkerImagePicker', 'openGalleryImagePicker', 'openSvgLibrary',
+            'openSettings', 'openFormat', 'openPlay', 'prepareToPlay', 'playSelected',
+            // Lesson-wide: a new scene, the order, the lesson's own settings, the teacher's own library.
+            'addScene', 'insertVoyage', 'reorder', 'duplicateScene', 'undoSceneDelete',
+            'setBackgroundMusic', 'setSubtitles', 'saveCharacter', 'removeCharacter', 'saveCutout', 'removeCutout',
+            'publish', 'schedulePublish', 'cancelSchedule', 'toggleSharing',
+        ];
+    }
+
+    protected function claimFreeProperties(): array
+    {
+        return [
+            'addSceneOpen', 'paintingPickerOpen', 'paintingCommonsLoaded', 'paintingKind', 'paintingRegion',
+            'paintingQuery', 'svgLibraryOpen', 'publishNotice', 'changeRequest',
+        ];
+    }
+
+    /** Who may see the lesson stays the owner's decision. */
+    protected function claimOwnerOnlyMethods(): array
+    {
+        return ['publish', 'schedulePublish', 'cancelSchedule', 'toggleSharing'];
     }
 
     #[Computed]
@@ -348,6 +409,7 @@ class Step3SceneConfigurator extends Component
                 'anchor' => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
+                'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.
@@ -385,6 +447,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
+                // Locked on the canvas (LocksSceneObjects).
+                'locked' => ! empty($l['locked']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'] || $l['kind'] === SceneArrow::KIND)->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -1069,7 +1133,7 @@ class Step3SceneConfigurator extends Component
         }
 
         // A stage25d layer (the stage selects 's25_layer-<n>'): its own Format panel.
-        if (preg_match('/^s25_(layer-(\d+)|band-(\d+)|sky|terrain|camera|world)$/', $objectId, $m) === 1) {
+        if (preg_match('/^s25_(layer-(\d+)|band-(\d+)|group-([A-Za-z0-9_-]+)|sky|terrain|camera|world)$/', $objectId, $m) === 1) {
             $set = $this->selectedScene['config']['stage25d']['set'] ?? [];
             $exists = match (true) {
                 $m[1] === 'camera', $m[1] === 'world' => isset($this->selectedScene['config']['stage25d']),
@@ -1077,6 +1141,7 @@ class Step3SceneConfigurator extends Component
                 // Strips alone are terrain too: the stage builds its slot from them (engine.js terrainSlot).
                 $m[1] === 'terrain' => ! empty($set['groundSlots']) || ! empty($set['groundBands']) || ! str_starts_with((string) ($set['ground'] ?? '#'), '#'),
                 str_starts_with($m[1], 'band-') => isset($set['groundBands'][(int) $m[3]]),
+                str_starts_with($m[1], 'group-') => collect($set['groups'] ?? [])->contains('id', $m[4]),
                 default => isset($set['layers'][(int) $m[2]]),
             };
             if ($exists) {
@@ -1277,6 +1342,11 @@ class Step3SceneConfigurator extends Component
 
             return;
         }
+        if (preg_match('/^s25_group-([A-Za-z0-9_-]+)$/', $objectId, $m) === 1) {
+            $this->removeStage25dGroup($m[1]);   // the group with its layers, as in Photoshop
+
+            return;
+        }
         if (str_starts_with($objectId, 's25_')) {
             return;   // the ground, the sky and the camera: one each, swapped but never deleted
         }
@@ -1322,6 +1392,7 @@ class Step3SceneConfigurator extends Component
                         'opacity' => max(0.1, min(0.95, (float) ($t['opacity'] ?? 0.5))),
                         // Stacking order set by drag-reorder in the object list (higher = in front).
                         'z' => (isset($t['z']) && is_numeric($t['z'])) ? (int) $t['z'] : null,
+                        ...(! empty($t['locked']) ? ['locked' => 1] : []),
                     ];
                 }
 
@@ -1363,6 +1434,8 @@ class Step3SceneConfigurator extends Component
                     // Colour, scale, rotation, blur, blend, opacity, grayscale: kept through every
                     // canvas save, or moving a text would throw its look away.
                     ...TextLayerStyle::of($t),
+                    // Locked on the canvas (LocksSceneObjects): absent means unlocked.
+                    ...(! empty($t['locked']) ? ['locked' => 1] : []),
                 ];
             })
             ->take(12)
@@ -2593,6 +2666,12 @@ class Step3SceneConfigurator extends Component
             if ($end - $start >= 0.5) {
                 $stored['sail'] = ['start' => $start, 'end' => $end];
             }
+        }
+
+        // When the narration starts on the scene's clock (timeline-panel.js startNarrationDrag); 0 is not stored.
+        $narrationStart = $timeline['narrationStart'] ?? null;
+        if (is_numeric($narrationStart) && (float) $narrationStart > 0) {
+            $stored['narrationStart'] = min(3600.0, round((float) $narrationStart, 2));
         }
 
         return $stored;
@@ -5861,7 +5940,6 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($scene->id);
     }
 
-
     /** @return array<string,string> catalog voyages that can be sailed (have legs), as [id => name] */
     #[Computed]
     public function voyageOptions(): array
@@ -5953,13 +6031,7 @@ class Step3SceneConfigurator extends Component
 
         DB::transaction(function () use ($slot): void {
             $this->lesson->scenes()->whereIn('id', $slot['scenes'])->forceDelete();
-            $remaining = $this->lesson->scenes()->ordered()->get();
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => -1 * ($idx + 1)]);
-            }
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => $idx + 1]);
-            }
+            $this->renumberScenes();
             $gc = array_diff_key($this->lesson->game_config ?? [], array_flip(self::VOYAGE_INSERT_KEYS));
             $this->lesson->update(['game_config' => $gc + (array) ($slot['before'] ?? [])]);
         });
@@ -6027,15 +6099,7 @@ class Step3SceneConfigurator extends Component
         $this->deletedScene = ['id' => $sceneId, 'order' => $wasOrder, 'at' => now()->getTimestampMs() / 1000];
         session()->forget($this->voyageInsertKey());   // a newer structural edit: Cmd-Z means the delete now
 
-        $remaining = $this->lesson->scenes()->ordered()->get();
-        DB::transaction(function () use ($remaining) {
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => -1 * ($idx + 1)]);
-            }
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => $idx + 1]);
-            }
-        });
+        DB::transaction(fn () => $this->renumberScenes());
 
         if ($wasGame) {
             $this->syncGameSceneIndexes();
@@ -6095,12 +6159,34 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * The live scenes numbered 1..n again in their running order. Two passes, because (lesson_id, order)
+     * is unique: negative first, then the real numbers, both over ONE list read before either (read again,
+     * the negatives sort backwards). Call it inside a transaction.
+     */
+    private function renumberScenes(): void
+    {
+        $scenes = $this->lesson->scenes()->ordered()->get();
+        foreach ($scenes as $i => $s) {
+            $s->update(['order' => -1 * ($i + 1)]);
+        }
+        foreach ($scenes as $i => $s) {
+            $s->update(['order' => $i + 1]);
+        }
+    }
+
+    /**
      * Cmd-Z / Ctrl-Z. The SERVER picks what to take back, newest kind of edit first, because the
      * browser cannot know: a delete and its undo can be a keystroke apart, and asking the page
      * "is a delete pending?" raced the response that would have told it.
      */
     public function undoLastEdit(): void
     {
+        // A cut made after every other edit goes first: it took one scene and made two.
+        if ($this->cutIsNewest()) {
+            $this->undoSceneCut();
+
+            return;
+        }
         // A deleted scene waits while the open scene holds a NEWER edit: delete a scene, then a layer,
         // and Cmd-Z brought the scene back and left the layer gone (Bart 11-19).
         $editAt = $this->selectedSceneId ? SceneHistory::lastStepAt($this->selectedSceneId) : null;
@@ -6354,8 +6440,26 @@ class Step3SceneConfigurator extends Component
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }
 
+        $wasFresh = $scene?->hasFreshAudio() ?? false;
         $this->selectedScene['script_segment'] = $after;
         $this->saveSelected();
+
+        // Only punctuation, capitals or spaces changed (Bart 11-24: "if it's just one word, or a . ... it's really
+        // crazy we need to redo a whole paragraph"): the narrator says the same words, so the recording stays and
+        // counts as matching the script. Nothing to re-narrate, and the panel is told so.
+        if ($wasFresh && $scene !== null && self::spokenWords($before) === self::spokenWords($after)) {
+            $scene->refresh();
+            $scene->forceFill(['audio_script_hash' => sha1((string) $scene->script_segment)])->saveQuietly();
+            $this->dispatch('scene:audio-still-fresh', sceneId: $scene->id);
+        }
+    }
+
+    /** The words a narrator says, without punctuation, capitals or spacing: "Ravenna, 1321." = "ravenna 1321". */
+    public static function spokenWords(string $text): string
+    {
+        $words = preg_replace('/[\p{P}\p{S}]+/u', ' ', mb_strtolower($text)) ?? '';
+
+        return trim(preg_replace('/\s+/u', ' ', $words) ?? '');
     }
 
     /**
@@ -6405,6 +6509,30 @@ class Step3SceneConfigurator extends Component
      * Flips the scene to "generating"; the status poll re-fires scene:load with the
      * fresh audio URL, and the Script panel reloads its waveform from that payload.
      */
+    /**
+     * The Script panel asks this every 2 s while it waits for a re-narration. The editor's own poll answers only
+     * when the selected scene's status changes and only every few seconds, and a recording that came back in two
+     * seconds could slip past it: Bart 11-24, one word changed, the audio was on the server two seconds later and
+     * the panel kept spinning for minutes. No render, one row.
+     *
+     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string}
+     */
+    #[Renderless]
+    public function narrationState(int $sceneId): array
+    {
+        $scene = $this->lesson->scenes()->find($sceneId);
+        if (! $scene) {
+            return ['status' => 'gone'];
+        }
+
+        return [
+            'status' => (string) $scene->status,
+            'audioUrl' => $scene->audioUrl(),
+            'audioFresh' => $scene->hasFreshAudio(),
+            'errorMessage' => $scene->error_message,
+        ];
+    }
+
     #[On('scene:renarrate')]
     public function renarrateScene(int $sceneId): void
     {

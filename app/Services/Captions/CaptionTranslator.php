@@ -6,6 +6,7 @@ namespace App\Services\Captions;
 
 use App\Models\CaptionTranslation;
 use App\Models\Lesson;
+use App\Services\Llm\LlmBadJsonException;
 use App\Services\Llm\LlmHttpException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -36,8 +37,12 @@ final class CaptionTranslator
 
     public const RTL = ['ar'];
 
-    /** Lines per request: keeps each answer well under the output-token cap. */
-    private const BATCH = 40;
+    /**
+     * Lines per request. Gemini's free tier counts requests, not tokens (500 a day on flash-lite,
+     * used up on prod 2026-11-24), so fewer, larger requests stretch it; a lesson of 30-50 scenes
+     * is one or two. LlmTextTranslator's maxTokens leaves room for an answer this size.
+     */
+    private const BATCH = 100;
 
     /** A 429 halves the batch, never below this. */
     private const MIN_BATCH = 10;
@@ -153,6 +158,16 @@ final class CaptionTranslator
                 try {
                     $done = $this->translateProtected($batch, $from, $language);
                     break;
+                } catch (LlmBadJsonException $e) {
+                    // A cut-off answer (8 caption jobs on prod, 2026-11-18): the same request would
+                    // be cut off again, so ask for half, at once; below MIN_BATCH it is not the size.
+                    if (count($batch) <= self::MIN_BATCH) {
+                        throw $e;
+                    }
+                    $size = max(self::MIN_BATCH, intdiv(count($batch), 2));
+                    $batch = array_slice($todo, 0, $size, true);
+                    Log::notice('[CaptionTranslator] answer cut off, asking for fewer lines', ['lines' => $size, 'to' => $language]);
+                    $attempt--;   // a smaller request is not a retry of the same one
                 } catch (LlmHttpException $e) {
                     $wait = max(self::BACKOFF[$attempt] ?? INF, (float) ($e->retryAfter ?? 0)) + random_int(0, 1000) / 1000;
                     if (! $e->retryable() || $waited + $wait > self::MAX_WAIT_SECONDS) {

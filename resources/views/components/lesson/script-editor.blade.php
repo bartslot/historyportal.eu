@@ -339,6 +339,7 @@
                 dirtyLines: [],
                 regenerating: !!narrating,
                 _narrateTimer: null,
+                _narrateWatch: null,
                 _ro: null,
                 _waveRo: null,
                 _lastSaved: '',
@@ -355,7 +356,7 @@
                     this._root = this.$el;
                     // Mounted while a recording is being made (a fresh panel after a morph, or a
                     // reload mid-job): keep waiting, and keep the give-up timer that goes with it.
-                    if (this.regenerating) this._armGiveUpTimer();
+                    if (this.regenerating) { this._armGiveUpTimer(); this._watchNarration(); }
                     this.paras = this._seed.map((p) => ({ id: this._pid++, text: p.text || '', dirty: false }));
                     this.starts = this._seed.map((p) => p.start || 0);   // server timecodes until audio loads
                     this.$nextTick(() => { this.reserveSpace(); this._lastSaved = this._currentScriptText(); });
@@ -384,6 +385,11 @@
                         // The narrator could not record it (no TTS service, a bad voice, a refusal).
                         // Say so and give the button back — this used to spin for ever.
                         if (p.status === 'failed') this.narrationFailed(p.errorMessage);
+                    });
+                    // Only punctuation or spacing changed: the recording still says these words, nothing to re-narrate.
+                    this._unwatchFresh = window.Livewire.on('scene:audio-still-fresh', (e) => {
+                        const p = Array.isArray(e) ? e[0] : e;
+                        if (p && p.sceneId === this.sceneId && !this.regenerating && this.hasAudio) this._clearDirty();
                     });
                     // Regenerate-paragraph result: the server rewrites one paragraph and hands it back.
                     this._unwatchPara = window.Livewire.on('scene:paragraph-result', (e) => {
@@ -516,10 +522,12 @@
                 },
                 destroy() {
                     clearTimeout(this._narrateTimer);
+                    clearInterval(this._narrateWatch);
                     try { this.ws?.destroy(); } catch (_) {}
                     if (this._ro) this._ro.disconnect();
                     if (this._waveRo) this._waveRo.disconnect();
                     if (this._unwatchAudio) { try { this._unwatchAudio(); } catch (_) {} }
+                    if (this._unwatchFresh) { try { this._unwatchFresh(); } catch (_) {} }
                     if (this._unwatchPara) { try { this._unwatchPara(); } catch (_) {} }
                     if (this._unwatchSummary) { try { this._unwatchSummary(); } catch (_) {} }
                     if (this._unwatchRejected) { try { this._unwatchRejected(); } catch (_) {} }
@@ -803,6 +811,34 @@
                     this.regenerating = true;
                     this._armGiveUpTimer();
                     try { window.Livewire.dispatch('scene:renarrate', { sceneId: this.sceneId }); } catch (_) {}
+                    this._watchNarration();
+                },
+                /**
+                 * Ask the server every 2 s how the recording is doing, instead of waiting for the editor's poll to
+                 * notice (Bart 11-24: the audio was back in two seconds, the panel spun for minutes). A 'ready' that
+                 * comes before the server has even taken the request still carries the old recording, so a stale
+                 * answer only ends the wait once the server has said 'generating' or a few seconds have passed.
+                 */
+                _watchNarration() {
+                    clearInterval(this._narrateWatch);
+                    const since = Date.now();
+                    let sawGenerating = false;
+                    this._narrateWatch = setInterval(async () => {
+                        if (!this.regenerating || this.sceneId == null) { clearInterval(this._narrateWatch); return; }
+                        let s = null;
+                        try { s = await this.$wire.narrationState(this.sceneId); } catch (_) { return; }
+                        if (!s || !this.regenerating) return;
+                        if (s.status === 'generating') { sawGenerating = true; return; }
+                        if (s.audioUrl && s.audioFresh) { this.reloadAudio(s.audioUrl); return; }
+                        if (s.status === 'failed') { this.narrationFailed(s.errorMessage); return; }
+                        if (!sawGenerating && Date.now() - since < 8000) return;
+                        // Recorded, but not these words: they were edited again while it was being made. Stop
+                        // spinning and leave the edit marked, so the button offers to record the new words.
+                        clearTimeout(this._narrateTimer);
+                        clearInterval(this._narrateWatch);
+                        this.regenerating = false;
+                        this.dirty = true;
+                    }, 2000);
                 },
                 /** Never wait for ever: say the recording could not be made and give the button back. */
                 _armGiveUpTimer() {
@@ -811,6 +847,7 @@
                 },
                 narrationFailed(reason) {
                     clearTimeout(this._narrateTimer);
+                    clearInterval(this._narrateWatch);
                     if (!this.regenerating) return;
                     this.regenerating = false;
                     const detail = {
@@ -823,6 +860,7 @@
                 },
                 reloadAudio(newUrl) {
                     clearTimeout(this._narrateTimer);
+                    clearInterval(this._narrateWatch);
                     this.regenerating = false;
                     this._clearDirty();
                     if (!newUrl) return;

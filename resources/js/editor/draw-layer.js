@@ -238,6 +238,31 @@ export function mountDraw (host, { onStroke = () => {}, onErase = () => {}, keep
   return api
 }
 
+/** The map's view as EditsDrawings::mapView reads it, from the artwork overlay over the map (null: no map). */
+export function drawMapView (overlay, points = null) {
+  const projector = overlay?._projector
+  const zoom = projector?.zoom?.()
+  const box = overlay?.host?.getBoundingClientRect()
+  const px = box?.height
+  if (!projector || !Number.isFinite(zoom) || !(px > 0)) return null
+  const pins = {}
+  for (const item of overlay._layers ?? []) {
+    if (item.anchor === 'map' && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+      pins[item.asset_id] = { x: item.x, y: item.y, f: overlay._mapFactor(item), fx: overlay._mapFactor(item, 'x') }
+    }
+  }
+  const view = { zoom, px, w: box.width, pins }
+  if (points?.length) {
+    const xs = points.map((p) => p[0])
+    const ys = points.map((p) => p[1])
+    const x = (Math.min(...xs) + Math.max(...xs)) / 2
+    const y = (Math.min(...ys) + Math.max(...ys)) / 2
+    const ll = projector.unproject(x, y)
+    if (ll && Number.isFinite(ll.lng) && Number.isFinite(ll.lat)) view.centre = { x, y, lng: ll.lng, lat: ll.lat }
+  }
+  return view
+}
+
 /**
  * The editor's Tekenen button and strip: x-data="drawTool()". While on, a drawing surface lies over the stage. The
  * first stroke becomes a drawing layer ($wire.addDrawing) and every next one goes onto that same layer until Klaar
@@ -288,18 +313,19 @@ export function drawTool () {
           const session = this.session
           return this.queue(async () => {
             await this.$wire.startEditStep?.()
-            const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.layers[session] ?? null)
+            const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.layers[session] ?? null, this.mapView(stroke.points))
             if (res?.ok) this.layers[session] = res.id
           })
         },
         onErase: (path, size) => this.queue(async () => {
           await this.$wire.startEditStep?.()
-          return this.$wire.eraseDrawing(path, size, this.aspect(host))
+          return this.$wire.eraseDrawing(path, size, this.aspect(host), this.mapView())
         }),
       })
       this.apply()
       return true
     },
+    mapView (points = null) { return drawMapView(window.__artOverlay?.() ?? null, points) },
     aspect (host) { const r = host.getBoundingClientRect(); return r.height ? r.width / r.height : 16 / 9 },
     queue (job) {
       this.busy++

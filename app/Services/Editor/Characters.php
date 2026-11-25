@@ -39,7 +39,7 @@ final class Characters
         'Character', 'Who', 'Body', 'Face', 'Hair', 'Clothes', 'Extra', 'Random', 'Whole figure', 'Expression',
         'Calm', 'Curious', 'Sad', 'Angry', 'Amazed', 'Name', 'People of this time', 'Skin', 'Eyes', 'Mouth', 'Hair colour',
         'Beard', 'Headwear', 'Jewellery', 'None', 'Own eyes', 'Own mouth', 'No hair', 'No beard', 'Nothing on the head',
-        'Cloth', 'Shawl', 'Cord', 'Apron', 'Band', 'Trim', 'Girl', 'Woman', 'Man', 'The character kit could not be loaded.', 'New character', 'Head cloth',
+        'Cloth', 'Shawl', 'Cord', 'Apron', 'Band', 'Trim', 'Girl', 'Woman', 'Man', 'The character kit could not be loaded.', 'New character', 'Head cloth', 'Hose',
     ];
 
     /** The kit's colours by id, as the tab names them. */
@@ -140,20 +140,76 @@ final class Characters
      * A plain person of a kit body for a name the teacher has no character for yet (an import's cast): the body's
      * starter look under that name, marked `auto` so the teacher knows to dress it. Saving it in the Character tab
      * keeps the id and drops the mark. Goes through save(), so it is checked like any character.
+     * A known person (a starter whose `names` holds this name, e.g. Marco Polo) starts in their own look instead, and
+     * is not marked `auto`: they are already dressed.
      */
     public static function starter(User $user, string $name, string $body, ?float $heightM = null): ?SvgAsset
     {
+        $named = self::namedStarter($name);
+        if ($named !== null) {
+            $body = $named;
+        }
+        $asset = self::fromStarter($user, null, $name, $body, $named !== null || in_array($body, self::BODIES, true), $heightM);
+        if ($named === null) {
+            $asset?->update(['character' => ['auto' => true] + $asset->character]);
+        }
+
+        return $asset;
+    }
+
+    /**
+     * A known person's character dressed again in their own starter (the teacher has Marco from an earlier import, made
+     * before Marco had his own look): same id, so every scene that shows them shows the new look. Keeps their height.
+     * Null when the name has no starter of its own or the save fails.
+     */
+    public static function dressNamed(User $user, SvgAsset $row): ?SvgAsset
+    {
+        $named = self::namedStarter((string) $row->title);
+        if ($named === null) {
+            return null;
+        }
+        $heightM = is_numeric($row->character['recipe']['height_m'] ?? null) ? (float) $row->character['recipe']['height_m'] : null;
+        $asset = self::fromStarter($user, (int) $row->id, (string) $row->title, $named, true, $heightM);
+        if ($asset !== null) {
+            $character = $asset->character;
+            unset($character['auto']);
+            $asset->update(['character' => $character]);
+        }
+
+        return $asset;
+    }
+
+    /** A starter file's look saved under `name`, as a new character or over `id`. */
+    private static function fromStarter(User $user, ?int $id, string $name, string $file, bool $allowed, ?float $heightM): ?SvgAsset
+    {
         $dir = public_path(self::STARTERS);
-        $spec = in_array($body, self::BODIES, true) ? json_decode((string) @file_get_contents("{$dir}/{$body}.json"), true) : null;
+        $spec = $allowed ? json_decode((string) @file_get_contents("{$dir}/{$file}.json"), true) : null;
         if (! is_array($spec) || ! is_array($spec['recipe'] ?? null) || ! is_array($spec['puppet'] ?? null)) {
             return null;
         }
-        $url = fn (string $file) => is_file("{$dir}/{$file}") ? 'data:image/webp;base64,'.base64_encode((string) file_get_contents("{$dir}/{$file}")) : '';
+        $url = fn (string $f) => is_file("{$dir}/{$f}") ? 'data:image/webp;base64,'.base64_encode((string) file_get_contents("{$dir}/{$f}")) : '';
         $recipe = ['role' => $name] + ($heightM !== null ? ['height_m' => $heightM] : []) + $spec['recipe'];
-        $asset = self::save($user, null, $url("{$body}.webp"), $url("{$body}-shade.webp"), $spec['puppet'], $recipe, $name, $url("{$body}-thumb.webp"));
-        $asset?->update(['character' => ['auto' => true] + $asset->character]);
 
-        return $asset;
+        return self::save($user, $id, $url("{$file}.webp"), $url("{$file}-shade.webp"), $spec['puppet'], $recipe, $name, $url("{$file}-thumb.webp"));
+    }
+
+    /** The file name (no extension) of the starter made for this person by name, or null: a starter json beside the
+     *  bodies' with `names` listing what the person is called ("Marco", "Marco Polo"), matched without case. */
+    public static function namedStarter(string $name): ?string
+    {
+        $key = mb_strtolower(trim($name));
+        foreach (glob(public_path(self::STARTERS).'/*.json') ?: [] as $file) {
+            $base = basename($file, '.json');
+            if (in_array($base, self::BODIES, true)) {
+                continue;
+            }
+            $names = json_decode((string) file_get_contents($file), true)['names'] ?? [];
+            if (is_array($names) && in_array($key, array_map(fn ($n) => mb_strtolower((string) $n), $names), true)) {
+                return $base;
+            }
+        }
+
+        return null;
     }
 
     /** The shade mask's file beside an atlas (stage25d layer.ts shadeMaskUrl). */

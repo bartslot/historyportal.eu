@@ -83,8 +83,11 @@ export function nearestJoint (joints, x, y, w, h) {
   return best
 }
 
-export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {} }) {
+export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChange, onGround = () => false, byDistance = () => false, groundUnder = () => null, footY = () => 0, eye = () => [0, 0], onSettled = () => {}, onEmpty = () => false, boneLabel = (bone) => bone, inPlace = () => false, onResize = () => {}, isLocked = () => false, group = null }) {
   let selected = null
+  // a group (layout.ts inGroup) selected from the layer list: its box round all its layers, moved, sized and turned as
+  // one through `group` ({ box(id), value(id, prop), change(id, prop, v, opts) }); then no single layer is selected
+  let selectedGroup = null
   let drag = null
   let hoverQueued = false
 
@@ -192,13 +195,14 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   const select = (index, announce) => {
     selected = index
+    selectedGroup = null
     if (announce && index !== null) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_layer-${index}` } }))
     place()
   }
 
   /** The selected box in canvas CSS px: left, top, width, height and the middle. */
   const rectOf = () => {
-    const b = selected === null ? null : stage()?.layerBox(selected)
+    const b = selectedGroup !== null ? group?.box(selectedGroup) : selected === null ? null : stage()?.layerBox(selected)
     if (!b) return null
     const r = canvas.getBoundingClientRect()
     return { left: b.x0 * r.width, top: b.y0 * r.height, width: (b.x1 - b.x0) * r.width, height: (b.y1 - b.y0) * r.height, z: b.z }
@@ -219,11 +223,24 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
   const onDown = (e) => {
     if (e.button !== 0) return
     const { x, y } = local(e)
-    const { hit: painted, next: down } = pickOf(hitsAt(x, y), selected)
+    if (selectedGroup !== null) {
+      const g = rectOf()
+      if (g && x >= g.left && x <= g.left + g.width && y >= g.top && y <= g.top + g.height) {
+        e.stopPropagation()
+        const z = group.value(selectedGroup, 'z')
+        drag = { mode: 'move', groupId: selectedGroup, z, from: stage().worldXAt(x, y, z), x0: group.value(selectedGroup, 'x'), id: e.pointerId, el: canvas, pressed: [e.clientX, e.clientY] }
+        canvas.setPointerCapture?.(e.pointerId)
+        return
+      }
+      selectedGroup = null   // a press outside the group's box picks as ever
+      place()
+    }
+    // a locked layer is not there for a press (the right-click menu and the layer list still reach it)
+    const { hit: painted, next: down } = pickOf(hitsAt(x, y).filter((h) => !isLocked(h.index)), selected)
     // The selected picture's whole box is it, the air in it too: between a figure's legs, a small flame, even with a nearer
     // picture painted there. It stays selected and drags; a click without a drag goes on to that nearer picture
     const was = rectOf()
-    const inBox = was && x >= was.left && x <= was.left + was.width && y >= was.top && y <= was.top + was.height
+    const inBox = was && !isLocked(selected) && x >= was.left && x <= was.left + was.width && y >= was.top && y <= was.top + was.height
     const hit = inBox ? { index: selected } : painted
     const next = inBox && painted && painted.index !== selected ? painted.index : down
     if (!hit) {
@@ -252,7 +269,9 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
 
   /** A press on a handle: scale about the middle of the box, or turn about it. */
   const onHandleDown = (mode) => (e) => {
-    if (e.button !== 0 || selected === null) return
+    if (e.button !== 0) return
+    if (selectedGroup !== null) return onGroupHandleDown(mode, e)
+    if (selected === null || isLocked(selected)) return
     const b = rectOf()
     if (!b) return
     e.stopPropagation()
@@ -272,10 +291,28 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
+  /** A handle of a group's box: the group grows or turns about the box's middle, every layer in it along with it. */
+  const onGroupHandleDown = (mode, e) => {
+    const b = rectOf()
+    if (!b) return
+    e.stopPropagation()
+    e.preventDefault()
+    const r = canvas.getBoundingClientRect()
+    const cx = b.left + b.width / 2
+    const cy = b.top + b.height / 2
+    const x = e.clientX - r.left, y = e.clientY - r.top
+    drag = {
+      mode, groupId: selectedGroup, cx, cy, id: e.pointerId, el: e.currentTarget, pressed: [e.clientX, e.clientY],
+      d0: Math.max(8, Math.hypot(x - cx, y - cy)), a0: Math.atan2(y - cy, x - cx),
+      scale0: group.value(selectedGroup, 'scale'), rotation0: group.value(selectedGroup, 'rotation'),
+    }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+
   /** A press on a bone's handle: it turns round its joint, which stays where it is on screen while it does. Handles
    *  overlap on a small figure, so the press goes to the handle whose dot is nearest, not to the one on top. */
   function onBoneDown (e) {
-    if (e.button !== 0 || selected === null) return
+    if (e.button !== 0 || selected === null || isLocked(selected)) return
     const seen = stage()?.jointsOnScreen?.(selected)
     const r = canvas.getBoundingClientRect()
     const { x, y } = local(e)
@@ -306,6 +343,7 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
       onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { hold: true })   // shown at once, saved when let go
       return
     }
+    if (drag?.groupId !== undefined) { moveGroup(x, y, e.shiftKey); return }
     if (drag?.mode === 'move' && drag.ground) {
       // Slide along the ground: the feet go where the pointer moved them on screen, onto the ground there, snapped.
       const at = groundUnder(drag.foot[0] + x - drag.start[0], drag.foot[1] + y - drag.start[1], drag.lift, drag.index)
@@ -352,8 +390,24 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     requestAnimationFrame(() => { hoverQueued = false; canvas.style.cursor = hitsAt(x, y).length ? 'pointer' : '' })
   }
 
+  /** A group dragged: sideways at its own distance, or sized or turned by a handle. */
+  const moveGroup = (x, y, snap) => {
+    const send = (prop, v) => { group.change(drag.groupId, prop, v); place() }
+    if (drag.mode === 'move') {
+      const dx = (stage().worldXAt(x, y, drag.z) - drag.from) / viewWidthAt(drag.z)
+      send('x', Math.round(clampTo(drag.x0 + dx, X_MIN, X_MAX) * 1000) / 1000)
+    } else if (drag.mode === 'scale') {
+      send('scale', Math.round(clampTo(drag.scale0 * (Math.hypot(x - drag.cx, y - drag.cy) / drag.d0), 0.05, 20) * 1000) / 1000)
+    } else if (drag.mode === 'rotate') {
+      let deg = drag.rotation0 + ((Math.atan2(y - drag.cy, x - drag.cx) - drag.a0) * 180) / Math.PI
+      if (snap) deg = Math.round(deg / 15) * 15
+      send('rotation', Math.round(deg * 10) / 10)
+    }
+  }
+
   const onUp = (e) => {
     if (!drag) return
+    if (drag.groupId !== undefined) { drag.el.releasePointerCapture?.(drag.id); drag = null; return }
     drag.el.releasePointerCapture?.(drag.id)
     if (drag.mode === 'backdrop') { drag.held.end(); drag = null; return }
     if (drag.mode === 'bone' && drag.sent !== undefined) onChange(drag.index, `${BONE_PREFIX}${drag.name}`, drag.sent, { done: true })   // one save
@@ -367,7 +421,10 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     if (next !== null) select(next, true)
   }
 
-  const onOther = (e) => { if (selected !== null && e.detail?.id !== `s25_layer-${selected}`) { selected = null; place() } }
+  const onOther = (e) => {
+    if (selected !== null && e.detail?.id !== `s25_layer-${selected}`) { selected = null; place() }
+    if (selectedGroup !== null && e.detail?.id !== `s25_group-${selectedGroup}`) { selectedGroup = null; place() }
+  }
 
   canvas.addEventListener('pointerdown', onDown)
   function follow (el) {
@@ -384,6 +441,14 @@ export function attachInteraction ({ canvas, host, stage, valueOf, alpha, onChan
     /** Select by editor id ('layer-3') without announcing it again; null clears. */
     select: (index, announce = false) => select(index, announce),
     get selected () { return selected },
+    /** Select a group by its id (its box round its layers), without announcing it; null clears. */
+    selectGroup (id) { selected = null; selectedGroup = id ?? null; place() },
+    get selectedGroup () { return selectedGroup },
+    /** The layer painted under a page point, nearest first, locked ones too (the canvas right-click menu); null for none. */
+    pickAt (clientX, clientY) {
+      const r = canvas.getBoundingClientRect()
+      return pickOf(hitsAt(clientX - r.left, clientY - r.top), null).hit?.index ?? null
+    },
     place,
     destroy () {
       window.removeEventListener('scene-object-selected', onOther)

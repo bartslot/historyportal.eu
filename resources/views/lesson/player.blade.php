@@ -222,6 +222,7 @@
                         'anchor'  => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                         'lng'     => isset($l['lng']) ? (float) $l['lng'] : null,
                         'lat'     => isset($l['lat']) ? (float) $l['lat'] : null,
+                        'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
                         'wobble'  => isset($l['wobble']) ? (int) $l['wobble'] : null,
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.

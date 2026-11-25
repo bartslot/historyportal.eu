@@ -70,7 +70,7 @@ export function zonesOf (kit, recipe, slot = 'outfit') {
   return zones
 }
 
-const DEFAULT_ZONE = { garment: 'undyed-wool', second: 'madder-red', cord: 'dark-wool-brown', apron: 'indigo-blue', band: 'reed-green', 'head-cloth': 'yellow-ochre' }
+const DEFAULT_ZONE = { garment: 'undyed-wool', second: 'madder-red', cord: 'dark-wool-brown', apron: 'indigo-blue', band: 'reed-green', 'head-cloth': 'yellow-ochre', hose: 'camel-brown' }
 
 /** The recipe with one piece put on (or, for a part already worn, taken off): a new object, the old one untouched. */
 export function wear (kit, recipe, id) {
@@ -131,7 +131,9 @@ export function randomRecipe (kit, recipe, rand = Math.random, keep = null) {
   const body = bodyOf(kit, recipe)
   const pick = (list) => list[Math.floor(rand() * list.length) % list.length]
   const next = { ...recipe, parts: [...(recipe.parts ?? [])] }
-  if (keep !== 'outfit') next.outfit = pick(piecesIn(body, 'outfit')).id.split('/')[1]
+  // an outfit of another time (kit.json `period`, e.g. Marco Polo's Venice) only when the person already wears one of it
+  const period = pieceOf(body, `outfit/${recipe.outfit}`)?.period
+  if (keep !== 'outfit') next.outfit = pick(piecesIn(body, 'outfit').filter((p) => p.period === period)).id.split('/')[1]
   if (keep !== 'face') next.face = pick(piecesIn(body, 'face')).id.split('/')[1]
   if (keep !== 'hair') {
     const hair = piecesIn(body, 'hair').map((p) => p.id)

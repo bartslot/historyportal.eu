@@ -59,7 +59,7 @@ final class LlmTextTranslator implements TextTranslator
         $answer = $this->router->for('translate')->json(
             $this->system($from, $to),
             json_encode($ids, JSON_UNESCAPED_UNICODE | JSON_FORCE_OBJECT | JSON_THROW_ON_ERROR),
-            maxTokens: 8192,
+            maxTokens: 16384,   // 100 lines (CaptionTranslator::BATCH), CJK included
         );
 
         $out = [];

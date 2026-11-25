@@ -11,6 +11,7 @@ use App\Services\Editor\Cutouts;
 use App\Services\Editor\EditedImages;
 use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\Daylight;
+use App\Services\Stage25d\LayerGroups;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
@@ -44,6 +45,11 @@ trait EditsStage25d
         }
         if (is_array($patch['cameraMotion'] ?? null)) {   // its own motion: a sway, a hand holding it, a shake
             $this->storeStage25dCameraMotion($scene, $patch['cameraMotion']);
+
+            return;
+        }
+        if (is_array($patch['group'] ?? null) && $scene) {   // a group's place, size, turn, fade, name or keys (GroupsStage25dLayers)
+            $this->saveStage25dGroup($scene, $patch['group']);
 
             return;
         }
@@ -201,7 +207,10 @@ trait EditsStage25d
         };
         $time = fn (string $key): array => is_numeric($shot[$key] ?? null) ? [$key => round(max(0.0, min(3600.0, (float) $shot[$key])), 3)] : [];
 
-        return [...$time('at_s'), ...$time('dur_s'), 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
+        // The stage's named eases (layout.ts EASES): the cut tool writes the part of a move's curve each piece plays.
+        $ease = in_array($shot['ease'] ?? null, ['linear', 'in', 'out', 'inOut'], true) ? ['ease' => $shot['ease']] : [];
+
+        return [...$time('at_s'), ...$time('dur_s'), ...$ease, 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
     }
 
     /** @param  array<mixed>  $motion */
@@ -223,22 +232,36 @@ trait EditsStage25d
 
     private function storeStage25dCamera(Scene $scene, mixed $camera, mixed $more = []): void
     {
-        $config = $scene->config;
-        unset($config['stage25d']['camera_more']);
-        if (! is_array($camera)) {
-            unset($config['stage25d']['camera']);
-        } else {
-            $old = (array) ($scene->config['stage25d']['camera'] ?? []);
-            $config['stage25d']['camera'] = ['move' => 'framed', 'ease' => 'inOut', 'at_s' => 0, ...$old, ...self::cameraShot($camera)];
-            $shots = array_map(fn (mixed $s): array => ['move' => 'framed', 'ease' => 'inOut', ...self::cameraShot((array) $s)], array_slice(array_values((array) $more), 0, self::CAMERA_MAX_SHOTS));
-            if ($shots !== []) {
-                $config['stage25d']['camera_more'] = $shots;
-            }
-        }
+        $config = $this->configWithCamera($scene->config, $camera, $more);
         if ($config === $scene->config) {
             return;
         }
         $this->storeStage25dConfig($scene, $config);
+    }
+
+    /**
+     * `$config` with the stage camera's shots set: the first shot, the rest as camera_more, each cleaned (cameraShot).
+     * Not an array: no camera. The timeline's camera panel and the cut tool both write it here.
+     *
+     * @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    private function configWithCamera(array $config, mixed $camera, mixed $more = []): array
+    {
+        $old = (array) ($config['stage25d']['camera'] ?? []);
+        unset($config['stage25d']['camera_more']);
+        if (! is_array($camera)) {
+            unset($config['stage25d']['camera']);
+
+            return $config;
+        }
+        $config['stage25d']['camera'] = ['move' => 'framed', 'ease' => 'inOut', 'at_s' => 0, ...$old, ...self::cameraShot($camera)];
+        $shots = array_map(fn (mixed $s): array => ['move' => 'framed', 'ease' => 'inOut', ...self::cameraShot((array) $s)], array_slice(array_values((array) $more), 0, self::CAMERA_MAX_SHOTS));
+        if ($shots !== []) {
+            $config['stage25d']['camera_more'] = $shots;
+        }
+
+        return $config;
     }
 
     /** What a ground band takes from a layer: it stands on the floor, so no Y and no angle. */
@@ -470,6 +493,42 @@ trait EditsStage25d
         $this->storeStage25dConfig($scene, $config);
     }
 
+    /** At most this many plants chosen for one floor (stage25d/engine.js STREW_PLANTS_MAX). */
+    private const STREW_PLANTS_MAX = 16;
+
+    /**
+     * The terrain's plants (config.stage25d.set.strew, Bart 11-24): plants, the library plants strewn on the floor
+     * instead of the ones its ground picks (an asset id, a sprite-sheet cell as 'asset#n'; [] strews none); seed, a new
+     * throw of the same plants. Null, or nothing left in it, gives the choice back to the terrain.
+     *
+     * @param  array<string,mixed>|null  $strew
+     */
+    #[On('stage25d:strew')]
+    public function saveStage25dStrew(?array $strew, int $sceneId): void
+    {
+        $scene = $this->stage25dScene();
+        if (! $scene || $scene->id !== $sceneId) {
+            return;
+        }
+        $clean = [];
+        if (is_array($strew['plants'] ?? null)) {
+            $plants = array_values(array_unique(array_filter($strew['plants'], fn ($k) => is_string($k) && preg_match('/^[a-z0-9][a-z0-9-]{0,80}(#\d{1,3})?$/', $k) === 1)));
+            $clean['plants'] = array_slice($plants, 0, self::STREW_PLANTS_MAX);
+        }
+        if (is_numeric($strew['seed'] ?? null) && (int) $strew['seed'] > 0) {
+            $clean['seed'] = min(999999, (int) $strew['seed']);
+        }
+        $config = $scene->config;
+        if ($clean === []) {
+            unset($config['stage25d']['set']['strew']);
+        } else {
+            $config['stage25d']['set']['strew'] = $clean;
+        }
+        if ($config !== $scene->config) {
+            $this->storeStage25dConfig($scene, $config);
+        }
+    }
+
     /**
      * The scene's time of day (config.stage25d.set.daylight, the Sky panel): the whole block, held to what the stage reads
      * (Daylight::clean). Null takes it away: the scene's sky picture again, lit as its tags say.
@@ -586,29 +645,8 @@ trait EditsStage25d
         if (! $scene || ! is_array($layers)) {
             return;
         }
-        $config = $scene->config;
         $span = max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds);
-        foreach ($byLayer as $id => $keys) {
-            // a layer or a ground band (band-0): each keeps its keys on itself. The sky takes none (SKY_FIELDS).
-            $path = match (true) {
-                preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => isset($layers[(int) $m[1]]) ? ['layers', (int) $m[1]] : null,
-                preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => isset($config['stage25d']['set']['groundBands'][(int) $m[1]]) ? ['groundBands', (int) $m[1]] : null,
-                default => null,
-            };
-            if ($path === null || ! is_array($keys)) {
-                continue;
-            }
-            $row = (array) data_get($config, ['stage25d', 'set', ...$path], []);
-            $clean = LayerKeys::sanitize($keys, $span);
-            if ($clean === []) {
-                unset($row['keys']);
-            } else {
-                $row['keys'] = $clean;
-            }
-            if ($row !== [] || $path !== ['skyLayer']) {
-                data_set($config, ['stage25d', 'set', ...$path], $row);
-            }
-        }
+        $config = LayerKeys::applyTo($scene->config, $byLayer, $span);
         if ($config !== $scene->config) {
             $this->storeStage25dConfig($scene, $config);
         }
@@ -793,6 +831,7 @@ trait EditsStage25d
         unset($layers[$index]);
         $config = $scene->config;
         $config['stage25d']['set']['layers'] = array_values($layers);
+        $config['stage25d']['set'] = LayerGroups::prune($config['stage25d']['set']);   // its group goes with its last layer
         if (is_string($handle) && ! in_array($handle, array_column($layers, 'figure'), true)) {
             $config = self::withoutGroupOf($config, 'stage25d:'.$handle);
         }

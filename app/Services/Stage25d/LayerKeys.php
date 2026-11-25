@@ -202,6 +202,41 @@ final class LayerKeys
     }
 
     /**
+     * The timeline's keys (`layer-3` => keys, `band-0` => keys) written onto the stage's own rows in
+     * `$config` (a scene config). An empty list clears a row's keys; an id with no such row is skipped,
+     * and the sky takes none. One writer for the timeline's save and the cut tool.
+     *
+     * @param  array<string,mixed>  $config
+     * @param  array<string,mixed>  $byLayer
+     * @return array<string,mixed>
+     */
+    public static function applyTo(array $config, array $byLayer, float $span): array
+    {
+        foreach ($byLayer as $id => $keys) {
+            $path = match (true) {
+                preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => ['layers', (int) $m[1]],
+                preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => ['groundBands', (int) $m[1]],
+                // a group's row (LayerGroups): its place in the list of groups, by its id
+                preg_match('/^group-([A-Za-z0-9_-]+)$/', (string) $id, $m) === 1 => (($at = array_search($m[1], array_column((array) data_get($config, 'stage25d.set.groups', []), 'id'), true)) === false ? null : ['groups', $at]),
+                default => null,
+            };
+            $row = $path === null ? null : data_get($config, ['stage25d', 'set', ...$path]);
+            if (! is_array($row) || ! is_array($keys)) {
+                continue;
+            }
+            $clean = self::sanitize($keys, $span);
+            if ($clean === []) {
+                unset($row['keys']);
+            } else {
+                $row['keys'] = $clean;
+            }
+            data_set($config, ['stage25d', 'set', ...$path], $row);
+        }
+
+        return $config;
+    }
+
+    /**
      * The director's `motion` tracks (`figure:N`, x|y) as keys on the figure's own layer (the layer with
      * `figure` equal to figures[N].char). Flat tracks are dropped; a field the layer already keys is left alone;
      * converted and flat tracks leave `motion`, so a second run changes nothing.

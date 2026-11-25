@@ -396,6 +396,14 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 
         Route::get('/lessons/{lesson}/wizard', LessonWizard::class)->name('lessons.wizard');
 
+        // Several accounts in one lesson's editor: the ping, Take over, and the goodbye a closing tab sends.
+        Route::post('/lessons/{lesson}/presence', [\App\Http\Controllers\Teacher\LessonPresenceController::class, 'ping'])
+            ->middleware('throttle:120,1')->name('lessons.presence');
+        Route::post('/lessons/{lesson}/presence/take-over', [\App\Http\Controllers\Teacher\LessonPresenceController::class, 'takeOver'])
+            ->middleware('throttle:30,1')->name('lessons.presence.take-over');
+        Route::post('/lessons/{lesson}/presence/leave', [\App\Http\Controllers\Teacher\LessonPresenceController::class, 'leave'])
+            ->name('lessons.presence.leave');
+
         Route::get('/lessons/{lesson}/composer', \App\Livewire\LessonComposer::class)->name('lessons.composer');
 
         // Results & analytics (spec: docs/superpowers/specs/2026-07-08-teacher-results-analytics-design.md)

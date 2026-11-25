@@ -24,7 +24,7 @@ class CurriculumPicker extends Component
 
     public function mount(Lesson $lesson): void
     {
-        abort_unless(auth()->user()?->canManage($lesson), 403);
+        abort_unless(auth()->user()?->canEdit($lesson), 403);
         $this->lesson = $lesson;
     }
 
@@ -92,6 +92,6 @@ class CurriculumPicker extends Component
 
     private function authorizeEdit(): void
     {
-        abort_unless(auth()->user()?->canManage($this->lesson), 403);
+        abort_unless(auth()->user()?->canEdit($this->lesson), 403);
     }
 }
