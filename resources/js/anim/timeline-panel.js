@@ -28,7 +28,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
-import { cutTracks } from './timeline-cut.js'
+import { cutTracks, cutCamera } from './timeline-cut.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -305,8 +305,9 @@ export const animationTimeline = (config = {}) => ({
       flushBeforeRequest()
     })
 
-    const saved = SESSIONS.get(config.sceneId)
-    if (saved) Object.assign(this, saved)
+    // Remembered under another cut count, the scene id held another scene (a cut, or its undo): start from the server's.
+    const { epoch: savedEpoch = 0, ...saved } = SESSIONS.get(config.sceneId) ?? {}
+    if (savedEpoch === (config.epoch ?? 0) && Object.keys(saved).length) Object.assign(this, saved)
     this.restoreDraft()
 
     // The Format panel's diamonds live in a different component, so the timeline publishes the
@@ -478,6 +479,7 @@ export const animationTimeline = (config = {}) => ({
   /** Remember everything a morph would otherwise throw away. */
   remember () {
     SESSIONS.set(config.sceneId, {
+      epoch: config.epoch ?? 0,
       time: this.time, zoom: this.zoom, zoomIsMine: this.zoomIsMine, duration: this.duration, durationSet: this.durationSet,
       openGroups: { ...this.openGroups },
       loop: this.loop, autoKey: this.autoKey, hiddenObjects: { ...this.hiddenObjects },
@@ -2569,8 +2571,12 @@ export const animationTimeline = (config = {}) => ({
       }
       const at = Number(point.at)
       const { first, second } = cutTracks(this.tracks, at)
-      const half = (tracks, duration) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks) })
-      await this.$wire.cutSceneAt(at, half(first, at), half(second, Math.max(0, this.duration - at)))
+      const stage = window.__stage25d
+      // The camera's own clock (the stage's scene length, which a last shot without dur_s runs to), not the timeline's.
+      const info = stage && String(stage.sceneId) === String(config.sceneId) ? stage.cameraInfo?.() : null
+      const camera = info ? cutCamera(info.shots, at, info.length ?? this.duration) : null
+      const half = (tracks, duration, cam) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks), ...(cam ? { stage25dCamera: cam } : {}) })
+      await this.$wire.cutSceneAt(at, half(first, at, camera?.first), half(second, Math.max(0, this.duration - at), camera?.second))
     } finally {
       this.cutting = false
     }
