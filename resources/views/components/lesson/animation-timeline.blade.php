@@ -197,6 +197,19 @@
             <x-icons.arrow-path-rounded-square class="h-4 w-4" />
         </button>
 
+        {{-- The cut tool (Bart, 2026-11-24): the scene in two at the playhead, so each part can take
+             its own background. The cut lands on a pause in the narration, never inside a word, and
+             the second part opens. Cmd-Z puts the scene back together. --}}
+        @if ($scene && ! in_array($scene->kind, \App\Services\Editor\SceneCut::UNCUTTABLE_KINDS, true))
+            <button type="button" x-on:click="cutAtPlayhead()" data-timeline-cut
+                    :disabled="cutting"
+                    class="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-label hover:text-white disabled:cursor-wait disabled:opacity-50"
+                    data-tooltip="{{ __('Cut the scene at the playhead') }}"
+                    aria-label="{{ __('Cut the scene at the playhead') }}">
+                <x-ui.icon name="cut" />
+            </button>
+        @endif
+
         <span class="h-4 w-px shrink-0 bg-panel-hairline" aria-hidden="true"></span>
 
         {{-- Collapse every group, or open them all when none is open. One button, because the

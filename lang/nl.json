@@ -3186,5 +3186,12 @@
     "Weather": "Weer",
     "Dry": "Droog",
     "Snow": "Sneeuw",
-    "Wind": "Wind"
+    "Wind": "Wind",
+    "Cut the scene at the playhead": "Knip de scène bij de afspeelkop",
+    "Move the playhead away from the ends of the scene to cut it.": "Zet de afspeelkop verder van het begin of eind om de scène te knippen.",
+    "The narration could not be cut. Nothing was changed.": "De vertelling kon niet geknipt worden. Er is niets veranderd.",
+    "Scene cut in two. This is the second part.": "Scène in tweeën geknipt. Dit is het tweede deel.",
+    "Cut undone.": "Knip ongedaan gemaakt.",
+    "Open a scene to cut it.": "Open een scène om hem te knippen.",
+    "A game or a voyage stop cannot be cut.": "Een spel of een reisstop kun je niet knippen."
 }
