@@ -196,6 +196,8 @@ trait CutsScenes
         Storage::disk('public')->delete($made);
 
         $this->selectSceneInternal($first->id);
+        // The open timeline remembers the first piece's length and keys (timeline-panel.js SESSIONS): hand it the whole scene.
+        $this->dispatch('timeline-restored', timeline: $first->fresh()?->config['timeline'] ?? []);
         $this->dispatch('toast', type: 'info', message: __('Cut undone.'));
     }
 

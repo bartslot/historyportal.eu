@@ -84,7 +84,8 @@ class SceneCutTest extends TestCase
             ->call('selectScene', $scene->id)
             ->call('cutSceneAt', 4.0, $this->timeline(4.0), $this->timeline(4.0))
             ->call('undoLastEdit')
-            ->assertSet('selectedSceneId', $scene->id);
+            ->assertSet('selectedSceneId', $scene->id)
+            ->assertDispatched('timeline-restored', fn (string $name, array $params) => (float) ($params['timeline']['duration'] ?? 0) === 8.0);
 
         $scenes = $this->lesson->scenes()->ordered()->get();
         $this->assertSame(['The ship left Venice. It sailed for weeks.', 'After.'], $scenes->pluck('script_segment')->all());
