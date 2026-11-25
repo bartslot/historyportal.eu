@@ -1,4 +1,10 @@
 {
+  "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-CpB-wl7P.js",
+    "name": "three.module",
+    "src": "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
   "_BalloonLayer-eUPZbONt.js": {
     "file": "assets/BalloonLayer-eUPZbONt.js",
     "name": "BalloonLayer",
@@ -13,7 +19,7 @@
     "file": "assets/GLTFLoader-Et3HGvr1.js",
     "name": "GLTFLoader",
     "imports": [
-      "node_modules/three/build/three.module.js"
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js"
     ]
   },
   "_PowerMeter-BHOK8Lnk.js": {
@@ -66,8 +72,8 @@
       "_vite-helpers-DqutJMZx.js"
     ]
   },
-  "_big-countdown-CDvzBm7P.js": {
-    "file": "assets/big-countdown-CDvzBm7P.js",
+  "_big-countdown-DGP0AH8n.js": {
+    "file": "assets/big-countdown-DGP0AH8n.js",
     "name": "big-countdown",
     "imports": [
       "_vite-helpers-DqutJMZx.js",
@@ -75,7 +81,7 @@
       "_easing-HS2C6-zA.js"
     ],
     "dynamicImports": [
-      "_engine-iIYA47Qj.js"
+      "_engine-D288pxBW.js"
     ]
   },
   "_border-sweep-BN94bNmI.js": {
@@ -112,15 +118,15 @@
     "file": "assets/easing-HS2C6-zA.js",
     "name": "easing"
   },
-  "_engine-iIYA47Qj.js": {
-    "file": "assets/engine-iIYA47Qj.js",
+  "_engine-D288pxBW.js": {
+    "file": "assets/engine-D288pxBW.js",
     "name": "engine",
     "isDynamicEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_babylon-ClnPoGlu.js",
+      "_water-BvkhMi10.js",
       "_puppet-sheet-B0KaX9MG.js",
-      "_water-czMb5ZHz.js",
       "_config-DwQUN7uY.js",
       "_stage-handle-Ckz2xOyo.js",
       "_ambient-CnaWjG1w.js",
@@ -209,11 +215,11 @@
     "file": "assets/stage-handle-Ckz2xOyo.js",
     "name": "stage-handle"
   },
-  "_stage-handoff-CyFLQ800.js": {
-    "file": "assets/stage-handoff-CyFLQ800.js",
+  "_stage-handoff-C0-6KQ3F.js": {
+    "file": "assets/stage-handoff-C0-6KQ3F.js",
     "name": "stage-handoff",
     "imports": [
-      "_big-countdown-CDvzBm7P.js"
+      "_big-countdown-DGP0AH8n.js"
     ]
   },
   "_team-colours-JOtUsqOj.js": {
@@ -231,8 +237,8 @@
     "file": "assets/vite-helpers-DqutJMZx.js",
     "name": "vite-helpers"
   },
-  "_water-czMb5ZHz.js": {
-    "file": "assets/water-czMb5ZHz.js",
+  "_water-BvkhMi10.js": {
+    "file": "assets/water-BvkhMi10.js",
     "name": "water",
     "imports": [
       "_scene-animation-C-gJag00.js"
@@ -244,14 +250,8 @@
     "src": "engine-mvp/src/sound/player.ts",
     "isDynamicEntry": true
   },
-  "node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-CpB-wl7P.js",
-    "name": "three.module",
-    "src": "node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
   "resources/css/app.css": {
-    "file": "assets/app-CvASlLLq.css",
+    "file": "assets/app-DDyqnzHK.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -260,7 +260,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-E7hUgoiO.js",
+    "file": "assets/app-DVfi4_N3.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -274,7 +274,7 @@
       "_BalloonLayer-eUPZbONt.js",
       "_clip-W780-tgz.js",
       "_sail-clip-DsoZuoWq.js",
-      "_water-czMb5ZHz.js",
+      "_water-BvkhMi10.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js",
       "_dom-DByCrY2T.js",
@@ -289,7 +289,7 @@
       "_quick-mask-Dp4H61tD.js",
       "resources/js/lesson-map.js",
       "resources/js/scene/index.js",
-      "node_modules/three/build/three.module.js"
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js"
     ],
     "css": [
       "assets/app-AEfMPvIN.css"
@@ -311,12 +311,12 @@
     "src": "resources/js/avatar-3d.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-DLoSjVS9.js",
+    "file": "assets/cutout-dialog-dEqKa-BJ.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -336,7 +336,7 @@
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
       "_sail-clip-DsoZuoWq.js",
-      "_water-czMb5ZHz.js",
+      "_water-BvkhMi10.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
@@ -379,7 +379,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-B69xvaQ_.js",
+    "file": "assets/lesson-player-BoaIMubC.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -391,9 +391,9 @@
       "_sail-clip-DsoZuoWq.js",
       "_scene-links-Ul19fO9j.js",
       "resources/js/gallery-scene.js",
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "_config-DwQUN7uY.js",
-      "_stage-handoff-CyFLQ800.js",
+      "_stage-handoff-C0-6KQ3F.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/music-mixer.js",
       "_dom-DByCrY2T.js",
@@ -445,7 +445,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-BzdGIbE1.js",
+    "file": "assets/ArtworkOverlay-rJ8HZrTx.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -453,7 +453,7 @@
       "_scene-links-Ul19fO9j.js",
       "_i18n-DoByrmTl.js",
       "_stage-handle-Ckz2xOyo.js",
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "_alpha-mask-C1RIm4VB.js",
       "_ambient-CnaWjG1w.js",
       "_easing-HS2C6-zA.js",
@@ -462,14 +462,14 @@
     ]
   },
   "resources/js/scene/ParallaxScene.js": {
-    "file": "assets/ParallaxScene-CY9mX5g2.js",
+    "file": "assets/ParallaxScene-BBPbyjgB.js",
     "name": "ParallaxScene",
     "src": "resources/js/scene/ParallaxScene.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "_ambient-CnaWjG1w.js",
-      "_stage-handoff-CyFLQ800.js",
+      "_stage-handoff-C0-6KQ3F.js",
       "_camera-DRj5o1UH.js",
       "_easing-HS2C6-zA.js",
       "_vite-helpers-DqutJMZx.js",
@@ -479,12 +479,12 @@
     ]
   },
   "resources/js/scene/QuizOverlay.js": {
-    "file": "assets/QuizOverlay-CQQV4WU3.js",
+    "file": "assets/QuizOverlay-B5KEmOep.js",
     "name": "QuizOverlay",
     "src": "resources/js/scene/QuizOverlay.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "_i18n-DoByrmTl.js",
       "_vite-helpers-DqutJMZx.js",
       "_ambient-CnaWjG1w.js",
@@ -492,7 +492,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-wj3H5oLH.js",
+    "file": "assets/SplitStage-DYi85RSY.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -501,9 +501,9 @@
       "_i18n-DoByrmTl.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_BalloonLayer-eUPZbONt.js",
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "_ambient-CnaWjG1w.js",
-      "_stage-handoff-CyFLQ800.js",
+      "_stage-handoff-C0-6KQ3F.js",
       "_camera-DRj5o1UH.js",
       "_scene-links-Ul19fO9j.js",
       "_easing-HS2C6-zA.js",
@@ -553,12 +553,12 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-DanNAPVt.js",
+    "file": "assets/index-CWqTNdZa.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_big-countdown-CDvzBm7P.js",
+      "_big-countdown-DGP0AH8n.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
       "resources/js/scene/TextOverlayLayer.js",
@@ -570,7 +570,7 @@
       "_stage-handle-Ckz2xOyo.js",
       "_ambient-CnaWjG1w.js",
       "resources/js/app.js",
-      "node_modules/three/build/three.module.js",
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
       "_scene-links-Ul19fO9j.js",
       "_easing-HS2C6-zA.js",
       "_comic-america-DKlp7hw_.js",
@@ -580,7 +580,7 @@
       "_scene-animation-C-gJag00.js",
       "_clip-W780-tgz.js",
       "_sail-clip-DsoZuoWq.js",
-      "_water-czMb5ZHz.js",
+      "_water-BvkhMi10.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js",
       "_dom-DByCrY2T.js"
@@ -649,19 +649,19 @@
     "isDynamicEntry": true
   },
   "resources/js/scene/stage25d/splat-reveal.js": {
-    "file": "assets/splat-reveal-BnZL9T6P.js",
+    "file": "assets/splat-reveal-DpfLoeu5.js",
     "name": "splat-reveal",
     "src": "resources/js/scene/stage25d/splat-reveal.js",
     "isDynamicEntry": true,
     "imports": [
       "_babylon-ClnPoGlu.js",
-      "_engine-iIYA47Qj.js",
+      "_engine-D288pxBW.js",
       "_vite-helpers-DqutJMZx.js",
-      "_puppet-sheet-B0KaX9MG.js",
-      "_load-image-DngxJD_v.js",
-      "_water-czMb5ZHz.js",
+      "_water-BvkhMi10.js",
       "_scene-animation-C-gJag00.js",
       "_easing-HS2C6-zA.js",
+      "_puppet-sheet-B0KaX9MG.js",
+      "_load-image-DngxJD_v.js",
       "_config-DwQUN7uY.js",
       "_stage-handle-Ckz2xOyo.js",
       "_ambient-CnaWjG1w.js",
@@ -684,7 +684,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-CGc1T14y.js",
+    "file": "assets/recorder-Dnom8aZ3.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,
@@ -701,7 +701,7 @@
       "_comic-america-DKlp7hw_.js",
       "_clip-W780-tgz.js",
       "_sail-clip-DsoZuoWq.js",
-      "_water-czMb5ZHz.js",
+      "_water-BvkhMi10.js",
       "_tuner-CTMYYJl-.js",
       "resources/js/editor/draw-layer.js"
     ]
@@ -729,7 +729,7 @@
     "src": "resources/js/timemap/voyage-ships.js",
     "isDynamicEntry": true,
     "imports": [
-      "node_modules/three/build/three.module.js",
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js",
       "_border-sweep-BN94bNmI.js",
       "_easing-HS2C6-zA.js"
@@ -753,7 +753,7 @@
       "_i18n-DoByrmTl.js",
       "_sail-clip-DsoZuoWq.js",
       "_scene-animation-C-gJag00.js",
-      "node_modules/three/build/three.module.js",
+      "../../../Users/bartslot/BartsAutomation/BartsDev/apps/historyportal.eu/node_modules/three/build/three.module.js",
       "_GLTFLoader-Et3HGvr1.js"
     ]
   }
