@@ -161,6 +161,28 @@ export interface SceneLayer {
   flat?: boolean
   /** an animation's playback (sprite.ts frameAt): speed scales its fps (0 holds), offset = seconds into it at the start */
   play?: { speed?: number; offset?: number; frames?: number[]; loop?: boolean }
+  /** the id of the group it belongs to (set.groups): the group's place, size, turn and fade carry it along */
+  group?: string
+  /** the group itself, resolved for the stage (layout.ts withGroups): never saved */
+  _group?: LayerGroup
+  /** locked on the editor's canvas: presses go through it (editor only) */
+  locked?: number | boolean
+}
+
+/** A group of layers, as in Photoshop: one place, size, turn and fade for all of them, with its own keys.
+ *  x 0..1 across the view and z metres away are where its middle stands now; rest is where that middle stood when the
+ *  group was made, so a group that has not moved changes nothing. Scale and rotation work about its middle. */
+export interface LayerGroup {
+  id: string
+  name?: string
+  rest: { x: number; z: number }
+  x?: number
+  z?: number
+  y?: number
+  scale?: number
+  rotation?: number
+  opacity?: number
+  keys?: LayerKey[]
 }
 
 export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night'
@@ -203,7 +225,7 @@ export interface Scene {
   /** layered ground: painted bands standing on the floor at metres z (2..2000), each drawn over the one behind */
   /** groundBands[i] and skyLayer take a layer's own values too (x, z, scale, opacity, motion, keys; the sky's y lifts it):
    *  the teacher sizes and moves the backdrop like any picture. A band always stands on the floor (stage.ts pose). */
-  set: { sky?: string | null; skyLayer?: GroundBandProps; daylight?: Daylight; ground?: string; soil?: string; farEdge?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; groundSlots?: { asset: string; from_m: number; flip?: boolean; repeat?: number }[]; strew?: { plants?: string[]; seed?: number }; layers: SceneLayer[] }
+  set: { sky?: string | null; skyLayer?: GroundBandProps; daylight?: Daylight; ground?: string; soil?: string; farEdge?: string; horizon?: number | 'auto'; land_target?: number; near?: string; groundBands?: GroundBand[]; groundSlots?: { asset: string; from_m: number; flip?: boolean; repeat?: number }[]; strew?: { plants?: string[]; seed?: number }; groups?: LayerGroup[]; layers: SceneLayer[] }
   figures?: unknown[]
   camera?: CameraMove | null
   /** further shots of the same scene (director, S5), each with its at_s */

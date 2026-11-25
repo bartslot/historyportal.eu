@@ -364,3 +364,43 @@ describe('overlapping bone handles', () => {
     expect(nearestJoint([], 0.5, 0.5, 100, 100)).toBe(null)
   })
 })
+
+describe('a group on the canvas', () => {
+  beforeEach(() => { document.body.innerHTML = '' })
+
+  const groupSetup = () => {
+    const values = { x: 0.5, z: 20, scale: 1, rotation: 0 }
+    const change = vi.fn((id, prop, v) => { values[prop] = v })
+    const group = { box: vi.fn(() => ({ x0: 0.1, y0: 0.2, x1: 0.5, y1: 0.8, z: 20 })), value: vi.fn((id, prop) => values[prop]), change }
+    document.body.innerHTML = '<div id="host"><canvas id="c"></canvas></div>'
+    const host = document.getElementById('host')
+    const canvas = document.getElementById('c')
+    canvas.getBoundingClientRect = () => rect
+    host.getBoundingClientRect = () => rect
+    canvas.setPointerCapture = vi.fn()
+    canvas.releasePointerCapture = vi.fn()
+    const stage = { pickLayers: vi.fn(() => []), layerBox: vi.fn(() => null), worldXAt: vi.fn((x) => x / 10) }
+    const api = attachInteraction({ canvas, host, stage: () => stage, valueOf: () => 0, alpha: { opaque: () => true }, onChange: vi.fn(), group })
+    return { canvas, api, change }
+  }
+
+  it('selected, its box drags the whole group sideways at its own distance', () => {
+    const { canvas, api, change } = groupSetup()
+    api.selectGroup('g1')
+    expect(api.selectedGroup).toBe('g1')
+    canvas.dispatchEvent(pointer('pointerdown', 200, 150))   // inside the box (x 40..200 css px, y 45..180)
+    canvas.dispatchEvent(pointer('pointermove', 240, 150))
+    canvas.dispatchEvent(pointer('pointerup', 240, 150))
+    expect(change).toHaveBeenCalled()
+    const [id, prop, x] = change.mock.calls.at(-1)
+    expect([id, prop]).toEqual(['g1', 'x'])
+    expect(x).toBeGreaterThan(0.5)
+  })
+
+  it('a press outside its box lets the group go', () => {
+    const { canvas, api } = groupSetup()
+    api.selectGroup('g1')
+    canvas.dispatchEvent(pointer('pointerdown', 450, 260))
+    expect(api.selectedGroup).toBeNull()
+  })
+})

@@ -14,7 +14,7 @@ import { resolveAsset } from '@stage25d/stage25d/library'
 import { frameAt, isAnimation } from '@stage25d/stage25d/sprite'
 import { puppetOf } from '@stage25d/stage25d/bones'
 import { figureFromSheet } from '../../editor/puppet-sheet.js'
-import { BAND_Z, HOUSE, sceneDuration, layerAt, bonesAt, faceAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
+import { BAND_Z, HOUSE, sceneDuration, layerAt, groupAt, withGroups, bonesAt, faceAt, viewWidthAt, bandOf, DEPTH_Z, defaultMotion, isBandPicture, isGroundStrip, liesFlat } from '@stage25d/stage25d/layout'
 import { legShareOf } from '../../anim/presets.js'
 import { LOOK_RANGE, lookNum } from '@stage25d/stage25d/look'
 import { groundSlots, GROUND_SLOTS_MAX, repeatOf } from '@stage25d/stage25d/ground'
@@ -33,7 +33,7 @@ import { createAlphaMaps } from './alpha.js'
 import { loadWorld, WORLD_PLACE_DEFAULTS } from './world.js'
 import { attachInteraction, figureInView, inFrontOf } from './interact.js'
 import { groundUnderRay, settle, groundOf, layerOf, alongSight, GROUND } from './floor.js'
-import { structureSig, editSig, layerIndex, EDITABLE, isBoneField, boneFields, isSunk, resizedInPlace } from './live.js'
+import { structureSig, editSig, layerIndex, groupId, EDITABLE, isBoneField, boneFields, isSunk, resizedInPlace } from './live.js'
 import { cameraKeys, cameraOverview, cameraPoseAt, clampPose, frameIn, frameSize, withFrameSize, nearestCameraKey, panPose, shotsOfKeys, wheelPose, withCameraKey, withoutCameraKey, movedCameraKey } from './framing.js'
 
 /** The scene's backdrop: a far strip that does not tile. One per scene, grouped with the ground and sky under "Scene",
@@ -44,6 +44,7 @@ export const isBackdropAsset = (a) => a?.layer === 'bg' && !a.tileable_x
 /** The sky row's name in the object list and the timeline. */
 const SKY_NAME = { nl: 'Lucht', de: 'Himmel', fr: 'Ciel', it: 'Cielo', es: 'Cielo' }
 const CAMERA_NAME = { nl: 'Camera', de: 'Kamera', fr: 'Caméra', it: 'Telecamera', es: 'Cámara' }
+const GROUP_NAME = { en: 'Group', nl: 'Groep', de: 'Gruppe', fr: 'Groupe', it: 'Gruppo', es: 'Grupo' }
 const TERRAIN_NAME = { nl: 'Terrein', de: 'Gelände', fr: 'Terrain', it: 'Terreno', es: 'Terreno' }
 const BONES_NAME = { en: 'bones', nl: 'botten', de: 'Knochen', fr: 'os', it: 'ossa', es: 'huesos' }
 const FIGURE_M = 1.7   // a figure the library gives no height (an animation preset's size on it, layerInfo)
@@ -127,7 +128,7 @@ const worldDaylight = (d) => (d ? { ...d, painted: true } : undefined)
 /** The director's scene fields the stage reads, from config.stage25d. */
 export const stageScene = (cfg) => ({
   id: cfg.id ?? 'scene',
-  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null, daylight: worldDaylight(cfg.set?.daylight) } : {}), layers: (cfg.set?.layers ?? []).map((l) => ({ ...l })) },
+  set: { ...(cfg.set ?? {}), ...(cfg.world?.src ? { sky: null, daylight: worldDaylight(cfg.set?.daylight) } : {}), layers: withGroups((cfg.set?.layers ?? []).map((l) => ({ ...l })), cfg.set?.groups) },
   camera: cfg.camera ?? null,
   camera_more: cfg.camera_more ?? [],
   camera_motion: cfg.camera_motion ?? null,
@@ -168,6 +169,7 @@ export async function createStage25d (host, opts = {}) {
   let layers = []           // the teacher's layers, live: the editor edits these, the stage draws them
   let bands = []            // the ground bands (set.groundBands), live like the layers
   let skyNow = {}           // the sky picture's own values (set.skyLayer), live like the layers
+  let groups = []           // the groups of layers (set.groups), live like the layers: each carries its layers along
   let daylightNow = null    // the scene's time of day (set.daylight, daylight.ts), live: no rebuild for a colour or a cloud
   let hidden = new Set()    // rows the eye took off the canvas, 'layer-<i>' or 'band-<n>' (never saved)
   let seenEdit = null       // editSig of the last server config adopted
@@ -242,14 +244,18 @@ export async function createStage25d (host, opts = {}) {
     if (!scene || !stage) return
     const off = (l, id) => (hidden.has(id) ? { ...l, opacity: 0, keys: [] } : l)
     const daylight = (cfg?.world?.src ? worldDaylight(daylightNow) : daylightNow) ?? undefined
-    scene = { ...scene, set: { ...scene.set, daylight, soil: cfg?.set?.soil, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, layers: layers.map((l, i) => off(l, `layer-${i}`)) } }
+    scene = { ...scene, set: { ...scene.set, daylight, soil: cfg?.set?.soil, groundBands: bands.map((g, n) => off(g, `band-${n}`)), skyLayer: skyNow, groups, layers: withGroups(layers.map((l, i) => off(l, `layer-${i}`)), groups) } }
     stage.rebind(scene)
   }
   /** 'band-2' -> 2 when that ground band exists, else -1. */
   const bandIndex = (id) => { const m = /^band-(\d+)$/.exec(String(id ?? '')); return m && bands[Number(m[1])] ? Number(m[1]) : -1 }
   /** The values of a row: a layer, a ground band or the sky picture (one shape: layout.ts layerAt reads all three). */
+  /** 'group-g2' -> that group's index in groups, else -1. */
+  const groupIndex = (id) => { const g = groupId(id); return g === null ? -1 : groups.findIndex((row) => row.id === g) }
+  /** A group's row values as layerAt reads them: where its middle stands now (its rest until it moved). */
+  const groupValues = (g) => ({ ...g, x: g.x ?? g.rest.x, z: g.z ?? g.rest.z, depth: 'mid' })
   const valuesOf = (id) => (id === 'sky' ? (cfg?.set?.sky ? { ...skyNow, depth: 'sky' } : null)
-    : bandIndex(id) >= 0 ? { ...bands[bandIndex(id)], depth: 'bg' } : layers[layerIndex(id)] ?? null)
+    : bandIndex(id) >= 0 ? { ...bands[bandIndex(id)], depth: 'bg' } : groupIndex(id) >= 0 ? groupValues(groups[groupIndex(id)]) : layers[layerIndex(id)] ?? null)
   /** Change a row live. Returns what the server saves it as: a layer's index, `{ band }`, `{ skyLayer }`; null: no such row. */
   const edit = (id, patch) => {
     let saved = null
@@ -262,6 +268,10 @@ export async function createStage25d (host, opts = {}) {
       const n = bandIndex(id)
       bands = bands.map((g, k) => (k === n ? { ...g, ...patch } : g))
       saved = { band: { index: n, ...patch } }
+    } else if (groupIndex(id) >= 0) {
+      const n = groupIndex(id)
+      groups = groups.map((g, k) => (k === n ? { ...g, ...patch } : g))
+      saved = { group: { id: groups[n].id, ...patch } }
     } else if (layers[layerIndex(id)]) {
       const i = layerIndex(id)
       layers = layers.map((l, n) => (n === i ? { ...l, ...patch } : l))
@@ -272,7 +282,7 @@ export async function createStage25d (host, opts = {}) {
     redraw()
     return saved
   }
-  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined, soil: cfg?.set?.soil }, look: lookNow, camera: camNow, camera_more: camMore, camera_motion: camMotion })
+  const liveSig = () => editSig({ set: { layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined, soil: cfg?.set?.soil, groups }, look: lookNow, camera: camNow, camera_more: camMore, camera_motion: camMotion })
   /** Layers overlapping the selected one from in front show it through, while it is being worked on (not played, not in a thumbnail). */
   const selectionFade = () => {
     const selected = pointer?.selected ?? null
@@ -328,7 +338,7 @@ export async function createStage25d (host, opts = {}) {
     window.addEventListener('scene-object-selected', (e) => { if (e.detail?.id !== 's25_camera') api.frameCamera(false) })
   }
   /** The set as the teacher sees it now: a rebuild (an asset swap, a new layer) keeps every live edit. */
-  const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined })
+  const liveSet = () => ({ ...cfg.set, layers, groundBands: bands, skyLayer: skyNow, daylight: daylightNow ?? undefined, groups })
   /** The scene's set as it stands now, for the sky rules (daylight.ts hasSky, isDynamic). */
   const setNow = () => ({ ...(cfg?.set ?? {}), daylight: daylightNow ?? undefined })
   /** Change a row and save it (onCommit: a layer by index; a band or the sky as its own patch). */
@@ -456,7 +466,8 @@ export async function createStage25d (host, opts = {}) {
       syncWorld(cfgNow.world)   // not awaited: the set shows now, the world builds in when it has downloaded
       if (!parked) canvas.style.visibility = ''   // the first pictures are ready: until then the host's colour, never the empty stage's paper
       scene = next
-      layers = next.set.layers
+      layers = next.set.layers.map(({ _group, ...l }) => l)   // the engine edits the layers; redraw resolves their groups
+      groups = (cfgNow.set?.groups ?? []).map((g) => ({ ...g }))
       bands = (next.set.groundBands ?? []).map((g) => ({ ...g }))
       skyNow = { ...(next.set.skyLayer ?? {}) }
       daylightNow = cfgNow.set?.daylight ?? null
@@ -523,6 +534,16 @@ export async function createStage25d (host, opts = {}) {
           inPlace: (i) => closeUp(i) && !scaleKeyed(i),
           onResize: resizeInPlace,
           isLocked: (i) => !!layers[i]?.locked,
+          // a group's box is the box round all its layers as they stand now; it moves through the group's own row
+          group: {
+            box: (gid) => {
+              const boxes = layers.flatMap((l, i) => (l.group === gid && !hidden.has(`layer-${i}`) ? [stage.layerBox(i)] : [])).filter(Boolean)
+              if (!boxes.length) return null
+              return { x0: Math.min(...boxes.map((b) => b.x0)), y0: Math.min(...boxes.map((b) => b.y0)), x1: Math.max(...boxes.map((b) => b.x1)), y1: Math.max(...boxes.map((b) => b.y1)), z: Math.min(...boxes.map((b) => b.z)) }
+            },
+            value: (gid, prop) => api.readLayerProp(`group-${gid}`, prop),
+            change: (gid, prop, v, opts) => api.moveLayer(`group-${gid}`, prop, v, opts),
+          },
         })
       }
       if ((pointer?.selected ?? -1) >= layers.length) pointer.select(null)   // its layer is gone (a delete, an undo)
@@ -638,6 +659,7 @@ export async function createStage25d (host, opts = {}) {
         return next
       }
       layers = layers.map((l, i) => take(l, cfgNow.set?.layers?.[i]))
+      groups = (cfgNow.set?.groups ?? []).map((g) => ({ ...g }))   // a group made, moved or taken apart (an undo too)
       bands = bands.map((g, i) => take(g, cfgNow.set?.groundBands?.[i]))
       skyNow = take(skyNow, cfgNow.set?.skyLayer)
       daylightNow = cfgNow.set?.daylight ?? null
@@ -707,6 +729,12 @@ export async function createStage25d (host, opts = {}) {
         return
       }
       api.frameCamera(false)
+      if (groupIndex(id) >= 0) {   // a group: its box round all its layers on the canvas, dragged as one
+        backdrop = null
+        pointer?.selectGroup?.(groups[groupIndex(id)].id)
+        window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${id}` } }))
+        return
+      }
       backdrop = isBackdrop(id) ? id : null
       pointer?.select(layerIndex(id) >= 0 ? layerIndex(id) : null, !backdrop)
       if (backdrop) window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `s25_${backdrop}` } }))
@@ -858,6 +886,9 @@ export async function createStage25d (host, opts = {}) {
         })
         if (!t && !strips.length) return null
         return { id, asset: t?.asset.id ?? null, depth: 'ground', figure: null, backdrop: true, role: 'terrain', fields: [], flip: !!t?.flip, label: t ? layerLabel({}, t.asset, lang) : (TERRAIN_NAME[lang] ?? 'Terrain'), file: t ? `${libData.base}${t.asset.file}` : null, motion: null, strips, soil: cfg.set?.soil ?? null }
+      }
+      if (groupIndex(id) >= 0) {   // a group: where its middle stands, how big, turned and faded; no picture of its own
+        return { id, asset: null, depth: 'mid', figure: null, role: 'group', fields: ['x', 'z', 'y', 'scale', 'rotation', 'opacity'], label: api.items().find((row) => row.id === id)?.label ?? '', file: null, motion: null }
       }
       if (bandIndex(id) >= 0) {
         const band = bands[bandIndex(id)]
@@ -1363,7 +1394,9 @@ export async function createStage25d (host, opts = {}) {
         ...bands.map((g) => layerLabel({}, assets.get(g.asset) ?? { id: g.asset }, lang)),
       ])
       return [
-        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)), locked: !!l.locked })),
+        ...layers.map((l, i) => ({ id: `layer-${i}`, label: labels[i], icon: assetIcon(assets.get(l.asset)), depth: l.depth, z: l.z ?? DEPTH_Z[l.depth], keys: l.keys ?? [], scenery: isBackdropAsset(assets.get(l.asset)), locked: !!l.locked, ...(groups.some((g) => g.id === l.group) ? { group: l.group } : {}) })),
+        // a group (Bart 11-25, as in Photoshop): its own place, size, turn, fade and keys, carrying its layers along
+        ...groups.map((g, n) => ({ id: `group-${g.id}`, label: g.name || `${GROUP_NAME[lang] ?? GROUP_NAME.en} ${n + 1}`, icon: 'group', depth: 'mid', z: g.z ?? g.rest.z, keys: g.keys ?? [], isGroup: true, members: layers.flatMap((l, i) => (l.group === g.id ? [`layer-${i}`] : [])) })),
         ...bands.map((g, n) => ({ id: `band-${n}`, label: labels[layers.length + n], icon: 'photo', depth: 'bg', z: g.z, keys: g.keys ?? [], backdrop: true })),
         ...(terrainSlot() || bands.length ? [{ id: 'terrain', label: TERRAIN_NAME[lang] ?? 'Terrain', icon: 'terrain', depth: 'ground', keys: [], backdrop: true }] : []),
         ...(hasSky(setNow()) ? [{ id: 'sky', label: SKY_NAME[lang] ?? 'Sky', icon: 'cloud', depth: 'sky', keys: skyNow.keys ?? [], backdrop: true }] : []),

@@ -181,7 +181,23 @@
         </div>
 
         {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
-        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain' && !info?.own">
+        {{-- A group (Bart 11-25, as in Photoshop): no picture of its own. Its name, and Ungroup, which leaves every layer
+             standing where the group put it; its place, size, turn and fade are the rows below, keyed like a layer's. --}}
+        @if (str_starts_with((string) $layerId, 'group-'))
+            <div class="mt-3 space-y-2" data-stage25d-group>
+                <x-ui.panel-row :label="__('Name')">
+                    <input type="text" maxlength="40" class="input input-xs w-full" aria-label="{{ __('Name') }}" data-stage25d-group-name
+                           :value="info?.label" x-on:change="window.__stage25d?.commitLayerProp?.(@js($layerId), 'name', $event.target.value); sync()" />
+                </x-ui.panel-row>
+                <button type="button" class="btn btn-sm w-full" data-stage25d-ungroup
+                        x-on:click="window.__clearLayerGuard?.(); $wire.ungroupStage25d(@js(substr((string) $layerId, 6)))">
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Ungroup') }}
+                </button>
+            </div>
+        @endif
+
+        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain' && info?.role !== 'group' && !info?.own">
             <button type="button" class="absolute inset-0 flex items-center justify-center"
                     data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
                     x-on:click="pickPicture()" x-on:dblclick="editPicture()">

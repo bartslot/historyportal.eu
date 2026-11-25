@@ -203,7 +203,7 @@ trait DuplicatesSceneObjects
 
                 continue;
             }
-            unset($copy['world']);   // the teacher placed this one here: picking another world keeps it
+            unset($copy['world'], $copy['group']);   // the teacher placed this one here: picking another world keeps it; its group stays behind
             // A character keeps its speaker handle when this scene doesn't have that character yet.
             if (is_string($copy['figure'] ?? null) && in_array($copy['figure'], $handles, true)) {
                 unset($copy['figure']);

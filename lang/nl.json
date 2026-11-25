@@ -3207,5 +3207,7 @@
     "Edit with others": "Samen bewerken",
     "Lock": "Vergrendelen",
     "Unlock": "Ontgrendelen",
-    "Unpin from map": "Losmaken van de kaart"
+    "Unpin from map": "Losmaken van de kaart",
+    "Group": "Groeperen",
+    "Ungroup": "Groep opheffen"
 }

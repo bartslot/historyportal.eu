@@ -11,6 +11,7 @@ use App\Services\Editor\Cutouts;
 use App\Services\Editor\EditedImages;
 use App\Services\Lessons\FigureMouth;
 use App\Services\Stage25d\Daylight;
+use App\Services\Stage25d\LayerGroups;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\LibraryBundle;
 use App\Services\Stage25d\SceneStill;
@@ -44,6 +45,11 @@ trait EditsStage25d
         }
         if (is_array($patch['cameraMotion'] ?? null)) {   // its own motion: a sway, a hand holding it, a shake
             $this->storeStage25dCameraMotion($scene, $patch['cameraMotion']);
+
+            return;
+        }
+        if (is_array($patch['group'] ?? null) && $scene) {   // a group's place, size, turn, fade, name or keys (GroupsStage25dLayers)
+            $this->saveStage25dGroup($scene, $patch['group']);
 
             return;
         }
@@ -808,6 +814,7 @@ trait EditsStage25d
         unset($layers[$index]);
         $config = $scene->config;
         $config['stage25d']['set']['layers'] = array_values($layers);
+        $config['stage25d']['set'] = LayerGroups::prune($config['stage25d']['set']);   // its group goes with its last layer
         if (is_string($handle) && ! in_array($handle, array_column($layers, 'figure'), true)) {
             $config = self::withoutGroupOf($config, 'stage25d:'.$handle);
         }
