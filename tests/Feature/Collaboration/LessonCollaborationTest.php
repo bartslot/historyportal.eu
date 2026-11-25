@@ -165,6 +165,17 @@ class LessonCollaborationTest extends TestCase
         $this->assertSame($this->joey->id, app(LessonCollaboration::class)->holder($this->lesson, 'scene:'.$this->one->id)?->id);
     }
 
+    public function test_an_event_is_judged_by_the_listener_it_lands_on(): void
+    {
+        $this->addJoey();
+        $this->editorFor($this->joey, $this->one)->dispatch('scene:delete-object', objectId: 'txt_1');
+        $this->assertSame($this->joey->id, app(LessonCollaboration::class)->holder($this->lesson, 'scene:'.$this->one->id)?->id);
+
+        app(LessonCollaboration::class)->takeOver($this->lesson, $this->owner, 'scene:'.$this->one->id);
+        $this->expectException(SceneClaimTaken::class);
+        $this->editorFor($this->joey, $this->one)->dispatch('scene:delete-object', objectId: 'txt_1');
+    }
+
     public function test_take_over_hands_the_scene_to_whoever_presses_it(): void
     {
         $this->addJoey();
