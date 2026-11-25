@@ -3193,5 +3193,16 @@
     "Scene cut in two. This is the second part.": "Scène in tweeën geknipt. Dit is het tweede deel.",
     "Cut undone.": "Knip ongedaan gemaakt.",
     "Open a scene to cut it.": "Open een scène om hem te knippen.",
-    "A game or a voyage stop cannot be cut.": "Een spel of een reisstop kun je niet knippen."
+    "A game or a voyage stop cannot be cut.": "Een spel of een reisstop kun je niet knippen.",
+    ":name took over this scene": ":name heeft deze scène overgenomen",
+    "A new picture or clip arrived": "Er is een nieuwe afbeelding of clip binnen",
+    "Someone": "Iemand",
+    "Editors": "Bewerkers",
+    ":name is editing this scene": ":name bewerkt deze scène",
+    "Take over": "Overnemen",
+    "Owner": "Eigenaar",
+    "Remove :name": ":name verwijderen",
+    "No teacher account uses this email address.": "Geen docentaccount gebruikt dit e-mailadres.",
+    "This is the lesson's owner.": "Dit is de eigenaar van de les.",
+    "Edit with others": "Samen bewerken"
 }

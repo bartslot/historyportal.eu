@@ -2540,8 +2540,9 @@
         </div>
         </div>
 
-        {{-- Right group: Help | Settings, then Publish in the far corner --}}
+        {{-- Right group: who else is here | Help | Settings, then Publish in the far corner --}}
         <div class="flex items-stretch gap-0.5">
+        <x-editor.collab-people :lesson="$lesson" />
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
         {{-- What is wrong with the lesson (LessonProblems): hidden when nothing is; red when the class
@@ -2586,6 +2587,8 @@
             <x-ui.icon name="account-add" class="h-6 w-6" />
             <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
         </a>
+        @elseif (! auth()->user()?->canManage($lesson))
+            {{-- An editor the owner let in: who sees the lesson stays the owner's call (claimOwnerOnlyMethods). --}}
         @else
         {{-- Publish — who can see this lesson: share it with other teachers, publish it to a class
              now, or schedule that. Share lives here because it is the other visibility decision:
@@ -3323,6 +3326,9 @@
     {{-- The teacher's own cut-outs, and the ones this lesson's 3D scenes use: rows of the 3D library (stage25d/engine.js). --}}
     <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode([...\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson), ...\App\Services\Editor\Characters::forStage(auth()->user(), $lesson)]) }}"></div>
     <div hidden wire:ignore data-cutout-labels="{{ json_encode([...\App\Services\Editor\Cutouts::labels(), ...\App\Services\Editor\Characters::labels()]) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
+
+    {{-- Somebody else holds the scene on screen: read-only, with Take over (editor/collab.js). --}}
+    <x-editor.collab-overlay :lesson="$lesson" />
 
     {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
          The selected thumb is announced to it here: the element is new whenever the selection changes. --}}

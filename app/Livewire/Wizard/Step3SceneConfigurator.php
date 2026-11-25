@@ -34,6 +34,7 @@ use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
+use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
 use App\Livewire\Wizard\Concerns\RestylesImages;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
@@ -82,6 +83,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
+use App\Services\Collaboration\LessonCollaboration;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -110,6 +112,7 @@ class Step3SceneConfigurator extends Component
     use EditsTitleScreen;
     use EditsWithSpark;
     use FixesLessonProblems;
+    use GuardsLessonClaims;
     use RestylesImages;
     use UndoesSceneEdits;
     use WithFileUploads;
@@ -187,7 +190,7 @@ class Step3SceneConfigurator extends Component
 
     public function mount(Lesson $lesson, bool $playOnOpen = false): void
     {
-        abort_unless(auth()->user()?->canManage($lesson), 403);
+        abort_unless(auth()->user()?->canEdit($lesson), 403);
         $this->lesson = $lesson;
         $this->playOnOpen = $playOnOpen;
         // Editing is not unpublishing. This used to set Configuring unconditionally, so a teacher
@@ -221,6 +224,55 @@ class Step3SceneConfigurator extends Component
         $this->titleSelected = ! $deepScene;
         $this->refreshTitleFrame();
         $this->openModalOnLoad = request()->boolean('modal');
+    }
+
+    // ── Several accounts in one lesson (GuardsLessonClaims, LessonCollaboration) ──────────────────────
+
+    protected function claimLesson(): ?Lesson
+    {
+        return $this->lesson ?? null;
+    }
+
+    protected function claimTarget(): ?string
+    {
+        if ($this->titleSelected) {
+            return LessonCollaboration::TITLE;
+        }
+
+        return $this->selectedSceneId ? LessonCollaboration::sceneTarget((int) $this->selectedSceneId) : null;
+    }
+
+    /** Looking, picking, opening a picker, and the lesson-wide edits that touch no single scene. */
+    protected function claimFreeMethods(): array
+    {
+        return [
+            '$refresh', 'startEditStep', 'poll', 'pollWorldStatus', 'pollRestyle', 'sparkStatus', 'sparkPending',
+            'selectScene', 'loadStageScene', 'selectTitle', 'refreshTitleFrame', 'showProblemScene', 'openProblems',
+            'selectInspectorTarget', 'clearActiveText', 'setActiveLayer', 'clearActiveLayer', 'clearActiveBalloon', 'selectPanel',
+            'scenesData', 'territoryResults', 'cityResults', 'paintingResults', 'pickerEra', 'pickerShelves',
+            'preparePaintings', 'loadLibraryCollection', 'originalOfEdited', 'canUndoVoyage',
+            'openAddScenePicker', 'openAddSceneAfter', 'openPaintingPicker', 'openImageLibrary', 'openStopImagePicker',
+            'openModelPicker', 'openMarkerImagePicker', 'openGalleryImagePicker', 'openSvgLibrary',
+            'openSettings', 'openFormat', 'openPlay', 'prepareToPlay', 'playSelected',
+            // Lesson-wide: a new scene, the order, the lesson's own settings, the teacher's own library.
+            'addScene', 'insertVoyage', 'reorder', 'duplicateScene', 'undoSceneDelete',
+            'setBackgroundMusic', 'setSubtitles', 'saveCharacter', 'removeCharacter', 'saveCutout', 'removeCutout',
+            'publish', 'schedulePublish', 'cancelSchedule', 'toggleSharing',
+        ];
+    }
+
+    protected function claimFreeProperties(): array
+    {
+        return [
+            'addSceneOpen', 'paintingPickerOpen', 'paintingCommonsLoaded', 'paintingKind', 'paintingRegion',
+            'paintingQuery', 'svgLibraryOpen', 'publishNotice', 'changeRequest',
+        ];
+    }
+
+    /** Who may see the lesson stays the owner's decision. */
+    protected function claimOwnerOnlyMethods(): array
+    {
+        return ['publish', 'schedulePublish', 'cancelSchedule', 'toggleSharing'];
     }
 
     #[Computed]

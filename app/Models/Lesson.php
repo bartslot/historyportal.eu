@@ -289,6 +289,12 @@ class Lesson extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    /** Accounts the owner let into the editor (lesson_editors). The owner is not in this list. */
+    public function editors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'lesson_editors')->withTimestamps();
+    }
+
     public function quizQuestions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class)->orderBy('order');

@@ -2388,6 +2388,99 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .quiz-answer-2 { background-color: var(--quiz-answer-2); color: #fff; }
 .quiz-answer-3 { background-color: var(--quiz-answer-3); color: #fff; }
 
+/* ── Several accounts in one lesson (resources/js/editor/collab.js) ─────────────────────────────────────
+   Each person keeps one colour (LessonCollaboration::person). It is the only colour here, and it is
+   identity, not chrome: a ring and a dot, never a fill behind text. */
+@layer components {
+    .collab-avatar, .collab-chip {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 9999px;
+        background: var(--color-base-200);
+        border: 2px solid var(--collab-color, var(--color-base-content));
+        color: var(--color-base-content);
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    /* On a rail thumb: whoever is on that scene. The thumb wrapper is the anchor. */
+    [data-scene-block] { position: relative; }
+    .collab-chips {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
+        display: flex;
+        gap: 0.125rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .collab-chip {
+        width: auto;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        padding: 0 0.25rem;
+        background: var(--color-base-300);
+    }
+
+    /* Somebody else holds the scene on screen: the work area (not the rail, not the top bar) stops taking
+       clicks. Above the docked inspector (z-50), below every modal. */
+    .collab-lock {
+        position: fixed;
+        inset: 4rem 0 0 var(--rail-w, 11rem);
+        z-index: 55;
+        cursor: not-allowed;
+        background: color-mix(in oklab, var(--color-base-100) 25%, transparent);
+    }
+    .collab-lock-bar,
+    .collab-notice {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+        cursor: default;
+        border: 1px solid var(--color-base-300);
+        background: var(--color-base-200);
+    }
+    .collab-lock-bar { top: 5rem; }
+    .collab-notice { bottom: 1.5rem; z-index: 60; }
+}
+
+/* Another editor's pointer over the stage (collab-realtime.js): a dot in their colour and their name. */
+@layer components {
+    .collab-cursor {
+        position: absolute;
+        z-index: 46;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        pointer-events: none;
+        transform: translate(-0.3rem, -0.3rem);
+        transition: left 100ms linear, top 100ms linear;
+    }
+    .collab-cursor-dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 9999px;
+        background: var(--collab-color, var(--color-base-content));
+        border: 1px solid var(--color-base-100);
+    }
+    .collab-cursor-name {
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.375rem;
+        background: var(--color-base-100);
+        border: 1px solid var(--collab-color, var(--color-base-content));
+        color: var(--color-base-content);
+        font-size: 0.75rem;
+        line-height: 1rem;
+        white-space: nowrap;
+    }
+}
+
 /* ─── A voyage stop's button on the map, as a comic speech bubble (Bart 2026-11-23: "how do we make
    these buttons more comic style?"). Cream paper, a thick ink outline drawn a little unevenly, a hard
    ink shadow and no glow; the tail that points at the stop's dot is SVG (voyage-tour.js stopBubbleTail).

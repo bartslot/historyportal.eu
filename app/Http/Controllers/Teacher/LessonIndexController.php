@@ -43,7 +43,16 @@ final class LessonIndexController extends Controller
             ->limit(self::LESSON_LIMIT)
             ->get();
 
+        // Other teachers' lessons this account was added to as an editor: they open in the editor.
+        $editing = $request->user()->editableLessons()
+            ->whereKeyNot($lessons->modelKeys())
+            ->with(['source', 'firstScene', 'teacher:id,name'])
+            ->latest('lessons.updated_at')
+            ->limit(self::LESSON_LIMIT)
+            ->get();
+
         return view('teacher.lessons', [
+            'editingLessons' => $editing,
             'lessonCount' => $lessonCount,
             'lessonLimit' => self::LESSON_LIMIT,
             'shelves' => $catalog->placeShelves($lessons),
