@@ -48,6 +48,13 @@ trait CutsScenes
     }
 
     /** The columns a cut changes on the first piece. */
+    /**
+     * Goes up with every cut and every undone cut. The open timeline remembers each scene's length and keys in the page
+     * (timeline-panel.js SESSIONS, so a save's re-render keeps the playhead); a cut changes what a scene id holds, so the
+     * panel only takes back what it remembered under the same count.
+     */
+    public int $timelineEpoch = 0;
+
     private const CUT_COLUMNS = ['script_segment', 'audio_path', 'audio_alignment', 'audio_script_hash', 'duration_seconds', 'config', 'shots'];
 
     /**
@@ -137,6 +144,7 @@ trait CutsScenes
 
         $this->placeSceneAfterSelected($piece, $scene->id);
         session()->put($this->cutKey(), ['first' => $scene->id, 'second' => $piece->id, 'before' => $before, 'at' => now()->getTimestampMs() / 1000]);
+        $this->timelineEpoch++;
         $this->selectSceneInternal($piece->id);
         $this->dispatch('toast', type: 'success', message: __('Scene cut in two. This is the second part.'), duration: 9000, action: [
             'label' => __('Undo'),
@@ -195,9 +203,8 @@ trait CutsScenes
         });
         Storage::disk('public')->delete($made);
 
+        $this->timelineEpoch++;
         $this->selectSceneInternal($first->id);
-        // The open timeline remembers the first piece's length and keys (timeline-panel.js SESSIONS): hand it the whole scene.
-        $this->dispatch('timeline-restored', timeline: $first->fresh()?->config['timeline'] ?? []);
         $this->dispatch('toast', type: 'info', message: __('Cut undone.'));
     }
 

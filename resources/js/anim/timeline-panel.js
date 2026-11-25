@@ -305,8 +305,9 @@ export const animationTimeline = (config = {}) => ({
       flushBeforeRequest()
     })
 
-    const saved = SESSIONS.get(config.sceneId)
-    if (saved) Object.assign(this, saved)
+    // Remembered under another cut count, the scene id held another scene (a cut, or its undo): start from the server's.
+    const { epoch: savedEpoch = 0, ...saved } = SESSIONS.get(config.sceneId) ?? {}
+    if (savedEpoch === (config.epoch ?? 0) && Object.keys(saved).length) Object.assign(this, saved)
     this.restoreDraft()
 
     // The Format panel's diamonds live in a different component, so the timeline publishes the
@@ -478,6 +479,7 @@ export const animationTimeline = (config = {}) => ({
   /** Remember everything a morph would otherwise throw away. */
   remember () {
     SESSIONS.set(config.sceneId, {
+      epoch: config.epoch ?? 0,
       time: this.time, zoom: this.zoom, zoomIsMine: this.zoomIsMine, duration: this.duration, durationSet: this.durationSet,
       openGroups: { ...this.openGroups },
       loop: this.loop, autoKey: this.autoKey, hiddenObjects: { ...this.hiddenObjects },
