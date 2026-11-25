@@ -24,8 +24,8 @@ use App\Livewire\Wizard\Concerns\EditsQuizQuestions;
 use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
 use App\Livewire\Wizard\Concerns\EditsSceneBackground;
 use App\Livewire\Wizard\Concerns\EditsSceneBalloons;
-use App\Livewire\Wizard\Concerns\EditsSceneLoop;
 use App\Livewire\Wizard\Concerns\EditsSceneLinks;
+use App\Livewire\Wizard\Concerns\EditsSceneLoop;
 use App\Livewire\Wizard\Concerns\EditsSplitPanels;
 use App\Livewire\Wizard\Concerns\EditsStage25d;
 use App\Livewire\Wizard\Concerns\EditsStoryGame;
@@ -99,11 +99,11 @@ class Step3SceneConfigurator extends Component
     use EditsQuizQuestions;
     use EditsSceneArtwork;
     use EditsSceneBackground;
-    use EditsSceneLoop;
     use EditsSceneBalloons;
+    use EditsSceneLinks;
+    use EditsSceneLoop;
     use EditsSplitPanels;
     use EditsStage25d;
-    use EditsSceneLinks;
     use EditsStoryGame;
     use EditsStoryMap;
     use EditsTeamGame;
@@ -5872,7 +5872,6 @@ class Step3SceneConfigurator extends Component
         $this->selectSceneInternal($scene->id);
     }
 
-
     /** @return array<string,string> catalog voyages that can be sailed (have legs), as [id => name] */
     #[Computed]
     public function voyageOptions(): array
@@ -5964,13 +5963,7 @@ class Step3SceneConfigurator extends Component
 
         DB::transaction(function () use ($slot): void {
             $this->lesson->scenes()->whereIn('id', $slot['scenes'])->forceDelete();
-            $remaining = $this->lesson->scenes()->ordered()->get();
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => -1 * ($idx + 1)]);
-            }
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => $idx + 1]);
-            }
+            $this->renumberScenes();
             $gc = array_diff_key($this->lesson->game_config ?? [], array_flip(self::VOYAGE_INSERT_KEYS));
             $this->lesson->update(['game_config' => $gc + (array) ($slot['before'] ?? [])]);
         });
@@ -6038,15 +6031,7 @@ class Step3SceneConfigurator extends Component
         $this->deletedScene = ['id' => $sceneId, 'order' => $wasOrder, 'at' => now()->getTimestampMs() / 1000];
         session()->forget($this->voyageInsertKey());   // a newer structural edit: Cmd-Z means the delete now
 
-        $remaining = $this->lesson->scenes()->ordered()->get();
-        DB::transaction(function () use ($remaining) {
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => -1 * ($idx + 1)]);
-            }
-            foreach ($remaining as $idx => $s) {
-                $s->update(['order' => $idx + 1]);
-            }
-        });
+        DB::transaction(fn () => $this->renumberScenes());
 
         if ($wasGame) {
             $this->syncGameSceneIndexes();
@@ -6103,6 +6088,22 @@ class Step3SceneConfigurator extends Component
     private function parkingOrder(): int
     {
         return (int) $this->lesson->scenes()->withTrashed()->max('order') + 1000;
+    }
+
+    /**
+     * The live scenes numbered 1..n again in their running order. Two passes, because (lesson_id, order)
+     * is unique: negative first, then the real numbers, both over ONE list read before either (read again,
+     * the negatives sort backwards). Call it inside a transaction.
+     */
+    private function renumberScenes(): void
+    {
+        $scenes = $this->lesson->scenes()->ordered()->get();
+        foreach ($scenes as $i => $s) {
+            $s->update(['order' => -1 * ($i + 1)]);
+        }
+        foreach ($scenes as $i => $s) {
+            $s->update(['order' => $i + 1]);
+        }
     }
 
     /**

@@ -149,5 +149,10 @@ class SceneCutTest extends TestCase
         Storage::disk('public')->assertExists([$mp3, $first->audio_path, $second->audio_path]);
         $this->assertSame('s', $second->audio_alignment[0]['character']);
         $this->assertSame(0.15, $second->audio_alignment[0]['start_time']);
+
+        $component->call('undoSceneCut');
+        $this->assertSame($mp3, $first->fresh()->audio_path);
+        Storage::disk('public')->assertExists($mp3);
+        Storage::disk('public')->assertMissing([$first->audio_path, $second->audio_path]);   // the cut's own files go with it
     }
 }
