@@ -45,7 +45,7 @@ class ImageRestyler
             return false;
         }
         if ($subject instanceof Scene) {
-            return $user->canManage($subject->lesson);
+            return $user->canEdit($subject->lesson);
         }
 
         return $subject instanceof SvgAsset && $user->isAdmin();

@@ -58,6 +58,9 @@ window.addEventListener('image-edit:open', (e) => {
 });
 // Tekenen: pen, line and arrow over the scene, each saved as its own layer: x-data="drawTool()".
 window.drawTool = drawTool;
+// Several accounts in one lesson: who is where, scene locks, Take over (editor/collab.js).
+// Loaded only when an editor page asks for it, so pages without the editor do not carry it.
+window.startLessonCollab = (wire, config) => import('./editor/collab.js').then((m) => m.startLessonCollab(wire, config));
 // The story map: the lesson's scenes and choices as cards and lines (editor/story-map.js), fetched the first time it opens.
 window.loadStoryMap = () => import('./editor/story-map.js');
 

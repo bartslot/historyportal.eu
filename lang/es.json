@@ -3168,5 +3168,16 @@
     "Scene cut in two. This is the second part.": "Escena cortada en dos. Esta es la segunda parte.",
     "Cut undone.": "Corte deshecho.",
     "Open a scene to cut it.": "Abre una escena para cortarla.",
-    "A game or a voyage stop cannot be cut.": "Un juego o una parada del viaje no se puede cortar."
+    "A game or a voyage stop cannot be cut.": "Un juego o una parada del viaje no se puede cortar.",
+    ":name took over this scene": ":name ha tomado esta escena",
+    "A new picture or clip arrived": "Ha llegado una nueva imagen o clip",
+    "Someone": "Alguien",
+    "Editors": "Editores",
+    ":name is editing this scene": ":name está editando esta escena",
+    "Take over": "Tomar el control",
+    "Owner": "Propietario",
+    "Remove :name": "Quitar a :name",
+    "No teacher account uses this email address.": "Ninguna cuenta de docente usa este correo.",
+    "This is the lesson's owner.": "Es el propietario de la lección.",
+    "Edit with others": "Editar con otros"
 }
