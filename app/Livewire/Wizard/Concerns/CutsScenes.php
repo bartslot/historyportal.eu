@@ -13,6 +13,7 @@ use App\Services\Stage25d\LayerKeys;
 use App\Services\Support\SceneLoop;
 use App\Services\VideoTranscoder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Renderless;
 
@@ -62,12 +63,17 @@ trait CutsScenes
             return ['ok' => false, 'at' => $at, 'message' => $scene];
         }
         $snapped = $this->snapCut($scene, $at);
-        $length = (float) ($scene->config['timeline']['duration'] ?? 0);
-        if ($snapped < SceneCut::MIN_PIECE_S || ($length > 0 && $snapped > $length - SceneCut::MIN_PIECE_S)) {
+        if ($this->nearAnEnd($snapped, (float) ($scene->config['timeline']['duration'] ?? 0))) {
             return ['ok' => false, 'at' => $snapped, 'message' => __('Move the playhead away from the ends of the scene to cut it.')];
         }
 
         return ['ok' => true, 'at' => $snapped];
+    }
+
+    /** Too near either end of a scene `$length` seconds long (0: length unknown, only the start counts). */
+    private function nearAnEnd(float $at, float $length): bool
+    {
+        return $at < SceneCut::MIN_PIECE_S || ($length > 0 && $at > $length - SceneCut::MIN_PIECE_S);
     }
 
     /**
@@ -87,7 +93,7 @@ trait CutsScenes
         }
         $cut = round($this->snapCut($scene, $at), 3);
         $length = (float) ($first['duration'] ?? 0) + (float) ($second['duration'] ?? 0);
-        if ($cut < SceneCut::MIN_PIECE_S || ($length > 0 && $cut > $length - SceneCut::MIN_PIECE_S)) {
+        if ($this->nearAnEnd($cut, $length)) {
             $this->dispatch('toast', type: 'warning', message: __('Move the playhead away from the ends of the scene to cut it.'));
 
             return;
@@ -172,6 +178,11 @@ trait CutsScenes
         }
         $second = $this->lesson->scenes()->find($pending['second']);
 
+        // The audio the cut made, and nothing else: the original narration is what the first piece goes back to.
+        // A lesson copied in between shares the files by path: those stay.
+        $made = array_diff(array_filter([$first->audio_path, $second?->audio_path]), [$pending['before']['audio_path'] ?? null]);
+        $shared = Scene::withTrashed()->whereIn('audio_path', $made)->whereNotIn('id', array_filter([$first->id, $second?->id]))->pluck('audio_path')->all();
+        $made = array_values(array_diff($made, $shared));
         DB::transaction(function () use ($first, $second, $pending): void {
             // Straight onto the row: the cut stored these columns as they were, already cast.
             $first->setRawAttributes([...$first->getAttributes(), ...$pending['before']]);
@@ -179,16 +190,10 @@ trait CutsScenes
             if ($second) {
                 $second->update(['order' => $this->parkingOrder()]);
                 $second->delete();
-                // One list for both passes: read again after the first, the negative orders sort backwards.
-                $remaining = $this->lesson->scenes()->ordered()->get();
-                foreach ($remaining as $i => $s) {
-                    $s->update(['order' => -1 * ($i + 1)]);
-                }
-                foreach ($remaining as $i => $s) {
-                    $s->update(['order' => $i + 1]);
-                }
+                $this->renumberScenes();
             }
         });
+        Storage::disk('public')->delete($made);
 
         $this->selectSceneInternal($first->id);
         $this->dispatch('toast', type: 'info', message: __('Cut undone.'));
@@ -229,11 +234,8 @@ trait CutsScenes
             return round($at, 3);
         }
         $gap = SceneCut::wordGap($scene->audio_alignment, $at);
-        if ($gap !== null && abs($gap['time'] - $at) <= 1.0) {
-            return $gap['time'];
-        }
-        if ($gap !== null) {
-            return round($at, 3);   // past the last word (or before the first): nothing to snap to
+        if ($gap !== null) {   // more than a second off: past the last word (or before the first), nothing to snap to
+            return abs($gap['time'] - $at) <= 1.0 ? $gap['time'] : round($at, 3);
         }
 
         return SceneCut::nearestSilence(NarrationCutter::fromConfig()->silences($scene->audio_path), $at) ?? round($at, 3);
@@ -253,8 +255,9 @@ trait CutsScenes
         $gap = $scene->audio_path ? SceneCut::wordGap($alignment, $cut) : null;
         $spoken = is_array($alignment) ? count($alignment) : 0;
 
+        $audioLength = $scene->audio_path ? NarrationCutter::fromConfig()->duration($scene->audio_path) : null;
         // The narration is over before the cut: all of it stays in the first piece, the second is silent.
-        $end = $spoken > 0 ? (float) (end($alignment)['end_time'] ?? 0) : ($scene->audio_path ? NarrationCutter::fromConfig()->duration($scene->audio_path) : null);
+        $end = $spoken > 0 ? (float) (end($alignment)['end_time'] ?? 0) : $audioLength;
         if ($scene->audio_path && $end !== null && $end > 0 && $cut >= $end - 0.05) {
             return [
                 'first' => [],
@@ -267,8 +270,7 @@ trait CutsScenes
             [$textA, $textB] = SceneCut::splitScript($script, $gap['index'] / max(1, $spoken), mb_strlen($script) === $spoken);
         } else {
             $alignA = $alignB = null;
-            $total = $scene->audio_path ? NarrationCutter::fromConfig()->duration($scene->audio_path) : null;
-            $total ??= $length;
+            $total = $audioLength ?? $length;
             [$textA, $textB] = SceneCut::splitScript($script, $total > 0 ? $cut / $total : 0.5);
         }
 
@@ -331,30 +333,12 @@ trait CutsScenes
         $config['timeline'] = $stored;
         $config = SceneCut::linesFor($config, $cut, $second);
 
-        $layers = $config['stage25d']['set'] ?? null;
-        if (is_array($layers)) {
+        if (is_array($config['stage25d']['set'] ?? null)) {
             $span = (float) $stored['duration'];
             if (isset($config['stage25d']['dur_s'])) {
                 $config['stage25d']['dur_s'] = $span;
             }
-            foreach ((array) ($timeline['stage25dKeys'] ?? []) as $id => $keys) {
-                $path = match (true) {
-                    preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => ['layers', (int) $m[1]],
-                    preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => ['groundBands', (int) $m[1]],
-                    default => null,
-                };
-                if ($path === null || ! is_array($keys) || ! is_array(data_get($config, ['stage25d', 'set', ...$path]))) {
-                    continue;
-                }
-                $row = (array) data_get($config, ['stage25d', 'set', ...$path]);
-                $clean = LayerKeys::sanitize($keys, $span);
-                if ($clean === []) {
-                    unset($row['keys']);
-                } else {
-                    $row['keys'] = $clean;
-                }
-                data_set($config, ['stage25d', 'set', ...$path], $row);
-            }
+            $config = LayerKeys::applyTo($config, (array) ($timeline['stage25dKeys'] ?? []), $span);
         }
 
         return $config;

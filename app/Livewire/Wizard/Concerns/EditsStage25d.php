@@ -622,29 +622,8 @@ trait EditsStage25d
         if (! $scene || ! is_array($layers)) {
             return;
         }
-        $config = $scene->config;
         $span = max($duration, (float) ($scene->config['stage25d']['dur_s'] ?? 0), (float) $scene->duration_seconds);
-        foreach ($byLayer as $id => $keys) {
-            // a layer or a ground band (band-0): each keeps its keys on itself. The sky takes none (SKY_FIELDS).
-            $path = match (true) {
-                preg_match('/^layer-(\d+)$/', (string) $id, $m) === 1 => isset($layers[(int) $m[1]]) ? ['layers', (int) $m[1]] : null,
-                preg_match('/^band-(\d+)$/', (string) $id, $m) === 1 => isset($config['stage25d']['set']['groundBands'][(int) $m[1]]) ? ['groundBands', (int) $m[1]] : null,
-                default => null,
-            };
-            if ($path === null || ! is_array($keys)) {
-                continue;
-            }
-            $row = (array) data_get($config, ['stage25d', 'set', ...$path], []);
-            $clean = LayerKeys::sanitize($keys, $span);
-            if ($clean === []) {
-                unset($row['keys']);
-            } else {
-                $row['keys'] = $clean;
-            }
-            if ($row !== [] || $path !== ['skyLayer']) {
-                data_set($config, ['stage25d', 'set', ...$path], $row);
-            }
-        }
+        $config = LayerKeys::applyTo($scene->config, $byLayer, $span);
         if ($config !== $scene->config) {
             $this->storeStage25dConfig($scene, $config);
         }
