@@ -1980,6 +1980,9 @@
                 if (!window.__layerMenuCanvasMounted) {
                     window.__layerMenuCanvasMounted = true;
                     document.addEventListener('contextmenu', (e) => window.__layerMenuCanvas?.(e));
+                    // What had focus before the press: a right-press puts focus in a text box itself, so only a text that was
+                    // already being typed in keeps the browser's own menu (spelling).
+                    document.addEventListener('pointerdown', () => { window.__layerMenuFocus = document.activeElement; }, true);
                     window.addEventListener('keydown', (e) => {
                         if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'g' || window.__isTypingTarget?.(e.target)) return;
                         window.__layerGroupKey?.(e);
@@ -2258,7 +2261,10 @@
                 if (!m) return false;
                 m.style.left = Math.min(e.clientX, innerWidth - 200) + 'px';
                 m.style.top = Math.min(e.clientY, innerHeight - 260) + 'px';
-                m.showPopover();
+                // On a Mac the menu event comes on the press: shown then, the release would light-dismiss it at once. Wait for it.
+                const show = () => { try { m.showPopover(); } catch (_) {} };
+                if (e.buttons) window.addEventListener('pointerup', () => setTimeout(show), { once: true, capture: true });
+                else show();
                 return true;
             },
             /**
@@ -2270,7 +2276,7 @@
             canvasMenu(e) {
                 const t = e.target;
                 if (!t?.closest?.('#lesson-canvas-root') || this.$wire?.titleSelected) return;
-                if (t.closest('[contenteditable="true"], input, textarea')?.contains(document.activeElement)) return;
+                if (t.closest('[contenteditable="true"], input, textarea')?.contains(window.__layerMenuFocus ?? document.activeElement)) return;
                 this._sig = null;
                 this.refresh();
                 const id = this.objectIdAt(e);

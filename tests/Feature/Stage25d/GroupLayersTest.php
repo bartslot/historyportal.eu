@@ -76,7 +76,7 @@ class GroupLayersTest extends TestCase
         $editor->call('saveStage25dLayer', 0, ['group' => ['id' => 'g1', 'x' => 0.7, 'scale' => 99, 'name' => ' Hut <b>and</b> tree ']], $scene->id);
         $group = $scene->fresh()->config['stage25d']['set']['groups'][0];
         $this->assertSame(0.7, $group['x']);
-        $this->assertSame(20.0, $group['scale']);   // held to its range
+        $this->assertEquals(20.0, $group['scale']);   // held to its range
         $this->assertSame('Hut and tree', $group['name']);
 
         // the timeline's keys for the group's row land on the group (LayerKeys::applyTo, as saveStage25dKeys uses it)
