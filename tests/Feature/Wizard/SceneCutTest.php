@@ -158,7 +158,7 @@ class SceneCutTest extends TestCase
 
     public function test_a_stage_scene_takes_each_half_of_its_camera(): void
     {
-        $shot = fn (float $x, float $to, float $at, float $dur) => ['move' => 'framed', 'ease' => 'inOut', 'at_s' => $at, 'dur_s' => $dur, 'from' => ['x' => $x, 'y' => 1.6, 'z' => 0, 'fov' => 50], 'to' => ['x' => $to, 'y' => 1.6, 'z' => 0, 'fov' => 50]];
+        $shot = fn (float $x, float $to, float $at, float $dur, string $ease = 'inOut') => ['move' => 'framed', 'ease' => $ease, 'at_s' => $at, 'dur_s' => $dur, 'from' => ['x' => $x, 'y' => 1.6, 'z' => 0, 'fov' => 50], 'to' => ['x' => $to, 'y' => 1.6, 'z' => 0, 'fov' => 50]];
         $scene = $this->scene(1, [
             'kind' => 'stage25d',
             'config' => ['timeline' => $this->timeline(8.0), 'stage25d' => ['set' => ['layers' => []], 'camera' => $shot(-2, 2, 0, 8)]],
@@ -168,13 +168,14 @@ class SceneCutTest extends TestCase
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->call('selectScene', $scene->id)
             ->call('cutSceneAt', 4.0,
-                $this->timeline(4.0) + ['stage25dCamera' => ['camera' => $shot(-2, 0, 0, 4), 'camera_more' => []]],
-                $this->timeline(4.0) + ['stage25dCamera' => ['camera' => $shot(0, 2, 0, 4), 'camera_more' => []]],
+                $this->timeline(4.0) + ['stage25dCamera' => ['camera' => $shot(-2, 0, 0, 4, 'in'), 'camera_more' => []]],
+                $this->timeline(4.0) + ['stage25dCamera' => ['camera' => $shot(0, 2, 0, 4, 'out'), 'camera_more' => []]],
             );
 
         [$first, $second] = $this->lesson->scenes()->ordered()->get()->all();
         $this->assertSame(0.0, (float) $first->config['stage25d']['camera']['to']['x']);
         $this->assertSame(0.0, (float) $second->config['stage25d']['camera']['from']['x'], 'the second part carries on from the cut');
         $this->assertSame(2.0, (float) $second->config['stage25d']['camera']['to']['x']);
+        $this->assertSame(['in', 'out'], [$first->config['stage25d']['camera']['ease'], $second->config['stage25d']['camera']['ease']], 'each half keeps its part of the curve');
     }
 }

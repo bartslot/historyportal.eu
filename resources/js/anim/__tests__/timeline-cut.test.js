@@ -91,22 +91,55 @@ describe('cutTracks on a 2.5D stage row', () => {
 
 describe('cutCamera', () => {
   const pose = (x) => ({ x, y: 1.6, z: 0, fov: 50 })
+  const shot = (from, to, at, dur, ease = 'inOut') => ({ move: 'framed', ease, at_s: at, dur_s: dur, from: pose(from), to: pose(to) })
+  const play = async (shots, t, dur) => {
+    const { cameraPoseAt } = await import('../../scene/stage25d/framing.js')
+    return cameraPoseAt(shots.camera, shots.camera_more, t, dur).x
+  }
 
-  it('ends the first piece and starts the second on the framing at the cut', async () => {
-    const { cameraPoseAt, shotsOfKeys } = await import('../../scene/stage25d/framing.js')
-    const keys = [{ t: 0, pose: pose(-2) }, { t: 4, pose: pose(2) }, { t: 8, pose: pose(0) }]
-    const [cam, ...more] = shotsOfKeys(keys)
-    const atCut = cameraPoseAt(cam, more, 3, 8)
-    const { first, second } = cutCamera(keys, 3, 8)
-    const lastOf = (h) => [h.camera, ...h.camera_more].filter(Boolean).at(-1)
-    expect(lastOf(first).to.x).toBeCloseTo(atCut.x)
-    expect(second.camera.from.x).toBeCloseTo(atCut.x)
-    expect(second.camera.at_s).toBe(0)
-    expect(second.camera.dur_s).toBeCloseTo(1)                 // on to the key that was at 4 s
-    expect(second.camera_more[0].at_s).toBeCloseTo(1)
+  it('plays every moment of both pieces as the whole scene did, cut in the middle of a move', async () => {
+    const whole = { camera: shot(-2, 2, 0, 8), camera_more: [] }
+    const { first, second } = cutCamera(whole, 4, 8)
+    expect([first.camera.ease, second.camera.ease]).toEqual(['in', 'out'])
+    for (const t of [0.5, 1, 2, 3, 3.9]) expect(await play(first, t, 4)).toBeCloseTo(await play(whole, t, 8), 5)
+    for (const t of [0.1, 1, 2, 3, 4]) expect(await play(second, t, 4)).toBeCloseTo(await play(whole, t + 4, 8), 5)
   })
 
-  it('is null without camera keys', () => {
-    expect(cutCamera([], 2, 8)).toBeNull()
+  it('stays close to the whole move off the middle, and exact at the ends', async () => {
+    const whole = { camera: shot(-2, 2, 0, 8), camera_more: [] }
+    const { first, second } = cutCamera(whole, 3, 8)
+    expect(await play(first, 3, 3)).toBeCloseTo(await play(whole, 3, 8), 5)
+    expect(await play(second, 0, 5)).toBeCloseTo(await play(whole, 3, 8), 5)
+    expect(await play(second, 5, 5)).toBeCloseTo(2, 5)
+    for (const t of [0.5, 1.5, 2.5]) expect(Math.abs(await play(first, t, 3) - await play(whole, t, 8))).toBeLessThan(0.12)
+    for (const t of [1, 2.5, 4]) expect(Math.abs(await play(second, t, 5) - await play(whole, t + 3, 8))).toBeLessThan(0.12)
+  })
+
+  it('keeps the shots on either side as they were, later ones earlier by the cut', async () => {
+    const whole = { camera: shot(-2, 2, 0, 4, 'linear'), camera_more: [shot(2, 0, 4, 2), shot(0, 1, 6, 2, 'out')] }
+    const { first, second } = cutCamera(whole, 5, 8)
+    expect(first.camera).toEqual(whole.camera)
+    expect(second.camera.from.x).toBeCloseTo(await play(whole, 5, 8))
+    expect(second.camera_more).toEqual([{ ...whole.camera_more[1], at_s: 1 }])
+    for (const t of [0.5, 1.5, 2.5]) expect(await play(second, t, 3)).toBeCloseTo(await play(whole, t + 5, 8), 5)
+  })
+
+  it('a cut on a shot\'s start opens the second piece with that shot', () => {
+    const whole = { camera: shot(-2, 2, 0, 4), camera_more: [shot(2, 0, 4, 4)] }
+    const { first, second } = cutCamera(whole, 4, 8)
+    expect(first).toEqual({ camera: whole.camera, camera_more: [] })
+    expect(second).toEqual({ camera: { ...whole.camera_more[0], at_s: 0 }, camera_more: [] })
+  })
+
+  it('a move that has ended holds its framing in the second piece', async () => {
+    const whole = { camera: shot(-2, 2, 0, 3), camera_more: [] }
+    const { second } = cutCamera(whole, 5, 8)
+    expect(second.camera.from).toEqual(second.camera.to)
+    expect(second.camera.from.x).toBeCloseTo(2)
+  })
+
+  it('is null without camera shots', () => {
+    expect(cutCamera(null, 2, 8)).toBeNull()
+    expect(cutCamera({ camera: null, camera_more: [] }, 2, 8)).toBeNull()
   })
 })

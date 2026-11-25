@@ -201,7 +201,10 @@ trait EditsStage25d
         };
         $time = fn (string $key): array => is_numeric($shot[$key] ?? null) ? [$key => round(max(0.0, min(3600.0, (float) $shot[$key])), 3)] : [];
 
-        return [...$time('at_s'), ...$time('dur_s'), 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
+        // The stage's named eases (layout.ts EASES): the cut tool writes the part of a move's curve each piece plays.
+        $ease = in_array($shot['ease'] ?? null, ['linear', 'in', 'out', 'inOut'], true) ? ['ease' => $shot['ease']] : [];
+
+        return [...$time('at_s'), ...$time('dur_s'), ...$ease, 'from' => $pose((array) ($shot['from'] ?? [])), 'to' => $pose((array) ($shot['to'] ?? []))];
     }
 
     /** @param  array<mixed>  $motion */

@@ -9,10 +9,10 @@
  *
  * Pure: tracks in, two new lists of tracks out.
  */
-import { keyedAt } from '@stage25d/stage25d/layout'
+import { keyedAt, EASES, ease } from '@stage25d/stage25d/layout'
 import { sortedKeys, sameTime, segmentEasing } from './keyframes.js'
 import { sampleFrame, propertyFor, kindOfTarget } from './properties.js'
-import { cameraPoseAt, shotsOfKeys, withCameraKey } from '../scene/stage25d/framing.js'
+import { cameraPoseAt } from '../scene/stage25d/framing.js'
 
 /** The key in force at `time`: a word row (an expression) steps from key to key, it never blends. */
 const stepAt = (keys, time) => {
@@ -93,16 +93,52 @@ export const cutTracks = (tracks, at) => {
 }
 
 /**
- * The stage's camera cut at `at` (framing.js keys: `[{ t, pose }]`, as the stage's cameraInfo() gives them), as the shots
- * of each piece: the first ends on the framing at the cut, the second starts on it and keeps the keys after it, earlier
- * by `at`. Null with no camera keys.
+ * The stage's named ease that best draws part [u0, u1] of the curve `name` stretched over a whole move. Cut in half, an
+ * in-out move is exactly an ease-in and then an ease-out, so the camera keeps its speed at the cut; elsewhere it is the
+ * closest of the stage's eases, and the ends are exact. In-out first: a part that is the whole curve keeps it.
  */
-export const cutCamera = (keys, at, dur) => {
-  if (!keys?.length) return null
-  const [cam = null, ...more] = shotsOfKeys(keys)
-  const pose = cameraPoseAt(cam, more, at, dur)
-  const firstKeys = withCameraKey(keys.filter((k) => k.t < at), at, pose)
-  const secondKeys = withCameraKey(keys.filter((k) => k.t > at).map((k) => ({ ...k, t: round(k.t - at) })), 0, pose)
-  const shots = (list) => { const [camera = null, ...rest] = shotsOfKeys(list); return { camera, camera_more: rest } }
-  return { first: shots(firstKeys), second: shots(secondKeys) }
+const EASE_NAMES = ['inOut', ...Object.keys(EASES).filter((n) => n !== 'inOut')]
+export const easeOfPart = (name, u0, u1) => {
+  const e = (u) => ease(name, u)
+  const span = e(u1) - e(u0)
+  if (Math.abs(span) < 1e-9) return 'linear'
+  const part = (s) => (e(u0 + s * (u1 - u0)) - e(u0)) / span
+  const miss = (n) => { let sum = 0; for (let i = 1; i < 20; i++) sum += (ease(n, i / 20) - part(i / 20)) ** 2; return sum }
+  return EASE_NAMES.reduce((best, n) => (miss(n) < miss(best) - 1e-12 ? n : best))
+}
+
+/**
+ * The stage's camera shots (`{ camera, camera_more }`, config.stage25d) cut at `at` in a scene `dur` seconds long, as
+ * the shots of each piece. Shots on one side keep their ease and length (written out, since a piece is shorter than the
+ * scene); the shot playing at the cut is split in two, ending and starting on the framing there, each half on the part
+ * of its curve (easeOfPart). The shots after the cut start `at` seconds earlier. Null with no shots.
+ */
+export const cutCamera = (shots, at, dur) => {
+  const list = [shots?.camera, ...(shots?.camera_more ?? [])].filter(Boolean)
+  if (!list.length) return null
+  const start = (s) => Number(s.at_s) || 0
+  const length = (s) => Number(s.dur_s) || dur   // what layout.ts cameraAt plays
+  const pose = cameraPoseAt(list[0], list.slice(1), at, dur)
+  const still = { move: 'framed', ease: 'inOut', at_s: 0, from: pose, to: pose }
+  // The shot playing at the cut: the last one started before it (layout.ts shotAt: one starting on the cut plays from it).
+  const i = list.findLastIndex((s) => start(s) < at - 1e-3)
+  const shot = list[i]
+  const into = shot ? at - start(shot) : 0
+  const moving = shot && into < length(shot)
+  const u = moving ? into / length(shot) : 1
+
+  const first = i < 0 ? [still] : [
+    ...list.slice(0, i).map((s) => ({ ...s, dur_s: round(length(s)) })),
+    moving
+      ? { ...shot, at_s: start(shot), dur_s: round(into), to: pose, ease: easeOfPart(shot.ease, 0, u) }
+      : { ...shot, dur_s: round(length(shot)) },
+  ]
+  const after = list.slice(i + 1).map((s) => ({ ...s, at_s: round(Math.max(0, start(s) - at)), dur_s: round(length(s)) }))
+  const lead = after[0] && after[0].at_s < 1e-3 ? []
+    : moving
+      ? [{ ...shot, at_s: 0, dur_s: round(length(shot) - into), from: pose, to: cameraPoseAt(shot, [], start(shot) + length(shot), dur), ease: easeOfPart(shot.ease, u, 1) }]
+      : [still]
+  const second = [...lead, ...after]
+  const out = ([camera, ...rest]) => ({ camera, camera_more: rest })
+  return { first: out(first), second: out(second) }
 }

@@ -2570,7 +2570,7 @@ export const animationTimeline = (config = {}) => ({
       const at = Number(point.at)
       const { first, second } = cutTracks(this.tracks, at)
       const stage = window.__stage25d
-      const camera = stage && String(stage.sceneId) === String(config.sceneId) ? cutCamera(stage.cameraInfo?.()?.keys, at, this.duration) : null
+      const camera = stage && String(stage.sceneId) === String(config.sceneId) ? cutCamera(stage.cameraInfo?.()?.shots, at, this.duration) : null
       const half = (tracks, duration, cam) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks), ...(cam ? { stage25dCamera: cam } : {}) })
       await this.$wire.cutSceneAt(at, half(first, at, camera?.first), half(second, Math.max(0, this.duration - at), camera?.second))
     } finally {
