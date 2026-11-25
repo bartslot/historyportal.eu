@@ -447,4 +447,39 @@ class LessonChatTest extends TestCase
             ->assertSet('ageChoice', '14–16')
             ->assertSet('freeTopic', true);
     }
+
+    public function test_an_empty_lesson_is_created_straight_away_without_the_lesson_maker(): void
+    {
+        Bus::fake();
+        // No suggestion call: the LLM must not be asked anything for an empty lesson.
+        $this->mock(OpenAiLlmService::class, fn ($mock) => $mock->shouldNotReceive('json'));
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(LessonChat::class)
+            ->set('goal', "Cartografie, empty lesson\n\nI just want to add a YouTube video myself.")
+            ->call('submitGoal');
+
+        $lesson = Lesson::query()->sole();
+        $this->assertSame('Cartografie', $lesson->title);
+        $this->assertSame('Cartografie', $lesson->topic);
+        $this->assertSame($this->teacher->id, $lesson->teacher_id);
+        $this->assertSame(0, $lesson->scenes()->count());
+        $this->assertFalse(LessonSource::query()->exists());
+        Bus::assertNothingDispatched();
+        $component->assertRedirect(route('teacher.lessons.wizard', ['lesson' => $lesson->id, 'step' => 4]));
+
+        // A second send (double click) never makes a second lesson.
+        $component->call('submitGoal');
+        $this->assertSame(1, Lesson::query()->count());
+    }
+
+    public function test_empty_lesson_is_understood_in_the_other_interface_languages(): void
+    {
+        $this->assertSame('De Gouden Eeuw', \App\Lessons\EmptyLessonRequest::title('Maak een lege les over de Gouden Eeuw'));
+        $this->assertSame('Cartografie', \App\Lessons\EmptyLessonRequest::title('Make an empty lesson called Cartografie'));
+        $this->assertSame('Karl der Große', \App\Lessons\EmptyLessonRequest::title('Eine leere Lektion über Karl der Große'));
+        $this->assertSame('Roma antica', \App\Lessons\EmptyLessonRequest::title('lezione vuota: Roma antica'));
+        $this->assertSame('New lesson', \App\Lessons\EmptyLessonRequest::title('empty lesson'));
+        $this->assertNull(\App\Lessons\EmptyLessonRequest::title('the 80 years war'));
+    }
 }
