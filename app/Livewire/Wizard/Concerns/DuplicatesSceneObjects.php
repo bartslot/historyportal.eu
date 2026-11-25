@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Services\Stage25d\LayerGroups;
 use Livewire\Attributes\On;
 
 /**
@@ -203,7 +204,10 @@ trait DuplicatesSceneObjects
 
                 continue;
             }
-            unset($copy['world'], $copy['group']);   // the teacher placed this one here: picking another world keeps it; its group stays behind
+            // Its group stays behind, so the copy takes the group's place, size, turn and fade with it (as Ungroup does).
+            $sourceGroup = is_string($copy['group'] ?? null) ? (array_column(array_filter((array) ($source->config['stage25d']['set']['groups'] ?? []), 'is_array'), null, 'id')[$copy['group']] ?? null) : null;
+            $copy = $sourceGroup ? LayerGroups::release($copy, $sourceGroup) : $copy;
+            unset($copy['world'], $copy['group']);   // the teacher placed this one here: picking another world keeps it
             // A character keeps its speaker handle when this scene doesn't have that character yet.
             if (is_string($copy['figure'] ?? null) && in_array($copy['figure'], $handles, true)) {
                 unset($copy['figure']);

@@ -65,4 +65,24 @@ class LayerGroupsTest extends TestCase
 
         $this->assertArrayNotHasKey('groups', LayerGroups::prune(['layers' => [['asset' => 'b']], 'groups' => [['id' => 'g1']]]));
     }
+
+    public function test_released_from_a_turned_group_an_x_key_moves_the_layer_up_and_down(): void
+    {
+        // Codex on #67: turned 90 degrees, a layer keyed from x 0.5 to 0.6 goes up and down, not nowhere
+        $layer = ['asset' => 'a', 'x' => 0.5, 'z' => 20.0, 'group' => 'g1', 'keys' => [['t' => 0, 'x' => 0.5], ['t' => 2, 'x' => 0.6]]];
+        $out = LayerGroups::release($layer, ['id' => 'g1', 'rest' => self::REST, 'rotation' => 90]);
+
+        $this->assertEqualsWithDelta(0.0, $out['keys'][0]['y'], 1e-4);
+        $this->assertEqualsWithDelta(-0.1 * LayerGroups::viewWidthAt(20.0), $out['keys'][1]['y'], 1e-3);
+        $this->assertEqualsWithDelta($out['keys'][0]['x'], $out['keys'][1]['x'], 1e-4);
+    }
+
+    public function test_a_key_that_names_x_only_takes_the_other_keys_height_at_its_time(): void
+    {
+        $layer = ['asset' => 'a', 'x' => 0.5, 'z' => 20.0, 'group' => 'g1', 'keys' => [['t' => 0, 'y' => 0.0], ['t' => 1, 'x' => 0.5], ['t' => 2, 'y' => 2.0]]];
+        $out = LayerGroups::release($layer, ['id' => 'g1', 'rest' => self::REST, 'y' => 1.0]);
+
+        // halfway between y 0 and y 2, plus the group's height
+        $this->assertEqualsWithDelta(2.0, $out['keys'][1]['y'], 1e-4);
+    }
 }

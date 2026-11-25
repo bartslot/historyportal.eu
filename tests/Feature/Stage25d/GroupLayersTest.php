@@ -116,4 +116,24 @@ class GroupLayersTest extends TestCase
         $this->editor($other)->call('groupStage25dLayers', [2])->call('deleteObject', 's25_layer-2');
         $this->assertArrayNotHasKey('groups', $other->fresh()->config['stage25d']['set']);
     }
+
+    public function test_a_member_pasted_into_another_scene_keeps_the_place_its_moved_group_gave_it(): void
+    {
+        $from = $this->scene();
+        $config = $from->config;
+        $config['stage25d']['set']['groups'] = [['id' => 'g1', 'rest' => ['x' => 0.5, 'z' => 20.0], 'x' => 0.6, 'opacity' => 0.5]];
+        $config['stage25d']['set']['layers'][1]['group'] = 'g1';
+        $from->update(['config' => $config]);
+        $to = Scene::create([
+            'lesson_id' => $from->lesson_id, 'order' => 2, 'kind' => 'stage25d', 'script_segment' => 'y', 'status' => 'ready',
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'beat' => 'hook', 'set' => ['layers' => []]]],
+        ]);
+
+        $this->editor($to)->call('duplicateObjects', ['s25_layer-1'], $from->id);
+
+        $pasted = $to->fresh()->config['stage25d']['set']['layers'][0];
+        $this->assertArrayNotHasKey('group', $pasted);
+        $this->assertEqualsWithDelta(0.7, $pasted['x'], 1e-4);
+        $this->assertEqualsWithDelta(0.5, $pasted['opacity'], 1e-6);
+    }
 }

@@ -123,7 +123,8 @@ final class LayerGroups
         $kept = array_values(array_filter(self::FIELDS, fn ($f) => ! isset($neutral[$f]) || array_key_exists($f, $layer) || abs($own[$f] - $neutral[$f]) > 1e-6));
         $out = [...$layer, ...$fields($own, $kept)];
         if (! empty($layer['keys']) && is_array($layer['keys'])) {
-            $out['keys'] = array_map(function ($key) use ($layer, $group, $fields) {
+            $keys = $layer['keys'];
+            $out['keys'] = array_map(function ($key) use ($layer, $group, $fields, $keys) {
                 if (! is_array($key)) {
                     return $key;
                 }
@@ -131,13 +132,54 @@ final class LayerGroups
                 if ($named === []) {
                     return $key;
                 }
-                $now = self::carry([...$layer, ...array_intersect_key($key, array_flip(self::FIELDS))], $group);
+                // The layer as it stands at this key's time: a field this key doesn't name comes from the layer's other
+                // keys there, so a turned group gives an x key its y too (a place is x, y and z together).
+                $t = (float) ($key['t'] ?? 0);
+                $at = [...$layer];
+                foreach (self::FIELDS as $f) {
+                    $v = array_key_exists($f, $key) ? $key[$f] : self::keyedAt($keys, $f, $t);
+                    if ($v !== null) {
+                        $at[$f] = (float) $v;
+                    }
+                }
+                $place = array_intersect($named, ['x', 'z', 'y']) !== [] ? ['x', 'z', 'y'] : [];
 
-                return [...$key, ...$fields($now, in_array('x', $named, true) ? array_unique([...$named, 'z']) : $named)];
-            }, $layer['keys']);
+                return [...$key, ...$fields(self::carry($at, $group), array_values(array_unique([...$named, ...$place])))];
+            }, $keys);
         }
 
         return $out;
+    }
+
+    /**
+     * A field's value at time t from the keys that name it: straight between the two round t, held past the ends;
+     * null when no key names it.
+     *
+     * @param  list<mixed>  $keys
+     */
+    private static function keyedAt(array $keys, string $field, float $t): ?float
+    {
+        $named = array_values(array_filter($keys, fn ($k) => is_array($k) && isset($k[$field]) && is_numeric($k[$field])));
+        if ($named === []) {
+            return null;
+        }
+        usort($named, fn ($a, $b) => (float) ($a['t'] ?? 0) <=> (float) ($b['t'] ?? 0));
+        $prev = null;
+        foreach ($named as $k) {
+            $kt = (float) ($k['t'] ?? 0);
+            if ($kt >= $t) {
+                if ($prev === null || $kt === (float) ($prev['t'] ?? 0)) {
+                    return (float) $k[$field];
+                }
+                $pt = (float) ($prev['t'] ?? 0);
+                $u = ($t - $pt) / ($kt - $pt);
+
+                return (float) $prev[$field] + ((float) $k[$field] - (float) $prev[$field]) * $u;
+            }
+            $prev = $k;
+        }
+
+        return (float) $prev[$field];
     }
 
     /**
