@@ -152,7 +152,7 @@ final class LayerGroups
     }
 
     /**
-     * A field's value at time t from the keys that name it: straight between the two round t, held past the ends;
+     * A field's value at time t from the keys that name it (layout.ts keyedAt): eased in-out between the two round t, held past the ends;
      * null when no key names it.
      *
      * @param  list<mixed>  $keys
@@ -172,7 +172,7 @@ final class LayerGroups
                     return (float) $k[$field];
                 }
                 $pt = (float) ($prev['t'] ?? 0);
-                $u = ($t - $pt) / ($kt - $pt);
+                $u = -(cos(M_PI * ($t - $pt) / ($kt - $pt)) - 1) / 2;   // layout.ts keyedAt: eased in-out ('smooth' runs taken the same)
 
                 return (float) $prev[$field] + ((float) $k[$field] - (float) $prev[$field]) * $u;
             }

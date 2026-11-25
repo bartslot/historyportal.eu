@@ -761,7 +761,7 @@ export async function createStage25d (host, opts = {}) {
       window.dispatchEvent(new CustomEvent('stage25d-edited'))
     },
     /** What the Camera panel and row show: its keys, and the pose at the playhead (the still house camera with no move). */
-    cameraInfo: () => ({ moves: !!camNow, keys: camKeysNow(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
+    cameraInfo: () => ({ moves: !!camNow, keys: camKeysNow(), shots: { camera: camNow, camera_more: camMore }, length: camLength(), pose: camPoseNow(), motion: { kind: 'none', amount: 1, speed: 1, ...camMotion } }),
     /** The camera move's start and end poses (one pose for a still camera). */
     cameraEnds () {
       const keys = camKeysNow()

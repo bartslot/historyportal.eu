@@ -40,6 +40,8 @@
      the dock's wire:key and the element is destroyed outright rather than morphed. --}}
 <div data-timeline-config="{{ json_encode([
         'sceneId'   => $scene?->id,
+        // A cut or its undo changes what a scene id holds: the panel's in-page memory of it is then stale (CutsScenes).
+        'epoch'     => isset($this) && property_exists($this, 'timelineEpoch') ? $this->timelineEpoch : 0,
         'sceneKind' => $scene?->kind,
         'duration'  => $duration,
         'durationSet' => ($timeline['durationSet'] ?? false) === true,

@@ -3286,9 +3286,10 @@
     </script>
     @endpush
 
-    {{-- Script editing view — timecoded narration synced to a play bar (View ▸ Script). --}}
+    {{-- Script editing view — timecoded narration synced to a play bar (View ▸ Script). The cut count is in the key: a cut
+         or its undo changes what the open scene holds, so the editor and its timeline are made anew (CutsScenes). --}}
     @if ($this->selectedSceneModel)
-        <x-lesson.script-editor :scene="$this->selectedSceneModel" wire:key="script-{{ $selectedSceneId }}" />
+        <x-lesson.script-editor :scene="$this->selectedSceneModel" wire:key="script-{{ $selectedSceneId }}-{{ $timelineEpoch }}" />
     @endif
 
     {{-- Internal notes — the teacher's private per-lesson scratchpad (this browser). --}}
