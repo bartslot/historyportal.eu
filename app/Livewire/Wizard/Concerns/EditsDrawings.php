@@ -175,19 +175,15 @@ trait EditsDrawings
     private function mapView(?array $map): ?array
     {
         $num = fn ($v): bool => is_numeric($v) && is_finite((float) $v);
-        if (! is_array($map) || ! $num($map['zoom'] ?? null) || ! $num($map['px'] ?? null)) {
+        if (! is_array($map) || ! $num($map['zoom'] ?? null) || ! $num($map['px'] ?? null) || ! $num($map['w'] ?? null)) {
             return null;
         }
         $px = round(max(50.0, min(10000.0, (float) $map['px'])), 1);
-        if (! $num($map['w'] ?? null)) {
-            return null;
-        }
         $w = round(max(50.0, min(20000.0, (float) $map['w'])), 1);
         $view = ['zoom' => round(max(0.0, min(24.0, (float) $map['zoom'])), 4), 'px' => $px, 'w' => $w, 'pins' => []];
         foreach (array_slice(is_array($map['pins'] ?? null) ? $map['pins'] : [], 0, 200, true) as $id => $p) {
             if (is_numeric($id) && is_array($p) && $num($p['x'] ?? null) && $num($p['y'] ?? null) && $num($p['f'] ?? null) && (float) $p['f'] > 0 && $num($p['fx'] ?? null) && (float) $p['fx'] > 0) {
-                $f = max(0.01, min(100.0, (float) $p['f']));
-                $view['pins'][(int) $id] = ['x' => max(-500.0, min(600.0, (float) $p['x'])), 'y' => max(-500.0, min(600.0, (float) $p['y'])), 'f' => $f,
+                $view['pins'][(int) $id] = ['x' => max(-500.0, min(600.0, (float) $p['x'])), 'y' => max(-500.0, min(600.0, (float) $p['y'])), 'f' => max(0.01, min(100.0, (float) $p['f'])),
                     'fx' => max(0.01, min(100.0, (float) $p['fx']))];
             }
         }
