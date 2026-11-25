@@ -3137,5 +3137,8 @@
     "Remove :name": ":name entfernen",
     "No teacher account uses this email address.": "Kein Lehrerkonto nutzt diese E-Mail-Adresse.",
     "This is the lesson's owner.": "Das ist der Eigentümer der Lektion.",
-    "Edit with others": "Gemeinsam bearbeiten"
+    "Edit with others": "Gemeinsam bearbeiten",
+    "Lock": "Sperren",
+    "Unlock": "Entsperren",
+    "Unpin from map": "Von der Karte lösen"
 }

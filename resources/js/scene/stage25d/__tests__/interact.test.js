@@ -27,7 +27,7 @@ function setup (over = {}) {
   const api = attachInteraction({
     canvas, host, stage: () => stage, valueOf: (i, prop) => values[prop], alpha: { opaque }, onChange, onSettled,
     onGround: over.onGround ?? (() => false), byDistance: over.byDistance ?? (() => false), groundUnder: over.groundUnder ?? (() => null),
-    footY: over.footY ?? (() => 0), onEmpty: over.onEmpty,
+    footY: over.footY ?? (() => 0), onEmpty: over.onEmpty, isLocked: over.isLocked,
   })
   return { canvas, host, stage, onChange, onSettled, api }
 }
@@ -62,6 +62,24 @@ describe('stage25d canvas interaction', () => {
     canvas.dispatchEvent(pointer('pointerdown', 200, 100))
     canvas.dispatchEvent(pointer('pointerup', 200, 100))
     expect(api.selected).toBe(2)
+  })
+
+  it('a locked layer is not there for a press: it is neither picked nor dragged, even selected', () => {
+    const { canvas, api, onChange } = setup({ isLocked: (i) => i === 2 })
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))
+    expect(api.selected).toBeNull()
+    api.select(2)   // picked in the layer list
+    canvas.dispatchEvent(pointer('pointerdown', 200, 100))
+    canvas.dispatchEvent(pointer('pointermove', 260, 100))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('pickAt names the picture under a page point for the right-click menu, a locked one too', () => {
+    const { api, stage } = setup({ isLocked: () => true })
+    expect(api.pickAt(200, 100)).toBe(2)
+    expect(stage.pickLayers).toHaveBeenLastCalledWith(100, 50)
+    stage.pickLayers.mockReturnValue([])
+    expect(api.pickAt(200, 100)).toBeNull()
   })
 
   it('a press on the transparent margin of a picture picks nothing', () => {

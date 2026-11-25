@@ -35,6 +35,7 @@ use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
 use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
+use App\Livewire\Wizard\Concerns\LocksSceneObjects;
 use App\Livewire\Wizard\Concerns\RestylesImages;
 use App\Livewire\Wizard\Concerns\UndoesSceneEdits;
 use App\Models\AnimationClip;
@@ -113,6 +114,7 @@ class Step3SceneConfigurator extends Component
     use EditsWithSpark;
     use FixesLessonProblems;
     use GuardsLessonClaims;
+    use LocksSceneObjects;
     use RestylesImages;
     use UndoesSceneEdits;
     use WithFileUploads;
@@ -443,6 +445,8 @@ class Step3SceneConfigurator extends Component
                 ...LayerFrames::payload($l, $ts),
                 // Hidden where the backdrop is nearer than the layer (resources/js/scene/occlusion.js).
                 'occlude' => ! empty($l['occlude']),
+                // Locked on the canvas (LocksSceneObjects).
+                'locked' => ! empty($l['locked']),
             ])->filter(fn ($l) => $l['url'] || $l['embed'] || $l['kind'] === SceneArrow::KIND)->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -1380,6 +1384,7 @@ class Step3SceneConfigurator extends Component
                         'opacity' => max(0.1, min(0.95, (float) ($t['opacity'] ?? 0.5))),
                         // Stacking order set by drag-reorder in the object list (higher = in front).
                         'z' => (isset($t['z']) && is_numeric($t['z'])) ? (int) $t['z'] : null,
+                        ...(! empty($t['locked']) ? ['locked' => 1] : []),
                     ];
                 }
 
@@ -1421,6 +1426,8 @@ class Step3SceneConfigurator extends Component
                     // Colour, scale, rotation, blur, blend, opacity, grayscale: kept through every
                     // canvas save, or moving a text would throw its look away.
                     ...TextLayerStyle::of($t),
+                    // Locked on the canvas (LocksSceneObjects): absent means unlocked.
+                    ...(! empty($t['locked']) ? ['locked' => 1] : []),
                 ];
             })
             ->take(12)
