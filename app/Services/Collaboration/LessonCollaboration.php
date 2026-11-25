@@ -162,8 +162,6 @@ final class LessonCollaboration
             $this->claim($lesson, $user, $target);
         }
 
-        $this->sweep($lesson, $now);
-
         // Arrived, or moved to another scene: the others hear it at once when the relay is on.
         if ($before === null || $before->target !== $target) {
             $this->nudge($lesson, $user);
@@ -330,13 +328,5 @@ final class LessonCollaboration
                 'someone' => __('Someone'),
             ],
         ];
-    }
-
-    /** Old rows from tabs that never said goodbye. Cheap: a lesson has a handful of rows at most. */
-    private function sweep(Lesson $lesson, Carbon $now): void
-    {
-        $stale = $now->copy()->subHour();
-        LessonPresence::query()->where('lesson_id', $lesson->id)->where('seen_at', '<', $stale)->delete();
-        LessonClaim::query()->where('lesson_id', $lesson->id)->where('seen_at', '<', $stale)->delete();
     }
 }

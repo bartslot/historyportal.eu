@@ -56,16 +56,8 @@ class LessonPlayerController extends Controller
             return $lesson;
         });
 
-        // Teachers can also preview their own lessons regardless of status. This path depends on
-        // the authenticated user, so it is intentionally never cached.
-        if (! $lesson) {
-            $lesson = Lesson::where('lesson_code', $code)
-                ->ownedByCurrentUser()
-                ->with(['strategyGame', 'narrator', 'source', 'scenes'])
-                ->first();
-        }
-
-        // ...and so can the editors the owner added (lesson_editors): the editor's title preview loads here.
+        // The owner, an admin and the editors the owner added can preview it regardless of status (User::canEdit).
+        // This path depends on the authenticated user, so it is intentionally never cached.
         if (! $lesson && auth()->check()) {
             $candidate = Lesson::where('lesson_code', $code)
                 ->with(['strategyGame', 'narrator', 'source', 'scenes'])

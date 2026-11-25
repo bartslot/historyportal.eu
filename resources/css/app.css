@@ -2392,7 +2392,7 @@ html[data-inspector-w] aside[data-resizable-drawer] {
    Each person keeps one colour (LessonCollaboration::person). It is the only colour here, and it is
    identity, not chrome: a ring and a dot, never a fill behind text. */
 @layer components {
-    .collab-avatar {
+    .collab-avatar, .collab-chip {
         display: inline-grid;
         place-items: center;
         flex: none;
@@ -2419,18 +2419,11 @@ html[data-inspector-w] aside[data-resizable-drawer] {
         z-index: 2;
     }
     .collab-chip {
-        display: inline-grid;
-        place-items: center;
+        width: auto;
         min-width: 1.5rem;
         height: 1.5rem;
         padding: 0 0.25rem;
-        border-radius: 9999px;
         background: var(--color-base-300);
-        border: 2px solid var(--collab-color, var(--color-base-content));
-        color: var(--color-base-content);
-        font-size: 0.75rem;
-        font-weight: 600;
-        line-height: 1;
     }
 
     /* Somebody else holds the scene on screen: the work area (not the rail, not the top bar) stops taking

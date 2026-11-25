@@ -47,10 +47,8 @@ class LessonWizard extends Component
 
             $this->step = $this->clampForGuestDemo($this->step);
 
-            // An editor the owner let in edits scenes, nothing else: the settings and generation steps
-            // spend the owner's credits and change what the lesson is (lesson_editors, User::canEdit).
+            // An editor the owner let in lands in the editor (render() keeps them on step 4).
             if (! auth()->user()->canManage($lesson)) {
-                $this->step = 4;
                 $this->playOnOpen = false;
             }
         } else {
@@ -100,7 +98,9 @@ class LessonWizard extends Component
 
     public function render(): View
     {
-        // goToStep and a client-side set both land here: an editor who is not the owner stays in the editor.
+        // An editor the owner let in edits scenes, nothing else: the settings and generation steps spend the
+        // owner's credits and change what the lesson is (lesson_editors, User::canEdit). goToStep and a
+        // client-side set both land here.
         if ($this->lesson?->exists && ! auth()->user()?->canManage($this->lesson)) {
             $this->step = 4;
         }

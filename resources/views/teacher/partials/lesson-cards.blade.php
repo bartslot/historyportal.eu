@@ -93,7 +93,7 @@
 </div>
 
 {{-- Lessons another teacher added this account to as an editor (lesson_editors): they open in the editor. --}}
-@if(!empty($editingLessons) && count($editingLessons))
+@if(filled($editingLessons ?? null))
     <section aria-label="{{ __('Edit with others') }}" class="mt-10">
         <h2 class="mb-4 font-history text-xl font-light">{{ __('Edit with others') }}</h2>
         <div class="relative">

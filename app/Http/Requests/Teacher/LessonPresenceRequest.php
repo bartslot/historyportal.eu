@@ -36,8 +36,6 @@ class LessonPresenceRequest extends FormRequest
 
     public function target(): ?string
     {
-        $target = $this->validated('target');
-
-        return is_string($target) && $target !== '' ? $target : null;
+        return $this->validated('target');
     }
 }

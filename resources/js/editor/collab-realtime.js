@@ -42,7 +42,7 @@ export function connectRealtime ({ config, collab, myTarget }) {
 
   const nudge = () => collab.pingNow()
   const channel = echo.join(rt.channel)
-    .here(nudge).joining(nudge).leaving(nudge)
+    .here(nudge).joining(nudge).leaving((member) => { removeCursor(String(member?.id ?? '')); nudge() })
     .listen('.room.changed', nudge)
 
   // ── Cursors ────────────────────────────────────────────────────────────────────────────────────────
@@ -81,7 +81,6 @@ export function connectRealtime ({ config, collab, myTarget }) {
   }
 
   channel.listenForWhisper('cursor', drawCursor)
-  channel.leaving?.((member) => removeCursor(String(member?.id ?? '')))
 
   let lastSent = 0
   let pending = null

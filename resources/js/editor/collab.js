@@ -48,8 +48,11 @@ export function isOwnEdit (commit) {
 
 const OWN_EDIT_WINDOW_MS = 4000
 
+/** What the room looks like before the first ping answers. */
+const emptyState = () => ({ people: [], holder: null, mine: true, target: null, notice: '' })
+
 export function createCollab ({ wire, config, state = null, fetchImpl = (...a) => fetch(...a), now = () => Date.now() }) {
-  const s = state ?? { people: [], holder: null, mine: true, target: null, notice: '', started: false }
+  const s = state ?? emptyState()
 
   let timer = 0
   let stopped = false
@@ -204,8 +207,6 @@ export function createCollab ({ wire, config, state = null, fetchImpl = (...a) =
   }
 
   const start = () => {
-    if (s.started) return
-    s.started = true
     hookLivewire()
     window.addEventListener('rail-selected', onSelected)
     window.addEventListener('pagehide', leave)
@@ -223,7 +224,7 @@ export function startLessonCollab (wire, config) {
   // The store is the reactive copy: write through it, or the top bar and the overlay never hear of a change.
   let state = null
   if (window.Alpine?.store) {
-    window.Alpine.store('collab', { people: [], holder: null, mine: true, target: null, notice: '', started: false })
+    window.Alpine.store('collab', emptyState())
     state = window.Alpine.store('collab')
   }
   const collab = createCollab({ wire, config, state })

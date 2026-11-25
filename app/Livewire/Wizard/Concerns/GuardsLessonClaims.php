@@ -6,7 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Lesson;
 use App\Services\Collaboration\LessonCollaboration;
-use Livewire\Attributes\On;
+use Livewire\Features\SupportEvents\SupportEvents;
 use ReflectionMethod;
 use ReflectionNamedType;
 
@@ -31,9 +31,6 @@ use ReflectionNamedType;
  */
 trait GuardsLessonClaims
 {
-    /** @var array<string, array<string, string>> event name => method, per class */
-    private static array $claimEventMethods = [];
-
     abstract protected function claimLesson(): ?Lesson;
 
     /** The part of the lesson on screen: "scene:12", "title", or null when nothing is open. */
@@ -99,11 +96,13 @@ trait GuardsLessonClaims
 
         $lesson = $this->claimLesson();
         $user = auth()->user();
-        if ($lesson !== null && $user !== null) {
-            abort_unless($user->canEdit($lesson), 403);
+        if ($lesson === null || $user === null) {
+            return;
         }
+
+        abort_unless($user->canEdit($lesson), 403);
         $target = $this->claimTarget();
-        if ($lesson !== null && $user !== null && $target !== null) {
+        if ($target !== null) {
             app(LessonCollaboration::class)->authorizeEdit($lesson, $user, $target);
         }
     }
@@ -128,23 +127,11 @@ trait GuardsLessonClaims
         return is_numeric($value) && (int) $value > 0 ? LessonCollaboration::sceneTarget((int) $value) : null;
     }
 
-    /** The #[On('event')] method an event lands on, or null when this component does not listen for it. */
+    /** The method an event lands on, by the same lookup SupportEvents makes ($listeners, #[On], {placeholders}). */
     private function claimMethodForEvent(string $event): ?string
     {
-        $class = static::class;
-        if (! isset(self::$claimEventMethods[$class])) {
-            $map = [];
-            foreach ((new \ReflectionClass($this))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                foreach ($method->getAttributes(On::class) as $attribute) {
-                    $name = $attribute->getArguments()[0] ?? $attribute->getArguments()['event'] ?? null;
-                    if (is_string($name)) {
-                        $map[$name] = $method->getName();
-                    }
-                }
-            }
-            self::$claimEventMethods[$class] = $map;
-        }
-
-        return self::$claimEventMethods[$class][$event] ?? null;
+        return in_array($event, SupportEvents::getListenerEventNames($this), true)
+            ? SupportEvents::getListenerMethodName($this, $event)
+            : null;
     }
 }
