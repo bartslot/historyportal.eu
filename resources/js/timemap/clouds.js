@@ -30,7 +30,9 @@ import {
   buildSphereMesh, buildProgram, cameraAltitudeMetres, cameraInPlanetSpace, EARTH_RADIUS_M,
   EQUIRECT_GLSL, NOISE_GLSL, SHELL_PROJECT_GLSL, TERMINATOR_GLSL,
 } from './planet-mesh.js'
-import { CLOUD_ALTITUDE_M, CLOUD_FIELD_GLSL, CLOUD_FIELD_UNIFORMS, setCloudFieldUniforms } from './cloud-field.js'
+import {
+  CLOUD_ALTITUDE_M, CLOUD_FIELD_GLSL, CLOUD_FIELD_MOTION, CLOUD_FIELD_UNIFORMS, setCloudFieldUniforms,
+} from './cloud-field.js'
 import { acquireEquirectTexture } from './equirect-texture.js'
 import { RELIEF_GLSL, TANGENT_FRAME_GLSL } from './terrain-normals.js'
 import { cloudHandover } from './volumetric-clouds.js'
@@ -466,10 +468,11 @@ void main() {
  */
 export const createCloudLayer = ({
   opacity = 0.5, animate = true, fieldUrl = null, patchUrl = null,
-  driftRate = 0.0004, sun = [0.4, 0.5, 0.75],
+  driftRate = CLOUD_FIELD_MOTION.driftRate, sun = [0.4, 0.5, 0.75],
   // Wind advection: a real GFS field carrying the clouds along actual circulation. Off without a
   // texture, so a missing asset costs nothing but motion.
-  windUrl = null, windAmount = 1, windScale = 0.06, windRate = 0.05,
+  windUrl = null, windAmount = CLOUD_FIELD_MOTION.windAmount, windScale = CLOUD_FIELD_MOTION.windScale,
+  windRate = CLOUD_FIELD_MOTION.windRate,
   /**
    * Lighting. Every one of these is zero-is-off, and with all four at zero the deck renders exactly
    * as it did before it was lit — which is what makes each of them separately measurable.

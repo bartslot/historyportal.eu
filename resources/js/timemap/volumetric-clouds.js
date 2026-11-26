@@ -19,6 +19,7 @@
  * deck exactly as it was before this file existed. Nothing here can cost the map its clouds.
  */
 import { mapTransform, EARTH_RADIUS_M } from '../map/maplibre-compat.js'
+import { CLOUD_FIELD_MOTION } from './cloud-field.js'
 
 const LAYER_ID = 'tm-cloud-volume'
 
@@ -111,6 +112,8 @@ export const createVolumetricCloudLayer = ({
   let last = 0
   let state = {
     sun: [0.4, 0.5, 0.75], strength: 1, animate: true,
+    // The deck's own drift and wind, so the baked weather moves exactly as the deck's does.
+    ...CLOUD_FIELD_MOTION,
     // How many times taller than life the cloud layers are drawn. Real cloud tops out near 12 km,
     // which from 700 km up is a film; the flat deck exaggerates for the same reason (90 km).
     scale: 8,

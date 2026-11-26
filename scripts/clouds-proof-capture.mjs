@@ -23,19 +23,23 @@ const arg = (name, fallback) => {
 const out = resolve(arg('out', 'storage/clouds-proof'))
 const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
+const view = `${italy}&zoom=7&pitch=60`
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
-  { name: 'a-z7-p60', query: `${italy}&zoom=7&pitch=60` },
-  { name: 'b-z7-p60-flat-only', query: `${italy}&zoom=7&pitch=60&v.strength=0`, label: 'same view, flat deck only' },
+  { name: 'a-z7-p60', query: view },
+  { name: 'b-z7-p60-flat-only', query: `${view}&v.strength=0`, label: 'same view, flat deck only' },
   { name: 'c-z7-p0', query: `${italy}&zoom=7&pitch=0` },
   { name: 'd-z6-p60', query: `${italy}&zoom=6&pitch=60` },
   { name: 'e-z5.3-p45', query: `${italy}&zoom=5.3&pitch=45`, label: 'mid hand-over' },
   { name: 'f-z4-p45', query: `${italy}&zoom=4&pitch=45`, label: 'flat deck only (orbit)' },
-  { name: 'g-z7-scale16', query: `${italy}&zoom=7&pitch=60&v.scale=16` },
-  { name: 'h-z7-scale4', query: `${italy}&zoom=7&pitch=60&v.scale=4` },
-  { name: 'i-z7-step1.01', query: `${italy}&zoom=7&pitch=60&v.stepScale=1.01` },
-  { name: 'j-z7-noshadow', query: `${italy}&zoom=7&pitch=60&v.shadows=0` },
-  { name: 'k-atlantic-evening', query: 'lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10' },
-  { name: 'l-caribbean', query: 'lng=-70&lat=18&zoom=6.5&pitch=60&v.coverage=0.6&sunLng=-80' },
+  { name: 'g-scale16', query: `${view}&v.scale=16` },
+  { name: 'h-scale4', query: `${view}&v.scale=4` },
+  { name: 'i-scale2', query: `${view}&v.scale=2` },
+  { name: 'j-exposure20', query: `${view}&v.exposure=20` },
+  { name: 'k-coverage0.3', query: `${view}&v.coverage=0.3` },
+  { name: 'l-coverage0.6', query: `${view}&v.coverage=0.6` },
+  { name: 'm-noshadow', query: `${view}&v.shadows=0` },
+  { name: 'n-atlantic-evening', query: 'lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10' },
+  { name: 'o-caribbean', query: 'lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80' },
 ]
 
 mkdirSync(out, { recursive: true })
@@ -50,7 +54,12 @@ try {
   for (const shot of SHOTS) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 })
     const logs = []
-    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`${m.type()}: ${m.text().slice(0, 300)}`) })
+    page.on('console', async (m) => {
+      if (m.type() !== 'error' && m.type() !== 'warning') return
+      // An Error object prints as the bare word "Error"; ask the page for what it actually says.
+      const parts = await Promise.all(m.args().map((a) => a.evaluate((x) => (x instanceof Error ? `${x.message} ${x.stack ?? ''}` : String(x))).catch(() => '')))
+      logs.push(`${m.type()}: ${(parts.join(' ') || m.text()).slice(0, 400)} @ ${m.location().url}`)
+    })
     page.on('pageerror', (e) => logs.push(`pageerror: ${String(e).slice(0, 300)}`))
     await page.goto(`${base}/index.html?nobloom=1&${shot.query}`)
     await page.waitForFunction(() => document.body.dataset.ready === '1', null, { timeout: 60000 }).catch(() => logs.push('ready timeout'))

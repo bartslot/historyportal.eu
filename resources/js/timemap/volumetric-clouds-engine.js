@@ -116,6 +116,7 @@ const createWeatherBake = (gl, state, repaint) => {
 
   return {
     texture,
+    framebuffer,
     get hasSource() { return !!(sources.field?.ready || sources.patches?.ready) },
     get baked() { return strip >= 0 },
     /** Draw the next strip (or everything, the first time). Leaves GL state for the caller to reset. */
@@ -322,6 +323,6 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
       renderer.resetState()
     },
 
-    debug: () => ({ renderer, composer, clouds, camera, tone }),
+    debug: () => ({ renderer, composer, clouds, camera, tone, weather, gl }),
   }
 }

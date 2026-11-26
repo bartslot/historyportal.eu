@@ -301,11 +301,11 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
       // "Drift" is the wrong word for it and always was: this DEFORMS the field. The real drift is
       // driftRate, which rotates it. Renamed rather than left to mislead the next person to drag it.
       { key: 'windAmount', label: 'Curl', min: 0, max: 1, step: 0.05, value: 0.2,
-        apply: (v) => set('clouds', { windAmount: v }) },
+        apply: (v) => { set('clouds', { windAmount: v }); set('cloudVolume', { windAmount: v }) } },
       { key: 'windScale', label: 'Wind scale', min: 0.01, max: 0.5, step: 0.01, value: 0.06,
-        apply: (v) => set('clouds', { windScale: v }) },
+        apply: (v) => { set('clouds', { windScale: v }); set('cloudVolume', { windScale: v }) } },
       { key: 'windRate', label: 'Wind speed', min: 0, max: 0.3, step: 0.005, value: 0.05,
-        apply: (v) => set('clouds', { windRate: v }) },
+        apply: (v) => { set('clouds', { windRate: v }); set('cloudVolume', { windRate: v }) } },
       { key: 'cloudShadow', label: 'Shadows', min: 0, max: 1, step: 0.01, value: 0,
         apply: (v) => set('daylight', { cloudShadow: v }) },
       // HOW DARK vs HOW SOFT — two different complaints, and only the first had a knob. The band
@@ -317,16 +317,16 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
       // the shadow of a sky nobody is drawing, and the drift between them looks like a bug in the
       // shadows rather than like two settings that disagree.
       { key: 'patchTiles', label: 'Cloud cells', min: 96, max: 320, step: 8, value: 144,
-        apply: (v) => { set('clouds', { patchTiles: v }); set('daylight', { patchTiles: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchTiles: v }) } },
       // The atlas's own mean coverage, which the variance-preserving blend centres on. Wrong here
       // and the lattice reappears as a faint brightness pattern — which is the one thing worth
       // being able to check by eye, hence a control rather than a constant alone.
       { key: 'patchMean', label: 'Atlas mean', min: 0.2, max: 0.8, step: 0.005, value: 0.4335,
-        apply: (v) => { set('clouds', { patchMean: v }); set('daylight', { patchMean: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchMean: v }) } },
       // How much patch variation rides on the global distribution. At 0 the deck is the old 19.5 km
       // field again — which is the A/B for whether the detail is worth having at all.
       { key: 'patchDetail', label: 'Detail amount', min: 0, max: 1.5, step: 0.05, value: 0.75,
-        apply: (v) => { set('clouds', { patchDetail: v }); set('daylight', { patchDetail: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchDetail: v }) } },
       // Off returns the deck to the 19.5 km whole-planet field, which is the A/B this change exists
       // to win. Kept because "is the new source actually better" should be one click, not a rebuild.
       { key: 'patchUrl', label: 'Tiled source', type: 'boolean', value: true,
