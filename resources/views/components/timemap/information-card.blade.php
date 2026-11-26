@@ -46,6 +46,9 @@
            provenance: null,
            sourcesOpen: false,
            voyageReq: 0,
+           {{-- The voyage this card shows, and the one the camera is following (Play journey). --}}
+           voyageId: null,
+           playing: null,
            grades: {
                A: @js(__('Scholarly atlas')),
                B: @js(__('Specialist project')),
@@ -95,8 +98,10 @@
        {{-- Closes three ways. X and Esc are here; the third is the map itself, which dispatches
             polity-selected with no id when you click away — the backdrop, for a panel that has none. --}}
        x-on:keydown.escape.window="close()"
+       x-on:voyage-play-state.window="playing = $event.detail.id"
        x-on:polity-selected.window="
             window.__timemapStopSpeak && window.__timemapStopSpeak();
+            voyageId = $event.detail.voyageId || null;
             if (!$event.detail.id) { voyageReq++; polity = null; loading = false; reportContext = null; provenance = null; return; }
             if ($event.detail.succeeded) noteSuccession($event.detail.previousName);
             else { succeededFrom = null; }
@@ -512,7 +517,19 @@
             </template>
 
             {{-- ── The one primary action ───────────────────────────────────────────────────── --}}
-            <div class="shrink-0 border-y border-card-hairline p-4">
+            <div class="flex shrink-0 flex-col gap-2 border-y border-card-hairline p-4">
+                {{-- A voyage plays: the camera flies to where it starts and rides with it to the end.
+                     Pressed again, or any drag of the map, hands the camera back. --}}
+                <template x-if="polity?.voyage && voyageId">
+                    <button type="button" x-on:click="window.__timemapPlayVoyage && window.__timemapPlayVoyage(voyageId)"
+                            :aria-pressed="playing === voyageId"
+                            data-voyage-play
+                            class="btn h-9 min-h-0 w-full gap-2 rounded-card-pill border border-card-hairline bg-transparent text-[13px] font-bold text-card-title hover:bg-card-hairline/40">
+                        <template x-if="playing !== voyageId"><x-icons.play class="h-3.5 w-3.5" /></template>
+                        <template x-if="playing === voyageId"><x-icons.pause class="h-3.5 w-3.5" /></template>
+                        <span x-text="playing === voyageId ? @js(__('Stop the journey')) : @js(__('Play the journey'))"></span>
+                    </button>
+                </template>
                 {{-- polity?. because :href is an attribute binding, not a template: when the card
                      closes it re-evaluates once against a null polity before x-if tears it down,
                      and an uncaught TypeError there aborts the whole Alpine effect mid-flush. --}}

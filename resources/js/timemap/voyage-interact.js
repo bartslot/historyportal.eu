@@ -1,6 +1,6 @@
 import voyagesData from './voyages.json';
 import { smooth, setVoyageHighlight } from './voyages.js';
-import { dateAtSample, formatVoyageDate, landTransportAtSample, nearestOnRoute } from './voyage-hover.js';
+import { dateAtSample, formatVoyageDate, landTransportAtSample, nearestOnRoute, vesselAtSample } from './voyage-hover.js';
 
 // Pointer behaviour on the voyage routes: the cursor, the selection highlight, and the hover that
 // brings the fleet to the point under the pointer with the date it was there.
@@ -10,6 +10,10 @@ import { dateAtSample, formatVoyageDate, landTransportAtSample, nearestOnRoute }
 // goes, the ships go back to their own lap.
 
 const LABEL_GAP_PX = 18;          // label sits this far above the snapped point
+// Resting the pointer on a route this long opens its journey (Bart, 2026-11-26: "hovering over a
+// route line, should open the journey"). Long enough that sweeping across the map past a route
+// does not open it, short enough that it feels like the hover did it.
+const DWELL_MS = 450;
 
 const routes = new Map(voyagesData.voyages.map((v) => [v.id, { voyage: v, coords: smooth(v.waypoints) }]));
 
@@ -43,7 +47,7 @@ const makeLabel = (container) => {
  *   returns the voyage-ships handle once its lazy chunk has loaded (null before); transportNames are the
  *   overland transports' names in the page language ({ camel: 'Kameel' }), from the Blade view
  */
-export function initVoyageInteraction(map, { ships, locale = 'en', transportNames = {} } = {}) {
+export function initVoyageInteraction(map, { ships, locale = 'en', transportNames = {}, onDwell = null } = {}) {
   // Into the map's WRAPPER, not the map: MapLibre's canvas paints over anything inside its own
   // container, and the map element itself is shifted to centre the globe above the deck.
   const host = map.getContainer().parentElement || map.getContainer();
@@ -52,14 +56,48 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
   let pinned = null;        // the voyage whose fleet the hover is holding
   let pending = null;       // the latest { id, lngLat } under the pointer, consumed once per frame
   let frame = 0;
+  let playing = null;       // the voyage the camera is following: hover stands aside meanwhile
+  let dwellId = null;
+  let dwellTimer = 0;
+
+  const stopDwell = () => {
+    if (dwellTimer) window.clearTimeout(dwellTimer);
+    dwellTimer = 0;
+    dwellId = null;
+  };
 
   const release = () => {
+    stopDwell();
+    if (playing) return;
     if (pinned) ships()?.setTourProgress(pinned, null);
     pinned = null;
     label.el.style.display = 'none';
   };
 
+  /** Name and date above a point of a route: the hover's label, and the label a played journey carries. */
+  const showLabel = (route, sample, lng, lat) => {
+    const date = dateAtSample(route.voyage, route.coords, sample);
+    // Over land the traveller is on a camel or a horse, not on the fleet's ships.
+    const overland = landTransportAtSample(route.voyage, sample);
+    label.names.textContent = (overland && transportNames[overland])
+      || vesselAtSample(route.voyage, sample) || fleetNames(route.voyage) || route.voyage.name;
+    // No dated point covers this stretch: say only what we know, the voyage's years.
+    label.date.textContent = date
+      ? formatVoyageDate(date, locale)
+      : String(route.voyage.years ?? '').replace(/\s+—\s+/g, ': ');
+
+    const p = map.project([lng, lat]);
+    const canvas = map.getCanvas().getBoundingClientRect();
+    const box = host.getBoundingClientRect();
+    label.el.style.display = '';
+    const { offsetWidth: w, offsetHeight: h } = label.el;
+    const x = canvas.left - box.left + p.x - w / 2;
+    const y = canvas.top - box.top + p.y - h - LABEL_GAP_PX;
+    label.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  };
+
   const show = (id, lngLat) => {
+    if (playing) return;
     const route = routes.get(id);
     if (!route) return release();
     const hit = nearestOnRoute(route.coords, lngLat.lng, lngLat.lat);
@@ -72,23 +110,13 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
       pinned = id;
     }
 
-    const date = dateAtSample(route.voyage, route.coords, hit.sample);
-    // Over land the traveller is on a camel or a horse, not on the fleet's ships.
-    const overland = landTransportAtSample(route.voyage, hit.sample);
-    label.names.textContent = (overland && transportNames[overland]) || fleetNames(route.voyage) || route.voyage.name;
-    // No dated point covers this stretch: say only what we know, the voyage's years.
-    label.date.textContent = date
-      ? formatVoyageDate(date, locale)
-      : String(route.voyage.years ?? '').replace(/\s+—\s+/g, ': ');
+    showLabel(route, hit.sample, hit.lng, hit.lat);
 
-    const p = map.project([hit.lng, hit.lat]);
-    const canvas = map.getCanvas().getBoundingClientRect();
-    const box = host.getBoundingClientRect();
-    label.el.style.display = '';
-    const { offsetWidth: w, offsetHeight: h } = label.el;
-    const x = canvas.left - box.left + p.x - w / 2;
-    const y = canvas.top - box.top + p.y - h - LABEL_GAP_PX;
-    label.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    if (onDwell && dwellId !== id) {
+      stopDwell();
+      dwellId = id;
+      dwellTimer = window.setTimeout(() => { dwellTimer = 0; onDwell(id); }, DWELL_MS);
+    }
   };
 
   const onFrame = () => {
@@ -125,6 +153,26 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
       setVoyageHighlight(map, null);
     },
     get selected() { return selected; },
+    /**
+     * A played journey: the fleet sits at track fraction `t` with its name and date over it, and
+     * the hover leaves it alone until play(null).
+     */
+    play(id, t = 0) {
+      if (!id) {
+        playing = null;
+        release();
+        return;
+      }
+      const fleet = ships();
+      const route = routes.get(id);
+      if (!fleet || !route) return;
+      if (pinned && pinned !== id) fleet.setTourProgress(pinned, null);
+      playing = id;
+      pinned = id;
+      fleet.setTourProgress(id, t);
+      const at = fleet.pointAt(id, t);
+      if (at) showLabel(route, fleet.sampleAtFraction(id, t), at.lng, at.lat);
+    },
     destroy() {
       release();
       label.el.remove();
