@@ -295,6 +295,13 @@ describe('ArtworkOverlay — pinned to the map', () => {
       expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(40)
     })
 
+    it('knows a drawing from the editor payload flag alone (the strokes stay on the server)', () => {
+      const overlay = new ArtworkOverlay(sized(), { onChange: () => {} })
+      overlay.setProjector(zoomed(3, 3))
+      overlay.setLayers([layer({ drawing: true, anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+    })
+
     it('never touches a drawing in the player', () => {
       const overlay = new ArtworkOverlay(sized(), { readonly: true })
       overlay.setProjector(zoomed(3, 3))
