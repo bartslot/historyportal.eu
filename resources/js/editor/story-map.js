@@ -326,17 +326,20 @@ export function nearestScene (scenes, layout, point, radius, exceptId = null) {
  * One step of the line's spring: the tip pulled toward `goal`, overshooting a little and settling, so the line
  * feels like elastic rather than a drawn path. Returns the new tip and velocity.
  */
-export function springStep (tip, vel, goal, stiffness = 0.22, damping = 0.68) {
-  const vx = (vel[0] + (goal[0] - tip[0]) * stiffness) * damping
-  const vy = (vel[1] + (goal[1] - tip[1]) * stiffness) * damping
+const STIFFNESS = 0.22
+const DAMPING = 0.68
+
+export function springStep (tip, vel, goal) {
+  const vx = (vel[0] + (goal[0] - tip[0]) * STIFFNESS) * DAMPING
+  const vy = (vel[1] + (goal[1] - tip[1]) * STIFFNESS) * DAMPING
   return { tip: [tip[0] + vx, tip[1] + vy], vel: [vx, vy] }
 }
 
 /** The paper's grid, in map px: the dots behind the cards, and where a card lands when it is let go. */
 export const GRID = 24
 
-export function snapPoint (p, grid = GRID) {
-  return [Math.round(p[0] / grid) * grid, Math.round(p[1] / grid) * grid]
+export function snapPoint (p) {
+  return [Math.round(p[0] / GRID) * GRID, Math.round(p[1] / GRID) * GRID]
 }
 
 /** 0 → 1 with a small overshoot at the end, so a card lands on the grid like it was on a rubber band. */
@@ -352,12 +355,11 @@ export function easeOutBack (t) {
  */
 export function cardsInRect (scenes, layout, rect) {
   const out = []
-  const box = { x: rect.x, y: rect.y, w: rect.w, h: rect.h }
   for (const s of scenes ?? []) {
     const p = layout.scenes[s.id]
-    if (p && overlaps(box, { x: p[0], y: p[1], w: SIZE.sceneW, h: SIZE.sceneH }, 0)) out.push(['scenes', s.id])
+    if (p && overlaps(rect, { x: p[0], y: p[1], w: SIZE.sceneW, h: SIZE.sceneH }, 0)) out.push(['scenes', s.id])
     const c = hasButtons(s) ? layout.choices[s.id] : null
-    if (c && overlaps(box, { x: c[0], y: c[1], w: SIZE.choiceW, h: choiceHeight(s) }, 0)) out.push(['choices', s.id])
+    if (c && overlaps(rect, { x: c[0], y: c[1], w: SIZE.choiceW, h: choiceHeight(s) }, 0)) out.push(['choices', s.id])
   }
   return out
 }
@@ -414,8 +416,8 @@ export function storyMap () {
     undoStack: [],
     _drag: null,
     _ok: true,               // the last Livewire call went through
-    _shown: false,
-    _settleRun: 0,           // which settle animation is running; a newer one or a grab stops the older           // the layout on screen came from this opening (and is newer than the saved one)
+    _shown: false,           // the layout on screen came from this opening (and is newer than the saved one)
+    _settleRun: 0,           // which settle animation is running; a newer one or a grab stops the older
     SIZE,
 
     get byId () { return new Map(this.scenes.map((s) => [s.id, s])) },
@@ -669,7 +671,7 @@ export function storyMap () {
       this._settleRun++   // a card caught while it lands stays where it is
       const group = type === 'choice' ? 'choices' : 'scenes'
       // A picked card takes the other picked cards along; a scene takes its choice card along, so the two stay together.
-      const base = this.isPicked(type, id) && this.picked.length > 1 ? this.picked.map(([g, k]) => [g, k]) : [[group, id]]
+      const base = this.isPicked(type, id) && this.picked.length > 1 ? this.picked : [[group, id]]
       const moving = []
       const add = (g, k) => { if (this.layout[g][k] && !moving.some(([mg, mk]) => mg === g && mk === k)) moving.push([g, k]) }
       for (const [g, k] of base) {
@@ -688,12 +690,12 @@ export function storyMap () {
      * Resolves true when the cards arrived, false when a grab or an undo stopped them on the way.
      */
     settle (targets) {
-      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+      const calm = reducedMotion()
       const from = targets.map(([g, k]) => [...(this.layout[g][k] ?? [0, 0])])
       const put = (t) => targets.forEach(([g, k, to], i) => {
         this.layout[g][k] = [Math.round(from[i][0] + (to[0] - from[i][0]) * t), Math.round(from[i][1] + (to[1] - from[i][1]) * t)]
       })
-      if (calm || typeof requestAnimationFrame !== 'function') { put(1); return Promise.resolve(true) }
+      if (calm) { put(1); return Promise.resolve(true) }
       const mine = ++this._settleRun   // a number: Alpine hands objects back as proxies, which never equal the original
       return new Promise((resolve) => {
         const t0 = performance.now()
@@ -724,7 +726,7 @@ export function storyMap () {
      * (magnetic), and when let go over nothing it snaps back into its dot. Reduced motion: it simply follows.
      */
     springLine () {
-      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+      const calm = reducedMotion()
       const mine = this.wiring
       const frame = () => {
         const w = this.wiring
@@ -845,9 +847,9 @@ export function storyMap () {
       this.view = zoomViewAt(this.view, factor, vp.clientWidth / 2, vp.clientHeight / 2)
     },
 
-    fit () {
+    fit (bounds = mapBounds(this.scenes, this.layout)) {
       const vp = this.$refs.viewport
-      this.view = fitAll(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight)
+      if (vp) this.view = fitAll(bounds, vp.clientWidth, vp.clientHeight)
     },
 
     /** Tidy: lay the whole story out again, and keep it (one step back with undo). */
@@ -863,8 +865,7 @@ export function storyMap () {
           else this.layout[g][k] = p
         }
       }
-      const vp = this.$refs.viewport
-      if (vp) this.view = fitAll(mapBounds(this.scenes, next), vp.clientWidth, vp.clientHeight)
+      this.fit(mapBounds(this.scenes, next))
       // Interrupted (a card grabbed, or undo): the cards stay where they are and whatever took over saves.
       if (!await this.settle(targets)) return
       this.layout = next
@@ -948,6 +949,11 @@ export function storyMap () {
       window.Livewire?.dispatch('lesson:play')
     },
   }
+}
+
+/** The teacher asked the system for less motion: things simply arrive. (jsdom has no matchMedia.) */
+function reducedMotion () {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /** Where a line being dragged starts: a scene's own dot or a choice row's. */
