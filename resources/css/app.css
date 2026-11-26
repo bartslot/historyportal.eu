@@ -2610,6 +2610,13 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     background: var(--color-card-surface); transition: background-color 120ms, border-color 120ms; }
   .story-map-dot:hover::before, .story-map-dot:focus-visible::before { background: var(--color-panel-value); border-color: var(--color-panel-value); }
   .story-map-dot.is-in { cursor: default; pointer-events: none; }
+  /* Where a card's own dots sit: entry at its start, the new-option dot at its end; left and right when the story runs
+     left to right, head and foot when it runs top to bottom. A choice card's entry sits beside its header. */
+  .story-map-dot.at-start { left: -16px; }
+  .story-map-dot.at-end { right: -16px; }
+  .story-map-dot.at-start.is-head { top: 28px; }
+  .is-tb .story-map-dot.at-start, .is-tb .story-map-dot.at-start.is-head { left: 50%; top: -16px; translate: -50% 0; }
+  .is-tb .story-map-dot.at-end { left: 50%; right: auto; top: auto; bottom: -16px; translate: -50% 0; }
   .story-map-dot.is-in::before { width: 8px; height: 8px; transition: width 120ms, height 120ms, background-color 120ms, border-color 120ms; }
   /* Arrowheads, and the wide see-through twin of each line that takes the click. */
   .story-map-arrow { fill: var(--color-panel-label); }

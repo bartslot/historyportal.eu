@@ -3147,5 +3147,8 @@
     "Full size": "Originalgröße",
     "Show the whole story (F)": "Die ganze Geschichte zeigen (F)",
     "Delete removes this line": "Entf entfernt diese Linie",
-    "Drag one of the picked cards to move them together": "Zieh eine der gewählten Karten, um sie zusammen zu verschieben"
+    "Drag one of the picked cards to move them together": "Zieh eine der gewählten Karten, um sie zusammen zu verschieben",
+    "Which way the story runs": "In welche Richtung die Geschichte läuft",
+    "Top to bottom": "Von oben nach unten",
+    "Left to right": "Von links nach rechts"
 }

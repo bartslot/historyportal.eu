@@ -15,7 +15,8 @@ use App\Support\MediaUrl;
  * It is a second view of the same data as the Choices layer (EditsSceneLinks, scene.config.links): every
  * rewire goes through those methods, so the narrator, the rail and the inspector stay in step.
  *
- * The one thing the map adds is where the teacher put each node: lesson.story_map, editor layout only. It is
+ * The one thing the map adds is where the teacher put each node: lesson.story_map, editor layout only, once for
+ * the map running left to right ({scenes, choices}) and once for top to bottom (under 'tb', Bart 2026-11-26). It is
  * saved quietly (no content version, no scene undo step, no player cache bust), because moving a card around
  * changes nothing a class sees.
  */
@@ -27,7 +28,7 @@ trait EditsStoryMap
     /**
      * Everything the map draws, read fresh: the scenes in lesson order with their links, and the saved layout.
      *
-     * @return array{scenes: list<array<string, mixed>>, layout: array{scenes: array<string, array{0: int, 1: int}>, choices: array<string, array{0: int, 1: int}>}}
+     * @return array{scenes: list<array<string, mixed>>, layout: array{scenes: array<string, array{0: int, 1: int}>, choices: array<string, array{0: int, 1: int}>}, layoutTb: array{scenes: array<string, array{0: int, 1: int}>, choices: array<string, array{0: int, 1: int}>}}
      */
     public function storyMap(): array
     {
@@ -47,7 +48,8 @@ trait EditsStoryMap
                 // Choices go on a story scene (addChoicesToScene): not on a game, not inside an old decision point.
                 'canChoose' => $s->kind !== 'game' && $s->branch_role === null,
             ])->all(),
-            'layout' => $this->storyMapLayout($ids),
+            'layout' => $this->storyMapLayout($ids, 'lr'),
+            'layoutTb' => $this->storyMapLayout($ids, 'tb'),
         ];
     }
 
@@ -56,14 +58,16 @@ trait EditsStoryMap
      * keeps its place, so the map can send only what moved.
      *
      * @param  mixed  $layout  {scenes: {id: [x, y]}, choices: {id: [x, y]}}
+     * @param  mixed  $dir  'tb' for the map running top to bottom, anything else left to right
      */
-    public function saveStoryMapLayout(mixed $layout): void
+    public function saveStoryMapLayout(mixed $layout, mixed $dir = 'lr'): void
     {
         if (! is_array($layout)) {
             return;
         }
+        $dir = $dir === 'tb' ? 'tb' : 'lr';
         $ids = $this->lesson->scenes()->pluck('id')->map(fn ($id): int => (int) $id)->all();
-        $stored = $this->storyMapLayout($ids);
+        $stored = $this->storyMapLayout($ids, $dir);
         foreach (['scenes', 'choices'] as $group) {
             foreach ((array) ($layout[$group] ?? []) as $id => $point) {
                 $p = $this->storyMapPoint($point);
@@ -72,7 +76,13 @@ trait EditsStoryMap
                 }
             }
         }
-        $this->lesson->forceFill(['story_map' => $stored])->saveQuietly();
+        $all = is_array($this->lesson->story_map) ? $this->lesson->story_map : [];
+        if ($dir === 'tb') {
+            $all['tb'] = $stored;
+        } else {
+            $all = array_merge($all, $stored);
+        }
+        $this->lesson->forceFill(['story_map' => $all])->saveQuietly();
     }
 
     /**
@@ -163,11 +173,15 @@ trait EditsStoryMap
 
     /**
      * @param  list<int>  $ids
+     * @param  'lr'|'tb'  $dir
      * @return array{scenes: array<string, array{0: int, 1: int}>, choices: array<string, array{0: int, 1: int}>}
      */
-    private function storyMapLayout(array $ids): array
+    private function storyMapLayout(array $ids, string $dir = 'lr'): array
     {
         $saved = is_array($this->lesson->story_map) ? $this->lesson->story_map : [];
+        if ($dir === 'tb') {
+            $saved = is_array($saved['tb'] ?? null) ? $saved['tb'] : [];
+        }
         $out = ['scenes' => [], 'choices' => []];
         foreach (['scenes', 'choices'] as $group) {
             foreach ((array) ($saved[$group] ?? []) as $id => $point) {

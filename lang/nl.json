@@ -3214,5 +3214,8 @@
     "Full size": "Ware grootte",
     "Show the whole story (F)": "Het hele verhaal tonen (F)",
     "Delete removes this line": "Delete haalt deze lijn weg",
-    "Drag one of the picked cards to move them together": "Sleep een van de gekozen kaarten om ze samen te verplaatsen"
+    "Drag one of the picked cards to move them together": "Sleep een van de gekozen kaarten om ze samen te verplaatsen",
+    "Which way the story runs": "Welke kant het verhaal op loopt",
+    "Top to bottom": "Van boven naar beneden",
+    "Left to right": "Van links naar rechts"
 }

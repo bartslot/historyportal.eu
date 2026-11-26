@@ -3147,5 +3147,8 @@
     "Full size": "Taille réelle",
     "Show the whole story (F)": "Afficher toute l'histoire (F)",
     "Delete removes this line": "Suppr retire cette ligne",
-    "Drag one of the picked cards to move them together": "Faites glisser une des cartes choisies pour les déplacer ensemble"
+    "Drag one of the picked cards to move them together": "Faites glisser une des cartes choisies pour les déplacer ensemble",
+    "Which way the story runs": "Dans quel sens l'histoire se déroule",
+    "Top to bottom": "De haut en bas",
+    "Left to right": "De gauche à droite"
 }
