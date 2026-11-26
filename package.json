@@ -30,6 +30,7 @@
         "vitest": "^4.1.6"
     },
     "dependencies": {
+        "@babylonjs/addons": "9.28.0",
         "@babylonjs/core": "9.28.0",
         "@babylonjs/loaders": "9.28.0",
         "@babylonjs/materials": "9.28.0",
