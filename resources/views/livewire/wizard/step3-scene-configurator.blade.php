@@ -455,6 +455,25 @@
         let lastVoyageId = null       // the mounted voyage's id — the ONLY thing that forces a REBUILD
         let lastMapStyle = null       // …and its ground: earth vs drawn chart is chosen when the map is built
         let lastVoyageDefStr = null   // last applied route geometry (waypoints/legs) — reshaped in place
+        // Ships go round the land: a ship stretch of this lesson's route that crosses land is drawn
+        // round it (sea-route.js), and saved that way, so the waypoint numbers the handles send match
+        // the route on screen. Once per route version; the save comes back as an unchanged route.
+        let seaSafeSent = null
+        const keepShipsAtSea = (p, sceneId) => {
+            if (p.kind !== 'voyage' || !p.voyage_def || !window.seaSafeVoyageDef) return
+            const defStr = JSON.stringify(p.voyage_def)
+            if (defStr === seaSafeSent) return
+            seaSafeSent = defStr
+            window.seaSafeVoyageDef(p.voyage_def).then((fixed) => {
+                if (!fixed || sceneId !== currentSceneId) return
+                window.Livewire.dispatch('voyageRouteKeptAtSea', {
+                    sceneId,
+                    waypoints: fixed.waypoints,
+                    legWps: (fixed.legs || []).map((l) => l.wp),
+                    labelAt: Number.isInteger(fixed.label_at) ? fixed.label_at : null,
+                })
+            }).catch(() => {})
+        }
         let lastLeg = null            // last-played leg index (for the no-rebuild leg switch)
         let lastOverview = false      // was the last voyage scene the itinerary? (same switch, other mode)
         let lastGalleryId = null      // mounted standalone-gallery scene id — content edits refresh in place
@@ -780,6 +799,7 @@
                         } catch (_) {}
                     }
                     lastKey = key; lastLeg = legNow; lastVoyageDefStr = defStr; lastOverview = wantsOverview
+                    keepShipsAtSea(p, currentSceneId)
                     wireTextProjector()   // a text pinned on this voyage follows its map
                     showMapArt(p)   // keep the clipart layers in sync (a poll/leg switch may add/move one)
                     return
@@ -855,6 +875,7 @@
                         openGalleryOnArrive: window.__openGalleryOnLoad === true,
                     })
                     window.__openGalleryOnLoad = false   // consume — later re-mounts start on the map
+                    keepShipsAtSea(p, currentSceneId)
                     window.__mountVoyagePaint && window.__mountVoyagePaint(inst, stageInner, p)
                     if (vcfg.overview) {
                         // The itinerary scene: whole route, every stop, fitted. No leg is sailed.

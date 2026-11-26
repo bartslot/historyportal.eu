@@ -15,6 +15,7 @@ import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
 import { t } from './i18n.js';
 import { defaultSailSeconds } from './anim/sail-clip.js';
+import { loadSeaGrid, seaSafeDef } from './timemap/sea-route.js';
 import { autoCardMs, checkpointFraction, checkpointHasContent, checkpointsOf, passedCheckpoints, renderCheckpointCard } from './voyage-checkpoints.js';
 
 // Voyage tour — the whole voyage is ONE persistent map. Legs play via playLeg(): the map, ships,
@@ -124,7 +125,30 @@ const setReadingOverlayOpen = (open) => {
 /** The route a voyage scene sails: the lesson's own edited copy when it is this voyage's, else the catalog's. */
 // A lesson can hold scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def`
 // would draw the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
-const voyageRouteFor = (voyage, def) => (def && (!def.id || def.id === voyage) ? def : null) || voyageRoutes().find((v) => v.id === voyage);
+// Ships go round the land (sea-route.js). The catalog is kept clean by scripts/voyage-routes.py;
+// a lesson's own copy of a route may be older than that fix, or bent over an island by hand, so
+// that copy is sent round the land before it is drawn. The mask loads with this module, and the
+// player and the editor wait for it (voyageSeaGridReady) before they build a tour.
+let seaGrid = null;
+const seaGridReady = loadSeaGrid().then((g) => { seaGrid = g; return g; });
+const seaSafeCache = new WeakMap();
+const seaSafe = (def) => {
+  if (!seaGrid || !def) return def;
+  if (!seaSafeCache.has(def)) seaSafeCache.set(def, seaSafeDef(def, seaGrid));
+  return seaSafeCache.get(def);
+};
+
+/**
+ * The lesson's route sent round the land, or null when it already is. The editor saves it, so the
+ * waypoint numbers its handles send match the route the teacher sees.
+ */
+export async function seaSafeVoyageDef(def) {
+  await seaGridReady;
+  const out = seaSafe(def);
+  return out && out !== def ? out : null;
+}
+
+const voyageRouteFor = (voyage, def) => seaSafe(def && (!def.id || def.id === voyage) ? def : null) || voyageRoutes().find((v) => v.id === voyage);
 
 /**
  * Fetch every tile this voyage can show, at every zoom it shows it from, into the browser cache.
@@ -2024,6 +2048,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
      */
     setVoyageDef(newDef, leg) {
       if (!newDef || !Array.isArray(newDef.waypoints) || newDef.waypoints.length < 2) return;
+      newDef = seaSafe(newDef);   // a bend dragged over an island: drawn round it (the editor saves that)
       route.waypoints = newDef.waypoints;
       if (Array.isArray(newDef.legs)) route.legs = newDef.legs;
       if (newDef.id) route.id = newDef.id;
@@ -2201,3 +2226,5 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 }
 
 window.renderVoyageTour = renderVoyageTour;
+window.voyageSeaGridReady = seaGridReady;
+window.seaSafeVoyageDef = seaSafeVoyageDef;

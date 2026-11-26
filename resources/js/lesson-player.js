@@ -2315,6 +2315,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (scene?.kind !== 'voyage') return
       try {
         if (!window.renderVoyageTour) await import('./voyage-tour.js')
+        await window.voyageSeaGridReady   // ships round the land: the mask first (sea-route.js)
       } catch (_) { return }   // the scene itself retries, and says so
       // Start may have been pressed while the module loaded: then the scene builds its own map.
       if (this.phase !== 'TITLE_SCREEN' || _voyageInstance || !window.renderVoyageTour) return
@@ -2352,6 +2353,7 @@ Alpine.data('lessonGame', (lesson) => ({
           return
         }
       }
+      try { await window.voyageSeaGridReady } catch (_) { /* no mask: the route is drawn as stored */ }
       const stage = document.getElementById('lesson-map-stage')
       if (!stage || !window.renderVoyageTour) { this._advanceScene(index); return }
       stage.style.display = 'block'
