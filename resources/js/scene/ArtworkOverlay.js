@@ -528,12 +528,13 @@ export class ArtworkOverlay {
    */
   adoptDrawingGeo() {
     if (this.readonly || !this._projector) return 0
+    // No opening zoom (a voyage's projector): such a picture never grew with the map, so it looks right at today's zoom.
+    const ref = this._projector.refZoom?.()
+    const zoom = Number.isFinite(ref) ? ref : this._projector.zoom?.()
     let n = 0
     for (const item of this._layers) {
       if (item.anchor !== 'map' || !item.drawing || item.geo) continue
-      // No opening zoom (a voyage's projector): such a picture never grew with the map, so it looks right at today's zoom.
-      const ref = this._projector.refZoom?.()
-      const geo = this._viewGeo(Number.isFinite(ref) ? ref : this._projector.zoom?.())
+      const geo = this._viewGeo(zoom)
       if (!geo) continue
       item.geo = geo
       this._emit(item)

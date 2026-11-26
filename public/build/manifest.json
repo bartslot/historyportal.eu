@@ -264,7 +264,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BTwFDNud.js",
+    "file": "assets/app-Ea6YxWYQ.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -342,7 +342,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-B4KyQfVW.js",
+    "file": "assets/cutout-dialog-OMkZyMjg.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -405,7 +405,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BbTFKpUJ.js",
+    "file": "assets/lesson-player-BBTfJHOM.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -471,7 +471,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-8FOuS1-V.js",
+    "file": "assets/ArtworkOverlay-BB17SzEQ.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -519,7 +519,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-hBJ7jTnl.js",
+    "file": "assets/SplitStage-DFSvbRu4.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -582,7 +582,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-MZQK-Um-.js",
+    "file": "assets/index-D14NHRTv.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -714,7 +714,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-TKmUKSQN.js",
+    "file": "assets/recorder-peR8TeBg.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

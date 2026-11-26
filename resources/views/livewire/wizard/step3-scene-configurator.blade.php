@@ -733,7 +733,6 @@
                     host.style.display = 'block'
                     host.style.visibility = ''
                     lastVoyageId = cfg.voyage; lastMapStyle = style; lastVoyageDefStr = keptVoyage.def
-                    lastLeg = null; lastKey = null; lastOverview = false
                     window.__voyageTour = inst
                 }
                 if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && style === lastMapStyle) {
@@ -799,7 +798,7 @@
                 if (p.kind === 'voyage') dropVoyage()
                 lastKey = key
                 lastVoyageId = cfg.voyage
-                lastMapStyle = p.voyage_map?.style || 'earth'
+                lastMapStyle = style
                 lastVoyageDefStr = JSON.stringify(p.voyage_def || null)
                 lastLeg = Number(cfg.leg) || 0
                 // `cfg`, not `vcfg`: the same scene config, but vcfg is declared further down and

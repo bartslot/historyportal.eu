@@ -131,6 +131,7 @@ class MapPinnedLayerMoveTest extends TestCase
         $this->assertEqualsWithDelta(180.0, $layer['lng'], 0.0001);
         $this->assertEqualsWithDelta(-90.0, $layer['lat'], 0.0001);
     }
+
     public function test_a_pinned_drawing_keeps_the_map_view_it_was_pinned_at(): void
     {
         // Bart 11-26: a route drawn on the map and pinned by hand drifted off the map in play, because its
