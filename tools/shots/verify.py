@@ -15,6 +15,9 @@ import board as boards
 import colour
 from registry import INK, Lesson
 
+GREY_MAX = 0.5       # percent of grey tone away from the lines an ink pass may have (paper texture, stray specks)
+SAME_SHAPE = 0.65    # side-view outline overlap above which two animals may be one animal redrawn
+SAME_BUILD = 0.05    # ...when their proportions (length over height) also differ by less than this
 INK_KEPT = 0.85       # share of pass 1 ink that must survive pass 2 in place
 RESERVED_SHARE = 1.0  # percent of a cell's paint in someone's reserved colour before it is worth a look
 
@@ -39,17 +42,104 @@ def ink(board: dict, path: Path) -> dict:
     if rows * cols > 1 and not boards.gaps_clean(rgb, rows, cols):
         failures.append('grid')
         notes.append('Something is drawn across a gap between cells, or the grid is not even.')
-    values = colour.lab(rgb)
-    if float((np.hypot(values[..., 1], values[..., 2]) > 15).mean()) > 0.01:      # more than 1% clearly coloured
+    if _has_colour(rgb):
         failures.append('ink-has-colour')
         notes.append('The ink pass has colour or a tinted wash in it.')
     for n, cell in enumerate(_cells(rgb, board), 1):
-        share = colour.coverage(cell)['ink']
-        measured.append({'cell': n, 'ink': share})
-        if not low <= share <= high:
-            failures.append('ink-weight')
-            notes.append(f'Cell {n}: {share}% ink; asked {INK[board["kind"]][0]} (accepted {low} to {high}%).')
+        row = {'cell': n, **colour.coverage(cell), 'grey': colour.grey_shading(cell)}
+        measured.append(row)
+        failures += _ink_rules(row, board['kind'], f'Cell {n}', notes)
     return {'pass': 'ink', 'file': str(path), 'failures': sorted(set(failures)), 'notes': notes, 'cells': measured}
+
+
+def _has_colour(rgb: np.ndarray) -> bool:
+    """More than 1% of the picture is clearly coloured: an ink pass is black on white only."""
+    values = colour.lab(rgb)
+    return float((np.hypot(values[..., 1], values[..., 2]) > 15).mean()) > 0.01
+
+
+def _ink_rules(row: dict, kind: str, tag: str, notes: list[str]) -> list[str]:
+    """The ink gate on one measured picture or cell: ink share, bare paper, and no grey shading."""
+    asked, white, _, (low, high), least_paper = INK[kind]
+    failures = []
+    if not low <= row['ink'] <= high:
+        failures.append('ink-weight')
+        notes.append(f'{tag}: {row["ink"]}% ink; the gate is {low} to {high}% (asked {asked}).')
+    if row['paper'] < least_paper:
+        failures.append('paper')
+        notes.append(f'{tag}: {row["paper"]}% bare paper; the gate is at least {least_paper}%.')
+    if row['grey'] > GREY_MAX:
+        failures.append('grey-shading')
+        notes.append(f'{tag}: {row["grey"]}% grey shading away from the lines; ink passes have none (at most {GREY_MAX}%).')
+    return failures
+
+
+def sheet(path: Path, kind: str = 'sheet') -> dict:
+    """The ink gate on a single sheet (a character, a horse, a prop): ink, paper, grey, measured on the whole page."""
+    rgb = colour.load(path)
+    row = {**colour.coverage(rgb), 'grey': colour.grey_shading(rgb)}
+    notes: list[str] = []
+    failures = _ink_rules(row, kind, Path(path).name, notes)
+    if _has_colour(rgb):
+        failures.append('ink-has-colour')
+        notes.append(f'{Path(path).name}: it has colour in it; an ink sheet is black on white only.')
+    return {'file': str(path), **row, 'failures': sorted(set(failures)), 'notes': notes}
+
+
+def figures(path: Path) -> list[np.ndarray]:
+    """The figures on a sheet, left to right, top to bottom, as filled silhouettes (True inside the outline).
+    Figures are split where a full column or row of bare paper runs between them."""
+    _, ink, paper = colour.masks(colour.load(path))
+    drawn = ~paper
+
+    def runs(line: np.ndarray, gap: int) -> list[tuple[int, int]]:
+        out, start, blank = [], None, 0
+        for i, used in enumerate(list(line) + [False] * gap):
+            if used:
+                start, blank = (i if start is None else start), 0
+            elif start is not None:
+                blank += 1
+                if blank >= gap:
+                    out.append((start, i - blank + 1)); start, blank = None, 0
+        return [r for r in out if r[1] - r[0] > 20]
+
+    shapes = []
+    for top, bottom in runs(drawn.any(axis=1), 12):
+        band = drawn[top:bottom]
+        for left, right in runs(band.any(axis=0), 12):
+            shapes.append(_filled(band[:, left:right]))
+    return shapes
+
+
+def _filled(drawn: np.ndarray) -> np.ndarray:
+    """The outline filled in: everything the paper outside cannot reach."""
+    from PIL import ImageDraw
+    image = Image.fromarray(np.pad(drawn, 1).astype(np.uint8) * 255).copy()      # a fresh buffer, or floodfill writes nowhere
+    ImageDraw.floodfill(image, (0, 0), 128)
+    return (np.asarray(image) != 128)[1:-1, 1:-1]
+
+
+def look_alike(paths: list[Path], size: int = 96) -> list[dict]:
+    """Each pair of sheets compared on their first figure, the standing side view every sheet opens with: how much
+    the two outlines overlap once scaled to one box, and how far their proportions (length over height) differ.
+    Two animals with the same proportions and largely the same outline read as one animal redrawn, whatever their
+    coat. Other views are left out on purpose: different poses would make any two horses look different."""
+    def side(path: Path) -> tuple[np.ndarray, float]:
+        mask = figures(path)[0]
+        ys, xs = np.nonzero(mask)
+        crop = mask[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        box = np.asarray(Image.fromarray(crop.astype(np.uint8) * 255).resize((size, size), Image.BILINEAR)) > 127
+        return box, (xs.max() - xs.min() + 1) / (ys.max() - ys.min() + 1)
+
+    views = [(str(p), side(p)) for p in paths]      # full paths: two sheets may share a file name
+    out = []
+    for i, (a, (x, rx)) in enumerate(views):
+        for b, (y, ry) in views[i + 1:]:
+            overlap = float((x & y).sum() / max(1, (x | y).sum()))
+            build = abs(rx - ry) / max(rx, ry)
+            out.append({'a': a, 'b': b, 'overlap': round(overlap, 3), 'build_difference': round(build, 3),
+                        'too_similar': overlap > SAME_SHAPE and build < SAME_BUILD})
+    return out
 
 
 def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: dict | None = None) -> dict:

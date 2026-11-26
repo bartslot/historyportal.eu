@@ -60,6 +60,12 @@ Each step ends in a gate. Do not start a step while the one before it is open.
   first; do not redesign the cast to try the method. A sheet shows front, side, three-quarter and back, a face
   close-up, and nothing else, large enough that hair, face and garment are still readable when the sheet is one
   of several attachments. It says who someone is, never how to stand.
+- Every ink sheet goes through the gate before bart sees it: `shots.py sheet <file> [<file> ...]`. It measures
+  ink (6 to 8% for a sheet), bare paper (at least 85%) and grey shading away from the lines (none: an ink pass has
+  no wash). Given several sheets, it also compares their standing side views: two animals with the same
+  proportions and largely the same outline read as one animal redrawn, whatever their coat. A sheet that fails is
+  a new run, not a candidate. So a sheet opens with a standing side view, and every sheet of one kind (all the
+  horses) uses the same views in the same order. One animal or person per sheet, never three on one sheet.
 - bart approves a sheet in his own words. Then, and only then: `shots.py approve <lesson> <who> <ink|colour>
   <file>`. The hash is taken at that moment; a file that changes later needs him again.
 - Give each character a `swatches` box per garment in `cast.json` (on flat paint of the approved colour sheet)
@@ -139,7 +145,8 @@ correctly and still draw the wrong brother. The proof is in the picture.
 
 Then, before any colour:
 
-1. `shots.py verify <lesson> <scene> <board> --ink board-ink.png` measures the grid and the ink share per cell.
+1. `shots.py verify <lesson> <scene> <board> --ink board-ink.png` measures the grid, and per cell the ink share,
+   the bare paper and grey shading away from the lines.
    Ink share is a rough signal (a close-up beard and a far rider differ at the same line weight); your eyes decide.
 2. Look at every cell yourself against the sheets, the blocking guide and the manifest's expected sizes: is each
    person the right figure, with their `tell` visible? Hands, horses and their markings, landmark size, history.
@@ -170,7 +177,7 @@ the right blue somewhere in the cell proves nothing. It writes:
 - `.overlay.png`: the pass 1 ink in red over the coloured board. Look at faces, horse markings and the skyline:
   a shifted eye does not move a whole-cell number.
 
-The colour limit (Delta E 12) is a starting value. Tune it on boards bart accepted and rejected.
+The colour limit (Delta E 12), like the grey and look-alike limits, is a starting value. Tune it on boards bart accepted and rejected.
 
 Anything wrong is a new run of both passes (bart's rule), never an edit of the coloured board.
 

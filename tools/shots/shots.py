@@ -13,6 +13,7 @@
     shots.py reject  <lesson> <board> --failures kind,kind       record a failed try (two of a kind stops the retries)
     shots.py cut     <lesson> <scene> <board> <colour.png>      cut the approved board into keyframes
     shots.py tally   <lesson>                                   requests sent against cells accepted
+    shots.py sheet   <file> [<file> ...] [--kind sheet]         ink gate on sheets; with several, checks for look-alikes
 
 None of these makes a picture. See .claude/skills/consistent-shots/SKILL.md for the order they go in.
 """
@@ -83,6 +84,9 @@ def main(argv: list[str] | None = None) -> int:
     p = command('cut', 'lesson', 'scene', 'board', 'file')
     p.add_argument('--size', default='1920x1080')
     command('tally', 'lesson')
+    p = sub.add_parser('sheet')
+    p.add_argument('files', nargs='+')
+    p.add_argument('--kind', default='sheet')
 
     args = parser.parse_args(argv)
     try:
@@ -97,6 +101,20 @@ def run(args) -> int | None:
         packs.seen(Path(args.pack), today())
         return print('Recorded: bart saw these inputs.')
 
+    if args.command == 'sheet':
+        failed = False
+        for path in args.files:
+            report = verify.sheet(Path(path), args.kind)
+            failed |= bool(report['failures'])
+            print(f'{Path(path).name}: ink {report["ink"]}%, paper {report["paper"]}%, grey shading {report["grey"]}%'
+                  + (' FAIL' if report['failures'] else ' ok'))
+            print(''.join(f'  - {n}\n' for n in report['notes']), end='')
+        for pair in verify.look_alike([Path(p) for p in args.files]) if len(args.files) > 1 else []:
+            failed |= pair['too_similar']
+            print(f'{Path(pair["a"]).name} / {Path(pair["b"]).name}: side-view outline overlap {pair["overlap"]}, proportions differ '
+                  f'{pair["build_difference"]:.0%}' + (' TOO SIMILAR' if pair['too_similar'] else ' ok'))
+        return 1 if failed else 0
+
     lesson = Lesson(args.lesson)
 
     if args.command == 'check':
@@ -105,6 +123,10 @@ def run(args) -> int | None:
         return 1 if problems else 0
 
     if args.command == 'approve':
+        if args.pass_ == 'ink':
+            report = verify.sheet(lesson.media / args.file)
+            if report['failures']:
+                raise Refused('This ink sheet fails the gate, so it cannot be approved:\n- ' + '\n- '.join(report['notes']))
         entry = lesson.approve(args.who, args.pass_, args.file, 'bart', today())
         return print(f'Approved {args.pass_} sheet of {args.who}: {entry["sha256"][:12]}')
 

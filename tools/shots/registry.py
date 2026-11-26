@@ -20,12 +20,14 @@ MIN_CELL = 700        # px a cell needs to be wide before it can become a keyfra
 MAX_NAMED = 3         # named characters in one cell; more and the model swaps their features
 PASSES = ('ink', 'colour')
 
-# Ink per kind of picture: the table in the History Lines skill. Black coverage, white share, cross-hatching.
+# Ink per kind of picture: the table in the History Lines skill. Black coverage, white share, cross-hatching,
+# then what the gate measures: ink share accepted (percent) and the least bare paper (percent). For a sheet these
+# are bart's own gate (Nov 26): ink 6 to 8%, white at least 85%.
 INK = {
-    'sheet': ('6 to 8%', 'at least 85%', 'none', (4, 10)),
-    'scene': ('10 to 14%', '65 to 75%', 'at most a fifth of the shaded area', (8, 16)),
-    'bright': ('5 to 8%', '80% or more', 'none', (3, 10)),
-    'backdrop': ('8 to 12%', '70 to 80%', 'at most a fifth of the shaded area', (6, 14)),
+    'sheet': ('6 to 8%', 'at least 85%', 'none', (6, 8), 85),
+    'scene': ('10 to 14%', '65 to 75%', 'at most a fifth of the shaded area', (8, 16), 60),
+    'bright': ('5 to 8%', '80% or more', 'none', (5, 8), 80),
+    'backdrop': ('8 to 12%', '70 to 80%', 'at most a fifth of the shaded area', (6, 14), 65),
 }
 
 

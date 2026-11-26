@@ -66,6 +66,19 @@ def coverage(rgb: np.ndarray) -> dict[str, float]:
     return {'ink': round(100 * float(ink.mean()), 1), 'paper': round(100 * float(paper.mean()), 1)}
 
 
+def grey_shading(rgb: np.ndarray) -> float:
+    """Percent of the picture that is grey tone away from any line: wash, smudge or soft shading. The soft edge of
+    an ink line (anti-aliasing) does not count; only grey more than two pixels from ink does."""
+    values, ink, _ = masks(rgb)
+    chroma = np.hypot(values[..., 1], values[..., 2])
+    grey = (values[..., 0] >= 40) & (values[..., 0] <= 85) & (chroma < PAPER_CHROMA)
+    near = ink.copy()
+    for dy in range(-2, 3):
+        for dx in range(-2, 3):
+            near |= np.roll(np.roll(ink, dy, 0), dx, 1)
+    return round(100 * float((grey & ~near).mean()), 2)
+
+
 def find(rgb: np.ndarray, target_hex: str) -> dict:
     """How the paint nearest `target_hex` reads in this picture: its median colour, how far off, how much there is."""
     values, ink, paper = masks(rgb)
