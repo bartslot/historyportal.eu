@@ -238,8 +238,8 @@
     "file": "assets/vite-helpers-DqutJMZx.js",
     "name": "vite-helpers"
   },
-  "_voyage-opening-DqGUoIkO.js": {
-    "file": "assets/voyage-opening-DqGUoIkO.js",
+  "_voyage-opening-DSRGRC7t.js": {
+    "file": "assets/voyage-opening-DSRGRC7t.js",
     "name": "voyage-opening"
   },
   "_water-CDhjBeVB.js": {
@@ -413,14 +413,14 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-CvljeTxf.js",
+    "file": "assets/lesson-player-RMynJnfP.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
     "imports": [
       "_vite-helpers-DqutJMZx.js",
       "_race-DHwxaB0x.js",
-      "_voyage-opening-DqGUoIkO.js",
+      "_voyage-opening-DSRGRC7t.js",
       "_scene-animation-BBeW6hhY.js",
       "_map-prefetch-D8WVEN2g.js",
       "_sail-clip-OzveWE8E.js",
@@ -776,7 +776,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-BIEZHsqG.js",
+    "file": "assets/voyage-tour-BCJrdTZm.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
@@ -789,7 +789,7 @@
       "resources/js/timemap/voyage-ships.js",
       "_vite-helpers-DqutJMZx.js",
       "_map-prefetch-D8WVEN2g.js",
-      "_voyage-opening-DqGUoIkO.js",
+      "_voyage-opening-DSRGRC7t.js",
       "_i18n-DoByrmTl.js",
       "_sail-clip-OzveWE8E.js",
       "_map-imagery-Bp93pHDe.js",

@@ -2229,8 +2229,9 @@ Alpine.data('lessonGame', (lesson) => ({
       // pinned at its leg's arrival. The teacher hides modern cities/borders via game_config.voyage_map.
       // Only THIS voyage's scenes: a lesson with Tasman's 1642 and 1644 voyages pinned 1642's
       // "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route (Arnhem Land, the Gulf).
-      const legLabels = _sceneQueue
-        .filter(s => s.kind === 'voyage' && s.location && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+      const mine = _sceneQueue.filter(s => s.kind === 'voyage' && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+      const legLabels = mine
+        .filter(s => s.location)
         .map(s => ({
           text: s.location,
           leg: Number((s.config || {}).leg) || 0,
@@ -2238,9 +2239,8 @@ Alpine.data('lessonGame', (lesson) => ({
           at: (s.config || {}).overview ? 'depart' : 'arrive',
         }))
       const sail = storedSail(cfg.timeline)
-      // Every voyage scene of THIS voyage, for the tiles to warm: the zooms its timeline cameras fly
-      // through, and whether any leg dives in from space.
-      const mine = _sceneQueue.filter(s => s.kind === 'voyage' && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+      // For the tiles to warm: the zooms this voyage's timeline cameras fly through, and whether any
+      // leg dives in from space.
       const views = mine.flatMap(s => (cameraDrives((s.config || {}).timeline) ? sceneViews(s.config || {}) : []))
       const intro = mine.some(s => !!(s.config || {}).intro)
       _voyageInstance = window.renderVoyageTour(inner, {

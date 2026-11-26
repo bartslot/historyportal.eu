@@ -13,6 +13,10 @@
 export const INTRO_ZOOM = 1.05   // the first leg's "from space" dive starts here
 // The itinerary's air around the whole trip. One value for the opening and for showOverview, or the
 // opening would frame the trip one way and the overview would re-frame it another a moment later.
+const isLngLat = (p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])
+/** [[west, south], [east, north]] around these points. */
+const bbox = (pts) => [[Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))]]
+
 export const OVERVIEW_PADDING = { top: 70, bottom: 70, left: 60, right: 60 }
 
 /**
@@ -40,11 +44,8 @@ export function overviewBounds (route) {
   const legs = route?.legs || []
   if (!legs.length) return null
   const pts = [wps[legs[0].wp?.[0]], ...legs.map((l) => wps[l.wp?.[1]])]
-    .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-  if (!pts.length) return null
-  const lngs = pts.map((p) => p[0])
-  const lats = pts.map((p) => p[1])
-  return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]
+    .filter(isLngLat)
+  return pts.length ? bbox(pts) : null
 }
 
 /**
@@ -55,7 +56,7 @@ export function overviewBounds (route) {
 export function legOpeningCamera (route, { leg = 0, intro = false } = {}, followZoom) {
   const def = route?.legs?.[Number(leg) || 0]
   const wp = def && route.waypoints?.[def.wp?.[0]]
-  if (!Array.isArray(wp) || !Number.isFinite(wp[0]) || !Number.isFinite(wp[1])) return null
+  if (!isLngLat(wp)) return null
   return { center: [wp[0], wp[1]], zoom: intro ? INTRO_ZOOM : followZoom, pitch: 0 }
 }
 
@@ -72,14 +73,14 @@ export function legOpeningCamera (route, { leg = 0, intro = false } = {}, follow
  * @returns {{ box: [[number, number], [number, number]], minZoom: number, maxZoom: number }|null}
  */
 export function voyagePrefetchPlan (route, { followZoom, dolly = 0, overviewZoom = null, views = [] } = {}) {
-  const pts = (route?.waypoints || []).filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-  const extra = (views || []).filter((v) => Array.isArray(v?.center) && Number.isFinite(v.center[0]) && Number.isFinite(v.center[1]) && Number.isFinite(v.zoom))
+  const pts = (route?.waypoints || []).filter(isLngLat)
+  const extra = (views || []).filter((v) => isLngLat(v?.center) && Number.isFinite(v.zoom))
   extra.forEach((v) => pts.push(v.center))
   if (!pts.length || !Number.isFinite(followZoom)) return null
   const zooms = [followZoom, followZoom + Math.max(0, dolly), ...extra.map((v) => v.zoom)]
   if (Number.isFinite(overviewZoom)) zooms.push(overviewZoom)
   return {
-    box: [[Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))]],
+    box: bbox(pts),
     minZoom: Math.min(...zooms),
     maxZoom: Math.max(...zooms),
   }

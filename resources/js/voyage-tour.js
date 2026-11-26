@@ -1418,7 +1418,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         views: [
           ...(Array.isArray(views) ? views : []),
           // The dive from space starts this far out, over the home port.
-          ...((intro || start?.intro) && Array.isArray(route.waypoints?.[0]) ? [{ center: route.waypoints[0], zoom: INTRO_ZOOM }] : []),
+          ...(intro && Array.isArray(route.waypoints?.[0]) ? [{ center: route.waypoints[0], zoom: INTRO_ZOOM }] : []),
         ],
       });
       if (plan) prefetchBox(map, plan.box, { minZoom: plan.minZoom, maxZoom: plan.maxZoom });
