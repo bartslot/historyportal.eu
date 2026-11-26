@@ -47,6 +47,7 @@ use App\Models\Scene;
 use App\Models\StrategyGame;
 use App\Services\Billing\NarrationCreditLedger;
 use App\Services\Diorama\LibraryAssets;
+use App\Services\Editor\Drawings;
 use App\Services\Editor\SceneHistory;
 use App\Services\Lessons\PredictSpec;
 use App\Services\Lessons\TeamGameSpec;
@@ -410,6 +411,8 @@ class Step3SceneConfigurator extends Component
                 'lng' => isset($l['lng']) ? (float) $l['lng'] : null,
                 'lat' => isset($l['lat']) ? (float) $l['lat'] : null,
                 'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
+                // A pen drawing (its strokes stay on the server): pinned, it grows exactly with the map.
+                'drawing' => Drawings::isDrawingLayer($l),
                 // Animate tab: entrance movement, its delay in seconds, and the easing key.
                 'wobble' => isset($l['wobble']) ? (int) $l['wobble'] : null,
                 // Colour treatment — knock out the paper, drain the colour, recolour the ink.

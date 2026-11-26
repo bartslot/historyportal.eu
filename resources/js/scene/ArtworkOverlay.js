@@ -245,7 +245,8 @@ export function normalizeLayer(l) {
         lat: Number.isFinite(l.lat) ? l.lat : null,
         geo: isGeo(l) ? l.geo : null,
         // A line drawn with the pen (EditsDrawings): once pinned it must follow the map exactly, never by PIN_ZOOM_GROWTH.
-        drawing: Array.isArray(l.strokes) && l.strokes.length > 0 && !!l.drawn,
+        // The editor's payload says so (`drawing`); the saved layer itself carries the strokes.
+        drawing: l.drawing === true || (Array.isArray(l.strokes) && l.strokes.length > 0 && !!l.drawn),
         // A vector arrow (arrow-shape.js): its end and its shape. Every other kind ignores these.
         ...(l.kind === 'arrow' ? arrowParams(l) : {}),
         title: l.title || (l.embed && l.embed.title) || 'Icon',
