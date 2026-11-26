@@ -1,6 +1,6 @@
 {
   "lesson": "marco-polo",
-  "media": "topics/marco-polo/v2",
+  "media": "topics/marco-polo/v3",
   "about": "The cast of the Marco Polo lesson. Looks are copied from the History Lines skill (bart, 24-26 Nov 2026). A sheet is null until bart approves one; palette colours are sampled from the approved colour sheet with `shots.py palette`, never typed in by hand.",
   "characters": {
     "marco": {
@@ -12,8 +12,22 @@
         "tunic"
       ],
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/marco/ink-03.png",
+          "sha256": "748860428404bcf48b3f99f8610319fbd142f06afae12be00834575d6287cc29",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/marco/colour-03.png",
+          "sha256": "7d6b1a58efe9c2ed676e0f470fec0cc475050743739548cb11d52c29b568a811",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
       },
       "swatches": {},
       "palette": {},
@@ -55,8 +69,22 @@
         "cap"
       ],
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/maffeo/ink-03.png",
+          "sha256": "3afba537bfa51de29211ba024459ed4103a001c6ba2ed50f253da570d21417f5",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/maffeo/colour-03.png",
+          "sha256": "f1412f8e7b8f4ba34ac94f5f3e3eab13a50fbc93e7e5a7355f8e18757fce1c30",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
       },
       "swatches": {},
       "palette": {},
