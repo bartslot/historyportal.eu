@@ -2,8 +2,21 @@
   "scene": "raiders",
   "title": "Raiders on the plain",
   "script": "project files: raiders-scene/script.md",
-  "place": "Persia, the open plain near Kerman on the road down to Hormuz, about 1272.",
-  "accuracy": null,
+  "place": "Persia, the hot Rudbar (Jiroft) plain south of Kerman, below the mountain descent near ruined Camadi, on the road down to Hormuz, autumn of about 1272.",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed., Book 1 ch. 18 and notes 1-5 (Project Gutenberg #10636)",
+    "findings": [
+      "A vast, very hot plain (Reobarles: Rudbar/Jiroft) with dates, pistachios and 'apples of Paradise'; turtledoves, francolins, white humped oxen, fat-tailed sheep.",
+      "Villages and towns 'have lofty walls of mud, made as a defence against the banditti'.",
+      "The Caraonas bring a darkness ('you can scarcely discern your comrade riding beside you'), ride abreast across the whole plain and catch every living thing outside the walls. The darkness is a dry dust haze or fog, typical after the autumn equinox (Sykes).",
+      "Marco threw himself into a village hard by, Conosalmi; he lost his whole company except seven (Pauthier's text).",
+      "Not in the source: the caravan's animals, flight on horseback, who spotted the raiders, the open gate. These are our reconstruction.",
+      "Raiders c.1272: Mongol (Negüderi) kit, wrap-over deel, quilted or fur-trimmed caps, composite recurve bow first, sabre and mace, some lamellar; small steppe horses 13-14 hands."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/raiders-accuracy.md"
+  },
   "layout": {
     "status": "Draft blocking from bart's note of 26 Nov 2026 (the village stays small on the far right until the Polos race toward it). The distances are a first proposal for bart to correct, not a reconstruction.",
     "approved": null,
@@ -15,13 +28,13 @@
     "landmarks": [
       {
         "id": "village",
-        "label": "walled village",
+        "label": "walled village (Conosalmi)",
         "at": [
           3700,
           800
         ],
         "size": 200,
-        "note": "far to the east, on the right of frame; about 3 km from the caravan until the chase"
+        "note": "far to the east, on the right of frame: a walled village with lofty mud walls and one plain gate, not a town; about 3 km from the caravan until the chase"
       },
       {
         "id": "haze",
@@ -31,7 +44,7 @@
           900
         ],
         "size": 300,
-        "note": "far to the west, on the left of frame; it rises in the clips, the stills show a clear horizon there",
+        "note": "far to the west, on the left of frame; a dry dust haze that rises in the clips and hides the sun, the raiders coming out of it as a broad line abreast; the stills show a clear horizon there",
         "in_stills": false
       }
     ],
@@ -100,7 +113,7 @@
             ],
             "framing": "Very wide, eye level"
           },
-          "action": "The caravan is small on a huge empty plain, calm, at a walk away from the camera toward the right.",
+          "action": "The whole caravan, the three Polos with servants and pack animals, small on a vast hot plain with a few date palms and pistachio trees, calm, at a walk away from the camera toward the right.",
           "sees": {
             "village": "a small shape on the far right horizon"
           }
@@ -250,14 +263,14 @@
             ],
             "framing": "Medium wide, looking along the road"
           },
-          "action": "The three Polos pull their horses round toward the right, each at a different moment of the turn.",
+          "action": "Already riding east toward the village, the three Polos spur from a walk into a gallop, each at a different moment.",
           "sees": {
             "village": "a small shape on the far right horizon, the same size as in the cells before"
           },
           "where": {
-            "marco": "the rider on the right, already turned",
-            "niccolo": "the rider in the middle, half turned",
-            "maffeo": "the rider on the left, still looking back",
+            "marco": "the rider on the right, already galloping",
+            "niccolo": "the rider in the middle, breaking into a gallop",
+            "maffeo": "the rider on the left, still at a walk, looking back",
             "marco-horse": "Marco's mount",
             "niccolo-horse": "Niccolò's mount",
             "maffeo-horse": "Maffeo's mount"
@@ -301,7 +314,7 @@
           },
           "action": "The Polos ride hard toward the village, low over their horses' necks (the raiders behind them are in the clip, not in this still).",
           "sees": {
-            "village": "larger now, ahead on the right: walls and a gate can be made out"
+            "village": "larger now, ahead on the right: lofty mud walls and one plain gate"
           },
           "where": {
             "marco": "the rider in front, on the right",
@@ -348,7 +361,7 @@
             ],
             "framing": "Medium, from behind the riders"
           },
-          "action": "The town gate stands open ahead and the Polos reach it.",
+          "action": "The village gate stands open ahead in the lofty mud wall and the Polos reach it.",
           "sees": {
             "village": "the gate fills most of the frame"
           },
