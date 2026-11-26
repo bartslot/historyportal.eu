@@ -1990,4 +1990,3 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 }
 
 window.renderVoyageTour = renderVoyageTour;
-window.warmVoyageTiles = warmVoyageTiles;

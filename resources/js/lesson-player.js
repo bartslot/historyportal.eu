@@ -2292,9 +2292,9 @@ Alpine.data('lessonGame', (lesson) => ({
       _voyageWarmed.add(id)
       setTimeout(async () => {
         try {
-          if (!window.warmVoyageTiles) await import('./voyage-tour.js')
+          const { warmVoyageTiles } = await import('./voyage-tour.js')
           const { views, intro } = voyageScenes(id)
-          const asked = await window.warmVoyageTiles(_mapInstance?.map, {
+          const asked = await warmVoyageTiles(_mapInstance?.map, {
             voyage: id, def: voyageDef(lesson, id), mapOptions: lesson.game_config?.voyage_map || null, views, intro,
           })
           if (!asked) _voyageWarmed.delete(id)   // no map or no style yet: the next scene tries again
