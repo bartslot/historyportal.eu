@@ -213,7 +213,10 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
      */
     ocean: { sun, roughness: 0.95, strength: 0.48, windPatch: 0.6, shoreSoftnessKm: 19.5 },
     clouds: { ...field, sun },
-    daylight: { ...field, sun, date },
+    // No cloud shadows on the ground (Bart, 2026-11-26: "Please remove the shadows of the clouds on
+    // land"). The deck still draws; it just no longer darkens the land under it. The Shadows knob
+    // on the Clouds panel can still bring them back for a look.
+    daylight: { ...field, sun, date, cloudShadow: 0 },
     // Haze at 1.25 rather than the module's 1 — off the tuner, same session as the sea values.
     atmosphere: { sun, strength: 1.25 },
     /**
@@ -297,7 +300,7 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
         apply: (v) => set('clouds', { windScale: v }) },
       { key: 'windRate', label: 'Wind speed', min: 0, max: 0.3, step: 0.005, value: 0.05,
         apply: (v) => set('clouds', { windRate: v }) },
-      { key: 'cloudShadow', label: 'Shadows', min: 0, max: 1, step: 0.01, value: 0.5,
+      { key: 'cloudShadow', label: 'Shadows', min: 0, max: 1, step: 0.01, value: 0,
         apply: (v) => set('daylight', { cloudShadow: v }) },
       // HOW DARK vs HOW SOFT — two different complaints, and only the first had a knob. The band
       // that fades a shadow in across cloud cover was hardcoded, so the only way to answer "too

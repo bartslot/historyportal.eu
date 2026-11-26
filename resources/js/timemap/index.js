@@ -17,7 +17,7 @@ import supplementalMarkers from './markers.json';
 import { handTerritories, provenanceFor } from './hand-territories.js';
 import theme from './theme.json';
 import qidOverrides from '../../../database/data/cliopatria-qid-overrides.json';
-import { voyageStyleSources, voyageStyleLayers, initVoyages, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
+import { voyageStyleSources, voyageStyleLayers, initVoyages, ensureVoyagePill, VOYAGE_PILL, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
 import { initVoyageInteraction } from './voyage-interact.js';
 import { loadVoyageCard } from './voyage-card.js';
 import nationalColors from './national-colors.json';
@@ -31,7 +31,7 @@ import { sweepBorder, outlineOf, withoutSeams } from '../map/border-sweep.js';
 import { createAdvance } from '../map/advance-layer.js';
 import { EASING } from '../easing.js';
 import { planetSpacePosition } from './planet-mesh.js';
-import { sunDirection } from './sun.js';
+import { sunDirection, midsummerAt, utcHourWithSunOver, hourDelta } from './sun.js';
 import { registerCardControls } from './information-card.js';
 
 // Curated national fill colours (schoolbook hues: NL orange, France blue, Spain gold) keyed by the
@@ -178,6 +178,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // below instead, collapsed and in the corner. See addControl.
     attributionControl: false,
   });
+  // The route-name pill is drawn on demand, the first time the label layer asks for it, and again
+  // after any style reload.
+  map.on('styleimagemissing', (e) => { if (e.id === VOYAGE_PILL) ensureVoyagePill(map); });
 
   /**
    * The credit, back — as a mark you open, not a strip across the globe.
@@ -1080,13 +1083,49 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
   // the light and __tmSetLayer can dim any of them.
   let globe = null;
   /**
-   * A year on the slider, as a moment the sun can be computed for.
+   * The clock the sun is set to, in UTC hours. The day is the slider's year at midsummer (see
+   * midsummerAt); the HOUR follows the camera, so the side of the planet you turn to is the side in
+   * daylight.
    *
-   * Midsummer noon UTC: a year alone does not say which day or hour, and any choice shows in the
-   * terminator, so it is stated here once rather than being an accident of `new Date(year, 0)` —
-   * which would put every era at midwinter midnight and light the wrong hemisphere.
+   * Bart, 2026-11-26: "moving towards the dark side of the planet should change the time so the
+   * planet lights up, and you should see the sun move". So the hour is not set, it is chased: each
+   * frame it closes part of the gap to the hour that puts the sun over the view, and the light
+   * sweeps across the globe after you instead of jumping. It aims a little EAST of the centre, so
+   * the place you look at sits in mid-morning light: lit, but with the terminator still in the
+   * picture at the western limb, which is what makes it read as a planet and not a flat-lit ball.
    */
-  const dateForYear = (year) => new Date(Date.UTC(Number.isFinite(year) ? year : 2000, 5, 21, 12));
+  const SUN_LEAD_DEG = 35;          // sun this far east of the view centre = about 09:40 local
+  const SUN_FOLLOW_SECONDS = 0.9;   // time constant of the chase; ~2 s to settle after a drag
+  let sunHour = 12;
+  let sunTarget = 12;
+  let sunRAF = null;
+  let sunLast = 0;
+  const dateForYear = (year) => midsummerAt(year, sunHour);
+  const sunTargetHour = () => {
+    const { lng } = map.getCenter();
+    return utcHourWithSunOver(lng + SUN_LEAD_DEG, midsummerAt(state.year));
+  };
+  const sunStep = (now) => {
+    sunRAF = null;
+    const dt = sunLast ? Math.min(0.1, (now - sunLast) / 1000) : 1 / 60;
+    sunLast = now;
+    const gap = hourDelta(sunHour, sunTarget);
+    // Exponential approach: frame-rate independent, and it never overshoots.
+    const k = 1 - Math.exp(-dt / SUN_FOLLOW_SECONDS);
+    sunHour = Math.abs(gap) < 0.002 ? sunTarget : sunHour + gap * k;
+    globe?.setDate(dateForYear(state.year));
+    if (sunHour !== sunTarget) sunRAF = requestAnimationFrame(sunStep);
+  };
+  /** Point the sun at the view. `snap` skips the chase (first frame, reduced motion). */
+  const followSun = (snap = false) => {
+    sunTarget = sunTargetHour();
+    if (snap || reduceMotion) {
+      sunHour = sunTarget;
+      globe?.setDate(dateForYear(state.year));
+      return;
+    }
+    if (!sunRAF) { sunLast = 0; sunRAF = requestAnimationFrame(sunStep); }
+  };
 
   /**
    * How lit the place you are looking at is — 1 in full sun, 0 in full night.
@@ -1397,11 +1436,11 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
           apply: (v) => ownedPaint('voyage-line', 'line-opacity', v) },
         { key: 'voyageBlur', label: 'Route softness', min: 0, max: 4, step: 0.1, value: 0,
           apply: (v) => ownedPaint('voyage-line', 'line-blur', v) },
-        { key: 'voyageLabelColour', label: 'Name', type: 'color', value: '#20618f',
+        { key: 'voyageLabelColour', label: 'Name', type: 'color', value: '#ffffff',
           apply: (v) => ownedPaint('voyage-label', 'text-color', v) },
-        { key: 'voyageLabelHalo', label: 'Name halo', type: 'color', value: '#f3ead6',
+        { key: 'voyageLabelHalo', label: 'Name halo', type: 'color', value: '#0f172a',
           apply: (v) => ownedPaint('voyage-label', 'text-halo-color', v) },
-        { key: 'voyageLabelHaloWidth', label: 'Name halo width', min: 0, max: 4, step: 0.1, value: 1.2,
+        { key: 'voyageLabelHaloWidth', label: 'Name halo width', min: 0, max: 4, step: 0.1, value: 0,
           apply: (v) => ownedPaint('voyage-label', 'text-halo-width', v) },
         // Layout, not paint — it cannot be transitioned and does not read feature-state, so it is
         // set directly rather than through ownedPaint.
@@ -1779,7 +1818,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       map.setPaintProperty('markers-label', 'text-color', s.text.color);
       map.setPaintProperty('markers-label', 'text-halo-color', s.text.halo);
     }
-    applyVoyageStyle(map, { color: s.voyage, halo: s.text && s.text.halo });
+    applyVoyageStyle(map, { color: s.voyage });
     // Hand-drawn ink: several stacked strokes (per-feature varying width + bleed + broken dashes)
     // so borders read as uneven pen work rather than uniform vector lines.
     for (let i = 0; i < 6; i++) { if (map.getLayer(`ink-${i}`)) map.removeLayer(`ink-${i}`); }
@@ -2092,6 +2131,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       // to get this right, and the search cannot be wrong about which text is lowest.
     });
     cloudLayer = globe.layers.clouds;
+    // The sun follows the camera from here on: lit where you look, and it swings round after you.
+    followSun(true);
+    map.on('move', () => followSun());
     // Honour the density this browser last chose, which predates the shared panel and is still what
     // __tmSetClouds writes.
     cloudLayer?.setOptions({ opacity: cloudOpacity });

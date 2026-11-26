@@ -1,4 +1,5 @@
 import voyagesData from './voyages.json';
+import { ensurePlacePill } from '../map-place-label.js';
 
 // Explorer voyages / trade routes as arrowed sea paths (curated in voyages.json). Clicking a route
 // opens the same info panel as a territory: the click handler dispatches `polity-selected` with the
@@ -209,6 +210,19 @@ const voyageFilter = (year) => ['all',
 
 const LAYERS = ['voyage-hit', 'voyage-glow', 'voyage-line', 'voyage-label'];
 const DEFAULT_COLOR = '#20618f';
+/** The route-name pill: the theme's deep navy (#0f172a, CLAUDE.md "Design") under white text. */
+export const VOYAGE_PILL = 'voyage-pill';
+const VOYAGE_PILL_FILL = 'rgba(15,23,42,0.92)';
+const VOYAGE_LABEL_INK = '#ffffff';
+
+/**
+ * Register the route-name pill. Called on the map's `styleimagemissing`, so it is there the first
+ * time the label layer asks for it and comes back by itself after a style reload. The shape is the
+ * shared place pill (map-place-label.js), only the fill differs.
+ */
+export function ensureVoyagePill(map) {
+  return ensurePlacePill(map, { id: VOYAGE_PILL, fill: VOYAGE_PILL_FILL });
+}
 
 // Line geometry, in px. The hit line is the visible line plus HIT_PADDING_PX on each side, so a
 // route is clickable 10 px either side of where it is drawn (Bart, 11-15).
@@ -256,12 +270,20 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
     },
     {
       id: 'voyage-label', type: 'symbol', source: 'voyage-labels',
+      // White on a dark navy pill (Bart, 2026-11-26: "I can't read the text yellow on white
+      // contour"). The pill carries its own contrast, so the name reads the same over parchment,
+      // satellite sea and the night side, and the route colour stays on the line where it belongs.
+      // ONE line on purpose (wide max-width): the fitted nine-patch has gone wrong on wrapped
+      // labels before (see map-place-label.js), and a route name plus its years fits on one.
       layout: {
         'text-field': ['concat', ['get', 'name'], '  ', ['get', 'years']],
-        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.5],
-        'text-max-width': 14,
+        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.9],
+        'text-max-width': 40,
+        'icon-image': VOYAGE_PILL,
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [3, 8, 3, 8],
       },
-      paint: { 'text-color': DEFAULT_COLOR, 'text-halo-color': '#f3ead6', 'text-halo-width': 1.2 },
+      paint: { 'text-color': VOYAGE_LABEL_INK, 'icon-opacity': 1 },
     },
   ];
 }
@@ -280,6 +302,7 @@ export function setVoyageHighlight(map, voyageId) {
     map.setPaintProperty('voyage-line', 'line-opacity', pick(1, FADED_LINE_OPACITY, LINE_OPACITY));
     map.setPaintProperty('voyage-line', 'line-width', pick(LINE_WIDTH_SELECTED, LINE_WIDTH, LINE_WIDTH));
     map.setPaintProperty('voyage-label', 'text-opacity', pick(1, FADED_LABEL_OPACITY, 1));
+    map.setPaintProperty('voyage-label', 'icon-opacity', pick(1, FADED_LABEL_OPACITY, 1));
   } catch (e) { /* style reloading: the next selection repaints */ }
 }
 
@@ -313,12 +336,11 @@ export function applyVoyageYear(map, year) {
 // Recolor routes to sit with the active map style (called from applyMapStyle). `font` carries the
 // style's display hand, so route names switch to the modern sans on Satellite and Night with
 // every other label instead of staying in calligraphy on their own.
-export function applyVoyageStyle(map, { color, halo, font }) {
+export function applyVoyageStyle(map, { color, font }) {
   if (!map.getLayer('voyage-line')) return;
   const c = color || DEFAULT_COLOR;
   map.setPaintProperty('voyage-line', 'line-color', c);
   if (map.getLayer('voyage-glow')) map.setPaintProperty('voyage-glow', 'line-color', c);
-  map.setPaintProperty('voyage-label', 'text-color', c);
-  if (halo) map.setPaintProperty('voyage-label', 'text-halo-color', halo);
+  // The NAME keeps white on its navy pill in every style; only the line takes the style colour.
   if (font) map.setLayoutProperty('voyage-label', 'text-font', font);
 }
