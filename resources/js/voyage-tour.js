@@ -100,6 +100,9 @@ const hexToRgba = (hex, a) => {
   return `rgba(${r},${g},${b},${a})`;
 };
 
+/** How long a landed stop shows the map before its gallery opens by itself. */
+const STOP_OPEN_DELAY_MS = 1400;
+
 const ROUTE_LINE_DEFAULTS = { enabled: true, color: '#7c2d12', opacity: 0.9, thickness: 3, wobble: 0.3, curve: 'bezier' };
 
 /**
@@ -1251,11 +1254,20 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     try { if (map.getLayer('lesson-labels')) map.moveLayer('lesson-labels'); } catch (_) { /* noop */ }
     // Auto fog-of-war: draw the just-reached coastline on (offset-path sweep + fade).
     try { buildCoastDrawOn(L.end.lng, L.end.lat); } catch (_) { /* coastline not ready */ }
-    // The gallery is opened on demand (hotspot / thumbnail) — never auto-opened, EXCEPT once when a
-    // preview "Edit scene" deep-link arrived with its modal open (openGalleryOnArrive), so the editor
-    // restores exactly what the teacher was looking at.
+    // A stop with something in it opens by itself on arrival (Bart 2026-11-26: "why not automatically open
+    // it, students don't expect to click when they are checking it out, and teachers don't expect either").
+    // A beat first, so the class sees where they landed and the pictures land on the map; the bubble stays
+    // to open it again. A stop switched off, or with nothing in it, opens nothing. Only on ARRIVAL: a live
+    // edit in the editor (refreshArrivalContent) rebuilds the pins without reopening anything.
     const gal = stopButtonOn(L.gallery, L.stopImages) ? galleryData() : null;
-    if (openGalleryOnArrive && gal) { openGalleryOnArrive = false; try { openGallery(gal); } catch (_) { /* gallery not ready */ } }
+    if (gal) {
+      const wait = openGalleryOnArrive ? 0 : STOP_OPEN_DELAY_MS;
+      openGalleryOnArrive = false;
+      setTimeout(() => {
+        if (token !== legToken || galleryClose || inOverview) return;   // moved on, or already open
+        try { openGallery(gal); } catch (_) { /* gallery not ready */ }
+      }, wait);
+    }
     if (onArrived) onArrived();
   };
 
