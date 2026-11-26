@@ -129,3 +129,20 @@ describe('holding every loop with the scene clock', () => {
     setLoopsPaused(false)
   })
 })
+
+describe('a torn-down layered panel', () => {
+  it('stops its loops, so the page no longer holds or plays them', async () => {
+    const { stopLoopsIn, setLoopsPaused } = await import('../picture-loop.js')
+    const root = document.createElement('div')
+    const wrap = document.createElement('div')
+    root.appendChild(wrap)
+    const v = attachLoop(wrap, '/storage/panel.mp4')
+    stopLoopsIn(root)
+    expect(v.getAttribute('src')).toBeNull()
+    const play = vi.fn(() => Promise.resolve())
+    v.play = play
+    setLoopsPaused(true)
+    setLoopsPaused(false)
+    expect(play).not.toHaveBeenCalled()
+  })
+})
