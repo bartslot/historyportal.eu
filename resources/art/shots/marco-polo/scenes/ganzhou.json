@@ -147,7 +147,13 @@
             ],
             "framing": "Medium"
           },
-          "action": "Monks in robes light lamps and bow before the figure."
+          "action": "Monks in robes light lamps and bow before the figure.",
+          "places": {
+            "monks": [
+              51.42,
+              37.16
+            ]
+          }
         },
         {
           "shot": 4,

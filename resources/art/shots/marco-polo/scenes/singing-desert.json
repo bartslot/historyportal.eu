@@ -135,7 +135,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "A hand ties a small bell to a camel's neck; the other animals already wear bells."
+          "action": "A hand ties a small bell to a camel's neck; the other animals already wear bells.",
+          "places": {
+            "camel": [
+              1201.77,
+              601.77
+            ]
+          }
         },
         {
           "shot": 3,
@@ -152,7 +158,13 @@
             ],
             "framing": "Medium wide"
           },
-          "action": "At sunset a guide plants a stick with a cloth in the sand and lays a line of stones, pointing the way for the morning march."
+          "action": "At sunset a guide plants a stick with a cloth in the sand and lays a line of stones, pointing the way for the morning march.",
+          "places": {
+            "guide": [
+              1314.55,
+              603.64
+            ]
+          }
         },
         {
           "shot": 4,
@@ -246,12 +258,12 @@
           },
           "places": {
             "marco": [
-              1528.92,
-              637.75
+              1529.4,
+              638.07
             ],
             "niccolo": [
-              1529.19,
-              637.62
+              1527.94,
+              637.1
             ]
           }
         },
