@@ -3,10 +3,23 @@
   "title": "Farewell, Venice",
   "script": "project files: new-scenes/storyboard-order.md, item 2 (scene 5004)",
   "place": "Venice, the quay at San Marco, 1271: the Polos leave on a round sailing ship (no rowers).",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo does not name the ship; a two-masted lateen round ship (navis), no rowers, fits.",
+      "Venice 1271: San Marco and the Campanile stand, but the Doge's palace is the older fortified one (the Gothic palace is c.1340); the Rialto bridge is wooden."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/farewell-venice.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       300,
       200
@@ -15,13 +28,13 @@
     "landmarks": [
       {
         "id": "ship",
-        "label": "round sailing ship at the quay",
+        "label": "two-masted round ship at the quay",
         "at": [
           200,
           150
         ],
         "size": 30,
-        "note": "a round-hulled cog-type sailing ship with high castles fore and aft, sails furled, moored along the quay",
+        "note": "a round-hulled two-masted navis with lateen yards and high castles fore and aft, moored along the quay; no oars",
         "height": 30
       },
       {
@@ -96,7 +109,7 @@
             ],
             "framing": "Very wide, from the quay"
           },
-          "action": "The round ship waits at the crowded quay; the three Polos walk toward it, porters carrying chests.",
+          "action": "The two-masted round ship with lateen sails waits at the crowded quay, the older fortified Doge's palace behind; the three Polos walk toward it, porters carrying chests.",
           "where": {
             "marco": "the smallest figure, in front",
             "niccolo": "the figure in red behind him",

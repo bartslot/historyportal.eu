@@ -3,10 +3,23 @@
   "title": "Ganzhou, the great Buddha",
   "script": "project files: new-scenes/storyboard-order.md, item 9 (stop 5485)",
   "place": "Ganzhou (Campichu), about 1274: many monasteries and great reclining figures of the Buddha (Polo, Book 1 ch. 44).",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: idols 'a good ten paces', of wood, clay or stone, gilded; 'The great idols... lie at length', with figures paying homage around them; also three Christian churches; Maffeo and Marco stayed a year.",
+      "The Great Buddha Temple in Zhangye (1098): a gilded clay reclining Buddha about 35 m long in a timber hall."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/ganzhou.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       100,
       60
@@ -70,7 +83,7 @@
             ],
             "framing": "Wide, from the doors"
           },
-          "action": "The Polos step into a dim temple hall where a huge reclining Buddha lies along the back wall.",
+          "action": "The Polos step into a dim timber temple hall where a huge gilded clay Buddha lies along the back wall, disciple figures standing behind it.",
           "where": {
             "marco": "the young man in white, in front",
             "niccolo": "the man in red",

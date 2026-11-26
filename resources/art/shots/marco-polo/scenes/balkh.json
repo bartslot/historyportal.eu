@@ -2,11 +2,24 @@
   "scene": "balkh",
   "title": "Balkh, the ruined city",
   "script": "project files: new-scenes/storyboard-order.md, item 5 (stop 5482)",
-  "place": "Balkh, about 1272-73: once a great city, much of it in ruins after the Mongol conquest (Polo, Book 1 ch. 25).",
-  "accuracy": null,
+  "place": "Balkh, about 1272-73: once a great city, much of it in ruins after the Mongol conquest (Polo, Book 1 ch. 27).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: 'much greater in former days... greatly ravaged and destroyed... formerly many fine palaces and buildings of marble, and the ruins of them still remain.'",
+      "Sacked 1220-21; what survives is mostly huge eroded mud-brick ramparts."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/balkh.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       1000,
       600
@@ -15,13 +28,13 @@
     "landmarks": [
       {
         "id": "walls",
-        "label": "broken city walls and ruined palaces",
+        "label": "eroded mud-brick ramparts",
         "at": [
           600,
           400
         ],
         "size": 300,
-        "note": "long ruined walls of mud brick, broken domes and arches",
+        "note": "long eroded mud-brick ramparts with one or two broken domes behind",
         "height": 15
       }
     ],
@@ -81,7 +94,7 @@
             ],
             "framing": "Very wide"
           },
-          "action": "The caravan small before the long broken walls and fallen domes of Balkh.",
+          "action": "The caravan small before the long eroded mud-brick ramparts of Balkh, one or two broken domes behind them.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
@@ -112,7 +125,7 @@
             ],
             "framing": "Medium"
           },
-          "action": "Marco rides through a ruined gateway, looking up at the broken arch.",
+          "action": "Marco rides through a ruined gateway under a broken pointed brick arch, looking up.",
           "where": {
             "marco-horse": "Marco's mount"
           }
@@ -132,7 +145,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "Empty ruined streets: fallen columns, half-buried tiles, a single goatherd and his goats."
+          "action": "Empty ruined streets: mud-brick rubble, broken glazed tiles and a few marble blocks; a single goatherd and his goats."
         },
         {
           "shot": 4,

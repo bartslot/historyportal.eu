@@ -3,10 +3,24 @@
   "title": "The warning",
   "script": "project files: new-scenes/storyboard-order.md, item 4, shot 0",
   "place": "A caravanserai near Kerman, Persia, about 1272, the evening before the raid.",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "A caravanserai (ribat) is a square walled courtyard with arcaded rooms on all four sides and one gate.",
+      "No warning scene is in Polo: our dramatisation.",
+      "The raiders were Mongol bands (Caraonas), so the warning comes from a Persian caravan master."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/caravanserai.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       40,
       40
@@ -70,7 +84,7 @@
             ],
             "framing": "Wide, from the gate"
           },
-          "action": "Inside the walled caravanserai at dusk, travellers sit round a fire; camels rest along the walls.",
+          "action": "Inside the square walled caravanserai at dusk, arcaded rooms on all four sides and one arched gate; travellers sit round a fire, camels rest along the walls.",
           "where": {
             "marco": "the young man in white by the fire",
             "niccolo": "the man in red",
@@ -95,7 +109,7 @@
             ],
             "framing": "Medium"
           },
-          "action": "A Mongol fellow traveller by the fire leans in and warns: raiders roam the plain."
+          "action": "A Persian caravan master by the fire leans in and warns: Caraonas raiders roam the plain."
         },
         {
           "shot": 3,

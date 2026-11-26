@@ -3,10 +3,23 @@
   "title": "The Khan's riders",
   "script": "project files: new-scenes/khans-riders.md",
   "place": "The road to the Khan's court and its relay stations, about 1274-75 (Polo, Book 1 ch. 15; Book 2 ch. 26).",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Prologue ch. 13: the Khan sent people 'a journey of full 40 days' to meet them.",
+      "Book 2 ch. 26: a 'Yamb' station every 25 miles with about 400 horses; express riders wear 'girdles hung with bells', 'bind hard the stomach, chest and head', and carry 'a gerfalcon tablet'; the clerk notes arrival and departure."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/khans-riders.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       5000,
       1500
@@ -190,7 +203,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "The rider gallops over a hill and past a river, head wrapped, belt bound tight."
+          "action": "The rider gallops over a hill and past a river, his head, chest and stomach bound tight with bands."
         },
         {
           "shot": 6,

@@ -2,11 +2,26 @@
   "scene": "flashback-court",
   "title": "Flashback: the Khan's gold tablet",
   "script": "project files: new-scenes/storyboard-order.md, item 1",
-  "place": "The court of Kublai Khan, 1266 (Polo, Book 1 ch. 2-7: the brothers' first journey).",
-  "accuracy": null,
+  "place": "The court of Kublai Khan, 1266, a generic Mongol palace hall (Polo, Prologue ch. 2-8: the brothers' first journey).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: Kublai gave them 'a Tablet of Gold' ordering horses and escorts on the way (Prologue ch. 8).",
+      "Surviving tablets: long plates with rounded ends and a hole at the top. Phags-pa script came only in 1269, so a 1266 tablet carries vertical Uyghur-Mongol script.",
+      "Kublai: 'neither tall nor short', 'complexion white and red, the eyes black'.",
+      "Dadu was not built until 1267: keep the hall generic."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/flashback-court.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       40,
       30
@@ -141,7 +156,7 @@
             ],
             "framing": "Close-up"
           },
-          "action": "The gold tablet in Niccolò's hands: a long plaque engraved with Mongol script, a hole for its cord."
+          "action": "The gold tablet in Niccolò's hands: a long gold plate with rounded ends, a hole at the top for its cord, engraved with vertical Uyghur-Mongol script; no animal on it."
         }
       ]
     }

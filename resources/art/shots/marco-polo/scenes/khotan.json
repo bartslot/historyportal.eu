@@ -3,10 +3,23 @@
   "title": "Khotan, the jade river",
   "script": "project files: new-scenes/storyboard-order.md, item 7 (stop 5484)",
   "place": "Khotan oasis, about 1273: orchards, cotton fields, and jade gathered from the river (Polo, Book 1 ch. 36-37).",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: Cotan has cotton, vineyards and gardens.",
+      "Polo's river 'Jasper and Chalcedony' is jade (Yule): water-rolled stones fished from the Karakash and Yurungkash rivers at Khotan, white to green."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/khotan.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       800,
       400
@@ -73,7 +86,7 @@
             ],
             "framing": "Very wide"
           },
-          "action": "The caravan reaches the green oasis after the desert; poplars and orchards along the river.",
+          "action": "The caravan reaches the green oasis after the desert: poplars, vineyards and cotton fields along the river.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
@@ -118,7 +131,7 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Wet hands lift a pale green jade pebble out of the water."
+          "action": "Wet hands lift a rounded river pebble of white to pale green jade out of the water."
         },
         {
           "shot": 4,

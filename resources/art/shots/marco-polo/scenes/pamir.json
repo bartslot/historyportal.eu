@@ -3,10 +3,23 @@
   "title": "The Roof of the World",
   "script": "project files: new-scenes/storyboard-order.md, item 6 (scene 5008)",
   "place": "The high Pamir plateau, about 1273 (Polo, Book 1 ch. 32): so high and cold that fire burns badly; wild argali sheep with great horns.",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: 'the highest place in the world'; argali with horns 'good six palms'; no birds; fire does not 'cook food so effectually'; twelve days with no habitations; heaps of horns as way markers.",
+      "Polo does not mention yaks here: the caravan's own horses, mules and Bactrian camels carry the loads."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/pamir.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       2000,
       1000
@@ -92,7 +105,7 @@
             ],
             "framing": "Very wide"
           },
-          "action": "The caravan tiny on the endless high plain under the snow peaks; yaks carry the loads.",
+          "action": "The caravan tiny on the endless high plain under the snow peaks; horses, mules and Bactrian camels carry the loads; grass by the lake, no birds, a heap of argali horns marks the way.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
@@ -165,7 +178,7 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Marco watches a pot that will not boil, his breath white in the cold."
+          "action": "Marco watches a pot that barely steams, the food slow to cook, his breath white in the cold."
         }
       ]
     }

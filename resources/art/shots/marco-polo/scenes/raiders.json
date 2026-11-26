@@ -19,7 +19,11 @@
   },
   "layout": {
     "status": "Draft blocking from bart's note of 26 Nov 2026 (the village stays small on the far right until the Polos race toward it). The distances are a first proposal for bart to correct, not a reconstruction.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       4000,
       1500

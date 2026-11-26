@@ -3,10 +3,23 @@
   "title": "The checkpoint",
   "script": "project files: new-scenes/storyboard-order.md, item 3",
   "place": "A Mongol road post in western Asia, about 1272.",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "The tablet got them 'whatever they stood in need of'; homeward they had escorts of '200 horsemen'.",
+      "No particular checkpoint is in Polo: this scene is our dramatisation of what the tablet did."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/checkpoint.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       400,
       200
@@ -132,7 +145,7 @@
             ],
             "framing": "Medium, reverse angle"
           },
-          "action": "The Mongol officer sees the tablet and bows his head low."
+          "action": "The Mongol officer sees the tablet and gives a respectful nod."
         },
         {
           "shot": 4,

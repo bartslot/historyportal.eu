@@ -3,10 +3,22 @@
   "title": "The singing desert",
   "script": "project files: new-scenes/singing-desert.md",
   "place": "The desert of Lop, between Khotan and Ganzhou, about 1273-74 (Polo, Book 1 ch. 39).",
-  "accuracy": null,
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Almost word for word in Polo (Book 1 ch. 39): 'hills and valleys of sand'; spirits 'call him by name'; drums; keep close together; 'All the animals too have bells at their necks'; a signal 'to show the direction of the next march'."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/singing-desert.md"
+  },
   "layout": {
     "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
-    "approved": null,
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
     "size": [
       3000,
       1500
@@ -126,7 +138,7 @@
             ],
             "framing": "Medium wide"
           },
-          "action": "At sunset a guide plants a stick with a cloth in the sand, pointing the way for morning."
+          "action": "At sunset a guide plants a stick with a cloth in the sand and lays a line of stones, pointing the way for the morning march."
         },
         {
           "shot": 4,
