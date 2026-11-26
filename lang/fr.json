@@ -26,7 +26,7 @@
     ":price excl. VAT": ":price HT",
     ":title (copy :n)": ":title (copie :n)",
     ":title (copy)": ":title (copie)",
-    "A class is a group of children. Manage the roster and assign lessons here.": "Une classe est un groupe d'enfants. Gérez la liste et attribuez les leçons ici.",
+    "Manage your students and assign lessons.": "Gérez vos élèves et attribuez des leçons.",
     "A factor": "Un facteur",
     "A gallery of paintings or photographs to look at together.": "Une galerie de peintures ou de photographies à regarder ensemble.",
     "A game or a choice moment where teams steer the story.": "Un jeu ou un moment de choix où les équipes orientent l'histoire.",
