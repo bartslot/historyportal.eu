@@ -3338,7 +3338,8 @@ class Step3SceneConfigurator extends Component
         $oldWps = array_values($old['waypoints'] ?? []);
         $oldLegs = array_values($old['legs'] ?? []);
         $n = count($waypoints);
-        if (! $oldLegs || $n < count($oldWps) || $n > count($oldWps) + 400 || count($legWps) !== count($oldLegs)) {
+        // Fewer points is fine (a bend the route no longer needs goes); every stop is checked below.
+        if (! $oldLegs || $n < 2 || $n > count($oldWps) + 400 || count($legWps) !== count($oldLegs)) {
             return;
         }
 

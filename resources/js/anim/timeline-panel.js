@@ -633,9 +633,13 @@ export const animationTimeline = (config = {}) => ({
 
   /** A click on a row's name: select the layer, and open its movement (closing the rest) or close it again. */
   clickObjectName (target) {
+    // Read the row's state first: selecting on the canvas opens the layer, which would make the toggle close it.
+    const wasOpen = !!this.openGroups[target]
     this.selectObject(target)
     if (target === 'sail') return
-    this.toggleGroup(target)
+    this.openGroups[target] = !wasOpen
+    if (!wasOpen) this.closeOtherLayers(target)
+    this.remember()
   },
 
   // ── Groups: layer > group > property, as in After Effects ───────────────────────────────────

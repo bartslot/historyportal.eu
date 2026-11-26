@@ -73,7 +73,7 @@ class VoyageRouteKeptAtSeaTest extends TestCase
         $this->assertSame($before, $lesson->fresh()->game_config['voyage_def']['waypoints'] ?? null);
     }
 
-    public function test_a_route_with_fewer_waypoints_or_other_legs_is_refused(): void
+    public function test_a_route_that_shifts_its_stops_or_has_other_legs_is_refused(): void
     {
         [$component, $lesson, $sceneId, $wps, $legs] = $this->editor();
         $before = $lesson->fresh()->game_config['voyage_def']['waypoints'] ?? null;
@@ -83,5 +83,21 @@ class VoyageRouteKeptAtSeaTest extends TestCase
         $component->call('keepVoyageRouteAtSea', $sceneId, $newWps, array_slice($legWps, 1), null);
 
         $this->assertSame($before, $lesson->fresh()->game_config['voyage_def']['waypoints'] ?? null);
+    }
+
+    public function test_a_route_that_drops_a_bend_it_no_longer_needs_is_saved(): void
+    {
+        [$component, $lesson, $sceneId, $wps, $legs] = $this->editor();
+        [$newWps, $legWps] = $this->withBends($wps, $legs, 0);
+        $component->call('keepVoyageRouteAtSea', $sceneId, $newWps, $legWps, null);
+
+        // Take one of the two bends out again: every stop stays where it was.
+        array_splice($newWps, 1, 1);
+        $fewer = array_map(fn ($l) => array_map(fn ($w) => $w > 1 ? $w - 1 : $w, $l), $legWps);
+        $component->call('keepVoyageRouteAtSea', $sceneId, $newWps, $fewer, null);
+
+        $def = $lesson->fresh()->game_config['voyage_def'];
+        $this->assertCount(count($wps) + 1, $def['waypoints']);
+        $this->assertSame($fewer, array_map(fn ($l) => $l['wp'], $def['legs']));
     }
 }
