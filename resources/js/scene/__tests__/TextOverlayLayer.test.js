@@ -30,7 +30,7 @@ describe('TextOverlayLayer (readonly / player)', () => {
   it('falls back to the default font for unknown keys', () => {
     const el = host()
     const layer = new TextOverlayLayer(el)
-    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, font: 'comic', size: 'gigantic' }])
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, font: 'wingdings', size: 'gigantic' }])
 
     const node = el.querySelector('[data-text-id="a"]')
     expect(node.style.fontFamily).toContain('Inter')
@@ -180,11 +180,101 @@ describe('a text layer\'s look', () => {
     expect(node.style.opacity).toBe('0.6')
   })
 
+  it('keeps the soft shadow by default, and draws an outline or nothing when asked', () => {
+    expect(nodeFor({}).style.textShadow).toContain('12px')
+    expect(nodeFor({ effect: 'none' }).style.textShadow).toBe('none')
+    const outlined = nodeFor({ effect: 'outline', effectColor: '#3b2412' }).style.textShadow
+    expect(outlined).toContain('#3b2412')
+    expect(outlined).not.toContain('12px')
+    expect(nodeFor({ effect: 'outline', effectWidth: 0.12 }).style.textShadow).toContain('0.12em')
+    expect(nodeFor({ effect: 'glow', effectColor: '#fdf6e3' }).style.textShadow).toContain('0 0 0.18em')
+  })
+
+  it('draws the comic lettering in Comic Relief', () => {
+    expect(nodeFor({ font: 'comic' }).style.fontFamily).toContain('Comic Relief')
+  })
+
+  it('thickens the ComicAmerica stroke with the edge thickness', () => {
+    expect(nodeFor({ font: 'comic-america', effect: 'outline', effectWidth: 0.1 }).style.getPropertyValue('--lp-ca-outline-w')).toBe('0.18em')
+  })
+
+  // Bart 2026-11-22: "color doesn't work anymore". ComicAmerica letters are a gradient clipped to the
+  // text, so `color` never reached them.
+  it('colours ComicAmerica letters through the fill, and inks the outline', () => {
+    const node = nodeFor({ font: 'comic-america', color: '#fcd34d', effect: 'outline', effectColor: '#1c1917' })
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('rgba(252,211,77,1)')
+    expect(node.style.getPropertyValue('--lp-ca-shade')).toMatch(/^rgba\(/)
+    expect(node.style.getPropertyValue('--lp-ca-ink')).toBe('#1c1917')
+    expect(node.style.textShadow).toBe('none')
+  })
+
+  it('leaves ComicAmerica white on black when nothing is set', () => {
+    const node = nodeFor({ font: 'comic-america' })
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('')
+    expect(node.style.getPropertyValue('--lp-ca-ink')).toBe('')
+  })
+
+  it('a preset patch with nulls clears what the old look set', () => {
+    const el = host()
+    const layer = new TextOverlayLayer(el)
+    layer.setTexts([{ id: 'a', text: 'Batavia', x: 10, y: 10, font: 'comic-america', color: '#fcd34d', effect: 'outline', effectColor: '#000000' }])
+    layer.patch('a', { font: 'history', color: '#2b1d14', effect: 'none', effectColor: null, colorOpacity: null })
+    const node = el.querySelector('[data-text-id="a"]')
+    expect(node.style.getPropertyValue('--lp-ca-fill')).toBe('')
+    expect(node.style.textShadow).toBe('none')
+    expect(node.style.color).toBe('rgb(43, 29, 20)')
+  })
+
   it('the Format panel\'s live preview repaints it', () => {
     const el = host()
     const layer = new TextOverlayLayer(el)
     layer.setTexts([{ id: 'a', text: 'Batavia', x: 10, y: 10 }])
     layer.patch('a', { rotation: -30 })
     expect(el.querySelector('[data-text-id="a"]').style.transform).toBe('rotate(-30deg)')
+  })
+})
+
+describe('TextOverlayLayer lock (the layer menu)', () => {
+  it('a lock is saved with the texts, an unlock takes the flag away', () => {
+    const onChange = vi.fn()
+    const layer = new TextOverlayLayer(host(), { editable: true, onChange })
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10 }])
+    layer.setLocked('a', true)
+    expect(layer.isLocked('a')).toBe(true)
+    expect(onChange.mock.calls.at(-1)[0][0].locked).toBe(1)
+    layer.setLocked('a', false)
+    expect(onChange.mock.calls.at(-1)[0][0]).not.toHaveProperty('locked')
+    layer.setLocked('a', false)   // no change, no save
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('a press on a locked box does not select it', () => {
+    const el = host()
+    document.body.appendChild(el)
+    document.elementFromPoint = () => null
+    const layer = new TextOverlayLayer(el, { editable: true })
+    layer.setTexts([{ id: 'a', text: 'Rome', x: 10, y: 10, locked: 1 }])
+    el.querySelector('[data-text-id="a"]').dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(layer._selectedId).toBeNull()
+    el.remove()
+  })
+})
+
+describe('TextOverlayLayer lock: overlapping locked boxes', () => {
+  it('a press on two locked boxes on top of each other goes on to what is under both, once', () => {
+    const el = host()
+    document.body.appendChild(el)
+    const layer = new TextOverlayLayer(el, { editable: true })
+    layer.setTexts([{ id: 'a', text: 'A', x: 10, y: 10, locked: 1 }, { id: 'b', text: 'B', x: 10, y: 10, locked: 1 }])
+    const [a, b] = ['a', 'b'].map((id) => el.querySelector(`[data-text-id="${id}"]`))
+    const floor = document.createElement('div')
+    const reached = vi.fn()
+    floor.addEventListener('pointerdown', reached)
+    // what is under the point: the first box that still takes presses, else the floor
+    document.elementFromPoint = () => [b, a].find((n) => n.style.pointerEvents !== 'none') ?? floor
+    b.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(reached).toHaveBeenCalledTimes(1)
+    expect(layer._selectedId).toBeNull()
+    el.remove()
   })
 })

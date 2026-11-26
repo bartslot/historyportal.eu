@@ -138,6 +138,14 @@ class LessonChat extends Component
             return;
         }
 
+        // "Cartografie, empty lesson": a blank lesson to fill by hand, no lesson maker (Bart, 2026-11-25).
+        $emptyTitle = \App\Lessons\EmptyLessonRequest::title($goalText);
+        if ($emptyTitle !== null) {
+            $this->createEmptyLesson($emptyTitle);
+
+            return;
+        }
+
         $parsed = $parser->parse($goalText, app()->getLocale());
         $context = $contextResolver->resolve($goalText, $parsed['topic']);
 
@@ -892,6 +900,30 @@ class LessonChat extends Component
     }
 
     /**
+     * A lesson with a title and nothing else, opened straight in the editor: no source, no outline job,
+     * no scenes. The teacher adds what they want there (a video scene for a YouTube link, a map, pictures).
+     */
+    private function createEmptyLesson(string $title): void
+    {
+        $this->state = 'creating';
+
+        $lesson = Lesson::create([
+            'teacher_id' => auth()->id(),
+            'title' => $title,
+            'topic' => $title,
+            'subject' => 'history',
+            'grade_level' => $this->gradeLevel,
+            'avatar_id' => Narrator::where('is_active', true)->orderBy('sort_order')->value('id'),
+            'lesson_code' => strtoupper(Str::random(6)),
+            'status' => LessonStatus::Draft,
+            'wizard_step' => 4,
+        ]);
+
+        $this->createdLessonId = $lesson->id;
+        $this->redirectToWizard($lesson->id, 4);
+    }
+
+    /**
      * Best-effort corpus enrichment for a story's linked topic (exact Wikipedia URL, region,
      * era) — mirrors Step1Settings::selectStory. The corpus DB may be unreachable; grounding
      * is a bonus, never a blocker.
@@ -926,10 +958,10 @@ class LessonChat extends Component
         ];
     }
 
-    private function redirectToWizard(int $lessonId): void
+    private function redirectToWizard(int $lessonId, int $step = 3): void
     {
         $this->redirect(
-            route('teacher.lessons.wizard', ['lesson' => $lessonId, 'step' => 3]),
+            route('teacher.lessons.wizard', ['lesson' => $lessonId, 'step' => $step]),
             navigate: true,
         );
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { wordSpans, nearestWordStart, snapTime, wordAt } from '../narration-clock.js'
+import { wordSpans, nearestWordStart, snapTime, wordAt, sentenceAt } from '../narration-clock.js'
 import alignment from './fixtures/alignment-scene-192.json'
 
 /**
@@ -114,5 +114,41 @@ describe('wordAt', () => {
 
   it('is null past the end of the narration', () => {
     expect(wordAt(spans, 99)).toBeNull()
+  })
+})
+
+describe('sentenceAt', () => {
+  const spans = wordSpans(alignment)
+  const text = (s) => s.words.map((w) => w.word).join(' ')
+
+  it('splits the narration into its five sentences', () => {
+    expect(spans.filter((s) => s.sentenceEnd)).toHaveLength(5)
+  })
+
+  it('shows the whole sentence the playhead is in, with the spoken word lit', () => {
+    const sea = spans[7]
+    const s = sentenceAt(spans, sea.start + 0.01)
+    expect(text(s)).toBe('The Netherlands exists because people decided the sea should be somewhere else')
+    expect(s.words[s.current].word).toBe('sea')
+  })
+
+  it('holds the sentence through a silence but lights no word', () => {
+    // The gap after "else." and before "For" belongs to the sentence just finished.
+    const end = spans.findIndex((s) => s.sentenceEnd)
+    const gap = (spans[end].end + spans[end + 1].start) / 2
+    expect(spans[end + 1].start).toBeGreaterThan(spans[end].end)
+    const s = sentenceAt(spans, gap)
+    expect(s.words.at(-1).word).toBe('else')
+    expect(s.current).toBe(-1)
+  })
+
+  it('reads the short sentence "It works." on its own', () => {
+    const it = spans.find((s) => s.word === 'works')
+    expect(text(sentenceAt(spans, it.start))).toBe('It works')
+  })
+
+  it('shows the first sentence before anything is said, and nothing without narration', () => {
+    expect(sentenceAt(spans, -1).words[0].word).toBe('The')
+    expect(sentenceAt([], 3)).toEqual({ words: [], current: -1 })
   })
 })

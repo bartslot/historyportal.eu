@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { thin, shape, isStroke, distanceTo, mountDraw } from '../draw-layer.js'
+import { thin, shape, isStroke, distanceTo, mountDraw, drawTool, eraserSize, drawMapView } from '../draw-layer.js'
+import { geoZoomFactor } from '../../scene/ArtworkOverlay.js'
 
 describe('drawing over the lesson: strokes as data', () => {
   it('keeps a pen trail light but never loses its end', () => {
@@ -54,5 +55,93 @@ describe('drawing over the lesson: in class', () => {
     const editor = mountDraw(host(), { onStroke: got })
     expect(editor.strokes).toHaveLength(0)
     editor.destroy()
+  })
+})
+
+describe('drawing over the lesson: in the editor', () => {
+  const host = () => { const h = document.createElement('div'); h.className = 'wizard-artwork-host'; document.body.appendChild(h); return h }
+  const ev = (type, x, y) => new PointerEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true })
+  const drag = (canvas, from, to) => {
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100 })
+    canvas.dispatchEvent(ev('pointerdown', ...from))
+    canvas.dispatchEvent(ev('pointermove', ...to))
+    canvas.dispatchEvent(ev('pointerup', ...to))
+  }
+
+  it('the eraser draws nothing and hands over its path and size', () => {
+    HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: () => () => {} })
+    const stroke = vi.fn(), erase = vi.fn()
+    const d = mountDraw(host(), { onStroke: stroke, onErase: erase })
+    d.setTool('eraser')
+    d.setWidth(8)
+    drag(d.canvas, [20, 50], [180, 50])
+    expect(stroke).not.toHaveBeenCalled()
+    expect(erase).toHaveBeenCalledWith([[10, 50], [90, 50]], eraserSize(8))
+    expect(d.strokes).toHaveLength(0)
+    d.destroy()
+  })
+
+  it('every stroke of a session goes onto the layer the first one made, until Klaar', async () => {
+    HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: () => () => {} })
+    document.body.innerHTML = ''
+    host()
+    let made = 41
+    const calls = []
+    const t = drawTool()
+    t.$wire = {
+      addDrawing: vi.fn(async (stroke, aspect, into) => {
+        calls.push(into)
+        await new Promise((r) => setTimeout(r, 5))   // a slow save: the second stroke must wait for it
+        return { ok: true, id: into ?? ++made }
+      }),
+      eraseDrawing: vi.fn(async () => ({ ok: true })),
+    }
+    t.start()
+    drag(t.surface.canvas, [20, 20], [60, 20])
+    drag(t.surface.canvas, [20, 60], [60, 60])
+    expect(t.surface.strokes).toHaveLength(2)   // both shown while they save
+    await t._queue
+    expect(calls).toEqual([null, 42])
+    t.stop()
+    t.start()
+    drag(t.surface.canvas, [20, 20], [60, 20])
+    await t._queue
+    expect(calls).toEqual([null, 42, null])
+
+    // Klaar while a stroke still saves: the next session does not draw on that layer
+    drag(t.surface.canvas, [20, 40], [60, 40])
+    t.stop()
+    t.start()
+    drag(t.surface.canvas, [20, 80], [60, 80])
+    await t._queue
+    expect(calls.slice(3)).toEqual([43, null])
+    t.stop()
+  })
+})
+
+describe('a drawing on a map sticks to the map', () => {
+  const projector = { zoom: () => 6, unproject: (x, y) => ({ lng: x / 10, lat: y / 10 }) }
+  const overlay = {
+    _projector: projector,
+    host: { getBoundingClientRect: () => ({ height: 600, width: 1000 }) },
+    _layers: [{ asset_id: 7, anchor: 'map', x: 40, y: 50 }, { asset_id: 8, anchor: 'screen', x: 1, y: 1 }],
+    _mapFactor: (item, axis) => (axis === 'x' ? 1.5 : 2),
+  }
+
+  it('sends the zoom, the stage height, every pinned layer and the place under a new line', () => {
+    expect(drawMapView(overlay, [[10, 20], [30, 40]])).toEqual({
+      zoom: 6, px: 600, w: 1000, pins: { 7: { x: 40, y: 50, f: 2, fx: 1.5 } }, centre: { x: 20, y: 30, lng: 2, lat: 3 },
+    })
+    expect(drawMapView({ ...overlay, _projector: null })).toBeNull()
+  })
+
+  it('scales exactly with the map: double per zoom step, smaller on a taller stage', () => {
+    const item = { geo: { zoom: 5, px: 600, w: 1000 } }
+    expect(geoZoomFactor(projector, item, 600)).toBe(2)
+    expect(geoZoomFactor(projector, item, 1200)).toBe(1)
+    expect(geoZoomFactor({ zoom: () => 3 }, item, 600)).toBe(0.25)
+    expect(geoZoomFactor(projector, {}, 600)).toBe(1)
+    // across: against the width it was drawn on
+    expect(geoZoomFactor(projector, item, 500, 'x')).toBe(4)
   })
 })

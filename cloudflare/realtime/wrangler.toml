@@ -1,0 +1,19 @@
+# History Portal realtime relay (Pusher protocol, for Laravel Broadcasting + Echo). See README.md.
+name = "hp-realtime"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# APP_ID and APP_KEY are not secret (the key is in every editor page). APP_SECRET is:
+#   npx wrangler secret put APP_SECRET
+[vars]
+APP_ID = "historyportal"
+APP_KEY = "hp-editor"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
+# The free plan only offers SQLite-backed Durable Objects.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Relay"]

@@ -90,9 +90,21 @@ export const stage25dObjects = () => (window.__stage25d?.items?.() ?? []).map((i
     ? { target: 's25sky:sky', kind: 's25sky', label: i.label, icon: i.icon }   // the back of the backdrop: a row, no properties
     : { target: `s25:${i.id}`, kind: 's25', label: i.label || i.id, icon: i.icon }))
 
+/**
+ * The map block itself (Bart 11-23: "Can you add Map or Kaartblok to the animation settings?"):
+ * its year, and the linked territory's area and border. One per map scene, so its target is fixed:
+ * 'terr:map'. Listed whenever a lesson map is on stage; Area and Border only show something once a
+ * territory is linked.
+ */
+export const territoryObjects = (label = 'Map block') => (window.__lessonMapApi
+  ? [{ target: 'terr:map', kind: 'terr', icon: 'map', label }]
+  : [])
+
 /** Read one animatable property off the live layer, so a row never shows a number nothing uses. */
 export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
+
+  if (kind === 'terr') return window.__lessonMapApi?.territoryValue?.(property) ?? null
 
   if (kind === 'art' || kind === 'arw') {
     const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
@@ -180,6 +192,7 @@ export const writeObjectProperty = (target, property, value) => {
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
   if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
   if (kind === 's25') return void window.__stage25d?.setLayerProp?.(id, property, value)
+  if (kind === 'terr') return void window.__lessonMapApi?.setTerritoryValues?.({ [property]: value })
 
   if (kind !== 'text' && kind !== 'rect') return
   window.__lessonTextLayer?.patch?.(id, { [property]: value })

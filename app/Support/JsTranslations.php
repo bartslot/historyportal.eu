@@ -292,6 +292,11 @@ final class JsTranslations
             'Drag to rotate · hold Shift for 15°' => __('Drag to rotate · hold Shift for 15°'),
             'Drag to resize' => __('Drag to resize'),
             'Drag to bend the route around land' => __('Drag to bend the route around land'),
+            // Voyage checkpoints (voyage-checkpoints.js, voyage-tour.js).
+            'Checkpoint' => __('Checkpoint'),
+            'Have a look' => __('Have a look'),
+            'Checkpoint: click to show, drag to move' => __('Checkpoint: click to show, drag to move'),
+            'Click to add a checkpoint, drag to bend the route' => __('Click to add a checkpoint, drag to bend the route'),
             "Drag to set this leg's destination" => __("Drag to set this leg's destination"),
             'Drag to move · double-click to delete' => __('Drag to move · double-click to delete'),
             'Drag to move this bend' => __('Drag to move this bend'),

@@ -324,6 +324,8 @@ class LessonExporter
             'date_label' => $gallery['date_label'] ?? null,
             'story' => $gallery['story'] ?? null,
             'images' => $this->imageList((array) ($gallery['images'] ?? [])),
+            // The stop inspector's "Opens when the class arrives" switch, only when the teacher set it (unset follows the stop).
+            'clickable' => is_bool($gallery['button'] ?? null) ? $gallery['button'] : null,
             'script' => $scene->script_segment,
         ], $this->keep(...));
     }

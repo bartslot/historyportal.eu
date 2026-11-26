@@ -94,3 +94,4 @@ harness/**/__pycache__/
 /lesson_assets/
 tools/**/__pycache__/
 /storage/demo-check
+/tools/studio/studio.env

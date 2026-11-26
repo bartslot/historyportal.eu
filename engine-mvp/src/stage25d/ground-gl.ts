@@ -38,7 +38,7 @@ Effect.ShadersStore.stageGroundFragmentShader = `
   precision highp float;
   varying vec3 vW;
   uniform sampler2D tex, tex1, tex2, tex3, tex4, tex5, nearTex;
-  uniform float useTex, grain, fadeNear, fadeFar, detail, vary, mixTile, tileScale, wash, grainSize, slotCount;
+  uniform float useTex, grain, fadeNear, fadeFar, tintFar, detail, vary, mixTile, tileScale, wash, grainSize, slotCount;
   uniform float slotFrom[6], slotTiles[6], slotPersp[6];
   uniform mat4 houseVP;         // the house camera: a perspective terrain is laid from where it was painted
   uniform float houseTop;       // where the horizon is in that view (ndc y)
@@ -100,7 +100,9 @@ Effect.ShadersStore.stageGroundFragmentShader = `
     // far off the tile's rows squeeze into streaks: the art fades into its own slot's colour, and only far beyond
     // that into the colour the far landscape (or the sky) ends in, so a far slot still shows as itself
     c = mix(c, own, smoothstep(fadeNear, fadeFar, d) * (1.0 - pp));
-    c = mix(c, horizonTint, smoothstep(fadeFar, fadeFar * 3.0, d) * (1.0 - pp));   // a painting runs on to its own horizon
+    // into the far colour by tintFar: under a far strip at the strip itself, so the floor meets its painted field in
+    // that field's colour, not on a line (Bart 11-24); with none far out (fadeFar x 3)
+    c = mix(c, horizonTint, smoothstep(fadeFar, tintFar, d) * (1.0 - pp));   // a painting runs on to its own horizon
     // the near band: a strip painted from eye height, projected back onto the floor from the house camera, so from
     // there it looks exactly as painted and still lies on the ground (parallax when the camera moves); its upper part
     // fades into the far floor (t: 0 at the frame's bottom edge, 1 at the band's far edge)
@@ -165,7 +167,7 @@ Effect.ShadersStore.stageStainFragmentShader = `
 /** persp: painted from eye height to the horizon (library `perspective`), laid through the house camera; its `tile` is
  *  then how often it repeats across one frame. */
 export interface FloorSlot { tex: RawTexture; tile: number; from: number; colour: [number, number, number]; persp?: boolean; recolour?: readonly number[] }
-export interface GroundLook { slots: FloorSlot[]; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; grain: number }
+export interface GroundLook { slots: FloorSlot[]; base: [number, number, number]; tint: [number, number, number]; fadeNear: number; fadeFar: number; tintFar: number; grain: number }
 /** The near band (set.near): its texture and the house camera's view-projection it is projected from. */
 export interface NearBand { tex: RawTexture; vp: Matrix; top: number; span: number; tileable: boolean }
 /** Across the near band never ends: tileable art repeats, one painting mirrors (never CLAMP: its last column would
@@ -205,7 +207,7 @@ export function makeGround(scene: Scene): { mesh: Mesh; set(look: GroundLook): v
         .setFloats('slotFrom', pad((sl) => sl.from, 1e6)).setFloats('slotTiles', pad((sl) => sl.tile || GROUND_TILE_M, GROUND_TILE_M)).setFloats('slotPersp', pad((sl) => (sl.persp ? 1 : 0), 0))
         .setArray3('slotColour', SLOT_SAMPLERS.flatMap((_, i) => slots[i]?.colour ?? l.base))
         .setArray3('slotRecolour', SLOT_SAMPLERS.flatMap((_, i) => [...(slots[i]?.recolour ?? [1, 1, 1])]))
-        .setFloat('grain', l.grain).setFloat('fadeNear', l.fadeNear).setFloat('fadeFar', l.fadeFar)
+        .setFloat('grain', l.grain).setFloat('fadeNear', l.fadeNear).setFloat('fadeFar', l.fadeFar).setFloat('tintFar', l.tintFar)
         .setVector3('base', Vector3.FromArray(l.base)).setVector3('horizonTint', Vector3.FromArray(l.tint))
     },
     follow(cam) { mat.setVector3('camPos', cam) },

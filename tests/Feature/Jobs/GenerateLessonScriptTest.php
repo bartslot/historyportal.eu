@@ -163,4 +163,25 @@ class GenerateLessonScriptTest extends TestCase
         $this->assertSame(LessonStatus::Failed, $this->lesson->fresh()->status);
         Bus::assertNothingBatched();
     }
+
+    public function test_the_whole_lesson_script_gets_room_for_every_scene(): void
+    {
+        $caps = [];
+        $this->mock(OpenAiLlmService::class, function ($mock) use (&$caps): void {
+            $mock->shouldReceive('json')->twice()->andReturnUsing(function (...$args) use (&$caps) {
+                $caps[] = $args[3] ?? null;
+
+                return count($caps) === 1
+                    ? ['scenes' => [['order' => 2, 'script' => 'Napoleon marches.'], ['order' => 3, 'script' => 'But winter comes.']]]
+                    : self::PASSING_CRITIQUE;
+            });
+        });
+        Bus::fake();
+
+        (new GenerateLessonScript($this->lesson->id))->handle(app(OpenAiLlmService::class));
+
+        $this->assertSame(4096, $caps[0], 'not the 2048 default that cut 30-50 scene lessons short');
+        $this->assertSame(16000, GenerateLessonScript::scriptTokens(40));
+        $this->assertSame(16384, GenerateLessonScript::scriptTokens(60));
+    }
 }

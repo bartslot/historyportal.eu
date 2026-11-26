@@ -97,6 +97,9 @@
         <div id="lesson-game-overlay" class="absolute inset-0 pointer-events-none"></div>
         {{-- Teacher text annotations (Freeform-style, draggable). z-[7]: above scene art + map. --}}
         <div id="lesson-text-overlay" class="absolute inset-0 z-7"></div>
+        {{-- The Choices layer while it is selected (resources/js/scene/choices-preview.js): a picture of the card
+             the class gets when the scene is over. Above the art, under the scene's edge; it takes no clicks. --}}
+        <div id="lesson-choices-preview" class="pointer-events-none absolute inset-0 z-[44] overflow-hidden" wire:ignore></div>
         {{-- Map block preview — overlays the canvas when a map/voyage/gallery scene is selected.
              It fills the 16:9 STAGE, not the work area: a fixed child of this fixed stage escaped
              the stage and painted the map into the black bars. absolute inset-0 + overflow-hidden
@@ -194,6 +197,11 @@
         window.addEventListener('scene:undo-delete', () => {
             const w = window.__step3Wire();
             if (w && typeof w.undoSceneDelete === 'function') { try { w.undoSceneDelete(); } catch (_) {} }
+        });
+        // The timeline's cut tool (CutsScenes): the toast's Undo makes the two scenes one again.
+        window.addEventListener('scene:undo-cut', () => {
+            const w = window.__step3Wire();
+            if (w && typeof w.undoSceneCut === 'function') { try { w.undoSceneCut(); } catch (_) {} }
         });
         // "Add credits" on the out-of-allowance toast. A full navigation, not wire:navigate: the
         // teacher is leaving the editor for Stripe and comes back to a fresh page either way.
@@ -356,12 +364,15 @@
                     const ll = (inst && host && typeof inst.textProjector === 'function')
                         ? inst.textProjector(host).unproject(t.x, t.y)
                         : null
+                    // Let go of the pin (the inspector's toggle): say so, or the next save pins it again.
+                    const free = t.anchor === 'screen'
                     window.Livewire.dispatch('artwork:move', {
                         assetId, x: t.x, y: t.y, scale: t.scale,
                         rotation: t.rotation,
-                        anchor: ll ? 'map' : null,
-                        lng: ll ? ll.lng : null,
-                        lat: ll ? ll.lat : null,
+                        anchor: free ? 'screen' : (ll ? 'map' : null),
+                        lng: !free && ll ? ll.lng : null,
+                        lat: !free && ll ? ll.lat : null,
+                        geo: !free && ll ? (t.geo ?? null) : null,
                     })
                 },
             })
@@ -421,6 +432,10 @@
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
             window.__lessonArtworkLayer = overlay
+            // A drawing pinned before pins kept the map's view grows the wrong amount and drifts off the map in play:
+            // give it the view it shows now, once the opening camera has settled (ArtworkOverlay.adoptDrawingGeo).
+            const sid = p.sceneId
+            setTimeout(() => { if (sid === currentSceneId) overlay.adoptDrawingGeo?.() }, 1200)
         }
         const hideMapArt = () => {
             const h = voyageArtHost()
@@ -448,10 +463,36 @@
         // (dragging / inserting a waypoint) and toggling map detail all keep the same map instance —
         // we update it in place (playLeg / setVoyageDef / setMapOptions) instead of destroying +
         // rebuilding it, which reset the zoom / centre / globe-flat projection and reloaded every tile.
+        // The lesson's one map (Bart 11-24: "preloaded map per lesson, only the top changes"): once mounted it
+        // is never thrown away while the editor is open. A slide, a voyage or the title only hides it; the
+        // next map scene puts itself on it (showScene), with every tile and picture of the chart still in.
+        let keptMap = null      // the lesson map block
+        // The voyage's map, kept the same way (Bart 11-26: "maps keep on being shown anew. on every scene"): a slide
+        // between two legs only hides it, and the next leg of the same voyage plays on it with its tiles still in.
+        let keptVoyage = null   // { inst, inner, voyage, style, def }
+        const parkVoyage = () => { if (keptVoyage) keptVoyage.inner.style.visibility = 'hidden' }
+        const dropVoyage = () => {
+            if (!keptVoyage) return
+            try { keptVoyage.inst.destroy() } catch (_) {}
+            keptVoyage.inner.remove()
+            keptVoyage = null
+        }
+        let keptInner = null    // its container, a child of host beside any voyage/gallery mount
+        const parkMap = () => {
+            if (!keptInner) return
+            keptInner.style.visibility = 'hidden'
+            try { keptMap.stopItinerary?.() } catch (_) {}
+        }
         const destroy = () => {
-            if (inst) { inst.destroy(); inst = null }
-            host.innerHTML = ''
-            host.style.display = 'none'
+            if (inst && inst !== keptMap && inst !== keptVoyage?.inst) inst.destroy()
+            // The voyage on stage is parked like the map, with the route as it last drew it (see keptVoyage).
+            if (keptVoyage && inst === keptVoyage.inst) keptVoyage.def = lastVoyageDefStr
+            inst = null
+            for (const c of [...host.children]) if (c !== keptInner && c !== keptVoyage?.inner) c.remove()
+            parkMap()
+            parkVoyage()
+            // Out of sight but laid out, so the map keeps its size (and its tiles) for the next map scene.
+            if (keptInner || keptVoyage) { host.style.display = 'block'; host.style.visibility = 'hidden' } else host.style.display = 'none'
             hideMapArt()
             lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
@@ -473,7 +514,7 @@
                 // too would double-build the HUD (setVoyageDef + refreshArrivalContent) → pins pop twice.
                 return ['voyage', p.sceneId, cfg.voyage, cfg.leg,
                     legDef ? `${legDef.depart}_${legDef.arrive}` : '', (cfg.stop_images || []).join(','),
-                    JSON.stringify(cfg.gallery || {})].join('|')
+                    JSON.stringify(cfg.gallery || {}), JSON.stringify(cfg.checkpoints || [])].join('|')
             }
             return ['gallery', p.sceneId, cfg.title, cfg.date_label, cfg.story, cfg.fit || 'fit', JSON.stringify(cfg.images || [])].join('|')
         }
@@ -489,7 +530,11 @@
             // the seed flow and left the preview blank / with no arrival card).
             if (!inst || !overlayHost || typeof inst.textProjector !== 'function') { layer.setProjector(null); return }
             layer.setProjector(inst.textProjector(overlayHost))
-            inst.map.on('move', () => layer.refreshPositions())
+            // Once per map, like the icons: this runs on every scene load and a listener each time piled up.
+            if (!inst.map.__textMoveBound) {
+                inst.map.__textMoveBound = true
+                inst.map.on('move', () => window.__lessonTextLayer?.refreshPositions())
+            }
         }
 
         // …and so can ICON layers. Same projector, same host box as the layers it positions, so
@@ -648,6 +693,9 @@
                 hasGallery: !!(_gal.title || _gal.story || (_gal.images && _gal.images.length) || (_vcfg.stop_images && _vcfg.stop_images.length)),
                 // The Choices layer (config.links / config.ending): a row in the object list when the scene has one.
                 choices: (Array.isArray(_vcfg.links) && _vcfg.links.length > 0) || _vcfg.ending === true,
+                links: Array.isArray(_vcfg.links) ? _vcfg.links : [],   // the stage's picture of the card (choices-preview.js)
+                // The background moves (SceneLoop): its row wears the video glyph.
+                loop: !!p.imageLoop,
             }
             try { window.dispatchEvent(new CustomEvent('objscene-changed')) } catch (_) { /* noop */ }
 
@@ -676,7 +724,18 @@
                 //  • route GEOMETRY edited (drag / insert / move a waypoint) → setVoyageDef() reshapes
                 //    the ship + trail + fog + handles in place at the current camera (no jump, no flash)
                 //  • leg changed → playLeg()   • same leg, content changed → refreshArrivalContent()
-                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && (p.voyage_map?.style || 'earth') === lastMapStyle) {
+                // The same voyage, parked since a slide, the map or the title: back on stage, and the leg played on it again.
+                const style = p.voyage_map?.style || 'earth'
+                if (p.kind === 'voyage' && keptVoyage && inst !== keptVoyage.inst && keptVoyage.voyage === cfg.voyage && keptVoyage.style === style) {
+                    destroy(); wireMapProjectors()
+                    inst = keptVoyage.inst
+                    keptVoyage.inner.style.visibility = ''
+                    host.style.display = 'block'
+                    host.style.visibility = ''
+                    lastVoyageId = cfg.voyage; lastMapStyle = style; lastVoyageDefStr = keptVoyage.def
+                    window.__voyageTour = inst
+                }
+                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && style === lastMapStyle) {
                     applyLiveMap()
                     const legNow = Number(cfg.leg) || 0
                     const defStr = JSON.stringify(p.voyage_def || null)
@@ -703,6 +762,7 @@
                                 stopImages: cfg.stop_images || [],
                                 gallery: cfg.gallery || null,
                                 hotspot: cfg.hotspot || null,
+                                checkpoints: cfg.checkpoints || [],
                             })
                         } catch (_) {}
                     } else if (contentChanged && typeof inst.refreshArrivalContent === 'function') {
@@ -715,10 +775,12 @@
                                 gallery: cfg.gallery || null,
                                 stopImages: cfg.stop_images || [],
                                 hotspot: cfg.hotspot || null,
+                                checkpoints: cfg.checkpoints || [],
                             })
                         } catch (_) {}
                     }
                     lastKey = key; lastLeg = legNow; lastVoyageDefStr = defStr; lastOverview = wantsOverview
+                    wireTextProjector()   // a text pinned on this voyage follows its map
                     showMapArt(p)   // keep the clipart layers in sync (a poll/leg switch may add/move one)
                     return
                 }
@@ -734,18 +796,21 @@
                     return
                 }
                 destroy(); wireMapProjectors()
+                // Another voyage (or its ground changed): the parked one goes for good.
+                if (p.kind === 'voyage') dropVoyage()
                 lastKey = key
                 lastVoyageId = cfg.voyage
-                lastMapStyle = p.voyage_map?.style || 'earth'
+                lastMapStyle = style
                 lastVoyageDefStr = JSON.stringify(p.voyage_def || null)
                 lastLeg = Number(cfg.leg) || 0
                 // `cfg`, not `vcfg`: the same scene config, but vcfg is declared further down and
                 // reading it here threw before the tour ever mounted.
                 lastOverview = !!cfg.overview
                 host.style.display = 'block'
+                host.style.visibility = ''
                 const stageInner = document.createElement('div')
-                stageInner.style.width = '100%'
-                stageInner.style.height = '100%'
+                // Over the kept lesson map (hidden), not below it in the flow.
+                stageInner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
                 host.appendChild(stageInner)
                 const vcfg = p.config || {}
                 if (p.kind === 'voyage' && window.renderVoyageTour) {
@@ -779,6 +844,13 @@
                         // Double-click a bend → drop that waypoint (undoable, like every other route edit).
                         onWaypointRemove: (wpIndex) =>
                             window.Livewire.dispatch('voyageWaypointRemoved', { sceneId: currentSceneId, wpIndex }),
+                        // Click the route line: a checkpoint there. Drag a checkpoint: it slides along the route.
+                        onCheckpointAdd: (lng, lat) =>
+                            window.Livewire.dispatch('voyageCheckpointAdded', { sceneId: currentSceneId, lng, lat }),
+                        onCheckpointMove: (id, lng, lat) =>
+                            window.Livewire.dispatch('voyageCheckpointMoved', { sceneId: currentSceneId, id, lng, lat }),
+                        onCheckpointFocus: (id) =>
+                            window.dispatchEvent(new CustomEvent('voyage-obj-focus', { detail: { which: 'checkpoint', id } })),
                         // Restore the open gallery ONCE when arriving via a preview "Edit scene" deep-link.
                         openGalleryOnArrive: window.__openGalleryOnLoad === true,
                     })
@@ -793,10 +865,12 @@
                             stopImages: vcfg.stop_images || [],
                             gallery: vcfg.gallery || null,
                             hotspot: vcfg.hotspot || null,
+                            checkpoints: vcfg.checkpoints || [],
                         })
                     }
                     // Expose the live tour so the zoom-out toggle can reach it from any voyage scene.
                     window.__voyageTour = inst
+                    keptVoyage = { inst, inner: stageInner, voyage: vcfg.voyage, style: lastMapStyle, def: lastVoyageDefStr }
                     lastGalleryId = null
                 } else if (p.kind === 'gallery' && window.renderGallery) {
                     inst = window.renderGallery(stageInner, vcfg)
@@ -804,6 +878,9 @@
                 } else {
                     console.error('[wizard] voyage/gallery renderer unavailable — is the module loaded?')
                 }
+                // Pinned texts follow the voyage map too (Bart 11-23: "it doesn't stick to the map").
+                // The voyage mounts after the destroy() + wire above, so wire the text layer to it now.
+                wireTextProjector()
                 // Clipart layers ride ABOVE the voyage map (never on a standalone gallery scene).
                 if (p.kind === 'voyage') showMapArt(p); else hideMapArt()
                 return
@@ -845,29 +922,42 @@
             // scene on the live map (its year, territory, pins, switches, framing) and keep the chart,
             // its images and its tiles. Rebuilding here refetched all of them on every scene click.
             // Only a lesson map has showScene: a voyage or gallery on stage still falls through and swaps.
-            if (inst && typeof inst.showScene === 'function') {
+            if (keptMap) {
+                // A voyage or gallery on stage goes; the map was hidden behind it.
+                if (inst && inst !== keptMap) { destroy(); showMapArt(p) }
+                // Hidden since a slide, voyage or the title: it opens on this scene's frame, no glide.
+                const wasHidden = !inst
+                inst = keptMap
                 lastKey = key
+                host.style.display = 'block'
+                host.style.visibility = ''
+                keptInner.style.visibility = ''
                 try {
                     inst.showScene({
+                        jump: wasHidden,
                         qid: cfg.qid || null,
                         fit: cfg.fit || null,
                         year,
                         annotations: cfg.annotations || [],
                         showCities: cfg.show_cities === true,
                         showBorders: cfg.show_borders === true,
+                        territory: cfg.territory || null,  // the linked territory's look (map/territory-look.js)
+                        timeline: cfg.timeline || null,   // the scene opens at its timeline camera
                     })
                 } catch (err) { console.error('[lesson-map] showScene failed', err) }
+                wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
                 return
             }
             destroy()                 // clears lastKey…
             lastKey = key             // …so set it after
             showMapArt(p)             // …and re-mounts the layers destroy() just cleared
             host.style.display = 'block'
+            host.style.visibility = ''
             // MapLibre stamps `position:relative` on its container, which would override the host's
             // fixed positioning and collapse it — so mount into a full-size inner child instead.
             const inner = document.createElement('div')
-            inner.style.width = '100%'
-            inner.style.height = '100%'
+            inner.style.cssText = 'position:absolute; inset:0; width:100%; height:100%'
             host.appendChild(inner)
             if (window.renderLessonMap) {
                 inst = window.renderLessonMap(inner, {
@@ -877,15 +967,20 @@
                     projection: cfg.projection || 'mercator',
                     showCities: cfg.show_cities === true,
                     showBorders: cfg.show_borders === true,
+                    territory: cfg.territory || null,
                     interactive: true,
                     annotations: cfg.annotations || [],
+                    timeline: cfg.timeline || null,   // the scene opens at its timeline camera, not the pins' close-up
                     editable: true,
                     // currentSceneId, not p.sceneId: the same map stays up across map scenes (showScene).
                     onAnnotationsChange: (a) => window.Livewire.dispatch('annotationsChanged', { sceneId: currentSceneId, annotations: a }),
                     // Click a polity on the map → link it as this block's territory (hover shows its name).
                     onPolityClick: (t) => window.Livewire.dispatch('mapTerritoryClicked', { sceneId: currentSceneId, qid: t.qid, name: t.name }),
                 })
+                keptMap = inst
+                keptInner = inner
                 wireMapProjectors()
+                try { inst.prefetchScene?.(cfg) } catch (_) {}   // its camera move's tiles, before it plays
             } else {
                 // lesson-map.js failed to load — surface it instead of silently leaving an empty host,
                 // which reveals the 3D canvas (narration art) behind and reads as "the map didn't open".
@@ -903,6 +998,8 @@
             if (!inst) return
             inst.setLayerToggles(key === 'show_cities' ? { cities: !!value } : { borders: !!value })
         })
+        // The territory's look (border, fill) from the inspector, applied in place like the switches.
+        window.Livewire.on('territoryLookChanged', ({ look }) => { if (inst?.setTerritoryLook) inst.setTerritoryLook(look) })
 
 
         // Focus-city rename/remove saved server-side → push fresh annotations so marker labels update live.
@@ -1230,7 +1327,20 @@
                 @endunless
 
                 <div x-show="tab === 'animate'" x-cloak>
-                    <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @if ($sceneModel->kind === 'map')
+                        {{-- The Map block is what is selected here, so its Motion tab holds the map's own presets
+                             (Bart 11-24: "presets about the selection ... not about the scene animations"). How the
+                             scene replaces the one before it folds away underneath. --}}
+                        <x-lesson.map-motion-presets :scene="$sceneModel" />
+                        <details class="mt-4 border-t border-panel-border pt-3" data-scene-transition>
+                            <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Scene transition') }}</summary>
+                            <div class="pt-2">
+                                <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                            </div>
+                        </details>
+                    @else
+                        <x-lesson.animate-inspector mode="scene" :scene="$sceneModel" :active-panel="$this->activePanel" />
+                    @endif
                 </div>
 
                 <div x-show="tab === 'format'">
@@ -1267,6 +1377,17 @@
                 @endif
 
                 {{-- Story-game: branch OPTION scenes get the "Game effects" editor. --}}
+                {{-- An old Decision point (three scenes): one click makes it the Choices layer on its question scene. --}}
+                @if ($sceneModel->kind !== 'game' && $sceneModel->branch_group !== null)
+                    <div data-convert-decision class="mt-4 flex h-8 items-center justify-between border-t border-base-content/10 pt-3">
+                        <h4 class="lp-card-label text-panel-label">{{ __('Decision point') }}</h4>
+                        <button type="button" class="btn btn-ghost btn-sm text-panel-link"
+                                wire:click="convertDecisionToChoices({{ $sceneModel->id }})">
+                            <span class="h-4 w-4" x-html="window.__objIcons?.choices"></span> {{ __('Make it choices') }}
+                        </button>
+                    </div>
+                @endif
+
                 @if ($this->showsGameEffectsPanel($sceneModel))
                     <x-lesson.scene-inspector-story-effects :scene="$sceneModel" :meters="$this->storyMeters()" />
                 @endif
@@ -1416,6 +1537,16 @@
                     </div>
                 @endunless
             </x-ui.settings-section>
+
+            {{-- STORY TO VIDEO (bart, 2026-11-23): character sheets, empty places, then one clip per narration beat,
+                 made through ElevenLabs from the approved script, each step checked before the next. --}}
+            @unless (auth()->user()?->isGuestDemo())
+                <x-ui.settings-section :title="__('Video')" name="story-video" :open="false" class="-mx-4 mt-2 w-auto! pt-2" data-story-video-section>
+                    <div wire:ignore>
+                        <livewire:wizard.story-video :lesson="$lesson" :key="'story-video-'.$lesson->id" />
+                    </div>
+                </x-ui.settings-section>
+            @endunless
             @endif
         </div>
         </div>{{-- /.lp-panel-content --}}
@@ -1481,6 +1612,7 @@
         group: @js(\App\Support\UiIcon::svg('layer-group', ['class' => 'h-4 w-4'])),
         choices: @js(\App\Support\UiIcon::svg('layer-choices', ['class' => 'h-4 w-4'])),
         quiz: @js(\App\Support\UiIcon::svg('layer-quiz', ['class' => 'h-4 w-4'])),
+        video: @js(\App\Support\UiIcon::svg('video', ['class' => 'h-4 w-4'])),
     };
     // A diorama item's Format panel (components/lesson/diorama-item-inspector): read off the live stage at
     // the playhead, written back through it (the canvas drag's rules). Defined here, not in the
@@ -1575,7 +1707,7 @@
         const CAMERA_PREVIEW_IDLE_MS = 400;   // a drag settles before the preview is drawn again
         const round = (v) => Math.round(v * 100) / 100;
         return {
-            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
+            names: names || {}, poses: poses || {}, info: null, series: null, look: [], ground: null, strew: null, skies: null, sky: null, drift: 0.4, terrainAt: 0, farEdge: null, cam: null, camPreview: null, camFrames: null, camEnds: null, camEnd: 'from', camPlaying: false, previewSig: null, previewTimer: null, hud: null, sparkOpen: false, sparkText: '', values: { x: 0, z: 0, y: 0, scale: 100, rotation: 0, opacity: 100 },
             init() {
                 this.sync();
                 // an edit that ran on through a reload lands too
@@ -1598,6 +1730,7 @@
                 }
                 this.info = stage.layerInfo?.(id) ?? null;
                 this.ground = id === 'terrain' ? (stage.groundSlots?.() ?? null) : null;
+                this.strew = id === 'terrain' ? (stage.strewInfo?.() ?? null) : null;
                 this.skies = id === 'sky' ? (stage.skyOptions?.() ?? []) : null;
                 this.sky = id === 'sky' ? (stage.daylightInfo?.() ?? null) : null;
                 if (id === 'sky') this.drift = (stage.lookControls?.() ?? []).find((c) => c.key === 'cloudDrift')?.value ?? this.drift;
@@ -1711,6 +1844,14 @@
             setSun(axis, v) { this.daylight({ sun: { ...(this.sky?.sun ?? {}), [axis]: v } }); },
             autoSun() { this.daylight({ sun: null }); },
             ownSky() { this.daylight({ painted: false }); },
+            /** Snow, rain or dry (''): the values the sliders hold stay with it, so Snow after Rain keeps the amount. */
+            setWeatherKind(kind) {
+                const w = this.sky?.weather ?? {};
+                this.daylight({ weather: kind ? { kind, amount: w.amount, wind: w.wind, size: w.size, speed: w.speed } : null });
+            },
+            setWeather(field, v) { if (this.sky?.weather?.kind) this.daylight({ weather: { ...this.sky.weather, [field]: v } }); },
+            /** A weather slider's fill: its value as a share of its range (wind runs -1..1). */
+            weatherShare(field, min, max) { return ((this.sky?.weather?.[field] ?? min) - min) / (max - min); },
             /** The last cloud cut-out that is on stays on (Cloud cover 0 is the clear sky). */
             lastCloud(c) { return c.on && (this.sky?.clouds ?? []).filter((x) => x.on).length === 1; },
             /** Put a library world under the scene, or none: live, and saved. */
@@ -1756,6 +1897,12 @@
             addGround() { const last = this.ground.rows.at(-1); this.setGround([...this.ground.rows, { asset: last?.asset ?? this.ground.options[0]?.id, from_m: (last?.from_m ?? 0) + 40 }]); },
             removeGround(i) { this.terrainAt = 0; window.__stage25d?.pickTerrainSlot?.(0); this.setGround(this.ground.rows.filter((_, n) => n !== i)); },
             optionOf(id) { return this.ground?.options.find((o) => o.id === id) ?? null; },
+            // the terrain's plants (Bart 11-24): which grow (on/off per plant, all as the teacher chose them) and a new throw
+            async setStrew(patch) { await window.__stage25d?.setStrew?.(patch); window.__stage25d?.select?.('terrain'); this.sync(); },
+            // the tile and the seed change here at once, so a second click before the rebuild is done builds on the first
+            togglePlant(key) { this.strew = { ...this.strew, own: true, plants: this.strew.plants.map((p) => (p.key === key ? { ...p, on: !p.on } : p)) }; this.setStrew({ plants: this.strew.plants.filter((p) => p.on).map((p) => p.key) }); },
+            shufflePlants() { this.strew = { ...this.strew, seed: (this.strew.seed % 999999) + 1 }; this.setStrew({ seed: this.strew.seed }); },
+            plantCell(p) { const [u, v, du, dv] = p.cell; const x = du < 1 ? (u / (1 - du)) * 100 : 0, y = dv < 1 ? (v / (1 - dv)) * 100 : 0; return `background-image: url('${p.url}'); background-size: ${100 / du}% ${100 / dv}%; background-position: ${x}% ${y}%; background-repeat: no-repeat`; },
             /** A tile is the one the Assets tab replaces: picked, the tab opens on terrain pictures. */
             pickTerrain(i) { this.terrainAt = i; window.__stage25d?.pickTerrainSlot?.(i); },
             /** The Sky and Terrain panels carry their own grid of pictures (Bart 11-11), not a trip to the Assets tab. */
@@ -1863,6 +2010,26 @@
                     this.refresh();
                 });
                 this.$nextTick(() => this.initSortable());
+                // The canvas right-click menu: one document listener for the page's life, pointed at the live list.
+                window.__layerMenuCanvas = (e) => this.canvasMenu(e);
+                // Cmd-G groups the picked stage layers (or the selected one), Shift-Cmd-G takes the selected group apart.
+                window.__layerGroupKey = (e) => {
+                    const obj = this.items.find((i) => i.id === this.selectedId) ?? this.items.find((i) => i.id === this.picked[0]);
+                    if (!obj) return;
+                    if (e.shiftKey && this.groupOf(obj)) { e.preventDefault(); this.ungroup(obj); return; }
+                    if (!e.shiftKey && this.canPick(obj)) { e.preventDefault(); this.groupLayers(this.picked.length > 1 ? this.items.find((i) => i.id === this.picked[0]) : obj); }
+                };
+                if (!window.__layerMenuCanvasMounted) {
+                    window.__layerMenuCanvasMounted = true;
+                    document.addEventListener('contextmenu', (e) => window.__layerMenuCanvas?.(e));
+                    // What had focus before the press: a right-press puts focus in a text box itself, so only a text that was
+                    // already being typed in keeps the browser's own menu (spelling).
+                    document.addEventListener('pointerdown', () => { window.__layerMenuFocus = document.activeElement; }, true);
+                    window.addEventListener('keydown', (e) => {
+                        if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'g' || window.__isTypingTarget?.(e.target)) return;
+                        window.__layerGroupKey?.(e);
+                    });
+                }
                 // Compact (icons-only) toggle via a data attribute, NOT a CSS container query:
                 // container-type would make this panel a containing block for SortableJS's
                 // position:fixed drag ghost, offsetting/clipping it and breaking layer reordering.
@@ -1906,9 +2073,11 @@
                 // insertion order. Mirrors the canvas stacking so the list reads like a layers panel.
                 const withZ = texts.map((t, i) => ({ t, i, z: this.effZ(t) }));
                 withZ.sort((a, b) => (b.z - a.z) || (b.i - a.i));
+                // locked: the canvas lets presses through (the right-click menu's Lock); pinnable/pinned: Pin to map, on a live map only.
+                const textPin = !!window.__lessonTextLayer?.canPin?.();
                 const textItems = withZ.map(({ t }) => t.kind === 'rect'
-                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false }
-                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false });
+                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false, text: true, locked: !!t.locked }
+                    : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false, text: true, locked: !!t.locked, pinnable: textPin, pinned: t.anchor === 'map' });
                 // Clipart / artwork / embed layers (own overlay, drag-reorderable). _layers is bottom-first
                 // (last painted = on top), so reverse it to list front-most first like the text rows.
                 const objKind = (window.__objScene || {}).kind;
@@ -1919,9 +2088,21 @@
                     ({ id: 'dio_' + i.id, icon: 'photo', label: i.label || i.id, bg: false, dio: true }));
                 // Stage25d layers (config.stage25d.set.layers): front-most first. Pinned like the diorama's: they stack by depth.
                 // True front-to-back: the nearest on the ground first, and at one distance the later layer is in front.
-                const s25Items = [...(window.__stage25d?.items?.() ?? [])].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery)
+                const s25All = window.__stage25d?.items?.() ?? [];
+                const s25Sorted = [...s25All].filter((i) => i.id !== 'camera' && !i.backdrop && !i.scenery && !i.isGroup)
                     .map((i, at) => ({ i, at })).sort((a, b) => ((a.i.z ?? 22) - (b.i.z ?? 22)) || (b.at - a.at))
-                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true }));
+                    .map(({ i }) => ({ id: 's25_' + i.id, icon: i.icon || 'photo', label: i.label || i.id, bg: false, s25: true, locked: !!i.locked, inGroup: !!i.group, groupId: i.group ?? null }));
+                // A group (Bart 11-25, as in Photoshop) is a row of its own, where its front-most layer stands, with its layers
+                // indented under it. It stacks by depth like them, so it is never dragged (data-s25group).
+                const s25Groups = new Map(s25All.filter((i) => i.isGroup).map((g) => [g.id.slice(6), { id: 's25_' + g.id, icon: 'group', label: g.label, bg: false, s25: true, s25group: true, groupId: g.id.slice(6) }]));
+                const s25Items = [];
+                const s25Done = new Set();
+                for (const row of s25Sorted) {
+                    if (s25Done.has(row.id)) continue;
+                    if (!row.groupId || !s25Groups.has(row.groupId)) { s25Items.push({ ...row, inGroup: false }); continue; }
+                    s25Items.push(s25Groups.get(row.groupId));
+                    for (const m of s25Sorted.filter((r) => r.groupId === row.groupId)) { s25Items.push(m); s25Done.add(m.id); }
+                }
                 // The painted landscape (ground bands, nearest first) and the sky are the stage's backdrop: rows at the very
                 // back, picture swappable, not restackable (s25sky: pinned like the sky).
                 // Grouped under "World" (Bart, 2026-11-10/11): one ground and one sky, never copied or deleted, only swapped.
@@ -1932,9 +2113,11 @@
                 const s25Sky = s25Backdrop.length ? [{ id: 's25_world', icon: 'group', label: @js(__('World')), bg: false, s25: true, s25sky: true }, ...s25Backdrop] : [];
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
+                const artPin = !!artLayer?.canPin?.();
                 const artItems = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
-                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true }));
+                       label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true,
+                       locked: !!a.locked, pinnable: artPin && a.kind !== 'arrow', pinned: a.anchor === 'map' }));
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
@@ -1963,11 +2146,13 @@
                     if (objKind === 'game' && (window.__objScene || {}).gameType === 'quiz') {
                         items.push({ id: '__quiz__', icon: 'quiz', label: @js(__('Quiz')), bg: true, section: 'quiz' });
                     }
-                    items.push({ id: '__bg__', icon: 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
+                    // A map scene's bottom object IS the map: the Map block (Bart 11-23), as the timeline names it.
+                    if (objKind === 'map') items.push({ id: '__bg__', icon: 'map', label: @js(__('Map block')), bg: true, section: 'bg' });
+                    else items.push({ id: '__bg__', icon: (window.__objScene || {}).loop ? 'video' : 'photo', label: objKind === 'gallery' ? @js(__('Slideshow')) : @js(__('Background')), bg: true, section: 'bg' });
                 }
                 // Skip the re-render (and its churn under SortableJS) when nothing actually changed —
                 // the 2s poll would otherwise rebuild identical rows and fight the drag layer.
-                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label).join('|');
+                const sig = items.map((i) => i.id + ':' + i.icon + ':' + i.label + ':' + (i.locked ? 'L' : '') + (i.pinnable ? 'p' : '') + (i.pinned ? 'P' : '') + (i.groupId ?? '')).join('|');
                 if (sig === this._sig) return;
                 this._sig = sig;
                 this.items = items;
@@ -1984,7 +2169,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal], [data-s25group]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -2050,11 +2235,19 @@
             // (the layer broadcasts back so canvas↔list stay in sync), and scroll it into view.
             select(obj) {
                 this.selectedId = obj.id;
+                this.picked = [];
                 if (obj.voyage) {
                     // Route waypoint layers → open the Format inspector and focus the Waypoint tab
                     // (Gallery also scrolls to its section). The voyage inspector listens for this.
                     try { window.dispatchEvent(new CustomEvent('inspector-open')); } catch (_) { /* noop */ }
                     try { window.dispatchEvent(new CustomEvent('voyage-obj-focus', { detail: { which: obj.voyage } })); } catch (_) { /* noop */ }
+                    return;
+                }
+                if (obj.section === 'choices') {
+                    // The Choices layer is a selection of its own: the stage shows its card and the timeline
+                    // lights its row. Going through the background's select gave the row back to the map.
+                    window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: '__choices__' } }));
+                    this.locate(obj);
                     return;
                 }
                 if (obj.bg) {
@@ -2091,15 +2284,102 @@
             // Right-click on a row: select it and open Duplicate / Delete at the pointer. Rows that can't be
             // removed (the background, fixed scenery) have no menu, so the browser's own stays away too.
             menuObj: null,
+            canPaste: false,
+            pasteOnly: false,
+            // The menu is teleported to <body> (x-teleport) so it opens over the canvas with the list hidden: found by its attribute.
+            menuEl() { return document.querySelector('[data-obj-menu]'); },
+            closeMenu() { try { this.menuEl()?.hidePopover(); } catch (_) {} },
+            // Returns whether it opened, so the canvas keeps the browser's own menu when there is nothing to offer.
             openMenu(obj, e) {
-                if (!obj || obj.bg || (obj.s25sky && !obj.removable)) return;
-                this.select(obj);
+                if (!obj) return false;
+                this.canPaste = !!window.__objectClipboard?.has();
+                // The background and the pinned rows can't be copied or deleted, but an empty scene has only those, and it is
+                // the usual place to paste: with a copy waiting, they open a menu with Paste alone.
+                this.pasteOnly = !!(obj.bg || (obj.s25sky && !obj.removable));
+                if (this.pasteOnly && !this.canPaste) return false;
+                if (!this.pasteOnly && !this.picked.includes(obj.id)) this.select(obj);   // a picked row keeps the others picked (Group)
                 this.menuObj = obj;
-                const m = this.$refs.objMenu;
-                m.style.left = Math.min(e.clientX, innerWidth - 184) + 'px';
-                m.style.top = Math.min(e.clientY, innerHeight - 96) + 'px';
-                m.showPopover();
+                const m = this.menuEl();
+                if (!m) return false;
+                m.style.left = Math.min(e.clientX, innerWidth - 200) + 'px';
+                m.style.top = Math.min(e.clientY, innerHeight - 260) + 'px';
+                // On a Mac the menu event comes on the press: shown then, the release would light-dismiss it at once. Wait for it.
+                const show = () => { try { m.showPopover(); } catch (_) {} };
+                if (e.buttons) window.addEventListener('pointerup', () => setTimeout(show), { once: true, capture: true });
+                else show();
+                return true;
             },
+            /**
+             * Right-click on the canvas (Bart 2026-11-25, "as in Photoshop"): the same menu as a row's, for the layer under
+             * the pointer. A text box, a balloon or a picture is the element under it; on the 2.5D stage it is the picture
+             * painted there (stage25d/interact.js pickAt), locked ones too, so a locked layer can be unlocked where it is.
+             * Nothing there: Paste alone, with a copy waiting. Typing in a text keeps the browser's menu (spelling).
+             */
+            canvasMenu(e) {
+                const t = e.target;
+                if (!t?.closest?.('#lesson-canvas-root') || this.$wire?.titleSelected) return;
+                if (t.closest('[contenteditable="true"], input, textarea')?.contains(window.__layerMenuFocus ?? document.activeElement)) return;
+                this._sig = null;
+                this.refresh();
+                const id = this.objectIdAt(e);
+                const obj = (id && this.items.find((i) => i.id === id)) || { id: '__stage__', bg: true };
+                if (this.openMenu(obj, e)) e.preventDefault();
+            },
+            objectIdAt(e) {
+                const t = e.target;
+                const text = t.closest('[data-text-id]');
+                if (text) return text.dataset.textId;
+                const bal = t.closest('[data-balloon-id]');
+                if (bal) return bal.dataset.balloonId;
+                const art = t.closest('[data-layer-id^="art_"]');
+                if (art) return art.dataset.layerId;
+                const s25 = window.__stage25d?.pickAt?.(e.clientX, e.clientY);
+                return s25 ? 's25_' + s25 : null;
+            },
+            // Lock: text boxes save it with the texts (TextOverlayLayer.setLocked); pictures and stage layers on the server
+            // (LocksSceneObjects). Either way one Cmd-Z takes it back.
+            canLock(obj) { return !!obj && !obj.bg && !!(obj.text || obj.art || (obj.s25 && !obj.s25sky && !obj.s25group)); },
+            setLocked(obj, locked) {
+                if (!this.canLock(obj)) return;
+                obj.locked = locked;
+                const relist = () => { this._sig = null; this.refresh(); };
+                if (obj.text) { window.__lessonTextLayer?.setLocked?.(obj.id, locked); relist(); }
+                else this.$wire.lockObject(obj.id, locked).then(relist);
+            },
+            // Several stage layers picked at once (Shift- or Cmd-click on their rows), for Group.
+            picked: [],
+            canPick(obj) { return !!obj?.s25 && !obj.s25sky && !obj.s25group; },
+            togglePicked(obj) {
+                const now = this.picked.length ? this.picked : (this.selectedId && this.items.find((i) => i.id === this.selectedId && this.canPick(i)) ? [this.selectedId] : []);
+                this.picked = now.includes(obj.id) ? now.filter((id) => id !== obj.id) : [...now, obj.id];
+            },
+            // Group: the picked layers when the menu is on one of them, else the layer under it. Ungroup: a group, or a layer's own group.
+            canGroup(obj) { return this.canPick(obj); },
+            groupOf(obj) { return obj?.s25group ? obj.groupId : (obj?.inGroup ? obj.groupId : null); },
+            groupLayers(obj) {
+                const ids = this.picked.includes(obj?.id) && this.picked.length > 1 ? this.picked : [obj?.id];
+                const indexes = ids.filter((id) => /^s25_layer-\d+$/.test(id ?? '')).map((id) => Number(id.slice(10)));
+                if (indexes.length) this.$wire.groupStage25dLayers(indexes);
+                this.picked = [];
+            },
+            ungroup(obj) {
+                const id = this.groupOf(obj);
+                if (id) this.$wire.ungroupStage25d(id);
+            },
+            // Pin to map: the same toggle as the inspector's switch (togglePin on the overlay), so the two always agree.
+            togglePin(obj) {
+                if (!obj?.pinnable) return;
+                if (obj.art) this.artOverlay()?.togglePin?.(Number(obj.id.slice(4)));
+                else window.__lessonTextLayer?.togglePin?.(obj.id);
+                this._sig = null;
+                this.refresh();
+            },
+            // Copy / Paste: the same object copy as Cmd-C / Cmd-V, so a paste in another scene lands where it was.
+            copyObject(obj) {
+                if (!obj || obj.bg) return;
+                window.__objectClipboard?.copy([obj.id]);
+            },
+            pasteObjects() { window.__objectClipboard?.paste(); },
             // Same server route as Cmd-D (scene:duplicate-objects); the copy comes back selected.
             duplicateObject(obj) {
                 if (!obj || obj.bg) return;
@@ -2300,6 +2580,22 @@
             <x-ui.icon name="play" class="h-6 w-6" />
         </button>
 
+        {{-- The view switch: the scene being edited, or the story map with every scene and choice as cards and the lines
+             between them (components/lesson/story-map, Bart 2026-11-26: "a switch view option to the scene view"). --}}
+        <div class="flex items-center rounded-xl border border-panel-hairline" role="group" aria-label="{{ __('View') }}">
+            <button type="button" aria-pressed="true"
+                    class="grid h-11 w-11 place-items-center rounded-xl bg-selected text-card-action-label"
+                    data-tooltip="{{ __('Scene') }}" aria-label="{{ __('Scene') }}">
+                <x-ui.icon name="scene-view" class="h-6 w-6" />
+            </button>
+            <button type="button" data-story-map-open aria-pressed="false"
+                    onclick="window.dispatchEvent(new CustomEvent('story-map-open'))"
+                    class="grid h-11 w-11 place-items-center rounded-xl text-panel-icon transition hover:bg-base-200 hover:text-primary"
+                    data-tooltip="{{ __('Story map') }}" aria-label="{{ __('Story map') }}">
+                <x-ui.icon name="story-map" class="h-6 w-6" />
+            </button>
+        </div>
+
         {{-- Add and Draw: two buttons, because adding a layer and drawing are different acts. Add puts a
              layer on the scene (scenes are added in the rail, where they live); Draw is a mode you switch
              on and off: pen, line and arrow over the scene, each line its own layer (editor/draw-layer.js). --}}
@@ -2384,8 +2680,9 @@
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'pen' && 'btn-primary'" x-on:click="pick('tool', 'pen')">{{ __('Pencil') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'line' && 'btn-primary'" x-on:click="pick('tool', 'line')">{{ __('Line') }}</button>
                     <button type="button" class="btn btn-sm join-item" :class="tool === 'arrow' && 'btn-primary'" x-on:click="pick('tool', 'arrow')">{{ __('Arrow') }}</button>
+                    <button type="button" class="btn btn-sm join-item" :class="tool === 'eraser' && 'btn-primary'" x-on:click="pick('tool', 'eraser')" data-draw-eraser>{{ __('Eraser') }}</button>
                 </div>
-                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}">
+                <div class="flex items-center gap-1.5" role="group" aria-label="{{ __('Colour') }}" :class="tool === 'eraser' && 'opacity-40'">
                     <template x-for="c in colours" :key="c">
                         <button type="button" class="h-8 w-8 rounded-full border-2" :style="`background:${c}`"
                                 :class="colour === c ? 'border-sky-400' : 'border-base-300'" x-on:click="pick('colour', c)" :aria-label="c"></button>
@@ -2404,8 +2701,9 @@
         </div>
         </div>
 
-        {{-- Right group: Help | Settings, then Publish in the far corner --}}
+        {{-- Right group: who else is here | Help | Settings, then Publish in the far corner --}}
         <div class="flex items-stretch gap-0.5">
+        <x-editor.collab-people :lesson="$lesson" />
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
         {{-- What is wrong with the lesson (LessonProblems): hidden when nothing is; red when the class
@@ -2450,6 +2748,8 @@
             <x-ui.icon name="account-add" class="h-6 w-6" />
             <span class="text-2xs font-medium">{{ __('Sign up') }}</span>
         </a>
+        @elseif (! auth()->user()?->canManage($lesson))
+            {{-- An editor the owner let in: who sees the lesson stays the owner's call (claimOwnerOnlyMethods). --}}
         @else
         {{-- Publish — who can see this lesson: share it with other teachers, publish it to a class
              now, or schedule that. Share lives here because it is the other visibility decision:
@@ -2712,7 +3012,7 @@
          block for SortableJS's position:fixed reorder ghost and break the layer-drag interaction. --}}
     <style>
         [data-objlist-col][data-compact] [data-obj-label] { display: none !important; }
-        [data-objlist-col][data-compact] [data-obj-eye] { display: none !important; }
+        [data-objlist-col][data-compact] [data-obj-eye], [data-objlist-col][data-compact] [data-obj-lock] { display: none !important; }
         [data-objlist-col][data-compact] [data-obj-row] { justify-content: center; padding-left: 0.25rem; padding-right: 0.25rem; gap: 0; }
     </style>
     <div x-show="$store.view.objects" x-cloak x-data="objectList()" x-init="init()"
@@ -2728,13 +3028,13 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null" :data-s25group="obj.s25group ? '1' : null"
                      data-obj-row
-                     @click="select(obj)"
+                     @click="($event.shiftKey || $event.metaKey || $event.ctrlKey) && canPick(obj) ? togglePicked(obj) : select(obj)"
                      @contextmenu.prevent="openMenu(obj, $event)"
                      :class="[
                         obj.bg || obj.bal || obj.dio || obj.s25sky ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
-                        selectedId === obj.id ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
+                        selectedId === obj.id || picked.includes(obj.id) ? 'bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50' : 'text-slate-200 hover:bg-slate-800',
                         obj.inGroup ? 'pl-6' : '', obj.group ? 'cursor-default! hover:bg-transparent' : '',
                      ]"
                      class="group flex w-full select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm">
@@ -2757,31 +3057,85 @@
                             <span x-show="isHidden(obj)" x-cloak>{!! \App\Support\UiIcon::svg('hidden', ['class' => 'h-4 w-4']) !!}</span>
                         </button>
                     </template>
+                    {{-- Locked: a lock that stays on the row's right edge (after the eye, so a hover never moves it); a click unlocks (Figma's layer list). --}}
+                    <template x-if="obj.locked">
+                        <button type="button" @click.stop="setLocked(obj, false)" data-obj-lock
+                                aria-label="{{ __('Unlock') }}" data-tooltip="{{ __('Unlock') }}"
+                                class="-my-1.5 grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded text-panel-hint hover:text-base-content">
+                            {!! \App\Support\UiIcon::svg('lock', ['class' => 'h-4 w-4']) !!}
+                        </button>
+                    </template>
                 </div>
             </template>
         </div>
-        {{-- Duplicate and Delete: a right-click on a row, as in Figma's and Keynote's layer lists (Bart 2026-11-19: the
-             row's "..." clashed with the eye). The row keeps one hover action, the eye; ⌘D and ⌫ do the same as these
-             items. One native popover for the whole list, opened at the pointer: the top layer, so the panel's overflow
-             never clips it, and Escape or a click outside closes it. wire:ignore: a Livewire morph after select() would reset its position. --}}
-        <ul popover x-ref="objMenu" data-obj-menu wire:ignore
-            class="menu m-0 hidden w-44 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
+        {{-- The layer menu: a right-click on a row, as in Figma's and Keynote's layer lists (Bart 2026-11-19: the row's "..."
+             clashed with the eye), and on the layer itself on the canvas (Bart 2026-11-25, as in Photoshop). ⌘C, ⌘V, ⌘D and ⌫
+             do the same as these items. One native popover, opened at the pointer: the top layer, so no overflow clips it, and
+             Escape or a click outside closes it. Teleported to <body>: it opens over the canvas while the list is hidden, and
+             a Livewire morph never resets its position. --}}
+        <div wire:ignore>
+        <template x-teleport="body">
+        <ul popover data-obj-menu
+            class="menu m-0 hidden w-52 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="menuObj && !menuObj.bal && !menuObj.s25sky">
-                <button type="button" @click="$refs.objMenu.hidePopover(); duplicateObject(menuObj)">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio && !menuObj.s25group">
+                <button type="button" @click="closeMenu(); copyObject(menuObj)">
+                    <x-ui.icon name="copy" />
+                    {{ __('Copy') }}
+                    <span class="ml-auto opacity-60">⌘C</span>
+                </button>
+            </li>
+            <li x-show="canPaste">
+                <button type="button" @click="closeMenu(); pasteObjects()">
+                    <x-ui.icon name="paste" />
+                    {{ __('Paste') }}
+                    <span class="ml-auto opacity-60">⌘V</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.s25group">
+                <button type="button" @click="closeMenu(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
                     <span class="ml-auto opacity-60">⌘D</span>
                 </button>
             </li>
-            <li>
-                <button type="button" class="text-error" @click="$refs.objMenu.hidePopover(); deleteObject(menuObj)">
+            <li x-show="!pasteOnly && canLock(menuObj)">
+                <button type="button" @click="closeMenu(); setLocked(menuObj, !menuObj.locked)">
+                    <span x-show="!menuObj?.locked"><x-ui.icon name="lock" /></span>
+                    <span x-show="menuObj?.locked" x-cloak><x-ui.icon name="unlock" /></span>
+                    <span x-text="menuObj?.locked ? @js(__('Unlock')) : @js(__('Lock'))"></span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && canGroup(menuObj)">
+                <button type="button" @click="closeMenu(); groupLayers(menuObj)" data-obj-menu-group>
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Group') }}
+                    <span class="ml-auto opacity-60">⌘G</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && groupOf(menuObj)">
+                <button type="button" @click="closeMenu(); ungroup(menuObj)" data-obj-menu-ungroup>
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Ungroup') }}
+                    <span class="ml-auto opacity-60">⇧⌘G</span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly && menuObj?.pinnable">
+                <button type="button" @click="closeMenu(); togglePin(menuObj)">
+                    <x-ui.icon name="pin" />
+                    <span x-text="menuObj?.pinned ? @js(__('Unpin from map')) : @js(__('Pin to map'))"></span>
+                </button>
+            </li>
+            <li x-show="!pasteOnly">
+                <button type="button" class="text-error" @click="closeMenu(); deleteObject(menuObj)">
                     <x-ui.icon name="delete" />
                     {{ __('Delete') }}
                     <span class="ml-auto opacity-60">⌫</span>
                 </button>
             </li>
         </ul>
+        </template>
+        </div>
     </div>
 
     {{-- Object-list resize handle — sits at the panel's right edge (rail + objlist). Drag to
@@ -2879,6 +3233,19 @@
             e.preventDefault();
         });
         const pasteObjects = () => window.__duplicateObjects(objClipboard.ids, objClipboard.sceneId);
+        // The object copy as the Object list's right-click menu uses it (Copy / Paste), the same copy as Cmd-C / Cmd-V.
+        // A menu click is a user gesture, so execCommand('copy') fires the copy event that marks the system clipboard
+        // as ours, exactly as Cmd-C does.
+        window.__objectClipboard = {
+            copy(ids) {
+                objClipboard = { ids, sceneId: (window.__objScene || {}).sceneId ?? null };
+                ownCopy = true;
+                try { document.execCommand('copy'); } catch (_) {}
+                ownCopy = false;
+            },
+            has: () => !!objClipboard,
+            paste: () => { if (objClipboard) pasteObjects(); },
+        };
 
         // Cmd/Ctrl-V. The paste EVENT decides (window.__routePaste, resources/js/ui/paste-router.js):
         // only it can see what is on the system clipboard, without a permission prompt. An image goes
@@ -2975,9 +3342,10 @@
     </script>
     @endpush
 
-    {{-- Script editing view — timecoded narration synced to a play bar (View ▸ Script). --}}
+    {{-- Script editing view — timecoded narration synced to a play bar (View ▸ Script). The cut count is in the key: a cut
+         or its undo changes what the open scene holds, so the editor and its timeline are made anew (CutsScenes). --}}
     @if ($this->selectedSceneModel)
-        <x-lesson.script-editor :scene="$this->selectedSceneModel" wire:key="script-{{ $selectedSceneId }}" />
+        <x-lesson.script-editor :scene="$this->selectedSceneModel" wire:key="script-{{ $selectedSceneId }}-{{ $timelineEpoch }}" />
     @endif
 
     {{-- Internal notes — the teacher's private per-lesson scratchpad (this browser). --}}
@@ -3160,6 +3528,9 @@
     {{-- The teacher's own cut-outs, and the ones this lesson's 3D scenes use: rows of the 3D library (stage25d/engine.js). --}}
     <div hidden wire:ignore data-stage25d-cutouts="{{ json_encode([...\App\Services\Editor\Cutouts::forStage(auth()->user(), $lesson), ...\App\Services\Editor\Characters::forStage(auth()->user(), $lesson)]) }}"></div>
     <div hidden wire:ignore data-cutout-labels="{{ json_encode([...\App\Services\Editor\Cutouts::labels(), ...\App\Services\Editor\Characters::labels()]) }}" data-cutout-limit="{{ \App\Services\Editor\Cutouts::maxPictureBytes() }}"></div>
+
+    {{-- Somebody else holds the scene on screen: read-only, with Take over (editor/collab.js). --}}
+    <x-editor.collab-overlay :lesson="$lesson" />
 
     {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
          The selected thumb is announced to it here: the element is new whenever the selection changes. --}}
@@ -3370,6 +3741,7 @@
                         @case('layer') {{ __('Add an image on the slide') }} @break
                         @case('voyage_stop') {{ __('Add a landfall image') }} @break
                         @case('gallery_image') {{ __('Add a gallery image') }} @break
+                        @case('checkpoint_image') {{ __('Add a checkpoint picture') }} @break
                         @case('model3d') {{ __('Add a 3D model') }} @break
                         @default {{ __('Set the scene background') }}
                     @endswitch
@@ -3390,16 +3762,30 @@
                        :class="depth > 0 ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-900/40 hover:border-primary/60'"
                        class="mb-4 flex h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors lg:mb-0 lg:h-full lg:min-h-[62vh]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-12 w-12 text-primary" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ __('Upload your own image') }}</span>
+                    <span wire:loading.remove wire:target="uploadImage" class="text-lg font-semibold text-slate-100">{{ $this->pickerTakesVideo() ? __('Upload your own picture or video') : __('Upload your own image') }}</span>
                     <span wire:loading wire:target="uploadImage" class="inline-flex items-center gap-2 text-lg font-semibold text-slate-100">
                         <x-icons.spinner class="h-4 w-4 animate-spin" /> {{ __('Uploading…') }}
                     </span>
                     {{-- ⌘V on a Mac, Ctrl+V elsewhere; the paste itself is handled editor-wide (see Cmd-V). --}}
-                    <span class="text-sm text-panel-hint"
-                          x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
-                          x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
-                    <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
-                    <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                    {{-- Bart, 2026-11-22: the drop line said "picture" only, so a video looked unwelcome here.
+                         Two plain branches, no inline php directive: Blade paired one with a later php block and the view stopped compiling. --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture or video here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture or video here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @else
+                        <span class="text-sm text-panel-hint"
+                              x-data="{ key: /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘V' : 'Ctrl+V' }"
+                              x-text="@js(__('Drop a picture here, click to choose one or paste with :key')).replace(':key', key)">{{ __('Drop a picture here, click to choose one or paste with :key', ['key' => '⌘V']) }}</span>
+                    @endif
+                    {{-- The scene's own picture also takes a video, which loops as its moving picture (EditsSceneLoop). --}}
+                    @if ($this->pickerTakesVideo())
+                        <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP up to 8 MB, or an MP4 or WebM video up to :size', ['size' => $this->loopVideoLimit()]) }}</span>
+                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime" class="hidden" />
+                    @else
+                        <span class="text-2xs text-panel-hint">{{ __('JPG, PNG or WebP, up to 8 MB') }}</span>
+                        <input type="file" wire:model="uploadImage" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                    @endif
                 </label>
             @endunless
             {{-- imageGrid: the preview-size slider and the tile sizes (resources/js/ui/image-grid.js). --}}
@@ -3650,6 +4036,8 @@
             <x-icons.x-mark class="h-5 w-5" />
         </button>
     </div>
+
+    <x-lesson.story-map />
 
     {{-- Scenes payload as inert JSON so we don't string-interpolate it into JS. Built in PHP
          (scenesData(), batched asset titles) and wire:ignore'd — the preview bridge reads it once on

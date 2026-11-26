@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Wizard\Concerns;
 
+use App\Jobs\EncodeSceneLoop;
 use App\Services\Support\SceneLoop;
 use App\Services\Support\WebpEncoder;
 use App\Services\VideoTranscoder;
@@ -27,6 +28,18 @@ trait EditsSceneLoop
 
     // application/mp4 is what file sniffing reports for some MP4s that carry no audio track.
     private const LOOP_VIDEO_MIMES = 'video/mp4,application/mp4,video/webm,video/quicktime';
+
+    /** Does the open picker take a video? Only for the scene's own picture: background or slide. */
+    public function pickerTakesVideo(): bool
+    {
+        return in_array($this->paintingPickerMode, ['background', 'layer'], true);
+    }
+
+    /** The largest video this server takes, for the picker's hint: "50 MB", or less when PHP says so. */
+    public function loopVideoLimit(): string
+    {
+        return UploadLimit::human(self::LOOP_VIDEO_CEILING_BYTES);
+    }
 
     /** Is the file waiting in this upload property a video, not a picture? */
     private function isDroppedVideo(string $property): bool
@@ -87,8 +100,9 @@ trait EditsSceneLoop
             return;
         }
 
+        // The small class files (720p 12 fps H.264 + AV1) are made by a queued job once the scene
+        // points at the upload; until then the upload plays as it is.
         $transcoder = VideoTranscoder::make();
-        $transcoder->transcodeStored($video);   // 720p H.264, fast start; keeps the original on any failure
 
         // The first frame is the scene's still. Without ffmpeg the picture already there stays.
         $frame = $transcoder->firstFrame(Storage::disk('public')->path($video));
@@ -112,6 +126,7 @@ trait EditsSceneLoop
         }
 
         $scene->update(['config' => SceneLoop::with($scene->config ?? [], $video, $scene->image_path)]);
+        EncodeSceneLoop::dispatch($scene->id, $video);
         $this->selectSceneInternal($scene->id);
         $this->dispatch('toast', message: __('The picture moves.'), type: 'success');
     }

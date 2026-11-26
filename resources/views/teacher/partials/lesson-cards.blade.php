@@ -92,6 +92,31 @@
     @endif
 </div>
 
+{{-- Lessons another teacher added this account to as an editor (lesson_editors): they open in the editor. --}}
+@if(filled($editingLessons ?? null))
+    <section aria-label="{{ __('Edit with others') }}" class="mt-10">
+        <h2 class="mb-4 font-history text-xl font-light">{{ __('Edit with others') }}</h2>
+        <div class="relative">
+            <x-carousel aria-label="{{ __('Edit with others') }}">
+                @foreach($editingLessons as $lesson)
+                    <a href="{{ route('teacher.lessons.show', $lesson) }}"
+                       class="group relative block aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border border-base-300 bg-base-200 sm:w-44"
+                       aria-label="{{ $lesson->title ?: $lesson->topic }}">
+                        @if($lesson->tallCardImageUrl())
+                            <img src="{{ $lesson->tallCardImageUrl() }}" alt=""
+                                 class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                        @endif
+                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-base-300 via-base-300/70 to-transparent p-3 pt-10">
+                            <p class="line-clamp-2 text-sm font-semibold">{{ $lesson->title ?: $lesson->topic }}</p>
+                            <p class="mt-0.5 text-prose text-panel-hint">{{ $lesson->teacher?->name }}</p>
+                        </div>
+                    </a>
+                @endforeach
+            </x-carousel>
+        </div>
+    </section>
+@endif
+
 {{-- Shared by other teachers. Its own shelf, not mixed into the theme groups above: a shared
      lesson behaves differently — it opens and it copies, it does not edit. --}}
 @if(!empty($sharedLessons) && count($sharedLessons))

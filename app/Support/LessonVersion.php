@@ -22,6 +22,8 @@ final class LessonVersion
     public const LESSON_IGNORED = [
         'updated_at', 'content_version', 'content_version_at', 'status', 'wizard_step', 'scheduled_publish_at',
         'narration_edit_characters', 'generation_attempts', 'error_message',
+        // Where the scenes sit on the editor's story map: layout, not content.
+        'story_map',
     ];
 
     /** Scene columns that are bookkeeping: a job saying "generating" or "failed" changes nothing yet. */

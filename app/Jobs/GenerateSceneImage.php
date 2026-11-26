@@ -29,7 +29,11 @@ class GenerateSceneImage implements ShouldQueue
 
     public int $timeout = 300;
 
-    public function __construct(public readonly int $sceneId) {}
+    public function __construct(public readonly int $sceneId)
+    {
+        // ChatGPT on Bart's Mac takes longer than the paid API, and the job waits for it (ImageRoute::RELAY).
+        $this->timeout = \App\Services\Imaging\ImageRoute::jobTimeout(300);
+    }
 
     public function backoff(): array
     {

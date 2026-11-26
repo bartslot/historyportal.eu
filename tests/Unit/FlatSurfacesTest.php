@@ -117,7 +117,11 @@ class FlatSurfacesTest extends TestCase
         // The one allowed: the landing hero's typing caret is a zero-width box whose 2px line is
         // this offset (no blur, no spread). A border would give the caret width, and a caret with
         // width can wrap onto the next line by itself. A line, not a shadow.
-        $allowed = ['2px 0 0 rgba(255, 255, 255, 0.85)'];
+        //
+        // And the voyage stop's comic speech bubble (app.css .lp-stop-bubble): its hard ink offset is part
+        // of the DRAWING on the map, like the inked outline and the tail, not interface depth. No blur, no
+        // spread, in the drawings' ink. Bart chose this look on 2026-11-23 ("much better", PR #24).
+        $allowed = ['2px 0 0 rgba(255, 255, 255, 0.85)', '4px 4px 0 var(--stop-ink)'];
         $cast = array_values(array_filter(array_map('trim', $m[1]),
             fn (string $v) => ! preg_match('/^none(\s*!important)?$/', $v) && ! in_array($v, $allowed, true)));
 

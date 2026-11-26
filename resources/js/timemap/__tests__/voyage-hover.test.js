@@ -42,7 +42,8 @@ describe('dateAtSample', () => {
 
   it('shows only the year for a voyage with no day-level dates (Marco Polo)', () => {
     const polo = voyage('marco-polo-1271')
-    const date = dateAtSample(polo, smooth(polo.waypoints), 7.5 * S)
+    const anatolia = polo.legs.find((l) => l.transport === 'horse' && l.wp[1] - l.wp[0] > 1)
+    const date = dateAtSample(polo, smooth(polo.waypoints), ((anatolia.wp[0] + anatolia.wp[1]) / 2) * S)
     expect(date.precision).toBe('year')
     expect(formatVoyageDate(date, 'en')).toMatch(/^12\d\d$/)
   })
@@ -89,15 +90,19 @@ describe('nearestOnRoute', () => {
 
 describe('landTransportAtSample', () => {
   const marco = voyage('marco-polo-1271')
+  const LAND_IDS = new Set(['horse', 'camel'])
+  // Addressed by leg, not by waypoint number: routing a sea leg round a cape adds waypoints.
+  const mid = (pick) => { const l = marco.legs.find(pick); return ((l.wp[0] + l.wp[1]) / 2) * S }
+  const last = (pick) => { const l = marco.legs.filter(pick).at(-1); return ((l.wp[0] + l.wp[1]) / 2) * S }
 
   it('names the mount on Marco Polo\'s land legs, so the label never says galley over Persia', () => {
-    expect(landTransportAtSample(marco, 10 * S)).toBe('camel')   // Persian desert, wp 9-12
-    expect(landTransportAtSample(marco, 7.5 * S)).toBe('horse')  // Anatolian highlands, wp 6-9
+    expect(landTransportAtSample(marco, mid((l) => l.transport === 'camel'))).toBe('camel')   // Persian desert
+    expect(landTransportAtSample(marco, mid((l) => l.transport === 'horse' && l.wp[1] - l.wp[0] > 1))).toBe('horse')  // Anatolian highlands
   })
 
   it('stays null at sea, where the fleet names belong', () => {
-    expect(landTransportAtSample(marco, 1.5 * S)).toBeNull()     // Venice to Acre
-    expect(landTransportAtSample(marco, 27 * S)).toBeNull()      // the sea road home
+    expect(landTransportAtSample(marco, mid((l) => !LAND_IDS.has(l.transport)))).toBeNull()     // Venice to Acre
+    expect(landTransportAtSample(marco, last((l) => !LAND_IDS.has(l.transport)))).toBeNull()      // the sea road home
   })
 
   it('stays null on a route without legs', () => {

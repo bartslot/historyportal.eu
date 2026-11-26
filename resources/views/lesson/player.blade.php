@@ -222,6 +222,7 @@
                         'anchor'  => ($l['anchor'] ?? null) === 'map' ? 'map' : null,
                         'lng'     => isset($l['lng']) ? (float) $l['lng'] : null,
                         'lat'     => isset($l['lat']) ? (float) $l['lat'] : null,
+                        'geo' => is_array($l['geo'] ?? null) ? $l['geo'] : null,
                         'wobble'  => isset($l['wobble']) ? (int) $l['wobble'] : null,
                         'z'       => isset($l['z']) ? (int) $l['z'] : null,
                         // 3D / video layers ride as an iframe embed instead of an image.
@@ -421,11 +422,9 @@
         </div>
     @endif
 
-    {{-- ── LAYER 1: Shadow gradient overlay ──────────────────────────────
-         Shades paintings and photos; a line-art scene turns it off (backdropShade) so the paper stays
-         white. Subtitles and the chrome carry their own scrims, so they stay legible either way. --}}
-    <div class="absolute inset-0 z-10 pointer-events-none bg-linear-to-b from-black/50 to-[#0C2033]/50 transition-opacity duration-700"
-         :class="backdropShade ? 'opacity-100' : 'opacity-0'"></div>
+    {{-- No full-scene shade: a 50% black-to-navy wash sat over every painting and background video
+         and made them look dull and dark (Bart, 2026-11-26). Pictures and video show at their true
+         brightness; the top and bottom scrims below keep the controls and subtitles legible. --}}
 
     {{-- Cinematic film-grain overlay (reuses the .lp-grain brand utility). --}}
     <div class="lp-grain pointer-events-none absolute inset-0 z-11"></div>

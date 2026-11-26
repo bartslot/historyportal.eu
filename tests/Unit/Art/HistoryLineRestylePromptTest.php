@@ -43,18 +43,18 @@ class HistoryLineRestylePromptTest extends TestCase
         $this->assertStringContainsString('the year 1642', HistoryLineStyle::restyleInk(figure: true, era: 'the year 1642'));
     }
 
-    public function test_every_anchor_file_exists_and_each_pass_has_its_own_kind(): void
+    public function test_only_approved_style_references_are_attached_and_each_file_is_the_one_approved(): void
     {
-        $this->assertNotSame(HistoryLineStyle::anchors(1, true), HistoryLineStyle::anchors(1, false));
-        $this->assertContains('texture-watercolour.jpg', HistoryLineStyle::anchors(2, false));
-        $this->assertContains('texture-watercolour.jpg', HistoryLineStyle::anchors(2, true));
+        $dir = dirname(__DIR__, 3).'/resources/art/style-anchors/history-lines/';
+        $manifest = json_decode((string) file_get_contents($dir.'anchors.json'), true);
 
-        foreach ([1, 2] as $pass) {
-            foreach ([true, false] as $figure) {
-                foreach (HistoryLineStyle::anchors($pass, $figure) as $file) {
-                    $this->assertFileExists(dirname(__DIR__, 3).'/resources/art/style-anchors/history-lines/'.$file);
-                }
-            }
+        $this->assertSame(['colour-ship-spyglass.jpg'], HistoryLineStyle::anchors(2));
+        $this->assertSame(['line-tasman-mast.jpg', 'line-tasman-bosun.jpg'], HistoryLineStyle::anchors(1));
+        $this->assertStringContainsString('never their subjects and never their colour', HistoryLineStyle::restyleInk());
+
+        foreach ($manifest['files'] as $file) {
+            $this->assertNotEmpty($file['approved'], $file['path'].' is listed without an approval');
+            $this->assertSame($file['sha256'], hash_file('sha256', $dir.$file['path']), $file['path'].' changed after it was approved');
         }
     }
 

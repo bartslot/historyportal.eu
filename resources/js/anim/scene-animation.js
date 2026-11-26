@@ -49,6 +49,28 @@ export const isIntroCamera = (tracks) => {
   return keys.length === 3 && Math.abs(keys[0].value - INTRO_FROM_ZOOM) < 1e-6
 }
 
+/**
+ * Where a map scene opens: its timeline camera at 0 s when the timeline moves the camera, else the
+ * writer's fixed camera (lesson.json `camera: {center, zoom}`), else null (the map frames its pins).
+ * In the shape a MapLibre jumpTo/easeTo takes.
+ */
+export const openingCamera = (timeline, fixed = null) => {
+  const cam = cameraDrives(timeline) ? frameAt(timeline, 0).camera : null
+  if (cam && Number.isFinite(cam.lng) && Number.isFinite(cam.lat) && Number.isFinite(cam.zoom)) {
+    return {
+      center: [cam.lng, cam.lat],
+      zoom: cam.zoom,
+      ...(Number.isFinite(cam.heading) ? { bearing: cam.heading } : {}),
+      ...(Number.isFinite(cam.tilt) ? { pitch: cam.tilt } : {}),
+    }
+  }
+  const c = fixed?.center
+  if (Array.isArray(c) && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1])) && Number.isFinite(Number(fixed?.zoom))) {
+    return { center: [Number(c[0]), Number(c[1])], zoom: Number(fixed.zoom) }
+  }
+  return null
+}
+
 /** Every animated value at `time`, as `{ target: { property: value } }`. */
 export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), time)
 
@@ -56,11 +78,11 @@ export const frameAt = (timeline, time) => sampleFrame(liveTracks(timeline), tim
  * Put a frame on screen. Each sink is optional: a scene without a map has no camera to move.
  *
  * @param {object} frame from frameAt()
- * @param {{ art?: {setLayerProp: Function}, text?: {patch: Function}, bal?: {patch: Function}, bg?: {patch: Function}, map?: object }} sinks
+ * @param {{ art?: {setLayerProp: Function}, text?: {patch: Function}, bal?: {patch: Function}, bg?: {patch: Function}, map?: object, territory?: {setTerritoryValues: Function} }} sinks
  *        bal.patch(id, values): a balloon by its editor id ('bal_3') and its values at this time
  *        bg.patch(id, values): a background by its id ('0', or a split panel's index)
  */
-export const applyFrameTo = (frame, { art = null, text = null, bal = null, bg = null, map = null } = {}) => {
+export const applyFrameTo = (frame, { art = null, text = null, bal = null, bg = null, map = null, territory = null } = {}) => {
   for (const [target, values] of Object.entries(frame)) {
     const kind = kindOfTarget(target)
     const id = String(target).slice(kind.length + 1)
@@ -72,6 +94,8 @@ export const applyFrameTo = (frame, { art = null, text = null, bal = null, bg = 
       bal?.patch?.(`bal_${id}`, values)
     } else if (kind === 'bg') {
       bg?.patch?.(id, values)
+    } else if (kind === 'terr') {
+      territory?.setTerritoryValues?.(values)
     } else if (kind === 'camera' && map) {
       const c = map.getCenter()
       map.jumpTo({

@@ -209,6 +209,107 @@ describe('ArtworkOverlay — pinned to the map', () => {
     expect(saved.at(-1)).toMatchObject({ anchor: 'screen', lng: null, lat: null })
   })
 
+  // Bart 11-22, Bukhara: a picture pinned to a place 4,000 km off the map's view sat off the stage,
+  // and letting go of the pin left it there.
+  it('brings a layer pinned off the map back onto the stage when it is unpinned', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -300, lat: 4 })])   // projects to x -250%
+
+    expect(overlay.togglePin(1)).toBe(false)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 10, y: 54 })
+    expect(node(el).style.left).toBe('10%')
+  })
+
+  it('leaves an unpinned layer where it is when it was already on the stage', () => {
+    const el = host()
+    const saved = []
+    const overlay = new ArtworkOverlay(el, { onChange: (id, t) => saved.push(t) })
+    overlay.setProjector(projector())
+    overlay.setLayers([pinned({ lng: -45, lat: 2 })])     // x 5%, y 52%
+
+    overlay.togglePin(1)
+    expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 5, y: 52 })
+  })
+
+  // Bart 11-26, the Marco Polo route drawn on the map: pinned by hand it grew by PIN_ZOOM_GROWTH, not with the map,
+  // so in play (another zoom) the lines slid off the route they were traced over.
+  describe('a drawing pinned to the map follows the map exactly', () => {
+    const sized = (w = 1600, h = 900) => {
+      const el = host()
+      el.getBoundingClientRect = () => ({ left: 0, top: 0, width: w, height: h, right: w, bottom: h, x: 0, y: 0 })
+      return el
+    }
+    const zoomed = (z, ref = 3) => ({ ...projector(), zoom: () => z, refZoom: () => ref })
+    const drawing = (extra = {}) => layer({ strokes: [{ points: [[0, 0], [1, 1]] }], drawn: { x: 50, y: 50, width: 10, height: 10 }, ...extra })
+
+    it('keeps the map view when it is pinned by hand, and saves it', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      const proj = zoomed(4)
+      overlay.setProjector(proj)
+      overlay.setLayers([drawing({ x: 60, y: 50 })])
+
+      overlay.togglePin(1)
+      expect(saved.at(-1)).toMatchObject({ anchor: 'map', scale: 1, geo: { zoom: 4, px: 900, w: 1600 } })
+      // one zoom step out halves it, exactly like the map (not 1/sqrt 2)
+      proj.zoom = () => 3
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(20)
+    })
+
+    it('a picture that is not a drawing still grows by the set amount', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      overlay.setProjector(zoomed(4))
+      overlay.setLayers([layer({ x: 60, y: 50 })])
+
+      overlay.togglePin(1)
+      expect(saved.at(-1).geo).toBeUndefined()
+    })
+
+    it('gives an old pinned drawing the view of its opening zoom, so it looks the same there and follows the map', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      const proj = zoomed(3, 3)
+      overlay.setProjector(proj)
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      const before = overlay._heightPct(overlay._layers[0])
+
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+      expect(saved.at(-1)).toMatchObject({ geo: { zoom: 3, px: 900, w: 1600 } })
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(before)
+      proj.zoom = () => 5
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(before * 4)
+      expect(overlay.adoptDrawingGeo()).toBe(0)   // once
+    })
+
+    it('uses the current zoom on a voyage, whose projector has no opening zoom', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      overlay.setProjector({ ...projector(), zoom: () => 4, refZoom: () => NaN })
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+      expect(saved.at(-1)).toMatchObject({ geo: { zoom: 4, px: 900, w: 1600 } })
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(40)
+    })
+
+    it('knows a drawing from the editor payload flag alone (the strokes stay on the server)', () => {
+      const overlay = new ArtworkOverlay(sized(), { onChange: () => {} })
+      overlay.setProjector(zoomed(3, 3))
+      overlay.setLayers([layer({ drawing: true, anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+    })
+
+    it('never touches a drawing in the player', () => {
+      const overlay = new ArtworkOverlay(sized(), { readonly: true })
+      overlay.setProjector(zoomed(3, 3))
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(0)
+    })
+  })
+
   it('refuses to pin when there is no map to pin to', () => {
     const el = host()
     const overlay = new ArtworkOverlay(el)
@@ -445,7 +546,39 @@ describe('keeping the canvas steady while a teacher edits', () => {
 
     overlay.syncProps([layer({ width: null })])
 
-    expect(node.style.width).not.toBe('30%')
+    expect(node.style.width).toBe('max-content')
+  })
+
+  /**
+   * THE SQUEEZE. A scale or height repaint on a layer with no width used to clear the node's
+   * inline width to '', which is width:auto: on an absolutely placed box that is shrink-to-fit,
+   * capped by the room left between its left edge and the stage's right edge. The picture's
+   * max-width:100% followed the box down while its height held, so a figure standing on the
+   * right of the stage came back from a save squeezed sideways (lesson 149, scene 5767).
+   */
+  it('keeps a layer with no width on max-content when its scale or height is repainted', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer({ x: 90 })])
+    const node = el.querySelector('[data-layer-id="art_1"]')
+    const img = node.querySelector('img')
+
+    overlay.setLayerProp(1, 'scale', 1.5)
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.width).toBe('auto')
+    expect(img.style.maxWidth).toBe('none')
+
+    overlay.syncProps([layer({ x: 90, height: 50, scale: 1.5 })])
+    expect(node.style.width).toBe('max-content')
+    expect(img.style.maxWidth).toBe('none')
+  })
+
+  it('never lets the picture of a layer with no width be capped by its box', () => {
+    const el = host()
+    const overlay = new ArtworkOverlay(el)
+    overlay.setLayers([layer()])
+
+    expect(el.querySelector('[data-layer-id="art_1"] img').style.maxWidth).toBe('none')
   })
 })
 
@@ -537,5 +670,13 @@ describe('how far a figure has moved from its saved spot', () => {
 
     overlay.setLayers([layer({ x: 60, y: 54 })])   // saved there: that is his spot now
     expect(overlay.shiftPx(1)).toEqual([0, 0])
+  })
+})
+
+describe('ArtworkOverlay lock (the layer menu)', () => {
+  it('a lock changes the signature, so the canvas picks it up', () => {
+    const l = { asset_id: 1, url: 'a.webp', x: 10, y: 10 }
+    expect(layersSignature([l])).not.toBe(layersSignature([{ ...l, locked: true }]))
+    expect(layersIdentity([l])).toBe(layersIdentity([{ ...l, locked: true }]))
   })
 })

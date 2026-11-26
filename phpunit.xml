@@ -27,6 +27,8 @@
              DB_URL must be blanked as well: Laravel parses it into host AND database, so a
              DB_URL in .env silently outranks the DB_DATABASE pinned here. -->
         <env name="DB_URL" value=""/>
+        <!-- The paid image API stays what the image tests fake; ImageRelayTest switches drivers itself. -->
+        <env name="IMAGE_GENERATION_DRIVER" value="openai"/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="learningportal_test"/>

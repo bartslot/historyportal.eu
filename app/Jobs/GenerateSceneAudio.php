@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\MarksSceneReady;
 use App\Models\Scene;
+use App\Services\Support\NarrationEta;
 use App\Services\Support\NarrationTiming;
 use App\Services\Support\NarrationVoice;
 use App\Services\Support\PronunciationLexicon;
@@ -42,6 +43,7 @@ class GenerateSceneAudio implements ShouldQueue
     public function handle(TtsService $tts): void
     {
         $scene = Scene::with('lesson.narrator')->findOrFail($this->sceneId);
+        $startedAt = microtime(true);
 
         try {
             $narrator = $scene->lesson->narrator;
@@ -116,6 +118,9 @@ class GenerateSceneAudio implements ShouldQueue
 
             $this->warnIfDowngraded($scene, $provider, $actualProvider, $voiceId, $narrationTiming);
 
+            // The editor's countdown learns from every recording how long the next one will take.
+            NarrationEta::finished($scene->id, $provider, mb_strlen($script), $startedAt);
+
             // A scene that ends in choices: the narrator reads those out too, in this same voice. The job
             // skips words it already recorded in this voice, so a re-narration costs nothing extra then.
             if (\App\Services\Lessons\ChoicePrompt::spoken($scene->config) !== '') {
@@ -128,6 +133,7 @@ class GenerateSceneAudio implements ShouldQueue
             // re-narration (a voice change) is not a broken scene. It keeps the error, which
             // LessonProblems shows in amber (error scan 2026-10-18: 14 such scenes marked failed).
             $scene->update(['status' => $scene->hasFreshAudio() ? 'ready' : 'failed', 'error_message' => $e->getMessage()]);
+            NarrationEta::forget($scene->id);
             throw $e;
         }
     }

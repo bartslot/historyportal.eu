@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['resources/js/**/__tests__/**/*.test.js', 'resources/js/**/*.test.js', 'scripts/**/*.test.mjs'],
+    include: ['resources/js/**/__tests__/**/*.test.js', 'resources/js/**/*.test.js', 'scripts/**/*.test.mjs', 'cloudflare/**/test/*.test.mjs'],
   },
 })

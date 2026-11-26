@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Imaging\ImageRoute;
 use App\Services\Support\ImageStyleTemplate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -285,6 +286,13 @@ class OpenAiImageService
      */
     public function editImages(array $images, string $prompt, string $size = '1536x1024', bool $transparent = false, array $extra = [], ?array &$usage = null): string
     {
+        // Not on paid credits unless the driver says so (Bart 2026-11-21): ChatGPT here, or on Bart's Mac via the relay.
+        if (! ImageRoute::usesOpenAi()) {
+            $usage = [];
+
+            return app(ImageRoute::class)->make($prompt, $size, $transparent, $images);
+        }
+
         $base = (string) config('services.openai.base_url');
         $key = (string) config('services.openai.image_api_key');
 
@@ -382,6 +390,13 @@ class OpenAiImageService
      */
     private function requestOne(string $prompt, string $size, array $extra = []): string
     {
+        if (! ImageRoute::usesOpenAi()) {
+            $format = (string) ($extra['output_format'] ?? config('services.openai.image_format', 'webp'));
+            $png = app(ImageRoute::class)->make($prompt, $size, ($extra['background'] ?? null) === 'transparent');
+
+            return $format === 'webp' ? $this->reencodeWebp($png) : $png;
+        }
+
         $base = (string) config('services.openai.base_url');
         $key = (string) config('services.openai.image_api_key');
 
