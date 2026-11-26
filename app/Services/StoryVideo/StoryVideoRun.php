@@ -143,13 +143,9 @@ final class StoryVideoRun
             ];
         }
 
-        $anchors = $item->kind === StoryMediaKind::CharacterSheet ? StoryVideoPrompts::SHEET_ANCHORS : StoryVideoPrompts::IMAGE_ANCHORS;
         $images = [];
-        foreach ($anchors as $file) {
-            $path = HistoryLineStyle::anchorPath($file);
-            if (is_file($path)) {
-                $images[] = ElevenLabsMedia::inline((string) file_get_contents($path), $path);
-            }
+        foreach (HistoryLineStyle::anchorBytes(2) as $file => $bytes) {
+            $images[] = ElevenLabsMedia::inline($bytes, $file);
         }
 
         return [

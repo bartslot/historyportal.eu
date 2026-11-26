@@ -18,11 +18,6 @@ use App\Services\Art\HistoryLineStyle;
  */
 final class StoryVideoPrompts
 {
-    /** The colour anchors and the texture plate that carry the look in every picture request, in attach order. */
-    public const IMAGE_ANCHORS = ['colour-caesar.jpg', 'colour-castle.jpg', 'texture-watercolour.jpg'];
-
-    public const SHEET_ANCHORS = ['colour-classroom.jpg', 'colour-caesar.jpg', 'texture-watercolour.jpg'];
-
     /**
      * @param  array{name: string, colour?: string, look?: string}  $person
      * @param  list<string>  $whiteOwners  who owns white in this cast (at most one is allowed)

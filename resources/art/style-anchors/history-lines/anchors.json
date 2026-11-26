@@ -1,0 +1,41 @@
+{
+  "about": "The History Lines style references. Only a picture bart himself called History Lines belongs here, with the hash of the file as approved. HistoryLineStyle::anchors() and tools/shots both read this file.",
+  "files": [
+    {
+      "path": "colour-ship-spyglass.jpg",
+      "pass": "colour",
+      "shows": "A ship's deck around 1640: a navigator in a blue coat with a spyglass, crew at the rail, sea and a far coast. Style only, never its subject.",
+      "sha256": "272be447aa1a6bf5038c8739a3261483c746bff0d2b73c69f429421969ca1cca",
+      "source_sha256": "38e17eb056e0a82de2501e91c395dfee65a0b12ced7f6cddc92c830bb824647f",
+      "approved": {
+        "by": "bart",
+        "date": "2026-11-26",
+        "words": "this is history lines"
+      }
+    },
+    {
+      "path": "line-tasman-mast.jpg",
+      "pass": "ink",
+      "shows": "A low angle from a ship's deck up the mast: a boy, rigging, the fighting top. Line and drawing only: its colour is not approved and is never a colour reference.",
+      "sha256": "811893ee8cde18b0104a060dffacb5aa7aea4793e6d7200f0ab1c60ac936008c",
+      "source_sha256": "2a375830a2a5aabf43dd0139c428fb9c2a7c446d7fe215c92ece829d252c8b85",
+      "approved": {
+        "by": "bart",
+        "date": "2026-11-26",
+        "words": "these colours need work, but the rest yes"
+      }
+    },
+    {
+      "path": "line-tasman-bosun.jpg",
+      "pass": "ink",
+      "shows": "A close-up of a bosun in a red head scarf. Line and drawing only: its colour is not approved and is never a colour reference.",
+      "sha256": "57caa32cddad5e7b21dd2a4ed8eb45b793ba45c99cf1d3820cffa575aab3552c",
+      "source_sha256": "750ec9109f2d5bbee03d8d4655918edd6c7c6a335a0e408c539b8a4c0199e245",
+      "approved": {
+        "by": "bart",
+        "date": "2026-11-26",
+        "words": "these colours need work, but the rest yes"
+      }
+    }
+  ]
+}

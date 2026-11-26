@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\StoryMediaKind;
 use App\Enums\StoryMediaStatus;
 use App\Models\StoryMediaItem;
+use App\Services\Art\HistoryLineStyle;
 use App\Services\Art\StyleCheck;
 use App\Services\Local\LocalChatGpt;
 use App\Services\StoryVideo\StoryMediaFiles;
@@ -60,7 +61,7 @@ class GenerateStoryPicture implements ShouldQueue
 
         $run = StoryVideoRun::for($item->lesson);
         $prompt = $run->prompt($item);
-        $references = $this->references($item->kind);
+        $references = $this->references();
         $redos = (int) config('story_video.style_redos', 1);
         $correction = '';
 
@@ -95,14 +96,11 @@ class GenerateStoryPicture implements ShouldQueue
      *
      * @return list<array{bytes: string, name: string}>
      */
-    private function references(StoryMediaKind $kind): array
+    private function references(): array
     {
         $out = [];
-        foreach ($kind === StoryMediaKind::CharacterSheet ? StoryVideoPrompts::SHEET_ANCHORS : StoryVideoPrompts::IMAGE_ANCHORS as $file) {
-            $path = \App\Services\Art\HistoryLineStyle::anchorPath($file);
-            if (is_file($path)) {
-                $out[] = ['bytes' => (string) file_get_contents($path), 'name' => LocalChatGpt::REFERENCE_MARK.$file];
-            }
+        foreach (HistoryLineStyle::anchorBytes(2) as $file => $bytes) {
+            $out[] = ['bytes' => $bytes, 'name' => LocalChatGpt::REFERENCE_MARK.$file];
         }
 
         return $out;
