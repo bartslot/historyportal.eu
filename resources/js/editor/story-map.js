@@ -530,6 +530,8 @@ export function storyMap () {
     /** Top to bottom or left to right: each has its own card positions, and the choice is remembered on this device. */
     setDir (dir) {
       if (!DIRS.includes(dir) || dir === this.dir) return
+      // A card still landing (Tidy up, the grid) stops in the way it was, and is not saved under the new way.
+      this._settleRun++
       this._layouts[this.dir] = this.layout
       this.dir = dir
       try { localStorage.setItem(DIR_KEY, dir) } catch (e) { /* private window: the map just opens the default way */ }

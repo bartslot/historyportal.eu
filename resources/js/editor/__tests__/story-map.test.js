@@ -178,6 +178,20 @@ describe('story map: top to bottom', () => {
     expect(l.scenes[5][1]).toBeGreaterThan(400)
   })
 
+  it('switching ways while cards land stops them, so nothing is saved under the new way', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return { scenes: story(), layout: { scenes: {}, choices: {} }, layoutTb: { scenes: {}, choices: {} } } }) }
+    const m = storyMap()
+    m.$wire = wire; m.$nextTick = () => {}; m.$refs = {}; m.open = true
+    m.dir = 'tb'
+    await m.reload()
+    const tidying = m.tidy()
+    m.setDir('lr')
+    await tidying
+    expect(calls.some((c) => c[0] === 'saveStoryMapLayout')).toBe(false)
+    expect(m.layout).toEqual(autoLayout(story(), 'lr'))
+  })
+
   it('each way keeps its own cards, and saves under its own name', async () => {
     const calls = []
     const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return { scenes: story(), layout: { scenes: { 1: [5, 5] }, choices: {} }, layoutTb: { scenes: {}, choices: {} } } }) }
