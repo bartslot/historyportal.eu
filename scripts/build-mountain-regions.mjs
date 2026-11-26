@@ -88,24 +88,14 @@ const pxToLng = (px) => (px / N) * 360 - 180
 const pyToLat = (py) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * py) / N))) * 180) / Math.PI
 const latOk = (py) => { const lat = pyToLat(py); return lat > LAT_MIN && lat < LAT_MAX }
 
-// two soft masks (0..1), blurred so the outlines come out as rounded blobs
-const mMask = new Float32Array(N * N)
-const hMask = new Float32Array(N * N)
-for (let y = 0; y < N; y++) {
-  const ok = latOk(y)
-  for (let x = 0; x < N; x++) {
-    const i = y * N + x
-    if (!ok) continue
-    const isM = h[i] >= MOUNTAIN_M || (relief[i] >= RELIEF_M && h[i] >= 600)
-    mMask[i] = isM ? 1 : 0
-    hMask[i] = (isM || (h[i] >= HILL_M && relief[i] >= HILL_RELIEF_M)) ? 1 : 0
-  }
-}
-const mSoft = blur(mMask)
-const hSoft = blur(hMask)
-
 // curated ridges, for names and peak heights
 const ridges = JSON.parse(readFileSync(resolve(pub, 'mountains.geojson'), 'utf8')).features
+// Extra split lines for High Asia, used only here (not for the peak glyphs), so the plateau is
+// not all called Himalaya.
+ridges.push(
+  { properties: { name: 'Kunlun', peak_m: 7167 }, geometry: { coordinates: [[75, 37.5], [80, 36.2], [85, 36], [90, 36], [95, 35.6], [100, 35.2]] } },
+  { properties: { name: 'Tibetan Plateau', peak_m: 6500 }, geometry: { coordinates: [[81, 33.2], [86, 32.6], [91, 32.3], [96, 32.2]] } },
+)
 const R = 6371
 function distKm (a, b) {
   const t = Math.PI / 180
@@ -125,6 +115,40 @@ ridges.forEach((f, ri) => {
   }
   ridgePts.push([...cs[cs.length - 1], ri])
 })
+// Along a curated ridge of a real high range (peak >= 2400 m), lower the bar: the 20 km average
+// pulls narrow ranges (eastern Alps, Apennines, Carpathians) below MOUNTAIN_M.
+const NEAR_KM = 70, NEAR_M = 650
+const nearHigh = new Uint8Array(N * N)
+const kmPerPxEq = 40075 / N
+for (const r of ridgePts) {
+  if (ridges[r[2]].properties.peak_m < 2400) continue
+  const cx = (r[0] + 180) / 360 * N
+  const lat = r[1] * Math.PI / 180
+  const cy = (0.5 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / (2 * Math.PI)) * N
+  const rad = Math.ceil(NEAR_KM / (kmPerPxEq * Math.cos(lat)))
+  for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+    if (dx * dx + dy * dy > rad * rad) continue
+    const x = Math.round(cx + dx), y = Math.round(cy + dy)
+    if (x >= 0 && x < N && y >= 0 && y < N) nearHigh[y * N + x] = 1
+  }
+}
+
+// two soft masks (0..1), blurred so the outlines come out as rounded blobs
+const mMask = new Float32Array(N * N)
+const hMask = new Float32Array(N * N)
+for (let y = 0; y < N; y++) {
+  const ok = latOk(y)
+  for (let x = 0; x < N; x++) {
+    const i = y * N + x
+    if (!ok) continue
+    const isM = h[i] >= MOUNTAIN_M || (relief[i] >= RELIEF_M && h[i] >= 600) || (nearHigh[i] && h[i] >= NEAR_M)
+    mMask[i] = isM ? 1 : 0
+    hMask[i] = (isM || (h[i] >= HILL_M && relief[i] >= HILL_RELIEF_M)) ? 1 : 0
+  }
+}
+const mSoft = blur(mMask)
+const hSoft = blur(hMask)
+
 const label = new Int16Array(N * N).fill(-1)
 for (let y = 0; y < N; y++) {
   const lat = pyToLat(y + 0.5)
