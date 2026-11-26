@@ -344,7 +344,7 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
     window.__tune?.register('Cloud volume', [
       { key: 'strength', label: 'Amount', min: 0, max: 1, step: 0.01, value: 1,
         apply: (v) => set('cloudVolume', { strength: v }) },
-      { key: 'scale', label: 'Height (x real)', min: 1, max: 24, step: 0.5, value: 8,
+      { key: 'scale', label: 'Height (x real)', min: 1, max: 24, step: 0.5, value: 12,
         apply: (v) => set('cloudVolume', { scale: v }) },
       { key: 'coverage', label: 'Coverage', min: 0, max: 1, step: 0.01, value: 0.45,
         apply: (v) => set('cloudVolume', { coverage: v }) },

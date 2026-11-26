@@ -50,7 +50,7 @@ import { cameraFromMapLibre, planetToEcef } from './volumetric-camera.js'
 const LAYERS = [
   { altitude: 1000, height: 1000, densityScale: 0.2, shapeAmount: 0.8, weatherExponent: 0.6, shadow: true },
   { altitude: 2000, height: 800, densityScale: 0.1, shapeAmount: 0.8, shapeAlteringBias: 0.5 },
-  { altitude: 2000, height: 2000, densityScale: 2e-3, shapeAmount: 0.3 },
+  { altitude: 2000, height: 2000, densityScale: 2e-3, shapeAmount: 0.3, veil: true },
   { altitude: 0, height: 0 },
 ]
 
@@ -198,7 +198,6 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   // Takram only draws through its own aerial-perspective effect unless told otherwise. We have
   // none: our haze is a MapLibre layer of its own.
   clouds.skipRendering = false
-  clouds.qualityPreset = 'medium'
   clouds.haze = false
   // MapLibre draws a sphere, Takram defaults to the WGS84 ellipsoid; they differ by up to 21 km.
   clouds.ellipsoid = new Ellipsoid(sphere, sphere, sphere)
@@ -226,16 +225,20 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   })
   composer.addPass(last)
 
+  let preset = null
   const apply = () => {
     const k = Math.max(1, state.scale)
-    LAYERS.forEach((layer, index) => {
+    // Before the step sizes below: a preset writes its own.
+    if (state.preset !== preset) clouds.qualityPreset = preset = state.preset
+    clouds.temporalUpscale = !!state.upscale
+    LAYERS.forEach(({ veil, ...layer }, index) => {
       clouds.cloudLayers[index].set({
         channel: 'r',
         ...layer,
         altitude: layer.altitude * k,
         height: layer.height * k,
         // Same optical depth through a layer k times thicker.
-        densityScale: (layer.densityScale ?? 0.2) / k,
+        densityScale: (layer.densityScale ?? 0.2) * (veil ? state.veil : 1) / k,
         shadow: !!layer.shadow && !!state.shadows,
       })
     })

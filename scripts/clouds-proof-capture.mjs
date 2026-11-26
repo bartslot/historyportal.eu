@@ -25,32 +25,23 @@ const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
 const view = `${italy}&zoom=7&pitch=60`
 // "A" is the candidate look; the shots before it change one thing at a time from the defaults.
-const A = 'v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4'
+const A = 'v.coverage=0.4'
+const far = 'lng=-40&lat=30&zoom=6&pitch=60&sunLng=-110&sunLat=10'
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
-  { name: '01-defaults', query: view },
-  { name: '02-tone-neutral', query: `${view}&v.tone=neutral` },
-  { name: '03-tone-aces', query: `${view}&v.tone=aces` },
-  { name: '04-tone-neutral-exposure6', query: `${view}&v.tone=neutral&v.exposure=6` },
-  { name: '05-step1.001', query: `${view}&v.stepScale=1.001` },
-  { name: '06-step1.0005', query: `${view}&v.stepScale=1.0005` },
-  { name: '07-weather-soft', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95` },
-  { name: '08-weather-soft-coverage0.4', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4` },
-  { name: '09-scale16-step1.001', query: `${view}&v.scale=16&v.stepScale=1.001` },
-  { name: '10-A', query: `${view}&${A}` },
-  { name: '11-A-top-down', query: `${italy}&zoom=7&pitch=0&${A}` },
-  { name: '12-A-z6', query: `${italy}&zoom=6&pitch=60&${A}` },
-  { name: '13-A-z5.5-handover', query: `${italy}&zoom=5.5&pitch=45&${A}` },
-  { name: '14-A-atlantic-evening', query: `lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10&${A}` },
-  { name: '15-A-caribbean', query: `lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80&${A}` },
-  { name: '16-A-skylight2', query: `${view}&${A}&v.skyLight=2` },
-  { name: '17-A-noshadow', query: `${view}&${A}&v.shadows=0` },
-  { name: '18-A-exposure6', query: `${view}&${A}&v.exposure=6` },
-  { name: '18b-A-coverage0.33', query: `${view}&${A}&v.coverage=0.33` },
-  { name: '18c-A-coverage0.47', query: `${view}&${A}&v.coverage=0.47` },
-  { name: '18d-A-scale6', query: `${view}&${A}&v.scale=6` },
-  { name: '18e-A-agx', query: `${view}&${A}&v.tone=agx` },
-  { name: '19-flat-only', query: `${view}&v.strength=0`, label: 'same view, flat deck only' },
-  { name: '20-orbit-flat', query: `${italy}&zoom=4&pitch=45`, label: 'orbit: flat deck' },
+  { name: '01-A', query: `${view}&${A}` },
+  { name: '02-no-upscale', query: `${view}&${A}&v.upscale=0` },
+  { name: '03-high', query: `${view}&${A}&v.preset=high` },
+  { name: '04-high-no-upscale', query: `${view}&${A}&v.preset=high&v.upscale=0` },
+  { name: '05-no-veil', query: `${view}&${A}&v.veil=0` },
+  { name: '06-veil-x5', query: `${view}&${A}&v.veil=5` },
+  { name: '07-skylight0.4', query: `${view}&${A}&v.skyLight=0.4` },
+  { name: '08-skylight0', query: `${view}&${A}&v.skyLight=0` },
+  { name: '09-aces-skylight0.4', query: `${view}&${A}&v.skyLight=0.4&v.tone=aces` },
+  { name: '10-drifting', query: `${view}&${A}&motion=1` },
+  { name: '11-high-no-upscale-no-veil-skylight0.4', query: `${view}&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
+  { name: '12-same-atlantic-evening', query: `${far}&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
+  { name: '13-same-top-down', query: `lng=10&lat=45&zoom=7&pitch=0&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
+  { name: '14-ultra-no-upscale', query: `${view}&${A}&v.preset=ultra&v.upscale=0` },
 ]
 
 mkdirSync(out, { recursive: true })

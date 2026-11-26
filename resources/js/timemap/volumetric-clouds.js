@@ -117,17 +117,24 @@ export const createVolumetricCloudLayer = ({
     ...CLOUD_FIELD_MOTION,
     // How many times taller than life the cloud layers are drawn. Real cloud tops out near 12 km,
     // which from 700 km up is a film; the flat deck exaggerates for the same reason (90 km).
-    scale: 8,
+    scale: 12,
     coverage: 0.45,
     exposure: 10,
-    stepScale: 1.004,
+    stepScale: 1.001,
     shadows: true,
+    // Takram's quality preset, its 1-pixel-in-16 temporal upscaling, and how much of the thin
+    // high veil (the third layer) is drawn.
+    preset: 'medium',
+    upscale: true,
+    veil: 1,
     skyLight: 1,
-    tone: 'agx',
-    // The field values that become "no cloud" and "full cloud" in the baked weather. The deck's own
-    // pair, 0.16 and 0.62: where the deck is solid the weather is 1.
-    weatherLow: 0.16,
-    weatherHigh: 0.62,
+    // AgX greys white cloud; neutral keeps the tops white (compared on the M3 Pro).
+    tone: 'neutral',
+    // The field values that become "no cloud" and "full cloud" in the baked weather. Wider than the
+    // deck's own 0.16 and 0.62 on purpose: with the deck's pair every cloud is a solid slab with a
+    // hard rim, with a soft ramp the same weather breaks up into separate cumulus.
+    weatherLow: 0.1,
+    weatherHigh: 0.95,
     deckOpacity: null,
     ...options,
   }
