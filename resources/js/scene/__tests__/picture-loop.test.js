@@ -86,3 +86,46 @@ describe('AV1 copy', () => {
     spy.mockRestore()
   })
 })
+
+describe('holding every loop with the scene clock', () => {
+  it('pauses and resumes the loops on the page, and holds one made while paused', async () => {
+    const { setLoopsPaused } = await import('../picture-loop.js')
+    const host = document.createElement('div')
+    const v = attachLoop(host, '/storage/held-a.mp4')
+    const pause = vi.fn()
+    const play = vi.fn(() => Promise.resolve())
+    Object.assign(v, { pause, play })
+    setLoopsPaused(true)
+    expect(pause).toHaveBeenCalled()
+    const late = loopVideo('/storage/held-b.mp4')
+    const latePause = vi.fn()
+    late.pause = latePause
+    late.dispatchEvent(new Event('playing'))   // it plays once (first frame), then stops with the clock
+    expect(latePause).toHaveBeenCalled()
+    setLoopsPaused(false)
+    expect(play).toHaveBeenCalled()
+  })
+
+  it('seeks every loop to the scene time, wrapped to its own length', async () => {
+    const { seekLoops, setLoopsPaused } = await import('../picture-loop.js')
+    setLoopsPaused(true)
+    const v = loopVideo('/storage/seek.mp4')
+    Object.defineProperty(v, 'duration', { value: 4, configurable: true })
+    Object.defineProperty(v, 'currentTime', { value: 0, writable: true, configurable: true })
+    seekLoops(9.5)
+    expect(v.currentTime).toBeCloseTo(1.5)
+    setLoopsPaused(false)
+  })
+
+  it('forgets a stopped loop', async () => {
+    const { setLoopsPaused } = await import('../picture-loop.js')
+    const host = document.createElement('div')
+    const v = attachLoop(host, '/storage/gone.mp4')
+    detachLoop(host)
+    const pause = vi.fn()
+    v.pause = pause
+    setLoopsPaused(true)
+    expect(pause).not.toHaveBeenCalled()
+    setLoopsPaused(false)
+  })
+})

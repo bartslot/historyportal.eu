@@ -31,7 +31,7 @@ import { createStageSound, hasStageSound } from './scene/stage25d/sound.js'
 import { stageAdvance, stageFloorMs } from './scene/stage-auto.js'
 import { isTopAnchored, normalizeFit, PORTRAIT_TOP_CSS } from './scene/background-fit.js'
 import { isClipartLayer, backdropLayers } from './scene/layer-filters.js'
-import { attachLoop } from './scene/picture-loop.js'
+import { attachLoop, setLoopsPaused } from './scene/picture-loop.js'
 import { fitToPlate, plateAspect } from './scene/plate-box.js'
 import { outgoingStages, hideFlatLayers } from './scene/stage-handoff.js'
 import { sceneMode } from './scene/split-layout.js'
@@ -1708,6 +1708,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this.playbackPaused) {
         this.playbackPaused = false
         try { _voyageInstance?.setPaused?.(false) } catch (_) { /* map gone */ }
+        setLoopsPaused(false)
       }
 
       // The outgoing scene's place/date must not linger on the next one — a voyage leg republishes
@@ -1715,7 +1716,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this.infoPlace = ''
       this.infoDate = ''
       this.sceneCaption = captionVisible(scene) ? { place: scene.location, year: scene.year || '' } : null
-      // the 2.5D stage paints its own watercolour on paper: the 50% shade halved it (Bart, 11-03: "why so dark?")
+      // The edge scrims behind the controls (the full-scene 50% shade is gone: Bart, 11-26). A line-art
+      // scene and the 2.5D stage keep their paper white to the edge (Bart, 11-03: "why so dark?").
       this.backdropShade = scene.config?.backdrop_shade !== false && !isStage25d(scene)
 
       // Whatever was narrating belongs to the scene we are leaving — silence it before anything
@@ -3015,6 +3017,7 @@ Alpine.data('lessonGame', (lesson) => ({
         this._hideBalloons(false)
         this._momentActive = false
         this.playbackPaused = false
+        setLoopsPaused(false)
         resume()
       }
       const avoid = () => [...figureRects(art, host, [cfg.react?.layer, cfg.payoff?.layer].filter(Boolean)), ...(race ? race.band(host) : [])]
@@ -3471,6 +3474,10 @@ Alpine.data('lessonGame', (lesson) => ({
       // The sailing ship freezes mid-ocean and picks up from the same spot; the landfall's
       // auto-advance countdown stops accumulating (see _startStageAuto).
       try { _voyageInstance?.setPaused?.(this.playbackPaused) } catch (_) { /* map gone */ }
+
+      // The scene picture's moving version (a background video) stops on the same frame and goes on
+      // from there (picture-loop.js), including in a layered shot.
+      setLoopsPaused(this.playbackPaused)
 
       // A silent scene's hold and a timed map's hold wait with the class instead of moving on.
       for (const hold of [this._noAudioHold, _mapTimer, this._chapterCardHold, this._leadInHold, this._preVoiceHold]) {
