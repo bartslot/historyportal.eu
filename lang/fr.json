@@ -3142,5 +3142,10 @@
     "Group": "Grouper",
     "Ungroup": "Dissocier",
     "Drag from a scene to add a choice, or from a choice to change where it goes": "Faites glisser depuis une scène pour ajouter un choix, ou depuis un choix pour changer où il mène",
-    "Drag onto a scene to add a choice that goes there": "Faites glisser sur une scène pour ajouter un choix qui y mène"
+    "Drag onto a scene to add a choice that goes there": "Faites glisser sur une scène pour ajouter un choix qui y mène",
+    "Full size (0)": "Taille réelle (0)",
+    "Full size": "Taille réelle",
+    "Show the whole story (F)": "Afficher toute l'histoire (F)",
+    "Delete removes this line": "Suppr retire cette ligne",
+    "Drag one of the picked cards to move them together": "Faites glisser une des cartes choisies pour les déplacer ensemble"
 }

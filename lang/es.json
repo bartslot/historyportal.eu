@@ -3184,5 +3184,10 @@
     "Group": "Agrupar",
     "Ungroup": "Desagrupar",
     "Drag from a scene to add a choice, or from a choice to change where it goes": "Arrastra desde una escena para añadir una opción, o desde una opción para cambiar adónde lleva",
-    "Drag onto a scene to add a choice that goes there": "Arrastra a una escena para añadir una opción que lleve allí"
+    "Drag onto a scene to add a choice that goes there": "Arrastra a una escena para añadir una opción que lleve allí",
+    "Full size (0)": "Tamaño real (0)",
+    "Full size": "Tamaño real",
+    "Show the whole story (F)": "Mostrar toda la historia (F)",
+    "Delete removes this line": "Supr quita esta línea",
+    "Drag one of the picked cards to move them together": "Arrastra una de las tarjetas elegidas para moverlas juntas"
 }

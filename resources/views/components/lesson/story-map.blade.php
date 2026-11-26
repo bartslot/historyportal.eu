@@ -49,29 +49,37 @@
                         data-tooltip="{{ __('Zoom in') }}" aria-label="{{ __('Zoom in') }}">
                     <x-ui.icon name="zoom-in" class="h-5 w-5" />
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm" x-on:click="fit()" data-story-map-fit>{{ __('Fit') }}</button>
+                <button type="button" class="btn btn-ghost btn-sm w-16 tabular-nums" x-on:click="zoomTo(1)" x-text="zoomLabel" data-story-map-zoom
+                        data-tooltip="{{ __('Full size (0)') }}" aria-label="{{ __('Full size') }}"></button>
+                <button type="button" class="btn btn-ghost btn-sm" x-on:click="fit()" data-story-map-fit
+                        data-tooltip="{{ __('Show the whole story (F)') }}">{{ __('Fit') }}</button>
             </div>
         </header>
 
         <div class="relative min-h-0 flex-1 overflow-hidden">
             <div x-ref="viewport" data-story-map-viewport
                  class="story-map-grid absolute inset-0 touch-none select-none"
-                 :class="wiring ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'"
+                 :class="wiring ? 'is-wiring cursor-crosshair' : 'cursor-grab active:cursor-grabbing'"
                  :style="gridStyle"
                  x-on:pointerdown="panStart($event)"
                  x-on:pointermove="pointerMove($event)"
                  x-on:pointerup="pointerUp($event)"
                  x-on:pointercancel="pointerUp($event)"
-                 x-on:wheel.prevent="wheel($event)">
+                 x-on:wheel.prevent="wheel($event)"
+                 x-on:resize.window="measure()">
                 <div class="absolute left-0 top-0 origin-top-left" :style="planeStyle">
                     {{-- The lines: SVG markup built from the links (no teacher text in it). --}}
                     <div class="pointer-events-none absolute left-0 top-0" x-effect="$el.innerHTML = edgesMarkup"></div>
+
+                    {{-- The box a shift-drag draws: every card it touches is picked. --}}
+                    <div x-show="marquee" x-cloak class="story-map-marquee pointer-events-none absolute left-0 top-0" :style="marqueeStyle"></div>
 
                     {{-- Scene cards --}}
                     <template x-for="scene in scenes" :key="'s' + scene.id">
                         <div class="absolute left-0 top-0 flex cursor-pointer items-center gap-3 rounded-xl border px-2 transition-colors"
                              :class="[isSelected('scene', scene.id) ? 'border-selected bg-selected text-card-action-label' : 'border-panel-hairline bg-panel-tile text-panel-value hover:border-panel-label',
-                                      wiring && wiring.over === scene.id ? 'ring-2 ring-panel-value' : '']"
+                                      wiring && wiring.over === scene.id ? 'is-target ring-2 ring-panel-value' : '',
+                                      isPicked('scene', scene.id) ? 'ring-2 ring-panel-label' : '']"
                              :style="nodeStyle('scene', scene.id)"
                              :data-map-scene="scene.id"
                              role="button" tabindex="0"
@@ -102,7 +110,8 @@
                     {{-- Choice cards: the Choices layer of a scene, one row per button. --}}
                     <template x-for="scene in choiceScenes" :key="'c' + scene.id">
                         <div class="absolute left-0 top-0 cursor-pointer rounded-xl border transition-colors"
-                             :class="isSelected('choice', scene.id) ? 'border-selected bg-selected text-card-action-label' : 'border-panel-hairline bg-panel-tile text-panel-value hover:border-panel-label'"
+                             :class="[isSelected('choice', scene.id) ? 'border-selected bg-selected text-card-action-label' : 'border-panel-hairline bg-panel-tile text-panel-value hover:border-panel-label',
+                                      isPicked('choice', scene.id) ? 'ring-2 ring-panel-label' : '']"
                              :style="nodeStyle('choice', scene.id)"
                              :data-map-choices="scene.id"
                              role="button" tabindex="0"
@@ -136,12 +145,24 @@
             </div>
 
             <p class="pointer-events-none absolute bottom-3 left-3 flex h-8 items-center gap-2 rounded-full border border-panel-hairline bg-card-surface px-3 text-xs text-panel-hint">
-                {{ __('Drag from a scene to add a choice, or from a choice to change where it goes') }}
+                <span x-show="!edge && !picked.length">{{ __('Drag from a scene to add a choice, or from a choice to change where it goes') }}</span>
+                <span x-show="edge" x-cloak>{{ __('Delete removes this line') }}</span>
+                <span x-show="picked.length" x-cloak>{{ __('Drag one of the picked cards to move them together') }}</span>
             </p>
+
+            {{-- The minimap: the whole story small, with the part on screen framed. Click or drag it to go there. --}}
+            <div class="story-map-minimap absolute bottom-3 right-3 cursor-pointer overflow-hidden rounded-xl border border-panel-hairline bg-card-surface"
+                 data-story-map-minimap
+                 x-show="scenes.length" x-cloak
+                 x-on:pointerdown="miniStart($event)"
+                 x-on:pointermove="miniMove($event)"
+                 x-on:pointerup="miniEnd()"
+                 x-on:pointercancel="miniEnd()"
+                 x-effect="$el.innerHTML = minimapMarkup"></div>
 
             {{-- The inspector: the selected card's settings, saved on change. --}}
             <aside x-show="sel" x-cloak data-story-map-inspector
-                   class="absolute right-3 top-3 max-h-[calc(100%-1.5rem)] w-80 space-y-3 overflow-y-auto rounded-xl border border-panel-hairline bg-card-surface-raised p-3"
+                   class="absolute right-3 top-3 max-h-[calc(100%-11rem)] w-80 space-y-3 overflow-y-auto rounded-xl border border-panel-hairline bg-card-surface-raised p-3"
                    x-on:pointerdown.stop>
                 <template x-if="sel && selected.type === 'scene'">
                     <div class="space-y-3">

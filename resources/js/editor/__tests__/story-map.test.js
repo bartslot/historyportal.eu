@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   SIZE, hasButtons, mapEdges, nextOf, autoLayout, placeAll, edgePath, edgeEnds, mapBounds, openingView, zoomViewAt, choiceHeight, storyMap,
+  nearestScene, springStep, snapPoint, easeOutBack, cardsInRect, edgeDeletion, minimapFrame, GRID,
 } from '../story-map.js'
 
 const scene = (id, number, extra = {}) => ({ id, number, name: `S${id}`, kind: 'narration', image: null, ending: false, links: [], prompt: '', canChoose: true, ...extra })
@@ -145,6 +146,58 @@ describe('story map: drawing', () => {
   })
 })
 
+describe('story map: magnetic, elastic, the grid', () => {
+  const layout = { scenes: { 1: [0, 0], 2: [400, 0], 3: [400, 200] }, choices: {} }
+  const s3 = [scene(1, 1), scene(2, 2), scene(3, 3)]
+
+  it('pulls a dragged line onto the nearest scene within reach, never its own', () => {
+    expect(nearestScene(s3, layout, [380, 30], 72)).toBe(2)
+    expect(nearestScene(s3, layout, [380, 150], 72)).toBe(3)
+    expect(nearestScene(s3, layout, [330, 30], 40)).toBeNull()
+    expect(nearestScene(s3, layout, [100, 30], 72, 1)).toBeNull()
+    expect(nearestScene(s3, layout, [100, 30], 72)).toBe(1)
+  })
+
+  it('the spring overshoots a little and comes to rest on its goal', () => {
+    let st = { tip: [0, 0], vel: [0, 0] }
+    let max = 0
+    for (let i = 0; i < 200; i++) { st = springStep(st.tip, st.vel, [100, 0]); max = Math.max(max, st.tip[0]) }
+    expect(max).toBeGreaterThan(100)
+    expect(st.tip[0]).toBeCloseTo(100, 1)
+  })
+
+  it('a card lands on the grid, with a small overshoot on the way', () => {
+    expect(snapPoint([13, -13])).toEqual([GRID, -GRID])
+    expect(snapPoint([11, 35])).toEqual([0, 24])
+    expect(easeOutBack(0)).toBeCloseTo(0)
+    expect(easeOutBack(1)).toBeCloseTo(1)
+    expect(Math.max(...[0.6, 0.7, 0.8, 0.9].map(easeOutBack))).toBeGreaterThan(1)
+  })
+
+  it('a box picks the cards it touches', () => {
+    const s = story()
+    const l = { scenes: { 1: [0, 0], 2: [300, 0], 3: [900, 0], 4: [900, 200] }, choices: { 2: [600, 0] } }
+    expect(cardsInRect(s, l, { x: 250, y: -10, w: 400, h: 40 })).toEqual([['scenes', 2], ['choices', 2]])
+    expect(cardsInRect(s, l, { x: 0, y: 500, w: 10, h: 10 })).toEqual([])
+  })
+
+  it('deleting a line: a choice waits for a scene, a jump goes on to the next, the next ends the lesson', () => {
+    const edges = mapEdges(story())
+    expect(edgeDeletion(edges.find((e) => e.key === 'c2-1'))).toEqual({ method: 'saveSceneLink', args: [2, 1, 'to', null], undo: { method: 'saveSceneLink', args: [2, 1, 'to', 4] } })
+    expect(edgeDeletion(edges.find((e) => e.key === 'n1'))).toEqual({ method: 'setSceneNext', args: [1, 'end'], undo: { method: 'setSceneNext', args: [1, 'next'] } })
+    expect(edgeDeletion(edges.find((e) => e.key === 'a2'))).toBeNull()
+    const j = mapEdges([scene(1, 1, { links: [{ label: '', to: 3 }] }), scene(2, 2), scene(3, 3)])[0]
+    expect(edgeDeletion(j)).toEqual({ method: 'setSceneNext', args: [1, 'next'], undo: { method: 'setSceneNext', args: [1, 3] } })
+  })
+
+  it('the minimap fits the whole story, centred', () => {
+    const f = minimapFrame({ x: 0, y: 0, w: 1000, h: 100 }, 200, 100, 0)
+    expect(f.s).toBeCloseTo(0.2)
+    expect(f.oy).toBeCloseTo(40)
+    expect(f.ox).toBeCloseTo(0)
+  })
+})
+
 describe('story map: saving and undo', () => {
   const make = (wire) => {
     const m = storyMap()
@@ -185,6 +238,33 @@ describe('story map: saving and undo', () => {
     calls.length = 0
     await m.undo()
     expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['restoreSceneLinks', 1, [{ label: '', to: 3 }], false, '']])
+  })
+
+  it('Delete on a picked line removes it, and undo puts it back', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return payload(story()) }) }
+    const m = make(wire)
+    await m.reload()
+    m.edge = 'c2-0'
+    m.keydown({ key: 'Delete', target: document.body, stopPropagation: vi.fn(), preventDefault: vi.fn() })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(calls).toContainEqual(['saveSceneLink', 2, 0, 'to', null])
+    expect(m.edge).toBeNull()
+    calls.length = 0
+    await m.undo()
+    expect(calls).toContainEqual(['saveSceneLink', 2, 0, 'to', 3])
+  })
+
+  it('an undo or a grab while cards land stops them, so nothing writes over it', async () => {
+    const wire = { call: vi.fn(async () => payload(story())) }
+    const m = make(wire)
+    await m.reload()
+    const start = [...m.layout.scenes[1]]
+    const landing = m.settle([['scenes', 1, [start[0] + 480, start[1]]]])
+    m.undoStack.push({ layout: { scenes: { 1: start }, choices: {} } })
+    await m.undo()
+    expect(await landing).toBe(false)
+    expect(m.layout.scenes[1]).toEqual(start)
   })
 
   it('keeps the scene editor away from keys while the map is open', () => {
