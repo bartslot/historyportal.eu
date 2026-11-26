@@ -414,7 +414,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-BcMVKNfn.js",
+    "file": "assets/lesson-player-HtDyrX1n.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -780,7 +780,7 @@
     ]
   },
   "resources/js/voyage-tour.js": {
-    "file": "assets/voyage-tour-CNizPbsj.js",
+    "file": "assets/voyage-tour-BxJaHNA7.js",
     "name": "voyage-tour",
     "src": "resources/js/voyage-tour.js",
     "isEntry": true,
