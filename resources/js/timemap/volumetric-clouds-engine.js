@@ -123,7 +123,6 @@ const createWeatherBake = (gl, state, repaint) => {
 
   return {
     texture,
-    framebuffer,
     get hasSource() { return !!(sources.field?.ready || sources.patches?.ready) },
     get baked() { return strip >= 0 },
     /** The next bake is the whole texture again: something about the weather itself changed. */
@@ -182,7 +181,6 @@ const useGlobalWeatherLookup = (material) => {
 export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady, onError }) => {
   let state = initial
   const canvas = map.getCanvas()
-  const sphere = EARTH_RADIUS_M
 
   const renderer = new WebGLRenderer({ canvas, context: gl, depth: true, alpha: true, antialias: false })
   renderer.autoClear = false
@@ -200,7 +198,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   clouds.skipRendering = false
   clouds.haze = false
   // MapLibre draws a sphere, Takram defaults to the WGS84 ellipsoid; they differ by up to 21 km.
-  clouds.ellipsoid = new Ellipsoid(sphere, sphere, sphere)
+  clouds.ellipsoid = new Ellipsoid(EARTH_RADIUS_M, EARTH_RADIUS_M, EARTH_RADIUS_M)
   clouds.localWeatherRepeat.set(1, 1)
   useGlobalWeatherLookup(clouds.cloudsPass.currentMaterial)
   useGlobalWeatherLookup(clouds.shadowPass.currentMaterial)
@@ -279,7 +277,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   apply()
 
   // ── Textures. Decoration: one that fails takes the 3D clouds with it, never the map. ──
-  let pending = 0
+  let pending = 4   // the four loads below
   let failed = false
   const landed = () => { pending--; onReady?.() }
   const fail = (what) => () => { if (!failed) { failed = true; onError?.(`could not load ${what}`) } }
@@ -293,17 +291,13 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   }
   const cube = (n) => ({ width: n, height: n, depth: n })
 
-  pending++
   // Higher-order scattering is 8 MB the clouds can do without; the three below are 8.2 MB together.
   Object.assign(clouds, new PrecomputedTexturesLoader({ format: 'binary', higherOrderScattering: false })
     .setType(renderer).load(`${assetsUrl}/atmosphere`, landed, undefined, fail('the atmosphere tables')))
-  pending++
   new DataTextureLoader(Data3DTexture, parseUint8Array, cube(CLOUD_SHAPE_TEXTURE_SIZE))
     .load(`${assetsUrl}/clouds/shape.bin`, (t) => { clouds.shapeTexture = volume(t); landed() }, undefined, fail('the cloud shape'))
-  pending++
   new DataTextureLoader(Data3DTexture, parseUint8Array, cube(CLOUD_SHAPE_DETAIL_TEXTURE_SIZE))
     .load(`${assetsUrl}/clouds/shape_detail.bin`, (t) => { clouds.shapeDetailTexture = volume(t); landed() }, undefined, fail('the cloud detail'))
-  pending++
   new STBNLoader().load(`${assetsUrl}/core/stbn.bin`, (t) => { clouds.stbnTexture = t; landed() }, undefined, fail('the blue noise'))
 
   const size = new Vector2()
