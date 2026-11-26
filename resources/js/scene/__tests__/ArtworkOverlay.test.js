@@ -285,6 +285,16 @@ describe('ArtworkOverlay — pinned to the map', () => {
       expect(overlay.adoptDrawingGeo()).toBe(0)   // once
     })
 
+    it('uses the current zoom on a voyage, whose projector has no opening zoom', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      overlay.setProjector({ ...projector(), zoom: () => 4, refZoom: () => NaN })
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+      expect(saved.at(-1)).toMatchObject({ geo: { zoom: 4, px: 900, w: 1600 } })
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(40)
+    })
+
     it('never touches a drawing in the player', () => {
       const overlay = new ArtworkOverlay(sized(), { readonly: true })
       overlay.setProjector(zoomed(3, 3))

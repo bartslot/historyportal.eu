@@ -531,7 +531,9 @@ export class ArtworkOverlay {
     let n = 0
     for (const item of this._layers) {
       if (item.anchor !== 'map' || !item.drawing || item.geo) continue
-      const geo = this._viewGeo(this._projector.refZoom?.())
+      // No opening zoom (a voyage's projector): such a picture never grew with the map, so it looks right at today's zoom.
+      const ref = this._projector.refZoom?.()
+      const geo = this._viewGeo(Number.isFinite(ref) ? ref : this._projector.zoom?.())
       if (!geo) continue
       item.geo = geo
       this._emit(item)
