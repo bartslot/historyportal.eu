@@ -252,3 +252,14 @@ describe('the colour grade', () => {
     layer.onRemove()
   })
 })
+
+describe('bloom fades out as you zoom in', () => {
+  it('is full at globe scale and gone close in', async () => {
+    const { bloomZoomFade } = await import('../bloom.js')
+    expect(bloomZoomFade(1.5)).toBe(1)
+    expect(bloomZoomFade(6)).toBe(0)
+    const mid = bloomZoomFade(3.25)
+    expect(mid).toBeGreaterThan(0.2)
+    expect(mid).toBeLessThan(0.8)
+  })
+})
