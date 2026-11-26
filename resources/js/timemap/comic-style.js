@@ -16,25 +16,24 @@
 
 import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addChartImages } from '../map-chart.js'
 
-export const COMIC_STYLE = 'comic'
 const PREFIX = 'comic-'
 const COAST_SOURCE = 'comic-coastline'
 
 /** The chart's layers with Time-Map-safe ids and the renamed coastline, hidden to start with. */
-export function comicLayers (cfg = CHART) {
+export function comicLayers () {
   const rename = (layer) => ({
     ...layer,
     id: layer.id.startsWith(PREFIX) ? layer.id : PREFIX + layer.id,
     ...(layer.source === 'coastline' ? { source: COAST_SOURCE } : {}),
     layout: { ...(layer.layout || {}), visibility: 'none' },
   })
-  const { under, over } = chartLayers(cfg)
+  const { under, over } = chartLayers(CHART)
   return { under: under.map(rename), over: over.map(rename) }
 }
 
 /** Every comic layer id, under first, in draw order. */
-export const comicLayerIds = (cfg = CHART) => {
-  const { under, over } = comicLayers(cfg)
+export const comicLayerIds = () => {
+  const { under, over } = comicLayers()
   return [...under, ...over].map((layer) => layer.id)
 }
 
