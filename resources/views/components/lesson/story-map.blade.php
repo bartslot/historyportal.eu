@@ -22,12 +22,33 @@
          role="dialog" aria-modal="true" aria-label="{{ __('Story map') }}">
 
         <header class="flex h-14 shrink-0 items-center gap-1 border-b border-panel-hairline px-2">
-            <button type="button" x-on:click="close()" data-story-map-close
-                    class="grid h-11 w-11 place-items-center rounded-xl text-panel-icon transition hover:bg-base-200 hover:text-primary"
-                    data-tooltip="{{ __('Back to the scene') }}" aria-label="{{ __('Back to the scene') }}">
-                <x-ui.icon name="back" class="h-6 w-6" />
-            </button>
-            <h2 class="px-1 text-sm font-semibold text-panel-value">{{ __('Story map') }}</h2>
+            {{-- The same view switch as in the editor's toolbar, with the map on: Scene goes back to the scene. --}}
+            <div class="join" role="group" aria-label="{{ __('View') }}">
+                <button type="button" x-on:click="close()" data-story-map-close
+                        class="btn btn-ghost btn-sm join-item gap-1.5 text-panel-icon"
+                        data-tooltip="{{ __('Back to the scene') }}">
+                    <x-ui.icon name="scene-view" class="h-5 w-5" />{{ __('Scene') }}
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm btn-active join-item gap-1.5" aria-pressed="true">
+                    <x-ui.icon name="story-map" class="h-5 w-5" />{{ __('Story map') }}
+                </button>
+            </div>
+
+            {{-- Which way the story runs: top to bottom (scene planning) or left to right. --}}
+            <div class="join ml-2" role="group" aria-label="{{ __('Which way the story runs') }}">
+                <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-story-map-dir="tb"
+                        :class="dir === 'tb' ? 'btn-active' : 'text-panel-icon'" :aria-pressed="dir === 'tb' ? 'true' : 'false'"
+                        x-on:click="setDir('tb')"
+                        data-tooltip="{{ __('Top to bottom') }}" aria-label="{{ __('Top to bottom') }}">
+                    <x-ui.icon name="story-map-down" class="h-5 w-5" />
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-story-map-dir="lr"
+                        :class="dir === 'lr' ? 'btn-active' : 'text-panel-icon'" :aria-pressed="dir === 'lr' ? 'true' : 'false'"
+                        x-on:click="setDir('lr')"
+                        data-tooltip="{{ __('Left to right') }}" aria-label="{{ __('Left to right') }}">
+                    <x-ui.icon name="story-map" class="h-5 w-5" />
+                </button>
+            </div>
 
             <div class="ml-auto flex items-center gap-1">
                 {{-- Every change saves at once: this says so, and says when one did not. --}}
@@ -67,7 +88,7 @@
                  x-on:pointercancel="pointerUp($event)"
                  x-on:wheel.prevent="wheel($event)"
                  x-on:resize.window="measure()">
-                <div class="absolute left-0 top-0 origin-top-left" :style="planeStyle">
+                <div class="absolute left-0 top-0 origin-top-left" :class="dir === 'tb' ? 'is-tb' : ''" :style="planeStyle">
                     {{-- The lines: SVG markup built from the links (no teacher text in it). --}}
                     <div class="pointer-events-none absolute left-0 top-0" x-effect="$el.innerHTML = edgesMarkup"></div>
 
@@ -88,7 +109,7 @@
                              x-on:pointerdown="nodeStart($event, 'scene', scene.id)"
                              x-on:keydown.enter.stop="selected = { type: 'scene', id: scene.id }"
                              x-on:dblclick="openScene(scene.id)">
-                            <span class="story-map-dot is-in -left-4" aria-hidden="true"></span>
+                            <span class="story-map-dot is-in at-start" aria-hidden="true"></span>
                             <div class="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-panel-tile-active">
                                 <img x-show="scene.image" :src="scene.image || ''" alt="" loading="lazy" decoding="async"
                                      class="h-full w-full object-cover" x-on:error="$el.style.display = 'none'" />
@@ -100,7 +121,7 @@
                                 <p class="truncate text-prose leading-snug" x-text="scene.name"></p>
                             </div>
                             {{-- A new option: dragged onto a scene, it adds a choice at the end of this scene that goes there. --}}
-                            <button type="button" class="story-map-dot -right-4" data-story-map-new-option
+                            <button type="button" class="story-map-dot at-end" data-story-map-new-option
                                     x-on:pointerdown.stop="portStart($event, { type: 'scene', id: scene.id })"
                                     data-tooltip="{{ __('Drag onto a scene to add a choice that goes there') }}"
                                     aria-label="{{ __('Drag onto a scene to add a choice that goes there') }}"></button>
@@ -119,7 +140,7 @@
                              :aria-pressed="isSelected('choice', scene.id) ? 'true' : 'false'"
                              x-on:pointerdown="nodeStart($event, 'choice', scene.id)"
                              x-on:keydown.enter.stop="selected = { type: 'choice', id: scene.id }">
-                            <span class="story-map-dot is-in -left-4" :style="'top:' + (SIZE.choiceHead / 2) + 'px'" aria-hidden="true"></span>
+                            <span class="story-map-dot is-in at-start is-head" aria-hidden="true"></span>
                             <div class="flex flex-col justify-center px-3" :style="'height:' + SIZE.choiceHead + 'px'">
                                 <p class="lp-card-label flex items-center gap-1.5" :class="isSelected('choice', scene.id) ? 'text-card-action-label' : 'text-panel-label'">
                                     <x-ui.icon name="layer-choices" class="h-4 w-4" />{{ __('Choices') }}

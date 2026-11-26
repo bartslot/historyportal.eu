@@ -2,7 +2,7 @@
     <div class="flex items-end justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold">{{ __('Classes') }}</h1>
-            <p class="text-sm opacity-60">{{ __('A class is a group of children. Manage the roster and assign lessons here.') }}</p>
+            <p class="text-sm opacity-60">{{ __('Manage your students and assign lessons.') }}</p>
         </div>
     </div>
 

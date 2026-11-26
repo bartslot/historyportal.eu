@@ -28,7 +28,7 @@
     ":title (copy :n)": ":title (kopie :n)",
     ":title (copy)": ":title (kopie)",
     "A branching story game where teams make choices that steer the plot and their meters.": "Een vertakkend verhaal-spel waarin teams keuzes maken die het plot en hun meters sturen.",
-    "A class is a group of children. Manage the roster and assign lessons here.": "Een klas is een groep kinderen. Beheer hier de namenlijst en wijs lessen toe.",
+    "Manage your students and assign lessons.": "Beheer je leerlingen en wijs lessen toe.",
     "A factor": "Een factor",
     "A gallery of paintings or photographs to look at together.": "Een galerij met schilderijen of foto's om samen te bekijken.",
     "A game or a choice moment where teams steer the story.": "Een spel of een keuzemoment waarin teams het verhaal sturen.",
@@ -3214,5 +3214,8 @@
     "Full size": "Ware grootte",
     "Show the whole story (F)": "Het hele verhaal tonen (F)",
     "Delete removes this line": "Delete haalt deze lijn weg",
-    "Drag one of the picked cards to move them together": "Sleep een van de gekozen kaarten om ze samen te verplaatsen"
+    "Drag one of the picked cards to move them together": "Sleep een van de gekozen kaarten om ze samen te verplaatsen",
+    "Which way the story runs": "Welke kant het verhaal op loopt",
+    "Top to bottom": "Van boven naar beneden",
+    "Left to right": "Van links naar rechts"
 }

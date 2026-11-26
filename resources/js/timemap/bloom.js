@@ -357,7 +357,8 @@ export const createBloomLayer = ({
         gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, width, height, 0)
       }
 
-      if (state.strength <= 0) { restoreGlState(gl, saved); return }
+      const strength = state.strength * bloomZoomFade(map?.getZoom?.())
+      if (strength <= 0) { restoreGlState(gl, saved); return }
 
       // ── Bright pass, into the top of the chain ─────────────────────────────────────────────
       beginPass(gl, chain[0], programs.bright.program)
@@ -399,7 +400,7 @@ export const createBloomLayer = ({
       gl.viewport(saved.viewport[0], saved.viewport[1], saved.viewport[2], saved.viewport[3])
       gl.useProgram(programs.composite.program)
       bindTextureUnit(gl, 0, chain[0].texture, programs.composite.bloom)
-      if (programs.composite.strength) gl.uniform1f(programs.composite.strength, state.strength)
+      if (programs.composite.strength) gl.uniform1f(programs.composite.strength, strength)
       drawScreenQuad(gl, quad, programs.composite.corner)
 
       restoreGlState(gl, saved)
@@ -415,3 +416,21 @@ export const createBloomLayer = ({
 }
 
 export const BLOOM_LAYER_ID = LAYER_ID
+
+/**
+ * How much of the bloom is left at a given map zoom: all of it at globe scale, none close in.
+ *
+ * The pass blooms "whatever happens to be bright", which from orbit is the sun, the ocean glint and
+ * the lit limb. Zoomed in over the Sahara at noon, the bright thing is the SAND, filling the whole
+ * screen, and the warm outer tints turned it into a yellow-orange glare. Bart, 2026-11-26: "zooming
+ * in too much causes the textures to light up, as if we are the sun". Close in there is no point
+ * source left to bloom, so the pass bows out between these two zooms.
+ */
+const BLOOM_FADE_ZOOM = [2.5, 4]
+export const bloomZoomFade = (zoom) => {
+  const [from, to] = BLOOM_FADE_ZOOM
+  if (!Number.isFinite(zoom) || zoom <= from) return 1
+  if (zoom >= to) return 0
+  const t = (zoom - from) / (to - from)
+  return 1 - t * t * (3 - 2 * t)
+}
