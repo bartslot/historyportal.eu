@@ -514,7 +514,7 @@
                 // too would double-build the HUD (setVoyageDef + refreshArrivalContent) → pins pop twice.
                 return ['voyage', p.sceneId, cfg.voyage, cfg.leg,
                     legDef ? `${legDef.depart}_${legDef.arrive}` : '', (cfg.stop_images || []).join(','),
-                    JSON.stringify(cfg.gallery || {})].join('|')
+                    JSON.stringify(cfg.gallery || {}), JSON.stringify(cfg.checkpoints || [])].join('|')
             }
             return ['gallery', p.sceneId, cfg.title, cfg.date_label, cfg.story, cfg.fit || 'fit', JSON.stringify(cfg.images || [])].join('|')
         }
@@ -762,6 +762,7 @@
                                 stopImages: cfg.stop_images || [],
                                 gallery: cfg.gallery || null,
                                 hotspot: cfg.hotspot || null,
+                                checkpoints: cfg.checkpoints || [],
                             })
                         } catch (_) {}
                     } else if (contentChanged && typeof inst.refreshArrivalContent === 'function') {
@@ -774,6 +775,7 @@
                                 gallery: cfg.gallery || null,
                                 stopImages: cfg.stop_images || [],
                                 hotspot: cfg.hotspot || null,
+                                checkpoints: cfg.checkpoints || [],
                             })
                         } catch (_) {}
                     }
@@ -842,6 +844,13 @@
                         // Double-click a bend → drop that waypoint (undoable, like every other route edit).
                         onWaypointRemove: (wpIndex) =>
                             window.Livewire.dispatch('voyageWaypointRemoved', { sceneId: currentSceneId, wpIndex }),
+                        // Click the route line: a checkpoint there. Drag a checkpoint: it slides along the route.
+                        onCheckpointAdd: (lng, lat) =>
+                            window.Livewire.dispatch('voyageCheckpointAdded', { sceneId: currentSceneId, lng, lat }),
+                        onCheckpointMove: (id, lng, lat) =>
+                            window.Livewire.dispatch('voyageCheckpointMoved', { sceneId: currentSceneId, id, lng, lat }),
+                        onCheckpointFocus: (id) =>
+                            window.dispatchEvent(new CustomEvent('voyage-obj-focus', { detail: { which: 'checkpoint', id } })),
                         // Restore the open gallery ONCE when arriving via a preview "Edit scene" deep-link.
                         openGalleryOnArrive: window.__openGalleryOnLoad === true,
                     })
@@ -856,6 +865,7 @@
                             stopImages: vcfg.stop_images || [],
                             gallery: vcfg.gallery || null,
                             hotspot: vcfg.hotspot || null,
+                            checkpoints: vcfg.checkpoints || [],
                         })
                     }
                     // Expose the live tour so the zoom-out toggle can reach it from any voyage scene.
@@ -3731,6 +3741,7 @@
                         @case('layer') {{ __('Add an image on the slide') }} @break
                         @case('voyage_stop') {{ __('Add a landfall image') }} @break
                         @case('gallery_image') {{ __('Add a gallery image') }} @break
+                        @case('checkpoint_image') {{ __('Add a checkpoint picture') }} @break
                         @case('model3d') {{ __('Add a 3D model') }} @break
                         @default {{ __('Set the scene background') }}
                     @endswitch

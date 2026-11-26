@@ -1183,6 +1183,11 @@ class Lesson extends Model
             foreach ((($cfg['gallery'] ?? [])['images'] ?? []) as $u) {
                 $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
             }
+            foreach ((array) ($cfg['checkpoints'] ?? []) as $cp) {
+                foreach ((array) (is_array($cp) ? ($cp['images'] ?? []) : []) as $u) {
+                    $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Checkpoint picture'));
+                }
+            }
         }
 
         return array_values($out);

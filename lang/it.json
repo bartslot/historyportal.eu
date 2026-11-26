@@ -3186,5 +3186,21 @@
     "Clearing the throat…": "Ci si schiarisce la voce…",
     "Finding the right page…": "Si cerca la pagina giusta…",
     "Testing the microphone…": "Prova microfono…",
-    "Almost there…": "Quasi pronto…"
+    "Almost there…": "Quasi pronto…",
+    "A leg can have at most :n checkpoints.": "Una tappa ha al massimo :n punti di passaggio.",
+    "Add a checkpoint picture": "Aggiungi un'immagine al punto di passaggio",
+    "Checkpoint picture": "Immagine del punto di passaggio",
+    "Checkpoints": "Punti di passaggio",
+    "Checkpoint": "Punto di passaggio",
+    "Checkpoint :n": "Punto di passaggio :n",
+    "Click the route on the map to add one.": "Fai clic sul percorso sulla mappa per aggiungerne uno.",
+    "{1} 1 picture|[2,*] :count pictures": "{1} 1 immagine|[2,*] :count immagini",
+    "Add picture": "Aggiungi immagine",
+    "Behind a button": "Dietro un pulsante",
+    "A bubble on the map opens it.": "Un fumetto sulla mappa lo apre.",
+    "Shows by itself as they pass.": "Compare da solo quando passano.",
+    "Delete checkpoint": "Elimina il punto di passaggio",
+    "Have a look": "Guarda",
+    "Checkpoint: click to show, drag to move": "Punto di passaggio: clic per mostrare, trascina per spostare",
+    "Click to add a checkpoint, drag to bend the route": "Clic per aggiungere un punto di passaggio, trascina per piegare il percorso"
 }
