@@ -20,6 +20,7 @@ import qidOverrides from '../../../database/data/cliopatria-qid-overrides.json';
 import { voyageStyleSources, voyageStyleLayers, initVoyages, ensureVoyagePill, VOYAGE_PILL, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
 import { initVoyageInteraction } from './voyage-interact.js';
 import { loadVoyageCard } from './voyage-card.js';
+import { dateAtSample } from './voyage-hover.js';
 import nationalColors from './national-colors.json';
 import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DEM_SOURCE, satelliteLayers, EARTH_COLOURS } from '../map-imagery.js';
 import { CLOUD_LAYER_ID } from './clouds.js';
@@ -2159,6 +2160,8 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       ships: () => voyageShips,
       locale: document.documentElement.lang || 'en',
       transportNames: JSON.parse(el.dataset.transportNames || '{}'),
+      // Resting on a route opens its journey, as a click does.
+      onDwell: (id) => { if (voyageInteract?.selected !== id) openVoyage(id); },
     });
     // The sailing tall ship (three.js custom layer) rides in its own lazy chunk — same
     // below-the-clouds placement, same era window as the routes.
@@ -2224,6 +2227,101 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     sync();
   });
 
+  /**
+   * Open a voyage's journey: highlight its route and show its card. The card shows the voyage's
+   * own story (public/timemap/voyages/<id>/card.json) instead of a territory lookup.
+   */
+  const openVoyage = (id) => {
+    const v = voyagesData.voyages.find((x) => x.id === id);
+    if (!v) return;
+    if (playingVoyage && playingVoyage.id !== id) stopVoyage();
+    if (selectedId !== null) { clearSelection(); refreshLabels(); }
+    voyageInteract?.select(v.id);
+    state.selectedRegion = v.qid;
+    sync();
+    // No em dash in UI text.
+    window.dispatchEvent(new CustomEvent('polity-selected', {
+      detail: { id: v.qid, name: String(v.name).replace(/\s+—\s+/g, ': '), qid: v.qid, voyageId: v.id },
+    }));
+  };
+
+  // ── Play a journey ──────────────────────────────────────────────────────────────────────
+  //
+  // Bart, 2026-11-26: "there should be a play button, moving our camera to the beginning of the
+  // line and following the journey." The camera flies to where the route starts, then rides with
+  // the traveller to the end: the ship at sea, the horse or camel on land, with the name and date
+  // over it. Any drag, zoom or click on the map hands the camera back.
+  let playingVoyage = null;
+  const PLAY_ZOOM = 5;
+  const PLAY_KM_PER_SECOND = 220;          // Napoleon's 1796-99 journey takes about 70 s
+  const PLAY_SECONDS = [24, 90];           // never a blink, never a lecture
+  // The journey's card sits over the left of the map; the traveller is kept in the middle of what
+  // is left of it, not under the card.
+  const playPadding = () => {
+    const card = document.querySelector('[data-voyage-play]')?.closest('.rounded-card');
+    const r = card?.getBoundingClientRect();
+    return r && r.width && window.innerWidth >= 640 ? { left: Math.round(r.right), top: 0, right: 0, bottom: 0 } : null;
+  };
+  const playState = (id) => window.dispatchEvent(new CustomEvent('voyage-play-state', { detail: { id } }));
+
+  const stopVoyage = () => {
+    if (!playingVoyage) return;
+    const run = playingVoyage;
+    cancelAnimationFrame(run.raf);
+    map.stop();
+    if (run.padding) map.setPadding(run.padding);
+    playingVoyage = null;
+    voyageInteract?.play(null);
+    playState(null);
+  };
+
+  const playVoyage = (id) => {
+    const v = voyagesData.voyages.find((x) => x.id === id);
+    if (!v || !voyageShips) return;
+    stopVoyage();
+    // The route only shows inside its years; bring the map to the year the journey starts.
+    if (state.year < v.show_from || state.year > v.show_to) window.__setTimemapYear?.(v.year_start);
+    const coords = smooth(v.waypoints);
+    let km = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const [a, b] = [coords[i - 1], coords[i]];
+      km += Math.hypot((b[0] - a[0]) * Math.cos(((a[1] + b[1]) / 2) * Math.PI / 180), b[1] - a[1]) * 111.32;
+    }
+    const seconds = Math.min(PLAY_SECONDS[1], Math.max(PLAY_SECONDS[0], km / PLAY_KM_PER_SECOND));
+    const run = { id, raf: 0, start: 0, padding: null };
+    playingVoyage = run;
+    const pad = playPadding();
+    if (pad) { run.padding = map.getPadding(); map.setPadding(pad); }
+    playState(id);
+    voyageInteract?.play(id, 0);
+    const first = voyageShips.pointAt(id, 0);
+    map.flyTo({ center: [first.lng, first.lat], zoom: Math.max(PLAY_ZOOM, Math.min(map.getZoom(), 6)), duration: reduceMotion ? 0 : 2200, essential: true });
+    map.once('moveend', () => {
+      if (playingVoyage !== run) return;
+      const step = (now) => {
+        if (playingVoyage !== run) return;
+        if (!run.start) run.start = now;
+        const t = Math.min(1, (now - run.start) / (seconds * 1000));
+        const at = voyageShips.pointAt(id, t);
+        // jumpTo, not easeTo: a new ease every frame cancels the last one and stutters.
+        map.jumpTo({ center: [at.lng, at.lat] });
+        voyageInteract?.play(id, t);
+        // The timeline rides along: the year of the day the traveller is at, where the sources date it.
+        const date = dateAtSample(v, coords, voyageShips.sampleAtFraction(id, t));
+        const year = date ? new Date(date.ms).getUTCFullYear() : null;
+        if (year !== null && year !== state.year && year >= v.show_from && year <= v.show_to) window.__setTimemapYear?.(year);
+        if (t < 1) run.raf = requestAnimationFrame(step);
+        else window.setTimeout(() => { if (playingVoyage === run) stopVoyage(); }, 2500);
+      };
+      run.raf = requestAnimationFrame(step);
+    });
+  };
+  // The teacher takes the camera back: any drag, wheel or pinch of their own stops the ride.
+  for (const ev of ['dragstart', 'wheel', 'touchstart', 'boxzoomstart']) {
+    map.on(ev, (e) => { if (playingVoyage && e.originalEvent) stopVoyage(); });
+  }
+  window.__timemapPlayVoyage = (id) => (playingVoyage?.id === id ? stopVoyage() : playVoyage(id));
+
   map.on('click', (e) => {
     // Supplemental markers sit on top and carry an explicit QID — check them first (small hit box).
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
@@ -2250,16 +2348,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // the 10px either side, and the box on top of it would make that 17.
     const voyage = map.getLayer('voyage-hit') && map.queryRenderedFeatures(e.point, { layers: ['voyage-hit'] })[0];
     if (voyage) {
-      if (selectedId !== null) { clearSelection(); refreshLabels(); }
-      const p = voyage.properties;
-      voyageInteract?.select(p.id);
-      state.selectedRegion = p.qid;
-      sync();
-      // voyageId: the card shows the voyage's own story (public/timemap/voyages/<id>/card.json)
-      // instead of a territory lookup. No em dash in UI text.
-      window.dispatchEvent(new CustomEvent('polity-selected', {
-        detail: { id: p.qid, name: String(p.name).replace(/\s+—\s+/g, ': '), qid: p.qid, voyageId: p.id },
-      }));
+      openVoyage(voyage.properties.id);
       return;
     }
     voyageInteract?.clear();
@@ -2400,6 +2489,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
    */
   window.__timemapClearSelection = () => {
     if (selectedId !== null) { setSelected(selectedId, false); selectedId = null; refreshLabels(); }
+    stopVoyage();   // closing the card ends its journey too
     voyageInteract?.clear();
     state.selectedRegion = null;
     sync();
