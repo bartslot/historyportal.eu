@@ -244,6 +244,8 @@ export function normalizeLayer(l) {
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
         geo: isGeo(l) ? l.geo : null,
+        // A line drawn with the pen (EditsDrawings): once pinned it must follow the map exactly, never by PIN_ZOOM_GROWTH.
+        drawing: Array.isArray(l.strokes) && l.strokes.length > 0 && !!l.drawn,
         // A vector arrow (arrow-shape.js): its end and its shape. Every other kind ignores these.
         ...(l.kind === 'arrow' ? arrowParams(l) : {}),
         title: l.title || (l.embed && l.embed.title) || 'Icon',
@@ -504,9 +506,39 @@ export class ArtworkOverlay {
       item.lng = ll.lng
       item.lat = ll.lat
       if (geo) item.scale /= this._mapFactor(item)
+      // A drawing pinned by hand gets the map's view now, so it grows exactly with the map from here on.
+      else if (item.drawing) item.geo = this._viewGeo(this._projector.zoom?.())
     }
     this._emit(item)
     return item.anchor === 'map'
+  }
+
+  /** The map's zoom and this stage's size in px: what a drawing's `geo` holds. Null when unknown. */
+  _viewGeo(zoom) {
+    const r = this.host.getBoundingClientRect()
+    if (!Number.isFinite(zoom) || !(r.height > 0) || !(r.width > 0)) return null
+    return { zoom: Math.round(zoom * 10000) / 10000, px: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }
+  }
+
+  /**
+   * Pinned drawings saved without `geo` (pinned by hand before it was kept) grew by PIN_ZOOM_GROWTH, so a route traced
+   * over the map slid off it as soon as the camera zoomed (Bart 11-26: "when I play it drifts"). Give each the view it
+   * shows at the scene's opening zoom, where it looks exactly as before, and save it. Editor only.
+   * @returns {number} how many layers were given one
+   */
+  adoptDrawingGeo() {
+    if (this.readonly || !this._projector) return 0
+    let n = 0
+    for (const item of this._layers) {
+      if (item.anchor !== 'map' || !item.drawing || item.geo) continue
+      const geo = this._viewGeo(this._projector.refZoom?.())
+      if (!geo) continue
+      item.geo = geo
+      this._emit(item)
+      n++
+    }
+    if (n) this.refreshPositions()
+    return n
   }
 
   /** Reposition map-anchored layers — call on every map move/zoom. */
@@ -1671,6 +1703,8 @@ export class ArtworkOverlay {
       anchor: item.anchor,
       lng: Number.isFinite(item.lng) ? item.lng : null,
       lat: Number.isFinite(item.lat) ? item.lat : null,
+      // A pinned drawing's map view (isGeo), so its size keeps following the map after a reload.
+      ...(item.anchor === 'map' && isGeo(item) ? { geo: item.geo } : {}),
     })
     // The timeline records a canvas move as a keyframe when the property is animated.
     window.dispatchEvent(new CustomEvent('scene-object-edited', {

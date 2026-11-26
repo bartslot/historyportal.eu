@@ -372,6 +372,7 @@
                         anchor: free ? 'screen' : (ll ? 'map' : null),
                         lng: !free && ll ? ll.lng : null,
                         lat: !free && ll ? ll.lat : null,
+                        geo: !free && ll ? (t.geo ?? null) : null,
                     })
                 },
             })
@@ -431,6 +432,10 @@
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
             window.__lessonArtworkLayer = overlay
+            // A drawing pinned before pins kept the map's view grows the wrong amount and drifts off the map in play:
+            // give it the view it shows now, once the opening camera has settled (ArtworkOverlay.adoptDrawingGeo).
+            const sid = p.sceneId
+            setTimeout(() => { if (sid === currentSceneId) overlay.adoptDrawingGeo?.() }, 1200)
         }
         const hideMapArt = () => {
             const h = voyageArtHost()
