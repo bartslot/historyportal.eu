@@ -131,7 +131,7 @@ def _prompt(lesson: Lesson, scene: dict, board: dict, pass_: str, cast: list[str
     people = lesson.cast['characters']
     rows, cols = board['grid']
     count = rows * cols
-    ink, white, cross, _ = INK[board['kind']]
+    ink, white, cross, *_ = INK[board['kind']]
     layout = scene['layout']
     marks = {m['id']: m for m in layout['landmarks']}
     text = [f'Use the history-lines skill, pass {"1 (ink)" if pass_ == "ink" else "2 (colour)"} only.']

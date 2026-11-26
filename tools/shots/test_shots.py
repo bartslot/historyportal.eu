@@ -272,3 +272,54 @@ def test_the_layout_map_and_grid_are_drawn_by_code(lesson):
     scene = lesson.scene('plain')
     assert boards.layout_map(scene, scene['boards'][0]).width == 1600
     assert boards.cells(3840, 2160, 2, 2)[3] == (1922, 1082, 3840, 2160)
+
+
+# ── the ink gate on sheets ──────────────────────────────────────────────────────────────────────
+
+def _lines(path: Path, wash: bool = False, horse: tuple[int, int] = (300, 160)) -> Path:
+    """An ink drawing made at four times the size and scaled down, so its lines have soft grey edges like a real one."""
+    big = Image.new('RGB', (1600, 900), 'white')
+    draw = ImageDraw.Draw(big)
+    w, h = horse
+    for i in range(3):
+        left = 120 + i * 500
+        draw.rectangle([left, 300, left + w, 300 + h], outline='black', width=14)           # body
+        for x in (left + 20, left + w - 40):
+            draw.line([x, 300 + h, x, 700], fill='black', width=14)                         # legs
+        for k in range(14):
+            draw.line([left + 20 + k * 20, 330, left + 20 + k * 20, 280 + h], fill='black', width=8)   # hatching
+        if wash:
+            draw.rectangle([left + 30, 320, left + w - 30, 280 + h], fill=(150, 150, 150))
+    small = big.resize((400, 225), Image.LANCZOS)
+    small.save(path)
+    return path
+
+
+def test_soft_line_edges_are_not_grey_shading_but_a_wash_is(tmp_path):
+    assert colour.grey_shading(colour.load(_lines(tmp_path / 'clean.png'))) <= verify.GREY_MAX
+    washed = verify.sheet(_lines(tmp_path / 'wash.png', wash=True))
+    assert 'grey-shading' in washed['failures']
+
+
+def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
+    blank = tmp_path / 'blank.png'
+    Image.new('RGB', (400, 225), 'white').save(blank)
+    assert verify.sheet(blank)['failures'] == ['ink-weight']
+    dark = tmp_path / 'dark.png'
+    Image.new('RGB', (400, 225), 'black').save(dark)
+    assert {'ink-weight', 'paper'} <= set(verify.sheet(dark)['failures'])
+
+
+def test_two_animals_with_the_same_outline_and_build_are_too_similar(tmp_path):
+    a, b = _lines(tmp_path / 'a.png'), _lines(tmp_path / 'b.png')
+    c = _lines(tmp_path / 'c.png', horse=(420, 90))
+    pairs = {(p['a'], p['b']): p for p in verify.look_alike([a, b, c])}
+    assert pairs[('a.png', 'b.png')]['too_similar']
+    assert not pairs[('a.png', 'c.png')]['too_similar'], 'a longer, lower animal is a different animal'
+
+
+def test_an_ink_sheet_that_fails_the_gate_cannot_be_approved(lesson, tmp_path, monkeypatch):
+    write(lesson.cast_file, lesson.cast)
+    monkeypatch.setattr(shots, 'Lesson', lambda slug: Lesson(slug, tmp_path / 'shots', tmp_path / 'media', tmp_path / 'style'))
+    assert shots.main(['approve', 'test', 'niccolo', 'ink', 'sheets/niccolo-ink.png']) == 2
+    assert shots.main(['sheet', str(_lines(tmp_path / 'x.png', wash=True))]) == 1
