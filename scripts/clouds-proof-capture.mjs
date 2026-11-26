@@ -45,11 +45,12 @@ const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
 ]
 
 mkdirSync(out, { recursive: true })
-// A real window, parked off-screen: headless falls back to software GL, and a minimised window
-// stops drawing.
+// Headless, always: a headed window takes the keyboard focus on every launch, even parked
+// off-screen. On a Mac ANGLE's Metal backend keeps headless on the real GPU; report.json records
+// the renderer, so a run that fell back to software GL is visible.
 const browser = await chromium.launch({
-  headless: false,
-  args: ['--window-position=-3000,-3000', '--window-size=1280,880', '--ignore-gpu-blocklist'],
+  headless: true,
+  args: ['--ignore-gpu-blocklist', '--enable-gpu', ...(process.platform === 'darwin' ? ['--use-angle=metal'] : [])],
 })
 const report = []
 try {
