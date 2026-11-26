@@ -61,7 +61,7 @@ Each step ends in a gate. Do not start a step while the one before it is open.
   close-up, and nothing else, large enough that hair, face and garment are still readable when the sheet is one
   of several attachments. It says who someone is, never how to stand.
 - Every ink sheet goes through the gate before bart sees it: `shots.py sheet <file> [<file> ...]`. It measures
-  ink (6 to 8% for a sheet), bare paper (at least 85%) and grey shading away from the lines (none: an ink pass has
+  ink (6 to 8% asked for on a sheet, 5.5% accepted for clean line sheets: bart, Nov 26), bare paper (at least 85%) and grey shading away from the lines (none: an ink pass has
   no wash). Given several sheets, it also compares their standing side views: two animals with the same
   proportions and largely the same outline read as one animal redrawn, whatever their coat. A sheet that fails is
   a new run, not a candidate. So a sheet opens with a standing side view, and every sheet of one kind (all the

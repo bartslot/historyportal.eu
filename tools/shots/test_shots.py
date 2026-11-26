@@ -318,6 +318,14 @@ def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
     assert {'ink-weight', 'paper'} <= set(verify.sheet(dark)['failures'])
 
 
+def test_a_clean_line_sheet_at_5_7_percent_ink_passes(tmp_path):
+    path = tmp_path / 'clean.png'
+    image = Image.new('RGB', (400, 225), 'white')
+    ImageDraw.Draw(image).rectangle([0, 0, 89, 56], fill='black')      # 90 x 57 px = 5.7% of the page
+    image.save(path)
+    assert verify.sheet(path)['failures'] == []
+
+
 def test_two_animals_with_the_same_outline_and_build_are_too_similar(tmp_path):
     a, b = _lines(tmp_path / 'a.png'), _lines(tmp_path / 'b.png')
     c = _lines(tmp_path / 'c.png', horse=(420, 90))

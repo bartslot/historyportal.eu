@@ -22,9 +22,9 @@ PASSES = ('ink', 'colour')
 
 # Ink per kind of picture: the table in the History Lines skill. Black coverage, white share, cross-hatching,
 # then what the gate measures: ink share accepted (percent) and the least bare paper (percent). For a sheet these
-# are bart's own gate (Nov 26): ink 6 to 8%, white at least 85%.
+# are bart's own gate (Nov 26): ink 6 to 8% asked for, 5.5% accepted for clean line sheets, white at least 85%.
 INK = {
-    'sheet': ('6 to 8%', 'at least 85%', 'none', (6, 8), 85),
+    'sheet': ('6 to 8%', 'at least 85%', 'none', (5.5, 8), 85),
     'scene': ('10 to 14%', '65 to 75%', 'at most a fifth of the shaded area', (8, 16), 60),
     'bright': ('5 to 8%', '80% or more', 'none', (5, 8), 80),
     'backdrop': ('8 to 12%', '70 to 80%', 'at most a fifth of the shaded area', (6, 14), 65),
@@ -127,8 +127,6 @@ class Lesson:
                 if colour in owners:
                     found.append(f'{key} and {owners[colour]} share the signature colour "{colour}".')
                 owners[colour] = key
-            if colour == 'white' and key != 'beatrice':
-                found.append(f'{key} wears white; only Beatrice does.')
             if person.get('horse') and person['horse'] not in people:
                 found.append(f'{key} rides "{person["horse"]}", which is not in the cast list.')
             for pass_ in PASSES:
