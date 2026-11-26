@@ -93,38 +93,38 @@
     "marco-horse": {
       "name": "Marco's horse",
       "kind": "horse",
-      "look": "A smaller, lively chestnut: red-brown, lighter mane, white socks. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A smaller, lively, compact chestnut: red-brown, lighter mane, a white blaze and one white sock on the left hind. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
         "ink": null,
         "colour": null
       },
       "swatches": {},
       "palette": {},
-      "tell": "the smallest horse, red-brown with white socks"
+      "tell": "the smallest, compact red-brown horse with a blaze and one white hind sock"
     },
     "niccolo-horse": {
       "name": "Niccolò's horse",
       "kind": "horse",
-      "look": "A heavy, calm bay: warm brown, black mane and tail, white blaze. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A heavy, calm bay: warm brown body, black mane, tail and lower legs, a white star on the forehead. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
         "ink": null,
         "colour": null
       },
       "swatches": {},
       "palette": {},
-      "tell": "the heavy brown horse with black mane and a white blaze"
+      "tell": "the heavy brown horse with black mane, tail and legs and a white star"
     },
     "maffeo-horse": {
       "name": "Maffeo's horse",
       "kind": "horse",
-      "look": "A lean, long-necked dapple grey. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A lean, long-necked dapple grey with a dark muzzle and darker legs. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
         "ink": null,
         "colour": null
       },
       "swatches": {},
       "palette": {},
-      "tell": "the lean dapple grey"
+      "tell": "the lean long-necked dapple grey with a dark muzzle"
     }
   }
 }
