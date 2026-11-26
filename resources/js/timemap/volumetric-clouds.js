@@ -21,7 +21,7 @@
 import { mapTransform, EARTH_RADIUS_M } from '../map/maplibre-compat.js'
 import { CLOUD_FIELD_MOTION } from './cloud-field.js'
 
-const LAYER_ID = 'tm-cloud-volume'
+export const CLOUD_VOLUME_LAYER_ID = 'tm-cloud-volume'
 
 /**
  * Camera heights, in metres, over which the 3D clouds take over from the flat deck.
@@ -64,13 +64,15 @@ const STALLS_TO_STEP_DOWN = 8
  * not hold it now, and a quality that hunts up and down is a worse picture than a lower one.
  * Returns the index into `levels` to use; `levels.length` means "off".
  *
+ * Two levels (full, half resolution), then off; below 28 fps averaged over `window` frames, step down.
+ *
  * @param {object} [opts]
- * @param {number} [opts.levels]   how many quality levels there are before "off"
- * @param {number} [opts.minFps]   below this, averaged over `window` frames, step down
  * @param {number} [opts.window]   frames per judgement
  * @param {number} [opts.settle]   frames ignored after every change (shader compiles, uploads)
  */
-export const createQualityGovernor = ({ levels = 2, minFps = 28, window = 90, settle = 45 } = {}) => {
+const QUALITY_LEVELS = 2
+const MIN_FPS = 28
+export const createQualityGovernor = ({ window = 90, settle = 45 } = {}) => {
   let level = 0
   let skip = settle
   let frames = 0
@@ -80,7 +82,7 @@ export const createQualityGovernor = ({ levels = 2, minFps = 28, window = 90, se
     get level() { return level },
     /** @param {number} dtMs time since the previous frame */
     sample(dtMs) {
-      if (level >= levels || !(dtMs > 0)) return level
+      if (level >= QUALITY_LEVELS || !(dtMs > 0)) return level
       // One gap this long is a hidden tab or a stalled loader, not a slow frame. A run of them is a
       // machine drawing under 4 frames a second, which no average is needed to judge.
       if (dtMs > 250) {
@@ -98,7 +100,7 @@ export const createQualityGovernor = ({ levels = 2, minFps = 28, window = 90, se
       const fps = 1000 * frames / total
       frames = 0
       total = 0
-      if (fps < minFps) { level++; skip = settle }
+      if (fps < MIN_FPS) { level++; skip = settle }
       return level
     },
   }
@@ -125,7 +127,7 @@ export const createVolumetricCloudLayer = ({
   let dead = false
   let last = 0
   let state = {
-    sun: [0.4, 0.5, 0.75], strength: 1, animate: true,
+    sun: [0.4, 0.5, 0.75], strength: 1,
     // The deck's own drift and wind, so the baked weather moves exactly as the deck's does.
     ...CLOUD_FIELD_MOTION,
     // How many times taller than life the cloud layers are drawn. Real cloud tops out near 12 km,
@@ -151,7 +153,6 @@ export const createVolumetricCloudLayer = ({
     // hard rim, with a soft ramp the same weather breaks up into separate cumulus.
     weatherLow: 0.1,
     weatherHigh: 0.95,
-    deckOpacity: null,
     ...options,
   }
   const governor = createQualityGovernor()
@@ -181,7 +182,7 @@ export const createVolumetricCloudLayer = ({
   }
 
   return {
-    id: LAYER_ID,
+    id: CLOUD_VOLUME_LAYER_ID,
     type: 'custom',
     renderingMode: '3d',
 
@@ -216,7 +217,7 @@ export const createVolumetricCloudLayer = ({
       const dt = last ? now - last : 0
       last = now
       const level = governor.sample(dt)
-      if (level >= 2) { giveUp('frame rate stayed low'); return }
+      if (level >= QUALITY_LEVELS) { giveUp('frame rate stayed low'); return }
 
       let drawn = false
       try {
@@ -250,5 +251,3 @@ export const createVolumetricCloudLayer = ({
     debug: () => engine?.debug?.(),
   }
 }
-
-export const CLOUD_VOLUME_LAYER_ID = LAYER_ID

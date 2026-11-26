@@ -4,9 +4,9 @@
  *
  * The cloud container's software renderer cannot draw Takram's clouds, so the look is only ever
  * judged on a machine with a GPU. This drives the proof page (npx vite --config
- * vite.clouds-proof.config.js, port 5197) in a Chromium window parked off-screen, takes each shot
- * in SHOTS, and writes the pictures, a report.json (frame rate, layer status, camera agreement,
- * console errors) and one labelled contact sheet.
+ * vite.clouds-proof.config.js, port 5197) in headless Chromium, takes each shot in SHOTS, and
+ * writes the pictures, a report.json (frame rate, layer status, camera agreement, console errors)
+ * and one labelled contact sheet.
  *
  *   node scripts/clouds-proof-capture.mjs --out <folder> [--shots shots.json] [--base http://localhost:5197]
  *
@@ -24,7 +24,6 @@ const out = resolve(arg('out', 'storage/clouds-proof'))
 const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
 const view = `${italy}&zoom=7&pitch=60`
-// "A" is the candidate look; the shots before it change one thing at a time from the defaults.
 const far = 'lng=-40&lat=30&zoom=6&pitch=60&sunLng=-110&sunLat=10'
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
   { name: '01-italy', query: view },
