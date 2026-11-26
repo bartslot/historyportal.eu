@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { attachLoop, detachLoop, loopVideo, loopSource } from '../picture-loop.js'
+import { attachLoop, detachLoop, loopVideo, loopSource, setLoopsPaused, seekLoops } from '../picture-loop.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { hideFlatLayers } from '../stage-handoff.js'
 
@@ -88,8 +88,7 @@ describe('AV1 copy', () => {
 })
 
 describe('holding every loop with the scene clock', () => {
-  it('pauses and resumes the loops on the page, and holds one made while paused', async () => {
-    const { setLoopsPaused } = await import('../picture-loop.js')
+  it('pauses and resumes the loops on the page, and holds one made while paused', () => {
     const host = document.createElement('div')
     const v = attachLoop(host, '/storage/held-a.mp4')
     const pause = vi.fn()
@@ -106,8 +105,7 @@ describe('holding every loop with the scene clock', () => {
     expect(play).toHaveBeenCalled()
   })
 
-  it('seeks every loop to the scene time, wrapped to its own length', async () => {
-    const { seekLoops, setLoopsPaused } = await import('../picture-loop.js')
+  it('seeks every loop to the scene time, wrapped to its own length', () => {
     setLoopsPaused(true)
     const v = loopVideo('/storage/seek.mp4')
     Object.defineProperty(v, 'duration', { value: 4, configurable: true })
@@ -117,8 +115,7 @@ describe('holding every loop with the scene clock', () => {
     setLoopsPaused(false)
   })
 
-  it('forgets a stopped loop', async () => {
-    const { setLoopsPaused } = await import('../picture-loop.js')
+  it('forgets a stopped loop', () => {
     const host = document.createElement('div')
     const v = attachLoop(host, '/storage/gone.mp4')
     detachLoop(host)
