@@ -61,6 +61,18 @@ describe('seaSafeDef', () => {
     expect(fixed.legs[1].depart).toBe('1798-05-19')
   })
 
+  it('drops a bend out at sea that the route turns back at, and keeps a call on a shore', () => {
+    // Bart, 2026-11-26: the return to Venice ran up to a bend off Bari and straight back down.
+    const def = {
+      waypoints: [[20.31, 37.69], [18.44, 40.81], [17.5, 41.5], [17.791, 40.849], [15.966, 42.432], [12.34, 45.44]],
+      legs: [{ wp: [0, 5], transport: 'sea' }],
+    }
+    expect(at(seaSafeDef(def, grid), [17.5, 41.5])).toBe(-1)
+    // Samudra on Sumatra: Marco Polo's fleet sailed in and back out. A call, not a spur.
+    const call = { waypoints: [[100.5, 4.5], [97.9, 5.1], [94.5, 6.5]], legs: [{ wp: [0, 2], transport: 'sea' }] }
+    expect(at(seaSafeDef(call, grid), [97.9, 5.1])).toBe(1)
+  })
+
   it('leaves the given route alone', () => {
     const def = oldNapoleon()
     const copy = JSON.parse(JSON.stringify(def))

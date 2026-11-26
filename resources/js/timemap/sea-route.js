@@ -373,6 +373,47 @@ function nudgeBends(def, g) {
   return out;
 }
 
+/** Is there land within `distKm` of p? */
+function landWithin(g, p, distKm) {
+  const x = cellX(g, wrapLon(p[0])), y = cellY(g, p[1]);
+  const r = Math.ceil(distKm / (111.32 / g.per));
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) if (landAt(g, x + dx, y + dy)) return true;
+  }
+  return false;
+}
+
+/**
+ * A bend the ship turns back at (more than about 125 degrees) on a ship leg draws a spike out and
+ * back: Bart, 2026-11-26, on a spur north of Brindisi, "this doesn't look good". A bend out at sea
+ * goes, when the curve is no worse over land without it; stops and calls on a shore stay.
+ * Null when nothing went.
+ */
+function dropSpurBends(def, g) {
+  let out = null;
+  for (let changed = true; changed;) {
+    changed = false;
+    const cur = out || def;
+    const stops = stopsOf(cur);
+    for (let j = 1; j < cur.waypoints.length - 1; j++) {
+      if (stops.has(j) || !shipStretch(cur, j - 1) || !shipStretch(cur, j)) continue;
+      const [a, b, c] = [cur.waypoints[j - 1], cur.waypoints[j], cur.waypoints[j + 1]];
+      const u = [b[0] - a[0], b[1] - a[1]], w = [c[0] - b[0], c[1] - b[1]];
+      const nu = Math.hypot(...u), nw = Math.hypot(...w);
+      if (nu > 1e-9 && nw > 1e-9 && (u[0] * w[0] + u[1] * w[1]) / (nu * nw) >= -0.6) continue;
+      if (landWithin(g, b, PORT_KM)) continue;   // a bend on a shore is a call (Bear Island, Samudra)
+      const trial = JSON.parse(JSON.stringify(cur));
+      removeAt(trial, j);
+      const from = Math.max(0, j - 2);
+      if (sumLand(g, trial, from, 2) > sumLand(g, cur, from, 3) + 0.5) continue;
+      out = trial;
+      changed = true;
+      break;
+    }
+  }
+  return out;
+}
+
 /** The opposite of insertAfter: waypoint j out, leg indexes and label_at shifted back. */
 function removeAt(def, j) {
   def.waypoints.splice(j, 1);
@@ -485,8 +526,10 @@ export function seaSafeDef(def, g) {
   const clone = (d) => JSON.parse(JSON.stringify(d));
   const key = (d, i) => `${d.waypoints[i]}|${d.waypoints[i + 1]}`;
   const given = new Set();   // stretches routed as well as the mask allows: not tried again
-  let out = nudgeBends(def, g);
-  const moved = out ? out.waypoints.filter((p, i) => p !== def.waypoints[i] && (p[0] !== def.waypoints[i][0] || p[1] !== def.waypoints[i][1])) : [];
+  let out = dropSpurBends(def, g);
+  out = nudgeBends(out || def, g) || out;
+  const keep = new Set(def.waypoints.map((p) => `${p}`));
+  const moved = out ? out.waypoints.filter((p) => !keep.has(`${p}`)) : [];
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const cur = out || def;
     // A stretch with no leg is a hole in the data (Paris to Toulon once had none), not a passage.
