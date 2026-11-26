@@ -91,6 +91,15 @@ export function attachLoop (host, url, { fit = 'cover', objectPosition = '' } = 
   return video
 }
 
+/** Stop every loop anywhere inside `root` (a layered panel being torn down), so none lingers in the page's set. */
+export function stopLoopsIn (root) {
+  root?.querySelectorAll?.(`video.${LOOP_CLASS}`).forEach(v => {
+    v.pause()
+    v.removeAttribute('src')
+    v.load()
+  })
+}
+
 /** Remove the loop from `host` and stop it downloading. */
 export function detachLoop (host) {
   host?.querySelectorAll?.(`:scope > video.${LOOP_CLASS}`).forEach(v => {
