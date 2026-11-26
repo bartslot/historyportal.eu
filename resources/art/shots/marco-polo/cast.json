@@ -29,8 +29,17 @@
           }
         }
       },
-      "swatches": {},
-      "palette": {},
+      "swatches": {
+        "tunic": [
+          0.58,
+          0.38,
+          0.63,
+          0.45
+        ]
+      },
+      "palette": {
+        "tunic": "#FCFAF8"
+      },
       "tell": "17, beardless, shoulder-length chestnut hair, white tunic, no cloak",
       "signature": "white"
     },
@@ -47,11 +56,34 @@
         "cloak"
       ],
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/niccolo/ink-05.png",
+          "sha256": "a2762f6fc3b45e1d46b309d543468e43e74158fe0d8aead7adaf70c37a3a2f44",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/niccolo/colour-05.png",
+          "sha256": "202e266e7677eec407bc5c063bc2fc5039a30e78522e454b5abd5a1233b30399",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
       },
-      "swatches": {},
-      "palette": {},
+      "swatches": {
+        "cloak": [
+          0.78,
+          0.2,
+          0.82,
+          0.3
+        ]
+      },
+      "palette": {
+        "cloak": "#D84238"
+      },
       "tell": "oldest, broad square face, full rounded grey beard, rust-orange cap, red cloak"
     },
     "maffeo": {
@@ -86,45 +118,119 @@
           }
         }
       },
-      "swatches": {},
-      "palette": {},
+      "swatches": {
+        "cloak": [
+          0.76,
+          0.27,
+          0.82,
+          0.36
+        ],
+        "cap": [
+          0.46,
+          0.625,
+          0.5,
+          0.65
+        ]
+      },
+      "palette": {
+        "cloak": "#6B8CB7",
+        "cap": "#6E8EB8"
+      },
       "tell": "long narrow face, short pointed near-black beard, blue cap, blue cloak"
     },
     "marco-horse": {
       "name": "Marco's horse",
       "kind": "horse",
-      "look": "A smaller, lively chestnut: red-brown, lighter mane, white socks. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A smaller, lively, compact chestnut: red-brown, lighter mane, a white blaze and one white sock on the left hind. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/marco-horse/ink-03.png",
+          "sha256": "942151f46dd5bff4955b04b020f3c7aada322ec969b49e90ffe27597926d8f46",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/marco-horse/colour-03.png",
+          "sha256": "a65937206b93ebd9e63eb62f504777beb51fe30250b9682616d942c6d7b8e447",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
       },
       "swatches": {},
       "palette": {},
-      "tell": "the smallest horse, red-brown with white socks"
+      "tell": "the smallest, compact red-brown horse with a blaze and one white hind sock"
     },
     "niccolo-horse": {
       "name": "Niccolò's horse",
       "kind": "horse",
-      "look": "A heavy, calm bay: warm brown, black mane and tail, white blaze. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A black horse with the same build and size as Marco's chestnut (bart, Nov 26: the bay was too small): black coat, black mane and tail, only a small, faint, irregular natural white patch on the forehead. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/niccolo-horse/ink-09.png",
+          "sha256": "d0f6861eaa49de1b027b5440481b6abf2efcf7a0c725b3c606b4771faf6c6044",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/niccolo-horse/colour-09.png",
+          "sha256": "a494b125b08761ad22ffb26f679ad078a2bf8ad7a4cc287104b6464b7cc2fd73",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
       },
       "swatches": {},
       "palette": {},
-      "tell": "the heavy brown horse with black mane and a white blaze"
+      "tell": "the black horse, built like the chestnut"
     },
     "maffeo-horse": {
       "name": "Maffeo's horse",
       "kind": "horse",
-      "look": "A lean, long-necked dapple grey. A small, sturdy horse of the region, never a big European warhorse.",
+      "look": "A lean, long-necked dapple grey with a dark muzzle and darker legs. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
+      "sheets": {
+        "ink": {
+          "path": "sheets/maffeo-horse/ink-02.png",
+          "sha256": "2ed7e45d95ed74d91bed92461b9f2c55461c4400788db2a5483652b1f9308615",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/maffeo-horse/colour-02.png",
+          "sha256": "2389c428b04e81d8517163e3e242264b61fb5a0351aef0c70681ba91991f9f87",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {},
+      "palette": {},
+      "tell": "the lean long-necked dapple grey with a dark muzzle"
+    },
+    "kublai": {
+      "name": "Kublai Khan",
+      "kind": "person",
+      "look": "The Great Khan, about 51 in 1266. Polo: 'neither tall nor short', 'complexion white and red, the eyes black'. A broad round face, a thin moustache and a small chin beard, a sturdy build. A long robe of dark gold silk with a fur-trimmed collar, a broad belt, a fur-trimmed Mongol hat. Seated on a throne in every shot he is in.",
+      "tell": "the seated ruler in dark gold silk with a fur-trimmed hat",
+      "signature": "gold",
+      "signature_parts": [
+        "robe"
+      ],
       "sheets": {
         "ink": null,
         "colour": null
       },
       "swatches": {},
-      "palette": {},
-      "tell": "the lean dapple grey"
+      "palette": null
     }
   }
 }

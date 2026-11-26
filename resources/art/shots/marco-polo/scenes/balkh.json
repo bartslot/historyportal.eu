@@ -1,0 +1,207 @@
+{
+  "scene": "balkh",
+  "title": "Balkh, the ruined city",
+  "script": "project files: new-scenes/storyboard-order.md, item 5 (stop 5482)",
+  "place": "Balkh, about 1272-73: once a great city, much of it in ruins after the Mongol conquest (Polo, Book 1 ch. 27).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: 'much greater in former days... greatly ravaged and destroyed... formerly many fine palaces and buildings of marble, and the ruins of them still remain.'",
+      "Sacked 1220-21; what survives is mostly huge eroded mud-brick ramparts."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/balkh.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      1000,
+      600
+    ],
+    "light": "hazy morning light from the east (right)",
+    "landmarks": [
+      {
+        "id": "walls",
+        "label": "eroded mud-brick ramparts",
+        "at": [
+          600,
+          400
+        ],
+        "size": 300,
+        "note": "long eroded mud-brick ramparts with one or two broken domes behind",
+        "height": 15
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the Polos, along the old road",
+        "points": [
+          [
+            100,
+            200
+          ],
+          [
+            500,
+            300
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "balkh-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              150,
+              150
+            ],
+            "looks_at": [
+              600,
+              400
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan small before the long eroded mud-brick ramparts of Balkh, one or two broken domes behind them.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "walls": "across the background"
+          },
+          "places": {
+            "marco": [
+              495.78,
+              351.25
+            ],
+            "niccolo": [
+              499.66,
+              344.26
+            ],
+            "maffeo": [
+              503.55,
+              337.26
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [
+            "marco",
+            "marco-horse"
+          ],
+          "camera": {
+            "at": [
+              430,
+              270
+            ],
+            "looks_at": [
+              520,
+              330
+            ],
+            "framing": "Medium"
+          },
+          "action": "Marco rides through a ruined gateway under a broken pointed brick arch, looking up.",
+          "where": {
+            "marco-horse": "Marco's mount"
+          },
+          "places": {
+            "marco": [
+              435.99,
+              275.44
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              500,
+              300
+            ],
+            "looks_at": [
+              600,
+              380
+            ],
+            "framing": "Wide"
+          },
+          "action": "Empty ruined streets: mud-brick rubble, broken glazed tiles and a few marble blocks; a single goatherd and his goats."
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              480,
+              290
+            ],
+            "looks_at": [
+              520,
+              320
+            ],
+            "framing": "Medium on two"
+          },
+          "action": "Niccolò tells Maffeo this was once among the noblest cities; both look over the ruins.",
+          "where": {
+            "niccolo": "the older man in red",
+            "maffeo": "the man in blue"
+          },
+          "places": {
+            "niccolo": [
+              485.97,
+              295.38
+            ],
+            "maffeo": [
+              486.83,
+              294.22
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

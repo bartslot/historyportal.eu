@@ -1,0 +1,189 @@
+{
+  "scene": "ganzhou",
+  "title": "Ganzhou, the great Buddha",
+  "script": "project files: new-scenes/storyboard-order.md, item 9 (stop 5485)",
+  "place": "Ganzhou (Campichu), about 1274: many monasteries and great reclining figures of the Buddha (Polo, Book 1 ch. 44).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: idols 'a good ten paces', of wood, clay or stone, gilded; 'The great idols... lie at length', with figures paying homage around them; also three Christian churches; Maffeo and Marco stayed a year.",
+      "The Great Buddha Temple in Zhangye (1098): a gilded clay reclining Buddha about 35 m long in a timber hall."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/ganzhou.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      100,
+      60
+    ],
+    "light": "soft light through the temple doors from the south",
+    "landmarks": [
+      {
+        "id": "buddha",
+        "label": "great reclining Buddha",
+        "at": [
+          50,
+          45
+        ],
+        "size": 40,
+        "note": "a huge reclining figure along the back wall of the temple hall",
+        "height": 8
+      },
+      {
+        "id": "doors",
+        "label": "temple doors",
+        "at": [
+          50,
+          2
+        ],
+        "size": 8,
+        "note": "south, open",
+        "height": 6
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "ganzhou-a",
+      "kind": "scene",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              50,
+              5
+            ],
+            "looks_at": [
+              50,
+              45
+            ],
+            "framing": "Wide, from the doors"
+          },
+          "action": "The Polos step into a dim timber temple hall where a huge gilded clay Buddha lies along the back wall, disciple figures standing behind it.",
+          "where": {
+            "marco": "the young man in white, in front",
+            "niccolo": "the man in red",
+            "maffeo": "the man in blue"
+          },
+          "sees": {
+            "buddha": "across the back of the frame"
+          },
+          "places": {
+            "marco": [
+              50.0,
+              45.0
+            ],
+            "niccolo": [
+              47.0,
+              45.0
+            ],
+            "maffeo": [
+              53.0,
+              45.0
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              40,
+              30
+            ],
+            "looks_at": [
+              50,
+              42
+            ],
+            "framing": "Medium, low angle"
+          },
+          "action": "Marco looks up at the calm painted face of the Buddha, tiny beside it.",
+          "places": {
+            "marco": [
+              44.2,
+              36.91
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              55,
+              30
+            ],
+            "looks_at": [
+              50,
+              40
+            ],
+            "framing": "Medium"
+          },
+          "action": "Monks in robes light lamps and bow before the figure."
+        },
+        {
+          "shot": 4,
+          "seconds": 4,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              45,
+              25
+            ],
+            "looks_at": [
+              52,
+              28
+            ],
+            "framing": "Medium on two"
+          },
+          "action": "Niccolò and Maffeo stand quietly, hats in hand, watching the monks.",
+          "where": {
+            "niccolo": "the older man in red",
+            "maffeo": "the man in blue"
+          },
+          "places": {
+            "niccolo": [
+              51.72,
+              28.66
+            ],
+            "maffeo": [
+              52.28,
+              27.34
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

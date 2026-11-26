@@ -93,9 +93,17 @@ def find(rgb: np.ndarray, target_hex: str) -> dict:
             'share': round(share, 2)}
 
 
+def is_paper(value: str) -> bool:
+    """A colour that reads as bare paper: a white garment on a white sheet."""
+    return bool(masks(hex_rgb(value)[None, None])[2].item())
+
+
 def sample(rgb: np.ndarray) -> str | None:
-    """The main paint colour in a swatch box cut from an approved sheet (ink and paper left out)."""
+    """The main paint colour in a swatch box cut from an approved sheet (ink and paper left out). A box that is mostly
+    paper-white is a white garment: its colour is the white itself, not the grey of its shadow folds."""
     values, ink, paper = masks(rgb)
+    if paper.sum() > 2 * (~ink & ~paper).sum():
+        return rgb_hex(unlab(np.median(values[paper], axis=0)))
     paint = values[~ink & ~paper]
     if len(paint) < 20:
         return None
