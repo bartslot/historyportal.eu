@@ -79,8 +79,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -116,6 +116,20 @@
           },
           "sees": {
             "peaks": "across the horizon"
+          },
+          "places": {
+            "marco": [
+              999.2,
+              700.8
+            ],
+            "niccolo": [
+              1000.0,
+              700.0
+            ],
+            "maffeo": [
+              1000.8,
+              699.2
+            ]
           }
         },
         {
@@ -159,6 +173,20 @@
             "marco": "the young man in white fur coat",
             "niccolo": "the man in red",
             "maffeo": "the man in blue"
+          },
+          "places": {
+            "marco": [
+              1289.5,
+              401.1
+            ],
+            "niccolo": [
+              1290.0,
+              400.0
+            ],
+            "maffeo": [
+              1290.5,
+              398.9
+            ]
           }
         },
         {
@@ -178,7 +206,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Marco watches a pot that barely steams, the food slow to cook, his breath white in the cold."
+          "action": "Marco watches a pot that barely steams, the food slow to cook, his breath white in the cold.",
+          "places": {
+            "marco": [
+              1289.3,
+              398.9
+            ]
+          }
         }
       ]
     }

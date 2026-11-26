@@ -164,6 +164,10 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
         for who, person in people.items():
             present = who in spec.get('who', [])
             for part, target in (person.get('palette') or {}).items():
+                if colour.is_paper(target):
+                    if present:
+                        notes.append(f'Cell {n}: {person["name"]}\'s {part} is white on white paper; check it by eye.')
+                    continue
                 area = region(cell, (regions or {}).get(str(n), {}).get(who)) if present else cell
                 result = colour.find(area, target)
                 close = result['delta'] is not None and result['delta'] <= colour.SAME

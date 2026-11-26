@@ -61,8 +61,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -92,6 +92,20 @@
           },
           "sees": {
             "fire": "centre"
+          },
+          "places": {
+            "marco": [
+              18.8,
+              22.0
+            ],
+            "niccolo": [
+              20.0,
+              22.0
+            ],
+            "maffeo": [
+              21.2,
+              22.0
+            ]
           }
         },
         {
@@ -128,7 +142,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Marco listens, wide-eyed, firelight on his face."
+          "action": "Marco listens, wide-eyed, firelight on his face.",
+          "places": {
+            "marco": [
+              20.6,
+              21.4
+            ]
+          }
         },
         {
           "shot": 4,
@@ -152,6 +172,16 @@
           "where": {
             "niccolo": "the older man with the grey beard, waving his hand",
             "maffeo": "the man in blue, frowning"
+          },
+          "places": {
+            "niccolo": [
+              22.2,
+              20.5
+            ],
+            "maffeo": [
+              21.8,
+              19.5
+            ]
           }
         }
       ]

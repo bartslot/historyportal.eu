@@ -60,8 +60,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -97,6 +97,20 @@
           },
           "sees": {
             "orchards": "across the background"
+          },
+          "places": {
+            "marco": [
+              399.1,
+              300.7
+            ],
+            "niccolo": [
+              400.0,
+              300.0
+            ],
+            "maffeo": [
+              400.9,
+              299.3
+            ]
           }
         },
         {
@@ -150,7 +164,13 @@
             ],
             "framing": "Medium"
           },
-          "action": "Marco on the bank turns a piece of jade in his fingers, fascinated."
+          "action": "Marco on the bank turns a piece of jade in his fingers, fascinated.",
+          "places": {
+            "marco": [
+              389.0,
+              180.7
+            ]
+          }
         }
       ]
     }

@@ -134,7 +134,7 @@ class Lesson:
                     self.sheet(key, pass_)
                 except Refused as refusal:
                     found.append(str(refusal))
-            if ((person.get('sheets') or {}).get('colour') or {}).get('approved') and not person.get('palette'):
+            if ((person.get('sheets') or {}).get('colour') or {}).get('approved') and person.get('signature_parts') and not person.get('palette'):
                 found.append(f'{key} has an approved colour sheet but no palette sampled from it.')
         horses = [p['horse'] for p in people.values() if p.get('horse')]
         for horse in {h for h in horses if horses.count(h) > 1}:

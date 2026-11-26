@@ -79,7 +79,9 @@
           0.3
         ]
       },
-      "palette": {},
+      "palette": {
+        "cloak": "#D84238"
+      },
       "tell": "oldest, broad square face, full rounded grey beard, rust-orange cap, red cloak"
     },
     "maffeo": {
@@ -128,7 +130,10 @@
           0.65
         ]
       },
-      "palette": {},
+      "palette": {
+        "cloak": "#6B8CB7",
+        "cap": "#6E8EB8"
+      },
       "tell": "long narrow face, short pointed near-black beard, blue cap, blue cloak"
     },
     "marco-horse": {

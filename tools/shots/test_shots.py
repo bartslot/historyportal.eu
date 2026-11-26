@@ -129,6 +129,22 @@ def test_the_colour_pass_attaches_the_coloured_sheet_and_the_fixed_colours(lesso
     assert f'cloak {RED}' in prompt and "row 1 Niccolò's cloak" in prompt
 
 
+def test_a_horse_with_no_signature_colour_does_not_block_the_colour_pass(lesson, tmp_path):
+    _approve_sheets(lesson)
+    lesson.cast['characters']['horse'] = {'name': 'Bay', 'kind': 'horse', 'look': 'A bay horse.'}
+    for pass_ in ('ink', 'colour'):
+        _picture(lesson.media / 'sheets' / f'horse-{pass_}.png', 'white' if pass_ == 'ink' else '#8B5A2B')
+        lesson.approve('horse', pass_, f'sheets/horse-{pass_}.png', 'bart', '2026-11-26')
+    scene = lesson.scene('plain')
+    for cell in scene['boards'][0]['cells']:
+        cell['who'] = ['niccolo', 'horse']
+    write(lesson.dir / 'scenes' / 'plain.json', scene)
+    ink = _board(tmp_path / 'ink.png', None)
+    ledger.add(lesson.media, {'event': 'ink-approved', 'board': 'plain-a', 'sha256': sha256(ink)})
+    out = packs.build(lesson, 'plain', 'plain-a', 'colour', tmp_path / 'pack', ink)
+    assert 'Bay' in (out / 'prompt.txt').read_text()
+
+
 def test_nothing_is_sent_before_bart_saw_the_inputs_and_a_changed_pack_is_refused(lesson, tmp_path):
     _approve_sheets(lesson)
     out = packs.build(lesson, 'plain', 'plain-a', 'ink', tmp_path / 'pack')
@@ -316,6 +332,13 @@ def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
     dark = tmp_path / 'dark.png'
     Image.new('RGB', (400, 225), 'black').save(dark)
     assert {'ink-weight', 'paper'} <= set(verify.sheet(dark)['failures'])
+
+
+def test_a_white_garment_samples_as_white_not_as_its_grey_folds():
+    box = np.full((40, 40, 3), 244.0)
+    box[::6] = 200.0                                    # a few grey shadow folds
+    assert colour.is_paper(colour.sample(box))
+    assert not colour.is_paper(colour.sample(np.full((40, 40, 3), [216.0, 66.0, 56.0])))
 
 
 def test_a_clean_line_sheet_at_5_7_percent_ink_passes(tmp_path):

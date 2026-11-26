@@ -67,8 +67,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -104,6 +104,20 @@
           },
           "sees": {
             "dunes": "filling the background"
+          },
+          "places": {
+            "marco": [
+              1499.1,
+              1100.8
+            ],
+            "niccolo": [
+              1500.0,
+              1100.0
+            ],
+            "maffeo": [
+              1500.9,
+              1099.2
+            ]
           }
         },
         {
@@ -157,7 +171,13 @@
             ],
             "framing": "Wide, night"
           },
-          "action": "The camp asleep close together under the stars; only Marco lies awake."
+          "action": "The camp asleep close together under the stars; only Marco lies awake.",
+          "places": {
+            "marco": [
+              1518.9,
+              640.4
+            ]
+          }
         }
       ]
     },
@@ -169,8 +189,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -193,6 +213,12 @@
           "action": "Marco sits up and looks into the dark dunes; there is nothing there.",
           "sees": {
             "dunes": "dark shapes ahead"
+          },
+          "places": {
+            "marco": [
+              1518.8,
+              800.0
+            ]
           }
         },
         {
@@ -217,6 +243,16 @@
           "where": {
             "marco": "the young face in front",
             "niccolo": "the grey-bearded man behind, reaching out"
+          },
+          "places": {
+            "marco": [
+              1518.6,
+              614.7
+            ],
+            "niccolo": [
+              1517.4,
+              615.3
+            ]
           }
         },
         {
@@ -249,6 +285,20 @@
             "marco-horse": "Marco's mount",
             "niccolo-horse": "Niccolò's mount",
             "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "marco": [
+              2299.6,
+              701.1
+            ],
+            "niccolo": [
+              2300.0,
+              700.0
+            ],
+            "maffeo": [
+              2300.4,
+              698.9
+            ]
           }
         },
         {
@@ -272,6 +322,12 @@
           "action": "Maffeo rides last, glancing back at the empty dunes behind them.",
           "where": {
             "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              2049.3,
+              620.9
+            ]
           }
         }
       ]

@@ -135,6 +135,20 @@
             "marco-horse": "Marco's mount",
             "niccolo-horse": "Niccolò's mount",
             "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "marco": [
+              1600.4,
+              958.9
+            ],
+            "niccolo": [
+              1600.0,
+              960.0
+            ],
+            "maffeo": [
+              1599.6,
+              961.1
+            ]
           }
         },
         {
@@ -225,8 +239,8 @@
         }
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ]
     },
     {
@@ -258,6 +272,12 @@
           "sees": {},
           "where": {
             "maffeo": "the only man in the cell"
+          },
+          "places": {
+            "maffeo": [
+              299.6,
+              898.9
+            ]
           }
         },
         {
@@ -409,8 +429,8 @@
         }
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ]
     }
   ]

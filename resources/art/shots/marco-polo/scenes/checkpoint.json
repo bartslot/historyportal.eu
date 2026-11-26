@@ -68,8 +68,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -105,6 +105,20 @@
           },
           "sees": {
             "post": "ahead, right of centre"
+          },
+          "places": {
+            "marco": [
+              279.7,
+              101.2
+            ],
+            "niccolo": [
+              280.0,
+              100.0
+            ],
+            "maffeo": [
+              280.3,
+              98.8
+            ]
           }
         },
         {
@@ -128,6 +142,12 @@
           "action": "Niccolò holds up the gold tablet from the saddle toward the Mongol officer.",
           "where": {
             "niccolo-horse": "Niccolò's mount"
+          },
+          "places": {
+            "niccolo": [
+              261.1,
+              100.7
+            ]
           }
         },
         {
@@ -171,6 +191,20 @@
             "marco": "the young man in white, left",
             "niccolo": "the man in red, centre",
             "maffeo": "the man in blue, right"
+          },
+          "places": {
+            "marco": [
+              279.5,
+              101.1
+            ],
+            "niccolo": [
+              280.0,
+              100.0
+            ],
+            "maffeo": [
+              280.5,
+              98.9
+            ]
           }
         }
       ]

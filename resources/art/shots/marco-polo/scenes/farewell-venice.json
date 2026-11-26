@@ -60,8 +60,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -88,6 +88,20 @@
             "marco": "the young man on the left, leaning in",
             "niccolo": "the man in the middle holding the tablet",
             "maffeo": "the man on the right"
+          },
+          "places": {
+            "marco": [
+              109.4,
+              67.0
+            ],
+            "niccolo": [
+              110.0,
+              66.0
+            ],
+            "maffeo": [
+              110.6,
+              65.0
+            ]
           }
         },
         {
@@ -117,6 +131,20 @@
           },
           "sees": {
             "ship": "large, right of centre"
+          },
+          "places": {
+            "marco": [
+              199.0,
+              150.6
+            ],
+            "niccolo": [
+              200.0,
+              150.0
+            ],
+            "maffeo": [
+              201.0,
+              149.4
+            ]
           }
         },
         {
@@ -136,7 +164,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Marco at the ship's rail looks back at Venice, excited and a little afraid."
+          "action": "Marco at the ship's rail looks back at Venice, excited and a little afraid.",
+          "places": {
+            "marco": [
+              194.2,
+              150.8
+            ]
+          }
         },
         {
           "shot": 4,
@@ -160,6 +194,16 @@
           "where": {
             "niccolo": "the older man with the grey beard, left",
             "maffeo": "the man with the pointed black beard, right"
+          },
+          "places": {
+            "niccolo": [
+              194.3,
+              153.0
+            ],
+            "maffeo": [
+              195.7,
+              151.0
+            ]
           }
         }
       ]

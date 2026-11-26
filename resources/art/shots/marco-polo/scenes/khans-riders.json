@@ -84,8 +84,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -118,6 +118,20 @@
             "marco-horse": "Marco's mount",
             "niccolo-horse": "Niccolò's mount",
             "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "marco": [
+              2499.9,
+              761.2
+            ],
+            "niccolo": [
+              2500.0,
+              760.0
+            ],
+            "maffeo": [
+              2500.1,
+              758.8
+            ]
           }
         },
         {
@@ -184,8 +198,8 @@
         2
       ],
       "size": [
-        1536,
-        1024
+        1672,
+        941
       ],
       "cells": [
         {
@@ -226,6 +240,12 @@
           "action": "The rider reaches the Polos and holds up a gold tablet with a gerfalcon; Niccolò bows in the saddle.",
           "where": {
             "niccolo-horse": "Niccolò's mount"
+          },
+          "places": {
+            "niccolo": [
+              1559.0,
+              724.4
+            ]
           }
         },
         {
@@ -258,6 +278,20 @@
             "marco-horse": "Marco's mount",
             "niccolo-horse": "Niccolò's mount",
             "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "marco": [
+              1799.7,
+              741.2
+            ],
+            "niccolo": [
+              1800.0,
+              740.0
+            ],
+            "maffeo": [
+              1800.3,
+              738.8
+            ]
           }
         },
         {
@@ -281,6 +315,12 @@
           "action": "Marco looks at the escort riders, proud and excited: the Great Khan is waiting.",
           "where": {
             "marco-horse": "Marco's mount"
+          },
+          "places": {
+            "marco": [
+              1719.0,
+              730.7
+            ]
           }
         }
       ]
