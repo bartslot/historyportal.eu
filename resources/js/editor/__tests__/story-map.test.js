@@ -175,6 +175,18 @@ describe('story map: saving and undo', () => {
     expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['removeSceneChoices', 1], ['setSceneNext', 1, 3]])
   })
 
+  it('a line dragged out of a scene adds a choice there, and undo puts the old links back', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return payload([scene(1, 1, { links: [{ label: '', to: 3 }] }), scene(2, 2), scene(3, 3)]) }) }
+    const m = make(wire)
+    await m.reload()
+    await m.rewire({ type: 'scene', id: 1 }, 2)
+    expect(calls).toContainEqual(['addSceneChoiceTo', 1, 2])
+    calls.length = 0
+    await m.undo()
+    expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['restoreSceneLinks', 1, [{ label: '', to: 3 }], false, '']])
+  })
+
   it('keeps the scene editor away from keys while the map is open', () => {
     const m = make({ call: vi.fn() })
     const ev = { key: 'Delete', target: document.body, stopPropagation: vi.fn(), preventDefault: vi.fn() }

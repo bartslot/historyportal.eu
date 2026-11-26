@@ -160,6 +160,69 @@ class StoryMapTest extends TestCase
         $this->assertSame(['scenes' => [(string) $copiedVenice => [10, 20]]], $copy->fresh()->story_map);
     }
 
+    public function test_dragging_a_new_option_out_of_a_scene_adds_a_choice_at_its_end(): void
+    {
+        [$venice, $destination, $cargo, $embark] = $this->scenes;
+        $editor = $this->editor();
+
+        // A scene that just went on to the next one: the first option is a choice named after where it goes.
+        $editor->call('addSceneChoiceTo', $venice->id, $cargo->id);
+        $this->assertSame([['label' => 'Cargo', 'to' => $cargo->id]], $venice->fresh()->config['links']);
+
+        // A second one, and the narrator gets a question to ask over them.
+        $editor->call('addSceneChoiceTo', $venice->id, $embark->id);
+        $config = $venice->fresh()->config;
+        $this->assertSame([['label' => 'Cargo', 'to' => $cargo->id], ['label' => 'Embark', 'to' => $embark->id]], $config['links']);
+        $this->assertNotSame('', (string) ($config['links_prompt'] ?? ''));
+        Bus::assertDispatched(GenerateChoicesAudio::class);
+    }
+
+    public function test_a_straight_jump_or_an_ending_becomes_part_of_the_choices(): void
+    {
+        [$venice, $destination, $cargo, $embark] = $this->scenes;
+        $destination->update(['config' => ['links' => [['label' => '', 'to' => $embark->id]]]]);
+        $cargo->update(['config' => ['ending' => true]]);
+        $editor = $this->editor();
+
+        $editor->call('addSceneChoiceTo', $destination->id, $venice->id);
+        $this->assertSame([['label' => 'Embark', 'to' => $embark->id], ['label' => 'Venice', 'to' => $venice->id]], $destination->fresh()->config['links']);
+
+        $editor->call('addSceneChoiceTo', $cargo->id, $embark->id);
+        $this->assertArrayNotHasKey('ending', $cargo->fresh()->config);
+        $this->assertSame([['label' => 'Embark', 'to' => $embark->id]], $cargo->fresh()->config['links']);
+
+        // Never onto itself.
+        $editor->call('addSceneChoiceTo', $embark->id, $embark->id);
+        $this->assertArrayNotHasKey('links', $embark->fresh()->config ?? []);
+    }
+
+    public function test_an_emptied_question_stays_empty_when_another_option_is_dragged_out(): void
+    {
+        [$venice, $destination, $cargo, $embark] = $this->scenes;
+        $venice->update(['config' => ['links' => [['label' => 'A', 'to' => $destination->id], ['label' => 'B', 'to' => $cargo->id]], 'links_prompt' => '']]);
+        $editor = $this->editor();
+
+        $editor->call('addSceneChoiceTo', $venice->id, $embark->id);
+        $this->assertSame('', (string) ($venice->fresh()->config['links_prompt'] ?? ''));
+
+        // Undo puts the question back as it was too.
+        $venice->update(['config' => array_merge($venice->fresh()->config, ['links_prompt' => 'Generated?'])]);
+        $editor->call('restoreSceneLinks', $venice->id, [['label' => 'A', 'to' => $destination->id], ['label' => 'B', 'to' => $cargo->id]], false, '');
+        $this->assertSame('', (string) ($venice->fresh()->config['links_prompt'] ?? ''));
+        $this->assertCount(2, $venice->fresh()->config['links']);
+    }
+
+    public function test_undo_puts_a_scenes_links_back(): void
+    {
+        [$venice, , $cargo] = $this->scenes;
+        $editor = $this->editor();
+        $editor->call('addSceneChoiceTo', $venice->id, $cargo->id);
+
+        $editor->call('restoreSceneLinks', $venice->id, [], true);
+        $this->assertArrayNotHasKey('links', $venice->fresh()->config);
+        $this->assertTrue($venice->fresh()->config['ending']);
+    }
+
     public function test_the_editor_has_the_story_map(): void
     {
         $this->editor()
