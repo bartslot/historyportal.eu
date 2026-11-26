@@ -66,6 +66,15 @@ camera.updateMatrixWorld()
 
 // ── Clouds ──
 const clouds = new CloudsEffect(camera)
+// Takram's default is to draw NOTHING itself and hand the clouds to AerialPerspectiveEffect as an
+// overlay (skipRendering = true). We have no AerialPerspective — our own haze stays — so the
+// effect has to composite its own buffer.
+clouds.skipRendering = false
+// Feature switches off the URL, to find what a renderer chokes on: ?haze=0&shafts=0&temporal=0
+for (const [key, prop] of [['haze', 'haze'], ['shafts', 'lightShafts'], ['temporal', 'temporalUpscale'], ['detail', 'shapeDetail'], ['turb', 'turbulence']]) {
+  if (params.has(key)) clouds[prop] = params.get(key) !== '0'
+}
+if (params.has('maxRay')) clouds.clouds.maxRayDistance = num('maxRay', 2e5)
 clouds.qualityPreset = params.get('quality') ?? 'high'
 clouds.coverage = num('coverage', 0.35)
 clouds.localWeatherRepeat.setScalar(num('repeat', 100))
