@@ -62,8 +62,19 @@ describe('createQualityGovernor', () => {
 
   it('does not count a hidden tab or a stalled loader as slow frames', () => {
     const governor = createQualityGovernor()
-    for (let i = 0; i < 500; i++) governor.sample(4000)
+    for (let i = 0; i < 50; i++) {
+      governor.sample(4000)
+      run(governor, 60, 30)
+    }
     expect(governor.level).toBe(0)
+  })
+
+  it('steps down when every frame is a stall: a machine under 4 frames a second', () => {
+    const governor = createQualityGovernor()
+    for (let i = 0; i < 8; i++) governor.sample(300)
+    expect(governor.level).toBe(1)
+    for (let i = 0; i < 8; i++) governor.sample(300)
+    expect(governor.level).toBe(2)
   })
 
   it('forgives the frames straight after a change', () => {

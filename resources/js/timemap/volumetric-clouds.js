@@ -54,6 +54,9 @@ export const volumetricFade = (altitudeMetres) =>
 const handover = new WeakMap()
 export const cloudHandover = (map) => handover.get(map) ?? 0
 
+/** Frames over 250 ms in a row before they count as the machine being slow, not the tab hidden. */
+const STALLS_TO_STEP_DOWN = 8
+
 /**
  * Decide, from frame times alone, when the 3D clouds are costing too much.
  *
@@ -72,12 +75,22 @@ export const createQualityGovernor = ({ levels = 2, minFps = 28, window = 90, se
   let skip = settle
   let frames = 0
   let total = 0
+  let stalls = 0
   return {
     get level() { return level },
     /** @param {number} dtMs time since the previous frame */
     sample(dtMs) {
-      // A gap this long is a hidden tab or a stalled loader, not a slow frame.
-      if (level >= levels || !(dtMs > 0) || dtMs > 250) return level
+      if (level >= levels || !(dtMs > 0)) return level
+      // One gap this long is a hidden tab or a stalled loader, not a slow frame. A run of them is a
+      // machine drawing under 4 frames a second, which no average is needed to judge.
+      if (dtMs > 250) {
+        if (++stalls < STALLS_TO_STEP_DOWN) return level
+        level++
+        stalls = frames = total = 0
+        skip = settle
+        return level
+      }
+      stalls = 0
       if (skip > 0) { skip--; return level }
       frames++
       total += dtMs

@@ -188,6 +188,10 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   renderer.autoClear = false
   renderer.setPixelRatio(1)
   renderer.toneMapping = NoToneMapping
+  // three logs a shader the driver rejects and carries on drawing nothing. Reported after the frame,
+  // not from inside it: giving up disposes the composer that is mid-render.
+  let rejected = false
+  renderer.debug.onShaderError = () => { rejected = true }
 
   const camera = new PerspectiveCamera()
   camera.matrixAutoUpdate = false
@@ -344,6 +348,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
       renderer.resetState()
       composer.render(seconds)
       renderer.resetState()
+      if (rejected) { onError?.('the graphics driver rejected a cloud shader'); return false }
       return true
     },
 
