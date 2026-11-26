@@ -34,6 +34,15 @@ describe('the land mask', () => {
     expect(isLand(grid, 11.5, 40.5)).toBe(false)    // Tyrrhenian Sea
     expect(isLand(grid, 5.0, 42.0)).toBe(false)     // Gulf of Lion
   })
+
+  it("closes Adam's Bridge, so ships go round Ceylon", () => {
+    expect(isLand(grid, 79.5, 9.2)).toBe(true)
+    // Cochin to the Bay of Bengal: straight across the shoals, or round the island.
+    const def = { waypoints: [[76.2, 9.9], [82.5, 8.5]], legs: [{ wp: [0, 1], transport: 'sea' }] }
+    const fixed = seaSafeDef(def, grid)
+    expect(stretchesOverLand(fixed, grid)).toEqual([])
+    expect(Math.min(...fixed.waypoints.map((p) => p[1]))).toBeLessThan(6.5)   // south of Dondra Head
+  })
 })
 
 describe('seaSafeDef', () => {

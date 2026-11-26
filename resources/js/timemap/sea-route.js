@@ -16,9 +16,11 @@ import { smooth, SAMPLES_PER_SEGMENT } from './voyages.js';
 import transportsDoc from './transports.json';
 
 const LAND_TRANSPORTS = new Set(transportsDoc.transports.filter((t) => t.terrain === 'land').map((t) => t.id));
-export const TOLERANCE_KM = 25;   // the check script allows 25 on the chart's polygons; the mask is coarser
+export const TOLERANCE_KM = 15;   // the check script allows 25 on the chart's polygons; the mask is coarser, so it asks more
 export const PORT_KM = 30;        // a port is on the shore, an island call is on the island
+export const BEND_KM = 8;         // a bend on a shore (a call at Bear Island, Tahiti) touches it
 const MAX_PASSES = 4;
+const STEP_KM = 5;                // how finely a drawn stretch is measured
 const PRUNE_KM = 8;
 const SNAP_KM = 40;               // a bend this close to a port is a hook at the port              // a bend is dropped only while every stretch stays under this             // a new bend changes its neighbours' curve: measure again
 const GRID_URL = '/map-chart/sea-grid.bin';
@@ -48,6 +50,11 @@ export function parseSeaGrid(buffer) {
       }
     }
   }
+  for (const [w, so, e, n] of Object.values(CLOSED)) {
+    for (let y = Math.floor((90 - n) * per); y <= Math.floor((90 - so) * per); y++) {
+      land.fill(2, y * cols + Math.floor((w + 180) * per), y * cols + Math.floor((e + 180) * per) + 1);
+    }
+  }
   return { per, cols, rows, land };
 }
 
@@ -65,11 +72,24 @@ export function loadSeaGrid() {
 
 const cellX = (g, lon) => Math.floor((lon + 180) * g.per);        // unwrapped: may run past cols
 const cellY = (g, lat) => Math.max(0, Math.min(g.rows - 1, Math.floor((90 - lat) * g.per)));
+// Water the chart shows but a ship of the time could not take: closed to the router (voyage-routes.py
+// refuses the canals too). Adam's Bridge is a chain of shoals the chart is too coarse to draw; ships
+// went round Ceylon. [west, south, east, north] in degrees.
+const CLOSED = {
+  "Adam's Bridge": [79.1, 8.85, 80.0, 9.45],
+  'Corinth canal': [22.9, 37.85, 23.05, 38.0],
+  'Kiel canal': [9.1, 53.85, 10.2, 54.4],
+};
 const cell = (g, x, y) => (y < 0 || y >= g.rows ? 2 : g.land[y * g.cols + (((x % g.cols) + g.cols) % g.cols)]);
 const landAt = (g, x, y) => cell(g, x, y) >= 1;
 const solidAt = (g, x, y) => cell(g, x, y) === 2;
 
 export const isLand = (g, lon, lat) => landAt(g, cellX(g, wrapLon(lon)), cellY(g, lat));
+/** On land or in a cell beside it: about 14 km of sea room, what a bend is kept clear of. */
+const nearLand = (g, lon, lat) => {
+  const x = cellX(g, wrapLon(lon)), y = cellY(g, lat);
+  return landAt(g, x, y) || NB.some(([dx, dy]) => landAt(g, x + dx, y + dy));
+};
 
 /** Is a waypoint stretch on a ship leg? An unlabelled stretch is drawn as a ship, so it is one. */
 const legFor = (def, i) => (def.legs || []).find((l) => Array.isArray(l.wp) && i + 0.5 >= Math.min(...l.wp) && i + 0.5 <= Math.max(...l.wp));
@@ -78,17 +98,29 @@ const shipStretch = (def, i) => {
   return !leg || !LAND_TRANSPORTS.has(leg.transport);
 };
 
-/** km of a drawn stretch over land, its first and last PORT_KM let off (voyage-routes.py check). */
-export function landKm(g, seg) {
+/**
+ * km of a drawn stretch over land. The first and last `fromKm` / `toKm` are let off: PORT_KM at a
+ * stop (voyage-routes.py check), BEND_KM at a bend, which belongs at sea. Letting a bend off a
+ * full port's width hid a route cutting across the Malea peninsula between two bends.
+ */
+export function landKm(g, seg, fromKm = PORT_KM, toKm = PORT_KM, clearance = false) {
   const lengths = seg.slice(1).map((b, k) => km(seg[k], b));
   const total = lengths.reduce((s, d) => s + d, 0);
   let wrong = 0, run = 0;
   for (let k = 0; k < lengths.length; k++) {
+    // The curve's samples lie up to 50 km apart on a long stretch: walked in steps of a few km, so
+    // a small island between two samples (Zakynthos) is not missed.
     const d = lengths[k];
+    const n = Math.max(1, Math.ceil(d / STEP_KM));
+    const [a, b] = [seg[k], seg[k + 1]];
+    for (let m = 0; m < n; m++) {
+      const mid = run + d * (m + 0.5) / n;
+      if (mid < fromKm || mid > total - toKm) continue;
+      const t = (m + 0.5) / n;
+      const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+      if (clearance ? nearLand(g, x, y) : isLand(g, x, y)) wrong += d / n;
+    }
     run += d;
-    const mid = run - d / 2;
-    if (mid < PORT_KM || mid > total - PORT_KM) continue;
-    if (isLand(g, (seg[k][0] + seg[k + 1][0]) / 2, (seg[k][1] + seg[k + 1][1]) / 2)) wrong += d;
   }
   return wrong;
 }
@@ -99,14 +131,16 @@ const curveOf = (def, i) => {
   const li = i - s0;
   return smooth(def.waypoints.slice(s0, i + 3)).slice(li * SAMPLES_PER_SEGMENT, (li + 1) * SAMPLES_PER_SEGMENT + 1);
 };
-const maxLand = (g, def, i, k) => {
-  let m = 0;
-  for (let j = i; j <= i + k; j++) m = Math.max(m, landKm(g, curveOf(def, j)));
-  return m;
+/** Land km of stretch i of a route, its ends let off by what they are (a stop or a bend). */
+const stretchLand = (g, def, i, clearance = false) => {
+  const stops = stopsOf(def);
+  const end = (w) => (stops.has(w) || w === 0 || w === def.waypoints.length - 1 ? PORT_KM : BEND_KM);
+  return landKm(g, curveOf(def, i), end(i), end(i + 1), clearance);
 };
+const stopsOf = (def) => new Set((def.legs || []).flatMap((l) => (Array.isArray(l.wp) ? l.wp : [])));
 const sumLand = (g, def, i, k) => {
   let s = 0;
-  for (let j = i; j <= i + k; j++) s += landKm(g, curveOf(def, j));
+  for (let j = i; j <= i + k; j++) s += stretchLand(g, def, j);
   return s;
 };
 /** How much longer than the straight line a way is. Past MAX_DETOUR it was a road, mislabelled as sea. */
@@ -122,11 +156,13 @@ const detour = (pts) => {
 export function stretchesOverLand(def, g) {
   const wp = def.waypoints;
   const curve = smooth(wp);
+  const stops = stopsOf(def);
+  const end = (w) => (stops.has(w) || w === 0 || w === wp.length - 1 ? PORT_KM : BEND_KM);
   const bad = [];
   for (let i = 0; i < wp.length - 1; i++) {
     if (!shipStretch(def, i)) continue;
     const seg = curve.slice(i * SAMPLES_PER_SEGMENT, (i + 1) * SAMPLES_PER_SEGMENT + 1);
-    if (landKm(g, seg) > TOLERANCE_KM) bad.push(i);
+    if (landKm(g, seg, end(i), end(i + 1)) > TOLERANCE_KM) bad.push(i);
   }
   return bad;
 }
@@ -186,6 +222,8 @@ function astar(g, a, b, pad) {
   const water = (x, y) => inside(x, y) && !landAt(g, x, y);
   const open = (x, y) => inside(x, y) && !solidAt(g, x, y);
   const coast = (x, y) => coastAt(g, x, y);
+  // Two cells out (about 28 km) still costs a little: the path keeps sea room where there is some.
+  const near2 = (x, y) => NB.some(([dx, dy]) => landAt(g, x + 2 * dx, y + 2 * dy));
 
   // A port the mask puts inland (a river town, a narrow inlet) starts from the nearest water
   // cell. A stretch that starts further inland than 1.5 degrees is not a sea passage to route.
@@ -227,8 +265,8 @@ function astar(g, a, b, pad) {
       // No corner-cutting between two solid cells.
       if (dx && dy && solidAt(g, cx + dx, cy) && solidAt(g, cx, cy + dy)) continue;
       // A shore cell only where there is no other way (a strait narrower than a cell); beside the
-      // shore costs double, so the drawn spline has room to round a corner at sea.
-      const step = Math.hypot(dx * cs, dy) * (landAt(g, nx, ny) ? 8 : coast(nx, ny) ? 2 : 1);
+      // shore costs four times, two cells out a little, so the drawn spline has room at sea.
+      const step = Math.hypot(dx * cs, dy) * (landAt(g, nx, ny) ? 12 : coast(nx, ny) ? 4 : near2(nx, ny) ? 1.6 : 1);
       const n = idx(nx, ny);
       if (c0 + step < cost[n]) {
         cost[n] = c0 + step;
@@ -274,7 +312,8 @@ function pull(g, pts, margin) {
 /**
  * Open water from a to b: the bends between them (a and b themselves left out), unwrapped next to
  * a's longitude, or null when there is no way by sea inside a sensible window.
- * `dense` keeps far more of the path, for the rare stretch whose spline still cuts a cape.
+ * `dense` keeps every other cell of the path, for a stretch whose pulled spline still cuts a cape;
+ * the bends the curve does not need are pruned afterwards.
  */
 export function seaPath(g, a, b, { dense = false } = {}) {
   let cells = null;
@@ -285,7 +324,7 @@ export function seaPath(g, a, b, { dense = false } = {}) {
   if (!cells) return null;
   const pts = [a, ...cells.map((c) => cellCentre(g, c)).slice(1, -1), b];
   // Any landward bit of the ends (a port in a land cell) is fine: the check lets ports off.
-  let tight = dense ? pts.filter((_, k) => k === 0 || k === pts.length - 1 || k % 6 === 0) : pull(g, pull(g, pts, true), false);
+  let tight = dense ? pts.filter((_, k) => k === 0 || k === pts.length - 1 || k % 2 === 0) : pull(g, pull(g, pts, true), false);
   // The path starts at the water cell nearest each port, which can lie behind it: kept, that is a
   // hook out and back at the port. Bends that close to a port go, and so does any bend the path
   // turns back at (voyage-routes.py drop_spurs).
@@ -352,17 +391,56 @@ function removeAt(def, j) {
 function prune(g, def, i, k) {
   const out = JSON.parse(JSON.stringify(def));
   let end = i + k + 1;   // the stretch's far waypoint
+  // Removing bend j only changes the curve's stretches j-2 .. j+1 (a Catmull-Rom stretch depends
+  // on the waypoint before and the one after it), so only those are measured.
+  const local = (d, j, n, clearance = false) => {
+    const from = Math.max(0, j - 2);
+    const to = Math.min(d.waypoints.length - 2, j - 2 + n);
+    let sum = 0, max = 0;
+    for (let m = from; m <= to; m++) {
+      const l = stretchLand(g, d, m, clearance);
+      sum += l;
+      max = Math.max(max, l);
+    }
+    return { sum, max };
+  };
   for (let j = i + 1; j < end;) {
     const trial = JSON.parse(JSON.stringify(out));
     removeAt(trial, j);
-    const span = end - i;
-    const from = Math.max(0, i - 1);
-    // No worse in total, and no stretch near the tolerance: the chart's coast is finer than the mask.
-    if (sumLand(g, trial, from, span) <= sumLand(g, out, from, span + 1) + 0.5 && maxLand(g, trial, from, span) <= PRUNE_KM) {
+    const before = local(out, j, 3), after = local(trial, j, 2);
+    const roomBefore = local(out, j, 3, true), roomAfter = local(trial, j, 2, true);
+    // No worse, no stretch near the tolerance (the chart's coast is finer than the mask), and no
+    // closer to the shore: a line drawn along the coastline reads as a ship on the beach.
+    if (after.sum <= before.sum + 0.5 && after.max <= Math.max(PRUNE_KM, before.max) && roomAfter.sum <= roomBefore.sum + 2) {
       removeAt(out, j);
       end -= 1;
     } else {
       j++;
+    }
+  }
+  return smoothBends(g, out, i, end);
+}
+
+/**
+ * Ease each new bend towards the middle of its neighbours while the drawn curve stays at sea, so
+ * a chain of bends along a coast reads as one sweep instead of a zigzag.
+ */
+function smoothBends(g, def, i, end) {
+  const out = JSON.parse(JSON.stringify(def));
+  // Each stretch the move touches stays under PRUNE_KM, or at least no worse than it was.
+  const window = (d, j, clearance = false) => {
+    const out = [];
+    for (let m = Math.max(0, j - 2); m <= Math.min(d.waypoints.length - 2, j + 1); m++) out.push(stretchLand(g, d, m, clearance));
+    return out;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    for (let j = i + 1; j < end; j++) {
+      const [a, p, b] = [out.waypoints[j - 1], out.waypoints[j], out.waypoints[j + 1]];
+      const target = [p[0] + ((a[0] + b[0]) / 2 - p[0]) * 0.5, p[1] + ((a[1] + b[1]) / 2 - p[1]) * 0.5];
+      const was = window(out, j), room = window(out, j, true);
+      out.waypoints[j] = [Math.round(target[0] * 100) / 100, Math.round(target[1] * 100) / 100];
+      const now = window(out, j), roomNow = window(out, j, true);
+      if (now.some((l, m) => l > Math.max(PRUNE_KM, was[m]) + 0.01) || roomNow.reduce((a, b) => a + b, 0) > room.reduce((a, b) => a + b, 0) + 2) out.waypoints[j] = p;
     }
   }
   return out;
@@ -408,6 +486,7 @@ export function seaSafeDef(def, g) {
   const key = (d, i) => `${d.waypoints[i]}|${d.waypoints[i + 1]}`;
   const given = new Set();   // stretches routed as well as the mask allows: not tried again
   let out = nudgeBends(def, g);
+  const moved = out ? out.waypoints.filter((p, i) => p !== def.waypoints[i] && (p[0] !== def.waypoints[i][0] || p[1] !== def.waypoints[i][1])) : [];
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const cur = out || def;
     // A stretch with no leg is a hole in the data (Paris to Toulon once had none), not a passage.
@@ -420,7 +499,8 @@ export function seaSafeDef(def, g) {
       // The pulled path first; when its spline still clips a cape, one that keeps more bends.
       for (const dense of [false, true]) {
         const pts = seaPath(g, out.waypoints[i], out.waypoints[i + 1], { dense });
-        if (!pts || !pts.length) break;
+        if (!pts) break;            // no way by sea at all
+        if (!pts.length) continue;  // the straight line looks clear to the mask: try the dense path
         const trial = clone(out);
         insertAfter(trial, i, pts);
         const left = stretchesOverLand(trial, g).filter((j) => j >= i && j <= i + pts.length);
@@ -429,7 +509,7 @@ export function seaSafeDef(def, g) {
       }
       // Kept only when it is clearly better than what was drawn: the same route measured again on
       // the next load comes out the same, and is left alone instead of growing more bends.
-      const before = landKm(g, curveOf(out, i));
+      const before = stretchLand(g, out, i);
       const after = pick ? sumLand(g, pick.trial, i, pick.pts.length) : Infinity;
       if (!pick || after > before / 2 || detour(pick.trial.waypoints.slice(i, i + pick.pts.length + 2)) > MAX_DETOUR) {
         given.add(key(out, i));
@@ -439,6 +519,18 @@ export function seaSafeDef(def, g) {
       out = prune(g, pick.trial, i, pick.pts.length);
       const k = out.waypoints.length - n0;   // bends kept
       stretchesOverLand(out, g).filter((j) => j >= i && j <= i + k).forEach((j) => given.add(key(out, j)));
+    }
+  }
+  // A bend moved off the land only held the route's old shape; with the route now at sea it is
+  // usually a knot (Ceylon). It goes when the curve is no worse without it.
+  if (out) {
+    for (const p of moved) {
+      const j = out.waypoints.findIndex((q) => q[0] === p[0] && q[1] === p[1]);
+      if (j <= 0 || j >= out.waypoints.length - 1 || stopsOf(out).has(j)) continue;
+      const trial = clone(out);
+      removeAt(trial, j);
+      const from = Math.max(0, j - 2);
+      if (sumLand(g, trial, from, 2) <= sumLand(g, out, from, 3) + 0.5) out = trial;
     }
   }
   // A stretch the mask could not improve was tried on a copy: same route, same object back.

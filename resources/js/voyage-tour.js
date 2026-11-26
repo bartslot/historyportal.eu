@@ -107,6 +107,8 @@ const STOP_OPEN_DELAY_MS = 1400;
 /** How far above the stop the photo cards' bottom edges stay, so the stop's name beside its dot stays readable. */
 const STOP_PIN_CLEARANCE = 30;
 
+// A stretch shorter than this (in degrees) wobbles less, in proportion.
+const WOBBLE_FULL_DEG = 6;
 const ROUTE_LINE_DEFAULTS = { enabled: true, color: '#7c2d12', opacity: 0.9, thickness: 3, wobble: 0.3, curve: 'bezier' };
 
 /**
@@ -557,7 +559,12 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         // ~8km sideways while its drag handle stayed on the true waypoint — the handle ended up
         // visibly off the line it was supposed to bend.
         const seg = SAMPLES_PER_SEGMENT;
-        const off = Math.sin(i * 0.7) * amp * Math.sin(((i % seg) / seg) * Math.PI);
+        // A short stretch gets a smaller wobble: the full swing (about 8 km) on a stretch between two
+        // bends a hundred km apart drew a zigzag, and the routes that go round the land have many.
+        const k = Math.floor(i / seg);
+        const a0 = route.waypoints[k], a1 = route.waypoints[k + 1];
+        const reach = RL.curve !== 'straight' && a0 && a1 ? Math.min(1, Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) / WOBBLE_FULL_DEG) : 1;
+        const off = Math.sin(i * 0.7) * amp * reach * Math.sin(((i % seg) / seg) * Math.PI);
         out[i][0] += -dy * off;
         out[i][1] += dx * off;
       }
