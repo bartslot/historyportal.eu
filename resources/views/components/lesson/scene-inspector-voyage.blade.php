@@ -39,7 +39,7 @@
      that state across the component's 3s wire:poll, and every panel stays in the DOM (x-show) so the
      wire:model bindings never detach. --}}
 <div class="text-sm" x-data="{ tab: @js($isOverview ? 'map' : 'leg'), wide: @js($isOverview) }"
-     x-on:voyage-obj-focus.window="if (wide) return; tab = 'leg'; if ($event.detail?.which === 'gallery') $nextTick(() => { if ($refs.gallerySection) $refs.gallerySection.open = true; $refs.gallerySection?.scrollIntoView({ block: 'start', behavior: 'smooth' }) })">
+     x-on:voyage-obj-focus.window="if (wide) return; tab = 'leg'; if ($event.detail?.which === 'gallery') $nextTick(() => { if ($refs.gallerySection) $refs.gallerySection.open = true; $refs.gallerySection?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }); if ($event.detail?.which === 'checkpoint') $nextTick(() => { const d = $el.querySelector(`[data-checkpoint-id='${$event.detail.id}']`); if (d) { d.open = true; d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) } })">
     {{-- Header. Wraps rather than clips: the inspector is a narrow column and the rail beside it is
          resizable, so the switch and the waypoint counter have to be able to drop onto a second row. --}}
     <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
@@ -336,6 +336,103 @@
                 </div>
             </div>
         </details>
+
+        {{-- CHECKPOINTS — pictures and text along the route (Bart 2026-11-26). Added by clicking the route line on
+             the map; the class sees each one as a card bottom-left as the traveller passes (voyage-checkpoints.js).
+             Stored at config.checkpoints (App\Support\VoyageCheckpoints). --}}
+        @php
+            $checkpoints = \App\Support\VoyageCheckpoints::clean($config['checkpoints'] ?? []);
+            $cpFocus = $this->voyageCheckpointFocus ?? null;
+        @endphp
+        <section class="border-t border-slate-700/50 pt-3" data-voyage-checkpoints>
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-xs uppercase tracking-wider text-panel-hint">{{ __('Checkpoints') }}</span>
+                @if (count($checkpoints))
+                    <span class="text-2xs text-panel-hint">{{ count($checkpoints) }}</span>
+                @endif
+            </div>
+            @if (! count($checkpoints))
+                <p class="mt-1 text-prose text-panel-hint">{{ __('Click the route on the map to add one.') }}</p>
+            @endif
+            <div class="mt-2 space-y-2">
+                @foreach ($checkpoints as $n => $cp)
+                    @php $cpImages = $cp['images']; @endphp
+                    <details wire:key="cp-{{ $cp['id'] }}" wire:ignore.self data-checkpoint-id="{{ $cp['id'] }}"
+                             @if ($cpFocus === $cp['id']) open @endif
+                             x-on:toggle="if ($el.open) window.__voyageTour?.showCheckpoint?.(@js($cp['id']))"
+                             class="group rounded-lg border border-slate-700/50 bg-slate-900/40 px-2 py-1.5">
+                        <summary class="flex h-8 cursor-pointer list-none items-center justify-between gap-2">
+                            <span class="flex min-w-0 items-center gap-1.5 text-xs text-slate-200">
+                                <svg class="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+                                <span class="truncate">{{ trim($cp['title']) !== '' ? $cp['title'] : __('Checkpoint :n', ['n' => $n + 1]) }}</span>
+                            </span>
+                            @if (count($cpImages))
+                                <span class="shrink-0 text-2xs text-panel-hint">{{ trans_choice('{1} 1 picture|[2,*] :count pictures', count($cpImages), ['count' => count($cpImages)]) }}</span>
+                            @endif
+                        </summary>
+
+                        <label class="form-control mt-2">
+                            <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Title') }}</span>
+                            <input type="text" value="{{ $cp['title'] }}" maxlength="120"
+                                   wire:change="setCheckpointText(@js($cp['id']), 'title', $event.target.value)"
+                                   class="input input-sm input-bordered bg-slate-900 mt-1" />
+                        </label>
+                        <label class="form-control mt-2">
+                            <span class="text-2xs uppercase tracking-wider text-panel-hint">{{ __('Text') }}</span>
+                            <textarea rows="3" maxlength="2000"
+                                      wire:change="setCheckpointText(@js($cp['id']), 'story', $event.target.value)"
+                                      class="textarea textarea-bordered bg-slate-900 mt-1 leading-relaxed">{{ $cp['story'] }}</textarea>
+                        </label>
+
+                        <span class="mt-3 block text-2xs uppercase tracking-wider text-panel-hint">{{ __('Pictures') }}</span>
+                        @if (count($cpImages))
+                            <ul class="mt-1 space-y-1.5" x-data="{ drag: null }">
+                                @foreach ($cpImages as $i => $img)
+                                    <li wire:key="cpimg-{{ $cp['id'] }}-{{ $i }}" draggable="true"
+                                        x-on:dragstart="drag = {{ $i }}; $el.classList.add('opacity-50')"
+                                        x-on:dragend="$el.classList.remove('opacity-50')"
+                                        x-on:dragover.prevent
+                                        x-on:drop.prevent="if (drag !== null && drag !== {{ $i }}) $wire.moveCheckpointImage(@js($cp['id']), drag, {{ $i }}); drag = null"
+                                        class="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/60 p-1.5 cursor-grab active:cursor-grabbing">
+                                        <img src="{{ $img['url'] }}" alt="" class="h-9 w-16 shrink-0 rounded object-cover" onerror="this.style.visibility='hidden'" />
+                                        <span class="min-w-0 flex-1 truncate text-2xs text-panel-hint">{{ $img['credit'] !== '' ? $img['credit'] : basename(parse_url($img['url'], PHP_URL_PATH) ?: $img['url']) }}</span>
+                                        <button type="button" wire:click="removeCheckpointImage(@js($cp['id']), {{ $i }})"
+                                                class="grid h-8 w-8 shrink-0 place-items-center text-error/80 hover:text-error" data-tooltip="{{ __('Remove') }}" aria-label="{{ __('Remove') }}">
+                                            <x-ui.icon name="close" class="h-4 w-4" />
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <div x-data="{ url: '' }" class="mt-2">
+                            <button type="button" wire:click="openCheckpointImagePicker(@js($cp['id']))"
+                                    class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-600 text-xs font-medium text-slate-300 hover:border-slate-400 hover:text-slate-100">
+                                <x-ui.icon name="add" class="h-4 w-4" /> {{ __('Add picture') }}
+                            </button>
+                            <div class="mt-1.5 flex items-center gap-1.5">
+                                <input type="url" x-model="url" placeholder="{{ __('or paste an image URL') }}"
+                                       class="input input-xs input-bordered bg-slate-900 flex-1" />
+                                <button type="button" class="btn btn-xs btn-primary"
+                                        @click="if (url.trim()) { $wire.addCheckpointImage(@js($cp['id']), url); url='' }">{{ __('Add') }}</button>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex items-center justify-between gap-3">
+                            <span class="min-w-0">
+                                <span class="block text-xs uppercase tracking-wider text-panel-hint">{{ __('Behind a button') }}</span>
+                                <span class="block text-2xs text-panel-hint">{{ $cp['button'] ? __('A bubble on the map opens it.') : __('Shows by itself as they pass.') }}</span>
+                            </span>
+                            <input type="checkbox" @checked($cp['button']) aria-label="{{ __('Behind a button') }}"
+                                   wire:change="setCheckpointButton(@js($cp['id']), $event.target.checked)"
+                                   class="toggle toggle-sm toggle-warning" />
+                        </div>
+
+                        <button type="button" wire:click="removeVoyageCheckpoint(@js($cp['id']))"
+                                class="mt-3 h-8 text-xs text-error/80 underline hover:text-error">{{ __('Delete checkpoint') }}</button>
+                    </details>
+                @endforeach
+            </div>
+        </section>
     </div>
 
     {{-- ══════════════════ TAB: MAP — projection, visible detail, fog of war ══════════════════ --}}

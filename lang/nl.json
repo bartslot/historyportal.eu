@@ -3228,5 +3228,21 @@
     "Clearing the throat…": "Keel schrapen…",
     "Finding the right page…": "De goede bladzijde zoeken…",
     "Testing the microphone…": "Microfoon testen…",
-    "Almost there…": "Bijna klaar…"
+    "Almost there…": "Bijna klaar…",
+    "A leg can have at most :n checkpoints.": "Een etappe heeft hoogstens :n checkpoints.",
+    "Add a checkpoint picture": "Afbeelding voor checkpoint toevoegen",
+    "Checkpoint picture": "Afbeelding checkpoint",
+    "Checkpoints": "Checkpoints",
+    "Checkpoint": "Checkpoint",
+    "Checkpoint :n": "Checkpoint :n",
+    "Click the route on the map to add one.": "Klik op de route op de kaart om er een toe te voegen.",
+    "{1} 1 picture|[2,*] :count pictures": "{1} 1 afbeelding|[2,*] :count afbeeldingen",
+    "Add picture": "Afbeelding toevoegen",
+    "Behind a button": "Achter een knop",
+    "A bubble on the map opens it.": "Een ballon op de kaart opent hem.",
+    "Shows by itself as they pass.": "Verschijnt vanzelf als ze erlangs komen.",
+    "Delete checkpoint": "Checkpoint verwijderen",
+    "Have a look": "Kijk eens",
+    "Checkpoint: click to show, drag to move": "Checkpoint: klik om te tonen, sleep om te verplaatsen",
+    "Click to add a checkpoint, drag to bend the route": "Klik om een checkpoint toe te voegen, sleep om de route te buigen"
 }

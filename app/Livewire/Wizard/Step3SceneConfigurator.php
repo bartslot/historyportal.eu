@@ -32,6 +32,7 @@ use App\Livewire\Wizard\Concerns\EditsStoryGame;
 use App\Livewire\Wizard\Concerns\EditsStoryMap;
 use App\Livewire\Wizard\Concerns\EditsTeamGame;
 use App\Livewire\Wizard\Concerns\EditsTitleScreen;
+use App\Livewire\Wizard\Concerns\EditsVoyageCheckpoints;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
 use App\Livewire\Wizard\Concerns\GroupsStage25dLayers;
@@ -113,6 +114,7 @@ class Step3SceneConfigurator extends Component
     use EditsStoryMap;
     use EditsTeamGame;
     use EditsTitleScreen;
+    use EditsVoyageCheckpoints;
     use EditsWithSpark;
     use FixesLessonProblems;
     use GroupsStage25dLayers;
@@ -4242,7 +4244,7 @@ class Step3SceneConfigurator extends Component
         // Landfall/gallery images are referenced by URL in scene config, so host them on Cloudinary
         // (falls back to local storage when Cloudinary isn't configured). The scene BACKGROUND uses a
         // relative image_path rendered via asset('storage/…'), so that one stays local for now.
-        if (in_array($mode, ['voyage_stop', 'voyage_marker', 'gallery_image'], true)) {
+        if (in_array($mode, ['voyage_stop', 'voyage_marker', 'gallery_image', 'checkpoint_image'], true)) {
             $cloud = app(\App\Services\CloudinaryService::class);
             $url = $cloud->configured()
                 ? $cloud->uploadBytes($this->uploadImage->get(), "lessons/{$this->lesson->id}")
@@ -4252,6 +4254,7 @@ class Step3SceneConfigurator extends Component
             match ($mode) {
                 'voyage_stop' => $this->addStopImage($url),
                 'voyage_marker' => $this->setLegMarkerImage($url),
+                'checkpoint_image' => $this->addPickedCheckpointImage($url),
                 default => $this->addGalleryImage($url, ''),
             };
 
@@ -4456,6 +4459,7 @@ class Step3SceneConfigurator extends Component
             // A Sketchfab uid is all addEmbedLayer needs — EmbedParser reads the 32-hex id.
             'model3d' => $this->applyModelChoice($key),
             'gallery_image' => $this->applyPaintingAsGalleryImage($source, $key),
+            'checkpoint_image' => $this->applyPaintingAsCheckpointImage($source, $key),
             default => $this->applyPaintingBackground($source, $key),
         };
     }
@@ -4494,6 +4498,19 @@ class Step3SceneConfigurator extends Component
     }
 
     /** Download a picked painting to lesson storage and append it to this gallery scene. */
+    /** Download a picked painting into lesson storage and add it to the checkpoint the picker was opened for. */
+    public function applyPaintingAsCheckpointImage(string $source, string $key): void
+    {
+        if (! $this->selectedSceneId) {
+            return;
+        }
+        $this->paintingPickerOpen = false;
+        $stored = $this->storePickedPainting($source, $key, 'checkpoint');
+        if ($stored) {
+            $this->addPickedCheckpointImage($stored['url'], $stored['credit']);
+        }
+    }
+
     public function applyPaintingAsGalleryImage(string $source, string $key): void
     {
         if (! $this->selectedSceneId) {
@@ -4883,7 +4900,7 @@ class Step3SceneConfigurator extends Component
                 $live = collect();
                 // Landfall art is often maps / engravings / views, not "paintings" — appending that
                 // word buries the good period results, so search the raw term for voyage modes.
-                $isLandfall = in_array($this->paintingPickerMode, ['voyage_stop', 'gallery_image'], true);
+                $isLandfall = in_array($this->paintingPickerMode, ['voyage_stop', 'gallery_image', 'checkpoint_image'], true);
                 if ($term !== '') {
                     $live = collect($commons->searchText($isLandfall ? $term : $term.' painting'));
                 } else {
@@ -5159,6 +5176,7 @@ class Step3SceneConfigurator extends Component
             'voyage_stop' => $this->addStopImage($url),
             'voyage_marker' => $this->setLegMarkerImage($url),
             'gallery_image' => $this->addGalleryImage($url),
+            'checkpoint_image' => $this->addPickedCheckpointImage($url),
             default => $this->useLessonImageBackground($url),
         };
     }

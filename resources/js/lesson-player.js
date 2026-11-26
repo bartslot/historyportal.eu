@@ -2400,6 +2400,7 @@ Alpine.data('lessonGame', (lesson) => ({
         stopImages: cfg.stop_images || [],
         gallery: cfg.gallery || null,
         hotspot: cfg.hotspot || null,
+        checkpoints: cfg.checkpoints || [],
       })
     },
 
