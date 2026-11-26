@@ -57,7 +57,9 @@ export function loopVideo (url) {
   LIVE.add(video)
   // Made while held: it still has to reach 'playing' once (callers wait for that to know it plays,
   // and the first frame shows), then it stops where the clock is.
-  video.addEventListener('playing', () => { if (held) video.pause() })
+  // Paused a tick later, not inside the 'playing' handler: a pause() there rejects the play() promise
+  // that is about to resolve, and callers that read that rejection as "will not play" threw the loop away.
+  video.addEventListener('playing', () => { if (held) setTimeout(() => { if (held) video.pause() }, 0) })
   video.className = LOOP_CLASS
   video.src = loopSource(url, video)
   video.muted = true          // muted BEFORE play: browsers only autoplay silent video

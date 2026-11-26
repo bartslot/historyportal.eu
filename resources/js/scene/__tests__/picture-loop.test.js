@@ -88,7 +88,7 @@ describe('AV1 copy', () => {
 })
 
 describe('holding every loop with the scene clock', () => {
-  it('pauses and resumes the loops on the page, and holds one made while paused', () => {
+  it('pauses and resumes the loops on the page, and holds one made while paused', async () => {
     const host = document.createElement('div')
     const v = attachLoop(host, '/storage/held-a.mp4')
     const pause = vi.fn()
@@ -100,6 +100,8 @@ describe('holding every loop with the scene clock', () => {
     const latePause = vi.fn()
     late.pause = latePause
     late.dispatchEvent(new Event('playing'))   // it plays once (first frame), then stops with the clock
+    expect(latePause).not.toHaveBeenCalled()   // not inside 'playing': that would reject its play() promise
+    await new Promise(r => setTimeout(r, 0))
     expect(latePause).toHaveBeenCalled()
     setLoopsPaused(false)
     expect(play).toHaveBeenCalled()

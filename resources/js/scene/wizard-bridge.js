@@ -474,7 +474,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     function loopTexture(loopUrl) {
         return new Promise(resolve => {
             const video = loopVideo(loopUrl)
+            let settled = false
             const done = (ok) => {
+                if (settled) return   // the first answer counts: a later rejected play() must not undo a loop that played
+                settled = true
                 clearTimeout(timer)
                 if (!ok) { video.removeAttribute('src'); video.load(); resolve(null); return }
                 video.width = video.videoWidth
