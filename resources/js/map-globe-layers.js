@@ -20,7 +20,6 @@ import { createSunLayer, SUN_LAYER_ID } from './timemap/sun-disc.js'
 import { createMoonLayer, MOON_LAYER_ID } from './timemap/moon.js'
 import { createDaylightLayer, DAYLIGHT_LAYER_ID } from './timemap/daylight.js'
 import { createAtmosphereLayer, ATMOSPHERE_LAYER_ID } from './timemap/atmosphere.js'
-import { createBabylonAtmosphereLayer } from './timemap/babylon-atmosphere.js'
 import { createCloudLayer, CLOUD_LAYER_ID } from './timemap/clouds.js'
 import { createOceanWaterLayer, OCEAN_LAYER_ID } from './timemap/ocean-water.js'
 import { createBloomLayer, BLOOM_LAYER_ID } from './timemap/bloom.js'
@@ -74,10 +73,6 @@ const hexToRgb = (value) => parseColour(value).rgb.map((c) => c / 255)
  * The rest of the order is still reasoned from each layer's own notes rather than inherited —
  * nothing had ever composited these seven together — so it stays the first thing to suspect.
  */
-const useBabylonAtmosphere = () => {
-  try { return new URLSearchParams(location.search).get('atmo') === 'babylon' } catch (_) { return false }
-}
-
 const STACK = [
   ['starfield', STARFIELD_LAYER_ID, (o) => createStarfieldLayer(o)],
   ['sun', SUN_LAYER_ID, (o) => createSunLayer(o)],
@@ -85,11 +80,7 @@ const STACK = [
   ['ocean', OCEAN_LAYER_ID, (o) => createOceanWaterLayer(o)],
   ['daylight', DAYLIGHT_LAYER_ID, (o) => createDaylightLayer(o)],
   ['clouds', CLOUD_LAYER_ID, (o) => createCloudLayer(o)],
-  // PROTOTYPE: `?atmo=babylon` swaps our haze shell for Babylon's physically based atmosphere
-  // (timemap/babylon-atmosphere.js). Same id slot and setOptions contract, so nothing else changes.
-  ['atmosphere', ATMOSPHERE_LAYER_ID, (o) => (useBabylonAtmosphere()
-    ? createBabylonAtmosphereLayer({ sun: o.sun })
-    : createAtmosphereLayer(o))],
+  ['atmosphere', ATMOSPHERE_LAYER_ID, (o) => createAtmosphereLayer(o)],
   /**
    * LAST, because it is a post-process and there has to be something to process.
    *

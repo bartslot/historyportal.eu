@@ -1,9 +1,9 @@
 /**
- * proof.js — a standalone globe for comparing our haze shell with Babylon's atmosphere.
+ * proof.js — a standalone globe for trying globe cloud layers.
  *
  * The Time-Map's own ground (sea, land, coastline) from public/, with the whole globe stack from
  * map-globe-layers.js on top, so the two atmospheres are compared with everything else identical.
- * `?atmo=babylon` picks Babylon's; `?lng=&lat=&zoom=&sunLng=&sunLat=` frame the shot.
+ * `?lng=&lat=&zoom=&sunLng=&sunLat=` frame the shot.
  * `?imagery=1` swaps the parchment for NASA Blue Marble (needs network to GIBS).
  */
 import maplibregl from '../../maplibre.js'
@@ -61,11 +61,6 @@ map.on('load', () => {
   const globe = addGlobeLayers(map, { reduceMotion: true })
   const sun = sunFor(num('sunLng', -10), num('sunLat', 10))
   for (const layer of Object.values(globe.layers)) layer.setOptions?.({ sun })
-  // Babylon knobs straight off the URL: ?light=&exposure=&thickness=&rayleigh=&mie=&ms=
-  const knobs = { light: 'lightIntensity', exposure: 'exposure', thickness: 'thickness', rayleigh: 'rayleigh', mie: 'mie', ms: 'multiScattering' }
-  const patch = {}
-  for (const [key, option] of Object.entries(knobs)) if (params.has(key)) patch[option] = Number(params.get(key))
-  globe.layers.atmosphere?.setOptions?.(patch)
   if (params.get('nobloom')) globe.layers.bloom?.setOptions?.({ strength: 0 })
   window.__globe = globe
   map.once('idle', () => { setTimeout(() => { document.body.dataset.ready = '1' }, 1500) })
