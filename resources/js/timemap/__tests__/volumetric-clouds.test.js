@@ -25,13 +25,14 @@ const fakeEngine = (overrides = {}) => {
 
 describe('volumetricFade', () => {
   it('is all 3D close in, all flat from orbit, and falls steadily between', () => {
-    expect(volumetricFade(400e3)).toBe(1)
+    expect(volumetricFade(300e3)).toBe(1)
     expect(volumetricFade(VOLUME_FULL_BELOW_M)).toBe(1)
     expect(volumetricFade(VOLUME_NONE_ABOVE_M)).toBe(0)
     expect(volumetricFade(12000e3)).toBe(0)
     const mid = volumetricFade((VOLUME_FULL_BELOW_M + VOLUME_NONE_ABOVE_M) / 2)
     expect(mid).toBeCloseTo(0.5, 6)
-    expect(volumetricFade(2000e3)).toBeGreaterThan(volumetricFade(2500e3))
+    const span = VOLUME_NONE_ABOVE_M - VOLUME_FULL_BELOW_M
+    expect(volumetricFade(VOLUME_FULL_BELOW_M + span * 0.3)).toBeGreaterThan(volumetricFade(VOLUME_FULL_BELOW_M + span * 0.7))
   })
 
   it('is 0, not NaN, when the height is unknown', () => {

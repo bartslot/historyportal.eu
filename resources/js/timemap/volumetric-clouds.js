@@ -26,14 +26,15 @@ const LAYER_ID = 'tm-cloud-volume'
 /**
  * Camera heights, in metres, over which the 3D clouds take over from the flat deck.
  *
- * The Time-Map stops at zoom 7, which puts the camera 600 to 800 km up, so the band sits above
- * that: all 3D by about zoom 6, all flat by about zoom 5. In height and not in zoom for the reason
- * clouds.js gives for its own fade: zoom carries cos(lat), height does not.
+ * The Time-Map stops at zoom 7, which puts the camera 180 to 550 km up depending on the tilt, and
+ * zoom 6 is about twice that. So the band sits between zoom 6 and zoom 5: all 3D by about zoom 6,
+ * all flat by about zoom 5. In height and not in zoom for the reason clouds.js gives for its own
+ * fade: zoom carries cos(lat), height does not.
  */
-export const VOLUME_FULL_BELOW_M = 1500e3
-export const VOLUME_NONE_ABOVE_M = 3000e3
+export const VOLUME_FULL_BELOW_M = 900e3
+export const VOLUME_NONE_ABOVE_M = 1900e3
 /** Start downloading a little before the first cloud is due, so the fade has something to show. */
-const PRELOAD_BELOW_M = 3600e3
+const PRELOAD_BELOW_M = 2400e3
 
 const smoothstep = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
@@ -121,6 +122,12 @@ export const createVolumetricCloudLayer = ({
     exposure: 10,
     stepScale: 1.004,
     shadows: true,
+    skyLight: 1,
+    tone: 'agx',
+    // The field values that become "no cloud" and "full cloud" in the baked weather. The deck's own
+    // pair, 0.16 and 0.62: where the deck is solid the weather is 1.
+    weatherLow: 0.16,
+    weatherHigh: 0.62,
     deckOpacity: null,
     ...options,
   }

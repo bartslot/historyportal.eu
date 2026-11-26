@@ -70,10 +70,10 @@ map.on('load', () => {
   if (params.get('nobloom')) globe.layers.bloom?.setOptions?.({ strength: 0 })
   if (params.get('flat') === '0') globe.layers.clouds?.setOptions?.({ opacity: 0 })
   const volume = {}
-  for (const [key, value] of params) if (key.startsWith('v.')) volume[key.slice(2)] = Number(value)
+  for (const [key, value] of params) if (key.startsWith('v.')) volume[key.slice(2)] = Number.isNaN(Number(value)) ? value : Number(value)
   if ('shadows' in volume) volume.shadows = !!volume.shadows
   // The proof page can hide the flat deck and still want the 3D clouds, so they do not follow it.
-  globe.layers.cloudVolume?.setOptions?.({ ...volume, deckOpacity: undefined })
+  globe.layers.cloudVolume?.setOptions?.({ ...volume, deckOpacity: null })
   window.__globe = globe
   map.once('idle', () => { setTimeout(() => { document.body.dataset.ready = '1' }, 1500) })
 })

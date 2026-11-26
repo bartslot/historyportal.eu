@@ -24,22 +24,29 @@ const out = resolve(arg('out', 'storage/clouds-proof'))
 const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
 const view = `${italy}&zoom=7&pitch=60`
+// "A" is the candidate look; the shots before it change one thing at a time from the defaults.
+const A = 'v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.55'
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
-  { name: 'a-z7-p60', query: view },
-  { name: 'b-z7-p60-flat-only', query: `${view}&v.strength=0`, label: 'same view, flat deck only' },
-  { name: 'c-z7-p0', query: `${italy}&zoom=7&pitch=0` },
-  { name: 'd-z6-p60', query: `${italy}&zoom=6&pitch=60` },
-  { name: 'e-z5.3-p45', query: `${italy}&zoom=5.3&pitch=45`, label: 'mid hand-over' },
-  { name: 'f-z4-p45', query: `${italy}&zoom=4&pitch=45`, label: 'flat deck only (orbit)' },
-  { name: 'g-scale16', query: `${view}&v.scale=16` },
-  { name: 'h-scale4', query: `${view}&v.scale=4` },
-  { name: 'i-scale2', query: `${view}&v.scale=2` },
-  { name: 'j-exposure20', query: `${view}&v.exposure=20` },
-  { name: 'k-coverage0.3', query: `${view}&v.coverage=0.3` },
-  { name: 'l-coverage0.6', query: `${view}&v.coverage=0.6` },
-  { name: 'm-noshadow', query: `${view}&v.shadows=0` },
-  { name: 'n-atlantic-evening', query: 'lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10' },
-  { name: 'o-caribbean', query: 'lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80' },
+  { name: '01-defaults', query: view },
+  { name: '02-tone-neutral', query: `${view}&v.tone=neutral` },
+  { name: '03-tone-aces', query: `${view}&v.tone=aces` },
+  { name: '04-tone-neutral-exposure6', query: `${view}&v.tone=neutral&v.exposure=6` },
+  { name: '05-step1.001', query: `${view}&v.stepScale=1.001` },
+  { name: '06-step1.0005', query: `${view}&v.stepScale=1.0005` },
+  { name: '07-weather-soft', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95` },
+  { name: '08-weather-soft-coverage0.6', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.6` },
+  { name: '09-scale16-step1.001', query: `${view}&v.scale=16&v.stepScale=1.001` },
+  { name: '10-A', query: `${view}&${A}` },
+  { name: '11-A-top-down', query: `${italy}&zoom=7&pitch=0&${A}` },
+  { name: '12-A-z6', query: `${italy}&zoom=6&pitch=60&${A}` },
+  { name: '13-A-z5.5-handover', query: `${italy}&zoom=5.5&pitch=45&${A}` },
+  { name: '14-A-atlantic-evening', query: `lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10&${A}` },
+  { name: '15-A-caribbean', query: `lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80&${A}` },
+  { name: '16-A-skylight2', query: `${view}&${A}&v.skyLight=2` },
+  { name: '17-A-noshadow', query: `${view}&${A}&v.shadows=0` },
+  { name: '18-A-exposure6', query: `${view}&${A}&v.exposure=6` },
+  { name: '19-flat-only', query: `${view}&v.strength=0`, label: 'same view, flat deck only' },
+  { name: '20-orbit-flat', query: `${italy}&zoom=4&pitch=45`, label: 'orbit: flat deck' },
 ]
 
 mkdirSync(out, { recursive: true })

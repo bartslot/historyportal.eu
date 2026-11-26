@@ -60,6 +60,11 @@ const WEATHER_HEIGHT = 2048
 /** The bake is refreshed a strip at a time, so the wind keeps turning it without a hitch. */
 const WEATHER_STRIPS = 16
 
+const TONE_MODES = {
+  agx: ToneMappingMode.AGX, neutral: ToneMappingMode.NEUTRAL, aces: ToneMappingMode.ACES_FILMIC,
+  reinhard: ToneMappingMode.REINHARD2, linear: ToneMappingMode.LINEAR,
+}
+
 const UV_LINE = 'return getCubeSphereUv(position);'
 const UV_LINE_OURS = 'return getSphericalUv(position);'
 
@@ -68,6 +73,7 @@ const UV_LINE_OURS = 'return getSphericalUv(position);'
 // thresholded the way the deck thresholds it: where the deck is solid, the weather is 1.
 const WEATHER_FRAGMENT = /* glsl */`precision highp float;
 varying vec2 v_uv;
+uniform vec2 u_weatherRange;   // field values that become weather 0 and weather 1
 ${EQUIRECT_GLSL}
 ${CLOUD_FIELD_GLSL}
 void main() {
@@ -75,7 +81,7 @@ void main() {
   float lat = (v_uv.y - 0.5) * 3.14159265359;
   vec3 p = vec3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon));
   float field = advectedField(equirectUV(p, u_drift), lat);
-  gl_FragColor = vec4(vec3(smoothstep(0.16, 0.62, field)), 1.0);
+  gl_FragColor = vec4(vec3(smoothstep(u_weatherRange.x, u_weatherRange.y, field)), 1.0);
 }`
 
 /**
@@ -87,6 +93,7 @@ const createWeatherBake = (gl, state, repaint) => {
   const corner = gl.getAttribLocation(program, 'a_corner')
   const uniforms = Object.fromEntries(CLOUD_FIELD_UNIFORMS.map((name) =>
     [name, gl.getUniformLocation(program, `u_${name}`)]))
+  const weatherRange = gl.getUniformLocation(program, 'u_weatherRange')
   const quad = createScreenQuad(gl)
 
   const texture = gl.createTexture()
@@ -119,6 +126,8 @@ const createWeatherBake = (gl, state, repaint) => {
     framebuffer,
     get hasSource() { return !!(sources.field?.ready || sources.patches?.ready) },
     get baked() { return strip >= 0 },
+    /** The next bake is the whole texture again: something about the weather itself changed. */
+    restart() { strip = -1 },
     /** Draw the next strip (or everything, the first time). Leaves GL state for the caller to reset. */
     bake(current) {
       if (!this.hasSource) return
@@ -135,6 +144,7 @@ const createWeatherBake = (gl, state, repaint) => {
         gl.enable(gl.SCISSOR_TEST)
         gl.scissor(0, strip * rows, WEATHER_WIDTH, rows)
       }
+      gl.uniform2f(weatherRange, current.weatherLow, current.weatherHigh)
       setCloudFieldUniforms(gl, uniforms, current, { seconds: performance.now() * 0.001, ...sources }, 0, 1, 2)
       drawScreenQuad(gl, quad, corner)
       gl.disable(gl.SCISSOR_TEST)
@@ -236,6 +246,8 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
     clouds.clouds.perspectiveStepScale = state.stepScale
     clouds.shadow.maxFar = 1e5 * k
     clouds.coverage = state.coverage
+    clouds.skyLightScale = state.skyLight
+    tone.mode = TONE_MODES[state.tone] ?? ToneMappingMode.AGX
     clouds.sunDirection.copy(planetToEcef(state.sun)).normalize()
     renderer.toneMappingExposure = state.exposure
   }
@@ -311,6 +323,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
     },
 
     setOptions(next) {
+      if (next.weatherLow !== state.weatherLow || next.weatherHigh !== state.weatherHigh) weather.restart()
       state = next
       apply()
     },
