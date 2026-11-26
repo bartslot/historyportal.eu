@@ -18,11 +18,6 @@ use App\Services\Art\HistoryLineStyle;
  */
 final class StoryVideoPrompts
 {
-    /** The approved History Lines colour reference that carries the look in every picture request (anchors.json). */
-    public const IMAGE_ANCHORS = ['colour-ship-spyglass.jpg'];
-
-    public const SHEET_ANCHORS = self::IMAGE_ANCHORS;
-
     /**
      * @param  array{name: string, colour?: string, look?: string}  $person
      * @param  list<string>  $whiteOwners  who owns white in this cast (at most one is allowed)

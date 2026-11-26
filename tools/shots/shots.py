@@ -2,12 +2,12 @@
 """Consistent shots: the gates between a script and a finished board, as commands.
 
     shots.py check   <lesson>                                   what is missing or against the rules
-    shots.py approve <lesson> <who> <ink|colour> <file> --by bart    record bart's approval of a sheet (hash taken now)
+    shots.py approve <lesson> <who> <ink|colour> <file>         record bart's approval of a sheet (hash taken now)
     shots.py palette <lesson> <who>                             sample the fixed colours from the approved colour sheet
     shots.py map     <lesson> <scene> [board] -o map.png        the scene from above
     shots.py pack    <lesson> <scene> <board> <ink|colour>      freeze one request: attachments, prompt, inputs.png
-    shots.py seen    <pack> --by bart                           bart saw exactly these inputs
-    shots.py sent    <pack> --tool .. --model .. [--echo file]  it went out (refused before `seen`)
+    shots.py seen    <pack>                                     bart saw exactly these inputs, and said yes
+    shots.py sent    <pack> --lesson .. --tool .. --model ..    it went out (refused before `seen`)
     shots.py verify  <lesson> <scene> <board> --ink a.png [--colour b.png]   measure the result
     shots.py accept  <lesson> <scene> <board> <ink|colour> <file> --by ..    record an approval
     shots.py reject  <lesson> <board> --failures kind,kind       record a failed try (two of a kind stops the retries)
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         return p
 
     command('check', 'lesson')
-    command('approve', 'lesson', 'who', 'pass_', 'file').add_argument('--by', required=True)
+    command('approve', 'lesson', 'who', 'pass_', 'file')
     command('palette', 'lesson', 'who')
     p = command('map', 'lesson', 'scene')
     p.add_argument('board', nargs='?')
@@ -60,12 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--ink')
     p.add_argument('--out')
     p.add_argument('--changed', help='what is different from the tries that failed')
-    command('seen', 'pack').add_argument('--by', required=True)
+    p.add_argument('--skill', help="bart's history-lines skill text, for a tool that cannot load skills")
+    command('seen', 'pack')
     p = command('sent', 'pack')
     p.add_argument('--lesson', required=True)
     p.add_argument('--tool', required=True)
     p.add_argument('--model', required=True)
-    p.add_argument('--echo', help="file with the model's own list of the images it received")
+    p.add_argument('--request-id', help='the request or conversation id, where the tool shows one')
     p = command('verify', 'lesson', 'scene', 'board')
     p.add_argument('--ink', required=True)
     p.add_argument('--colour')
@@ -75,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--by', required=True, help='who approved, comma separated')
     p.add_argument('--ink', help='the approved ink board (colour pass)')
     p.add_argument('--marks', help='json file with the reviewers\' marks and instant_no list (colour pass)')
+    p.add_argument('--regions')
     p = command('reject', 'lesson', 'board')
     p.add_argument('--failures', required=True)
     p.add_argument('--note', default='')
@@ -92,9 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def run(args) -> int | None:
     if args.command == 'seen':
-        if args.by != 'bart':
-            raise Refused('Only bart can say he saw the inputs.')
-        packs.seen(Path(args.pack), args.by, today())
+        packs.seen(Path(args.pack), today())
         return print('Recorded: bart saw these inputs.')
 
     lesson = Lesson(args.lesson)
@@ -105,18 +105,15 @@ def run(args) -> int | None:
         return 1 if problems else 0
 
     if args.command == 'approve':
-        if args.by != 'bart':
-            raise Refused('Only bart approves a sheet.')
-        entry = lesson.approve(args.who, args.pass_, args.file, args.by, today())
+        entry = lesson.approve(args.who, args.pass_, args.file, 'bart', today())
         return print(f'Approved {args.pass_} sheet of {args.who}: {entry["sha256"][:12]}')
 
     if args.command == 'palette':
         person = lesson.cast['characters'][args.who]
         sheet = colour.load(lesson.sheet(args.who, 'colour'))
-        height, width = sheet.shape[:2]
         palette = {}
         for part, box in (person.get('swatches') or {}).items():
-            palette[part] = colour.sample(sheet[round(box[1] * height):round(box[3] * height), round(box[0] * width):round(box[2] * width)])
+            palette[part] = colour.sample(verify.region(sheet, box))
         if not palette or None in palette.values():
             raise Refused(f'Give {args.who} a "swatches" box per garment in cast.json (fractions of the sheet), each on flat paint.')
         person['palette'] = palette
@@ -131,12 +128,12 @@ def run(args) -> int | None:
     if args.command == 'pack':
         number = sum(e.get('event') == 'request' and e.get('board') == args.board for e in ledger.entries(lesson.media)) + 1
         out = Path(args.out) if args.out else lesson.media / 'review' / 'requests' / f'{args.board}-{args.pass_}-{number:02d}'
-        out = packs.build(lesson, args.scene, args.board, args.pass_, out, Path(args.ink) if args.ink else None, args.changed)
+        out = packs.build(lesson, args.scene, args.board, args.pass_, out, Path(args.ink) if args.ink else None, args.changed,
+                          Path(args.skill).read_text() if args.skill else None)
         return print(f'{out}\nShow bart {out / "inputs.png"} and {out / "prompt.txt"} before anything is sent.')
 
     if args.command == 'sent':
-        echo = Path(args.echo).read_text() if args.echo else None
-        packs.sent(Path(args.pack), args.tool, args.model, today(), lesson.media, echo)
+        packs.sent(Path(args.pack), args.tool, args.model, today(), lesson.media, args.request_id)
         return print('Recorded in the ledger.')
 
     if args.command == 'reject':
@@ -154,20 +151,23 @@ def run(args) -> int | None:
     if args.command == 'verify':
         report = verify.ink(board, Path(args.ink))
         target = Path(args.ink)
+        regions = read(Path(args.regions)) if args.regions else None
         if args.colour:
             target = Path(args.colour)
-            report = verify.coloured(lesson, board, Path(args.ink), target, read(Path(args.regions)) if args.regions else None)
+            report = verify.coloured(lesson, board, Path(args.ink), target, regions)
         report['sha256'] = sha256(target)
         out = Path(args.out) if args.out else target.with_suffix('')
         write(Path(f'{out}.report.json'), report)
         if args.colour:
-            verify.review_sheet(lesson, board, target, report).save(f'{out}.review.png')
+            verify.review_sheet(lesson, board, target, report, regions).save(f'{out}.review.png')
+            verify.overlay(Path(args.ink), target).save(f'{out}.overlay.png')
         print('\n'.join(f'- {n}' for n in report['notes']) or 'No measurable fault. The reviewers still look at it.')
         return 1 if report['failures'] else 0
 
     if args.command == 'accept':
         target = Path(args.file)
-        report = verify.ink(board, target) if args.pass_ == 'ink' else verify.coloured(lesson, board, Path(args.ink or ''), target)
+        regions = read(Path(args.regions)) if args.regions else None
+        report = verify.ink(board, target) if args.pass_ == 'ink' else verify.coloured(lesson, board, Path(args.ink or ''), target, regions)
         if report['failures']:
             raise Refused('The checks still fail: ' + ', '.join(report['failures']))
         by = args.by.split(',')
@@ -201,14 +201,12 @@ def run(args) -> int | None:
         for (cell, box), spec in zip(boards.cut(Image.open(target).convert('RGB'), rows, cols, (width, height)), board['cells']):
             name = f'{args.board}-shot-{spec["shot"]:02d}.png'
             cell.save(folder / name)
-            crops.append({'shot': spec['shot'], 'file': name, 'box': box, 'from': cell_size(box), 'to': [width, height]})
+            crops.append({'shot': spec['shot'], 'file': name, 'box': box, 'from': [box[2] - box[0], box[3] - box[1]], 'to': [width, height]})
         write(folder / 'crops.json', {'board': str(target), 'sha256': verdict['sha256'], 'upscale': 'lanczos', 'crops': crops})
-        return print(f'{len(crops)} keyframes in {folder}')
+        grown = width / crops[0]['from'][0]
+        return print(f'{len(crops)} keyframes in {folder}' + (f'\nEach cell was enlarged {grown:.1f}x: look at the faces at full size '
+                                                             'before any of these goes to video.' if grown > 1.5 else ''))
     return None
-
-
-def cell_size(box: list[int]) -> list[int]:
-    return [box[2] - box[0], box[3] - box[1]]
 
 
 if __name__ == '__main__':

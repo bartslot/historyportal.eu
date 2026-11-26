@@ -11,9 +11,12 @@ import json
 import os
 from pathlib import Path
 
+import board as boards
+
 REPO = Path(__file__).resolve().parents[2]
 SHOTS = REPO / 'resources' / 'art' / 'shots'
 STYLE = REPO / 'resources' / 'art' / 'style-anchors' / 'history-lines'
+MIN_CELL = 700        # px a cell needs to be wide before it can become a keyframe
 MAX_NAMED = 3         # named characters in one cell; more and the model swaps their features
 PASSES = ('ink', 'colour')
 
@@ -175,6 +178,19 @@ class Lesson:
                 for mark in cell.get('sees', {}):
                     if mark not in marks:
                         found.append(f'{tag}: sees "{mark}", which is not on the layout.')
+                    elif cell.get('camera') and mark not in boards.sight(scene, cell):
+                        found.append(f'{tag}: says it sees the {mark}, but from that camera it is out of frame. '
+                                     'Move the camera or drop the line.')
+                for who, at in (cell.get('places') or {}).items():
+                    spot = boards.project(cell['camera'], at) if cell.get('camera') else None
+                    if not spot or not 0 <= spot['x'] <= 1:
+                        found.append(f'{tag}: {who} is placed outside the frame of that camera.')
                 if not cell.get('action'):
                     found.append(f'{tag}: no action written.')
+                if len(named) > 1 and set(named) - set(cell.get('where') or {}):
+                    found.append(f'{tag}: more than one named character, so "where" must say which figure each one is.')
+            width = (board.get('size') or [0])[0] / cols
+            if 0 < width < MIN_CELL:
+                found.append(f'board {board["id"]}: cells would be {round(width)} px wide; a face does not survive that. '
+                             'Use fewer cells or one request per shot.')
         return found

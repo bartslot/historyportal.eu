@@ -31,7 +31,8 @@
           900
         ],
         "size": 300,
-        "note": "far to the west, on the left of frame"
+        "note": "far to the west, on the left of frame; it rises in the clips, the stills show a clear horizon there",
+        "in_stills": false
       }
     ],
     "routes": [
@@ -90,16 +91,16 @@
           "who": [],
           "camera": {
             "at": [
-              900,
-              150
+              300,
+              560
             ],
             "looks_at": [
-              1000,
-              720
+              1600,
+              960
             ],
             "framing": "Very wide, eye level"
           },
-          "action": "The caravan is small on a huge empty plain, calm, at a walk toward the right.",
+          "action": "The caravan is small on a huge empty plain, calm, at a walk away from the camera toward the right.",
           "sees": {
             "village": "a small shape on the far right horizon"
           }
@@ -143,6 +144,16 @@
           "action": "Marco, in the saddle, looks at the far left horizon; the plain there is still clear (the haze rises in the clip, not in the still).",
           "sees": {
             "haze": "not there yet: a clear horizon"
+          },
+          "where": {
+            "marco": "the rider seen from behind, close to the camera",
+            "marco-horse": "the horse he sits on"
+          },
+          "places": {
+            "marco": [
+              1150,
+              655
+            ]
           }
         },
         {
@@ -164,8 +175,26 @@
             "framing": "Close on two faces"
           },
           "action": "Niccolò and Marco side by side; Marco narrows his eyes, Niccolò looks past him, steady.",
-          "sees": {}
+          "sees": {},
+          "where": {
+            "niccolo": "the man on the left, nearer the camera",
+            "marco": "the young man on the right"
+          },
+          "places": {
+            "niccolo": [
+              1004,
+              690
+            ],
+            "marco": [
+              1008,
+              700
+            ]
+          }
         }
+      ],
+      "size": [
+        1536,
+        1024
       ]
     },
     {
@@ -194,7 +223,10 @@
             "framing": "Close"
           },
           "action": "Maffeo shades his eyes with one hand and stares at the left horizon.",
-          "sees": {}
+          "sees": {},
+          "where": {
+            "maffeo": "the only man in the cell"
+          }
         },
         {
           "shot": 6,
@@ -209,18 +241,40 @@
           ],
           "camera": {
             "at": [
-              1100,
-              450
+              1040,
+              700
             ],
             "looks_at": [
-              1100,
-              720
+              1500,
+              800
             ],
-            "framing": "Medium wide"
+            "framing": "Medium wide, looking along the road"
           },
           "action": "The three Polos pull their horses round toward the right, each at a different moment of the turn.",
           "sees": {
             "village": "a small shape on the far right horizon, the same size as in the cells before"
+          },
+          "where": {
+            "marco": "the rider on the right, already turned",
+            "niccolo": "the rider in the middle, half turned",
+            "maffeo": "the rider on the left, still looking back",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              1088,
+              720
+            ],
+            "niccolo": [
+              1100,
+              722
+            ],
+            "marco": [
+              1113,
+              718
+            ]
           }
         },
         {
@@ -236,19 +290,40 @@
           ],
           "camera": {
             "at": [
-              2200,
-              400
+              2260,
+              770
             ],
             "looks_at": [
+              2700,
+              880
+            ],
+            "framing": "Wide, from behind and a little to the side"
+          },
+          "action": "The Polos ride hard toward the village, low over their horses' necks (the raiders behind them are in the clip, not in this still).",
+          "sees": {
+            "village": "larger now, ahead on the right: walls and a gate can be made out"
+          },
+          "where": {
+            "marco": "the rider in front, on the right",
+            "niccolo": "the rider in the middle",
+            "maffeo": "the rider at the back, on the left",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              2285,
+              788
+            ],
+            "niccolo": [
               2300,
               790
             ],
-            "framing": "Wide, from the side"
-          },
-          "action": "The Polos ride hard toward the right, low over their horses' necks; far behind them on the left, small dark riders in dust.",
-          "sees": {
-            "village": "larger now, on the right: walls and a gate can be made out",
-            "haze": "dust with small riders, far behind on the left"
+            "marco": [
+              2316,
+              791
+            ]
           }
         },
         {
@@ -276,8 +351,34 @@
           "action": "The town gate stands open ahead and the Polos reach it.",
           "sees": {
             "village": "the gate fills most of the frame"
+          },
+          "where": {
+            "niccolo": "the rider nearest the gate",
+            "marco": "the rider in the middle",
+            "maffeo": "the rider nearest the camera",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              3480,
+              765
+            ],
+            "marco": [
+              3500,
+              770
+            ],
+            "niccolo": [
+              3520,
+              774
+            ]
           }
         }
+      ],
+      "size": [
+        1536,
+        1024
       ]
     }
   ]

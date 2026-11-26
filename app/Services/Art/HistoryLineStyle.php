@@ -153,7 +153,7 @@ final class HistoryLineStyle
      *
      * @return list<string>
      */
-    public static function anchors(int $pass, bool $figure = false): array
+    public static function anchors(int $pass): array
     {
         $manifest = json_decode((string) file_get_contents(dirname(__DIR__, 3).'/resources/'.self::ANCHOR_DIR.'/anchors.json'), true);
         $want = $pass === 1 ? 'ink' : 'colour';

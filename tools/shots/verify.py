@@ -67,18 +67,24 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
         notes.append('The gaps between cells are no longer clean white.')
 
     seen: dict[tuple[str, str], list[tuple[int, str]]] = {}
+    unscored: set[str] = set()
     for n, (cell, spec) in enumerate(zip(_cells(rgb, board), board['cells']), 1):
         row = {'cell': n, **colour.coverage(cell), 'colours': []}
+        named = [w for w in spec.get('who', []) if people[w].get('kind') == 'person']
         for who, person in people.items():
             present = who in spec.get('who', [])
             for part, target in (person.get('palette') or {}).items():
-                area = _region(cell, (regions or {}).get(str(n), {}).get(who)) if present else cell
+                area = region(cell, (regions or {}).get(str(n), {}).get(who)) if present else cell
                 result = colour.find(area, target)
                 close = result['delta'] is not None and result['delta'] <= colour.SAME
                 if not present:
                     if part in person.get('reserved', []) and close and result['share'] >= RESERVED_SHARE:
                         notes.append(f'Cell {n}: {result["share"]}% of the paint is {person["name"]}\'s {part} colour, '
                                      f'and {person["name"]} is not in this shot. Check nobody else wears it.')
+                    continue
+                if area is cell and len(named) > 1:
+                    unscored.add(f'Cell {n}: more than one named character and no regions marked, so colours here are '
+                                 'not scored (the right blue somewhere does not prove it is on the right man).')
                     continue
                 row['colours'].append({'who': who, 'part': part, **result})
                 if result['found'] is None:
@@ -99,21 +105,37 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
             notes.append(f'{people[who]["name"]}\'s {part} differs between cells: '
                          + ', '.join(f'cell {n} {value}' for n, value in found) + '.')
     return {'pass': 'colour', 'file': str(path), 'ink_kept': round(kept, 3), 'failures': sorted(set(failures)),
-            'notes': notes, 'cells': measured}
+            'notes': notes + sorted(unscored), 'cells': measured}
 
 
-def _region(cell: np.ndarray, box) -> np.ndarray:
+def region(cell: np.ndarray, box) -> np.ndarray:
     if not box:
         return cell
     height, width = cell.shape[:2]
     return cell[round(box[1] * height):round(box[3] * height), round(box[0] * width):round(box[2] * width)]
 
 
-def review_sheet(lesson: Lesson, board: dict, path: Path, report: dict) -> Image.Image:
-    """Every cell beside the sheets of the people in it, and their fixed colours beside what came out."""
+def overlay(ink_path: Path, path: Path) -> Image.Image:
+    """The pass 1 ink in red over the coloured board: where red shows beside a dark line, the drawing moved."""
+    base = Image.open(path).convert('RGB')
+    marks = colour.lab(np.asarray(Image.open(ink_path).convert('RGB').resize(base.size, Image.LANCZOS), dtype=np.float64))[..., 0] < 50
+    out = np.asarray(base, dtype=np.uint8).copy()
+    out[marks] = (out[marks] * 0.4 + np.array([230, 30, 30]) * 0.6).astype(np.uint8)
+    return Image.fromarray(out)
+
+
+def review_sheet(lesson: Lesson, board: dict, path: Path, report: dict, regions: dict | None = None) -> Image.Image:
+    """Every cell beside the sheets of the people in it, their fixed colours beside what came out, and, where
+    regions are marked, each character cut out of every cell at one size, in shot order."""
     image = Image.open(path).convert('RGB')
     rows, cols = board['grid']
     items: list[tuple[str, Path | Image.Image]] = []
+    for who in dict.fromkeys(w for boxes in (regions or {}).values() for w in boxes):
+        for n, (cell, _) in enumerate(boards.cut(image, rows, cols), 1):
+            box = (regions or {}).get(str(n), {}).get(who)
+            if box:
+                crop = cell.crop((round(box[0] * cell.width), round(box[1] * cell.height), round(box[2] * cell.width), round(box[3] * cell.height)))
+                items.append((f'{who}, shot {board["cells"][n - 1]["shot"]}', crop))
     for n, ((cell, _), spec) in enumerate(zip(boards.cut(image, rows, cols), board['cells']), 1):
         items.append((f'Shot {spec["shot"]} (cell {n})', cell))
         for who in spec.get('who', []):

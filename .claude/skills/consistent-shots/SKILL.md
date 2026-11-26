@@ -53,14 +53,15 @@ Each step ends in a gate. Do not start a step while the one before it is open.
 ### 1. References first
 
 - `shots.py check <lesson>` lists what is missing: sheets without approval, files that changed since approval,
-  shared signature colours, scenes without a layout.
+  shared signature colours, scenes without a layout, shots that claim to see what their camera cannot.
 - A **style reference** is only a picture bart himself called History Lines. Line references are approved for
   their drawing only (they are coloured pictures); colour references for the whole look.
 - Each named character has one ink sheet and one colour sheet, and so does each horse. Use the sheets that exist
   first; do not redesign the cast to try the method. A sheet shows front, side, three-quarter and back, a face
-  close-up, and nothing else. It says who someone is, never how to stand.
+  close-up, and nothing else, large enough that hair, face and garment are still readable when the sheet is one
+  of several attachments. It says who someone is, never how to stand.
 - bart approves a sheet in his own words. Then, and only then: `shots.py approve <lesson> <who> <ink|colour>
-  <file> --by bart`. The hash is taken at that moment; a file that changes later needs him again.
+  <file>`. The hash is taken at that moment; a file that changes later needs him again.
 - Give each character a `swatches` box per garment in `cast.json` (on flat paint of the approved colour sheet)
   and run `shots.py palette <lesson> <who>`. The fixed colours come from the approved picture, never from a
   typed-in guess.
@@ -73,68 +74,111 @@ check, and record the file in the scene's `accuracy`. A pack is refused without 
 
 ### 3. The scene from above
 
-Write the scene file: landmarks with their real distances, who moves along which route, where the light comes
-from, and for every shot a camera position, what it looks at, and what each landmark looks like from there
-("a small shape on the far right horizon"). Screen direction follows from the map; it only flips on a
-deliberate change of camera side. `shots.py map <lesson> <scene> <board> -o map.png` draws it.
+Write the scene file: landmarks with their real size and distance, who moves along which route, where the light
+comes from. Then for every shot:
+
+- `camera`: where it stands, what it looks at, the lens (`fov`, 50 degrees unless said), the framing in words;
+- `who` is in it, and `where`: which figure each one is ("the rider on the left, still looking back"). Required
+  as soon as two named people share a cell: a name alone does not tell the model which rider gets which face;
+- `places`: where each one stands on the layout, when it matters;
+- `sees`: what each landmark looks like from there, in words. Something that only appears in the clip (a rising
+  haze) is a landmark with `"in_stills": false`: on the map, never drawn in a still.
+
+The size of things is not left to adjectives. Code works out from the layout how wide each landmark is in each
+shot and where it sits in the frame, writes that into the request ("about 8% of the frame wide, centred 69%
+across"), and draws a **blocking guide**: one plain grey view per cell with the horizon, the landmarks and the
+figures at their true size and place. A lens change can make a village look closer when nobody moved; the guide
+is what stops that. `shots.py check` also refuses a shot that says it sees something its camera cannot see.
+
+`shots.py map <lesson> <scene> <board> -o map.png` draws the layout from above for bart.
 
 - A still shows the calm moment before the action; the action is in the clip.
 - At most three named characters in one cell.
 - Poses come from the action. Two riders never stand the same way, because they are never doing the same thing
   at the same moment; say what each one does.
+- Give every character a `tell` in the cast list: what sets them apart at shot size, in the drawing and not only
+  in colour. If two people cannot be told apart in ink, colour is carrying too much.
 
 bart approves the layout and the shot list. Record it in the scene's `layout.approved`.
 
-### 4. One board per run of shots
+### 4. One board, or one request per shot
 
-Shots that follow each other in one place go on one 2x2 board (four cells, 5 px white gaps). 3x3 is for rough
-planning only: the cells are too small to become keyframes. Never one board for a whole lesson.
+Shots that follow each other in one place go on one 2x2 board (four cells, 5 px white gaps): they share costume,
+light and setting. A board has a price: each cell gets a quarter of the pixels, so a face that carries a shot may
+not survive, and neighbours pull at each other's composition. So:
+
+- wide and medium shots of one place: one 2x2 board;
+- a close-up, or a shot framed very differently from its neighbours: its own request (a board of one cell), with
+  the same references and its own blocking view;
+- never 3x3 for keyframes, never one board for a whole lesson.
+
+Set the board's `size` to what the tool really returns; `check` refuses cells under 700 px wide.
 
 `shots.py pack <lesson> <scene> <board> ink` freezes the request in a folder:
 
-- `attachments/`: the real files, numbered in attach order (style references, then each character and horse);
-- `prompt.txt`: the skill, the pass, the ink number, which image is who, the layout, the cells;
+- `attachments/`: the real files, numbered in attach order: the blocking guide first, then each character and
+  horse sheet, then the style references;
+- `prompt.txt`: the skill, the pass, the ink number, which image is who, who is which figure in each cell, the
+  layout and the sizes;
 - `inputs.png`: every attachment on one page, with its hash;
-- `manifest.json`: path and sha256 of every attachment.
+- `manifest.json`: path and sha256 of every attachment, and the expected place and size of each landmark per cell.
 
-It refuses when anything is unapproved, changed or missing.
+It refuses when anything is unapproved, changed or missing. For a tool that cannot load bart's ChatGPT skill
+(a bare API call), add `--skill <file with his skill text>`: the pack then carries his text word for word. It
+still adds no style wording of its own.
 
-**Gate: bart sees `inputs.png` and `prompt.txt`.** When he says yes: `shots.py seen <pack> --by bart`.
+**Gate: bart sees `inputs.png` and `prompt.txt`.** When he says yes: `shots.py seen <pack>`.
 
 ### 5. Ink pass
 
-Send exactly the pack: its attachments, attached to the request itself in order (never ChatGPT project files),
-and its prompt, unchanged. The prompt asks the model to first say in a line what it sees in each image. Save
-that answer and record the send: `shots.py sent <pack> --lesson .. --tool .. --model .. --echo echo.txt`. Fewer
-descriptions than attachments means a reference did not arrive: do not use the picture.
+Send exactly the pack: its attachments, attached to the request itself in the numbered order (never ChatGPT
+project files), and its prompt, unchanged. Look at the attached thumbnails before sending. Then record it:
+`shots.py sent <pack> --lesson .. --tool .. --model .. [--request-id ..]`. The site's own ChatGPT route also logs
+the hash of every image it sends. Do not rely on asking the model what it received: it can describe a sheet
+correctly and still draw the wrong brother. The proof is in the picture.
 
 Then, before any colour:
 
 1. `shots.py verify <lesson> <scene> <board> --ink board-ink.png` measures the grid and the ink share per cell.
-2. Look at every cell yourself, against the sheets and the map: faces, hands, horses, who stands where, the
-   landmark sizes, history.
+   Ink share is a rough signal (a close-up beard and a far rider differ at the same line weight); your eyes decide.
+2. Look at every cell yourself against the sheets, the blocking guide and the manifest's expected sizes: is each
+   person the right figure, with their `tell` visible? Hands, horses and their markings, landmark size, history.
 3. Ask ChatGPT what is weird and what to add, change or remove.
 4. `shots.py accept ... ink board-ink.png --by claude,chatgpt` when it is right, or
    `shots.py reject <lesson> <board> --failures <kinds>` when it is not.
 
 ### 6. Colour pass
 
-`shots.py pack ... colour --ink board-ink.png` builds the second pack: the approved ink board as the picture to
-colour, the colour style reference, and the **coloured** sheet of everyone on the board, each labelled, plus
-their fixed colours. The whole board is coloured in one go. bart sees the inputs again (`seen`), then send and
-record as before.
+`shots.py pack ... colour --ink board-ink.png` builds the second pack, in this order: the approved ink board as
+the picture to colour; the **coloured** sheet of everyone on the board; a **colour card** cut by code from those
+approved sheets (per garment: the garment as painted, and its flat midtone beside it); the colour style
+reference. The prompt says which row of the card is whose garment and repeats who is which figure in each cell.
+The whole board is coloured in one go. bart sees the inputs again (`seen`), then send and record as before.
 
-`shots.py verify ... --ink board-ink.png --colour board-colour.png` then checks that the ink is still in place,
-that each signature garment is there in its fixed colour in every cell, that it is the same colour across
-cells, and whether someone's reserved colour (Maffeo's blue) shows up in a shot they are not in. It writes a
-`.review.png`: every cell beside the sheets, fixed colour beside the colour that came out.
+Mark where each named character is in each cell in a small `regions.json`
+(`{"2": {"maffeo": [x0, y0, x1, y1]}}`, fractions of the cell), then:
 
-A garment off by a small step (Delta E under 12) passes. Sliding such a garment exactly onto its fixed colour in
-code (`colour.nudge`: that garment's paint only, ink and paper untouched, no model involved) is allowed only
-where bart said so for the lesson; his plan asks for it, his rule against recolouring pictures stands for
-everything a model does. Anything bigger, and anything wrong in the drawing, is a new run of both passes.
+`shots.py verify ... --ink board-ink.png --colour board-colour.png --regions regions.json`
+
+It checks that the ink is still in place, that each signature garment is there in its fixed colour **on its
+owner**, that it is the same colour across cells, and points out someone's reserved colour (Maffeo's blue) in a
+shot they are not in. A cell with two named people and no regions is reported as not scored, never as passed:
+the right blue somewhere in the cell proves nothing. It writes:
+
+- `.review.png`: each character cut out of every cell at one size in shot order, every cell beside the sheets,
+  and fixed colour beside the colour that came out;
+- `.overlay.png`: the pass 1 ink in red over the coloured board. Look at faces, horse markings and the skyline:
+  a shifted eye does not move a whole-cell number.
+
+The colour limit (Delta E 12) is a starting value. Tune it on boards bart accepted and rejected.
+
+Anything wrong is a new run of both passes (bart's rule), never an edit of the coloured board.
 
 ### 7. Review before bart sees it
+
+First, without looking at the labels: in each cell, who is who, and whose horse is whose, from what is drawn?
+Then check against the sheets. This catches a swap in one cell, and also a board that shows the wrong man the
+same way four times.
 
 Mark the board with the plan's score sheet (out of 100; 90 passes):
 
@@ -153,13 +197,15 @@ A wrong character, swapped clothing or horse, a major anatomy fault or a contrad
 board whatever the total. Judge every cell; a good average does not rescue a bad cell. Fix what is plainly
 wrong first. Bring bart only taste calls, with the `.review.png`.
 
-When bart says yes: `shots.py accept ... colour board-colour.png --ink board-ink.png --by claude,chatgpt,bart
---marks marks.json`.
+When bart says yes: `shots.py accept ... colour board-colour.png --ink board-ink.png --regions regions.json
+--by claude,chatgpt,bart --marks marks.json`.
 
 ### 8. Keyframes
 
 `shots.py cut <lesson> <scene> <board> board-colour.png` cuts the approved board into one keyframe per shot
 (Lanczos to 1920x1080, crop boxes saved in `crops.json`). No model upscaling of keyframes: it redraws faces.
+Lanczos adds no detail either: when a cell was enlarged more than one and a half times the command says so, and
+the faces are checked at full size before the keyframe goes anywhere.
 
 ### 9. Video
 
@@ -180,6 +226,7 @@ When bart says yes: `shots.py accept ... colour board-colour.png --ink board-ink
 - Two failures of one kind on one board: stop. The next pack is refused until you say what is different
   (`--changed "..."`): another reference, fewer people in the cell, a different split of the board. More words
   in the prompt is not a change of approach.
-- If one cell fails, the others stay approved in the ledger, but a board is one picture: the fix is a new board
-  of the cells that failed, not an edit.
+- If one cell fails, the other cells stay approved. Make that one shot again as its own request (a board of one
+  cell, both passes) with the same references and its own blocking view. Do not repack failed cells into a new
+  board: new neighbours change their scale and which image is who.
 - If the approach is exhausted, take it to bart with the review page. Do not keep generating.

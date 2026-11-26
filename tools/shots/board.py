@@ -121,3 +121,74 @@ def swatches(rows: list[tuple[str, str, str | None]], cell: int = 60) -> Image.I
             draw.rectangle([8 + cell, y, 8 + 2 * cell, y + cell], fill=found, outline='black')
         _text(draw, (24 + 2 * cell, y + cell // 2 - 10), f'{label}: fixed {target}, came out {found or "not found"}', fill='black')
     return image
+
+
+# ── what each camera sees ───────────────────────────────────────────────────────────────────────
+
+def project(camera: dict, point, size: float = 0.0) -> dict | None:
+    """Where a spot on the layout lands in a shot: centre across the frame (0 left, 1 right), width as a share of
+    the frame, and how many metres the frame spans at that distance. None when it is behind the camera."""
+    cx, cy = camera['at']
+    dx, dy = camera['looks_at'][0] - cx, camera['looks_at'][1] - cy
+    length = math.hypot(dx, dy) or 1.0
+    dx, dy = dx / length, dy / length
+    vx, vy = point[0] - cx, point[1] - cy
+    depth = vx * dx + vy * dy
+    if depth <= 0.5:
+        return None
+    spread = 2 * math.tan(math.radians(camera.get('fov', 50)) / 2) * depth      # metres across the frame at that depth
+    return {'x': round(0.5 + (vx * dy - vy * dx) / spread, 3), 'width': round(size / spread, 4),
+            'spread': spread, 'depth': round(depth)}
+
+
+def sight(scene: dict, cell: dict) -> dict[str, dict]:
+    """Every landmark this shot can see, with its place and size in the frame."""
+    seen = {}
+    for mark in scene['layout']['landmarks']:
+        spot = project(cell['camera'], mark['at'], mark.get('size', 0))
+        if spot and spot['x'] + spot['width'] / 2 > 0 and spot['x'] - spot['width'] / 2 < 1:
+            seen[mark['id']] = spot
+    return seen
+
+
+def blocking_guide(scene: dict, board: dict, width: int = 1600) -> Image.Image:
+    """One plain view per cell, in cell order: the horizon, each landmark and each placed figure at the size and
+    place the layout gives them. Grey shapes only, no words: a guide for position and scale, drawn by code."""
+    rows, cols = board['grid']
+    height = round(width * 9 / 16)
+    image = Image.new('RGB', (width, height), 'white')
+    draw = ImageDraw.Draw(image)
+    marks = {m['id']: m for m in scene['layout']['landmarks']}
+    for (left, top, right, bottom), cell in zip(cells(width, height, rows, cols), board['cells']):
+        w, h = right - left, bottom - top
+        horizon = top + h * cell['camera'].get('horizon', 0.45)
+        draw.rectangle([left, top, right - 1, bottom - 1], outline='#DDDDDD')
+        draw.line([left, horizon, right, horizon], fill='#BBBBBB', width=2)
+        shapes = [(spot['depth'], spot, marks[key].get('height', marks[key].get('size', 0) * 0.3), None)
+                  for key, spot in sight(scene, cell).items() if marks[key].get('in_stills', True)]
+        for n, (who, at) in enumerate((cell.get('places') or {}).items()):
+            spot = project(cell['camera'], at, 0.6)
+            if spot:
+                shapes.append((spot['depth'], spot, 1.8, 120 - 25 * (n % 4)))
+        for _, spot, tall, grey in sorted(shapes, key=lambda item: -item[0]):       # far things first
+            per_metre = w / spot['spread']
+            x, foot = left + spot['x'] * w, horizon + cell['camera'].get('height', 1.7) * per_metre
+            half = max(1.5, spot['width'] * w / 2)
+            box = [max(left, x - half), max(top, foot - max(3.0, tall * per_metre)), min(right, x + half), min(bottom, foot)]
+            if box[2] <= box[0] or box[3] <= box[1]:
+                continue
+            if grey is None:
+                draw.rectangle(box, outline='#666666', width=2)
+            else:
+                draw.ellipse(box, fill=(grey, grey, grey))
+    return image
+
+
+def colour_card(rows: list[tuple[Image.Image, str]], size: int = 320) -> Image.Image:
+    """One row per garment: the garment as painted on the approved sheet, and beside it its flat fixed colour."""
+    card = Image.new('RGB', (size * 2 + 30, len(rows) * (size + 10) + 10), 'white')
+    for i, (crop, fixed) in enumerate(rows):
+        y = 10 + i * (size + 10)
+        card.paste(crop.convert('RGB').resize((size, size), Image.LANCZOS), (10, y))
+        card.paste(Image.new('RGB', (size, size), fixed), (20 + size, y))
+    return card

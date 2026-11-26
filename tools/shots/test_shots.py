@@ -57,8 +57,8 @@ def lesson(tmp_path) -> Lesson:
         'maffeo': {'name': 'Maffeo', 'kind': 'person', 'look': 'Narrow face, blue cloak.', 'signature': 'blue',
                    'signature_parts': ['cloak'], 'reserved': ['cloak'], 'palette': {'cloak': BLUE}},
     }})
-    cell = {'who': ['niccolo'], 'camera': {'at': [10, 10], 'looks_at': [50, 50], 'framing': 'Wide'}, 'action': 'He rides east.',
-            'sees': {'village': 'small, far right'}}
+    cell = {'who': ['niccolo'], 'camera': {'at': [10, 10], 'looks_at': [90, 30], 'framing': 'Wide'}, 'action': 'He rides east.',
+            'where': {'niccolo': 'the rider in front'}, 'places': {'niccolo': [50, 20]}, 'sees': {'village': 'small, far right'}}
     write(tmp_path / 'shots' / 'test' / 'scenes' / 'plain.json', {
         'scene': 'plain', 'place': 'A plain, 1272.', 'accuracy': {'file': 'check.md', 'by': 'claude', 'date': '2026-11-26'},
         'layout': {'size': [100, 60], 'light': 'low sun from the left', 'approved': {'by': 'bart', 'date': '2026-11-26'},
@@ -96,13 +96,16 @@ def test_the_pack_holds_every_attachment_with_its_hash_in_attach_order(lesson, t
     out = packs.build(lesson, 'plain', 'plain-a', 'ink', tmp_path / 'pack')
     manifest = json.loads((out / 'manifest.json').read_text())
 
-    assert [a['role'] for a in manifest['attachments']] == ['style', 'identity']
+    assert [a['role'] for a in manifest['attachments']] == ['blocking', 'identity', 'style']
     for item in manifest['attachments']:
-        assert sha256(out / item['file']) == item['sha256'] == sha256(Path(item['source']))
+        assert sha256(out / item['file']) == item['sha256']
+        assert item['role'] == 'blocking' or item['sha256'] == sha256(Path(item['source'])), 'the approved file itself, byte for byte'
         assert packs.REFERENCE_MARK in item['file'], 'an ink request is a new picture: every input is a reference'
     prompt = (out / 'prompt.txt').read_text()
     assert 'Use the history-lines skill, pass 1 (ink) only.' in prompt
-    assert 'Image 2 is Niccolò' in prompt and '10 to 14%' in prompt and 'one line per attached image' in prompt
+    assert 'Image 2 shows Niccolò' in prompt and '10 to 14%' in prompt
+    assert 'Niccolò (image 2) is the rider in front' in prompt, 'each person is bound to a figure in each cell'
+    assert 'walled village: small, far right. About 10% of the frame wide, centred 50% across.' in prompt, 'sizes come from the layout'
     assert (out / 'inputs.png').is_file()
 
 
@@ -117,9 +120,9 @@ def test_the_colour_pass_attaches_the_coloured_sheet_and_the_fixed_colours(lesso
     files = [a['file'] for a in json.loads((out / 'manifest.json').read_text())['attachments']]
 
     assert packs.REFERENCE_MARK not in files[0], 'the ink board is the picture being coloured, not a reference'
-    assert files[-1].endswith('niccolo-colour.png')
+    assert [f.split('-')[2].split('.')[0] for f in files[1:]] == ['identity', 'colours', 'style']
     prompt = (out / 'prompt.txt').read_text()
-    assert f'cloak {RED}' in prompt and 'its exact colours' in prompt
+    assert f'cloak {RED}' in prompt and "row 1 Niccolò's cloak" in prompt
 
 
 def test_nothing_is_sent_before_bart_saw_the_inputs_and_a_changed_pack_is_refused(lesson, tmp_path):
@@ -128,15 +131,13 @@ def test_nothing_is_sent_before_bart_saw_the_inputs_and_a_changed_pack_is_refuse
     with pytest.raises(Refused, match='has not seen the exact inputs'):
         packs.sent(out, 'chatgpt', 'x', '2026-11-26', lesson.media)
 
-    packs.seen(out, 'bart', '2026-11-26')
-    with pytest.raises(Refused, match='fewer than 2 images'):
-        packs.sent(out, 'chatgpt', 'x', '2026-11-26', lesson.media, echo='1. a line drawing')
-    packs.sent(out, 'chatgpt', 'x', '2026-11-26', lesson.media, echo='1. a line drawing\n2. a man in a cloak')
+    packs.seen(out, '2026-11-26')
+    packs.sent(out, 'chatgpt', 'x', '2026-11-26', lesson.media)
     assert ledger.tally(lesson.media)['requests'] == 1
 
     (out / 'prompt.txt').write_text('something else')
     with pytest.raises(Refused, match='prompt.txt changed'):
-        packs.seen(out, 'bart', '2026-11-26')
+        packs.seen(out, '2026-11-26')
 
 
 # ── scene rules ─────────────────────────────────────────────────────────────────────────────────
@@ -184,7 +185,7 @@ def test_a_cloak_in_the_wrong_colour_fails_and_the_right_one_passes(lesson, tmp_
     brown = verify.coloured(lesson, board, ink, _board(tmp_path / 'brown.png', BROWN))
     assert brown['failures'] == ['colour-drift:niccolo']
     slightly_off = verify.coloured(lesson, board, ink, _board(tmp_path / 'off.png', '#B8604F'))
-    assert slightly_off['failures'] == [], 'a drift under the limit is left to the nudge, not a new run'
+    assert slightly_off['failures'] == [], 'a small step inside the limit passes'
 
 
 def test_someone_elses_reserved_colour_in_the_shot_is_pointed_out(lesson, tmp_path):
@@ -204,11 +205,26 @@ def test_a_colour_pass_that_moved_the_drawing_is_caught(lesson, tmp_path):
     assert 'ink-redrawn' in report['failures']
 
 
-def test_a_small_drift_can_be_slid_back_without_touching_ink_or_paper(tmp_path):
-    rgb = colour.load(_board(tmp_path / 'off.png', '#B8604F'))
-    fixed = colour.nudge(rgb, '#B8604F', RED)
-    assert colour.find(fixed, RED)['delta'] < 2
-    assert np.array_equal(np.round(fixed[5, 5]), [255, 255, 255]) and fixed[100, 82].max() < 5
+def test_two_named_people_in_a_cell_need_a_place_each_and_marked_regions_to_be_scored(lesson, tmp_path):
+    _approve_sheets(lesson)
+    scene = lesson.scene('plain')
+    scene['boards'][0]['cells'][0]['who'] = ['niccolo', 'maffeo']
+    assert any('"where" must say which figure' in p for p in lesson.scene_problems(scene))
+
+    board = scene['boards'][0]
+    ink, col = _board(tmp_path / 'ink.png', None), _board(tmp_path / 'red.png', RED)
+    report = verify.coloured(lesson, board, ink, col)
+    assert report['failures'] == [] and any('not scored' in n for n in report['notes'])
+    marked = verify.coloured(lesson, board, ink, col, {'1': {'niccolo': [0.3, 0.2, 0.6, 0.8], 'maffeo': [0.6, 0.2, 0.9, 0.8]}})
+    assert marked['failures'] == ['colour-missing:maffeo'], 'the red is there, but not on Maffeo'
+
+
+def test_a_landmark_keeps_its_size_until_the_camera_moves_closer():
+    far = boards.project({'at': [0, 0], 'looks_at': [100, 0]}, [3000, 0], 200)
+    near = boards.project({'at': [2800, 0], 'looks_at': [3000, 0]}, [3000, 0], 200)
+    assert far['width'] < 0.1 < near['width'] and far['x'] == 0.5
+    assert boards.project({'at': [0, 0], 'looks_at': [100, 0]}, [-50, 0]) is None, 'behind the camera'
+    assert boards.project({'at': [0, 0], 'looks_at': [0, 100]}, [50, 100])['x'] > 0.5, 'east is right when looking north'
 
 
 def test_the_palette_is_sampled_from_the_approved_sheet(lesson):

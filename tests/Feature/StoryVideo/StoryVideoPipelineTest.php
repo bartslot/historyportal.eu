@@ -110,7 +110,7 @@ class StoryVideoPipelineTest extends TestCase
         (new GenerateStoryMedia($item->id))->handle($llm);   // create
         $this->assertSame('gen_1', $item->fresh()->generation_id);
         Http::assertSent(fn ($r) => $r->url() === 'https://api.elevenlabs.io/v1/flows/image'
-            && $r['model_id'] === 'gemini-3.1-flash-image' && count($r['images']) === 3 && str_contains($r['prompt'], 'signature colour is red')
+            && $r['model_id'] === 'gemini-3.1-flash-image' && count($r['images']) === count(\App\Services\Art\HistoryLineStyle::anchors(2)) && str_contains($r['prompt'], 'signature colour is red')
             && $r->hasHeader('xi-api-key', 'test-key'));
 
         (new GenerateStoryMedia($item->id))->handle($llm);   // poll → completed

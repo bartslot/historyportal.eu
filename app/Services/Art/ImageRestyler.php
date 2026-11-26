@@ -126,7 +126,7 @@ class ImageRestyler
             $source = $this->editable($this->sourceBytes($row->before['path'] ?? null));
             $figure = $subject instanceof SvgAsset;
             $size = $this->sizeFor($source);
-            $images = [['bytes' => $source, 'name' => 'source.png'], ...$this->anchors(1, $figure)];
+            $images = [['bytes' => $source, 'name' => 'source.png'], ...$this->anchors(1)];
             $prompt = HistoryLineStyle::restyleInk($figure, $this->era($subject));
 
             $ink = $this->edit($row, 'ink', $images, $prompt, $size);
@@ -159,7 +159,7 @@ class ImageRestyler
         try {
             $figure = $subject instanceof SvgAsset;
             $ink = Storage::disk('public')->get($row->ink_path);
-            $images = [['bytes' => $ink, 'name' => 'ink.png'], ...$this->anchors(2, $figure)];
+            $images = [['bytes' => $ink, 'name' => 'ink.png'], ...$this->anchors(2)];
             $final = $this->edit($row, 'colour', $images, HistoryLineStyle::restyleColour($figure), $this->sizeFor($ink));
             if ($figure) {
                 $final = $this->cutAlpha($final);
@@ -221,7 +221,7 @@ class ImageRestyler
     }
 
     /** @return list<array{bytes: string, name: string}> the shared anchor images for a pass, in attach order */
-    private function anchors(int $pass, bool $figure): array
+    private function anchors(int $pass): array
     {
         return array_map(function (string $file) {
             $path = HistoryLineStyle::anchorPath($file);
@@ -230,7 +230,7 @@ class ImageRestyler
             }
 
             return ['bytes' => (string) file_get_contents($path), 'name' => $file];
-        }, HistoryLineStyle::anchors($pass, $figure));
+        }, HistoryLineStyle::anchors($pass));
     }
 
     /** Share of pixels dark enough to count as ink, sampled on a 256px copy. */

@@ -106,15 +106,3 @@ def ink_kept(ink_rgb: np.ndarray, colour_rgb: np.ndarray, width: int = 512) -> f
             grown |= np.roll(np.roll(b, dy, 0), dx, 1)
     return float((a & grown).sum()) / max(1, int(a.sum()))
 
-
-def nudge(rgb: np.ndarray, found_hex: str, target_hex: str) -> np.ndarray:
-    """Slide one garment's paint from the colour it came out as to its fixed colour. Ink and paper are not touched.
-
-    A small, whole-garment correction in code, the "selective colour adjustment" of the plan; it never redraws.
-    Only for a drift under SAME: a bigger miss means a new run of both passes.
-    """
-    values, ink, paper = masks(rgb)
-    found, target = lab(hex_rgb(found_hex)), lab(hex_rgb(target_hex))
-    distance = np.linalg.norm(values - found, axis=-1)
-    weight = np.clip(1 - distance / NEAR, 0, 1) * (~ink & ~paper)
-    return unlab(values + weight[..., None] * (target - found))
