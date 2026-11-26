@@ -93,6 +93,50 @@ trait EditsStoryMap
         };
     }
 
+    /**
+     * A new option dragged out of a scene onto another (Bart, 2026-11-26: "when I drag an option I expect there to be a
+     * choice at the end of the scene that I am dragging the option of"): one more choice on the scene's Choices
+     * layer, going to that scene and named after it until the teacher writes the words. A straight jump the scene
+     * had becomes a choice too, so the new one is not the only way on; an ending stops being one.
+     */
+    public function addSceneChoiceTo(int $sceneId, int $to): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        $target = $this->lesson->scenes()->find($to);
+        if ($target === null || $target->id === $scene->id) {
+            return;
+        }
+        if ($scene->kind === 'game' || $scene->branch_role !== null) {
+            // Choices go on a story scene: from anything else the line is its one way on.
+            $this->setSceneNext($sceneId, $to);
+
+            return;
+        }
+        $links = $this->linksOf($scene);
+        if (count($links) >= SceneLinks::MAX_LINKS) {
+            $this->dispatch('toast', type: 'error', message: __('A scene can show at most :n choices.', ['n' => SceneLinks::MAX_LINKS]));
+
+            return;
+        }
+        $named = fn (?int $id): string => $id === null ? '' : SceneLinks::label($this->lesson->scenes()->find($id)?->chapterName() ?? '');
+        $links = array_map(fn (array $l): array => $l['label'] === '' ? ['label' => $named($l['to']), 'to' => $l['to']] : $l, $links);
+        $links[] = ['label' => $named($target->id), 'to' => (int) $target->id];
+        if (count($links) >= 2 && ChoicePrompt::prompt($scene->config) === '') {
+            $scene->config = ['links_prompt' => ChoicePrompt::forNewChoices($scene)] + ($scene->config ?? []);
+        }
+        $this->writeSceneLinks($scene, $links, false);
+    }
+
+    /**
+     * The map's undo: a scene's links and ending put back as they were before a change made on the map. Cleaned
+     * like every write (SceneLinks), so it can only link within this lesson.
+     */
+    public function restoreSceneLinks(int $sceneId, mixed $links, bool $ending): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        $this->writeSceneLinks($scene, is_array($links) ? $links : [], $ending);
+    }
+
     /** The Choices layer off this scene: it goes on to the next scene again. */
     public function removeSceneChoices(int $sceneId): void
     {

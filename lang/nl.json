@@ -3165,9 +3165,7 @@
     "Plants": "Planten",
     "Add choices": "Keuzes toevoegen",
     "Choice": "Keuze",
-    "Drag a dot onto a scene to change where the story goes": "Sleep een stip naar een scène om te kiezen waar het verhaal heen gaat",
     "Drag onto the scene this choice leads to": "Sleep naar de scène waar deze keuze heen gaat",
-    "Drag onto the scene this one goes on to": "Sleep naar de scène die hierna komt",
     "Edit choices": "Keuzes bewerken",
     "Goes on to": "Gaat verder naar",
     "Lay the whole story out again": "Het hele verhaal opnieuw ordenen",
@@ -3209,5 +3207,7 @@
     "Unlock": "Ontgrendelen",
     "Unpin from map": "Losmaken van de kaart",
     "Group": "Groeperen",
-    "Ungroup": "Groep opheffen"
+    "Ungroup": "Groep opheffen",
+    "Drag from a scene to add a choice, or from a choice to change where it goes": "Sleep vanuit een scène om een keuze toe te voegen, of vanuit een keuze om te wijzigen waar die heen gaat",
+    "Drag onto a scene to add a choice that goes there": "Sleep naar een scène om een keuze toe te voegen die daarheen gaat"
 }

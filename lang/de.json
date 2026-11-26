@@ -3098,9 +3098,7 @@
     "Plants": "Pflanzen",
     "Add choices": "Auswahl hinzufügen",
     "Choice": "Auswahl",
-    "Drag a dot onto a scene to change where the story goes": "Zieh einen Punkt auf eine Szene, um festzulegen, wohin die Geschichte geht",
     "Drag onto the scene this choice leads to": "Auf die Szene ziehen, zu der diese Auswahl führt",
-    "Drag onto the scene this one goes on to": "Auf die Szene ziehen, die danach kommt",
     "Edit choices": "Auswahl bearbeiten",
     "Goes on to": "Geht weiter zu",
     "Lay the whole story out again": "Die ganze Geschichte neu anordnen",
@@ -3142,5 +3140,7 @@
     "Unlock": "Entsperren",
     "Unpin from map": "Von der Karte lösen",
     "Group": "Gruppieren",
-    "Ungroup": "Gruppierung aufheben"
+    "Ungroup": "Gruppierung aufheben",
+    "Drag from a scene to add a choice, or from a choice to change where it goes": "Zieh aus einer Szene, um eine Auswahl hinzuzufügen, oder aus einer Auswahl, um ihr Ziel zu ändern",
+    "Drag onto a scene to add a choice that goes there": "Auf eine Szene ziehen, um eine Auswahl dorthin hinzuzufügen"
 }
