@@ -6,7 +6,7 @@
     "marco": {
       "name": "Marco Polo",
       "kind": "person",
-      "look": "Young and beardless, shoulder-length chestnut hair, cream linen tunic with a lace at the neck, brown belt, brown satchel on a strap, brown leggings, soft boots. In snow: a cream fur-lined coat over the same.",
+      "look": "Marco is 17: young and beardless, shoulder-length chestnut hair, white linen tunic with a lace at the neck, brown belt, brown satchel on a strap, brown leggings, soft boots. In snow: a white fur-lined coat over the same. White is his colour; no one else in this lesson wears white.",
       "horse": "marco-horse",
       "signature_parts": [
         "tunic"
@@ -17,12 +17,13 @@
       },
       "swatches": {},
       "palette": {},
-      "tell": "young, beardless, shoulder-length chestnut hair, no cloak"
+      "tell": "17, beardless, shoulder-length chestnut hair, white tunic, no cloak",
+      "signature": "white"
     },
     "niccolo": {
       "name": "Niccolò Polo (Marco's father)",
       "kind": "person",
-      "look": "The elder, calm. Broad square face, heavy brows, wide nose, lined forehead, full rounded beard in dark brown with grey streaks, warm steady look. Hair dark brown, greying at the temples. Cream under-tunic, rust-orange cap, red cloak with a gold clasp.",
+      "look": "Marco's father, clearly the oldest. Broad square face, heavy brows, wide nose, lined forehead, full rounded grey beard, warm steady look. Hair grey. Cream under-tunic, rust-orange cap, red cloak with a gold clasp.",
       "signature": "red",
       "horse": "niccolo-horse",
       "signature_parts": [
@@ -37,12 +38,12 @@
       },
       "swatches": {},
       "palette": {},
-      "tell": "broad square face, full rounded beard with grey in it, rust-orange cap, red cloak"
+      "tell": "oldest, broad square face, full rounded grey beard, rust-orange cap, red cloak"
     },
     "maffeo": {
       "name": "Maffeo Polo (Marco's uncle)",
       "kind": "person",
-      "look": "The uncle with the sharp eyes. Long narrow face, high cheekbones, thin slightly hooked nose, keen narrow eyes, short trimmed pointed beard, near-black. Hair near-black, cropped short. Cream under-tunic, blue cap, blue cloak with a gold clasp, in every picture. No one else wears a blue cap.",
+      "look": "The uncle with the sharp eyes, younger-looking than Niccolò and never like him. Long narrow face, high cheekbones, thin slightly hooked nose, keen narrow eyes, short trimmed pointed beard, near-black. Hair near-black, cropped short. Cream under-tunic, blue cap, blue cloak with a gold clasp, in every picture. No one else wears a blue cap.",
       "signature": "blue",
       "horse": "maffeo-horse",
       "signature_parts": [

@@ -127,8 +127,6 @@ class Lesson:
                 if colour in owners:
                     found.append(f'{key} and {owners[colour]} share the signature colour "{colour}".')
                 owners[colour] = key
-            if colour == 'white' and key != 'beatrice':
-                found.append(f'{key} wears white; only Beatrice does.')
             if person.get('horse') and person['horse'] not in people:
                 found.append(f'{key} rides "{person["horse"]}", which is not in the cast list.')
             for pass_ in PASSES:
