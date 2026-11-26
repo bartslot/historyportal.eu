@@ -341,6 +341,15 @@ export const CLOUD_FIELD_GLSL = /* glsl */`
   }
 `
 
+/**
+ * How the field moves when a layer is not told otherwise: the slow west-to-east drift and the wind.
+ *
+ * Here and not in each layer because every reader of the weather has to move it identically. A
+ * layer that left one of these out fed the shader NaN, and a NaN longitude reads one meridian for
+ * the whole planet: the sky came out as straight east-west stripes.
+ */
+export const CLOUD_FIELD_MOTION = { driftRate: 0.0004, windAmount: 1, windScale: 0.06, windRate: 0.05 }
+
 /** The uniform names CLOUD_FIELD_GLSL declares, for `getUniformLocation` in either layer. */
 export const CLOUD_FIELD_UNIFORMS = [
   'time', 'drift', 'field', 'fieldAmount', 'wind', 'windAmount', 'windScale', 'windRate',

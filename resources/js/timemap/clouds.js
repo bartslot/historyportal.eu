@@ -30,9 +30,12 @@ import {
   buildSphereMesh, buildProgram, cameraAltitudeMetres, cameraInPlanetSpace, EARTH_RADIUS_M,
   EQUIRECT_GLSL, NOISE_GLSL, SHELL_PROJECT_GLSL, TERMINATOR_GLSL,
 } from './planet-mesh.js'
-import { CLOUD_ALTITUDE_M, CLOUD_FIELD_GLSL, CLOUD_FIELD_UNIFORMS, setCloudFieldUniforms } from './cloud-field.js'
+import {
+  CLOUD_ALTITUDE_M, CLOUD_FIELD_GLSL, CLOUD_FIELD_MOTION, CLOUD_FIELD_UNIFORMS, setCloudFieldUniforms,
+} from './cloud-field.js'
 import { acquireEquirectTexture } from './equirect-texture.js'
 import { RELIEF_GLSL, TANGENT_FRAME_GLSL } from './terrain-normals.js'
+import { cloudHandover } from './volumetric-clouds.js'
 
 const LAYER_ID = 'tm-clouds'
 
@@ -465,10 +468,11 @@ void main() {
  */
 export const createCloudLayer = ({
   opacity = 0.5, animate = true, fieldUrl = null, patchUrl = null,
-  driftRate = 0.0004, sun = [0.4, 0.5, 0.75],
+  driftRate = CLOUD_FIELD_MOTION.driftRate, sun = [0.4, 0.5, 0.75],
   // Wind advection: a real GFS field carrying the clouds along actual circulation. Off without a
   // texture, so a missing asset costs nothing but motion.
-  windUrl = null, windAmount = 1, windScale = 0.06, windRate = 0.05,
+  windUrl = null, windAmount = CLOUD_FIELD_MOTION.windAmount, windScale = CLOUD_FIELD_MOTION.windScale,
+  windRate = CLOUD_FIELD_MOTION.windRate,
   /**
    * Lighting. Every one of these is zero-is-off, and with all four at zero the deck renders exactly
    * as it did before it was lit — which is what makes each of them separately measurable.
@@ -653,7 +657,9 @@ export const createCloudLayer = ({
       const detail = deckDetailFor(map.getZoom(), map.getCenter().lat, cameraAltitudeMetres(map, maplibregl))
       if (uniforms.detailFreq) gl.uniform1f(uniforms.detailFreq, detail.frequency)
       if (uniforms.detailAmount) gl.uniform1f(uniforms.detailAmount, detail.amount)
-      if (uniforms.deckFade) gl.uniform1f(uniforms.deckFade, detail.fade)
+      // Close in, the 3D clouds (volumetric-clouds.js) take the sky over and the deck gives up the
+      // same share, so the two cross-fade. 0 on any map where they are not being drawn.
+      if (uniforms.deckFade) gl.uniform1f(uniforms.deckFade, detail.fade * (1 - cloudHandover(map)))
 
       // The forward-scattering lobe needs to know where the eye is; nothing else here does.
       if (uniforms.camera) gl.uniform3f(uniforms.camera, ...cameraInPlanetSpace(map, maplibregl))

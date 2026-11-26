@@ -21,6 +21,7 @@ import { createMoonLayer, MOON_LAYER_ID } from './timemap/moon.js'
 import { createDaylightLayer, DAYLIGHT_LAYER_ID } from './timemap/daylight.js'
 import { createAtmosphereLayer, ATMOSPHERE_LAYER_ID } from './timemap/atmosphere.js'
 import { createCloudLayer, CLOUD_LAYER_ID } from './timemap/clouds.js'
+import { createVolumetricCloudLayer, CLOUD_VOLUME_LAYER_ID } from './timemap/volumetric-clouds.js'
 import { createOceanWaterLayer, OCEAN_LAYER_ID } from './timemap/ocean-water.js'
 import { createBloomLayer, BLOOM_LAYER_ID } from './timemap/bloom.js'
 import { sunDirection } from './timemap/sun.js'
@@ -80,6 +81,9 @@ const STACK = [
   ['ocean', OCEAN_LAYER_ID, (o) => createOceanWaterLayer(o)],
   ['daylight', DAYLIGHT_LAYER_ID, (o) => createDaylightLayer(o)],
   ['clouds', CLOUD_LAYER_ID, (o) => createCloudLayer(o)],
+  // The 3D clouds, close in. Straight after the deck they take over from, under the haze, and
+  // shown or hidden with it: the fourth entry is the permission key, where it is not the layer's own.
+  ['cloudVolume', CLOUD_VOLUME_LAYER_ID, (o) => createVolumetricCloudLayer(o), 'clouds'],
   ['atmosphere', ATMOSPHERE_LAYER_ID, (o) => createAtmosphereLayer(o)],
   /**
    * LAST, because it is a post-process and there has to be something to process.
@@ -213,6 +217,8 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
      */
     ocean: { sun, roughness: 0.95, strength: 0.48, windPatch: 0.6, shoreSoftnessKm: 19.5 },
     clouds: { ...field, sun },
+    // Same weather, same sun, and the teacher's Clouds slider turns both down together.
+    cloudVolume: { ...field, sun, deckOpacity: () => layers.clouds?.getOptions?.().opacity ?? 1 },
     // No cloud shadows on the ground (Bart, 2026-11-26: "Please remove the shadows of the clouds on
     // land"). The deck still draws; it just no longer darkens the land under it. The Shadows knob
     // on the Clouds panel can still bring them back for a look.
@@ -242,12 +248,12 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
   // Resolved ONCE, before anything is added: every layer inserts just below the same anchor, which
   // is what keeps STACK's own back-to-front order intact underneath it.
   const anchor = globeAnchorId(map, beforeId)
-  for (const [key, id, create] of STACK) {
+  for (const [key, id, create, permission = key] of STACK) {
     if (map.getLayer(id)) map.removeLayer(id)
     // Skipped BEFORE create(): the texture urls live in the options each factory receives, so a
     // layer that is built and then hidden has already asked the network for its image. On the
     // lesson map that is the entire cost — the clouds are 1.8 MB whether or not they draw.
-    if (permitted && !permitted(key)) continue
+    if (permitted && !permitted(permission)) continue
     const layer = create(options[key])
     map.addLayer(layer, anchor)
     layers[key] = layer
@@ -295,11 +301,11 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
       // "Drift" is the wrong word for it and always was: this DEFORMS the field. The real drift is
       // driftRate, which rotates it. Renamed rather than left to mislead the next person to drag it.
       { key: 'windAmount', label: 'Curl', min: 0, max: 1, step: 0.05, value: 0.2,
-        apply: (v) => set('clouds', { windAmount: v }) },
+        apply: (v) => { set('clouds', { windAmount: v }); set('cloudVolume', { windAmount: v }) } },
       { key: 'windScale', label: 'Wind scale', min: 0.01, max: 0.5, step: 0.01, value: 0.06,
-        apply: (v) => set('clouds', { windScale: v }) },
+        apply: (v) => { set('clouds', { windScale: v }); set('cloudVolume', { windScale: v }) } },
       { key: 'windRate', label: 'Wind speed', min: 0, max: 0.3, step: 0.005, value: 0.05,
-        apply: (v) => set('clouds', { windRate: v }) },
+        apply: (v) => { set('clouds', { windRate: v }); set('cloudVolume', { windRate: v }) } },
       { key: 'cloudShadow', label: 'Shadows', min: 0, max: 1, step: 0.01, value: 0,
         apply: (v) => set('daylight', { cloudShadow: v }) },
       // HOW DARK vs HOW SOFT — two different complaints, and only the first had a knob. The band
@@ -311,16 +317,16 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
       // the shadow of a sky nobody is drawing, and the drift between them looks like a bug in the
       // shadows rather than like two settings that disagree.
       { key: 'patchTiles', label: 'Cloud cells', min: 96, max: 320, step: 8, value: 144,
-        apply: (v) => { set('clouds', { patchTiles: v }); set('daylight', { patchTiles: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchTiles: v }) } },
       // The atlas's own mean coverage, which the variance-preserving blend centres on. Wrong here
       // and the lattice reappears as a faint brightness pattern — which is the one thing worth
       // being able to check by eye, hence a control rather than a constant alone.
       { key: 'patchMean', label: 'Atlas mean', min: 0.2, max: 0.8, step: 0.005, value: 0.4335,
-        apply: (v) => { set('clouds', { patchMean: v }); set('daylight', { patchMean: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchMean: v }) } },
       // How much patch variation rides on the global distribution. At 0 the deck is the old 19.5 km
       // field again — which is the A/B for whether the detail is worth having at all.
       { key: 'patchDetail', label: 'Detail amount', min: 0, max: 1.5, step: 0.05, value: 0.75,
-        apply: (v) => { set('clouds', { patchDetail: v }); set('daylight', { patchDetail: v }) } },
+        apply: (v) => { for (const key of ['clouds', 'daylight', 'cloudVolume']) set(key, { patchDetail: v }) } },
       // Off returns the deck to the 19.5 km whole-planet field, which is the A/B this change exists
       // to win. Kept because "is the new source actually better" should be one click, not a rebuild.
       { key: 'patchUrl', label: 'Tiled source', type: 'boolean', value: true,
@@ -329,6 +335,23 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
           set('clouds', { patchUrl: url })
           set('daylight', { patchUrl: url })
         } },
+    ], { tab: 'Earth' }),
+
+    /**
+     * The 3D clouds that take over close in (volumetric-clouds.js). Height is how many times taller
+     * than life the layers stand; the rest are Takram's own dials.
+     */
+    window.__tune?.register('Cloud volume', [
+      { key: 'strength', label: 'Amount', min: 0, max: 1, step: 0.01, value: 1,
+        apply: (v) => set('cloudVolume', { strength: v }) },
+      { key: 'scale', label: 'Height (x real)', min: 1, max: 24, step: 0.5, value: 12,
+        apply: (v) => set('cloudVolume', { scale: v }) },
+      { key: 'coverage', label: 'Coverage', min: 0, max: 1, step: 0.01, value: 0.45,
+        apply: (v) => set('cloudVolume', { coverage: v }) },
+      { key: 'exposure', label: 'Brightness', min: 1, max: 40, step: 0.5, value: 16,
+        apply: (v) => set('cloudVolume', { exposure: v }) },
+      { key: 'shadows', label: 'Clouds shade each other', type: 'boolean', value: true,
+        apply: (v) => set('cloudVolume', { shadows: v }) },
     ], { tab: 'Earth' }),
 
     /**
