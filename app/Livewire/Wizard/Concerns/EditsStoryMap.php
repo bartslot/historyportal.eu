@@ -119,9 +119,12 @@ trait EditsStoryMap
             return;
         }
         $named = fn (?int $id): string => $id === null ? '' : SceneLinks::label($this->lesson->scenes()->find($id)?->chapterName() ?? '');
+        // The narrator's question is written only when this drag makes the choice moment (a second way on): a
+        // teacher who emptied the question on an existing layer meant the narrator to read only the choices.
+        $wasChoice = count($links) >= 2;
         $links = array_map(fn (array $l): array => $l['label'] === '' ? ['label' => $named($l['to']), 'to' => $l['to']] : $l, $links);
         $links[] = ['label' => $named($target->id), 'to' => (int) $target->id];
-        if (count($links) >= 2 && ChoicePrompt::prompt($scene->config) === '') {
+        if (! $wasChoice && count($links) >= 2 && ChoicePrompt::prompt($scene->config) === '') {
             $scene->config = ['links_prompt' => ChoicePrompt::forNewChoices($scene)] + ($scene->config ?? []);
         }
         $this->writeSceneLinks($scene, $links, false);
@@ -129,11 +132,15 @@ trait EditsStoryMap
 
     /**
      * The map's undo: a scene's links and ending put back as they were before a change made on the map. Cleaned
-     * like every write (SceneLinks), so it can only link within this lesson.
+     * like every write (SceneLinks), so it can only link within this lesson. The narrator's question goes back with them.
      */
-    public function restoreSceneLinks(int $sceneId, mixed $links, bool $ending): void
+    public function restoreSceneLinks(int $sceneId, mixed $links, bool $ending, mixed $prompt = null): void
     {
         $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        if (is_string($prompt)) {
+            // The narrator's question as it was too ('' reads only the choices, the same as none).
+            $scene->config = ['links_prompt' => ChoicePrompt::clean($prompt)] + ($scene->config ?? []);
+        }
         $this->writeSceneLinks($scene, is_array($links) ? $links : [], $ending);
     }
 

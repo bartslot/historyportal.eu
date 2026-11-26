@@ -184,7 +184,7 @@ describe('story map: saving and undo', () => {
     expect(calls).toContainEqual(['addSceneChoiceTo', 1, 2])
     calls.length = 0
     await m.undo()
-    expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['restoreSceneLinks', 1, [{ label: '', to: 3 }], false]])
+    expect(calls.filter((c) => c[0] !== 'storyMap')).toEqual([['restoreSceneLinks', 1, [{ label: '', to: 3 }], false, '']])
   })
 
   it('keeps the scene editor away from keys while the map is open', () => {

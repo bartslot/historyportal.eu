@@ -548,8 +548,8 @@ export function storyMap () {
         await this.change('saveSceneLink', [from.id, from.index, 'to', to], { method: 'saveSceneLink', args: [from.id, from.index, 'to', was] })
       } else {
         // A new option (Bart, 2026-11-26): a choice at the end of this scene that goes to the scene it was dropped on.
-        const before = { links: scene.links.map((l) => ({ ...l })), ending: scene.ending === true }
-        await this.change('addSceneChoiceTo', [from.id, to], { method: 'restoreSceneLinks', args: [from.id, before.links, before.ending] })
+        const before = { links: scene.links.map((l) => ({ ...l })), ending: scene.ending === true, prompt: scene.prompt ?? '' }
+        await this.change('addSceneChoiceTo', [from.id, to], { method: 'restoreSceneLinks', args: [from.id, before.links, before.ending, before.prompt] })
         if (hasButtons(this.byId.get(from.id))) this.selected = { type: 'choice', id: from.id }
       }
     },

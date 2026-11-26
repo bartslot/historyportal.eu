@@ -196,6 +196,22 @@ class StoryMapTest extends TestCase
         $this->assertArrayNotHasKey('links', $embark->fresh()->config ?? []);
     }
 
+    public function test_an_emptied_question_stays_empty_when_another_option_is_dragged_out(): void
+    {
+        [$venice, $destination, $cargo, $embark] = $this->scenes;
+        $venice->update(['config' => ['links' => [['label' => 'A', 'to' => $destination->id], ['label' => 'B', 'to' => $cargo->id]], 'links_prompt' => '']]);
+        $editor = $this->editor();
+
+        $editor->call('addSceneChoiceTo', $venice->id, $embark->id);
+        $this->assertSame('', (string) ($venice->fresh()->config['links_prompt'] ?? ''));
+
+        // Undo puts the question back as it was too.
+        $venice->update(['config' => array_merge($venice->fresh()->config, ['links_prompt' => 'Generated?'])]);
+        $editor->call('restoreSceneLinks', $venice->id, [['label' => 'A', 'to' => $destination->id], ['label' => 'B', 'to' => $cargo->id]], false, '');
+        $this->assertSame('', (string) ($venice->fresh()->config['links_prompt'] ?? ''));
+        $this->assertCount(2, $venice->fresh()->config['links']);
+    }
+
     public function test_undo_puts_a_scenes_links_back(): void
     {
         [$venice, , $cargo] = $this->scenes;
