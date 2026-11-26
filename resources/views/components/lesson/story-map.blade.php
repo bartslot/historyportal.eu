@@ -91,11 +91,11 @@
                                 </p>
                                 <p class="truncate text-prose leading-snug" x-text="scene.name"></p>
                             </div>
-                            {{-- Its own way on: dragged onto a scene, it goes straight there. A scene with choices goes on through them. --}}
-                            <button type="button" class="story-map-dot -right-4" x-show="!scene.ending && !hasButtons(scene)"
+                            {{-- A new option: dragged onto a scene, it adds a choice at the end of this scene that goes there. --}}
+                            <button type="button" class="story-map-dot -right-4" data-story-map-new-option
                                     x-on:pointerdown.stop="portStart($event, { type: 'scene', id: scene.id })"
-                                    data-tooltip="{{ __('Drag onto the scene this one goes on to') }}"
-                                    aria-label="{{ __('Drag onto the scene this one goes on to') }}"></button>
+                                    data-tooltip="{{ __('Drag onto a scene to add a choice that goes there') }}"
+                                    aria-label="{{ __('Drag onto a scene to add a choice that goes there') }}"></button>
                         </div>
                     </template>
 
@@ -136,7 +136,7 @@
             </div>
 
             <p class="pointer-events-none absolute bottom-3 left-3 flex h-8 items-center gap-2 rounded-full border border-panel-hairline bg-card-surface px-3 text-xs text-panel-hint">
-                {{ __('Drag a dot onto a scene to change where the story goes') }}
+                {{ __('Drag from a scene to add a choice, or from a choice to change where it goes') }}
             </p>
 
             {{-- The inspector: the selected card's settings, saved on change. --}}
