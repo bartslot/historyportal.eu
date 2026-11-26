@@ -538,7 +538,7 @@ export function storyMap () {
       return id
     },
 
-    /** A line dropped on a scene: that choice, or the scene's own way on, now goes there. */
+    /** A line dropped on a scene: a choice row's dot rewires that choice; a scene's own dot adds a new choice going there. */
     async rewire (from, to) {
       const scene = this.byId.get(from.id)
       if (!scene) return
@@ -547,9 +547,10 @@ export function storyMap () {
         if (was === to) return
         await this.change('saveSceneLink', [from.id, from.index, 'to', to], { method: 'saveSceneLink', args: [from.id, from.index, 'to', was] })
       } else {
-        const was = nextOf(scene)
-        if (was === to) return
-        await this.change('setSceneNext', [from.id, to], { method: 'setSceneNext', args: [from.id, was] })
+        // A new option (Bart, 2026-11-26): a choice at the end of this scene that goes to the scene it was dropped on.
+        const before = { links: scene.links.map((l) => ({ ...l })), ending: scene.ending === true, prompt: scene.prompt ?? '' }
+        await this.change('addSceneChoiceTo', [from.id, to], { method: 'restoreSceneLinks', args: [from.id, before.links, before.ending, before.prompt] })
+        if (hasButtons(this.byId.get(from.id))) this.selected = { type: 'choice', id: from.id }
       }
     },
 
