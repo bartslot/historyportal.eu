@@ -81,3 +81,29 @@ describe('sunDirection', () => {
     expect(Math.atan2(z, x) * 180 / Math.PI).toBeCloseTo(lng, 6)
   })
 })
+
+describe('following the view with the sun', () => {
+  it('puts the sun over the longitude it was asked for', async () => {
+    const { midsummerAt, utcHourWithSunOver } = await import('../sun.js')
+    for (const lng of [-170, -75, 0, 12.5, 116, 179]) {
+      const day = midsummerAt(1271)
+      const at = midsummerAt(1271, utcHourWithSunOver(lng, day))
+      const got = subsolarPoint(at).lng
+      expect(Math.abs(((got - lng + 540) % 360) - 180)).toBeLessThan(0.05)
+    }
+  })
+
+  it('keeps early years as themselves, not as the 1900s', async () => {
+    const { midsummerAt } = await import('../sun.js')
+    expect(midsummerAt(42).getUTCFullYear()).toBe(42)
+    expect(midsummerAt(-500).getUTCFullYear()).toBe(-500)
+    expect(midsummerAt(1271, 30).getUTCDate()).toBe(21)    // 30 h wraps to 06:00 the same day
+  })
+
+  it('turns the short way round the clock', async () => {
+    const { hourDelta } = await import('../sun.js')
+    expect(hourDelta(23, 1)).toBe(2)
+    expect(hourDelta(1, 23)).toBe(-2)
+    expect(hourDelta(6, 18)).toBe(-12)
+  })
+})
