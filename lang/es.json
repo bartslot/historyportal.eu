@@ -3214,5 +3214,8 @@
     "The render PC last asked for work :ago.": "El PC de render pidió trabajo por última vez :ago.",
     "The script names no cast with colours.": "El guion no nombra personajes con colores.",
     "Waiting": "En espera",
-    "What should change? (optional)": "¿Qué debería cambiar? (opcional)"
+    "What should change? (optional)": "¿Qué debería cambiar? (opcional)",
+    "Which way the story runs": "Hacia dónde avanza la historia",
+    "Top to bottom": "De arriba abajo",
+    "Left to right": "De izquierda a derecha"
 }

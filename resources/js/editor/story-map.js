@@ -79,12 +79,26 @@ export function nextOf (scene) {
 }
 
 /**
- * A layout for a story nobody arranged: columns by steps from the first scene (a choice card is a step of its
- * own), each card as close as it fits to the cards that lead to it, in lesson order.
+ * Which way the story runs on the map (Bart, 2026-11-26: "can we do the scene layouts to be top to bottom ... it's
+ * about scene planning too"): 'tb' top to bottom, lines leaving a card at its foot and arriving at its head; 'lr'
+ * left to right. A choice row's dot stays on the card's right in both, beside its words.
+ */
+export const DIRS = Object.freeze(['tb', 'lr'])
+
+/** The way a line runs where it leaves or arrives at a port: [dx, dy]. */
+export function portVector (end, dir = 'lr') {
+  if (end.type === 'choice' || dir !== 'tb') return [1, 0]
+  return [0, 1]
+}
+
+/**
+ * A layout for a story nobody arranged: a column (left to right) or a row (top to bottom) per step from the first
+ * scene (a choice card is a step of its own), each card as close as it fits to the cards that lead to it, in
+ * lesson order.
  *
  * @returns {{scenes: Object<string, [number, number]>, choices: Object<string, [number, number]>}}
  */
-export function autoLayout (scenes) {
+export function autoLayout (scenes, dir = 'lr') {
   const list = Array.isArray(scenes) ? scenes : []
   const byId = new Map(list.map((s) => [s.id, s]))
   const order = new Map(list.map((s, i) => [s.id, i]))
@@ -137,28 +151,34 @@ export function autoLayout (scenes) {
 
   const pos = new Map()
   let x = 0
+  // Worked out along the story (main) and across it (cross): x and y left to right, y and x top to bottom.
+  const tb = dir === 'tb'
+  const mainSize = tb ? nodeH : nodeW
+  const crossSize = tb ? nodeW : nodeH
+  const crossGap = tb ? SIZE.colGap : SIZE.rowGap   // side by side, a choice row's line needs room to curve down
+  let main = 0
   columns.forEach((col = []) => {
     // Near what leads here, else in lesson order (a choice card sits with its scene).
     const want = (n) => {
-      const ys = (prevNodes.get(n) ?? []).filter((p) => pos.has(p)).map((p) => pos.get(p)[1])
-      return ys.length ? Math.min(...ys) : null
+      const cs = (prevNodes.get(n) ?? []).filter((p) => pos.has(p)).map((p) => pos.get(p)[1])
+      return cs.length ? Math.min(...cs) : null
     }
     const rank = (n) => order.get(Number(n.slice(1))) ?? 0
     const items = col.map((n) => ({ n, want: want(n), rank: rank(n) }))
       .sort((a, b) => ((a.want ?? Infinity) - (b.want ?? Infinity)) || (a.rank - b.rank))
     let floor = -Infinity
     for (const it of items) {
-      const y = Math.max(it.want ?? (floor === -Infinity ? 0 : floor), floor)
-      pos.set(it.n, [x, y])
-      floor = y + nodeH(it.n) + SIZE.rowGap
+      const c = Math.max(it.want ?? (floor === -Infinity ? 0 : floor), floor)
+      pos.set(it.n, [main, c])
+      floor = c + crossSize(it.n) + crossGap
     }
-    x += Math.max(SIZE.sceneW, ...col.map(nodeW)) + SIZE.colGap
+    main += Math.max(tb ? SIZE.sceneH : SIZE.sceneW, ...col.map(mainSize)) + SIZE.colGap
   })
 
   const out = { scenes: {}, choices: {} }
-  for (const [node, p] of pos) {
+  for (const [node, [m, c]] of pos) {
     const group = node[0] === 'c' ? out.choices : out.scenes
-    group[node.slice(1)] = p
+    group[node.slice(1)] = tb ? [c, m] : [m, c]
   }
   return out
 }
@@ -173,40 +193,45 @@ function overlaps (a, b, air = 8) {
  * layer): to the right of what leads to it, moved down until it is clear of the others. Nothing saved: the
  * whole map is laid out.
  */
-export function placeAll (scenes, saved) {
+export function placeAll (scenes, saved, dir = 'lr') {
   const list = Array.isArray(scenes) ? scenes : []
   const has = (g) => saved && saved[g] && typeof saved[g] === 'object' ? saved[g] : {}
   const savedScenes = has('scenes'), savedChoices = has('choices')
   const anySaved = list.some((s) => savedScenes[s.id])
-  if (!anySaved) return autoLayout(list)
+  if (!anySaved) return autoLayout(list, dir)
+  const tb = dir === 'tb'
 
   const out = { scenes: {}, choices: {} }
   const boxes = []
   const box = (p, w, h) => ({ x: p[0], y: p[1], w, h })
   const clear = (p, w, h) => {
     const at = [p[0], p[1]]
-    while (boxes.some((b) => overlaps(box(at, w, h), b))) at[1] += SIZE.rowGap + 16
+    while (boxes.some((b) => overlaps(box(at, w, h), b))) at[tb ? 0 : 1] += (tb ? SIZE.colGap : SIZE.rowGap) + 16
     return at
   }
   for (const s of list) {
     if (savedScenes[s.id]) { out.scenes[s.id] = [...savedScenes[s.id]]; boxes.push(box(out.scenes[s.id], SIZE.sceneW, SIZE.sceneH)) }
     if (hasButtons(s) && savedChoices[s.id]) { out.choices[s.id] = [...savedChoices[s.id]]; boxes.push(box(out.choices[s.id], SIZE.choiceW, choiceHeight(s))) }
   }
+  // The place just past a card, the way the story runs: to its right, or under it.
+  const after = (p, w, h) => (tb ? [p[0], p[1] + h + SIZE.colGap] : [p[0] + w + SIZE.colGap, p[1]])
   const edges = mapEdges(list)
   list.forEach((s, i) => {
     if (!out.scenes[s.id]) {
       const from = edges.find((e) => e.to === s.id && e.kind !== 'attach' && out.scenes[e.from.id])
+      const prev = list[i - 1] && out.scenes[list[i - 1].id]
       const anchor = from
-        ? (from.from.type === 'choice' && out.choices[from.from.id] ? [out.choices[from.from.id][0] + SIZE.choiceW, out.choices[from.from.id][1]] : [out.scenes[from.from.id][0] + SIZE.sceneW, out.scenes[from.from.id][1]])
-        : (list[i - 1] && out.scenes[list[i - 1].id] ? [out.scenes[list[i - 1].id][0] + SIZE.sceneW, out.scenes[list[i - 1].id][1]] : [0, 0])
-      out.scenes[s.id] = clear([anchor[0] + SIZE.colGap, anchor[1]], SIZE.sceneW, SIZE.sceneH)
+        ? (from.from.type === 'choice' && out.choices[from.from.id]
+            ? after(out.choices[from.from.id], SIZE.choiceW, choiceHeight(list.find((x) => x.id === from.from.id)))
+            : after(out.scenes[from.from.id], SIZE.sceneW, SIZE.sceneH))
+        : (prev ? after(prev, SIZE.sceneW, SIZE.sceneH) : [0, 0])
+      out.scenes[s.id] = clear(anchor, SIZE.sceneW, SIZE.sceneH)
       boxes.push(box(out.scenes[s.id], SIZE.sceneW, SIZE.sceneH))
     }
   })
   for (const s of list) {
     if (hasButtons(s) && !out.choices[s.id]) {
-      const p = out.scenes[s.id]
-      out.choices[s.id] = clear([p[0] + SIZE.sceneW + SIZE.colGap, p[1]], SIZE.choiceW, choiceHeight(s))
+      out.choices[s.id] = clear(after(out.scenes[s.id], SIZE.sceneW, SIZE.sceneH), SIZE.choiceW, choiceHeight(s))
       boxes.push(box(out.choices[s.id], SIZE.choiceW, choiceHeight(s)))
     }
   }
@@ -214,45 +239,56 @@ export function placeAll (scenes, saved) {
 }
 
 /** Where a line leaves or arrives, in map pixels. */
-export function portPoint (layout, scenesById, end) {
+export function portPoint (layout, scenesById, end, dir = 'lr') {
+  const tb = dir === 'tb'
   if (end.type === 'in') {
     const p = layout.scenes[end.id]
-    return p ? [p[0], p[1] + SIZE.sceneH / 2] : null
+    return p ? (tb ? [p[0] + SIZE.sceneW / 2, p[1]] : [p[0], p[1] + SIZE.sceneH / 2]) : null
   }
   if (end.type === 'choice-in') {
     const p = layout.choices[end.id]
-    return p ? [p[0], p[1] + SIZE.choiceHead / 2] : null
+    return p ? (tb ? [p[0] + SIZE.choiceW / 2, p[1]] : [p[0], p[1] + SIZE.choiceHead / 2]) : null
   }
   if (end.type === 'choice') {
     const p = layout.choices[end.id]
     return p ? [p[0] + SIZE.choiceW, p[1] + SIZE.choiceHead + end.index * SIZE.rowH + SIZE.rowH / 2] : null
   }
   const p = layout.scenes[end.id]
-  return p ? [p[0] + SIZE.sceneW, p[1] + SIZE.sceneH / 2] : null
+  return p ? (tb ? [p[0] + SIZE.sceneW / 2, p[1] + SIZE.sceneH] : [p[0] + SIZE.sceneW, p[1] + SIZE.sceneH / 2]) : null
 }
 
 /** A soft S from one dot to another; a line that runs backwards swings out wider so it never folds on itself. */
-export function edgePath (a, b) {
+export function edgePath (a, b, va = [1, 0], vb = [1, 0]) {
   const [x1, y1] = a, [x2, y2] = b
-  const dx = x2 >= x1 ? Math.max(32, (x2 - x1) / 2) : Math.max(80, (x1 - x2) / 3 + 60)
+  // How far each handle reaches along the way its end runs (va leaving a, vb arriving at b).
+  const reach = (v) => {
+    const along = (x2 - x1) * v[0] + (y2 - y1) * v[1]
+    return along >= 0 ? Math.max(32, along / 2) : Math.max(80, -along / 3 + 60)
+  }
+  const ka = reach(va), kb = reach(vb)
   const r = (n) => Math.round(n * 10) / 10
-  return `M${r(x1)} ${r(y1)} C${r(x1 + dx)} ${r(y1)} ${r(x2 - dx)} ${r(y2)} ${r(x2)} ${r(y2)}`
+  return `M${r(x1)} ${r(y1)} C${r(x1 + va[0] * ka)} ${r(y1 + va[1] * ka)} ${r(x2 - vb[0] * kb)} ${r(y2 - vb[1] * kb)} ${r(x2)} ${r(y2)}`
 }
 
 /** The two dots of a line, or null when one end has no card yet. A choice with no scene yet ends a little to its right. */
-export function edgeEnds (edge, layout) {
+export function edgeEnds (edge, layout, dir = 'lr') {
   if (edge.kind === 'attach') {
-    const a = portPoint(layout, null, { type: 'out', id: edge.from.id })
-    const b = portPoint(layout, null, { type: 'choice-in', id: edge.from.id })
+    const a = portPoint(layout, null, { type: 'out', id: edge.from.id }, dir)
+    const b = portPoint(layout, null, { type: 'choice-in', id: edge.from.id }, dir)
     return a && b ? [a, b] : null
   }
   const a = edge.from.type === 'choice'
-    ? portPoint(layout, null, { type: 'choice', id: edge.from.id, index: edge.from.index })
-    : portPoint(layout, null, { type: 'out', id: edge.from.id })
+    ? portPoint(layout, null, { type: 'choice', id: edge.from.id, index: edge.from.index }, dir)
+    : portPoint(layout, null, { type: 'out', id: edge.from.id }, dir)
   if (!a) return null
   if (edge.to == null) return null
-  const b = portPoint(layout, null, { type: 'in', id: edge.to })
+  const b = portPoint(layout, null, { type: 'in', id: edge.to }, dir)
   return b ? [a, b] : null
+}
+
+/** The way a line runs where it leaves and where it arrives. */
+export function edgeVectors (edge, dir = 'lr') {
+  return [portVector(edge.from, dir), portVector({ type: 'in' }, dir)]
 }
 
 /** The box around every card, in map pixels. */
@@ -273,13 +309,14 @@ export function mapBounds (scenes, layout) {
  * The view that opens the map: the whole story when it fits at a readable size, else the start of it at a
  * size you can read (full size), so a long lesson opens on its first scenes rather than as a strip of dots.
  */
-export function openingView (bounds, vw, vh, firstPoint) {
+export function openingView (bounds, vw, vh, firstPoint, dir = 'lr') {
   const z = Math.min(1, (vw - FIT_MARGIN * 2) / Math.max(1, bounds.w), (vh - FIT_MARGIN * 2) / Math.max(1, bounds.h))
   if (z >= 0.9 || !firstPoint) {
     const zz = clampZoom(Math.max(z, MIN_ZOOM))
     return { z: zz, x: (vw - bounds.w * zz) / 2 - bounds.x * zz, y: (vh - bounds.h * zz) / 2 - bounds.y * zz }
   }
   // Full size, so every word on a card is the 12 px and more the editor promises.
+  if (dir === 'tb') return { z: 1, x: vw / 2 - (firstPoint[0] + SIZE.sceneW / 2), y: FIT_MARGIN - firstPoint[1] }
   return { z: 1, x: FIT_MARGIN - firstPoint[0], y: vh / 2 - (firstPoint[1] + SIZE.sceneH / 2) }
 }
 
@@ -403,7 +440,10 @@ export function storyMap () {
   return {
     open: false,
     scenes: [],
-    layout: { scenes: {}, choices: {} },
+    layout: { scenes: {}, choices: {} },   // the cards as they sit in the way the map runs now (dir)
+    dir: storedDir(),        // 'tb' top to bottom, 'lr' left to right; each keeps its own card positions
+    _saved: { lr: null, tb: null },        // the layouts as last read from the lesson
+    _layouts: {},            // the layout of the way not shown, as it was when the teacher switched away
     view: { z: 1, x: 0, y: 0 },
     selected: null,          // { type: 'scene'|'choice', id }
     busy: 0,
@@ -435,13 +475,15 @@ export function storyMap () {
       this.selected = null
       this.undoStack = []
       await this.reload()
-      this.$nextTick(() => {
-        const vp = this.$refs.viewport
-        if (!vp) return
-        this.measure()
-        const first = this.scenes[0] ? this.layout.scenes[this.scenes[0].id] : null
-        this.view = openingView(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight, first)
-      })
+      this.$nextTick(() => { this.measure(); this.showStart() })
+    },
+
+    /** The view a map opens on: the whole story, or its first scenes at full size (openingView). */
+    showStart () {
+      const vp = this.$refs.viewport
+      if (!vp) return
+      const first = this.scenes[0] ? this.layout.scenes[this.scenes[0].id] : null
+      this.view = openingView(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight, first, this.dir)
     },
 
     close () {
@@ -463,17 +505,42 @@ export function storyMap () {
       if (!data) return
       this.scenes = Array.isArray(data.scenes) ? data.scenes : []
       // What is on screen wins over what was saved (it is newer); only a card that is new gets a place found.
+      this._saved = { lr: data.layout ?? {}, tb: data.layoutTb ?? {} }
       const known = this.open && this._shown ? this.layout : { scenes: {}, choices: {} }
-      const saved = data.layout ?? {}
-      this.layout = placeAll(this.scenes, {
-        scenes: { ...(saved.scenes ?? {}), ...known.scenes },
-        choices: { ...(saved.choices ?? {}), ...known.choices },
-      })
+      this.layout = this.placed(this.dir, known)
       this._shown = true
       if (this.selected && !this.byId.has(this.selected.id)) this.selected = null
       if (this.selected?.type === 'choice' && !hasButtons(this.sel)) this.selected = { type: 'scene', id: this.selected.id }
       if (this.edge && !mapEdges(this.scenes).some((e) => e.key === this.edge)) this.edge = null
       this.picked = this.picked.filter(([g, id]) => this.layout[g][id] && this.byId.has(id))
+    },
+
+    /** The cards for one way of running: what was saved, under what is on screen (newer), with a place for any new card. */
+    placed (dir, known) {
+      const saved = this._saved[dir] ?? {}
+      return placeAll(this.scenes, {
+        scenes: { ...(saved.scenes ?? {}), ...(known?.scenes ?? {}) },
+        choices: { ...(saved.choices ?? {}), ...(known?.choices ?? {}) },
+      }, dir)
+    },
+
+    /** Top to bottom or left to right: each has its own card positions, and the choice is remembered on this device. */
+    setDir (dir) {
+      if (!DIRS.includes(dir) || dir === this.dir) return
+      // A card still landing (Tidy up, the grid) stops in the way it was, and is not saved under the new way.
+      this._settleRun++
+      this._layouts[this.dir] = this.layout
+      this.dir = dir
+      try { localStorage.setItem(DIR_KEY, dir) } catch (e) { /* private window: the map just opens the default way */ }
+      this.layout = this.placed(dir, this._layouts[dir])
+      this.edge = null
+      this.picked = []
+      this.$nextTick(() => this.showStart())
+    },
+
+    /** The whole layout of one way of running, saved quietly. */
+    async saveLayout (layout = this.layout, dir = this.dir) {
+      await this.call('saveStoryMapLayout', layout, dir)
     },
 
     /** One Livewire call, counted for the Saved / Saving pill. */
@@ -509,9 +576,13 @@ export function storyMap () {
       if (!step) return
       if (step.layout) {
         this._settleRun++   // a card still landing stops, so it cannot write over what undo puts back
-        Object.assign(this.layout.scenes, step.layout.scenes)
-        Object.assign(this.layout.choices, step.layout.choices)
-        await this.call('saveStoryMapLayout', step.layout)
+        const dir = step.dir ?? this.dir
+        const target = dir === this.dir ? this.layout : this._layouts[dir]
+        if (target) {
+          Object.assign(target.scenes, step.layout.scenes)
+          Object.assign(target.choices, step.layout.choices)
+        }
+        await this.saveLayout(step.layout, dir)
         return
       }
       for (const [method, args] of step.calls ?? [[step.method, step.args]]) {
@@ -574,14 +645,15 @@ export function storyMap () {
         + '<marker id="story-map-arrow-lit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path class="story-map-arrow is-lit" d="M1 1L9 5L1 9z"/></marker>'
         + '</defs>'
       for (const e of mapEdges(this.scenes)) {
-        const ends = edgeEnds(e, this.layout)
+        const ends = edgeEnds(e, this.layout, this.dir)
         if (!ends) continue
+        const [va, vb] = edgeVectors(e, this.dir)
         const picked = this.edge === e.key
         const lit = picked || (sel && ((sel.id === e.from.id) || (sel.type === 'scene' && e.to === sel.id && e.kind !== 'attach')))
         const cls = ['story-map-edge', `is-${e.kind}`, lit ? 'is-lit' : '', picked ? 'is-picked' : ''].join(' ')
         // The arrow's tip stops at the entry dot's rim rather than under it.
-        const b = e.kind === 'attach' ? ends[1] : [ends[1][0] - 4, ends[1][1]]
-        const d = edgePath(ends[0], b)
+        const b = e.kind === 'attach' ? ends[1] : [ends[1][0] - vb[0] * 4, ends[1][1] - vb[1] * 4]
+        const d = edgePath(ends[0], b, va, vb)
         if (e.kind !== 'attach') html += `<path class="story-map-hit" data-edge="${e.key}" d="${d}" />`
         const arrow = e.kind === 'attach' ? '' : ` marker-end="url(#story-map-arrow${lit ? '-lit' : ''})"`
         html += `<path class="${cls}" d="${d}"${arrow} />`
@@ -713,9 +785,10 @@ export function storyMap () {
     portStart (ev, from) {
       if (ev.button !== 0) return
       ev.stopPropagation()
-      const start = edgeEndsFrom(from, this.layout)
+      const start = edgeEndsFrom(from, this.layout, this.dir)
       if (!start) return
-      this.wiring = { from, start, tip: [...start], vel: [0, 0], goal: [...start], path: edgePath(start, start), over: null, letGo: false }
+      const va = portVector(from, this.dir)
+      this.wiring = { from, start, va, tip: [...start], vel: [0, 0], goal: [...start], path: edgePath(start, start, va, va), over: null, letGo: false }
       this._drag = { kind: 'wire' }
       this.$refs.viewport.setPointerCapture?.(ev.pointerId)
       this.springLine()
@@ -733,7 +806,8 @@ export function storyMap () {
         if (!w || w !== mine) return   // let go and gone, or a new line has its own spring
         if (calm) w.tip = [...w.goal]
         else ({ tip: w.tip, vel: w.vel } = springStep(w.tip, w.vel, w.goal))
-        w.path = edgePath(w.start, w.tip)
+        // Arriving on a scene, the end turns into its entry dot; loose, it keeps the way it set out.
+        w.path = edgePath(w.start, w.tip, w.va, w.over != null ? portVector({ type: 'in' }, this.dir) : w.va)
         const resting = Math.hypot(w.goal[0] - w.tip[0], w.goal[1] - w.tip[1]) < 0.5 && Math.hypot(w.vel[0], w.vel[1]) < 0.5
         if (w.letGo && (resting || calm)) { this.wiring = null; return }
         requestAnimationFrame(frame)
@@ -758,7 +832,7 @@ export function storyMap () {
         const p = this.toMap(ev)
         const self = this.wiring.from.type === 'scene' ? this.wiring.from.id : null
         this.wiring.over = nearestScene(this.scenes, this.layout, p, MAGNET_PX / this.view.z, self)
-        this.wiring.goal = this.wiring.over != null ? portPoint(this.layout, null, { type: 'in', id: this.wiring.over }) : p
+        this.wiring.goal = this.wiring.over != null ? portPoint(this.layout, null, { type: 'in', id: this.wiring.over }, this.dir) : p
       }
     },
 
@@ -789,7 +863,7 @@ export function storyMap () {
           this.selected = { type: d.type, id: d.id }
           return
         }
-        this.undoStack.push({ layout: d.before })
+        this.undoStack.push({ layout: d.before, dir: this.dir })
         // Let go: onto the grid (Alt keeps it exactly where it is), the whole group by the lead card's step.
         const lead = this.layout[d.group][d.id]
         if (lead && !ev.altKey) {
@@ -800,7 +874,7 @@ export function storyMap () {
         }
         // The whole map, not just this card: a map laid out for the teacher is theirs from the first move on, so
         // it opens the same next time instead of being laid out around one saved card.
-        await this.call('saveStoryMapLayout', this.layout)
+        await this.saveLayout()
       } else if (d.kind === 'wire') {
         const w = this.wiring
         if (!w) return
@@ -855,8 +929,8 @@ export function storyMap () {
     /** Tidy: lay the whole story out again, and keep it (one step back with undo). */
     async tidy () {
       const before = { scenes: { ...this.layout.scenes }, choices: { ...this.layout.choices } }
-      const next = autoLayout(this.scenes)
-      this.undoStack.push({ layout: before })
+      const next = autoLayout(this.scenes, this.dir)
+      this.undoStack.push({ layout: before, dir: this.dir })
       // Cards it already had glide to their new places; a card it did not have is simply put there.
       const targets = []
       for (const g of ['scenes', 'choices']) {
@@ -869,7 +943,7 @@ export function storyMap () {
       // Interrupted (a card grabbed, or undo): the cards stay where they are and whatever took over saves.
       if (!await this.settle(targets)) return
       this.layout = next
-      await this.call('saveStoryMapLayout', this.layout)
+      await this.saveLayout()
     },
 
     zoomTo (z) {
@@ -951,14 +1025,26 @@ export function storyMap () {
   }
 }
 
+const DIR_KEY = 'storyMap.dir'
+
+/** The way the map ran last time on this device; top to bottom the first time. */
+function storedDir () {
+  try {
+    const d = localStorage.getItem(DIR_KEY)
+    return DIRS.includes(d) ? d : 'tb'
+  } catch (e) {
+    return 'tb'
+  }
+}
+
 /** The teacher asked the system for less motion: things simply arrive. (jsdom has no matchMedia.) */
 function reducedMotion () {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /** Where a line being dragged starts: a scene's own dot or a choice row's. */
-function edgeEndsFrom (from, layout) {
+function edgeEndsFrom (from, layout, dir) {
   return from.type === 'choice'
-    ? portPoint(layout, null, { type: 'choice', id: from.id, index: from.index })
-    : portPoint(layout, null, { type: 'out', id: from.id })
+    ? portPoint(layout, null, { type: 'choice', id: from.id, index: from.index }, dir)
+    : portPoint(layout, null, { type: 'out', id: from.id }, dir)
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   SIZE, hasButtons, mapEdges, nextOf, autoLayout, placeAll, edgePath, edgeEnds, mapBounds, openingView, zoomViewAt, choiceHeight, storyMap,
-  nearestScene, springStep, snapPoint, easeOutBack, cardsInRect, edgeDeletion, minimapFrame, GRID,
+  nearestScene, springStep, portPoint, edgeVectors, snapPoint, easeOutBack, cardsInRect, edgeDeletion, minimapFrame, GRID,
 } from '../story-map.js'
 
 const scene = (id, number, extra = {}) => ({ id, number, name: `S${id}`, kind: 'narration', image: null, ending: false, links: [], prompt: '', canChoose: true, ...extra })
@@ -143,6 +143,70 @@ describe('story map: drawing', () => {
 
   it('a choice card is as tall as its rows', () => {
     expect(choiceHeight(story()[1])).toBe(SIZE.choiceHead + 2 * SIZE.rowH + SIZE.choicePad)
+  })
+})
+
+describe('story map: top to bottom', () => {
+  it('lays the story out downwards, a choice card under its scene and its scenes under that', () => {
+    const l = autoLayout(story(), 'tb')
+    expect(l.scenes[1][1]).toBe(0)
+    expect(l.scenes[2][1]).toBeGreaterThan(l.scenes[1][1])
+    expect(l.choices[2][1]).toBeGreaterThan(l.scenes[2][1])
+    expect(l.scenes[3][1]).toBeGreaterThan(l.choices[2][1])
+    // Two endings of one step sit side by side, never on top of each other.
+    const two = story(); two[2].ending = true
+    const t = autoLayout(two, 'tb')
+    expect(t.scenes[4][1]).toBe(t.scenes[3][1])
+    expect(Math.abs(t.scenes[4][0] - t.scenes[3][0])).toBeGreaterThanOrEqual(SIZE.sceneW)
+  })
+
+  it('lines leave a scene at its foot and arrive at the head; choice rows still leave on the right', () => {
+    const l = { scenes: { 1: [0, 0], 3: [0, 300] }, choices: { 1: [0, 100] } }
+    expect(portPoint(l, null, { type: 'out', id: 1 }, 'tb')).toEqual([SIZE.sceneW / 2, SIZE.sceneH])
+    expect(portPoint(l, null, { type: 'in', id: 3 }, 'tb')).toEqual([SIZE.sceneW / 2, 300])
+    expect(portPoint(l, null, { type: 'choice-in', id: 1 }, 'tb')).toEqual([SIZE.choiceW / 2, 100])
+    expect(portPoint(l, null, { type: 'choice', id: 1, index: 0 }, 'tb')[0]).toBe(SIZE.choiceW)
+    const [va, vb] = edgeVectors({ from: { type: 'choice', id: 1, index: 0 } }, 'tb')
+    expect([va, vb]).toEqual([[1, 0], [0, 1]])
+    // Straight down: both handles run downwards.
+    expect(edgePath([0, 0], [0, 200], [0, 1], [0, 1])).toBe('M0 0 C0 100 0 100 0 200')
+  })
+
+  it('a new scene goes under what leads to it', () => {
+    const s = story()
+    const l = placeAll([...s.slice(0, 3), scene(5, 4), { ...s[3], number: 5 }], { scenes: { 1: [0, 0], 2: [0, 120], 3: [0, 400], 4: [300, 400] }, choices: { 2: [0, 220] } }, 'tb')
+    expect(l.scenes[5][1]).toBeGreaterThan(400)
+  })
+
+  it('switching ways while cards land stops them, so nothing is saved under the new way', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return { scenes: story(), layout: { scenes: {}, choices: {} }, layoutTb: { scenes: {}, choices: {} } } }) }
+    const m = storyMap()
+    m.$wire = wire; m.$nextTick = () => {}; m.$refs = {}; m.open = true
+    m.dir = 'tb'
+    await m.reload()
+    const tidying = m.tidy()
+    m.setDir('lr')
+    await tidying
+    expect(calls.some((c) => c[0] === 'saveStoryMapLayout')).toBe(false)
+    expect(m.layout).toEqual(autoLayout(story(), 'lr'))
+  })
+
+  it('each way keeps its own cards, and saves under its own name', async () => {
+    const calls = []
+    const wire = { call: vi.fn(async (method, ...args) => { calls.push([method, ...args]); return { scenes: story(), layout: { scenes: { 1: [5, 5] }, choices: {} }, layoutTb: { scenes: {}, choices: {} } } }) }
+    const m = storyMap()
+    m.$wire = wire; m.$nextTick = () => {}; m.open = true
+    m.dir = 'lr'
+    await m.reload()
+    expect(m.layout.scenes[1]).toEqual([5, 5])
+    m.setDir('tb')
+    expect(m.dir).toBe('tb')
+    expect(m.layout).toEqual(autoLayout(story(), 'tb'))
+    await m.saveLayout()
+    expect(calls.at(-1)[2]).toBe('tb')
+    m.setDir('lr')
+    expect(m.layout.scenes[1]).toEqual([5, 5])
   })
 })
 

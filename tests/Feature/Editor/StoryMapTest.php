@@ -90,6 +90,29 @@ class StoryMapTest extends TestCase
         $this->assertSame([400, 40], $this->lesson->fresh()->story_map['scenes'][(string) $destination->id]);
     }
 
+    public function test_top_to_bottom_keeps_its_own_card_positions(): void
+    {
+        [$venice, $destination] = $this->scenes;
+        $editor = $this->editor();
+        $editor->call('saveStoryMapLayout', ['scenes' => [(string) $venice->id => [0, 0]]]);
+        $editor->call('saveStoryMapLayout', ['scenes' => [(string) $venice->id => [48, 96], '999999' => [1, 1]]], 'tb');
+
+        $map = $this->lesson->fresh()->story_map;
+        $this->assertSame([(string) $venice->id => [0, 0]], $map['scenes']);
+        $this->assertSame([(string) $venice->id => [48, 96]], $map['tb']['scenes']);
+
+        // Saving left to right again leaves top to bottom alone, and the map reads both back.
+        $editor->call('saveStoryMapLayout', ['scenes' => [(string) $destination->id => [312, 0]]]);
+        $payload = $this->editor()->instance()->storyMap();
+        $this->assertSame([48, 96], $payload['layoutTb']['scenes'][(string) $venice->id]);
+        $this->assertSame([312, 0], $payload['layout']['scenes'][(string) $destination->id]);
+        $this->assertArrayNotHasKey((string) $destination->id, $payload['layoutTb']['scenes']);
+
+        $copy = app(LessonCopier::class)->copy($this->lesson->fresh(), $this->teacher);
+        $copiedVenice = $copy->scenes()->where('chapter_name', 'Venice')->value('id');
+        $this->assertSame([(string) $copiedVenice => [48, 96]], $copy->fresh()->story_map['tb']['scenes']);
+    }
+
     public function test_a_scene_without_choices_goes_on_to_a_scene_ends_or_follows_the_list(): void
     {
         [$venice, , $cargo] = $this->scenes;

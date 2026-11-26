@@ -67,13 +67,22 @@ class LessonCopier
 
             // The story map places each scene by id too: carry the layout over to the copies.
             if (is_array($source->story_map)) {
-                $map = [];
-                foreach (['scenes', 'choices'] as $group) {
-                    foreach ((array) ($source->story_map[$group] ?? []) as $id => $point) {
-                        if (isset($ids[(int) $id])) {
-                            $map[$group][(string) $ids[(int) $id]] = $point;
+                // Both ways the map runs: left to right at the top level, top to bottom under 'tb'.
+                $remap = function (array $layout) use ($ids): array {
+                    $map = [];
+                    foreach (['scenes', 'choices'] as $group) {
+                        foreach ((array) ($layout[$group] ?? []) as $id => $point) {
+                            if (isset($ids[(int) $id])) {
+                                $map[$group][(string) $ids[(int) $id]] = $point;
+                            }
                         }
                     }
+
+                    return $map;
+                };
+                $map = $remap($source->story_map);
+                if (is_array($source->story_map['tb'] ?? null) && ($tb = $remap($source->story_map['tb'])) !== []) {
+                    $map['tb'] = $tb;
                 }
                 $lesson->forceFill(['story_map' => $map === [] ? null : $map])->saveQuietly();
             }
