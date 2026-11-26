@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { voyageStart, overviewBounds, legOpeningCamera, chartPrefetchPlan, INTRO_ZOOM } from '../voyage-opening.js'
-import { chartSources } from '../map-chart.js'
+import { voyageStart, overviewBounds, legOpeningCamera, voyagePrefetchPlan, INTRO_ZOOM } from '../voyage-opening.js'
 
 // Venice → Acre → Hormuz, the shape of a catalog route: waypoints, and legs naming two of them.
 const route = {
@@ -46,34 +45,22 @@ describe('legOpeningCamera', () => {
   })
 })
 
-describe('chartPrefetchPlan', () => {
-  const sources = chartSources('https://historyportal.test')
-  const zoomsOf = (plan, name) => plan.find((p) => p.templates.some((t) => t.includes(`/${name}/`)))?.zooms
-
-  it('warms the chart the voyage draws, never satellite imagery', () => {
-    const urls = chartPrefetchPlan(sources, 4.65).flatMap((p) => p.templates)
-    expect(urls.length).toBeGreaterThan(0)
-    expect(urls.every((u) => u.startsWith('https://historyportal.test/map-chart/'))).toBe(true)
+describe('voyagePrefetchPlan', () => {
+  it('covers every waypoint, from the widest view to the closest', () => {
+    const plan = voyagePrefetchPlan(route, { followZoom: 4.65, dolly: 1.1, overviewZoom: 2.47 })
+    expect(plan.box).toEqual([[12.33, 20], [56.27, 45.44]])
+    expect(plan.minZoom).toBe(2.47)
+    expect(plan.maxZoom).toBeCloseTo(5.75)
   })
 
-  it('uses the exact URLs the map asks for, so the browser cache serves them', () => {
-    const urls = chartPrefetchPlan(sources, 4.65).flatMap((p) => p.templates)
-    expect(urls).toContain(sources['chart-wash-sea'].tiles[0])
-    expect(urls).toContain(sources['chart-waves'].tiles[0])
+  it('reaches out to a timeline camera and the dive from space', () => {
+    const plan = voyagePrefetchPlan(route, { followZoom: 4.65, views: [{ center: [0, 50], zoom: INTRO_ZOOM }] })
+    expect(plan.box[0]).toEqual([0, 20])
+    expect(plan.box[1][1]).toBe(50)
+    expect(plan.minZoom).toBe(INTRO_ZOOM)
   })
 
-  it('asks each source for the zoom MapLibre loads it at', () => {
-    const plan = chartPrefetchPlan(sources, 4.65)
-    expect(zoomsOf(plan, 'wash-sea')).toEqual([4])   // 256 px raster, capped at its maxzoom
-    expect(zoomsOf(plan, 'waves')).toEqual([4])      // 512 px vector: floor(zoom)
-  })
-
-  it('reaches one zoom further when the camera dollies in on arrival', () => {
-    expect(zoomsOf(chartPrefetchPlan(sources, 4.65, 1.1), 'waves')).toEqual([4, 5])
-  })
-
-  it('skips sources with no tiles to fetch (the GeoJSON land, the world rectangle)', () => {
-    const urls = chartPrefetchPlan(sources, 4.65).flatMap((p) => p.templates)
-    expect(urls.some((u) => u.endsWith('.geojson'))).toBe(false)
+  it('is null with no route', () => {
+    expect(voyagePrefetchPlan({ waypoints: [] }, { followZoom: 4 })).toBeNull()
   })
 })

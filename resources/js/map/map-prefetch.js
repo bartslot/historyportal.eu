@@ -97,17 +97,19 @@ export function tileUrlsFor (sources, views, size) {
 }
 
 /**
- * Fetch the tiles of these views for this map's style, a few at a time, at low priority.
- *
- * @param {object} map a maplibregl.Map
- * @param {Array} views from sceneViews()
- * @param {{width?: number, height?: number}} size the map's box
- * @returns {Promise<number>} how many tiles were fetched
+ * The style's sources that some visible layer draws from. A hidden layer loads no tiles, so warming
+ * its source is pure waste: the territory borders (cliopatria) are off on most maps and are by far the
+ * heaviest set, about 10 MB a zoom level over a voyage's route.
  */
-export async function prefetchTiles (map, views, size = {}) {
-  let sources
-  try { sources = map.getStyle()?.sources } catch (_) { return 0 }
-  const urls = tileUrlsFor(sources, views, { width: size.width || 1280, height: size.height || 720 })
+export function visibleSources (style) {
+  const used = new Set((style?.layers || [])
+    .filter((l) => l && l.source && l.layout?.visibility !== 'none')
+    .map((l) => l.source))
+  return Object.fromEntries(Object.entries(style?.sources || {}).filter(([id]) => used.has(id)))
+}
+
+/** Fetch these URLs a few at a time, at low priority; each is asked for once per page. */
+async function fetchUrls (urls) {
   urls.forEach((u) => fetched.add(u))
   let i = 0
   const worker = async () => {
@@ -118,4 +120,70 @@ export async function prefetchTiles (map, views, size = {}) {
   }
   await Promise.all(Array.from({ length: Math.min(PARALLEL, urls.length) }, worker))
   return urls.length
+}
+
+/**
+ * Fetch the tiles of these views for this map's style, a few at a time, at low priority.
+ *
+ * @param {object} map a maplibregl.Map
+ * @param {Array} views from sceneViews()
+ * @param {{width?: number, height?: number}} size the map's box
+ * @returns {Promise<number>} how many tiles were fetched
+ */
+export async function prefetchTiles (map, views, size = {}) {
+  let sources
+  try { sources = visibleSources(map.getStyle()) } catch (_) { return 0 }
+  return fetchUrls(tileUrlsFor(sources, views, { width: size.width || 1280, height: size.height || 720 }))
+}
+
+/**
+ * Every tile URL covering a lng/lat box, for every map zoom from `minZoom` to `maxZoom`, one tile of
+ * margin all round. Coarse zooms first: they are the cheapest and the first a zoom-out needs.
+ *
+ * A voyage (unlike a map scene) zooms anywhere over its route: the itinerary, the dive from space, the
+ * glide down to a leg, the dolly at a landfall. The tile sets stop at zoom 4 to 6, so the route's box
+ * at every zoom in that range is a few hundred small tiles, and asking for all of them once means no
+ * zoom in or out ever waits on the network (Bart 2026-11-26: "when zooming in or out, it's not cached
+ * or predownloaded so there's a huge amount of reloading").
+ *
+ * @param {object} sources a style's sources
+ * @param {[[number, number], [number, number]]} box [[west, south], [east, north]]
+ * @param {{ minZoom: number, maxZoom: number, max?: number }} range map zooms; `max` caps the URL count
+ */
+export function tileUrlsForBox (sources, box, { minZoom, maxZoom, max = 3000 } = {}) {
+  const [[w, s], [e, n]] = box || [[0, 0], [0, 0]]
+  if (![w, s, e, n, minZoom, maxZoom].every(Number.isFinite)) return []
+  const jobs = []
+  for (const src of Object.values(sources || {})) {
+    if (!src || !Array.isArray(src.tiles) || !src.tiles[0]) continue
+    const raster = src.type === 'raster'
+    const lift = Math.log2(512 / (src.tileSize ?? (raster ? 256 : 512)))
+    const cover = (z) => Math.max(src.minzoom ?? 0, Math.min(src.maxzoom ?? 22, raster ? Math.round(z + lift) : Math.floor(z + lift)))
+    for (let z = cover(minZoom); z <= cover(maxZoom); z++) jobs.push({ z, template: src.tiles[0] })
+  }
+  jobs.sort((a, b) => a.z - b.z)
+  const urls = []
+  for (const { z, template } of jobs) {
+    const count = 2 ** z
+    const tx = (lng) => Math.floor(((lng + 180) / 360) * count)
+    const ty = (lat) => Math.max(0, Math.min(count - 1, Math.floor(mercY(lat) * count)))
+    const x0 = tx(w) - 1
+    const x1 = Math.min(tx(e) + 1, x0 + count - 1)
+    for (let x = x0; x <= x1; x++) {
+      for (let y = Math.max(0, ty(n) - 1); y <= Math.min(count - 1, ty(s) + 1); y++) {
+        const url = template.replace('{z}', z).replace('{x}', ((x % count) + count) % count).replace('{y}', y)
+        if (fetched.has(url)) continue
+        urls.push(url)
+        if (urls.length >= max) return urls
+      }
+    }
+  }
+  return urls
+}
+
+/** Fetch the tiles of a lng/lat box at every zoom in a range (see tileUrlsForBox). */
+export async function prefetchBox (map, box, range) {
+  let sources
+  try { sources = visibleSources(map.getStyle()) } catch (_) { return 0 }
+  return fetchUrls(tileUrlsForBox(sources, box, range))
 }

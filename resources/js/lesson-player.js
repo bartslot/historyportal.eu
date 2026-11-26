@@ -21,7 +21,8 @@ import { buildChapters, canSeek, reachedFurther, chapterTooltip, formatClock, fo
 import { createTelemetry } from './lesson-telemetry.js'
 import { createPausableTimeout } from './pausable-clock.js'
 import { whenStageReady } from './stage-hold.js'
-import { hasAnimation, frameAt, applyFrameTo, cameraEnd, openingCamera } from './anim/scene-animation.js'
+import { hasAnimation, frameAt, applyFrameTo, cameraEnd, cameraDrives, openingCamera } from './anim/scene-animation.js'
+import { sceneViews } from './map/map-prefetch.js'
 import { voyageStart } from './voyage-opening.js'
 import { storedSail } from './anim/sail-clip.js'
 import { storedNarrationStart } from './anim/narration-start.js'
@@ -2237,6 +2238,11 @@ Alpine.data('lessonGame', (lesson) => ({
           at: (s.config || {}).overview ? 'depart' : 'arrive',
         }))
       const sail = storedSail(cfg.timeline)
+      // Every voyage scene of THIS voyage, for the tiles to warm: the zooms its timeline cameras fly
+      // through, and whether any leg dives in from space.
+      const mine = _sceneQueue.filter(s => s.kind === 'voyage' && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+      const views = mine.flatMap(s => (cameraDrives((s.config || {}).timeline) ? sceneViews(s.config || {}) : []))
+      const intro = mine.some(s => !!(s.config || {}).intro)
       _voyageInstance = window.renderVoyageTour(inner, {
         voyage: cfg.voyage,
         // The editable copy for THIS scene's voyage. A lesson can hold several voyages, so the
@@ -2253,6 +2259,8 @@ Alpine.data('lessonGame', (lesson) => ({
         // Where the map opens: this scene's own first frame.
         start: voyageStart(cfg, { cameraHold: cameraEnd(cfg.timeline), sailStart: sail?.start || 0 }),
         camera: cameraEnd(cfg.timeline) ? openingCamera(cfg.timeline) : null,
+        views,
+        intro,
         // On each arrival: show the carousel controls + start the 10s auto-advance.
         onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
       })
@@ -2332,7 +2340,10 @@ Alpine.data('lessonGame', (lesson) => ({
       if (cfg.overview) {
         // Already fitted when it appears — no fly-in. A lesson that opens by panning across the
         // world before it settles reads as the map loading, not as the itinerary being presented.
-        _voyageInstance.showOverview({ animate: false })
+        // Coming back to it from a leg is different: the class has been on this map, so it zooms out
+        // the way it zoomed in, instead of cutting to the wide view.
+        _voyageInstance.showOverview({ animate: !!_voyageInstance.played })
+        _voyageInstance.played = true
         // Nothing sails, so no arrival will ever fire: hand the class the same controls a landfall
         // gets — side arrows and the 10s auto-advance — or the lesson would stop here for good.
         this.showMapContinue = true
@@ -2345,6 +2356,7 @@ Alpine.data('lessonGame', (lesson) => ({
       // The crossing's own clip on the timeline (anim/sail-clip.js): when the ship sets off and how long it sails.
       // Without one the leg sets off after the camera and sails as long as its dates say.
       const sail = storedSail(cfg.timeline)
+      _voyageInstance.played = true
       _voyageInstance.playLeg(Number(cfg.leg) || 0, {
         intro: voyageStart(cfg, { cameraHold: camHold, sailStart: sail?.start || 0 }).intro,
         holdMs: (sail ? sail.start : camHold) * 1000,

@@ -7,10 +7,9 @@ import { midpointAlong, nearestPointOnPolyline, splitByWaypoints } from './timem
 import { addVoyageShips } from './timemap/voyage-ships.js';
 import { sweepBorder } from './map/border-sweep.js';
 import { addVoyageFog } from './timemap/voyage-fog.js';
-import { prefetchRouteTiles } from './timemap/tile-prefetch.js';
+import { prefetchBox } from './map/map-prefetch.js';
 import { renderItineraryPins } from './map-itinerary.js';
-import { chartSources } from './map-chart.js';
-import { INTRO_ZOOM, OVERVIEW_PADDING, overviewBounds, legOpeningCamera, chartPrefetchPlan } from './voyage-opening.js';
+import { INTRO_ZOOM, OVERVIEW_PADDING, overviewBounds, legOpeningCamera, voyagePrefetchPlan } from './voyage-opening.js';
 import { buffer as turfBuffer, lineString as turfLine, simplify as turfSimplify, destination as turfDestination, booleanPointInPolygon as turfPointInPolygon, polygon as turfPolygon, difference as turfDifference, featureCollection as turfFC } from '@turf/turf';
 import { mapTextProjector } from './map-text-projector.js';
 import { createPausableClock } from './pausable-clock.js';
@@ -116,7 +115,7 @@ const setReadingOverlayOpen = (open) => {
   } catch (_) { /* no CustomEvent (never in a browser we support) */ }
 };
 
-export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null, start = null, camera = null } = {}) {
+export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null, start = null, camera = null, views = null, intro = false } = {}) {
   // Prefer the lesson's editable copy, but ONLY when it belongs to this voyage. A lesson can hold
   // scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def` would draw
   // the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
@@ -308,9 +307,6 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 
   let ships = null;
   let fog = null;
-  // Kills the prefetch when the tour is torn down, so a scene change never leaves a few hundred
-  // tile requests running for a map nobody is looking at.
-  let stopPrefetch = null;
   // Auto fog-of-war geometry (computed once the route is known): the whole-route bbox that gets masked
   // and the "known world" boxes (old-world coasts + home port) that stay charted. Kept in the route's
   // unwrapped lng frame so Pacific voyages line up with the corridor reveal.
@@ -1405,26 +1401,27 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       unknown: [...PAINTED], beforeId: 'voyage-ships', samplePoint: (t) => ships.pointAt(voyage, t), waterColor: readWater(),
       auto: !!MO.fog_auto, knownBoxes: fogKnownBoxes, worldBox: fogWorldBox,
     });
-    // ── Warm the tiles this voyage is about to sail over ──────────────────────────────────────
-    // The route is known before the ship moves, so the imagery for it can be in the browser cache
-    // by the time the camera gets there — no tile popping in under the hull mid-crossing. The
-    // sailing zoom is the one that matters most (that is where the class spends the voyage); the
-    // wider zoom covers the opening fly-in and the itinerary. Failures are ignored by design.
-    // The chart's own tiles (see chartPrefetchPlan: this used to warm satellite imagery the voyage
-    // no longer draws), at the zooms the follow camera loads, gently, so the tiles the map is asking
-    // for right now always come first.
+    // ── Warm every tile this voyage can show, at every zoom it shows it from ───────────────────
+    // A voyage zooms: the itinerary, the dive from space, the glide down to a leg, the dolly at a
+    // landfall, the teacher's timeline cameras (`views`, from the player). The chart's tile sets stop
+    // at zoom 4 to 6, so the route's box at all of those zooms is a few hundred small tiles; fetched
+    // once, low priority, no zoom in or out waits on the network again. This used to warm satellite
+    // imagery the chart no longer draws, and only along the line at the sailing zoom.
     try {
       const follow = voyageFollowZoom(MO.ocean_zoom);
-      const stops = chartPrefetchPlan(chartSources(location.origin), follow, MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA : 0)
-        .map(({ templates, zooms }) => prefetchRouteTiles({
-          route: (route.waypoints || []).filter(Array.isArray),
-          templates,
-          zooms,
-          pad: 1,
-          max: 600,
-          concurrency: 3,
-        }));
-      stopPrefetch = () => stops.forEach((stop) => { try { stop(); } catch (_) { /* finished */ } });
+      let overviewZoom = null;
+      try { const box = overviewBounds(route); overviewZoom = box ? map.cameraForBounds(box, { padding: OVERVIEW_PADDING })?.zoom ?? null : null; } catch (_) { /* no size yet */ }
+      const plan = voyagePrefetchPlan(route, {
+        followZoom: follow,
+        dolly: MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA : 0,
+        overviewZoom,
+        views: [
+          ...(Array.isArray(views) ? views : []),
+          // The dive from space starts this far out, over the home port.
+          ...((intro || start?.intro) && Array.isArray(route.waypoints?.[0]) ? [{ center: route.waypoints[0], zoom: INTRO_ZOOM }] : []),
+        ],
+      });
+      if (plan) prefetchBox(map, plan.box, { minZoom: plan.minZoom, maxZoom: plan.maxZoom });
     } catch (_) { /* prefetching is an optimisation; never let it stop the tour */ }
 
     // Repaint the map to the chosen palette IN PLACE (never a re-mount), then follow it with the
@@ -1923,8 +1920,6 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // tour that owned it (that leak froze the next scene's auto-advance).
       try { galleryClose && galleryClose(); } catch (_) { /* already gone */ }
       clearOverview();
-      try { stopPrefetch && stopPrefetch(); } catch (_) { /* already finished */ }
-      stopPrefetch = null;
       legToken++;   // invalidate any in-flight leg
       if (raf) cancelAnimationFrame(raf);
       try { galleryClose && galleryClose(); } catch (_) { /* clears the gallery interval */ }

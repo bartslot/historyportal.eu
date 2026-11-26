@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sceneViews, tilesForView, tileUrlsFor } from '../map-prefetch.js'
+import { sceneViews, tilesForView, tileUrlsFor, tileUrlsForBox, visibleSources } from '../map-prefetch.js'
 import { pinZoomFactor, PIN_SCALE_MAX, PIN_SCALE_MIN } from '../../scene/ArtworkOverlay.js'
 
 describe('tilesForView', () => {
@@ -69,5 +69,50 @@ describe('pinZoomFactor', () => {
     expect(pinZoomFactor(at(6, 4))).toBeCloseTo(2)
     expect(pinZoomFactor(at(20, 4))).toBe(PIN_SCALE_MAX)
     expect(pinZoomFactor(at(0, 10))).toBe(PIN_SCALE_MIN)
+  })
+})
+
+describe('tileUrlsForBox', () => {
+  const sources = {
+    wash: { type: 'raster', tiles: ['/w/{z}/{x}/{y}.webp'], tileSize: 256, maxzoom: 4 },
+    waves: { type: 'vector', tiles: ['/v/{z}/{x}/{y}.pbf'], minzoom: 3, maxzoom: 5 },
+    land: { type: 'geojson', data: '/land.geojson' },
+  }
+  const box = [[12, 20], [56, 45]]   // Venice to Hormuz
+
+  it('asks each source for every zoom it loads between the widest and the closest view', () => {
+    const zs = (urls, pre) => [...new Set(urls.filter((u) => u.startsWith(pre)).map((u) => Number(u.split('/')[2])))]
+    const urls = tileUrlsForBox(sources, box, { minZoom: 2.4, maxZoom: 5.75 })
+    expect(zs(urls, '/w/')).toEqual([3, 4])        // raster: round(zoom + 1), capped at 4
+    expect(zs(urls, '/v/')).toEqual([3, 4, 5])     // vector: floor(zoom), from its minzoom
+    expect(urls.some((u) => u.includes('geojson'))).toBe(false)
+  })
+
+  it('fetches coarse zooms first and stops at the cap', () => {
+    const urls = tileUrlsForBox(sources, box, { minZoom: 2.4, maxZoom: 5.75, max: 10 })
+    expect(urls).toHaveLength(10)
+    expect(urls[0]).toMatch(/\/3\//)
+  })
+
+  it('keeps a tile of margin round the box, and wraps past the date line', () => {
+    const urls = tileUrlsForBox({ wash: sources.wash }, [[170, -20], [190, -10]], { minZoom: 1, maxZoom: 1 })
+    const xs = new Set(urls.map((u) => Number(u.split('/')[3])))
+    expect(xs.has(0)).toBe(true)   // 190°E is tile 0 again
+    expect(xs.has(3)).toBe(true)
+  })
+})
+
+describe('visibleSources', () => {
+  it('keeps only sources a visible layer draws, so hidden borders are never fetched', () => {
+    const style = {
+      sources: { wash: { type: 'raster' }, cliopatria: { type: 'vector' }, rivers: { type: 'vector' } },
+      layers: [
+        { id: 'bg', type: 'background' },
+        { id: 'wash', source: 'wash' },
+        { id: 'borders', source: 'cliopatria', layout: { visibility: 'none' } },
+        { id: 'rivers', source: 'rivers', layout: { visibility: 'visible' } },
+      ],
+    }
+    expect(Object.keys(visibleSources(style))).toEqual(['wash', 'rivers'])
   })
 })

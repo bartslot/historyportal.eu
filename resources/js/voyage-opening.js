@@ -60,38 +60,27 @@ export function legOpeningCamera (route, { leg = 0, intro = false } = {}, follow
 }
 
 /**
- * Which chart tiles to warm along the route, per tile source, at the zooms MapLibre will ask for.
+ * What to warm for a voyage: the box its camera can ever look at, and the zooms it can look from.
  *
- * The prefetch used to warm NASA satellite and elevation tiles, up to 1500 of each, from the moment
- * the map loaded. The voyage has drawn the watercolour chart since October and never shows either,
- * so the class downloaded imagery nobody saw, at exactly the moment the chart's own tiles were
- * loading. These are the chart's sources, with the zoom each one actually loads:
- *   raster, 256 px tiles: round(zoom + 1), capped at the source's maxzoom (4);
- *   vector, 512 px tiles: floor(zoom), within the source's minzoom..maxzoom.
+ * The box is every waypoint (bends too, the ship sails them) plus any timeline camera's centre. The
+ * zooms run from the widest view the voyage shows (the itinerary, the dive from space, a timeline
+ * camera) to the closest (the sailing zoom plus the landfall dolly). map-prefetch.js turns that into
+ * tile URLs; the tile sets stop at zoom 4 to 6, so this stays a few MB at most.
  *
- * @param {Record<string, {type: string, tiles: string[], minzoom?: number, maxzoom?: number, tileSize?: number}>} sources
- *   chartSources(origin), so every URL is byte-for-byte the one the map requests (and the cache hits)
- * @param {number} followZoom  the sailing zoom
- * @param {number} [dolly]     the extra zoom of "Dolly in on arrival", when it is on
- * @returns {Array<{ templates: string[], zooms: number[] }>}
+ * @param {{ waypoints?: Array<[number, number]> }} route
+ * @param {{ followZoom: number, dolly?: number, overviewZoom?: number|null, views?: Array<{center: [number, number], zoom: number}> }} opts
+ * @returns {{ box: [[number, number], [number, number]], minZoom: number, maxZoom: number }|null}
  */
-export function chartPrefetchPlan (sources, followZoom, dolly = 0) {
-  const byZooms = new Map()
-  for (const src of Object.values(sources || {})) {
-    if (!src || !Array.isArray(src.tiles) || !src.tiles[0]) continue
-    if (src.type !== 'raster' && src.type !== 'vector') continue
-    const min = src.minzoom ?? 0
-    const max = src.maxzoom ?? 22
-    const at = (z) => (src.type === 'raster'
-      ? Math.round(z + Math.log2(512 / (src.tileSize || 512)))
-      : Math.floor(z))
-    const lo = Math.max(min, Math.min(max, at(followZoom)))
-    const hi = Math.max(min, Math.min(max, at(followZoom + Math.max(0, dolly))))
-    const zooms = []
-    for (let z = lo; z <= hi; z++) zooms.push(z)
-    const key = zooms.join(',')
-    if (!byZooms.has(key)) byZooms.set(key, { templates: [], zooms })
-    byZooms.get(key).templates.push(src.tiles[0])
+export function voyagePrefetchPlan (route, { followZoom, dolly = 0, overviewZoom = null, views = [] } = {}) {
+  const pts = (route?.waypoints || []).filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+  const extra = (views || []).filter((v) => Array.isArray(v?.center) && Number.isFinite(v.center[0]) && Number.isFinite(v.center[1]) && Number.isFinite(v.zoom))
+  extra.forEach((v) => pts.push(v.center))
+  if (!pts.length || !Number.isFinite(followZoom)) return null
+  const zooms = [followZoom, followZoom + Math.max(0, dolly), ...extra.map((v) => v.zoom)]
+  if (Number.isFinite(overviewZoom)) zooms.push(overviewZoom)
+  return {
+    box: [[Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))]],
+    minZoom: Math.min(...zooms),
+    maxZoom: Math.max(...zooms),
   }
-  return [...byZooms.values()]
 }
