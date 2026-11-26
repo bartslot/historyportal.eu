@@ -38,9 +38,9 @@ const map = new maplibregl.Map({
       coastline: { type: 'geojson', data: `${origin}/timemap/coastline.geojson` },
       satellite: {
         type: 'raster',
-        tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg'],
+        tiles: [params.get('imagery') === 'local' ? `${origin}/_proof-tiles/{z}/{x}/{y}.jpeg` : 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg'],
         tileSize: 256,
-        maxzoom: 8,
+        maxzoom: params.get('imagery') === 'local' ? 3 : 8,
       },
     },
     layers: [

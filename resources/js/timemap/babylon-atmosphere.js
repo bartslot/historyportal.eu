@@ -35,12 +35,17 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight.js'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector.js'
 import { Color3 } from '@babylonjs/core/Maths/math.color.js'
 import { Atmosphere } from '@babylonjs/addons/atmosphere/atmosphere.js'
-import { mapTransform } from '../map/maplibre-compat.js'
+import { mapTransform, EARTH_RADIUS_M } from '../map/maplibre-compat.js'
+import { AtmospherePhysicalProperties } from '@babylonjs/addons/atmosphere/atmospherePhysicalProperties.js'
 
 const LAYER_ID = 'tm-atmosphere'
 
-/** Babylon's default planet, km. The unit sphere is scaled to this, not to MapLibre's 6371. */
-const PLANET_RADIUS_KM = 6360
+/**
+ * MapLibre's earth radius, km, handed to Babylon as its planet (Babylon's default is 6360). They
+ * must agree to the metre: 11 km of disagreement put a bright seam round the limb, where Babylon's
+ * rays missed a planet MapLibre had drawn.
+ */
+const PLANET_RADIUS_KM = EARTH_RADIUS_M / 1000
 
 /** planet space ([cos·cos, sin, cos·sin], what sun.js returns) → MapLibre's globe frame. */
 const toMapLibreFrame = ([x, y, z]) => [z, y, x]
@@ -188,6 +193,7 @@ export const createBabylonAtmosphereLayer = ({
       applyLight()
 
       atmosphere = new Atmosphere('air', scene, [light], {
+        physicalProperties: new AtmospherePhysicalProperties({ planetRadius: PLANET_RADIUS_KM, atmosphereThickness: state.thickness }),
         // Premultiplied over the ground: the air both adds light and takes some away, so a planet
         // seen through the limb dims as it should. Space is transparent canvas on the Time-Map —
         // the container's gradient shows through — and premultiplied alpha composites onto it.
