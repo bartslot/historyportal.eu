@@ -3142,5 +3142,10 @@
     "Group": "Gruppieren",
     "Ungroup": "Gruppierung aufheben",
     "Drag from a scene to add a choice, or from a choice to change where it goes": "Zieh aus einer Szene, um eine Auswahl hinzuzufügen, oder aus einer Auswahl, um ihr Ziel zu ändern",
-    "Drag onto a scene to add a choice that goes there": "Auf eine Szene ziehen, um eine Auswahl dorthin hinzuzufügen"
+    "Drag onto a scene to add a choice that goes there": "Auf eine Szene ziehen, um eine Auswahl dorthin hinzuzufügen",
+    "Full size (0)": "Originalgröße (0)",
+    "Full size": "Originalgröße",
+    "Show the whole story (F)": "Die ganze Geschichte zeigen (F)",
+    "Delete removes this line": "Entf entfernt diese Linie",
+    "Drag one of the picked cards to move them together": "Zieh eine der gewählten Karten, um sie zusammen zu verschieben"
 }
