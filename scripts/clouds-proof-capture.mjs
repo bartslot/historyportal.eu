@@ -25,7 +25,7 @@ const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
 const view = `${italy}&zoom=7&pitch=60`
 // "A" is the candidate look; the shots before it change one thing at a time from the defaults.
-const A = 'v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.55'
+const A = 'v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4'
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
   { name: '01-defaults', query: view },
   { name: '02-tone-neutral', query: `${view}&v.tone=neutral` },
@@ -34,7 +34,7 @@ const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
   { name: '05-step1.001', query: `${view}&v.stepScale=1.001` },
   { name: '06-step1.0005', query: `${view}&v.stepScale=1.0005` },
   { name: '07-weather-soft', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95` },
-  { name: '08-weather-soft-coverage0.6', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.6` },
+  { name: '08-weather-soft-coverage0.4', query: `${view}&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4` },
   { name: '09-scale16-step1.001', query: `${view}&v.scale=16&v.stepScale=1.001` },
   { name: '10-A', query: `${view}&${A}` },
   { name: '11-A-top-down', query: `${italy}&zoom=7&pitch=0&${A}` },
@@ -45,6 +45,10 @@ const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
   { name: '16-A-skylight2', query: `${view}&${A}&v.skyLight=2` },
   { name: '17-A-noshadow', query: `${view}&${A}&v.shadows=0` },
   { name: '18-A-exposure6', query: `${view}&${A}&v.exposure=6` },
+  { name: '18b-A-coverage0.33', query: `${view}&${A}&v.coverage=0.33` },
+  { name: '18c-A-coverage0.47', query: `${view}&${A}&v.coverage=0.47` },
+  { name: '18d-A-scale6', query: `${view}&${A}&v.scale=6` },
+  { name: '18e-A-agx', query: `${view}&${A}&v.tone=agx` },
   { name: '19-flat-only', query: `${view}&v.strength=0`, label: 'same view, flat deck only' },
   { name: '20-orbit-flat', query: `${italy}&zoom=4&pitch=45`, label: 'orbit: flat deck' },
 ]
