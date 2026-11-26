@@ -670,15 +670,29 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     const c = cpCard;
     cpCard = null;
     if (c) { try { c.close(); } catch (_) { /* gone */ } }
+    releaseSail();
     hud.querySelectorAll('.lp-checkpoint-mark.is-active').forEach((m) => m.classList.remove('is-active'));
+  };
+  // The traveller waits at a checkpoint while its card is up (Bart 2026-11-26: on a short leg a checkpoint near the
+  // end only flashed before the landfall took over). The sail clock stops, so the ship stands still, and starts again
+  // when the card closes, by itself, from its button, or because the leg moved on.
+  let cpHold = false;
+  const holdSail = () => { cpHold = true; sailClock.pause(); };
+  const releaseSail = () => {
+    if (!cpHold) return;
+    cpHold = false;
+    if (!paused) sailClock.resume();   // the class's own pause outranks the checkpoint's
   };
   const showCheckpointCard = (cp, { auto = false } = {}) => {
     closeCheckpointCard();
     if (!checkpointHasContent(cp)) return;
-    const card = renderCheckpointCard(hud, cp, { onClose: () => { if (cpCard === card) { cpCard = null; clearTimeout(cpCardTimer); } } });
+    const card = renderCheckpointCard(hud, cp, { onClose: () => { if (cpCard === card) { cpCard = null; clearTimeout(cpCardTimer); } releaseSail(); } });
     cpCard = card;
     hud.querySelectorAll('[data-checkpoint-mark]').forEach((m) => m.classList.toggle('is-active', m.dataset.checkpointMark === cp.id));
-    if (auto) cpCardTimer = setTimeout(() => { if (cpCard === card) closeCheckpointCard(); }, autoCardMs(cp));
+    if (auto) {
+      if (sailing) holdSail();
+      cpCardTimer = setTimeout(() => { if (cpCard === card) closeCheckpointCard(); }, autoCardMs(cp));
+    }
   };
   /** Where each checkpoint sits along the CURRENT track (fractions between L.f0 and L.f1). */
   const checkpointFs = () => (ships ? L.checkpoints.map((cp) => checkpointFraction(cp, (f) => ships.pointAt(voyage, f), L.f0, L.f1)) : []);
@@ -1917,7 +1931,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
         sailClock.pause();
         if (raf) { cancelAnimationFrame(raf); raf = null; }
       } else {
-        sailClock.resume();
+        if (!cpHold) sailClock.resume();   // still waiting at a checkpoint: its card restarts the clock
         if (sailStep) raf = requestAnimationFrame(sailStep);
       }
     },
