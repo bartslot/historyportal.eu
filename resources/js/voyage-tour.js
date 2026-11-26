@@ -669,6 +669,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     clearTimeout(cpCardTimer);
     const c = cpCard;
     cpCard = null;
+    cpCardLeft = 0;
     if (c) { try { c.close(); } catch (_) { /* gone */ } }
     releaseSail();
     hud.querySelectorAll('.lp-checkpoint-mark.is-active').forEach((m) => m.classList.remove('is-active'));
@@ -677,6 +678,21 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   // end only flashed before the landfall took over). The sail clock stops, so the ship stands still, and starts again
   // when the card closes, by itself, from its button, or because the leg moved on.
   let cpHold = false;
+  // A card that opened by itself counts down only while the lesson plays: paused, the class keeps reading it.
+  let cpCardLeft = 0;       // ms the auto card still has
+  let cpCardSince = 0;
+  const armCardTimer = () => {
+    clearTimeout(cpCardTimer);
+    if (!cpCard || cpCardLeft <= 0 || paused) return;
+    const card = cpCard;
+    cpCardSince = performance.now();
+    cpCardTimer = setTimeout(() => { if (cpCard === card) closeCheckpointCard(); }, cpCardLeft);
+  };
+  const parkCardTimer = () => {
+    if (!cpCard || cpCardLeft <= 0) return;
+    clearTimeout(cpCardTimer);
+    cpCardLeft = Math.max(0, cpCardLeft - (performance.now() - cpCardSince));
+  };
   const holdSail = () => { cpHold = true; sailClock.pause(); };
   const releaseSail = () => {
     if (!cpHold) return;
@@ -686,12 +702,13 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
   const showCheckpointCard = (cp, { auto = false } = {}) => {
     closeCheckpointCard();
     if (!checkpointHasContent(cp)) return;
-    const card = renderCheckpointCard(hud, cp, { onClose: () => { if (cpCard === card) { cpCard = null; clearTimeout(cpCardTimer); } releaseSail(); } });
+    const card = renderCheckpointCard(hud, cp, { onClose: () => { if (cpCard === card) { cpCard = null; cpCardLeft = 0; clearTimeout(cpCardTimer); } releaseSail(); } });
     cpCard = card;
     hud.querySelectorAll('[data-checkpoint-mark]').forEach((m) => m.classList.toggle('is-active', m.dataset.checkpointMark === cp.id));
     if (auto) {
       if (sailing) holdSail();
-      cpCardTimer = setTimeout(() => { if (cpCard === card) closeCheckpointCard(); }, autoCardMs(cp));
+      cpCardLeft = autoCardMs(cp);
+      armCardTimer();
     }
   };
   /** Where each checkpoint sits along the CURRENT track (fractions between L.f0 and L.f1). */
@@ -1929,8 +1946,10 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       paused = next;
       if (paused) {
         sailClock.pause();
+        parkCardTimer();
         if (raf) { cancelAnimationFrame(raf); raf = null; }
       } else {
+        armCardTimer();
         if (!cpHold) sailClock.resume();   // still waiting at a checkpoint: its card restarts the clock
         if (sailStep) raf = requestAnimationFrame(sailStep);
       }
