@@ -1,7 +1,8 @@
-{
- "Alps": {
-  "file": "alps-mask.png",
-  "bounds": [
+[
+ {
+  "id": "alps",
+  "url": "/timemap/assets/mountains/painted/alps.webp",
+  "coordinates": [
    [
     4.658,
     48.141
@@ -18,16 +19,12 @@
     4.658,
     43.709
    ]
-  ],
-  "size": [
-   1536,
-   852
-  ],
-  "peak_m": 4809
+  ]
  },
- "Himalaya": {
-  "file": "himalaya-mask.png",
-  "bounds": [
+ {
+  "id": "himalaya",
+  "url": "/timemap/assets/mountains/painted/himalaya.webp",
+  "coordinates": [
    [
     70.34,
     36.697
@@ -44,11 +41,6 @@
     70.34,
     24.26
    ]
-  ],
-  "size": [
-   1536,
-   731
-  ],
-  "peak_m": 8849
+  ]
  }
-}
+]
