@@ -1,0 +1,84 @@
+[
+  {
+    "name": "01-italy",
+    "query": "lng=12&lat=43&zoom=7&pitch=60",
+    "status": "ready",
+    "fps": 121,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "02-italy-top-down",
+    "query": "lng=12&lat=43&zoom=7&pitch=0",
+    "status": "ready",
+    "fps": 121,
+    "cameraErrorPx": 0.00043346880773655554,
+    "altitudeKm": 536,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "03-atlantic-evening",
+    "query": "lng=-40&lat=30&zoom=6&pitch=60&sunLng=-110&sunLat=10",
+    "status": "ready",
+    "fps": 120,
+    "cameraErrorPx": 0.00008970959735792629,
+    "altitudeKm": 721,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": [
+      "error: Unable to parse the tile at http://localhost:5197/land-tiles/4/6/5.pbf, got error: Unimplemented type: 4  @ http://localhost:5197/@fs/private/tmp/clouds-vol/node_modules/.vite/deps/maplibre-gl.js?v=efdd5764"
+    ]
+  },
+  {
+    "name": "04-caribbean",
+    "query": "lng=-75&lat=18&zoom=6.5&pitch=55",
+    "status": "ready",
+    "fps": 121,
+    "cameraErrorPx": 0.0002497904164896428,
+    "altitudeKm": 612,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "05-handover-z5.5",
+    "query": "lng=12&lat=43&zoom=5.5&pitch=45",
+    "status": "ready",
+    "fps": 120,
+    "cameraErrorPx": 0.00011318015496698712,
+    "altitudeKm": 1149,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "06-slow-machine-upscale",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.upscale=1",
+    "status": "ready",
+    "fps": 120,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "07-flat-only",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.strength=0",
+    "status": "idle",
+    "fps": 19,
+    "cameraErrorPx": null,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "08-orbit",
+    "query": "lng=12&lat=43&zoom=2.5",
+    "status": "idle",
+    "fps": 20,
+    "cameraErrorPx": null,
+    "altitudeKm": 12130,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  }
+]
