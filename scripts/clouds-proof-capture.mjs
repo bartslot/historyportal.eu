@@ -25,23 +25,16 @@ const base = arg('base', 'http://localhost:5197')
 const italy = 'lng=12&lat=43'
 const view = `${italy}&zoom=7&pitch=60`
 // "A" is the candidate look; the shots before it change one thing at a time from the defaults.
-const A = 'v.coverage=0.4'
 const far = 'lng=-40&lat=30&zoom=6&pitch=60&sunLng=-110&sunLat=10'
 const SHOTS = arg('shots') ? JSON.parse(readFileSync(arg('shots'), 'utf8')) : [
-  { name: '01-A', query: `${view}&${A}` },
-  { name: '02-no-upscale', query: `${view}&${A}&v.upscale=0` },
-  { name: '03-high', query: `${view}&${A}&v.preset=high` },
-  { name: '04-high-no-upscale', query: `${view}&${A}&v.preset=high&v.upscale=0` },
-  { name: '05-no-veil', query: `${view}&${A}&v.veil=0` },
-  { name: '06-veil-x5', query: `${view}&${A}&v.veil=5` },
-  { name: '07-skylight0.4', query: `${view}&${A}&v.skyLight=0.4` },
-  { name: '08-skylight0', query: `${view}&${A}&v.skyLight=0` },
-  { name: '09-aces-skylight0.4', query: `${view}&${A}&v.skyLight=0.4&v.tone=aces` },
-  { name: '10-drifting', query: `${view}&${A}&motion=1` },
-  { name: '11-high-no-upscale-no-veil-skylight0.4', query: `${view}&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
-  { name: '12-same-atlantic-evening', query: `${far}&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
-  { name: '13-same-top-down', query: `lng=10&lat=45&zoom=7&pitch=0&${A}&v.preset=high&v.upscale=0&v.veil=0&v.skyLight=0.4` },
-  { name: '14-ultra-no-upscale', query: `${view}&${A}&v.preset=ultra&v.upscale=0` },
+  { name: '01-italy', query: view },
+  { name: '02-italy-top-down', query: `${italy}&zoom=7&pitch=0` },
+  { name: '03-atlantic-evening', query: far },
+  { name: '04-caribbean', query: 'lng=-75&lat=18&zoom=6.5&pitch=55' },
+  { name: '05-handover-z5.5', query: `${italy}&zoom=5.5&pitch=45` },
+  { name: '06-slow-machine-upscale', query: `${view}&v.upscale=1` },
+  { name: '07-flat-only', query: `${view}&v.strength=0` },
+  { name: '08-orbit', query: `${italy}&zoom=2.5` },
 ]
 
 mkdirSync(out, { recursive: true })

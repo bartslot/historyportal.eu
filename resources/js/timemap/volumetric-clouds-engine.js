@@ -25,12 +25,12 @@
  * for half of that again (`level` 1) when the frame rate drops.
  */
 import {
-  EffectComposer, EffectPass, RenderPass, ToneMappingEffect, ToneMappingMode,
+  Effect, EffectComposer, EffectPass, RenderPass, ToneMappingEffect, ToneMappingMode,
 } from 'postprocessing'
 import {
   AddEquation, CustomBlending, Data3DTexture, ExternalTexture, HalfFloatType, LinearFilter,
   NoColorSpace, NoToneMapping, OneFactor, OneMinusSrcAlphaFactor, PerspectiveCamera, RedFormat,
-  RepeatWrapping, Scene, Vector2, WebGLRenderer,
+  RepeatWrapping, Scene, Uniform, Vector2, Vector3, WebGLRenderer,
 } from 'three'
 import { PrecomputedTexturesLoader } from '@takram/three-atmosphere'
 import { CLOUD_SHAPE_DETAIL_TEXTURE_SIZE, CLOUD_SHAPE_TEXTURE_SIZE, CloudsEffect } from '@takram/three-clouds'
@@ -215,7 +215,23 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   scenePass.clearPass.overrideClearAlpha = 0
   composer.addPass(scenePass)
   composer.addPass(new EffectPass(camera, clouds))
-  const last = new EffectPass(camera, tone)
+  // The clouds arrive premultiplied (colour × cover). A tone curve and the sRGB curve both lift dark
+  // values, so run on premultiplied colour they brighten exactly the thin pixels: a white rim round
+  // every cloud. So: divide the cover out, tone, encode, multiply it back in.
+  const straighten = new Effect('StraightAlpha', `
+    uniform vec3 whiteBalance;
+    void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+      outputColor = inputColor.a > 1e-4
+        ? vec4(inputColor.rgb / inputColor.a * whiteBalance, inputColor.a) : vec4(0.0);
+    }`, { uniforms: new Map([['whiteBalance', new Uniform(new Vector3(1, 1, 1))]]) })
+  const present = new Effect('EncodePremultiplied', `
+    void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+      vec3 c = clamp(inputColor.rgb, 0.0, 1.0);
+      vec3 srgb = mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+      outputColor = vec4(srgb * inputColor.a, inputColor.a);
+    }`)
+  const last = new EffectPass(camera, straighten, tone, present)
+  last.fullscreenMaterial.encodeOutput = false
   // Over MapLibre's frame, premultiplied: clouds.rgb + ground · (1 - clouds.a).
   Object.assign(last.fullscreenMaterial, {
     transparent: true, blending: CustomBlending, blendEquation: AddEquation,
@@ -226,11 +242,16 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   composer.addPass(last)
 
   let preset = null
+  let level = -1
+  // Takram's temporal upscaling marches 1 pixel in 16 a frame. It is what makes the clouds grainy
+  // (compared on the M3 Pro, which holds 60 fps without it), so it is the fallback for a machine
+  // that cannot keep up, not the default.
+  const upscale = () => { clouds.temporalUpscale = !!(state.upscale ?? level > 0) }
   const apply = () => {
     const k = Math.max(1, state.scale)
     // Before the step sizes below: a preset writes its own.
     if (state.preset !== preset) clouds.qualityPreset = preset = state.preset
-    clouds.temporalUpscale = !!state.upscale
+    upscale()
     LAYERS.forEach(({ veil, ...layer }, index) => {
       clouds.cloudLayers[index].set({
         channel: 'r',
@@ -250,6 +271,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
     clouds.shadow.maxFar = 1e5 * k
     clouds.coverage = state.coverage
     clouds.skyLightScale = state.skyLight
+    straighten.uniforms.get('whiteBalance').value.fromArray(state.whiteBalance)
     tone.mode = TONE_MODES[state.tone] ?? ToneMappingMode.AGX
     clouds.sunDirection.copy(planetToEcef(state.sun)).normalize()
     renderer.toneMappingExposure = state.exposure
@@ -285,7 +307,6 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
   new STBNLoader().load(`${assetsUrl}/core/stbn.bin`, (t) => { clouds.stbnTexture = t; landed() }, undefined, fail('the blue noise'))
 
   const size = new Vector2()
-  let level = -1
 
   return {
     get ready() { return pending === 0 && !failed && weather.hasSource },
@@ -315,6 +336,7 @@ export const createCloudEngine = ({ map, gl, assetsUrl, state: initial, onReady,
         // CSS pixels, not device pixels: on a Retina screen that is a quarter of the march.
         const css = canvas.clientWidth > 0 ? canvas.clientWidth / canvas.width : 1
         clouds.resolutionScale = Math.min(1, css) * (quality > 0 ? 0.5 : 1)
+        upscale()
       }
 
       clouds.blendMode.opacity.value = opacity

@@ -348,7 +348,7 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
         apply: (v) => set('cloudVolume', { scale: v }) },
       { key: 'coverage', label: 'Coverage', min: 0, max: 1, step: 0.01, value: 0.45,
         apply: (v) => set('cloudVolume', { coverage: v }) },
-      { key: 'exposure', label: 'Brightness', min: 1, max: 30, step: 0.5, value: 10,
+      { key: 'exposure', label: 'Brightness', min: 1, max: 40, step: 0.5, value: 16,
         apply: (v) => set('cloudVolume', { exposure: v }) },
       { key: 'shadows', label: 'Clouds shade each other', type: 'boolean', value: true,
         apply: (v) => set('cloudVolume', { shadows: v }) },

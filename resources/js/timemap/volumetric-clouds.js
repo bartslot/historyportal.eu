@@ -119,13 +119,16 @@ export const createVolumetricCloudLayer = ({
     // which from 700 km up is a film; the flat deck exaggerates for the same reason (90 km).
     scale: 12,
     coverage: 0.45,
-    exposure: 10,
+    exposure: 16,
+    // Gains on red, green and blue before the tone curve, so a sunlit cloud top is white. Takram's
+    // sunlight through its own atmosphere comes out pink against our map (measured: green 12% and
+    // blue 6% under red).
+    whiteBalance: [1, 1.14, 1.07],
     stepScale: 1.001,
     shadows: true,
-    // Takram's quality preset, its 1-pixel-in-16 temporal upscaling, and how much of the thin
-    // high veil (the third layer) is drawn.
+    // Takram's quality preset, and how much of the thin high veil (the third layer) is drawn.
+    // `upscale` (Takram's temporal upscaling) is left unset: off, until the frame rate asks for it.
     preset: 'medium',
-    upscale: true,
     veil: 1,
     skyLight: 1,
     // AgX greys white cloud; neutral keeps the tops white (compared on the M3 Pro).
