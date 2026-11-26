@@ -87,16 +87,20 @@ class NarrationStateTest extends TestCase
         $expected = (int) ceil(2.0 + 0.01 * $chars);
 
         $component = Livewire::actingAs($teacher)->test(Step3SceneConfigurator::class, ['lesson' => $scene->lesson]);
+        $clickedAt = microtime(true);
         $component->call('regenerate', $scene->id, 'audio');
 
         $state = $component->instance()->narrationState($scene->id);
+        // The call re-renders the editor, which can take a few seconds on a cold run: the clock runs meanwhile.
+        $spent = (int) ceil(microtime(true) - $clickedAt);
         $this->assertSame('generating', $state['status']);
         $this->assertSame($expected, $state['etaTotal']);
         $this->assertLessThanOrEqual($expected, $state['etaSeconds']);
-        $this->assertGreaterThanOrEqual($expected - 1, $state['etaSeconds']);
+        $this->assertGreaterThanOrEqual($expected - $spent - 1, $state['etaSeconds']);
 
-        // The job finishes: the countdown is gone and the averages moved towards what was measured.
-        NarrationEta::finished($scene->id, 'elevenlabs', $chars, microtime(true) - 0.5);
+        // A worker picked the job up half a second after the click and it finishes now: the countdown is
+        // gone and the averages moved towards what was measured.
+        NarrationEta::finished($scene->id, 'elevenlabs', $chars, $clickedAt + 0.5);
         $scene->update(['status' => 'ready']);
         $this->assertNull($component->instance()->narrationState($scene->id)['etaSeconds']);
         $stats = NarrationEta::stats('elevenlabs');
