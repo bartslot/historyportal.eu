@@ -22,28 +22,29 @@
          role="dialog" aria-modal="true" aria-label="{{ __('Story map') }}">
 
         <header class="flex h-14 shrink-0 items-center gap-1 border-b border-panel-hairline px-2">
-            {{-- The same view switch as in the editor's toolbar, with the map on: Scene goes back to the scene. --}}
-            <div class="join" role="group" aria-label="{{ __('View') }}">
-                <button type="button" x-on:click="close()" data-story-map-close
-                        class="btn btn-ghost btn-sm join-item gap-1.5 text-panel-icon"
+            {{-- The same view switch as beside the scenes in the editor's rail: Scenes goes back to the scene. --}}
+            <div class="flex items-center gap-1 rounded-xl border border-panel-hairline p-1" role="group" aria-label="{{ __('View') }}">
+                <button type="button" x-on:click="close()" data-story-map-close aria-pressed="false"
+                        class="flex h-8 items-center rounded-lg px-3 text-sm text-panel-icon transition hover:bg-base-200 hover:text-base-content"
                         data-tooltip="{{ __('Back to the scene') }}">
-                    <x-ui.icon name="scene-view" class="h-5 w-5" />{{ __('Scene') }}
+                    {{ __('Scenes') }}
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm btn-active join-item gap-1.5" aria-pressed="true">
-                    <x-ui.icon name="story-map" class="h-5 w-5" />{{ __('Story map') }}
+                <button type="button" aria-pressed="true"
+                        class="flex h-8 items-center rounded-lg bg-primary/15 px-3 text-sm text-primary">
+                    {{ __('Story') }}
                 </button>
             </div>
 
             {{-- Which way the story runs: top to bottom (scene planning) or left to right. --}}
-            <div class="join ml-2" role="group" aria-label="{{ __('Which way the story runs') }}">
-                <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-story-map-dir="tb"
-                        :class="dir === 'tb' ? 'btn-active' : 'text-panel-icon'" :aria-pressed="dir === 'tb' ? 'true' : 'false'"
+            <div class="ml-2 flex items-center gap-1 rounded-xl border border-panel-hairline p-1" role="group" aria-label="{{ __('Which way the story runs') }}">
+                <button type="button" class="grid h-8 w-8 place-items-center rounded-lg transition" data-story-map-dir="tb"
+                        :class="dir === 'tb' ? 'bg-primary/15 text-primary' : 'text-panel-icon hover:bg-base-200 hover:text-base-content'" :aria-pressed="dir === 'tb' ? 'true' : 'false'"
                         x-on:click="setDir('tb')"
                         data-tooltip="{{ __('Top to bottom') }}" aria-label="{{ __('Top to bottom') }}">
                     <x-ui.icon name="story-map-down" class="h-5 w-5" />
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-story-map-dir="lr"
-                        :class="dir === 'lr' ? 'btn-active' : 'text-panel-icon'" :aria-pressed="dir === 'lr' ? 'true' : 'false'"
+                <button type="button" class="grid h-8 w-8 place-items-center rounded-lg transition" data-story-map-dir="lr"
+                        :class="dir === 'lr' ? 'bg-primary/15 text-primary' : 'text-panel-icon hover:bg-base-200 hover:text-base-content'" :aria-pressed="dir === 'lr' ? 'true' : 'false'"
                         x-on:click="setDir('lr')"
                         data-tooltip="{{ __('Left to right') }}" aria-label="{{ __('Left to right') }}">
                     <x-ui.icon name="story-map" class="h-5 w-5" />

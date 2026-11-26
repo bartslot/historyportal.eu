@@ -2570,22 +2570,6 @@
             <x-ui.icon name="play" class="h-6 w-6" />
         </button>
 
-        {{-- The view switch: the scene being edited, or the story map with every scene and choice as cards and the lines
-             between them (components/lesson/story-map, Bart 2026-11-26: "a switch view option to the scene view"). --}}
-        <div class="flex items-center rounded-xl border border-panel-hairline" role="group" aria-label="{{ __('View') }}">
-            <button type="button" aria-pressed="true"
-                    class="grid h-11 w-11 place-items-center rounded-xl bg-selected text-card-action-label"
-                    data-tooltip="{{ __('Scene') }}" aria-label="{{ __('Scene') }}">
-                <x-ui.icon name="scene-view" class="h-6 w-6" />
-            </button>
-            <button type="button" data-story-map-open aria-pressed="false"
-                    onclick="window.dispatchEvent(new CustomEvent('story-map-open'))"
-                    class="grid h-11 w-11 place-items-center rounded-xl text-panel-icon transition hover:bg-base-200 hover:text-primary"
-                    data-tooltip="{{ __('Story map') }}" aria-label="{{ __('Story map') }}">
-                <x-ui.icon name="story-map" class="h-6 w-6" />
-            </button>
-        </div>
-
         {{-- Add and Draw: two buttons, because adding a layer and drawing are different acts. Add puts a
              layer on the scene (scenes are added in the rail, where they live); Draw is a mode you switch
              on and off: pen, line and arrow over the scene, each line its own layer (editor/draw-layer.js). --}}
