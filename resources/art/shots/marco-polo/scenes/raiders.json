@@ -101,7 +101,14 @@
         {
           "shot": 1,
           "seconds": 4,
-          "who": [],
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
           "camera": {
             "at": [
               300,
@@ -116,6 +123,14 @@
           "action": "The whole caravan, the three Polos with servants and pack animals, small on a vast hot plain with a few date palms and pistachio trees, calm, at a walk away from the camera toward the right.",
           "sees": {
             "village": "a small shape on the far right horizon"
+          },
+          "where": {
+            "marco": "the small rider in front, on the right",
+            "niccolo": "the small rider in the middle",
+            "maffeo": "the small rider on the left",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
           }
         },
         {
