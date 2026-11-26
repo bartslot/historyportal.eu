@@ -33,6 +33,7 @@ import {
 import { CLOUD_ALTITUDE_M, CLOUD_FIELD_GLSL, CLOUD_FIELD_UNIFORMS, setCloudFieldUniforms } from './cloud-field.js'
 import { acquireEquirectTexture } from './equirect-texture.js'
 import { RELIEF_GLSL, TANGENT_FRAME_GLSL } from './terrain-normals.js'
+import { cloudHandover } from './volumetric-clouds.js'
 
 const LAYER_ID = 'tm-clouds'
 
@@ -653,7 +654,9 @@ export const createCloudLayer = ({
       const detail = deckDetailFor(map.getZoom(), map.getCenter().lat, cameraAltitudeMetres(map, maplibregl))
       if (uniforms.detailFreq) gl.uniform1f(uniforms.detailFreq, detail.frequency)
       if (uniforms.detailAmount) gl.uniform1f(uniforms.detailAmount, detail.amount)
-      if (uniforms.deckFade) gl.uniform1f(uniforms.deckFade, detail.fade)
+      // Close in, the 3D clouds (volumetric-clouds.js) take the sky over and the deck gives up the
+      // same share, so the two cross-fade. 0 on any map where they are not being drawn.
+      if (uniforms.deckFade) gl.uniform1f(uniforms.deckFade, detail.fade * (1 - cloudHandover(map)))
 
       // The forward-scattering lobe needs to know where the eye is; nothing else here does.
       if (uniforms.camera) gl.uniform3f(uniforms.camera, ...cameraInPlanetSpace(map, maplibregl))

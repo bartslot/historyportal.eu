@@ -52,3 +52,11 @@ which asks for credit and for changes to be indicated:
 The pack has no warning triangle, pause, undo, redo, zoom, eraser, clone stamp, brush, sparkle or
 sidebar, and its "text" is a clear-formatting mark: those icons are our own, on the same 24 px grid
 and stroke.
+
+## Takram three-geospatial (3D clouds on the globe)
+
+The volumetric clouds on the Time-Map are drawn by **@takram/three-clouds**, with
+**@takram/three-atmosphere** and **@takram/three-geospatial**, by Takram
+([GitHub](https://github.com/takram-design-engineering/three-geospatial)), MIT licence. The lookup
+tables, cloud shape volumes and blue-noise texture in `public/vendor/clouds3d/` are that project's
+own files, unchanged. The weather the clouds follow is ours (the NASA cloud cover credited above).

@@ -21,6 +21,7 @@ import { createMoonLayer, MOON_LAYER_ID } from './timemap/moon.js'
 import { createDaylightLayer, DAYLIGHT_LAYER_ID } from './timemap/daylight.js'
 import { createAtmosphereLayer, ATMOSPHERE_LAYER_ID } from './timemap/atmosphere.js'
 import { createCloudLayer, CLOUD_LAYER_ID } from './timemap/clouds.js'
+import { createVolumetricCloudLayer, CLOUD_VOLUME_LAYER_ID } from './timemap/volumetric-clouds.js'
 import { createOceanWaterLayer, OCEAN_LAYER_ID } from './timemap/ocean-water.js'
 import { createBloomLayer, BLOOM_LAYER_ID } from './timemap/bloom.js'
 import { sunDirection } from './timemap/sun.js'
@@ -80,6 +81,9 @@ const STACK = [
   ['ocean', OCEAN_LAYER_ID, (o) => createOceanWaterLayer(o)],
   ['daylight', DAYLIGHT_LAYER_ID, (o) => createDaylightLayer(o)],
   ['clouds', CLOUD_LAYER_ID, (o) => createCloudLayer(o)],
+  // The 3D clouds, close in. Straight after the deck they take over from, under the haze, and
+  // shown or hidden with it: the fourth entry is the permission key, where it is not the layer's own.
+  ['cloudVolume', CLOUD_VOLUME_LAYER_ID, (o) => createVolumetricCloudLayer(o), 'clouds'],
   ['atmosphere', ATMOSPHERE_LAYER_ID, (o) => createAtmosphereLayer(o)],
   /**
    * LAST, because it is a post-process and there has to be something to process.
@@ -213,6 +217,8 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
      */
     ocean: { sun, roughness: 0.95, strength: 0.48, windPatch: 0.6, shoreSoftnessKm: 19.5 },
     clouds: { ...field, sun },
+    // Same weather, same sun, and the teacher's Clouds slider turns both down together.
+    cloudVolume: { ...field, sun, deckOpacity: () => layers.clouds?.getOptions?.().opacity ?? 1 },
     // No cloud shadows on the ground (Bart, 2026-11-26: "Please remove the shadows of the clouds on
     // land"). The deck still draws; it just no longer darkens the land under it. The Shadows knob
     // on the Clouds panel can still bring them back for a look.
@@ -242,12 +248,12 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
   // Resolved ONCE, before anything is added: every layer inserts just below the same anchor, which
   // is what keeps STACK's own back-to-front order intact underneath it.
   const anchor = globeAnchorId(map, beforeId)
-  for (const [key, id, create] of STACK) {
+  for (const [key, id, create, permission = key] of STACK) {
     if (map.getLayer(id)) map.removeLayer(id)
     // Skipped BEFORE create(): the texture urls live in the options each factory receives, so a
     // layer that is built and then hidden has already asked the network for its image. On the
     // lesson map that is the entire cost — the clouds are 1.8 MB whether or not they draw.
-    if (permitted && !permitted(key)) continue
+    if (permitted && !permitted(permission)) continue
     const layer = create(options[key])
     map.addLayer(layer, anchor)
     layers[key] = layer
@@ -329,6 +335,23 @@ export const addGlobeLayers = (map, { date = new Date(), reduceMotion = false, b
           set('clouds', { patchUrl: url })
           set('daylight', { patchUrl: url })
         } },
+    ], { tab: 'Earth' }),
+
+    /**
+     * The 3D clouds that take over close in (volumetric-clouds.js). Height is how many times taller
+     * than life the layers stand; the rest are Takram's own dials.
+     */
+    window.__tune?.register('Cloud volume', [
+      { key: 'strength', label: 'Amount', min: 0, max: 1, step: 0.01, value: 1,
+        apply: (v) => set('cloudVolume', { strength: v }) },
+      { key: 'scale', label: 'Height (x real)', min: 1, max: 24, step: 0.5, value: 8,
+        apply: (v) => set('cloudVolume', { scale: v }) },
+      { key: 'coverage', label: 'Coverage', min: 0, max: 1, step: 0.01, value: 0.45,
+        apply: (v) => set('cloudVolume', { coverage: v }) },
+      { key: 'exposure', label: 'Brightness', min: 1, max: 30, step: 0.5, value: 10,
+        apply: (v) => set('cloudVolume', { exposure: v }) },
+      { key: 'shadows', label: 'Clouds shade each other', type: 'boolean', value: true,
+        apply: (v) => set('cloudVolume', { shadows: v }) },
     ], { tab: 'Earth' }),
 
     /**

@@ -95,3 +95,7 @@ harness/**/__pycache__/
 tools/**/__pycache__/
 /storage/demo-check
 /tools/studio/studio.env
+
+# Local-only assets for the globe proof pages (scripts/clouds-proof-assets.sh)
+/public/_proof-assets/
+/public/_proof-tiles/
