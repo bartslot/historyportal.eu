@@ -163,13 +163,16 @@ def run(args) -> int | None:
             verify.review_sheet(lesson, board, target, report, regions).save(f'{out}.review.png')
             verify.overlay(Path(args.ink), target).save(f'{out}.overlay.png')
         print('\n'.join(f'- {n}' for n in report['notes']) or 'No measurable fault. The reviewers still look at it.')
-        return 1 if report['failures'] else 0
+        return 1 if report['failures'] or report.get('unscored') else 0
 
     if args.command == 'accept':
         target = Path(args.file)
         report = verify.ink(board, target) if args.pass_ == 'ink' else verify.coloured(lesson, board, Path(args.ink or ''), target, regions)
         if report['failures']:
             raise Refused('The checks still fail: ' + ', '.join(report['failures']))
+        if report.get('unscored'):
+            raise Refused('Some cells have two named people and no marked regions, so their colours were never checked. '
+                          'Mark every named character in those cells (--regions) before the board is approved.')
         by = args.by.split(',')
         entry = {'event': f'{args.pass_}-approved', 'board': args.board, 'file': str(target), 'sha256': sha256(target),
                  'by': by, 'date': today()}

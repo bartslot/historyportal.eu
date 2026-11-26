@@ -116,6 +116,10 @@ def test_the_colour_pass_attaches_the_coloured_sheet_and_the_fixed_colours(lesso
         packs.build(lesson, 'plain', 'plain-a', 'colour', tmp_path / 'early', ink)
 
     ledger.add(lesson.media, {'event': 'ink-approved', 'board': 'plain-a', 'sha256': sha256(ink)})
+    palette = lesson.cast['characters']['niccolo'].pop('palette')
+    with pytest.raises(Refused, match='no fixed colours sampled'):
+        packs.build(lesson, 'plain', 'plain-a', 'colour', tmp_path / 'unsampled', ink)
+    lesson.cast['characters']['niccolo']['palette'] = palette
     out = packs.build(lesson, 'plain', 'plain-a', 'colour', tmp_path / 'pack', ink)
     files = [a['file'] for a in json.loads((out / 'manifest.json').read_text())['attachments']]
 
@@ -215,6 +219,7 @@ def test_two_named_people_in_a_cell_need_a_place_each_and_marked_regions_to_be_s
     ink, col = _board(tmp_path / 'ink.png', None), _board(tmp_path / 'red.png', RED)
     report = verify.coloured(lesson, board, ink, col)
     assert report['failures'] == [] and any('not scored' in n for n in report['notes'])
+    assert report['unscored'] == 1, 'not scored is not passed: accept refuses the board on this'
     marked = verify.coloured(lesson, board, ink, col, {'1': {'niccolo': [0.3, 0.2, 0.6, 0.8], 'maffeo': [0.6, 0.2, 0.9, 0.8]}})
     assert marked['failures'] == ['colour-missing:maffeo'], 'the red is there, but not on Maffeo'
 

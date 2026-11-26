@@ -105,7 +105,7 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
             notes.append(f'{people[who]["name"]}\'s {part} differs between cells: '
                          + ', '.join(f'cell {n} {value}' for n, value in found) + '.')
     return {'pass': 'colour', 'file': str(path), 'ink_kept': round(kept, 3), 'failures': sorted(set(failures)),
-            'notes': notes + sorted(unscored), 'cells': measured}
+            'unscored': len(unscored), 'notes': notes + sorted(unscored), 'cells': measured}
 
 
 def region(cell: np.ndarray, box) -> np.ndarray:
