@@ -20,6 +20,7 @@ import qidOverrides from '../../../database/data/cliopatria-qid-overrides.json';
 import { voyageStyleSources, voyageStyleLayers, initVoyages, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
 import { initVoyageInteraction } from './voyage-interact.js';
 import { loadVoyageCard } from './voyage-card.js';
+import { dateAtSample } from './voyage-hover.js';
 import nationalColors from './national-colors.json';
 import { SATELLITE_SOURCE, SATELLITE_DETAIL_SOURCE, DEM_SOURCE, satelliteLayers, EARTH_COLOURS } from '../map-imagery.js';
 import { CLOUD_LAYER_ID } from './clouds.js';
@@ -2200,12 +2201,21 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
   const PLAY_ZOOM = 5;
   const PLAY_KM_PER_SECOND = 220;          // Napoleon's 1796-99 journey takes about 70 s
   const PLAY_SECONDS = [24, 90];           // never a blink, never a lecture
+  // The journey's card sits over the left of the map; the traveller is kept in the middle of what
+  // is left of it, not under the card.
+  const playPadding = () => {
+    const card = document.querySelector('[data-voyage-play]')?.closest('.rounded-card');
+    const r = card?.getBoundingClientRect();
+    return r && r.width && window.innerWidth >= 640 ? { left: Math.round(r.right), top: 0, right: 0, bottom: 0 } : null;
+  };
   const playState = (id) => window.dispatchEvent(new CustomEvent('voyage-play-state', { detail: { id } }));
 
   const stopVoyage = () => {
     if (!playingVoyage) return;
-    cancelAnimationFrame(playingVoyage.raf);
+    const run = playingVoyage;
+    cancelAnimationFrame(run.raf);
     map.stop();
+    if (run.padding) map.setPadding(run.padding);
     playingVoyage = null;
     voyageInteract?.play(null);
     playState(null);
@@ -2224,8 +2234,10 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       km += Math.hypot((b[0] - a[0]) * Math.cos(((a[1] + b[1]) / 2) * Math.PI / 180), b[1] - a[1]) * 111.32;
     }
     const seconds = Math.min(PLAY_SECONDS[1], Math.max(PLAY_SECONDS[0], km / PLAY_KM_PER_SECOND));
-    const run = { id, raf: 0, start: 0 };
+    const run = { id, raf: 0, start: 0, padding: null };
     playingVoyage = run;
+    const pad = playPadding();
+    if (pad) { run.padding = map.getPadding(); map.setPadding(pad); }
     playState(id);
     voyageInteract?.play(id, 0);
     const first = voyageShips.pointAt(id, 0);
@@ -2240,6 +2252,10 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
         // jumpTo, not easeTo: a new ease every frame cancels the last one and stutters.
         map.jumpTo({ center: [at.lng, at.lat] });
         voyageInteract?.play(id, t);
+        // The timeline rides along: the year of the day the traveller is at, where the sources date it.
+        const date = dateAtSample(v, coords, voyageShips.sampleAtFraction(id, t));
+        const year = date ? new Date(date.ms).getUTCFullYear() : null;
+        if (year !== null && year !== state.year && year >= v.show_from && year <= v.show_to) window.__setTimemapYear?.(year);
         if (t < 1) run.raf = requestAnimationFrame(step);
         else window.setTimeout(() => { if (playingVoyage === run) stopVoyage(); }, 2500);
       };
