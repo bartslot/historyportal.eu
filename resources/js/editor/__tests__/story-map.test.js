@@ -255,6 +255,18 @@ describe('story map: saving and undo', () => {
     expect(calls).toContainEqual(['saveSceneLink', 2, 0, 'to', 3])
   })
 
+  it('an undo or a grab while cards land stops them, so nothing writes over it', async () => {
+    const wire = { call: vi.fn(async () => payload(story())) }
+    const m = make(wire)
+    await m.reload()
+    const start = [...m.layout.scenes[1]]
+    const landing = m.settle([['scenes', 1, [start[0] + 480, start[1]]]])
+    m.undoStack.push({ layout: { scenes: { 1: start }, choices: {} } })
+    await m.undo()
+    expect(await landing).toBe(false)
+    expect(m.layout.scenes[1]).toEqual(start)
+  })
+
   it('keeps the scene editor away from keys while the map is open', () => {
     const m = make({ call: vi.fn() })
     const ev = { key: 'Delete', target: document.body, stopPropagation: vi.fn(), preventDefault: vi.fn() }

@@ -506,6 +506,7 @@ export function storyMap () {
       const step = this.undoStack.pop()
       if (!step) return
       if (step.layout) {
+        this._settleRun++   // a card still landing stops, so it cannot write over what undo puts back
         Object.assign(this.layout.scenes, step.layout.scenes)
         Object.assign(this.layout.choices, step.layout.choices)
         await this.call('saveStoryMapLayout', step.layout)
@@ -684,6 +685,7 @@ export function storyMap () {
     /**
      * Cards glide to where they belong (the grid when let go, a tidied layout) with a little overshoot, the lines
      * following every frame. `targets` is [[group, id, [x, y]], ...]. Reduced motion: they are simply there.
+     * Resolves true when the cards arrived, false when a grab or an undo stopped them on the way.
      */
     settle (targets) {
       const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -691,16 +693,16 @@ export function storyMap () {
       const put = (t) => targets.forEach(([g, k, to], i) => {
         this.layout[g][k] = [Math.round(from[i][0] + (to[0] - from[i][0]) * t), Math.round(from[i][1] + (to[1] - from[i][1]) * t)]
       })
-      if (calm || typeof requestAnimationFrame !== 'function') { put(1); return Promise.resolve() }
+      if (calm || typeof requestAnimationFrame !== 'function') { put(1); return Promise.resolve(true) }
       const mine = ++this._settleRun   // a number: Alpine hands objects back as proxies, which never equal the original
       return new Promise((resolve) => {
         const t0 = performance.now()
         const frame = (now) => {
-          if (this._settleRun !== mine) { resolve(); return }
+          if (this._settleRun !== mine) { resolve(false); return }
           const t = Math.min(1, (now - t0) / 220)
           put(t < 1 ? easeOutBack(t) : 1)
           if (t < 1) requestAnimationFrame(frame)
-          else resolve()
+          else resolve(true)
         }
         requestAnimationFrame(frame)
       })
@@ -791,7 +793,8 @@ export function storyMap () {
         if (lead && !ev.altKey) {
           const snapped = snapPoint(lead)
           const ox = snapped[0] - lead[0], oy = snapped[1] - lead[1]
-          if (ox || oy) await this.settle(d.moving.map(([g, k]) => [g, k, [this.layout[g][k][0] + ox, this.layout[g][k][1] + oy]]))
+          // Interrupted (a grab or an undo took over): whatever took over saves the layout itself.
+          if ((ox || oy) && !await this.settle(d.moving.map(([g, k]) => [g, k, [this.layout[g][k][0] + ox, this.layout[g][k][1] + oy]]))) return
         }
         // The whole map, not just this card: a map laid out for the teacher is theirs from the first move on, so
         // it opens the same next time instead of being laid out around one saved card.
@@ -862,7 +865,8 @@ export function storyMap () {
       }
       const vp = this.$refs.viewport
       if (vp) this.view = fitAll(mapBounds(this.scenes, next), vp.clientWidth, vp.clientHeight)
-      await this.settle(targets)
+      // Interrupted (a card grabbed, or undo): the cards stay where they are and whatever took over saves.
+      if (!await this.settle(targets)) return
       this.layout = next
       await this.call('saveStoryMapLayout', this.layout)
     },
