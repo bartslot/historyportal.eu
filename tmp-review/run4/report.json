@@ -1,0 +1,159 @@
+[
+  {
+    "name": "a-z7-p60",
+    "query": "lng=12&lat=43&zoom=7&pitch=60",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "b-z7-p60-flat-only",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.strength=0",
+    "label": "same view, flat deck only",
+    "status": "idle",
+    "fps": 14,
+    "cameraErrorPx": null,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "c-z7-p0",
+    "query": "lng=12&lat=43&zoom=7&pitch=0",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00043346880773655554,
+    "altitudeKm": 536,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "d-z6-p60",
+    "query": "lng=12&lat=43&zoom=6&pitch=60",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00027921437567316875,
+    "altitudeKm": 598,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "e-z5.3-p45",
+    "query": "lng=12&lat=43&zoom=5.3&pitch=45",
+    "label": "mid hand-over",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.0001468050706782756,
+    "altitudeKm": 1331,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "f-z4-p45",
+    "query": "lng=12&lat=43&zoom=4&pitch=45",
+    "label": "flat deck only (orbit)",
+    "status": "ready",
+    "fps": 14,
+    "cameraErrorPx": 1552.4966444338406,
+    "altitudeKm": 3509,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": [
+      "error: Unable to parse the tile at http://localhost:5197/land-tiles/4/6/5.pbf, got error: Unimplemented type: 4  @ http://localhost:5197/@fs/private/tmp/clouds-vol/node_modules/.vite/deps/maplibre-gl.js?v=efdd5764"
+    ]
+  },
+  {
+    "name": "g-scale16",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=16",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "h-scale4",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "i-scale2",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=2",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "j-exposure20",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.exposure=20",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "k-coverage0.3",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.coverage=0.3",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "l-coverage0.6",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.coverage=0.6",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "m-noshadow",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.shadows=0",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "n-atlantic-evening",
+    "query": "lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00043983950843510795,
+    "altitudeKm": 176,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": [
+      "error: Unable to parse the tile at http://localhost:5197/land-tiles/4/6/5.pbf, got error: Unimplemented type: 4  @ http://localhost:5197/@fs/private/tmp/clouds-vol/node_modules/.vite/deps/maplibre-gl.js?v=efdd5764"
+    ]
+  },
+  {
+    "name": "o-caribbean",
+    "query": "lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.00040061827518336843,
+    "altitudeKm": 546,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  }
+]
