@@ -49,7 +49,7 @@ const PILL_IMAGE_ID = 'place-pill'
  * parts may stretch: the flat middle, never the rounded ends. Hence the stretch/content metadata —
  * without it the corners smear as the label gets longer.
  */
-export function ensurePlacePill (map, { id = PILL_IMAGE_ID, ratio = 2 } = {}) {
+export function ensurePlacePill (map, { id = PILL_IMAGE_ID, ratio = 2, fill = PLACE_LABEL.fill } = {}) {
   if (!map || typeof map.addImage !== 'function') return id
   if (map.hasImage?.(id)) return id
 
@@ -62,7 +62,7 @@ export function ensurePlacePill (map, { id = PILL_IMAGE_ID, ratio = 2 } = {}) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return id
 
-  ctx.fillStyle = PLACE_LABEL.fill
+  ctx.fillStyle = fill
   ctx.beginPath()
   // roundRect is not in older Safari; the two-arc path below draws the same capsule everywhere.
   ctx.moveTo(r, 0)

@@ -11,7 +11,7 @@
 
 @php
     /**
-     * The three styles the Time-Map offers, with the thumbnail that shows what each looks like.
+     * The styles the Time-Map offers, with the thumbnail that shows what each looks like.
      * Antique and Pen-ink are deliberately not offered (they read almost identically to Soft
      * Atlas) but their thumbnails exist, so adding one back is a line here.
      *
@@ -21,6 +21,8 @@
         ['soft-atlas', __('Atlas'), 'img/map-styles/soft-atlas.webp'],
         ['night',      __('Night'), 'img/map-styles/night.webp'],
         ['earth',      __('Earth'), 'img/map-styles/satellite.webp'],
+        // The lesson map's watercolour chart (Bart, 2026-11-26: "I am missing our Comic look").
+        ['comic',      __('Comic'), 'img/map-styles/comic.webp'],
     ];
 @endphp
 
