@@ -181,9 +181,13 @@ export function tileUrlsForBox (sources, box, { minZoom, maxZoom, max = 3000 } =
   return urls
 }
 
-/** Fetch the tiles of a lng/lat box at every zoom in a range (see tileUrlsForBox). */
-export async function prefetchBox (map, box, range) {
+/**
+ * Fetch the tiles of a lng/lat box at every zoom in a range (see tileUrlsForBox).
+ * `omit` names sources to leave out: a map other than the one that will show them can be drawing them.
+ */
+export async function prefetchBox (map, box, { omit = [], ...range } = {}) {
   let sources
   try { sources = visibleSources(map.getStyle()) } catch (_) { return 0 }
+  for (const id of omit) delete sources[id]
   return fetchUrls(tileUrlsForBox(sources, box, range))
 }

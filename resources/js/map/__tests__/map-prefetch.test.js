@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { sceneViews, tilesForView, tileUrlsFor, tileUrlsForBox, visibleSources } from '../map-prefetch.js'
+import { describe, it, expect, vi } from 'vitest'
+import { sceneViews, tilesForView, tileUrlsFor, tileUrlsForBox, visibleSources, prefetchBox } from '../map-prefetch.js'
 import { pinZoomFactor, PIN_SCALE_MAX, PIN_SCALE_MIN } from '../../scene/ArtworkOverlay.js'
 
 describe('tilesForView', () => {
@@ -114,5 +114,23 @@ describe('visibleSources', () => {
       ],
     }
     expect(Object.keys(visibleSources(style))).toEqual(['wash', 'rivers'])
+  })
+})
+
+describe('prefetchBox', () => {
+  it('leaves out the sources it is told to: the lesson map may draw cities the voyage hides', async () => {
+    const fetch = vi.fn(() => Promise.resolve())
+    vi.stubGlobal('fetch', fetch)
+    const style = {
+      sources: {
+        cities: { type: 'vector', tiles: ['/city-tiles/{z}/{x}/{y}.pbf'], maxzoom: 6 },
+        rivers: { type: 'vector', tiles: ['/omit-test-rivers/{z}/{x}/{y}.pbf'], maxzoom: 4 },
+      },
+      layers: [{ id: 'c', source: 'cities' }, { id: 'r', source: 'rivers' }],
+    }
+    const n = await prefetchBox({ getStyle: () => style }, [[10, 40], [20, 45]], { minZoom: 3, maxZoom: 3, omit: ['cities'] })
+    expect(n).toBeGreaterThan(0)
+    expect(fetch.mock.calls.every(([u]) => u.startsWith('/omit-test-rivers/'))).toBe(true)
+    vi.unstubAllGlobals()
   })
 })

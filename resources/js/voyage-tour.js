@@ -120,12 +120,60 @@ const setReadingOverlayOpen = (open) => {
   } catch (_) { /* no CustomEvent (never in a browser we support) */ }
 };
 
+/** The route a voyage scene sails: the lesson's own edited copy when it is this voyage's, else the catalog's. */
+// A lesson can hold scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def`
+// would draw the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
+const voyageRouteFor = (voyage, def) => (def && (!def.id || def.id === voyage) ? def : null) || voyageRoutes().find((v) => v.id === voyage);
+
+/**
+ * Fetch every tile this voyage can show, at every zoom it shows it from, into the browser cache.
+ *
+ * A voyage zooms: the itinerary, the dive from space, the glide down to a leg, the dolly at a
+ * landfall, the teacher's timeline cameras (`views`, from the player). The chart's tile sets stop at
+ * zoom 4 to 6, so the route's box at all of those zooms is a few hundred small tiles; fetched once,
+ * low priority, no zoom in or out waits on the network again.
+ *
+ * @param {object} map  a maplibregl.Map drawing the lesson chart (its style names the tile sets)
+ * @param {object} MO   the voyage's map options (ocean_zoom, cam_dolly_arrival, cities)
+ */
+function warmRoute(map, route, MO, { views = null, intro = false } = {}) {
+  try {
+    let overviewZoom = null;
+    try { const box = overviewBounds(route); overviewZoom = box ? map.cameraForBounds(box, { padding: OVERVIEW_PADDING })?.zoom ?? null : null; } catch (_) { /* no size yet */ }
+    const plan = voyagePrefetchPlan(route, {
+      followZoom: voyageFollowZoom(MO.ocean_zoom),
+      dolly: MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA : 0,
+      overviewZoom,
+      views: [
+        ...(Array.isArray(views) ? views : []),
+        // The dive from space starts this far out, over the home port.
+        ...(intro && Array.isArray(route.waypoints?.[0]) ? [{ center: route.waypoints[0], zoom: INTRO_ZOOM }] : []),
+      ],
+    });
+    // A voyage shows the atlas's modern cities only when the teacher turns them on.
+    return plan ? prefetchBox(map, plan.box, { minZoom: plan.minZoom, maxZoom: plan.maxZoom, omit: MO.cities ? [] : ['cities'] }) : Promise.resolve(0);
+  } catch (_) { return Promise.resolve(0); }   // prefetching is an optimisation; never let it stop the tour
+}
+
+/**
+ * Warm a voyage's tiles before its map exists, while the scenes before it play.
+ *
+ * The voyage map draws the same chart as the lesson's map block, so that map's style names the same
+ * tile sets. Without this the whole trip (about 9 MB for Marco Polo) was asked for the moment the
+ * first voyage scene started, on top of the map that scene was drawing.
+ *
+ * @param {object} map  the lesson map block's maplibregl.Map
+ * @param {{ voyage: string, def?: object, mapOptions?: object, views?: Array, intro?: boolean }} opts
+ * @returns {Promise<number>} how many tiles were asked for
+ */
+export function warmVoyageTiles(map, { voyage, def = null, mapOptions = null, views = null, intro = false } = {}) {
+  const route = voyageRouteFor(voyage, def);
+  if (!map || !route?.legs?.length) return Promise.resolve(0);
+  return warmRoute(map, route, Object.assign({ cities: false }, mapOptions || {}), { views, intro });
+}
+
 export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeLine = null, onArrived = null, preview = false, editable = false, onGalleryEdit = null, onHotspotMove = null, onEndpointMove = null, onWaypointInsert = null, onWaypointRemove = null, onStopMove = null, lang = null, openGalleryOnArrive = false, mapOptions = null, legLabels = null, paintedFog = null, overviewAnim = null, start = null, camera = null, views = null, intro = false } = {}) {
-  // Prefer the lesson's editable copy, but ONLY when it belongs to this voyage. A lesson can hold
-  // scenes from more than one voyage (Abel Tasman sailed twice), and an unguarded `def` would draw
-  // the edited route under every voyage scene — the 1644 legs rendered as the 1642 route.
-  const mine = def && (!def.id || def.id === voyage) ? def : null;
-  const route = mine || voyageRoutes().find((v) => v.id === voyage);
+  const route = voyageRouteFor(voyage, def);
   const pack = tourPackFor(voyage, lang || el?.closest?.('[lang]')?.getAttribute('lang'));
   if (!route || !route.legs || !route.legs.length) {
     el.innerHTML = '<div class="flex h-full items-center justify-center text-base-content/60">Reis niet gevonden.</div>';
@@ -1423,28 +1471,9 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       unknown: [...PAINTED], beforeId: 'voyage-ships', samplePoint: (t) => ships.pointAt(voyage, t), waterColor: readWater(),
       auto: !!MO.fog_auto, knownBoxes: fogKnownBoxes, worldBox: fogWorldBox,
     });
-    // ── Warm every tile this voyage can show, at every zoom it shows it from ───────────────────
-    // A voyage zooms: the itinerary, the dive from space, the glide down to a leg, the dolly at a
-    // landfall, the teacher's timeline cameras (`views`, from the player). The chart's tile sets stop
-    // at zoom 4 to 6, so the route's box at all of those zooms is a few hundred small tiles; fetched
-    // once, low priority, no zoom in or out waits on the network again. This used to warm satellite
-    // imagery the chart no longer draws, and only along the line at the sailing zoom.
-    try {
-      const follow = voyageFollowZoom(MO.ocean_zoom);
-      let overviewZoom = null;
-      try { const box = overviewBounds(route); overviewZoom = box ? map.cameraForBounds(box, { padding: OVERVIEW_PADDING })?.zoom ?? null : null; } catch (_) { /* no size yet */ }
-      const plan = voyagePrefetchPlan(route, {
-        followZoom: follow,
-        dolly: MO.cam_dolly_arrival ? ARRIVAL_ZOOM_DELTA : 0,
-        overviewZoom,
-        views: [
-          ...(Array.isArray(views) ? views : []),
-          // The dive from space starts this far out, over the home port.
-          ...(intro && Array.isArray(route.waypoints?.[0]) ? [{ center: route.waypoints[0], zoom: INTRO_ZOOM }] : []),
-        ],
-      });
-      if (plan) prefetchBox(map, plan.box, { minZoom: plan.minZoom, maxZoom: plan.maxZoom });
-    } catch (_) { /* prefetching is an optimisation; never let it stop the tour */ }
+    // Warm every tile this voyage can show (warmRoute). The player has usually done it already,
+    // during the scenes before (warmVoyageTiles); then every URL is known and this asks for nothing.
+    warmRoute(map, route, MO, { views, intro });
 
     // Repaint the map to the chosen palette IN PLACE (never a re-mount), then follow it with the
     // fog: undiscovered sea is painted in the style's water colour, so it has to be read after.

@@ -171,6 +171,22 @@ let _mapTimer       = null   // timed-mode auto-advance timer
 let _mapShown       = false  // the map block is the scene on screen (it stays mounted, hidden, between map scenes)
 let _mapLoading     = null   // the one mount in flight (preload or first map scene)
 const MAP_NARRATION_BEAT_MS = 600  // a narrated map moves on this long after its narrator stops
+/**
+ * One voyage's scenes, and what its tiles are warmed for: the zooms its timeline cameras fly through,
+ * and whether any leg dives in from space. Only THIS voyage's scenes: a lesson with Tasman's 1642 and
+ * 1644 voyages pinned 1642's "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route.
+ */
+const voyageScenes = (voyage) => {
+  const mine = _sceneQueue.filter(s => s.kind === 'voyage' && ((s.config || {}).voyage ?? voyage) === voyage)
+  return {
+    mine,
+    views: mine.flatMap(s => (cameraDrives((s.config || {}).timeline) ? sceneViews(s.config || {}) : [])),
+    intro: mine.some(s => !!(s.config || {}).intro),
+  }
+}
+// The editable copy of a voyage. A lesson can hold several, so the per-voyage store is asked first;
+// the older single copy is only good for its own id (voyage-tour.js checks that).
+const voyageDef = (lesson, voyage) => lesson.game_config?.voyage_defs?.[voyage] || lesson.game_config?.voyage_def || null
 // ONE map per lesson (Bart 11-24: "preloaded map per lesson, only the top changes. we don't do different
 // styles so it doesn't make sense to reload tiles"). It mounts, hidden, as the lesson loads, and every map
 // scene goes on it with showScene; between map scenes it is only hidden. These are a scene's map options.
@@ -194,6 +210,9 @@ const mapSceneOpts = (cfg = {}) => ({
   interactive: cfg.playback_mode !== 'timed',
 })
 let _voyageInstance = null   // voyage tour instance (kind 'voyage'; outside Alpine's proxy)
+const _voyageWarmed = new Set()   // voyages whose tiles were fetched ahead (_warmVoyageAhead)
+// How far into a scene the next voyage's tiles start loading: after the scene's own pictures and voice.
+const VOYAGE_WARM_DELAY_MS = 3000
 let _galleryInstance = null  // gallery slideshow instance (kind 'gallery'; outside Alpine's proxy)
 const FURTHEST_STEP_SECONDS = 0.5  // how far narration runs before the chapter bar's furthest point moves
 let _autoAdvanceRaf = null    // voyage auto-advance progress loop
@@ -1691,7 +1710,7 @@ Alpine.data('lessonGame', (lesson) => ({
       if (!scene) { this._onAudioEnded(); return }
       const cameFrom = this._lastPlayed ?? null
       this._lastPlayed = index
-      if (!TITLE_PREVIEW) this._warmNarration(index)
+      if (!TITLE_PREVIEW) { this._warmNarration(index); this._warmVoyageAhead(index) }
 
       this._tel.log('scene_started', { sceneIndex: index, sceneId: scene.id })
 
@@ -2227,9 +2246,7 @@ Alpine.data('lessonGame', (lesson) => ({
       stage.appendChild(inner)
       // Period place labels come from the landfalls themselves — each voyage scene's location
       // pinned at its leg's arrival. The teacher hides modern cities/borders via game_config.voyage_map.
-      // Only THIS voyage's scenes: a lesson with Tasman's 1642 and 1644 voyages pinned 1642's
-      // "Tonga" and "Golden Bay" onto legs 2 and 3 of the 1644 route (Arnhem Land, the Gulf).
-      const mine = _sceneQueue.filter(s => s.kind === 'voyage' && ((s.config || {}).voyage ?? cfg.voyage) === cfg.voyage)
+      const { mine, views, intro } = voyageScenes(cfg.voyage)
       const legLabels = mine
         .filter(s => s.location)
         .map(s => ({
@@ -2239,17 +2256,9 @@ Alpine.data('lessonGame', (lesson) => ({
           at: (s.config || {}).overview ? 'depart' : 'arrive',
         }))
       const sail = storedSail(cfg.timeline)
-      // For the tiles to warm: the zooms this voyage's timeline cameras fly through, and whether any
-      // leg dives in from space.
-      const views = mine.flatMap(s => (cameraDrives((s.config || {}).timeline) ? sceneViews(s.config || {}) : []))
-      const intro = mine.some(s => !!(s.config || {}).intro)
       _voyageInstance = window.renderVoyageTour(inner, {
         voyage: cfg.voyage,
-        // The editable copy for THIS scene's voyage. A lesson can hold several voyages, so the
-        // per-voyage store is asked first; the older single copy is only good for its own id.
-        def: lesson.game_config?.voyage_defs?.[cfg.voyage]
-          || lesson.game_config?.voyage_def
-          || null,
+        def: voyageDef(lesson, cfg.voyage),
         view: cfg.view || 'globe',
         routeLine: lesson.game_config?.route_line || null, // styled/animated trail (lesson-wide)
         mapOptions: lesson.game_config?.voyage_map || null, // hide cities/borders, show place labels
@@ -2265,6 +2274,32 @@ Alpine.data('lessonGame', (lesson) => ({
         onArrived: () => { this.showMapContinue = true; this._startStageAuto(_sceneQueue[this._sceneIndex]) },
       })
       _voyageInstance.voyageId = cfg.voyage
+    },
+
+    /**
+     * While the scenes before a voyage play: fetch that voyage's tiles into the browser cache.
+     *
+     * The trip's tiles (about 9 MB for Marco Polo) used to be asked for the moment the first voyage
+     * scene started, on top of the map it was drawing; on a classroom laptop that is where the map
+     * arrived late. Started a few seconds into the scene, so this scene's own pictures and voice go
+     * first, and fetched at low priority. Needs the lesson's map block, whose style names the same
+     * tile sets; a lesson without one warms at the voyage, as before.
+     */
+    _warmVoyageAhead (index) {
+      const next = _sceneQueue.slice(index + 1).find(s => s.kind === 'voyage')
+      const id = next?.config?.voyage
+      if (id == null || _voyageWarmed.has(id) || _voyageInstance?.voyageId === id || !_mapInstance?.map) return
+      _voyageWarmed.add(id)
+      setTimeout(async () => {
+        try {
+          const { warmVoyageTiles } = await import('./voyage-tour.js')
+          const { views, intro } = voyageScenes(id)
+          const asked = await warmVoyageTiles(_mapInstance?.map, {
+            voyage: id, def: voyageDef(lesson, id), mapOptions: lesson.game_config?.voyage_map || null, views, intro,
+          })
+          if (!asked) _voyageWarmed.delete(id)   // no map or no style yet: the next scene tries again
+        } catch (_) { _voyageWarmed.delete(id) }
+      }, VOYAGE_WARM_DELAY_MS)
     },
 
     /**
