@@ -22,6 +22,31 @@ const marco = voyagesDoc.voyages.find((v) => v.id === 'marco-polo-1271')
 const withTrack = { ...marco, track: trackFor(marco.waypoints.length) }
 /** Transport at the exact fraction of raw waypoint `i`. */
 const atWaypoint = (i) => transportAt(withTrack, (i * SAMPLES_PER_SEGMENT) / withTrack.track.total)
+/**
+ * A stop's waypoint index, found by its coordinates (searching from `from`, since Acre is visited
+ * twice). Indices move whenever a sea leg gets a routing point round a cape; the places do not.
+ */
+const stop = (lng, lat, from = 0) => {
+  const i = marco.waypoints.findIndex(([x, y], k) => k >= from && x === lng && y === lat)
+  if (i < 0) throw new Error(`no Marco Polo waypoint at ${lng},${lat}`)
+  return i
+}
+const VENICE = stop(12.34, 45.44)
+const ACRE = stop(35.07, 32.92)
+const JERUSALEM = stop(35.23, 31.78)
+const ACRE_AGAIN = stop(35.07, 32.92, JERUSALEM)
+const SIVAS = stop(37.02, 39.75)
+const ERZURUM = stop(41.28, 39.9)
+const KERMAN = stop(57.08, 30.28)
+const WAKHAN = stop(73.5, 37)
+const KHOTAN = stop(79.92, 37.11)
+const ZHANGYE = stop(100.45, 38.93)
+const MALACCA = stop(102.0, 2.0)
+const CEYLON = stop(79.85, 6.95)
+const TABRIZ = stop(46.29, 38.08, CEYLON)
+const TREBIZOND = stop(39.72, 41, TABRIZ)
+const CONSTANTINOPLE = stop(28.98, 41.01)
+const HOME = marco.waypoints.length - 1
 
 describe('waypointAt', () => {
   it('maps track fractions back onto raw waypoint indices', () => {
@@ -50,38 +75,38 @@ describe('transportAt', () => {
   })
 
   it('puts Marco Polo at sea from Venice to Acre', () => {
-    expect(atWaypoint(0)).toBe('sea')   // Venice
-    expect(atWaypoint(3)).toBe('sea')   // Acre
+    expect(atWaypoint(VENICE)).toBe('sea')
+    expect(atWaypoint(ACRE)).toBe('sea')
   })
 
   it('rides from Acre up to Jerusalem and back before sailing on to Ayas', () => {
-    expect(atWaypoint(3.5)).toBe('horse')  // the road to Jerusalem
-    expect(atWaypoint(4.5)).toBe('horse')  // back down to Acre
-    expect(atWaypoint(5.5)).toBe('sea')    // Acre to Ayas
+    expect(atWaypoint((ACRE + JERUSALEM) / 2)).toBe('horse')  // the road to Jerusalem
+    expect(atWaypoint((JERUSALEM + ACRE_AGAIN) / 2)).toBe('horse')  // back down to Acre
+    expect(atWaypoint(ACRE_AGAIN + 0.5)).toBe('sea')    // Acre to Ayas
   })
 
   it('switches to the horse for the Anatolian and Armenian highlands', () => {
-    expect(atWaypoint(7)).toBe('horse')  // Sivas
-    expect(atWaypoint(8)).toBe('horse')  // Erzurum
+    expect(atWaypoint(SIVAS)).toBe('horse')
+    expect(atWaypoint(ERZURUM)).toBe('horse')
   })
 
   it('switches to the camel for the deserts and Central Asia', () => {
-    expect(atWaypoint(11)).toBe('camel')   // Kerman
-    expect(atWaypoint(15)).toBe('camel')  // Wakhan / the Pamirs
-    expect(atWaypoint(18)).toBe('camel')  // Khotan
-    expect(atWaypoint(21)).toBe('camel')  // Zhangye, the Gobi
+    expect(atWaypoint(KERMAN)).toBe('camel')
+    expect(atWaypoint(WAKHAN)).toBe('camel')  // the Pamirs
+    expect(atWaypoint(KHOTAN)).toBe('camel')
+    expect(atWaypoint(ZHANGYE)).toBe('camel')  // the Gobi
   })
 
   it('returns to the sea for the long voyage home', () => {
-    expect(atWaypoint(26)).toBe('sea')  // Malacca Strait
-    expect(atWaypoint(29)).toBe('sea')  // Ceylon
+    expect(atWaypoint(MALACCA)).toBe('sea')
+    expect(atWaypoint(CEYLON)).toBe('sea')
   })
 
   it('rides overland again from Hormuz, then sails the last stretch to Venice', () => {
-    expect(atWaypoint(33)).toBe('camel')  // Tabriz
-    expect(atWaypoint(34)).toBe('horse')  // Trebizond, over the mountains
-    expect(atWaypoint(36)).toBe('sea')    // Constantinople
-    expect(atWaypoint(39)).toBe('sea')    // home
+    expect(atWaypoint(TABRIZ)).toBe('camel')
+    expect(atWaypoint(TREBIZOND - 0.5)).toBe('horse')  // over the mountains to Trebizond
+    expect(atWaypoint(CONSTANTINOPLE)).toBe('sea')
+    expect(atWaypoint(HOME)).toBe('sea')
   })
 
   it('uses both mounts, so neither model is dead weight', () => {
