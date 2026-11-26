@@ -2610,5 +2610,19 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     background: var(--color-card-surface); transition: background-color 120ms, border-color 120ms; }
   .story-map-dot:hover::before, .story-map-dot:focus-visible::before { background: var(--color-panel-value); border-color: var(--color-panel-value); }
   .story-map-dot.is-in { cursor: default; pointer-events: none; }
-  .story-map-dot.is-in::before { width: 8px; height: 8px; }
+  .story-map-dot.is-in::before { width: 8px; height: 8px; transition: width 120ms, height 120ms, background-color 120ms, border-color 120ms; }
+  /* Arrowheads, and the wide see-through twin of each line that takes the click. */
+  .story-map-arrow { fill: var(--color-panel-label); }
+  .story-map-arrow.is-lit { fill: var(--color-panel-value); }
+  .story-map-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+  .story-map-hit:hover + .story-map-edge { stroke: var(--color-panel-value); opacity: 1; }
+  .story-map-edge.is-picked { stroke-width: 3; }
+  /* While a line is dragged every entry dot opens up, and the one it will land on fills. */
+  .is-wiring .story-map-dot.is-in::before { width: 12px; height: 12px; border-color: var(--color-panel-value); }
+  .is-wiring .is-target .story-map-dot.is-in::before { background: var(--color-panel-value); }
+  .story-map-marquee { border: 1.5px dashed var(--color-panel-value); border-radius: 8px; }
+  .story-map-mini-card { fill: var(--color-panel-label); opacity: 0.55; }
+  .story-map-mini-card.is-selected { fill: var(--color-panel-value); opacity: 1; }
+  .story-map-mini-view { fill: transparent; stroke: var(--color-panel-value); stroke-width: 1.5; }
+  @media (prefers-reduced-motion: reduce) { .story-map-dot.is-in::before { transition: none; } }
 }

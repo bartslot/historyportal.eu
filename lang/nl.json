@@ -3209,5 +3209,10 @@
     "Group": "Groeperen",
     "Ungroup": "Groep opheffen",
     "Drag from a scene to add a choice, or from a choice to change where it goes": "Sleep vanuit een scène om een keuze toe te voegen, of vanuit een keuze om te wijzigen waar die heen gaat",
-    "Drag onto a scene to add a choice that goes there": "Sleep naar een scène om een keuze toe te voegen die daarheen gaat"
+    "Drag onto a scene to add a choice that goes there": "Sleep naar een scène om een keuze toe te voegen die daarheen gaat",
+    "Full size (0)": "Ware grootte (0)",
+    "Full size": "Ware grootte",
+    "Show the whole story (F)": "Het hele verhaal tonen (F)",
+    "Delete removes this line": "Delete haalt deze lijn weg",
+    "Drag one of the picked cards to move them together": "Sleep een van de gekozen kaarten om ze samen te verplaatsen"
 }

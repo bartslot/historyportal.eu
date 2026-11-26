@@ -3142,5 +3142,10 @@
     "Group": "Raggruppa",
     "Ungroup": "Separa",
     "Drag from a scene to add a choice, or from a choice to change where it goes": "Trascina da una scena per aggiungere una scelta, o da una scelta per cambiare dove porta",
-    "Drag onto a scene to add a choice that goes there": "Trascina su una scena per aggiungere una scelta che porta lì"
+    "Drag onto a scene to add a choice that goes there": "Trascina su una scena per aggiungere una scelta che porta lì",
+    "Full size (0)": "Dimensione reale (0)",
+    "Full size": "Dimensione reale",
+    "Show the whole story (F)": "Mostra tutta la storia (F)",
+    "Delete removes this line": "Canc rimuove questa linea",
+    "Drag one of the picked cards to move them together": "Trascina una delle schede scelte per spostarle insieme"
 }
