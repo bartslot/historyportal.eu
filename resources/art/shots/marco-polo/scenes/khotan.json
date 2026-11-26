@@ -1,0 +1,145 @@
+{
+  "scene": "khotan",
+  "title": "Khotan, the jade river",
+  "script": "project files: new-scenes/storyboard-order.md, item 7 (stop 5484)",
+  "place": "Khotan oasis, about 1273: orchards, cotton fields, and jade gathered from the river (Polo, Book 1 ch. 36-37).",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      800,
+      400
+    ],
+    "light": "bright midday",
+    "landmarks": [
+      {
+        "id": "river",
+        "label": "jade river",
+        "at": [
+          400,
+          200
+        ],
+        "size": 400,
+        "note": "a wide shallow river with pebble banks across the oasis",
+        "height": 1
+      },
+      {
+        "id": "orchards",
+        "label": "oasis orchards",
+        "at": [
+          400,
+          350
+        ],
+        "size": 600,
+        "note": "poplars and fruit orchards along the far bank",
+        "height": 15
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "khotan-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              200,
+              50
+            ],
+            "looks_at": [
+              400,
+              300
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan reaches the green oasis after the desert; poplars and orchards along the river.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "orchards": "across the background"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              380,
+              160
+            ],
+            "looks_at": [
+              400,
+              210
+            ],
+            "framing": "Medium wide"
+          },
+          "action": "Jade gatherers wade knee-deep in the river, feeling for stones with their feet."
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              395,
+              190
+            ],
+            "looks_at": [
+              400,
+              200
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Wet hands lift a pale green jade pebble out of the water."
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              370,
+              150
+            ],
+            "looks_at": [
+              390,
+              180
+            ],
+            "framing": "Medium"
+          },
+          "action": "Marco on the bank turns a piece of jade in his fingers, fascinated."
+        }
+      ]
+    }
+  ]
+}

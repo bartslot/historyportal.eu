@@ -1,0 +1,276 @@
+{
+  "scene": "khans-riders",
+  "title": "The Khan's riders",
+  "script": "project files: new-scenes/khans-riders.md",
+  "place": "The road to the Khan's court and its relay stations, about 1274-75 (Polo, Book 1 ch. 15; Book 2 ch. 26).",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      5000,
+      1500
+    ],
+    "light": "clear day, sun from the south",
+    "landmarks": [
+      {
+        "id": "station",
+        "label": "post station",
+        "at": [
+          3500,
+          800
+        ],
+        "size": 60,
+        "note": "a low walled lodging with horses waiting outside",
+        "height": 6
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the caravan, west to east",
+        "points": [
+          [
+            300,
+            700
+          ],
+          [
+            1500,
+            720
+          ]
+        ]
+      },
+      {
+        "who": [
+          "rider"
+        ],
+        "label": "the Khan's rider, east to west",
+        "points": [
+          [
+            4800,
+            820
+          ],
+          [
+            1600,
+            730
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "khans-riders-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              800,
+              600
+            ],
+            "looks_at": [
+              2500,
+              760
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan on a long road across grassland; far off ahead, a dust trail comes fast.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 2,
+          "who": [],
+          "camera": {
+            "at": [
+              3000,
+              790
+            ],
+            "looks_at": [
+              3010,
+              795
+            ],
+            "framing": "Close-up"
+          },
+          "action": "A rider's belt hung with small bells; his hand tight on the reins."
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              3400,
+              720
+            ],
+            "looks_at": [
+              3500,
+              800
+            ],
+            "framing": "Wide"
+          },
+          "action": "A post station: a low walled lodging, fresh horses waiting, a clerk with brush and paper at the door.",
+          "sees": {
+            "station": "centre"
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              3470,
+              770
+            ],
+            "looks_at": [
+              3500,
+              800
+            ],
+            "framing": "Medium"
+          },
+          "action": "The rider leaps onto a fresh horse while the clerk writes down the hour."
+        }
+      ]
+    },
+    {
+      "id": "khans-riders-b",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 5,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              2600,
+              650
+            ],
+            "looks_at": [
+              2400,
+              760
+            ],
+            "framing": "Wide"
+          },
+          "action": "The rider gallops over a hill and past a river, head wrapped, belt bound tight."
+        },
+        {
+          "shot": 6,
+          "seconds": 4,
+          "who": [
+            "niccolo",
+            "niccolo-horse"
+          ],
+          "camera": {
+            "at": [
+              1580,
+              690
+            ],
+            "looks_at": [
+              1560,
+              725
+            ],
+            "framing": "Medium"
+          },
+          "action": "The rider reaches the Polos and holds up a gold tablet with a gerfalcon; Niccolò bows in the saddle.",
+          "where": {
+            "niccolo-horse": "Niccolò's mount"
+          }
+        },
+        {
+          "shot": 7,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              1300,
+              600
+            ],
+            "looks_at": [
+              1800,
+              740
+            ],
+            "framing": "Wide"
+          },
+          "action": "The Polos ride on, now with a Mongol escort riding beside them.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          }
+        },
+        {
+          "shot": 8,
+          "seconds": 3,
+          "who": [
+            "marco",
+            "marco-horse"
+          ],
+          "camera": {
+            "at": [
+              1700,
+              700
+            ],
+            "looks_at": [
+              1720,
+              730
+            ],
+            "framing": "Medium"
+          },
+          "action": "Marco looks at the escort riders, proud and excited: the Great Khan is waiting.",
+          "where": {
+            "marco-horse": "Marco's mount"
+          }
+        }
+      ]
+    }
+  ]
+}

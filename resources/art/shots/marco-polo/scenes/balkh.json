@@ -1,0 +1,164 @@
+{
+  "scene": "balkh",
+  "title": "Balkh, the ruined city",
+  "script": "project files: new-scenes/storyboard-order.md, item 5 (stop 5482)",
+  "place": "Balkh, about 1272-73: once a great city, much of it in ruins after the Mongol conquest (Polo, Book 1 ch. 25).",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      1000,
+      600
+    ],
+    "light": "hazy morning light from the east (right)",
+    "landmarks": [
+      {
+        "id": "walls",
+        "label": "broken city walls and ruined palaces",
+        "at": [
+          600,
+          400
+        ],
+        "size": 300,
+        "note": "long ruined walls of mud brick, broken domes and arches",
+        "height": 15
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the Polos, along the old road",
+        "points": [
+          [
+            100,
+            200
+          ],
+          [
+            500,
+            300
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "balkh-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              150,
+              150
+            ],
+            "looks_at": [
+              600,
+              400
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan small before the long broken walls and fallen domes of Balkh.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "walls": "across the background"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [
+            "marco",
+            "marco-horse"
+          ],
+          "camera": {
+            "at": [
+              430,
+              270
+            ],
+            "looks_at": [
+              520,
+              330
+            ],
+            "framing": "Medium"
+          },
+          "action": "Marco rides through a ruined gateway, looking up at the broken arch.",
+          "where": {
+            "marco-horse": "Marco's mount"
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              500,
+              300
+            ],
+            "looks_at": [
+              600,
+              380
+            ],
+            "framing": "Wide"
+          },
+          "action": "Empty ruined streets: fallen columns, half-buried tiles, a single goatherd and his goats."
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              480,
+              290
+            ],
+            "looks_at": [
+              520,
+              320
+            ],
+            "framing": "Medium on two"
+          },
+          "action": "Niccolò tells Maffeo this was once among the noblest cities; both look over the ruins.",
+          "where": {
+            "niccolo": "the older man in red",
+            "maffeo": "the man in blue"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,268 @@
+{
+  "scene": "singing-desert",
+  "title": "The singing desert",
+  "script": "project files: new-scenes/singing-desert.md",
+  "place": "The desert of Lop, between Khotan and Ganzhou, about 1273-74 (Polo, Book 1 ch. 39).",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      3000,
+      1500
+    ],
+    "light": "midday glare in shots 1-2, sunset in 3, moonlight in 4-6 (deep blue wash, still lots of pale paper), dawn in 7-8",
+    "landmarks": [
+      {
+        "id": "dunes",
+        "label": "great dunes",
+        "at": [
+          1500,
+          1200
+        ],
+        "size": 1500,
+        "note": "huge pale dunes to the north",
+        "height": 60
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the caravan, west to east",
+        "points": [
+          [
+            300,
+            600
+          ],
+          [
+            2700,
+            650
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "singing-desert-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              800,
+              300
+            ],
+            "looks_at": [
+              1500,
+              1100
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan small between huge pale dunes at midday; nothing alive anywhere.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "dunes": "filling the background"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              1200,
+              600
+            ],
+            "looks_at": [
+              1210,
+              610
+            ],
+            "framing": "Close-up"
+          },
+          "action": "A hand ties a small bell to a camel's neck; the other animals already wear bells."
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              1300,
+              600
+            ],
+            "looks_at": [
+              1500,
+              650
+            ],
+            "framing": "Medium wide"
+          },
+          "action": "At sunset a guide plants a stick with a cloth in the sand, pointing the way for morning."
+        },
+        {
+          "shot": 4,
+          "seconds": 4,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              1500,
+              580
+            ],
+            "looks_at": [
+              1520,
+              640
+            ],
+            "framing": "Wide, night"
+          },
+          "action": "The camp asleep close together under the stars; only Marco lies awake."
+        }
+      ]
+    },
+    {
+      "id": "singing-desert-b",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 5,
+          "seconds": 4,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              1515,
+              600
+            ],
+            "looks_at": [
+              1520,
+              800
+            ],
+            "framing": "Medium, night, from behind Marco"
+          },
+          "action": "Marco sits up and looks into the dark dunes; there is nothing there.",
+          "sees": {
+            "dunes": "dark shapes ahead"
+          }
+        },
+        {
+          "shot": 6,
+          "seconds": 3,
+          "who": [
+            "marco",
+            "niccolo"
+          ],
+          "camera": {
+            "at": [
+              1530,
+              640
+            ],
+            "looks_at": [
+              1518,
+              615
+            ],
+            "framing": "Close-up, night"
+          },
+          "action": "Marco's face, eyes wide; behind him Niccolò's hand reaches for his arm.",
+          "where": {
+            "marco": "the young face in front",
+            "niccolo": "the grey-bearded man behind, reaching out"
+          }
+        },
+        {
+          "shot": 7,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              1700,
+              500
+            ],
+            "looks_at": [
+              2300,
+              700
+            ],
+            "framing": "Wide, dawn"
+          },
+          "action": "At dawn the caravan moves on in a tight line, bells on every animal.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          }
+        },
+        {
+          "shot": 8,
+          "seconds": 3,
+          "who": [
+            "maffeo",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              2000,
+              580
+            ],
+            "looks_at": [
+              2050,
+              620
+            ],
+            "framing": "Medium"
+          },
+          "action": "Maffeo rides last, glancing back at the empty dunes behind them.",
+          "where": {
+            "maffeo-horse": "Maffeo's mount"
+          }
+        }
+      ]
+    }
+  ]
+}

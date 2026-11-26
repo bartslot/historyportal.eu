@@ -1,0 +1,146 @@
+{
+  "scene": "caravanserai",
+  "title": "The warning",
+  "script": "project files: new-scenes/storyboard-order.md, item 4, shot 0",
+  "place": "A caravanserai near Kerman, Persia, about 1272, the evening before the raid.",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      40,
+      40
+    ],
+    "light": "evening: a fire in the courtyard, last light in the sky",
+    "landmarks": [
+      {
+        "id": "fire",
+        "label": "courtyard fire",
+        "at": [
+          20,
+          20
+        ],
+        "size": 2,
+        "note": "in the middle of the walled courtyard",
+        "height": 1
+      },
+      {
+        "id": "gate",
+        "label": "the caravanserai gate",
+        "at": [
+          20,
+          2
+        ],
+        "size": 5,
+        "note": "south side, arched",
+        "height": 6
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "caravanserai-a",
+      "kind": "scene",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              20,
+              4
+            ],
+            "looks_at": [
+              20,
+              22
+            ],
+            "framing": "Wide, from the gate"
+          },
+          "action": "Inside the walled caravanserai at dusk, travellers sit round a fire; camels rest along the walls.",
+          "where": {
+            "marco": "the young man in white by the fire",
+            "niccolo": "the man in red",
+            "maffeo": "the man in blue"
+          },
+          "sees": {
+            "fire": "centre"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              24,
+              18
+            ],
+            "looks_at": [
+              19,
+              21
+            ],
+            "framing": "Medium"
+          },
+          "action": "A Mongol fellow traveller by the fire leans in and warns: raiders roam the plain."
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              18,
+              18
+            ],
+            "looks_at": [
+              21,
+              21
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Marco listens, wide-eyed, firelight on his face."
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              16,
+              22
+            ],
+            "looks_at": [
+              22,
+              20
+            ],
+            "framing": "Medium on two"
+          },
+          "action": "Maffeo frowns; Niccolò waves the warning off with one hand.",
+          "where": {
+            "niccolo": "the older man with the grey beard, waving his hand",
+            "maffeo": "the man in blue, frowning"
+          }
+        }
+      ]
+    }
+  ]
+}

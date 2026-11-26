@@ -1,0 +1,173 @@
+{
+  "scene": "pamir",
+  "title": "The Roof of the World",
+  "script": "project files: new-scenes/storyboard-order.md, item 6 (scene 5008)",
+  "place": "The high Pamir plateau, about 1273 (Polo, Book 1 ch. 32): so high and cold that fire burns badly; wild argali sheep with great horns.",
+  "accuracy": null,
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": null,
+    "size": [
+      2000,
+      1000
+    ],
+    "light": "cold clear light, low sun from the south",
+    "landmarks": [
+      {
+        "id": "peaks",
+        "label": "snow peaks",
+        "at": [
+          1000,
+          950
+        ],
+        "size": 1500,
+        "note": "a long wall of snow mountains to the north",
+        "height": 1500
+      },
+      {
+        "id": "lake",
+        "label": "high lake",
+        "at": [
+          1300,
+          500
+        ],
+        "size": 300,
+        "note": "a frozen-edged lake on the plateau",
+        "height": 1
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the caravan, west to east",
+        "points": [
+          [
+            200,
+            300
+          ],
+          [
+            1700,
+            350
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "pamir-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              400,
+              100
+            ],
+            "looks_at": [
+              1000,
+              700
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan tiny on the endless high plain under the snow peaks; yaks carry the loads.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "peaks": "across the horizon"
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              900,
+              300
+            ],
+            "looks_at": [
+              1100,
+              450
+            ],
+            "framing": "Wide"
+          },
+          "action": "A herd of argali with huge curling horns stands on a slope and watches the travellers."
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              1250,
+              380
+            ],
+            "looks_at": [
+              1290,
+              400
+            ],
+            "framing": "Medium, evening camp"
+          },
+          "action": "At the camp the fire burns small and pale; the Polos hold their hands to it, wrapped in furs.",
+          "where": {
+            "marco": "the young man in white fur coat",
+            "niccolo": "the man in red",
+            "maffeo": "the man in blue"
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              1280,
+              390
+            ],
+            "looks_at": [
+              1290,
+              398
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Marco watches a pot that will not boil, his breath white in the cold."
+        }
+      ]
+    }
+  ]
+}

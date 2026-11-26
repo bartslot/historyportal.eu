@@ -29,7 +29,14 @@
           }
         }
       },
-      "swatches": {},
+      "swatches": {
+        "tunic": [
+          0.58,
+          0.38,
+          0.63,
+          0.45
+        ]
+      },
       "palette": {},
       "tell": "17, beardless, shoulder-length chestnut hair, white tunic, no cloak",
       "signature": "white"
@@ -50,7 +57,14 @@
         "ink": null,
         "colour": null
       },
-      "swatches": {},
+      "swatches": {
+        "cloak": [
+          0.78,
+          0.2,
+          0.82,
+          0.3
+        ]
+      },
       "palette": {},
       "tell": "oldest, broad square face, full rounded grey beard, rust-orange cap, red cloak"
     },
@@ -86,7 +100,20 @@
           }
         }
       },
-      "swatches": {},
+      "swatches": {
+        "cloak": [
+          0.76,
+          0.27,
+          0.82,
+          0.36
+        ],
+        "cap": [
+          0.46,
+          0.625,
+          0.5,
+          0.65
+        ]
+      },
       "palette": {},
       "tell": "long narrow face, short pointed near-black beard, blue cap, blue cloak"
     },
@@ -125,6 +152,22 @@
       "swatches": {},
       "palette": {},
       "tell": "the lean long-necked dapple grey with a dark muzzle"
+    },
+    "kublai": {
+      "name": "Kublai Khan",
+      "kind": "person",
+      "look": "The Great Khan, about 51 in 1266: a broad round face, a thin moustache and a small chin beard, calm heavy-lidded eyes, a sturdy build. A long robe of dark gold silk with a fur-trimmed collar, a broad belt, a fur-trimmed Mongol hat. Seated on a throne in every shot he is in.",
+      "tell": "the seated ruler in dark gold silk with a fur-trimmed hat",
+      "signature": "gold",
+      "signature_parts": [
+        "robe"
+      ],
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": null
     }
   }
 }
