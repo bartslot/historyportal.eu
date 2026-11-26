@@ -2,7 +2,7 @@ import { filterMarkup, layerFilterId } from './layer-filters.js'
 import { applyAmbient, trackStage } from './ambient.js'
 import { fitToPlate, plateAspect } from './plate-box.js'
 import { hideFlatLayers } from './stage-handoff.js'
-import { attachLoop } from './picture-loop.js'
+import { attachLoop, stopLoopsIn } from './picture-loop.js'
 import { cameraSpec, cameraPose, chainPose, cameraFrame, cameraEntry, entryLingerMs, ENTRY_MS, previewCycleS, registerCameraTuner } from './camera.js'
 import { EASE } from '../easing.js'
 
@@ -496,8 +496,10 @@ export class ParallaxScene {
     this._stageObserver = null
     this._root?.querySelector('.px-plate')?.__plateObserver?.disconnect()
     const old = this._root
-    if (old && lingerMs > 0) setTimeout(() => old.remove(), lingerMs)
-    else if (old) old.remove()
+    // Its background videos stop with it (picture-loop.js would otherwise keep them in its set).
+    const gone = () => { stopLoopsIn(old); old.remove() }
+    if (old && lingerMs > 0) setTimeout(gone, lingerMs)
+    else if (old) gone()
     this._root = null
     this._bgLayer = null
     this._heroLayer = null
