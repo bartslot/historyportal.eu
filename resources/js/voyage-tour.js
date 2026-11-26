@@ -102,6 +102,8 @@ const hexToRgba = (hex, a) => {
 
 /** How long a landed stop shows the map before its gallery opens by itself. */
 const STOP_OPEN_DELAY_MS = 1400;
+/** How far above the stop the photo cards' bottom edges stay, so the stop's name beside its dot stays readable. */
+const STOP_PIN_CLEARANCE = 30;
 
 const ROUTE_LINE_DEFAULTS = { enabled: true, color: '#7c2d12', opacity: 0.9, thickness: 3, wobble: 0.3, curve: 'bezier' };
 
@@ -712,8 +714,13 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       pin.className = 'absolute rounded shadow-lg';
       const rot = (i - 1) * 6 + (Math.random() * 16 - 8);
       pin._rot = rot;
-      pin._dx = 40 + i * 22 + (Math.random() * 26 - 13);
-      pin._dy = -108 + i * 40 + (Math.random() * 30 - 15);
+      // Fanned out ABOVE the stop, never over its name: the name sits beside the dot at the stop's height,
+      // so each card's BOTTOM edge stays clear of that line (Bart 2026-11-26: the cards covered "Maurit…").
+      // _dy is where the bottom edge goes; placeMarkers subtracts the card's own height, which a portrait
+      // picture makes taller, so it re-places the cards once each has loaded.
+      pin._dx = 18 + i * 64 + (Math.random() * 14 - 7);
+      pin._dy = -STOP_PIN_CLEARANCE - (i % 2) * 12 - Math.random() * 8;
+      pin.addEventListener('load', () => { if (placeMarkers) placeMarkers(); });
       pin.style.cssText += `width:96px;border:4px solid #fff;transform:rotate(${rot}deg);`
         + `transition:transform .18s ease, box-shadow .18s ease;pointer-events:${gal ? 'auto' : 'none'};will-change:transform;`
         + (gal ? 'cursor:pointer;' : '');
@@ -1102,7 +1109,7 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
 
     placeMarkers = () => {
       const p = map.project([sameCopyLng(L.end.lng), L.end.lat]);
-      pins.forEach((pin) => { pin.style.left = `${p.x + pin._dx}px`; pin.style.top = `${p.y + pin._dy}px`; });
+      pins.forEach((pin) => { pin.style.left = `${p.x + pin._dx}px`; pin.style.top = `${p.y + pin._dy - (pin.offsetHeight || 72)}px`; });
       if (hotspot) {
         if (hotspotPos) {
           const hp = map.project([sameCopyLng(hotspotPos.lng), hotspotPos.lat]);
@@ -1254,12 +1261,15 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
     try { if (map.getLayer('lesson-labels')) map.moveLayer('lesson-labels'); } catch (_) { /* noop */ }
     // Auto fog-of-war: draw the just-reached coastline on (offset-path sweep + fade).
     try { buildCoastDrawOn(L.end.lng, L.end.lat); } catch (_) { /* coastline not ready */ }
-    // A stop with something in it opens by itself on arrival (Bart 2026-11-26: "why not automatically open
+    // A stop with something in it opens by itself on arrival in the player (Bart 2026-11-26: "why not automatically open
     // it, students don't expect to click when they are checking it out, and teachers don't expect either").
     // A beat first, so the class sees where they landed and the pictures land on the map; the bubble stays
     // to open it again. A stop switched off, or with nothing in it, opens nothing. Only on ARRIVAL: a live
     // edit in the editor (refreshArrivalContent) rebuilds the pins without reopening anything.
-    const gal = stopButtonOn(L.gallery, L.stopImages) ? galleryData() : null;
+    // Not in the editor (Bart 2026-11-26): there arriving is the teacher SELECTING a stop to work on, and a
+    // gallery over the map is in the way. The bubble on the map previews it there, and an "Edit scene"
+    // deep-link that left it open (openGalleryOnArrive) still reopens it.
+    const gal = stopButtonOn(L.gallery, L.stopImages) && (!editable || openGalleryOnArrive) ? galleryData() : null;
     if (gal) {
       const wait = openGalleryOnArrive ? 0 : STOP_OPEN_DELAY_MS;
       openGalleryOnArrive = false;
