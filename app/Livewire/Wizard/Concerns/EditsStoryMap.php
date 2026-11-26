@@ -176,7 +176,7 @@ trait EditsStoryMap
      * @param  'lr'|'tb'  $dir
      * @return array{scenes: array<string, array{0: int, 1: int}>, choices: array<string, array{0: int, 1: int}>}
      */
-    private function storyMapLayout(array $ids, string $dir = 'lr'): array
+    private function storyMapLayout(array $ids, string $dir): array
     {
         $saved = is_array($this->lesson->story_map) ? $this->lesson->story_map : [];
         if ($dir === 'tb') {

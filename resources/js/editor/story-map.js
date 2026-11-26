@@ -183,10 +183,6 @@ export function autoLayout (scenes, dir = 'lr') {
   return out
 }
 
-function byIdOf (list, id) {
-  return list.find((s) => s.id === id)
-}
-
 /** Two boxes overlap, with a little air around them. */
 function overlaps (a, b, air = 8) {
   return a.x < b.x + b.w + air && b.x < a.x + a.w + air && a.y < b.y + b.h + air && b.y < a.y + a.h + air
@@ -226,7 +222,7 @@ export function placeAll (scenes, saved, dir = 'lr') {
       const prev = list[i - 1] && out.scenes[list[i - 1].id]
       const anchor = from
         ? (from.from.type === 'choice' && out.choices[from.from.id]
-            ? after(out.choices[from.from.id], SIZE.choiceW, choiceHeight(byIdOf(list, from.from.id)))
+            ? after(out.choices[from.from.id], SIZE.choiceW, choiceHeight(list.find((x) => x.id === from.from.id)))
             : after(out.scenes[from.from.id], SIZE.sceneW, SIZE.sceneH))
         : (prev ? after(prev, SIZE.sceneW, SIZE.sceneH) : [0, 0])
       out.scenes[s.id] = clear(anchor, SIZE.sceneW, SIZE.sceneH)
@@ -292,8 +288,7 @@ export function edgeEnds (edge, layout, dir = 'lr') {
 
 /** The way a line runs where it leaves and where it arrives. */
 export function edgeVectors (edge, dir = 'lr') {
-  const from = edge.from.type === 'choice' ? { type: 'choice' } : { type: 'out' }
-  return [portVector(from, dir), portVector({ type: 'in' }, dir)]
+  return [portVector(edge.from, dir), portVector({ type: 'in' }, dir)]
 }
 
 /** The box around every card, in map pixels. */
@@ -480,13 +475,15 @@ export function storyMap () {
       this.selected = null
       this.undoStack = []
       await this.reload()
-      this.$nextTick(() => {
-        const vp = this.$refs.viewport
-        if (!vp) return
-        this.measure()
-        const first = this.scenes[0] ? this.layout.scenes[this.scenes[0].id] : null
-        this.view = openingView(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight, first, this.dir)
-      })
+      this.$nextTick(() => { this.measure(); this.showStart() })
+    },
+
+    /** The view a map opens on: the whole story, or its first scenes at full size (openingView). */
+    showStart () {
+      const vp = this.$refs.viewport
+      if (!vp) return
+      const first = this.scenes[0] ? this.layout.scenes[this.scenes[0].id] : null
+      this.view = openingView(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight, first, this.dir)
     },
 
     close () {
@@ -538,12 +535,7 @@ export function storyMap () {
       this.layout = this.placed(dir, this._layouts[dir])
       this.edge = null
       this.picked = []
-      this.$nextTick(() => {
-        const vp = this.$refs.viewport
-        if (!vp) return
-        const first = this.scenes[0] ? this.layout.scenes[this.scenes[0].id] : null
-        this.view = openingView(mapBounds(this.scenes, this.layout), vp.clientWidth, vp.clientHeight, first, dir)
-      })
+      this.$nextTick(() => this.showStart())
     },
 
     /** The whole layout of one way of running, saved quietly. */
@@ -795,7 +787,7 @@ export function storyMap () {
       ev.stopPropagation()
       const start = edgeEndsFrom(from, this.layout, this.dir)
       if (!start) return
-      const va = portVector(from.type === 'choice' ? { type: 'choice' } : { type: 'out' }, this.dir)
+      const va = portVector(from, this.dir)
       this.wiring = { from, start, va, tip: [...start], vel: [0, 0], goal: [...start], path: edgePath(start, start, va, va), over: null, letGo: false }
       this._drag = { kind: 'wire' }
       this.$refs.viewport.setPointerCapture?.(ev.pointerId)
