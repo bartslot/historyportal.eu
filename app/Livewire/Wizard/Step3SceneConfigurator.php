@@ -5729,6 +5729,9 @@ class Step3SceneConfigurator extends Component
         // stays queued, so its retries and timeout still hold; one worker pass starts as this request
         // ends, after the response has gone. Cut off by the host, the queue retries it as before.
         if ($asset === 'audio') {
+            // Start the Script panel's countdown from what recordings like this one have taken.
+            $provider = (string) config('services.tts.provider_override', '') ?: (string) ($scene->lesson->narrator?->voice_provider ?? 'elevenlabs');
+            \App\Services\Support\NarrationEta::requested($scene->id, $provider, mb_strlen((string) ($scene->script_segment ?? '')));
             app()->terminating(fn () => \Illuminate\Support\Facades\Artisan::call('queue:work', ['--once' => true, '--queue' => 'narrate', '--tries' => 3]));
         }
 
@@ -6518,7 +6521,7 @@ class Step3SceneConfigurator extends Component
      * seconds could slip past it: Bart 11-24, one word changed, the audio was on the server two seconds later and
      * the panel kept spinning for minutes. No render, one row.
      *
-     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string}
+     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string, etaSeconds?: ?int, etaTotal?: ?int}
      */
     #[Renderless]
     public function narrationState(int $sceneId): array
@@ -6528,11 +6531,16 @@ class Step3SceneConfigurator extends Component
             return ['status' => 'gone'];
         }
 
+        $eta = $scene->status === 'generating' ? \App\Services\Support\NarrationEta::remaining($scene->id) : null;
+
         return [
             'status' => (string) $scene->status,
             'audioUrl' => $scene->audioUrl(),
             'audioFresh' => $scene->hasFreshAudio(),
             'errorMessage' => $scene->error_message,
+            // Seconds left on the countdown, from measured recordings; null when nobody is counting.
+            'etaSeconds' => $eta['remaining'] ?? null,
+            'etaTotal' => $eta['total'] ?? null,
         ];
     }
 
