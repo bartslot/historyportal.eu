@@ -226,11 +226,34 @@
         "robe"
       ],
       "sheets": {
-        "ink": null,
-        "colour": null
+        "ink": {
+          "path": "sheets/kublai/ink-02.png",
+          "sha256": "d3af0e4999f705d582f6b9661c0e900cb7dbcf27ed498a723cd02c0a9fbffa97",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27"
+          }
+        },
+        "colour": {
+          "path": "sheets/kublai/colour-02.png",
+          "sha256": "8c9fab02e8d76d20635f0976295a89e82d512a4359719bb78d6cf799ff9504ec",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27"
+          }
+        }
       },
-      "swatches": {},
-      "palette": null
+      "swatches": {
+        "robe": [
+          0.56,
+          0.4,
+          0.64,
+          0.52
+        ]
+      },
+      "palette": {
+        "robe": "#EFAD3A"
+      }
     }
   }
 }
