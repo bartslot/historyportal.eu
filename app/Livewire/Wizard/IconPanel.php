@@ -435,9 +435,7 @@ class IconPanel extends Component
     public function icons(): \Illuminate\Support\Collection
     {
         if ($this->collection === self::LESSON) {
-            $ids = $this->lessonAssetIds();
-
-            return SvgAsset::query()->whereIn('id', $ids)->get()->sortBy(fn (SvgAsset $a) => array_search($a->id, $ids, true))->values();
+            return SvgAsset::query()->whereIn('id', $this->lessonAssetIds())->latest('id')->get();
         }
         if ($this->collection === self::CUTOUTS) {
             return SvgAsset::query()->where('user_id', auth()->id())->where('source', Cutouts::SOURCE)->latest()->limit(self::PAGE)->get();

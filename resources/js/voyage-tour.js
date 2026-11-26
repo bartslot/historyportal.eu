@@ -144,7 +144,7 @@ const seaSafe = (def) => {
  * The lesson's route sent round the land, or null when it already is. The editor saves it, so the
  * waypoint numbers its handles send match the route the teacher sees.
  */
-export async function seaSafeVoyageDef(def) {
+async function seaSafeVoyageDef(def) {
   await seaGridReady;
   const out = seaSafe(def);
   return out && out !== def ? out : null;

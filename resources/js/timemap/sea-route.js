@@ -16,13 +16,13 @@ import { smooth, SAMPLES_PER_SEGMENT } from './voyages.js';
 import transportsDoc from './transports.json';
 
 const LAND_TRANSPORTS = new Set(transportsDoc.transports.filter((t) => t.terrain === 'land').map((t) => t.id));
-export const TOLERANCE_KM = 15;   // the check script allows 25 on the chart's polygons; the mask is coarser, so it asks more
-export const PORT_KM = 30;        // a port is on the shore, an island call is on the island
-export const BEND_KM = 8;         // a bend on a shore (a call at Bear Island, Tahiti) touches it
+const TOLERANCE_KM = 15;   // the check script allows 25 on the chart's polygons; the mask is coarser, so it asks more
+const PORT_KM = 30;        // a port is on the shore, an island call is on the island
+const BEND_KM = 8;         // a bend on a shore (a call at Bear Island, Tahiti) touches it
 const MAX_PASSES = 4;
 const STEP_KM = 5;                // how finely a drawn stretch is measured
 const PRUNE_KM = 8;
-const SNAP_KM = 40;               // a bend this close to a port is a hook at the port              // a bend is dropped only while every stretch stays under this             // a new bend changes its neighbours' curve: measure again
+const SNAP_KM = 40;               // a bend this close to a port is a hook at the port
 const GRID_URL = '/map-chart/sea-grid.bin';
 
 const wrapLon = (lon) => ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -88,7 +88,7 @@ export const isLand = (g, lon, lat) => landAt(g, cellX(g, wrapLon(lon)), cellY(g
 /** On land or in a cell beside it: about 14 km of sea room, what a bend is kept clear of. */
 const nearLand = (g, lon, lat) => {
   const x = cellX(g, wrapLon(lon)), y = cellY(g, lat);
-  return landAt(g, x, y) || NB.some(([dx, dy]) => landAt(g, x + dx, y + dy));
+  return landAt(g, x, y) || coastAt(g, x, y);
 };
 
 /** Is a waypoint stretch on a ship leg? An unlabelled stretch is drawn as a ship, so it is one. */
@@ -103,7 +103,7 @@ const shipStretch = (def, i) => {
  * stop (voyage-routes.py check), BEND_KM at a bend, which belongs at sea. Letting a bend off a
  * full port's width hid a route cutting across the Malea peninsula between two bends.
  */
-export function landKm(g, seg, fromKm = PORT_KM, toKm = PORT_KM, clearance = false) {
+function landKm(g, seg, fromKm = PORT_KM, toKm = PORT_KM, clearance = false) {
   const lengths = seg.slice(1).map((b, k) => km(seg[k], b));
   const total = lengths.reduce((s, d) => s + d, 0);
   let wrong = 0, run = 0;
@@ -133,11 +133,12 @@ const curveOf = (def, i) => {
 };
 /** Land km of stretch i of a route, its ends let off by what they are (a stop or a bend). */
 const stretchLand = (g, def, i, clearance = false) => {
-  const stops = stopsOf(def);
-  const end = (w) => (stops.has(w) || w === 0 || w === def.waypoints.length - 1 ? PORT_KM : BEND_KM);
+  const end = endKm(def, stopsOf(def));
   return landKm(g, curveOf(def, i), end(i), end(i + 1), clearance);
 };
 const stopsOf = (def) => new Set((def.legs || []).flatMap((l) => (Array.isArray(l.wp) ? l.wp : [])));
+/** What a stretch end is let off: a stop (or the route's first and last point) a port's width, a bend less. */
+const endKm = (def, stops) => (w) => (stops.has(w) || w === 0 || w === def.waypoints.length - 1 ? PORT_KM : BEND_KM);
 const sumLand = (g, def, i, k) => {
   let s = 0;
   for (let j = i; j <= i + k; j++) s += stretchLand(g, def, j);
@@ -156,8 +157,7 @@ const detour = (pts) => {
 export function stretchesOverLand(def, g) {
   const wp = def.waypoints;
   const curve = smooth(wp);
-  const stops = stopsOf(def);
-  const end = (w) => (stops.has(w) || w === 0 || w === wp.length - 1 ? PORT_KM : BEND_KM);
+  const end = endKm(def, stopsOf(def));
   const bad = [];
   for (let i = 0; i < wp.length - 1; i++) {
     if (!shipStretch(def, i)) continue;
@@ -221,7 +221,6 @@ function astar(g, a, b, pad) {
   const inside = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
   const water = (x, y) => inside(x, y) && !landAt(g, x, y);
   const open = (x, y) => inside(x, y) && !solidAt(g, x, y);
-  const coast = (x, y) => coastAt(g, x, y);
   // Two cells out (about 28 km) still costs a little: the path keeps sea room where there is some.
   const near2 = (x, y) => NB.some(([dx, dy]) => landAt(g, x + 2 * dx, y + 2 * dy));
 
@@ -231,8 +230,8 @@ function astar(g, a, b, pad) {
     if (water(x, y)) return [x, y];
     for (let r = 1; r <= 1.5 * g.per; r++) {
       for (let dx = -r; dx <= r; dx++) {
-        for (const dy of (Math.abs(dx) === r ? range(-r, r) : [-r, r])) {
-          if (water(x + dx, y + dy)) return [x + dx, y + dy];
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) === r && water(x + dx, y + dy)) return [x + dx, y + dy];
         }
       }
     }
@@ -266,7 +265,7 @@ function astar(g, a, b, pad) {
       if (dx && dy && solidAt(g, cx + dx, cy) && solidAt(g, cx, cy + dy)) continue;
       // A shore cell only where there is no other way (a strait narrower than a cell); beside the
       // shore costs four times, two cells out a little, so the drawn spline has room at sea.
-      const step = Math.hypot(dx * cs, dy) * (landAt(g, nx, ny) ? 12 : coast(nx, ny) ? 4 : near2(nx, ny) ? 1.6 : 1);
+      const step = Math.hypot(dx * cs, dy) * (landAt(g, nx, ny) ? 12 : coastAt(g, nx, ny) ? 4 : near2(nx, ny) ? 1.6 : 1);
       const n = idx(nx, ny);
       if (c0 + step < cost[n]) {
         cost[n] = c0 + step;
@@ -281,8 +280,6 @@ function astar(g, a, b, pad) {
   return path.reverse();
 }
 
-function range(a, b) { const out = []; for (let i = a; i <= b; i++) out.push(i); return out; }
-
 const cellCentre = (g, [x, y]) => [(x + 0.5) / g.per - 180, 90 - (y + 0.5) / g.per];
 
 /** Straight from p to q without touching land (and, with `margin`, without touching the coast). */
@@ -291,7 +288,7 @@ function clear(g, p, q, margin) {
   for (let k = 0; k <= n; k++) {
     const x = cellX(g, p[0] + (q[0] - p[0]) * k / n), y = cellY(g, p[1] + (q[1] - p[1]) * k / n);
     if (landAt(g, x, y)) return false;
-    if (margin && NB.some(([dx, dy]) => landAt(g, x + dx, y + dy))) return false;
+    if (margin && coastAt(g, x, y)) return false;
   }
   return true;
 }
@@ -315,7 +312,7 @@ function pull(g, pts, margin) {
  * `dense` keeps every other cell of the path, for a stretch whose pulled spline still cuts a cape;
  * the bends the curve does not need are pruned afterwards.
  */
-export function seaPath(g, a, b, { dense = false } = {}) {
+function seaPath(g, a, b, { dense = false } = {}) {
   let cells = null;
   for (const pad of [6, 20, 45]) {
     cells = astar(g, a, b, pad);
@@ -346,7 +343,7 @@ export function seaPath(g, a, b, { dense = false } = {}) {
  * shore and an island call is on the island. Returns null when nothing moved.
  */
 function nudgeBends(def, g) {
-  const stops = new Set((def.legs || []).flatMap((l) => (Array.isArray(l.wp) ? l.wp : [])));
+  const stops = stopsOf(def);
   const shore = Math.ceil(PORT_KM / (111.32 / g.per));
   let out = null;
   def.waypoints.forEach((p, i) => {
@@ -366,7 +363,7 @@ function nudgeBends(def, g) {
       }
     }
     if (!best) return;
-    out = out || JSON.parse(JSON.stringify(def));
+    out = out || structuredClone(def);
     const [lon, lat] = cellCentre(g, [x + best.dx, y + best.dy]);
     out.waypoints[i] = [Math.round((lon + (p[0] - wrapLon(p[0]))) * 100) / 100, Math.round(lat * 100) / 100];
   });
@@ -397,21 +394,24 @@ function dropSpurBends(def, g) {
     const stops = stopsOf(cur);
     for (let j = 1; j < cur.waypoints.length - 1; j++) {
       if (stops.has(j) || !shipStretch(cur, j - 1) || !shipStretch(cur, j)) continue;
-      const [a, b, c] = [cur.waypoints[j - 1], cur.waypoints[j], cur.waypoints[j + 1]];
-      const u = [b[0] - a[0], b[1] - a[1]], w = [c[0] - b[0], c[1] - b[1]];
-      const nu = Math.hypot(...u), nw = Math.hypot(...w);
-      if (nu > 1e-9 && nw > 1e-9 && (u[0] * w[0] + u[1] * w[1]) / (nu * nw) >= -0.6) continue;
-      if (landWithin(g, b, PORT_KM)) continue;   // a bend on a shore is a call (Bear Island, Samudra)
-      const trial = JSON.parse(JSON.stringify(cur));
-      removeAt(trial, j);
-      const from = Math.max(0, j - 2);
-      if (sumLand(g, trial, from, 2) > sumLand(g, cur, from, 3) + 0.5) continue;
+      if (!turnsBack(...cur.waypoints.slice(j - 1, j + 2))) continue;
+      if (landWithin(g, cur.waypoints[j], PORT_KM)) continue;   // a bend on a shore is a call (Bear Island, Samudra)
+      const trial = withoutBend(g, cur, j);
+      if (!trial) continue;
       out = trial;
       changed = true;
       break;
     }
   }
   return out;
+}
+
+/** The route without bend j, or null when its curve measures worse over land without it. */
+function withoutBend(g, def, j) {
+  const trial = structuredClone(def);
+  removeAt(trial, j);
+  const from = Math.max(0, j - 2);
+  return sumLand(g, trial, from, 2) <= sumLand(g, def, from, 3) + 0.5 ? trial : null;
 }
 
 /** The opposite of insertAfter: waypoint j out, leg indexes and label_at shifted back. */
@@ -430,7 +430,7 @@ function removeAt(def, j) {
  * worse without it.
  */
 function prune(g, def, i, k) {
-  const out = JSON.parse(JSON.stringify(def));
+  const out = structuredClone(def);
   let end = i + k + 1;   // the stretch's far waypoint
   // Removing bend j only changes the curve's stretches j-2 .. j+1 (a Catmull-Rom stretch depends
   // on the waypoint before and the one after it), so only those are measured.
@@ -446,7 +446,7 @@ function prune(g, def, i, k) {
     return { sum, max };
   };
   for (let j = i + 1; j < end;) {
-    const trial = JSON.parse(JSON.stringify(out));
+    const trial = structuredClone(out);
     removeAt(trial, j);
     const before = local(out, j, 3), after = local(trial, j, 2);
     const roomBefore = local(out, j, 3, true), roomAfter = local(trial, j, 2, true);
@@ -467,7 +467,7 @@ function prune(g, def, i, k) {
  * a chain of bends along a coast reads as one sweep instead of a zigzag.
  */
 function smoothBends(g, def, i, end) {
-  const out = JSON.parse(JSON.stringify(def));
+  const out = structuredClone(def);
   // Each stretch the move touches stays under PRUNE_KM, or at least no worse than it was.
   const window = (d, j, clearance = false) => {
     const out = [];
@@ -487,16 +487,20 @@ function smoothBends(g, def, i, end) {
   return out;
 }
 
+/** Does the path turn back at b by more than about 125 degrees (or stand still there)? */
+function turnsBack(a, b, c) {
+  const u = [b[0] - a[0], b[1] - a[1]], w = [c[0] - b[0], c[1] - b[1]];
+  const nu = Math.hypot(...u), nw = Math.hypot(...w);
+  return nu < 1e-9 || nw < 1e-9 || (u[0] * w[0] + u[1] * w[1]) / (nu * nw) < -0.6;
+}
+
 /** Drop every bend the path turns back at by more than about 125 degrees. */
 function dropSpurs(pts) {
   const out = pts.slice();
   for (let changed = true; changed && out.length > 2;) {
     changed = false;
     for (let i = 1; i < out.length - 1; i++) {
-      const [a, b, c] = [out[i - 1], out[i], out[i + 1]];
-      const u = [b[0] - a[0], b[1] - a[1]], w = [c[0] - b[0], c[1] - b[1]];
-      const nu = Math.hypot(...u), nw = Math.hypot(...w);
-      if (nu < 1e-9 || nw < 1e-9 || (u[0] * w[0] + u[1] * w[1]) / (nu * nw) < -0.6) {
+      if (turnsBack(out[i - 1], out[i], out[i + 1])) {
         out.splice(i, 1);
         changed = true;
         break;
@@ -507,7 +511,7 @@ function dropSpurs(pts) {
 }
 
 /** voyage-routes.py insert_after: new waypoints after i, leg indexes and label_at shifted. */
-export function insertAfter(def, i, pts) {
+function insertAfter(def, i, pts) {
   const k = pts.length;
   if (!k) return;
   def.waypoints.splice(i + 1, 0, ...pts);
@@ -523,7 +527,6 @@ export function insertAfter(def, i, pts) {
  */
 export function seaSafeDef(def, g) {
   if (!g || !def || !Array.isArray(def.waypoints) || def.waypoints.length < 2) return def;
-  const clone = (d) => JSON.parse(JSON.stringify(d));
   const key = (d, i) => `${d.waypoints[i]}|${d.waypoints[i + 1]}`;
   const given = new Set();   // stretches routed as well as the mask allows: not tried again
   let out = dropSpurBends(def, g);
@@ -535,7 +538,7 @@ export function seaSafeDef(def, g) {
     // A stretch with no leg is a hole in the data (Paris to Toulon once had none), not a passage.
     const bad = stretchesOverLand(cur, g).filter((i) => legFor(cur, i) && !given.has(key(cur, i)));
     if (!bad.length) break;
-    out = out || clone(def);
+    out = out || structuredClone(def);
     // Last first, so the earlier indexes still point at the same stretch.
     for (const i of bad.reverse()) {
       let pick = null;
@@ -544,7 +547,7 @@ export function seaSafeDef(def, g) {
         const pts = seaPath(g, out.waypoints[i], out.waypoints[i + 1], { dense });
         if (!pts) break;            // no way by sea at all
         if (!pts.length) continue;  // the straight line looks clear to the mask: try the dense path
-        const trial = clone(out);
+        const trial = structuredClone(out);
         insertAfter(trial, i, pts);
         const left = stretchesOverLand(trial, g).filter((j) => j >= i && j <= i + pts.length);
         pick = { pts, trial, left };
@@ -570,10 +573,7 @@ export function seaSafeDef(def, g) {
     for (const p of moved) {
       const j = out.waypoints.findIndex((q) => q[0] === p[0] && q[1] === p[1]);
       if (j <= 0 || j >= out.waypoints.length - 1 || stopsOf(out).has(j)) continue;
-      const trial = clone(out);
-      removeAt(trial, j);
-      const from = Math.max(0, j - 2);
-      if (sumLand(g, trial, from, 2) <= sumLand(g, out, from, 3) + 0.5) out = trial;
+      out = withoutBend(g, out, j) || out;
     }
   }
   // A stretch the mask could not improve was tried on a copy: same route, same object back.
