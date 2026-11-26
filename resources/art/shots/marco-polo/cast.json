@@ -105,14 +105,14 @@
     "niccolo-horse": {
       "name": "Niccolò's horse",
       "kind": "horse",
-      "look": "A heavy, calm bay: warm brown body, black mane, tail and lower legs, and only a small, faint, irregular natural white patch on the forehead (bart, Nov 26: never a drawn star shape). A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
+      "look": "A black horse with the same build and size as Marco's chestnut (bart, Nov 26: the bay was too small): black coat, black mane and tail, only a small, faint, irregular natural white patch on the forehead. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
         "ink": null,
         "colour": null
       },
       "swatches": {},
       "palette": {},
-      "tell": "the heavy brown horse with black mane, tail and legs and a faint white patch on the forehead"
+      "tell": "the black horse, built like the chestnut"
     },
     "maffeo-horse": {
       "name": "Maffeo's horse",
