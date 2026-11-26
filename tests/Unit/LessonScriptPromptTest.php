@@ -85,4 +85,32 @@ class LessonScriptPromptTest extends TestCase
         $this->assertStringContainsString('previous draft was rejected', $user);
         $this->assertStringContainsString('Scene 2: nobody acts', $user);
     }
+
+    public function test_the_narration_is_written_for_this_classs_age_with_the_story_writer_rules(): void
+    {
+        $young = LessonScriptPrompt::system($this->makeLesson(['grade_level' => 'Age 8']));
+        $this->assertStringContainsString('The class is about 8: sentences under 12 words', $young);
+        $this->assertStringContainsString('HARD WORDS', $young);
+        $this->assertStringContainsString('LEGENDS stay legends', $young);
+        $this->assertStringContainsString('last sentence is one open question', $young);
+
+        $older = LessonScriptPrompt::system($this->makeLesson(['grade_level' => 'Age 16']));
+        $this->assertStringContainsString('The class is about 16: sentences under 25 words', $older);
+    }
+
+    public function test_the_critique_judges_the_reading_level_of_this_class(): void
+    {
+        $this->assertStringContainsString('cap it at 2', \App\Services\ScriptCritiquePrompt::system());
+        $this->assertStringNotContainsString('12-year-old', \App\Services\ScriptCritiquePrompt::system());
+        $user = \App\Services\ScriptCritiquePrompt::user($this->makeLesson(['grade_level' => 'Age 10']), collect([1 => 'Dante wakes.']));
+        $this->assertStringContainsString('Reading level: The class is about 10', $user);
+    }
+
+    public function test_the_outline_asks_for_the_cast_and_its_signature_colours(): void
+    {
+        $system = \App\Services\LessonOutlinePrompt::system(false);
+        $this->assertStringContainsString('"cast": [', $system);
+        $this->assertStringContainsString('owns white', $system);
+        $this->assertStringContainsString('Reading level: The class is about 14', \App\Services\LessonOutlinePrompt::user($this->makeLesson(['grade_level' => 'Age 14']), 'Source.'));
+    }
 }

@@ -26,7 +26,7 @@ TWELVE = {'bleached-linen': '#f1eadb', 'raw-linen': '#e2d5b8', 'undyed-wool': '#
 SKIN = {'s1': '#eac39a', 's2': '#dcaa7c', 's3': '#c99263', 's4': '#ad764c', 's5': '#8c5c3c'}
 HAIR = {'black-brown': '#2f231d', 'dark-brown': '#4c2e20', 'brown': '#6e3b22', 'grey': '#a9a49c', 'white': '#ddd8cf'}
 # zones of an outfit -> the sheet colour kind they were drawn in
-ZONE_KIND = {'garment': 'tunic', 'second': 'shawl', 'cord': 'rope', 'apron': 'apron', 'head-cloth': 'ochre', 'band': 'apron'}
+ZONE_KIND = {'garment': 'tunic', 'second': 'shawl', 'cord': 'rope', 'apron': 'apron', 'head-cloth': 'ochre', 'band': 'apron', 'hose': 'hose'}
 
 BOXES = json.loads((K / 'body/head-boxes.json').read_text())
 BODIES = {   # map: the body's part map; box: where its head sheet sits; collar: the girl head sheets' collar must go

@@ -350,7 +350,7 @@
    * fill itself: there it eats into the letters. No blur anywhere, the drop is hard ink.
    */
   .lp-comic-america {
-    --lp-ca-outline: 0.11em;
+    --lp-ca-outline: var(--lp-ca-outline-w, 0.11em);   /* a text layer's Thickness sets --lp-ca-outline-w */
     position: relative;
     display: inline-block;
     font-family: 'Luckiest Guy', var(--font-history), sans-serif;
@@ -364,7 +364,8 @@
   .lp-comic-america > span {
     position: relative;
     z-index: 2;
-    background: linear-gradient(#fff 50%, #aeb5c0 100%);
+    /* A text layer's own colour sets --lp-ca-fill / --lp-ca-shade (TextOverlayLayer.js comicLook). */
+    background: linear-gradient(var(--lp-ca-fill, #fff) 50%, var(--lp-ca-shade, #aeb5c0) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -379,8 +380,8 @@
     padding: inherit;
     overflow: inherit;
     text-overflow: inherit;
-    color: #000;
-    -webkit-text-stroke: var(--lp-ca-outline) #000;
+    color: var(--lp-ca-ink, #000);
+    -webkit-text-stroke: var(--lp-ca-outline) var(--lp-ca-ink, #000);
     pointer-events: none;
   }
 

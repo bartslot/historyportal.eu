@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
 use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\ServiceProvider;
+
+use function Livewire\before;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -46,6 +49,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->guardLessonClaims();
+
         // a local server on any port shows its own pictures, not those of whichever port APP_URL names
         if ($this->app->isLocal() && ! $this->app->runningInConsole()) {
             config(['filesystems.disks.public.url' => request()->getSchemeAndHttpHost().'/storage']);
@@ -86,5 +91,27 @@ class AppServiceProvider extends ServiceProvider
         $override = strtolower(trim((string) config('services.tts.provider_override')));
 
         return $override === '' || $override === 'elevenlabs';
+    }
+
+    /**
+     * Only one account edits a scene at a time: every Livewire call and property update of a component
+     * that uses GuardsLessonClaims is checked before anything runs (see that trait). `before` puts these
+     * ahead of Livewire's own features, so an event cannot reach its listener first.
+     */
+    private function guardLessonClaims(): void
+    {
+        $uses = static fn ($component) => in_array(GuardsLessonClaims::class, class_uses_recursive($component), true);
+
+        before('call', function ($component, $method, $params) use ($uses) {
+            if ($uses($component)) {
+                (fn () => $this->guardLessonClaimCall((string) $method, (array) $params))->call($component);
+            }
+        });
+
+        before('update', function ($component, $fullPath) use ($uses) {
+            if ($uses($component)) {
+                (fn () => $this->guardLessonClaimUpdate((string) $fullPath))->call($component);
+            }
+        });
     }
 }

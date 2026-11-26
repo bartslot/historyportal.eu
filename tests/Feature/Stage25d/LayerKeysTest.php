@@ -256,6 +256,28 @@ class LayerKeysTest extends TestCase
     }
 
     /** @param  array<string,mixed>  $stage */
+    public function test_a_stage_layer_pastes_into_another_stage_scene_where_it_was_with_its_keys(): void
+    {
+        $source = $this->sceneWith(['bundle' => 'nl-prehistory', 'set' => ['layers' => [
+            ['asset' => 'stone', 'depth' => 'mid', 'x' => 0.6],
+            ['asset' => 'fig-a', 'depth' => 'fg', 'x' => 0.4, 'z' => 9.0, 'scale' => 1.3, 'figure' => 'meisje', 'keys' => [['t' => 2.0, 'x' => 0.7]]],
+        ]]]);
+        $target = Scene::create([
+            'lesson_id' => $source->lesson_id, 'order' => 2, 'kind' => 'stage25d', 'script_segment' => 'y', 'duration_seconds' => 8,
+            'config' => ['stage25d' => ['bundle' => 'nl-prehistory', 'set' => ['layers' => [['asset' => 'tree', 'depth' => 'bg']]]]], 'status' => 'ready',
+        ]);
+
+        Livewire::actingAs($source->lesson->teacher)->test(Step3SceneConfigurator::class, ['lesson' => $source->lesson])
+            ->call('selectScene', $target->id)
+            ->call('duplicateObjects', ['s25_layer-1'], $source->id)
+            ->assertDispatched('stage25d:select', index: 1);
+
+        $layers = $target->fresh()->config['stage25d']['set']['layers'];
+        $this->assertCount(2, $layers);
+        $this->assertEquals(['asset' => 'fig-a', 'depth' => 'fg', 'x' => 0.4, 'z' => 9.0, 'scale' => 1.3, 'figure' => 'meisje', 'keys' => [['t' => 2.0, 'x' => 0.7]]], $layers[1], 'the same place, size, character and keys');
+        $this->assertCount(2, $source->fresh()->config['stage25d']['set']['layers'], 'the source scene is untouched');
+    }
+
     private function sceneWith(array $stage): Scene
     {
         $lesson = Lesson::create([

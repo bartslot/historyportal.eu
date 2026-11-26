@@ -34,12 +34,13 @@ class TwineImportTest extends TestCase
         $this->teacher = User::factory()->teacher()->create();
     }
 
-    private function upload(string $html, string $world = 'test-port')
+    private function upload(string $html, string $world = 'test-port', ?int $age = 12)
     {
-        return $this->actingAs($this->teacher)->post(route('teacher.lessons.import-twine'), [
+        return $this->actingAs($this->teacher)->post(route('teacher.lessons.import-twine'), array_filter([
             'story' => UploadedFile::fake()->createWithContent('story.html', $html),
             'world' => $world,
-        ]);
+            'age' => $age,
+        ], fn ($v) => $v !== null));
     }
 
     private function marcoPolo(): Lesson
@@ -131,14 +132,18 @@ class TwineImportTest extends TestCase
         $this->assertNotContains('narrator', $lines->pluck('speaker')->all());
         $this->assertSame('Father... even our breath freezes! And why won\'t our campfire burn properly up here?', $scenes['Pamir']->config['lines'][0]['text']);
 
-        // a figure layer is one of the teacher's characters, made from a kit body and marked to dress later
+        // a figure layer is one of the teacher's characters; Marco has a look of his own, already dressed
         $layer = collect($scenes['Venice']->config['stage25d']['set']['layers'])->firstWhere('figure', 'marco-polo');
         $marco = SvgAsset::find(Characters::idOf($layer['asset']));
         $this->assertSame('Marco Polo', $marco->title);
         $this->assertSame($this->teacher->id, $marco->user_id);
-        $this->assertTrue($marco->character['auto']);
+        $this->assertArrayNotHasKey('auto', $marco->character);
         $this->assertSame('man', $marco->character['recipe']['body']);
+        $this->assertSame('venice-tunic-satchel', $marco->character['recipe']['outfit']);
         $this->assertSame(7.0, (float) $layer['z']);
+        // anyone else is made from a kit body and marked to dress later
+        $niccolo = Characters::of($this->teacher)->firstWhere('title', 'Niccolò Polo');
+        $this->assertTrue($niccolo->character['auto']);
         $this->assertSame(4, Characters::of($this->teacher)->count());
     }
 
@@ -154,12 +159,85 @@ class TwineImportTest extends TestCase
         $this->assertFalse($lesson->import_report['seen']);
     }
 
+    public function test_a_marco_made_before_his_own_look_is_dressed_in_it_keeping_his_id(): void
+    {
+        $old = Characters::starter($this->teacher, 'Zafar', 'man');
+        $old->update(['title' => 'Marco']);
+        $this->artisan('characters:dress-named', ['email' => $this->teacher->email])->assertSuccessful();
+
+        $marco = $old->refresh();
+        $this->assertSame('venice-tunic-satchel', $marco->character['recipe']['outfit']);
+        $this->assertArrayNotHasKey('auto', $marco->character);
+        $this->assertSame(1, Characters::of($this->teacher)->count());
+    }
+
     public function test_a_file_that_is_not_a_twine_story_is_refused(): void
     {
         $this->upload('<html><body><h1>My essay</h1></body></html>')->assertSessionHasErrors('story');
         $this->upload((string) file_get_contents(base_path('tests/Fixtures/twine/marco-polo.html')), 'no-such-world')->assertSessionHasErrors('world');
 
         $this->assertSame(0, Lesson::count());
+    }
+
+    public function test_the_lesson_is_for_the_age_the_teacher_picked_and_in_the_storys_own_language(): void
+    {
+        $this->teacher->update(['teaching_locale' => 'en']);
+        $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
+            .'<tw-passagedata pid="1" name="Ravenna">NARRATOR: Het is de zomer van 1321 en de dichter is dood. Maar zijn boek is niet af, want de laatste hoofdstukken zijn weg.'."\n".'[[Zoek]]</tw-passagedata>'
+            .'<tw-passagedata pid="2" name="Zoek">NARRATOR: Zijn zoon Jacopo zoekt in het huis van zijn vader, maar hij vindt niets.</tw-passagedata>'
+            .'</tw-storydata>';
+
+        $this->upload($html, age: 8)->assertRedirect();
+        $lesson = Lesson::sole();
+
+        $this->assertSame('Age 8', $lesson->grade_level);
+        $this->assertSame('nl', $lesson->language);
+    }
+
+    public function test_the_age_of_the_class_is_asked_never_assumed(): void
+    {
+        $story = (string) file_get_contents(base_path('tests/Fixtures/twine/marco-polo.html'));
+
+        $this->upload($story, age: null)->assertSessionHasErrors('age');
+        $this->upload($story, age: 13)->assertSessionHasErrors('age');   // only the ages quick lesson creation offers
+        $this->assertSame(0, Lesson::count());
+
+        $this->upload($story, age: 14)->assertRedirect();
+        $this->assertSame(['Age 14', 'en'], [Lesson::sole()->grade_level, Lesson::sole()->language]);
+    }
+
+    public function test_the_story_becomes_an_outline_with_the_cast_colours_and_a_brief_per_scene(): void
+    {
+        $html = '<tw-storydata name="Dante" startnode="1" format="Harlowe">'
+            .'<tw-passagedata pid="1" name="Node-Ravenna">SETTING: Ravenna, September 1321'."\n".'Night, a narrow room. Jacopo Alighieri in a turquoise cloak leans over loose pages.'."\n"
+            .'NARRATOR: A poet has just died in this little room.'."\n".'JACOPO: The ending is gone.'."\n".'[[Go on | Node-Groet]]</tw-passagedata>'
+            .'<tw-passagedata pid="2" name="Node-Groet">SETTING: Rome and Florence, 1301-1302'."\n".'A street. Beatrice in white greets Dante, and Jacopo watches.'."\n"
+            .'NARRATOR: She greets him.'."\n".'DANTE: What does this mean?</tw-passagedata>'
+            .'<tw-passagedata pid="3" name="Cast of Characters">* Dante Alighieri (9 to 56): poet from Florence. Colour: red.'."\n"
+            .'* Jacopo Alighieri (son): young poet. Colour: turquoise'."\n".'* Beatrice: always in white, as a girl and as a woman. Kleur: white.</tw-passagedata>'
+            .'</tw-storydata>';
+
+        $this->upload($html)->assertRedirect();
+        $lesson = Lesson::sole();
+
+        $this->assertSame([
+            ['name' => 'Dante Alighieri', 'colour' => 'red', 'look' => '9 to 56. poet from Florence.'],
+            ['name' => 'Jacopo Alighieri', 'colour' => 'turquoise', 'look' => 'son. young poet.'],
+            ['name' => 'Beatrice', 'colour' => 'white', 'look' => 'always in white, as a girl and as a woman.'],
+        ], $lesson->outline['cast']);
+        [$ravenna, $groet] = $lesson->outline['scene_briefs'];
+        // a full name in the shot is one person: Jacopo Alighieri never names Dante through the surname
+        $this->assertSame(['order' => 1, 'kind' => 'narration', 'characters' => ['Jacopo Alighieri'], 'location' => 'Ravenna', 'year' => '1321',
+            'image_prompt_seed' => 'Night, a narrow room. Jacopo Alighieri in a turquoise cloak leans over loose pages.'], $ravenna);
+        // named in the shot by a first name, or speaking: Jacopo watches without a line and still gets his sheet
+        $this->assertSame(['Dante Alighieri', 'Jacopo Alighieri', 'Beatrice'], $groet['characters']);
+        $this->assertSame(['Rome and Florence', '1301'], [$groet['location'], $groet['year']]);
+
+        // the setting names the scene's place and year, and is never read aloud
+        $scenes = $this->scenes($lesson);
+        $this->assertSame(['Ravenna', '1321'], [$scenes['Ravenna']->location, $scenes['Ravenna']->year]);
+        $this->assertSame('A poet has just died in this little room.', $scenes['Ravenna']->script_segment);
+        $this->assertStringNotContainsString('SETTING', $scenes['Ravenna']->config['shot_note']);
     }
 
     public function test_story_code_and_shapes_that_do_not_fit_still_import_with_notes(): void

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assetIcon, assetLabel, layerLabel, numbered } from '../labels.js'
+import { assetIcon, assetLabel, layerLabel, numbered, plantLabel } from '../labels.js'
 
 describe('stage25d labels', () => {
   it('names a picture from its id, in English or Dutch', () => {
@@ -44,5 +44,13 @@ describe('assetIcon', () => {
 describe('a Character-tab person keeps the name as typed (Twine import 11-17: "Marco polo")', () => {
   it('uses the asset name over the char tag', () => {
     expect(layerLabel({}, { id: 'chr-516', layer: 'figure', tags: ['char:marco-polo'], name: { en: 'Marco Polo' } })).toBe('Marco Polo')
+  })
+})
+
+describe('plantLabel: a plant on the terrain\'s Plants list', () => {
+  it('a library picture reads its own name, a sheet cell its plant tag', () => {
+    expect(plantLabel({ key: 'grass-tall-01', asset: 'grass-tall-01', tags: ['grass'] }, { id: 'grass-tall-01' }, 'nl')).toBe('Hoog gras')
+    expect(plantLabel({ key: 'ground-sprites-01#2', asset: 'ground-sprites-01', tags: ['heather', 'heath', 'ground'] }, null, 'nl')).toBe('Heide')
+    expect(plantLabel({ key: 's#4', asset: 's', tags: ['forest', 'moss', 'undergrowth'] }, null, 'en')).toBe('Moss')
   })
 })

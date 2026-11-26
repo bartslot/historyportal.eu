@@ -62,6 +62,61 @@ final class LocalChatGpt
         }
     }
 
+    /**
+     * A new picture from `$prompt` (no image 1), or `$images` edited as `$prompt` asks when given: the first is the
+     * picture being changed, the rest are references, in that order. PNG bytes; a transparent one is keyed out of green.
+     *
+     * @param  list<string>  $images  paths
+     *
+     * @throws RuntimeException when ChatGPT is closed, over its limit, or makes no picture
+     */
+    public function picture(string $prompt, string $size, bool $transparent = false, array $images = [], int $timeout = 600): string
+    {
+        $dir = $this->workdir();
+        try {
+            $name = 'result.png';
+            [$w, $h] = array_map('intval', explode('x', $size.'x'));
+            $shape = $w > 0 && $h > 0 ? ($w > $h ? 'landscape' : ($w < $h ? 'portrait' : 'square')).", {$w}x{$h} pixels" : '';
+            $intro = match (true) {
+                $images === [] => '',
+                self::onlyReferences($images) => 'Make a NEW picture. The attached images are references only, in the order given: '
+                    .'take from them only what the prompt says to take, never their subjects or composition, and do not edit or redraw any of them. ',
+                default => 'Image 1 is the picture to change; any further images are references, in the order given. ',
+            };
+            $full = $intro.$prompt."\n\n"
+                .'Generate the image'.($shape !== '' ? " ({$shape})" : '').", and save it in the current folder as {$name}."
+                .($transparent ? ' '.self::GREEN_BACKGROUND : '');
+            $reply = $this->run($full, $images, $dir, $timeout);
+            $made = collect(File::allFiles($dir))->first(fn ($f) => in_array(strtolower($f->getExtension()), self::IMAGE_SUFFIXES, true));
+            if ($made === null) {
+                throw new RuntimeException('ChatGPT made no picture: '.mb_substr($reply, 0, 300));
+            }
+
+            return $transparent ? FitEditedPicture::keyOut($made->getPathname()) : (string) file_get_contents($made->getPathname());
+        } finally {
+            File::deleteDirectory($dir);
+        }
+    }
+
+    /**
+     * Name every input file with this prefix (anywhere in its name) to ask for a new picture with all of them as
+     * references. Without it, image 1 is edited. The name survives the relay (bart, 2026-11-23: story pictures were
+     * sent with the plates first and ChatGPT was told to change the Caesar plate).
+     */
+    public const REFERENCE_MARK = 'styleref-';
+
+    /** @param  list<string>  $images  file paths */
+    public static function onlyReferences(array $images): bool
+    {
+        foreach ($images as $image) {
+            if (! str_contains(basename($image), self::REFERENCE_MARK)) {
+                return false;
+            }
+        }
+
+        return $images !== [];
+    }
+
     /** The answer of one `codex exec`: the prompt goes on stdin, because -i takes several values and would swallow it. */
     private function run(string $prompt, array $images, string $dir, int $timeout): string
     {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize, groundSlots, GROUND_SLOTS_MAX, slotAt, grainOctave } from './ground'
+import { bandAt, bandColour, BG_FEATHER, bottomColour, featherOf, groundOptions, defaultNear, hexRgb, inkLevel, landTop, groundLine, GROUND_LINES, nearOptions, skylineRow, PAPER, resolveGround, rowBands, SKY_BANDS, stainSize, groundSlots, GROUND_SLOTS_MAX, slotAt, grainOctave } from './ground'
 import { libraryUrlFor } from './library'
 import type { Asset, Library } from './types'
 
@@ -225,5 +225,34 @@ describe('the watercolour grain on the floor (grainOctave)', () => {
   })
   it('a larger Grain size makes bigger dots', () => {
     expect(grainOctave(10, 2).scale).toBeLessThan(grainOctave(10, 1).scale)
+  })
+})
+
+describe('groundLine: where a far strip\'s ground meets its treeline (Bart 11-24)', () => {
+  // w x h picture: clear sky over `top`, a dark band (trees) to `foot`, a light field under it
+  const strip = (w: number, h: number, top: number, foot: number, field = 200) => {
+    const d = new Uint8ClampedArray(w * h * 4)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, v = y < top * h ? 0 : y < foot * h ? 70 : field
+      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = y < top * h ? 0 : 255
+    }
+    return d
+  }
+  it('the foot of the trees, not their tops', () => {
+    expect(landTop(strip(40, 200, 0.2, 0.32), 40, 200)).toBeCloseTo(0.2, 2)
+    expect(groundLine(strip(40, 200, 0.2, 0.32), 40, 200)).toBeCloseTo(0.32, 1)
+  })
+  it('no clear step (a sea, a plain of one colour): where the paint starts', () => {
+    expect(groundLine(strip(40, 200, 0.2, 0.32, 70), 40, 200)).toBeCloseTo(0.2, 2)
+  })
+  it('a step far under the land start is not looked for', () => {
+    expect(groundLine(strip(40, 200, 0.1, 0.7), 40, 200)).toBeCloseTo(0.1, 2)
+  })
+})
+
+describe('GROUND_LINES', () => {
+  it('holds a share of the height for each far strip the step misses', () => {
+    for (const v of Object.values(GROUND_LINES)) expect(v > 0 && v < 1).toBe(true)
+    expect(GROUND_LINES['trb-forest-backdrop-01']).toBe(0.88)
   })
 })

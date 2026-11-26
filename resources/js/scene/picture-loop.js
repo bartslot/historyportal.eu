@@ -21,9 +21,43 @@ export function loopSource (url, video = null) {
   return can === 'probably' || can === 'maybe' ? h264.replace(/\.mp4(\?.*)?$/, '.av1.mp4$1') : h264
 }
 
+// Every loop this page made, so one call can hold or release them all: the player's pause button
+// and the editor's timeline are the scene's clock, and a picture still moving while the class is
+// paused is a second clock nobody can stop (Bart, 2026-11-26). Stopped loops (src removed) drop out.
+const LIVE = new Set()
+let held = false
+
+const live = () => {
+  for (const v of LIVE) if (!v.getAttribute('src')) LIVE.delete(v)
+  return [...LIVE]
+}
+
+/** Hold (pause) or release every loop on the page, including ones made while held. */
+export function setLoopsPaused (pause) {
+  held = !!pause
+  for (const v of live()) {
+    if (held) v.pause()
+    else v.play?.()?.catch(() => { /* autoplay refused: the frame stays */ })
+  }
+}
+
+/** Put every loop at `seconds` into the scene, wrapped to its length: a scrub, or a lap restart. */
+export function seekLoops (seconds) {
+  const t = Number(seconds)
+  if (!(t >= 0)) return
+  for (const v of live()) {
+    const d = v.duration
+    if (Number.isFinite(d) && d > 0) v.currentTime = t % d
+  }
+}
+
 /** A muted, looping, inline video element for a loop URL. */
 export function loopVideo (url) {
   const video = document.createElement('video')
+  LIVE.add(video)
+  // Made while held: it still has to reach 'playing' once (callers wait for that to know it plays,
+  // and the first frame shows), then it stops where the clock is.
+  video.addEventListener('playing', () => { if (held) video.pause() })
   video.className = LOOP_CLASS
   video.src = loopSource(url, video)
   video.muted = true          // muted BEFORE play: browsers only autoplay silent video
@@ -55,6 +89,15 @@ export function attachLoop (host, url, { fit = 'cover', objectPosition = '' } = 
   host.appendChild(video)
   video.play?.()?.catch(() => { /* autoplay refused: the still stays, which is fine */ })
   return video
+}
+
+/** Stop every loop anywhere inside `root` (a layered panel being torn down), so none lingers in the page's set. */
+export function stopLoopsIn (root) {
+  root?.querySelectorAll?.(`video.${LOOP_CLASS}`).forEach(v => {
+    v.pause()
+    v.removeAttribute('src')
+    v.load()
+  })
 }
 
 /** Remove the loop from `host` and stop it downloading. */

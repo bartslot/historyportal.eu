@@ -65,6 +65,8 @@ trait EditsSceneLinks
             $this->selectScene($scene->id);
         }
         $this->dispatch('inspector-open');
+        // The new layer is the selection: its card shows on the stage (choices-preview.js).
+        $this->dispatch('scene-object-selected', id: '__choices__');
         $this->dispatch('toast', message: __('Two choices added. Set where each one goes.'));
     }
 
@@ -80,6 +82,75 @@ trait EditsSceneLinks
         }
         $links[$index][$field] = $field === 'label' ? SceneLinks::label($value) : (is_numeric($value) ? (int) $value : null);
         $this->writeSceneLinks($scene, $links, $this->endsHere($scene));
+    }
+
+    /**
+     * An old Decision point (a question scene and its option scenes, branch_group) becomes the Choices layer
+     * (Bart 2026-11-21, on prod: "the ux is missing for the choice"). Nothing is deleted: the question scene
+     * gets one choice per option scene, each option scene goes on past the others to the scene after the
+     * group (or ends the lesson when there is none), and the scenes are ordinary story scenes again.
+     * Class meters and their effects are not carried over: a Choices layer has none.
+     */
+    public function convertDecisionToChoices(int $sceneId): void
+    {
+        $scene = $this->lesson->scenes()->findOrFail($sceneId);
+        if ($scene->branch_group === null) {
+            return;
+        }
+        $group = $this->lesson->scenes()->where('branch_group', $scene->branch_group)->orderBy('order')->get();
+        // An option can be several scenes in a row (LessonImporter::branch, StoryGameEngine.resolveGroups): one run
+        // per role, and the class plays the whole run it picked.
+        $runs = $group->filter(fn (Scene $s): bool => str_starts_with((string) $s->branch_role, 'option'))
+            ->groupBy('branch_role')->map(fn ($run) => $run->sortBy('order')->values())->values();
+        $question = $group->filter(fn (Scene $s): bool => $s->branch_role === 'question')->last()
+            ?? $this->lesson->scenes()->where('order', '<', $group->min('order'))->orderByDesc('order')->first();
+        if ($runs->isEmpty() || $question === null) {
+            $this->dispatch('toast', type: 'error', message: __('Choices go on a story scene. Add or select one first.'));
+
+            return;
+        }
+        $lastOfGroup = (int) $group->sortBy('order')->last()->id;
+        $after = $this->lesson->scenes()->where('order', '>', $group->max('order'))->orderBy('order')->value('id');
+        // Each run's button text, read before the branch fields are cleared below.
+        $links = $runs->take(SceneLinks::MAX_LINKS)
+            ->map(function ($run): array {
+                $label = $run->map(fn (Scene $s): string => trim((string) $s->branch_choice_label))->first(fn (string $l): bool => $l !== '');
+
+                return ['label' => SceneLinks::label($label ?? $run->first()->chapterName()), 'to' => (int) $run->first()->id];
+            })
+            ->values()->all();
+
+        foreach ($group as $member) {
+            $member->update(['branch_group' => null, 'branch_role' => null, 'branch_choice_label' => null]);
+        }
+        $nextInGroup = fn (Scene $s): ?int => ($n = $group->sortBy('order')->first(fn (Scene $g): bool => $g->order > $s->order)) ? (int) $n->id : null;
+        foreach ($runs as $run) {
+            foreach ($run as $i => $member) {
+                $next = $run[$i + 1] ?? null;
+                if ($next !== null) {
+                    // Within a run: on to its next scene, jumping over another option's scenes in between.
+                    if ($nextInGroup($member) !== (int) $next->id) {
+                        $this->writeSceneLinks($member->fresh(), [['label' => '', 'to' => (int) $next->id]], false);
+                    }
+                } elseif ($after === null) {
+                    $this->writeSceneLinks($member->fresh(), [], true);   // the lesson ends after every option
+                } elseif ((int) $member->id !== $lastOfGroup) {
+                    $this->writeSceneLinks($member->fresh(), [['label' => '', 'to' => (int) $after]], false);   // past the other options
+                }
+            }
+        }
+        $question = $question->fresh();
+        if (ChoicePrompt::prompt($question->config) === '') {
+            $question->config = ['links_prompt' => ChoicePrompt::forNewChoices($question)] + ($question->config ?? []);
+        }
+        $this->writeSceneLinks($question, $links, false);
+
+        unset($this->selectedSceneModel, $this->scenes);
+        $this->selectScene($question->id);
+        $this->dispatch('inspector-open');
+        // The new layer is the selection: its card shows on the stage (choices-preview.js).
+        $this->dispatch('scene-object-selected', id: '__choices__');
+        $this->dispatch('toast', message: __('This decision point is now a Choices layer on the scene.'));
     }
 
     /** What the narrator says before reading the choices out. Emptied, the narrator reads only the choices. */
@@ -187,7 +258,7 @@ trait EditsSceneLinks
         // The inspector and the rail read these per request: let them see the new links.
         unset($this->selectedSceneModel, $this->scenes);
         // The object list shows a Choices row while the scene has the layer.
-        $this->dispatch('scene-choices', sceneId: $scene->id, has: $links !== [] || $ending);
+        $this->dispatch('scene-choices', sceneId: $scene->id, has: $links !== [] || $ending, links: array_values((array) (($scene->config ?? [])['links'] ?? [])));
 
         // saveSelected() writes the whole config back from the inspector's copy: keep it in step,
         // or the next edit of anything else in this scene would put the old links back.

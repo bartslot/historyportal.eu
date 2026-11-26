@@ -2388,6 +2388,99 @@ html[data-inspector-w] aside[data-resizable-drawer] {
 .quiz-answer-2 { background-color: var(--quiz-answer-2); color: #fff; }
 .quiz-answer-3 { background-color: var(--quiz-answer-3); color: #fff; }
 
+/* ── Several accounts in one lesson (resources/js/editor/collab.js) ─────────────────────────────────────
+   Each person keeps one colour (LessonCollaboration::person). It is the only colour here, and it is
+   identity, not chrome: a ring and a dot, never a fill behind text. */
+@layer components {
+    .collab-avatar, .collab-chip {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 9999px;
+        background: var(--color-base-200);
+        border: 2px solid var(--collab-color, var(--color-base-content));
+        color: var(--color-base-content);
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    /* On a rail thumb: whoever is on that scene. The thumb wrapper is the anchor. */
+    [data-scene-block] { position: relative; }
+    .collab-chips {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
+        display: flex;
+        gap: 0.125rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .collab-chip {
+        width: auto;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        padding: 0 0.25rem;
+        background: var(--color-base-300);
+    }
+
+    /* Somebody else holds the scene on screen: the work area (not the rail, not the top bar) stops taking
+       clicks. Above the docked inspector (z-50), below every modal. */
+    .collab-lock {
+        position: fixed;
+        inset: 4rem 0 0 var(--rail-w, 11rem);
+        z-index: 55;
+        cursor: not-allowed;
+        background: color-mix(in oklab, var(--color-base-100) 25%, transparent);
+    }
+    .collab-lock-bar,
+    .collab-notice {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+        cursor: default;
+        border: 1px solid var(--color-base-300);
+        background: var(--color-base-200);
+    }
+    .collab-lock-bar { top: 5rem; }
+    .collab-notice { bottom: 1.5rem; z-index: 60; }
+}
+
+/* Another editor's pointer over the stage (collab-realtime.js): a dot in their colour and their name. */
+@layer components {
+    .collab-cursor {
+        position: absolute;
+        z-index: 46;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        pointer-events: none;
+        transform: translate(-0.3rem, -0.3rem);
+        transition: left 100ms linear, top 100ms linear;
+    }
+    .collab-cursor-dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 9999px;
+        background: var(--collab-color, var(--color-base-content));
+        border: 1px solid var(--color-base-100);
+    }
+    .collab-cursor-name {
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.375rem;
+        background: var(--color-base-100);
+        border: 1px solid var(--collab-color, var(--color-base-content));
+        color: var(--color-base-content);
+        font-size: 0.75rem;
+        line-height: 1rem;
+        white-space: nowrap;
+    }
+}
+
 /* ─── A voyage stop's button on the map, as a comic speech bubble (Bart 2026-11-23: "how do we make
    these buttons more comic style?"). Cream paper, a thick ink outline drawn a little unevenly, a hard
    ink shadow and no glow; the tail that points at the stop's dot is SVG (voyage-tour.js stopBubbleTail).
@@ -2421,3 +2514,101 @@ html[data-inspector-w] aside[data-resizable-drawer] {
     80% { transform: rotate(-1deg); }
 }
 @media (prefers-reduced-motion: reduce) { .lp-stop-bubble:hover { animation: none; } }
+
+/* ── The Map block's motion preset tiles (components/lesson/map-motion-presets.blade.php) ─────────────────────────
+   Blues and white only (Bart 11-24). Each rests on a picture of its move (.lp-mp-cue over the map) and plays the move
+   while the pointer (or focus) is on it: the cue fades and the map does what the camera will. */
+.lp-mp { --mp-sea: color-mix(in oklab, var(--color-info) 30%, #0b1a33); --mp-land: color-mix(in oklab, var(--color-info) 55%, #ffffff); }
+.lp-mp-frame { position: relative; display: block; aspect-ratio: 8 / 5; overflow: hidden; border-radius: 0.25rem; perspective: 220px; background: var(--mp-sea); }
+.lp-mp-frame svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
+.lp-mp-sea { fill: var(--mp-sea); }
+.lp-mp-land { fill: var(--mp-land); }
+.lp-mp-coast { fill: none; stroke: #ffffff; stroke-width: 0.8; stroke-linejoin: round; }
+.lp-mp-country { fill: #ffffff; fill-opacity: 0.35; stroke: #ffffff; stroke-width: 1; stroke-linejoin: round; }
+.lp-mp-pin { fill: var(--mp-sea); stroke: #ffffff; stroke-width: 1.5; }
+.lp-mp-cue { pointer-events: none; transition: opacity 0.25s; z-index: 1; transform: translateZ(40px); }
+.lp-mp-space { fill: #0b1a33; }
+.lp-mp-globe { fill: var(--mp-sea); stroke: #ffffff; stroke-width: 1.5; }
+.lp-mp-globe-land { fill: var(--mp-land); }
+.lp-mp-cue-dot { fill: #ffffff; }
+.lp-mp-cue-box { fill: none; stroke: #ffffff; stroke-width: 1.6; stroke-dasharray: 4 3; }
+.lp-mp-cue-line { fill: none; stroke: #ffffff; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+.lp-mp-cue-route { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-dasharray: 5 3.5; stroke-linecap: round; }
+.lp-mp-cue-text { fill: #ffffff; font: 700 12px system-ui, sans-serif; paint-order: stroke; stroke: var(--mp-sea); stroke-width: 3px; }
+/* The tilt tile rests tilted; the zoom-out tile rests close in. */
+.lp-mp-cam-tiltZoomOut .lp-mp-view { transform: rotateX(58deg) scale(1.6); }
+.lp-mp-cam-zoomOut .lp-mp-view { transform: scale(1.9); }
+.lp-mp-cam-zoomOut .lp-mp-cue { opacity: 0.9; }
+
+.lp-mp-terr-fill { fill: #ffffff; fill-opacity: 0.35; }
+.lp-mp-terr-line { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
+.lp-mp-terr-goal { fill: none; stroke: #ffffff; stroke-width: 1; stroke-dasharray: 3 2.5; opacity: 0.7; }
+.lp-mp-terr { transform-box: view-box; }
+/* Rest: a picture of each move. */
+.lp-mp-terr-draw .lp-mp-terr-line { stroke-dashoffset: 58; }
+.lp-mp-terr-draw .lp-mp-terr-fill, .lp-mp-terr-drawThenFill .lp-mp-terr-fill { fill-opacity: 0; }
+.lp-mp-terr-fade .lp-mp-terr { opacity: 0.45; }
+.lp-mp-terr-grow .lp-mp-terr { transform: scale(0.45); }
+.lp-mp-terr-fadeOut .lp-mp-terr { opacity: 0.3; }
+
+.lp-mp:is(:hover, :focus-visible) .lp-mp-cue { opacity: 0; }
+.lp-mp:is(:hover, :focus-visible) :is(.lp-mp-view, .lp-mp-terr, .lp-mp-terr-line, .lp-mp-terr-fill) {
+  animation-duration: 2.8s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-fill-mode: both;
+}
+.lp-mp-cam-fromSpace:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-from-space; }
+.lp-mp-cam-zoomIn:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-zoom-in; }
+.lp-mp-cam-zoomOut:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-zoom-out; }
+.lp-mp-cam-aToB:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-a-to-b; }
+.lp-mp-cam-tiltZoomOut:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-tilt-out; }
+.lp-mp-cam-drift:is(:hover, :focus-visible) .lp-mp-view { animation-name: lp-mp-drift; animation-timing-function: linear; }
+.lp-mp-terr-draw:is(:hover, :focus-visible) .lp-mp-terr-line { animation-name: lp-mp-draw; }
+.lp-mp-terr-drawThenFill:is(:hover, :focus-visible) .lp-mp-terr-line { animation-name: lp-mp-draw; }
+.lp-mp-terr-drawThenFill:is(:hover, :focus-visible) .lp-mp-terr-fill { animation-name: lp-mp-fill-after; }
+.lp-mp-terr-fade:is(:hover, :focus-visible) .lp-mp-terr { animation-name: lp-mp-fade-in; }
+.lp-mp-terr-grow:is(:hover, :focus-visible) .lp-mp-terr { animation-name: lp-mp-grow; }
+.lp-mp-terr-fadeOut:is(:hover, :focus-visible) .lp-mp-terr { animation-name: lp-mp-fade-out; }
+
+@keyframes lp-mp-from-space { 0%, 15% { transform: scale(0.12); } 80%, 100% { transform: rotateX(30deg) scale(1.1); } }
+@keyframes lp-mp-zoom-in { 0%, 10% { transform: scale(0.45); } 80%, 100% { transform: scale(1.6); } }
+@keyframes lp-mp-zoom-out { 0%, 10% { transform: scale(1.9); } 80%, 100% { transform: scale(0.6); } }
+@keyframes lp-mp-a-to-b { 0%, 10% { transform: translateX(26%) scale(1.3); } 45% { transform: translateX(13%) scale(1); } 85%, 100% { transform: scale(1.3); } }
+@keyframes lp-mp-tilt-out { 0%, 10% { transform: rotateX(58deg) scale(1.6); } 85%, 100% { transform: none; } }
+@keyframes lp-mp-drift { 0% { transform: none; } 100% { transform: scale(1.2) rotate(7deg); } }
+@keyframes lp-mp-draw { 0%, 8% { stroke-dashoffset: 100; } 70%, 100% { stroke-dashoffset: 0; } }
+@keyframes lp-mp-fill-after { 0%, 70% { fill-opacity: 0; } 92%, 100% { fill-opacity: 0.35; } }
+@keyframes lp-mp-fade-in { 0%, 10% { opacity: 0; } 70%, 100% { opacity: 1; } }
+@keyframes lp-mp-grow { 0%, 10% { transform: scale(0.3); } 80%, 100% { transform: scale(1); } }
+@keyframes lp-mp-fade-out { 0%, 15% { opacity: 1; } 75%, 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mp * { animation: none !important; }
+}
+
+/* ── The linked territory's label on the map (resources/js/map/territory-label.js): the voyage stop's lettering, ink on
+   a paper halo, so it reads over sea, land and the territory's own hatching. Above the map's paper grain (z 1). */
+.lp-territory-label { position: absolute; z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 0.05em;
+  font-family: 'ComicRoma Lettering', 'Comic Neue', sans-serif; line-height: 1.05; color: #1b1712; max-width: 45%;
+  text-shadow: 0 0 2px #fbf2d9, 0 0 4px #fbf2d9, 0 0 6px #fbf2d9, 0 0 10px #fbf2d9; }
+.lp-territory-label[hidden] { display: none; }
+.lp-territory-label-name { font-size: 1em; }
+.lp-territory-label-name + .lp-territory-label-line { font-size: 0.8em; }
+
+/* ── The story map (resources/js/editor/story-map.js): the lesson's scenes as cards with lines between them. The paper is
+   a dot grid that moves with the map; the lines are the panel greys, the ones touching the selected card go white, and
+   "the next scene in the list" is dashed because nobody drew it: it is what happens when a scene has no links. */
+@layer components {
+  .story-map-grid {
+    background-color: var(--color-card-surface);
+    background-image: radial-gradient(circle, var(--color-panel-hairline) 1.2px, transparent 1.4px);
+  }
+  .story-map-edge { fill: none; stroke: var(--color-panel-label); stroke-width: 1.5; stroke-linecap: round; }
+  .story-map-edge.is-next { stroke-dasharray: 4 6; opacity: 0.7; }
+  .story-map-edge.is-lit { stroke: var(--color-panel-value); stroke-width: 2; opacity: 1; }
+  .story-map-edge.is-wiring { stroke: var(--color-panel-value); stroke-width: 2; stroke-dasharray: 6 5; }
+  .story-map-dot { position: absolute; display: grid; place-items: center; width: 32px; height: 32px; top: 50%; translate: 0 -50%; cursor: crosshair; }
+  .story-map-dot::before { content: ''; width: 12px; height: 12px; border-radius: 9999px; border: 1.5px solid var(--color-panel-label);
+    background: var(--color-card-surface); transition: background-color 120ms, border-color 120ms; }
+  .story-map-dot:hover::before, .story-map-dot:focus-visible::before { background: var(--color-panel-value); border-color: var(--color-panel-value); }
+  .story-map-dot.is-in { cursor: default; pointer-events: none; }
+  .story-map-dot.is-in::before { width: 8px; height: 8px; }
+}
