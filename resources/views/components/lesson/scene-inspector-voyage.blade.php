@@ -228,17 +228,18 @@
             </section>
         @endif
 
-        {{-- CLICKABLE ON THE MAP — whether the class gets a button to open this stop (config.gallery.button).
+        {{-- OPENS ON ARRIVAL — whether this stop opens for the class (config.gallery.button): by itself when they
+             arrive (Bart 2026-11-26), and again from its bubble.
              Bart 2026-11-23: an empty stop kept a button the children could click. Unset, it is on once the stop
              has a story or a picture (App\Support\VoyageStopButton); flipping it pins the teacher's choice. Off,
              the name stays on the map as plain text and the pictures stay as pictures. --}}
         @php $stopButtonOn = \App\Support\VoyageStopButton::isOn($config); @endphp
         <div class="flex items-center justify-between gap-3 border-t border-slate-700/50 pt-3" data-stop-button-switch>
             <span class="min-w-0">
-                <span class="block text-xs uppercase tracking-wider text-panel-hint">{{ __('Clickable on the map') }}</span>
-                <span class="block text-2xs text-panel-hint">{{ $stopButtonOn ? __('The class can open this stop.') : __('The class sees the name only.') }}</span>
+                <span class="block text-xs uppercase tracking-wider text-panel-hint">{{ __('Opens when the class arrives') }}</span>
+                <span class="block text-2xs text-panel-hint">{{ $stopButtonOn ? __('Opens by itself; the bubble opens it again.') : __('Nothing opens; the class sees the name only.') }}</span>
             </span>
-            <input type="checkbox" @checked($stopButtonOn) aria-label="{{ __('Clickable on the map') }}"
+            <input type="checkbox" @checked($stopButtonOn) aria-label="{{ __('Opens when the class arrives') }}"
                    wire:change="setStopButton($event.target.checked)"
                    class="toggle toggle-sm toggle-warning" />
         </div>
