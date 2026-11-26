@@ -99,11 +99,8 @@ class GenerateStoryPicture implements ShouldQueue
     private function references(): array
     {
         $out = [];
-        foreach (HistoryLineStyle::anchors(2) as $file) {
-            $path = HistoryLineStyle::anchorPath($file);
-            if (is_file($path)) {
-                $out[] = ['bytes' => (string) file_get_contents($path), 'name' => LocalChatGpt::REFERENCE_MARK.$file];
-            }
+        foreach (HistoryLineStyle::anchorBytes(2) as $file => $bytes) {
+            $out[] = ['bytes' => $bytes, 'name' => LocalChatGpt::REFERENCE_MARK.$file];
         }
 
         return $out;

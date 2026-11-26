@@ -164,6 +164,26 @@ final class HistoryLineStyle
         ));
     }
 
+    /**
+     * The style references of a pass as file name => bytes, in attach order.
+     *
+     * @return array<string, string>
+     *
+     * @throws \RuntimeException when a listed reference is not on disk
+     */
+    public static function anchorBytes(int $pass): array
+    {
+        $out = [];
+        foreach (self::anchors($pass) as $file) {
+            if (! is_file($path = self::anchorPath($file))) {
+                throw new \RuntimeException("History Lines style reference missing ({$file}).");
+            }
+            $out[$file] = (string) file_get_contents($path);
+        }
+
+        return $out;
+    }
+
     public static function anchorPath(string $file): string
     {
         return resource_path(self::ANCHOR_DIR.'/'.$file);

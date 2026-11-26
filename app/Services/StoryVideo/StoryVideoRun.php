@@ -144,11 +144,8 @@ final class StoryVideoRun
         }
 
         $images = [];
-        foreach (HistoryLineStyle::anchors(2) as $file) {
-            $path = HistoryLineStyle::anchorPath($file);
-            if (is_file($path)) {
-                $images[] = ElevenLabsMedia::inline((string) file_get_contents($path), $path);
-            }
+        foreach (HistoryLineStyle::anchorBytes(2) as $file => $bytes) {
+            $images[] = ElevenLabsMedia::inline($bytes, $file);
         }
 
         return [

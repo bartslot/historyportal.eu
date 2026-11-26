@@ -130,13 +130,13 @@ def review_sheet(lesson: Lesson, board: dict, path: Path, report: dict, regions:
     image = Image.open(path).convert('RGB')
     rows, cols = board['grid']
     items: list[tuple[str, Path | Image.Image]] = []
+    cut = boards.cut(image, rows, cols)
     for who in dict.fromkeys(w for boxes in (regions or {}).values() for w in boxes):
-        for n, (cell, _) in enumerate(boards.cut(image, rows, cols), 1):
+        for n, (cell, _) in enumerate(cut, 1):
             box = (regions or {}).get(str(n), {}).get(who)
             if box:
-                crop = cell.crop((round(box[0] * cell.width), round(box[1] * cell.height), round(box[2] * cell.width), round(box[3] * cell.height)))
-                items.append((f'{who}, shot {board["cells"][n - 1]["shot"]}', crop))
-    for n, ((cell, _), spec) in enumerate(zip(boards.cut(image, rows, cols), board['cells']), 1):
+                items.append((f'{who}, shot {board["cells"][n - 1]["shot"]}', boards.crop(cell, box)))
+    for n, ((cell, _), spec) in enumerate(zip(cut, board['cells']), 1):
         items.append((f'Shot {spec["shot"]} (cell {n})', cell))
         for who in spec.get('who', []):
             try:

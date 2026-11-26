@@ -75,9 +75,7 @@ def build(lesson: Lesson, scene_name: str, board_id: str, pass_: str, out: Path,
             person = people[who]
             sheet = Image.open(lesson.sheet(who, 'colour')).convert('RGB')
             for part, fixed in (person.get('palette') or {}).items():
-                box = person['swatches'][part]
-                rows.append((sheet.crop((round(box[0] * sheet.width), round(box[1] * sheet.height),
-                                         round(box[2] * sheet.width), round(box[3] * sheet.height))), fixed))
+                rows.append((boards.crop(sheet, person['swatches'][part]), fixed))
                 names.append(f'{person["name"]}\'s {part}')
         if rows:
             n = attach('colours', 'colour card cut from the approved sheets', boards.colour_card(rows))

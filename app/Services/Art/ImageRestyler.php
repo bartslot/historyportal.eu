@@ -223,14 +223,9 @@ class ImageRestyler
     /** @return list<array{bytes: string, name: string}> the shared anchor images for a pass, in attach order */
     private function anchors(int $pass): array
     {
-        return array_map(function (string $file) {
-            $path = HistoryLineStyle::anchorPath($file);
-            if (! is_file($path)) {
-                throw new RuntimeException("Restyle: style anchor missing ({$file}).");
-            }
+        $anchors = HistoryLineStyle::anchorBytes($pass);
 
-            return ['bytes' => (string) file_get_contents($path), 'name' => $file];
-        }, HistoryLineStyle::anchors($pass));
+        return array_map(fn (string $file, string $bytes) => ['bytes' => $bytes, 'name' => $file], array_keys($anchors), $anchors);
     }
 
     /** Share of pixels dark enough to count as ink, sampled on a 256px copy. */

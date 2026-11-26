@@ -184,6 +184,11 @@ def blocking_guide(scene: dict, board: dict, width: int = 1600) -> Image.Image:
     return image
 
 
+def crop(image: Image.Image, box) -> Image.Image:
+    """A box given as fractions (left, top, right, bottom) cut from a picture."""
+    return image.crop(tuple(round(v * s) for v, s in zip(box, image.size * 2)))
+
+
 def colour_card(rows: list[tuple[Image.Image, str]], size: int = 320) -> Image.Image:
     """One row per garment: the garment as painted on the approved sheet, and beside it its flat fixed colour."""
     card = Image.new('RGB', (size * 2 + 30, len(rows) * (size + 10) + 10), 'white')

@@ -148,10 +148,11 @@ def run(args) -> int | None:
     scene = lesson.scene(args.scene)
     board = lesson.board(scene, args.board)
 
+    regions = read(Path(args.regions)) if getattr(args, 'regions', None) else None
+
     if args.command == 'verify':
         report = verify.ink(board, Path(args.ink))
         target = Path(args.ink)
-        regions = read(Path(args.regions)) if args.regions else None
         if args.colour:
             target = Path(args.colour)
             report = verify.coloured(lesson, board, Path(args.ink), target, regions)
@@ -166,7 +167,6 @@ def run(args) -> int | None:
 
     if args.command == 'accept':
         target = Path(args.file)
-        regions = read(Path(args.regions)) if args.regions else None
         report = verify.ink(board, target) if args.pass_ == 'ink' else verify.coloured(lesson, board, Path(args.ink or ''), target, regions)
         if report['failures']:
             raise Refused('The checks still fail: ' + ', '.join(report['failures']))
