@@ -20,6 +20,7 @@
         "@vitest/ui": "^4.1.6",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
+        "d3-contour": "^4.0.3",
         "daisyui": "^5.5.19",
         "jsdom": "^29.1.1",
         "laravel-vite-plugin": "^2.0.0",
