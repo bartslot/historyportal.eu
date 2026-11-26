@@ -19,6 +19,10 @@ Toulon had no leg at all, which the map draws as a ship sailing across France.
                              index and label_at after it shifts with them.
   land <id> <i> --via lon,lat ...
                              insert overland waypoints (towns the road went through) after i.
+  grid                       rebuild public/map-chart/sea-grid.bin, the land mask the browser routes
+                             ships with (resources/js/timemap/sea-route.js). A lesson keeps its own
+                             copy of a route, and a teacher can drag one over an island; the player
+                             and the editor send any ship stretch that crosses land round it.
 
 Waypoints are the source of truth; this writes voyages.json in place with its own formatting
 (json indent 2, which round-trips the file byte for byte). Land is public/map-chart/land.geojson,
@@ -43,6 +47,14 @@ from shapely.prepared import prep
 ROOT = Path(__file__).resolve().parent.parent
 VOYAGES = ROOT / 'resources/js/timemap/voyages.json'
 LAND = ROOT / 'public/map-chart/land.geojson'
+GRID = ROOT / 'public/map-chart/sea-grid.bin'
+# sea-grid.bin: two land masks of GRID_RES degree cells. 'shore': the cell's centre is on land, what
+# a drawn route is measured against. 'solid': its four corners and its centre all are, the only cells
+# a ship can never enter, so a strait narrower than a cell (the Bosphorus, the Dardanelles) stays open
+# at a cost. Format: ASCII 'SG2', a uint8 cells-per-degree, uint16 cols, uint16 rows (little endian),
+# then shore and then solid, each per row from 90N down: a uint16 run count and that many uint16 runs,
+# alternating water/land, starting with water.
+GRID_RES = 0.125
 
 SAMPLES_PER_SEGMENT = 18  # voyages.js SAMPLES_PER_SEGMENT
 LAND_TRANSPORTS = {'horse', 'camel'}  # transports.json terrain: land
@@ -212,6 +224,38 @@ def sea_path(a, b, vias, land):
     return drop_spurs([list(c) for c in line.coords])
 
 
+def build_grid():
+    import struct
+
+    import numpy as np
+    from shapely import contains_xy
+
+    feats = json.loads(LAND.read_text())['features']
+    land = unary_union([shape(f['geometry']) for f in feats])
+    per = round(1 / GRID_RES)
+    cols, rows = 360 * per, 180 * per
+    lon = -180 + np.arange(cols + 1) * GRID_RES
+    lat = 90 - np.arange(rows + 1) * GRID_RES
+    gx, gy = np.meshgrid(lon, lat)
+    corner = contains_xy(land, gx, gy)
+    cx, cy = np.meshgrid(lon[:-1] + GRID_RES / 2, lat[:-1] - GRID_RES / 2)
+    centre = contains_xy(land, cx, cy)
+    solid = centre & corner[:-1, :-1] & corner[:-1, 1:] & corner[1:, :-1] & corner[1:, 1:]
+    out = bytearray(b'SG2' + struct.pack('<BHH', per, cols, rows))
+    for row in [*centre, *solid]:
+        runs, cur, n = [], False, 0
+        for v in row:
+            if bool(v) == cur:
+                n += 1
+            else:
+                runs.append(n)
+                cur, n = bool(v), 1
+        runs.append(n)
+        out += struct.pack(f'<H{len(runs)}H', len(runs), *runs)
+    GRID.write_bytes(bytes(out))
+    print(f'{GRID.relative_to(ROOT)}: {cols}x{rows}, {centre.mean() * 100:.1f}% land, {len(out) / 1024:.0f} KB')
+
+
 def parse_via(vals):
     return [[float(x) for x in s.split(',')] for s in (vals or [])]
 
@@ -221,6 +265,7 @@ def main():
     sub = ap.add_subparsers(dest='cmd', required=True)
     c = sub.add_parser('check')
     c.add_argument('id', nargs='?')
+    sub.add_parser('grid')
     for name in ('sea', 'land'):
         s = sub.add_parser(name)
         s.add_argument('id')
@@ -229,6 +274,8 @@ def main():
         s.add_argument('--dry', action='store_true')
     args = ap.parse_args()
 
+    if args.cmd == 'grid':
+        return build_grid()
     data = json.loads(VOYAGES.read_text())
     land = load_land()
     if args.cmd == 'check':

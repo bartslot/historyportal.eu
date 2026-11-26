@@ -3317,6 +3317,77 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
+     * Save the route the editor drew with its ship stretches sent round the land (resources/js/timemap/
+     * sea-route.js). A lesson's copy of a route can predate the catalog fix, or have a bend dragged
+     * over an island; the editor draws it at sea, and this stores what it drew, so the waypoint
+     * numbers its handles send keep matching the route on screen.
+     *
+     * Only bends may be added or moved: every leg keeps its other fields, and every stop (a leg's
+     * first and last waypoint) keeps its exact place.
+     *
+     * @param  array<int, mixed>  $waypoints
+     * @param  array<int, mixed>  $legWps
+     */
+    #[On('voyageRouteKeptAtSea')]
+    public function keepVoyageRouteAtSea(int $sceneId, array $waypoints, array $legWps, $labelAt = null): void
+    {
+        if (! $this->selectedScene || (int) ($this->selectedScene['id'] ?? 0) !== $sceneId) {
+            return;
+        }
+        $old = $this->voyageDefFor($this->selectedVoyageId());
+        $oldWps = array_values($old['waypoints'] ?? []);
+        $oldLegs = array_values($old['legs'] ?? []);
+        $n = count($waypoints);
+        // Fewer points is fine (a bend the route no longer needs goes); every stop is checked below.
+        if (! $oldLegs || $n < 2 || $n > count($oldWps) + 400 || count($legWps) !== count($oldLegs)) {
+            return;
+        }
+
+        $wps = [];
+        foreach (array_values($waypoints) as $p) {
+            if (! is_array($p) || count($p) < 2 || ! is_numeric($p[0] ?? null) || ! is_numeric($p[1] ?? null)) {
+                return;
+            }
+            $lng = (float) $p[0];
+            $lat = (float) $p[1];
+            if (! is_finite($lng) || abs($lng) > 720 || $lat < -90 || $lat > 90) {
+                return;
+            }
+            $wps[] = [round($lng, 3), round($lat, 3)];
+        }
+
+        $same = fn (array $a, array $b): bool => abs((float) $a[0] - (float) $b[0]) < 1e-3 && abs((float) $a[1] - (float) $b[1]) < 1e-3;
+        $legs = $oldLegs;
+        foreach (array_values($legWps) as $i => $wp) {
+            if (! is_array($wp) || count($wp) !== 2 || ! is_int($wp[0] ?? null) || ! is_int($wp[1] ?? null)) {
+                return;
+            }
+            $was = $oldLegs[$i]['wp'] ?? null;
+            foreach ([0, 1] as $k) {
+                if ($wp[$k] < 0 || $wp[$k] >= $n || ! is_array($was) || ! isset($oldWps[$was[$k]]) || ! $same($wps[$wp[$k]], $oldWps[$was[$k]])) {
+                    return;
+                }
+            }
+            $legs[$i]['wp'] = [$wp[0], $wp[1]];
+        }
+
+        $this->pushVoyageUndo();
+        $gc = $this->ensureVoyageDef();
+        if (! isset($gc['voyage_def']['legs'])) {
+            return;
+        }
+        $gc['voyage_def']['waypoints'] = $wps;
+        $gc['voyage_def']['legs'] = $legs;
+        if (is_int($labelAt) && $labelAt >= 0 && $labelAt < $n) {
+            $gc['voyage_def']['label_at'] = $labelAt;
+        }
+        $this->saveGameConfig($gc);
+        $this->lesson->refresh();
+        unset($this->voyageDef);
+        $this->selectSceneInternal($this->selectedSceneId);
+    }
+
+    /**
      * Drop a bend the teacher double-clicked on the map. Only an INTERIOR point of the current leg
      * may go: its start is the previous landfall and its end is this leg's landfall, and removing
      * either would re-route a different scene.

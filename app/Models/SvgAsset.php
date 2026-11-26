@@ -43,7 +43,7 @@ class SvgAsset extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'source', 'source_ref', 'source_url',
+        'user_id', 'lesson_id', 'source', 'source_ref', 'source_url',
         'collection', 'category', 'subcategory', 'era',
         'title', 'license', 'attribution',
         'svg_path', 'depth_path', 'cdn_url', 'width', 'height', 'view_box',
