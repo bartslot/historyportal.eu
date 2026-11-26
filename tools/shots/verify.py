@@ -42,8 +42,7 @@ def ink(board: dict, path: Path) -> dict:
     if rows * cols > 1 and not boards.gaps_clean(rgb, rows, cols):
         failures.append('grid')
         notes.append('Something is drawn across a gap between cells, or the grid is not even.')
-    values = colour.lab(rgb)
-    if float((np.hypot(values[..., 1], values[..., 2]) > 15).mean()) > 0.01:      # more than 1% clearly coloured
+    if _has_colour(rgb):
         failures.append('ink-has-colour')
         notes.append('The ink pass has colour or a tinted wash in it.')
     for n, cell in enumerate(_cells(rgb, board), 1):
@@ -51,6 +50,12 @@ def ink(board: dict, path: Path) -> dict:
         measured.append(row)
         failures += _ink_rules(row, board['kind'], f'Cell {n}', notes)
     return {'pass': 'ink', 'file': str(path), 'failures': sorted(set(failures)), 'notes': notes, 'cells': measured}
+
+
+def _has_colour(rgb: np.ndarray) -> bool:
+    """More than 1% of the picture is clearly coloured: an ink pass is black on white only."""
+    values = colour.lab(rgb)
+    return float((np.hypot(values[..., 1], values[..., 2]) > 15).mean()) > 0.01
 
 
 def _ink_rules(row: dict, kind: str, tag: str, notes: list[str]) -> list[str]:
@@ -71,9 +76,14 @@ def _ink_rules(row: dict, kind: str, tag: str, notes: list[str]) -> list[str]:
 
 def sheet(path: Path, kind: str = 'sheet') -> dict:
     """The ink gate on a single sheet (a character, a horse, a prop): ink, paper, grey, measured on the whole page."""
-    row = {**colour.coverage(colour.load(path)), 'grey': colour.grey_shading(colour.load(path))}
+    rgb = colour.load(path)
+    row = {**colour.coverage(rgb), 'grey': colour.grey_shading(rgb)}
     notes: list[str] = []
-    return {'file': str(path), **row, 'failures': sorted(set(_ink_rules(row, kind, Path(path).name, notes))), 'notes': notes}
+    failures = _ink_rules(row, kind, Path(path).name, notes)
+    if _has_colour(rgb):
+        failures.append('ink-has-colour')
+        notes.append(f'{Path(path).name}: it has colour in it; an ink sheet is black on white only.')
+    return {'file': str(path), **row, 'failures': sorted(set(failures)), 'notes': notes}
 
 
 def figures(path: Path) -> list[np.ndarray]:
@@ -121,12 +131,10 @@ def look_alike(paths: list[Path], size: int = 96) -> list[dict]:
         box = np.asarray(Image.fromarray(crop.astype(np.uint8) * 255).resize((size, size), Image.BILINEAR)) > 127
         return box, (xs.max() - xs.min() + 1) / (ys.max() - ys.min() + 1)
 
-    views = {Path(p).name: side(p) for p in paths}
+    views = [(str(p), side(p)) for p in paths]      # full paths: two sheets may share a file name
     out = []
-    names = list(views)
-    for i, a in enumerate(names):
-        for b in names[i + 1:]:
-            (x, rx), (y, ry) = views[a], views[b]
+    for i, (a, (x, rx)) in enumerate(views):
+        for b, (y, ry) in views[i + 1:]:
             overlap = float((x & y).sum() / max(1, (x | y).sum()))
             build = abs(rx - ry) / max(rx, ry)
             out.append({'a': a, 'b': b, 'overlap': round(overlap, 3), 'build_difference': round(build, 3),

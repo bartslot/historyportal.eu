@@ -111,7 +111,7 @@ def run(args) -> int | None:
             print(''.join(f'  - {n}\n' for n in report['notes']), end='')
         for pair in verify.look_alike([Path(p) for p in args.files]) if len(args.files) > 1 else []:
             failed |= pair['too_similar']
-            print(f'{pair["a"]} / {pair["b"]}: side-view outline overlap {pair["overlap"]}, proportions differ '
+            print(f'{Path(pair["a"]).name} / {Path(pair["b"]).name}: side-view outline overlap {pair["overlap"]}, proportions differ '
                   f'{pair["build_difference"]:.0%}' + (' TOO SIMILAR' if pair['too_similar'] else ' ok'))
         return 1 if failed else 0
 

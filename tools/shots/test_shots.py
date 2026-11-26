@@ -301,6 +301,14 @@ def test_soft_line_edges_are_not_grey_shading_but_a_wash_is(tmp_path):
     assert 'grey-shading' in washed['failures']
 
 
+def test_a_sheet_with_colour_in_it_is_not_an_ink_sheet(tmp_path):
+    path = _lines(tmp_path / 'red.png')
+    image = Image.open(path)
+    ImageDraw.Draw(image).rectangle([10, 10, 80, 60], fill=(200, 40, 40))
+    image.save(path)
+    assert 'ink-has-colour' in verify.sheet(path)['failures']
+
+
 def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
     blank = tmp_path / 'blank.png'
     Image.new('RGB', (400, 225), 'white').save(blank)
@@ -313,9 +321,12 @@ def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
 def test_two_animals_with_the_same_outline_and_build_are_too_similar(tmp_path):
     a, b = _lines(tmp_path / 'a.png'), _lines(tmp_path / 'b.png')
     c = _lines(tmp_path / 'c.png', horse=(420, 90))
-    pairs = {(p['a'], p['b']): p for p in verify.look_alike([a, b, c])}
+    pairs = {(Path(p['a']).name, Path(p['b']).name): p for p in verify.look_alike([a, b, c])}
     assert pairs[('a.png', 'b.png')]['too_similar']
     assert not pairs[('a.png', 'c.png')]['too_similar'], 'a longer, lower animal is a different animal'
+    (tmp_path / 'bay').mkdir(); (tmp_path / 'grey').mkdir()
+    same_name = verify.look_alike([_lines(tmp_path / 'bay' / 'ink.png'), _lines(tmp_path / 'grey' / 'ink.png')])
+    assert len(same_name) == 1 and same_name[0]['too_similar'], 'two sheets with one file name are still both compared'
 
 
 def test_an_ink_sheet_that_fails_the_gate_cannot_be_approved(lesson, tmp_path, monkeypatch):
