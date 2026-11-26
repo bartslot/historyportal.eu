@@ -1523,6 +1523,15 @@ export function renderVoyageTour(el, { voyage, def = null, view = 'flat', routeL
       // sailing, so nothing else advances the reveal). Matches what the animated sail() does.
       if (fog) fog.revealTo(L.f1, { force: true });
       map.jumpTo({ center: [L.end.lng, L.end.lat], zoom: L.followZoom, pitch: 0 });
+      // Nothing sails past the checkpoints here (reduced motion jumps to the landfall), so the class gets each
+      // one as a bubble on the route to open instead. The editor draws its own markers.
+      if (!editable && !preview) {
+        L.checkpoints.forEach((cp, i) => {
+          if (L.cpShown.has(i) || !checkpointHasContent(cp)) return;
+          L.cpShown.add(i);
+          addCheckpointBubble(cp, L.cpF[i]);
+        });
+      }
       showArrival(token);
       return;
     }

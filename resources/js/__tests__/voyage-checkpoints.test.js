@@ -61,6 +61,7 @@ describe('content', () => {
   it('stays up long enough for every picture to come round', () => {
     expect(autoCardMs({ images: [] })).toBe(7000)
     expect(autoCardMs({ images: ['a', 'b', 'c'] })).toBe(3 * CAROUSEL_MS + 1000)
+    expect(autoCardMs({ images: Array(12).fill('a') })).toBe(12 * CAROUSEL_MS + 1000)   // every picture comes round
   })
 })
 

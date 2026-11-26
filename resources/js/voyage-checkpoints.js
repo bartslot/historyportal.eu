@@ -86,7 +86,7 @@ export function passedCheckpoints (fractions, from, to, shown) {
 }
 
 /** How long a card stays up by itself: a beat to read, or long enough for every picture to come round once. */
-export const autoCardMs = (cp) => Math.min(16000, Math.max(7000, checkpointImages(cp).length * CAROUSEL_MS + 1000))
+export const autoCardMs = (cp) => Math.max(7000, checkpointImages(cp).length * CAROUSEL_MS + 1000)
 
 /**
  * The checkpoint card: bottom-left, a fifth of the stage wide, a 16:9 picture on top and the text under it.
