@@ -214,6 +214,7 @@ const DEFAULT_COLOR = '#20618f';
 export const VOYAGE_PILL = 'voyage-pill';
 const VOYAGE_PILL_FILL = 'rgba(15,23,42,0.92)';
 const VOYAGE_LABEL_INK = '#ffffff';
+const VOYAGE_LABEL_DROP_PX = 10;
 
 /**
  * Register the route-name pill. Called on the map's `styleimagemissing`, so it is there the first
@@ -277,13 +278,20 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
       // labels before (see map-place-label.js), and a route name plus its years fits on one.
       layout: {
         'text-field': ['concat', ['get', 'name'], '  ', ['get', 'years']],
-        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.9],
+        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'top',
         'text-max-width': 40,
         'icon-image': VOYAGE_PILL,
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [3, 8, 3, 8],
       },
-      paint: { 'text-color': VOYAGE_LABEL_INK },
+      // The pill fits the text's layout box, and Cinzel's glyphs draw about 10 px ABOVE that box,
+      // so with a text-offset the name floated over the top edge of its pill (seen in Chrome,
+      // 11-26, on Atlas and Earth alike). Translating only the TEXT down by that much puts the
+      // letters in the middle of the pill; the pill itself stays where MapLibre fitted it.
+      paint: {
+        'text-color': VOYAGE_LABEL_INK,
+        'text-translate': [0, VOYAGE_LABEL_DROP_PX],
+      },
     },
   ];
 }
