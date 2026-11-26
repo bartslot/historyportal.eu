@@ -1,0 +1,248 @@
+[
+  {
+    "name": "01-defaults",
+    "query": "lng=12&lat=43&zoom=7&pitch=60",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "02-tone-neutral",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.tone=neutral",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "03-tone-aces",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.tone=aces",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "04-tone-neutral-exposure6",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.tone=neutral&v.exposure=6",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "05-step1.001",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.stepScale=1.001",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "06-step1.0005",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.stepScale=1.0005",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "07-weather-soft",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.weatherLow=0.1&v.weatherHigh=0.95",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "08-weather-soft-coverage0.4",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "09-scale16-step1.001",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=16&v.stepScale=1.001",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "10-A",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "11-A-top-down",
+    "query": "lng=12&lat=43&zoom=7&pitch=0&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00043346880773655554,
+    "altitudeKm": 536,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "12-A-z6",
+    "query": "lng=12&lat=43&zoom=6&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00027921437567316875,
+    "altitudeKm": 598,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "13-A-z5.5-handover",
+    "query": "lng=12&lat=43&zoom=5.5&pitch=45&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.00011318015496698712,
+    "altitudeKm": 1149,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "14-A-atlantic-evening",
+    "query": "lng=-30&lat=50&zoom=7&pitch=70&sunLng=40&sunLat=10&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.00043983950843510795,
+    "altitudeKm": 176,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": [
+      "error: Unable to parse the tile at http://localhost:5197/land-tiles/4/6/5.pbf, got error: Unimplemented type: 4  @ http://localhost:5197/@fs/private/tmp/clouds-vol/node_modules/.vite/deps/maplibre-gl.js?v=efdd5764"
+    ]
+  },
+  {
+    "name": "15-A-caribbean",
+    "query": "lng=-70&lat=18&zoom=6.5&pitch=60&sunLng=-80&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.00040061827518336843,
+    "altitudeKm": 546,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "16-A-skylight2",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.skyLight=2",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "17-A-noshadow",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.shadows=0",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "18-A-exposure6",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.exposure=6",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "18b-A-coverage0.33",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.coverage=0.33",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "18c-A-coverage0.47",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.coverage=0.47",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "18d-A-scale6",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.scale=6",
+    "status": "ready",
+    "fps": 61,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "18e-A-agx",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.scale=12&v.stepScale=1.001&v.tone=neutral&v.weatherLow=0.1&v.weatherHigh=0.95&v.coverage=0.4&v.tone=agx",
+    "status": "ready",
+    "fps": 60,
+    "cameraErrorPx": 0.000561613404389369,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "19-flat-only",
+    "query": "lng=12&lat=43&zoom=7&pitch=60&v.strength=0",
+    "label": "same view, flat deck only",
+    "status": "idle",
+    "fps": 15,
+    "cameraErrorPx": null,
+    "altitudeKm": 284,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": []
+  },
+  {
+    "name": "20-orbit-flat",
+    "query": "lng=12&lat=43&zoom=4&pitch=45",
+    "label": "orbit: flat deck",
+    "status": "idle",
+    "fps": 17,
+    "cameraErrorPx": null,
+    "altitudeKm": 3509,
+    "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)",
+    "logs": [
+      "error: Unable to parse the tile at http://localhost:5197/land-tiles/4/6/5.pbf, got error: Unimplemented type: 4  @ http://localhost:5197/@fs/private/tmp/clouds-vol/node_modules/.vite/deps/maplibre-gl.js?v=efdd5764"
+    ]
+  }
+]
