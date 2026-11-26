@@ -95,8 +95,7 @@ def find(rgb: np.ndarray, target_hex: str) -> dict:
 
 def is_paper(value: str) -> bool:
     """A colour that reads as bare paper: a white garment on a white sheet."""
-    values = lab(hex_rgb(value))
-    return bool(values[0] > PAPER_L and np.hypot(values[1], values[2]) < PAPER_CHROMA)
+    return bool(masks(hex_rgb(value)[None, None])[2].item())
 
 
 def sample(rgb: np.ndarray) -> str | None:

@@ -100,16 +100,16 @@
           },
           "places": {
             "marco": [
-              399.1,
-              300.7
+              393.75,
+              305.0
             ],
             "niccolo": [
               400.0,
               300.0
             ],
             "maffeo": [
-              400.9,
-              299.3
+              406.25,
+              295.0
             ]
           }
         },
@@ -167,8 +167,8 @@
           "action": "Marco on the bank turns a piece of jade in his fingers, fascinated.",
           "places": {
             "marco": [
-              389.0,
-              180.7
+              373.44,
+              157.32
             ]
           }
         }

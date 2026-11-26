@@ -94,15 +94,15 @@
           },
           "places": {
             "marco": [
-              48.8,
-              45.0
-            ],
-            "niccolo": [
               50.0,
               45.0
             ],
+            "niccolo": [
+              47.0,
+              45.0
+            ],
             "maffeo": [
-              51.2,
+              53.0,
               45.0
             ]
           }
@@ -127,8 +127,8 @@
           "action": "Marco looks up at the calm painted face of the Buddha, tiny beside it.",
           "places": {
             "marco": [
-              49.1,
-              42.8
+              44.2,
+              36.91
             ]
           }
         },
@@ -174,12 +174,12 @@
           },
           "places": {
             "niccolo": [
-              51.7,
-              28.6
+              51.72,
+              28.66
             ],
             "maffeo": [
-              52.3,
-              27.4
+              52.28,
+              27.34
             ]
           }
         }

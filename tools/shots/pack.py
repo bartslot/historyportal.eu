@@ -75,7 +75,7 @@ def build(lesson: Lesson, scene_name: str, board_id: str, pass_: str, out: Path,
             missing = set(person.get('signature_parts', [])) - set(person.get('palette') or {})
             if missing:
                 raise Refused(f'{person["name"]} has no fixed colours sampled from the approved sheet'
-                              + (f' for: {", ".join(sorted(missing))}' if missing else '')
+                              + f' for: {", ".join(sorted(missing))}'
                               + f'. Add swatch boxes in cast.json and run `shots.py palette {lesson.cast["lesson"]} {who}`.')
         rows, names = [], []
         for who in cast:

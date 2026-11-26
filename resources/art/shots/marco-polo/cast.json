@@ -37,7 +37,9 @@
           0.45
         ]
       },
-      "palette": {},
+      "palette": {
+        "tunic": "#FCFAF8"
+      },
       "tell": "17, beardless, shoulder-length chestnut hair, white tunic, no cloak",
       "signature": "white"
     },
