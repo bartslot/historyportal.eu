@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
+use App\Services\Stage25d\LayerGroups;
 use Livewire\Attributes\On;
 
 /**
@@ -14,6 +15,11 @@ use Livewire\Attributes\On;
  * Every layer is keyed by `asset_id`, so a copy of an image gets a fresh synthetic id — the same
  * trick embed layers use — and remembers the real asset in `src_asset_id` for its title. The
  * image file itself is shared: a layer carries its own `path`, and no library row is cloned.
+ *
+ * A copy brings its timeline keys along (config.timeline tracks, re-aimed at the new id), and a
+ * paste into another scene lands exactly where it was (Bart, 2026-11-24: "copy and paste in the
+ * same position as the previous"). A 2.5D stage layer carries its keys on itself and pastes into
+ * another 2.5D scene the same way, keys and all (they sit on the layer, already clean). One scene save, so one Cmd-Z takes the paste back.
  */
 trait DuplicatesSceneObjects
 {
@@ -34,10 +40,13 @@ trait DuplicatesSceneObjects
             return;
         }
 
-        // Stage25d layers copy inside their own scene's stage block; the rest go the way they always did.
+        // Stage25d layers copy inside a stage block: their own scene's (a duplicate) or another 2.5D scene's (a paste).
         $stageLayers = collect($objectIds)->filter(fn ($id) => is_string($id) && preg_match('/^s25_layer-\d+$/', $id) === 1)->values();
         if ($stageLayers->isNotEmpty()) {
-            $this->duplicateStage25dLayers($stageLayers->map(fn ($id) => (int) substr($id, 10))->all());
+            $indexes = $stageLayers->map(fn ($id) => (int) substr($id, 10))->all();
+            $sourceSceneId === null || $sourceSceneId === $this->selectedSceneId
+                ? $this->duplicateStage25dLayers($indexes)
+                : $this->pasteStage25dLayers($indexes, $sourceSceneId);
             $objectIds = collect($objectIds)->reject(fn ($id) => $stageLayers->contains($id))->all();
         }
 
@@ -63,25 +72,42 @@ trait DuplicatesSceneObjects
         $shots = $target->shots ?? [];
         $config = $target->config ?? [];
         $newIds = [];
+        $sourceLayers = array_values($source->shots[0]['layers'] ?? []);
+        $sourceTexts = array_values($source->config['texts'] ?? []);
+
+        // Several objects keep their stacking: bottom-most first, so each lands in front of the one before.
+        $stackAt = function (string $id) use ($sourceLayers, $sourceTexts): int {
+            $list = preg_match('/^art_(\d+)$/', $id, $m) ? $sourceLayers : $sourceTexts;
+            foreach ($list as $i => $item) {
+                if (is_array($item) && (preg_match('/^art_(\d+)$/', $id, $m) ? ($item['asset_id'] ?? null) === (int) $m[1] : ($item['id'] ?? null) === $id)) {
+                    return $i;
+                }
+            }
+
+            return PHP_INT_MAX;
+        };
+        $ids = $ids->sortBy($stackAt)->values();
 
         foreach ($ids as $id) {
             if (preg_match('/^art_(\d+)$/', $id, $m)) {
-                $layer = collect($source->shots[0]['layers'] ?? [])->firstWhere('asset_id', (int) $m[1]);
+                $layer = collect($sourceLayers)->firstWhere('asset_id', (int) $m[1]);
                 if ($layer) {
                     $copy = $this->copyOfLayer($layer, $offset);
                     $shots = $this->shotsWithLayer($target, $shots, $copy, (int) $m[1]);
                     $newIds[] = 'art_'.$copy['asset_id'];
+                    $config = $this->withCopiedTracks($config, $source->config ?? [], ['art', 'arw'], (string) $m[1], (string) $copy['asset_id'], $offset);
                 }
 
                 continue;
             }
 
-            $text = collect($source->config['texts'] ?? [])
+            $text = collect($sourceTexts)
                 ->first(fn ($t) => is_array($t) && ($t['id'] ?? null) === $id);
             if ($text) {
                 $copy = $this->copyOfText($text, $offset);
                 $config['texts'] = $this->listWithCopyAfter($config['texts'] ?? [], $copy, fn ($t) => is_array($t) && ($t['id'] ?? null) === $id);
                 $newIds[] = $copy['id'];
+                $config = $this->withCopiedTracks($config, $source->config ?? [], ['text', 'rect'], $id, $copy['id'], $offset);
             }
         }
 
@@ -93,7 +119,111 @@ trait DuplicatesSceneObjects
 
         $target->update(['shots' => $shots, 'config' => $config]);
         $this->selectSceneInternal($target->id);   // re-fires scene:load → canvas + object list repaint
+        // The Timeline tab keeps its own copy of the tracks (timeline-panel.js): hand it the ones with the copy's keys,
+        // as an undo does, or the keys only showed after a reload.
+        $this->dispatch('timeline-restored', timeline: $config['timeline'] ?? [], keepSelection: true);
         $this->dispatch('scene:objects-duplicated', sceneId: $target->id, objectIds: $newIds);
+    }
+
+    /**
+     * The target config with the source's timeline tracks for one object copied onto its copy: same keys, same easing,
+     * aimed at the new id. A duplicate's X and Y keys move by the same nudge as the copy, so its path runs alongside the
+     * original's instead of on top of it. A scene with no timeline yet takes the source's length.
+     *
+     * @param  array<string, mixed>  $config  the target scene's config
+     * @param  array<string, mixed>  $sourceConfig
+     * @param  list<string>  $kinds  the target kinds the object may be keyed under ('art' or 'arw' for a layer)
+     * @return array<string, mixed>
+     */
+    private function withCopiedTracks(array $config, array $sourceConfig, array $kinds, string $oldId, string $newId, float $offset): array
+    {
+        $copies = [];
+        foreach ((array) ($sourceConfig['timeline']['tracks'] ?? []) as $track) {
+            if (! is_array($track) || ! is_string($track['target'] ?? null)) {
+                continue;
+            }
+            [$kind, $id] = array_pad(explode(':', $track['target'], 2), 2, '');
+            if ($id !== $oldId || ! in_array($kind, $kinds, true)) {
+                continue;
+            }
+            $track['target'] = $kind.':'.$newId;
+            if ($offset !== 0.0 && in_array($track['property'] ?? null, ['x', 'y'], true) && $kind !== 'rect') {
+                $shift = fn ($v) => is_numeric($v) ? min(100.0, (float) $v + $offset) : $v;
+                $track['keyframes'] = array_map(fn ($k) => is_array($k) ? ['value' => $shift($k['value'] ?? null)] + $k : $k, (array) ($track['keyframes'] ?? []));
+                if (array_key_exists('base', $track)) {
+                    $track['base'] = $shift($track['base']);
+                }
+            }
+            $copies[] = $track;
+        }
+        if ($copies === []) {
+            return $config;
+        }
+
+        $timeline = is_array($config['timeline'] ?? null) ? $config['timeline'] : [
+            'duration' => (float) ($sourceConfig['timeline']['duration'] ?? 0),
+            'targets' => [],
+            'tracks' => [],
+        ];
+        $timeline['tracks'] = [...array_values((array) ($timeline['tracks'] ?? [])), ...$copies];
+        $config['timeline'] = $timeline;
+
+        return $config;
+    }
+
+    /**
+     * Paste 2.5D stage layers from another 2.5D scene of this lesson: the same place, size, depth and keys. A picture from
+     * another period's library would not load on this stage, so it is left out and the teacher is told.
+     *
+     * @param  list<int>  $indexes
+     */
+    private function pasteStage25dLayers(array $indexes, int $sourceSceneId): void
+    {
+        $target = $this->stage25dScene();
+        $source = $this->lesson->scenes()->find($sourceSceneId);
+        $from = $source?->isStage25d() ? ($source->config['stage25d']['set']['layers'] ?? null) : null;
+        $layers = $target?->config['stage25d']['set']['layers'] ?? [];
+        if (! $target || ! is_array($from) || ! is_array($layers)) {
+            $this->dispatch('toast', message: __('Stage layers paste into a 3D World scene only.'), type: 'warning');
+
+            return;
+        }
+        $bundle = (string) ($target->config['stage25d']['bundle'] ?? '');
+        $handles = array_filter(array_column($layers, 'figure'), 'is_string');
+        $first = null;
+        $skipped = 0;
+        sort($indexes);
+        foreach (array_slice(array_unique($indexes), 0, 20) as $i) {
+            if (! isset($from[$i]) || ! is_array($from[$i]) || $this->isStage25dBackdrop($source, $from[$i])) {
+                continue;   // one backdrop per scene: the world is picked, not pasted
+            }
+            $copy = $from[$i];
+            $sameLibrary = $bundle === (string) ($source->config['stage25d']['bundle'] ?? '');
+            if (! $sameLibrary && is_string($copy['asset'] ?? null) && $this->stage25dAssetLayer($bundle, $copy['asset']) === null) {
+                $skipped++;
+
+                continue;
+            }
+            // Its group stays behind, so the copy takes the group's place, size, turn and fade with it (as Ungroup does).
+            $sourceGroup = is_string($copy['group'] ?? null) ? (array_column(array_filter((array) ($source->config['stage25d']['set']['groups'] ?? []), 'is_array'), null, 'id')[$copy['group']] ?? null) : null;
+            $copy = $sourceGroup ? LayerGroups::release($copy, $sourceGroup) : $copy;
+            unset($copy['world'], $copy['group']);   // the teacher placed this one here: picking another world keeps it
+            // A character keeps its speaker handle when this scene doesn't have that character yet.
+            if (is_string($copy['figure'] ?? null) && in_array($copy['figure'], $handles, true)) {
+                unset($copy['figure']);
+            }
+            $layers[] = $copy;
+            $first ??= count($layers) - 1;
+        }
+        if ($skipped > 0) {
+            $this->dispatch('toast', message: __('A picture from another period\'s library was left out: it does not load on this stage.'), type: 'warning');
+        }
+        if ($first === null) {
+            return;
+        }
+        $this->storeStage25dLayers($target, $layers);
+        $this->selectSceneInternal($target->id);
+        $this->dispatch('stage25d:select', index: $first);
     }
 
     private function copyOfLayer(array $layer, float $offset): array

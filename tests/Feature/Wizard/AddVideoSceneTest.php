@@ -101,4 +101,24 @@ class AddVideoSceneTest extends TestCase
             ->assertSee('Video link or embed code')
             ->assertSee('Remove video');
     }
+
+    public function test_an_empty_lesson_from_the_chat_takes_a_youtube_video(): void
+    {
+        $empty = Lesson::create([
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Cartografie', 'topic' => 'Cartografie', 'subject' => 'history', 'grade_level' => 'Age 12',
+            'status' => LessonStatus::Draft, 'wizard_step' => 4,
+        ]);
+
+        Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $empty])
+            ->assertOk()
+            ->call('addScene', 'video')
+            ->call('setVideoEmbed', 'https://youtu.be/-E9T6UWaDRA');
+
+        $scene = $empty->scenes()->sole();
+        $this->assertSame('video', $scene->kind);
+        $this->assertSame('ready', $scene->status);
+        $this->assertStringContainsString('-E9T6UWaDRA', $scene->config['bg_embed']['src']);
+    }
 }

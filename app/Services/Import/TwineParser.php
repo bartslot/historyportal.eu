@@ -22,6 +22,12 @@ final class TwineParser
     /** A speaker tag at the start of a line: NARRATOR:, KUBLAI KHAN:, NICCOLÒ: (upper case, so prose with a colon stays prose). */
     private const SPEAKER = '/^([\p{Lu}][\p{Lu}\p{M}\'’. -]{0,40}?)\s*:\s*(.+)$/u';
 
+    /** A speaker tag that is not a speaker: "SETTING: Florence, 1283" names the scene's place and year. */
+    public const SETTING = 'SETTING';
+
+    /** A signature colour in a cast line's description: "Colour: red." (also Color, Kleur, Farbe, Colore). */
+    private const COLOUR = '/\b(?:colou?r|kleur|farbe|colore)\s*:\s*([^.;\n]+)[.;]?/iu';
+
     /** A cast line: * Marco Polo (17 years old): Curious, observant ... */
     private const CAST_LINE = '/^[*-]\s*([^:(]+?)\s*(?:\(([^)]*)\))?\s*:\s*(.*)$/u';
 
@@ -67,9 +73,10 @@ final class TwineParser
 
     /**
      * A passage's parts: the shot description (prose before the first spoken line, only when the passage has
-     * speakers), its lines in order, its links, and whether it held story code.
+     * speakers), its lines in order, its links, whether it held story code, and its setting ("SETTING: Ravenna,
+     * 1321", never read aloud).
      *
-     * @return array{shot:string, lines: list<array{speaker:string, text:string}>, links: list<array{label:string, target:string}>, code:bool}
+     * @return array{shot:string, lines: list<array{speaker:string, text:string}>, links: list<array{label:string, target:string}>, code:bool, setting:string}
      */
     public static function passage(string $text): array
     {
@@ -79,10 +86,16 @@ final class TwineParser
 
         $lines = [];
         $prose = [];
+        $setting = '';
         foreach (preg_split('/\R/u', $plain) ?: [] as $row) {
             $row = trim($row);
             if ($row === '' || preg_match('/^[\p{L} ]{1,40}:$/u', $row) === 1) {
                 continue;   // a blank line, or a heading such as "Interactive Choice:"
+            }
+            if (preg_match(self::SPEAKER, $row, $m) === 1 && strtoupper(trim($m[1])) === self::SETTING) {
+                $setting = trim($m[2]);
+
+                continue;
             }
             if (preg_match(self::SPEAKER, $row, $m) === 1) {
                 $said = trim((string) preg_replace('/^\([^)]*\)\s*/u', '', $m[2]));   // "(Shivering) Father..." is a direction
@@ -95,14 +108,14 @@ final class TwineParser
             $prose[] = ['row' => $row, 'before' => $lines === []];
         }
         if ($lines === []) {   // no speakers: the prose is the story the narrator tells
-            return ['shot' => '', 'lines' => array_map(fn ($p) => ['speaker' => 'NARRATOR', 'text' => $p['row']], $prose), 'links' => $links, 'code' => $code];
+            return ['shot' => '', 'lines' => array_map(fn ($p) => ['speaker' => 'NARRATOR', 'text' => $p['row']], $prose), 'links' => $links, 'code' => $code, 'setting' => $setting];
         }
         $shot = implode("\n\n", array_column(array_filter($prose, fn ($p) => $p['before']), 'row'));
         foreach (array_filter($prose, fn ($p) => ! $p['before']) as $p) {
             $lines[] = ['speaker' => 'NARRATOR', 'text' => $p['row']];
         }
 
-        return ['shot' => $shot, 'lines' => $lines, 'links' => $links, 'code' => $code];
+        return ['shot' => $shot, 'lines' => $lines, 'links' => $links, 'code' => $code, 'setting' => $setting];
     }
 
     /**
@@ -135,8 +148,10 @@ final class TwineParser
 
     /**
      * The cast a passage lists (* Name (who): description), the narrator left out. Empty when it is not a cast list.
+     * A "Colour: red." in the description is the person's signature colour (StoryCraft::castRules). Write the colour
+     * itself in English in every language ("Kleur: white."): the picture prompts read it, and "white" is the rule.
      *
-     * @return list<array{name:string, description:string}>
+     * @return list<array{name:string, description:string, colour:string}>
      */
     public static function cast(string $text): array
     {
@@ -145,7 +160,10 @@ final class TwineParser
             if (preg_match(self::CAST_LINE, trim($row), $m) !== 1 || self::key($m[1]) === 'narrator') {
                 continue;
             }
-            $cast[] = ['name' => trim($m[1]), 'description' => trim(implode('. ', array_filter([trim($m[2] ?? ''), trim($m[3])])))];
+            $about = trim($m[3]);
+            $colour = preg_match(self::COLOUR, $about, $c) === 1 ? trim($c[1]) : '';
+            $about = trim((string) preg_replace('/\s{2,}/u', ' ', (string) preg_replace(self::COLOUR, '', $about)));
+            $cast[] = ['name' => trim($m[1]), 'description' => trim(implode('. ', array_filter([trim($m[2] ?? ''), $about]))), 'colour' => $colour];
         }
 
         return $cast;

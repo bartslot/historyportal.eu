@@ -179,6 +179,7 @@ const REGISTRY = {
   terr: [
     P('fill', 'Fill', 'linear', ''),
     P('border', 'Border', 'linear', ''),
+    P('draw', 'Draw', 'linear', ''),
     P('year', 'Year', 'linear', ''),
   ],
   /** A diorama item: its place on its floor, in cells. X runs left-right, Z away from the camera.

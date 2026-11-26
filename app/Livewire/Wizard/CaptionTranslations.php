@@ -74,6 +74,6 @@ class CaptionTranslations extends Component
 
     private function authorizeTeacher(Lesson $lesson): void
     {
-        abort_unless((bool) auth()->user()?->canManage($lesson), 403);
+        abort_unless((bool) auth()->user()?->canEdit($lesson), 403);
     }
 }

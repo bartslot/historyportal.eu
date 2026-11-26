@@ -23,6 +23,16 @@ Schedule::command('queue:work --queue=narrate,default --stop-when-empty --max-ti
     ->withoutOverlapping(15)
     ->runInBackground();
 
+// Narration has a worker of its own (Bart 11-24: one word re-narrated took minutes). The shared worker above can be
+// busy for up to ten minutes on one job, such as a picture waiting for ChatGPT on Bart's Mac, and while it runs the
+// overlap lock keeps every other pass out, so a re-narrate queued behind it waited that long. This one only takes
+// 'narrate' and keeps listening for the whole minute (--sleep=1, no --stop-when-empty), so a click starts within a
+// second or two even when the after-response pass in Step3SceneConfigurator::regenerate does not run.
+Schedule::command('queue:work --queue=narrate --max-time=55 --sleep=1 --tries=2 --timeout=240')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->runInBackground();
+
 // Publish lessons whose scheduled publish time has arrived (schedule:run fires every minute).
 Schedule::command('lessons:publish-due')->everyMinute()->withoutOverlapping(5);
 

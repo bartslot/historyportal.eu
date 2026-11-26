@@ -18,13 +18,13 @@ class ImportNotes extends Component
 
     public function mount(Lesson $lesson): void
     {
-        abort_unless((bool) auth()->user()?->canManage($lesson), 403);
+        abort_unless((bool) auth()->user()?->canEdit($lesson), 403);
         $this->lesson = $lesson;
     }
 
     public function dismiss(): void
     {
-        abort_unless((bool) auth()->user()?->canManage($this->lesson), 403);
+        abort_unless((bool) auth()->user()?->canEdit($this->lesson), 403);
         $report = $this->lesson->import_report;
         if (is_array($report)) {
             $this->lesson->update(['import_report' => ['seen' => true] + $report]);

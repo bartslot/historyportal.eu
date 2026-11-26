@@ -18,10 +18,12 @@ import { CHART, CHART_BASE, GEOJSON_TOLERANCE, chartSources, chartLayers, addCha
 import { mapGone } from './map-alive.js'
 import { boxView, openingView, labelsView } from './map-view.js'
 import { openingCamera } from './anim/scene-animation.js'
+import { prefetchTiles, sceneViews } from './map/map-prefetch.js'
 import { itineraryTour } from './map-itinerary.js'
 import { cityPriority, cityTextSize, cityDotRadius } from './map-city-scale.js'
 import { territoryLook, territoryAnim, linePaint, washPaint } from './map/territory-look.js'
 import { createTerritoryInk } from './map/territory-ink.js'
+import { createTerritoryLabel } from './map/territory-label.js'
 
 // The linked territory's ink line and etching: map/territory-look.js (Bart 11-23, no more red).
 
@@ -56,6 +58,8 @@ const GROUND = {
 // A region polygon is one of ours (public/map-regions, LessonImporter), never a URL from a scene's config.
 const REGION_URL = /^\/map-regions\/[a-z0-9-]+\.geojson$/
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
+// How long a warm waits on one view before it moves on, if the map never goes idle there.
+const WARM_STEP_MS = 2500
 const lngLatOk = (p) => Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1]))
 
 // Cities valid at `year` (gazetteer entries carry valid_from/valid_to; missing = always valid).
@@ -111,16 +115,27 @@ export function renderLessonMap (el, opts = {}) {
   // The linked territory's look (map/territory-look.js): the scene's config.territory, and the
   // timeline's Territory row on top of it (fill and border as 0..1, the year as the year).
   let look = territoryLook(opts.territory)
+  // The territory's label (map/territory-label.js) and the name it shows, from the tiles.
+  let label = null
+  let inkMorphing = false
+  let polityName = null
   let anim = territoryAnim()
   // The OTHER territories' faint lines: a voyage map restyles them (setDetailStyle), never the switch.
   let others = { otherColor: GROUND.line }
   // The hand-drawn border and etching (map/territory-ink.js), once the territory layers exist.
   let ink = null
+  // A warm that is flying the hidden map through a coming scene's views (api.warm): showScene ends it.
+  let warmCancel = null
   let placeLabels = Array.isArray(opts.labels) ? opts.labels : []
   // A map scene of a 3D lesson (lesson.json kind 'map'): a highlighted region, a route, and a camera the writer
   // set. Its place names (rivers, regions) show from the start: there is no ship arriving to reveal them.
-  const regionUrl = REGION_URL.test(opts.region?.url || '') ? opts.region.url : null
-  const route = (Array.isArray(opts.route) ? opts.route : []).filter(lngLatOk).map((p) => [Number(p[0]), Number(p[1])])
+  // `let`: showScene puts another scene's region and route on this same map.
+  const regionOf = (r) => (REGION_URL.test(r?.url || '') ? r.url : null)
+  const routeOf = (r) => (Array.isArray(r) ? r : []).filter(lngLatOk).map((p) => [Number(p[0]), Number(p[1])])
+  const regionData = (u) => (u ? `${location.origin}${u}` : EMPTY_FC)
+  const routeData = (r) => (r.length >= 2 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r } } : EMPTY_FC)
+  let regionUrl = regionOf(opts.region)
+  let route = routeOf(opts.route)
   // The scene's timeline camera, when it has one, is where the scene OPENS (Bart 11-22: the editor
   // showed the focus pin's close-up until the playhead moved). It frames the map exactly as a
   // writer's camera does: the pins and the territory no longer move it. `let`: showScene puts
@@ -167,6 +182,8 @@ export function renderLessonMap (el, opts = {}) {
     : null)
   let labelsFit = labelsFitFor(opts.fit)
   const opening = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })
+  // The zoom this scene opens at: a picture pinned to the map has its saved size there (map-text-projector).
+  let sceneZoom = opening.zoom
   const maxZoomFor = () => Math.max(6, labelsFit?.zoom ?? 0, fixedCamera?.zoom ?? 0)
 
   // The live chart config: the dev tuner edits this copy, never CHART itself.
@@ -201,8 +218,8 @@ export function renderLessonMap (el, opts = {}) {
         ...chartSources(location.origin),
         // Teacher-authored period place labels (voyages) — filled via setLabels()/the `labels` opt.
         'lesson-labels': { type: 'geojson', data: labelsFC(placeLabels) },
-        'lesson-region': { type: 'geojson', data: regionUrl ? `${location.origin}${regionUrl}` : EMPTY_FC },
-        'lesson-route': { type: 'geojson', data: route.length >= 2 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route } } : EMPTY_FC },
+        'lesson-region': { type: 'geojson', data: regionData(regionUrl) },
+        'lesson-route': { type: 'geojson', data: routeData(route) },
       },
       layers: [
         // The painted sea, its depth glaze, the land and the olive foothills (map-chart.js).
@@ -297,9 +314,16 @@ export function renderLessonMap (el, opts = {}) {
     maxTileCacheSize: 1500,
   })
 
-  if (interactive) {
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+  // The zoom buttons, and every pan/zoom handler: a timed map scene holds still, an interactive one lets the
+  // class move it. One live map plays both kinds in a lesson (setInteractive), so this is a switch.
+  const HANDLERS = ['dragPan', 'scrollZoom', 'boxZoom', 'dragRotate', 'keyboard', 'doubleClickZoom', 'touchZoomRotate', 'touchPitch']
+  let navControl = null
+  const setInteractive = (on) => {
+    if (on && !navControl) map.addControl(navControl = new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    if (!on && navControl) { map.removeControl(navControl); navControl = null }
+    for (const h of HANDLERS) { try { on ? map[h]?.enable() : map[h]?.disable() } catch (_) {} }
   }
+  if (interactive) setInteractive(true)
 
   // The voyage stop dot (lesson-labels' icon) is drawn on demand, so it also returns after a style reload.
   map.on('styleimagemissing', (e) => { if (e && e.id === STOP_LABEL.dot) ensureStopDot(map) })
@@ -359,7 +383,9 @@ export function renderLessonMap (el, opts = {}) {
     // NOTE: map.fitBounds() is unreliable under the globe projection (it can solve to a wildly wrong
     // centre — e.g. snapping Europe to South America). Compute centre + zoom ourselves and easeTo,
     // which behaves the same in both projections.
-    map.easeTo({ ...boxView(b), duration: 800 })
+    const fitted = boxView(b)
+    map.easeTo({ ...fitted, duration: 800 })
+    sceneZoom = fitted.zoom
     didFit = true
   }
 
@@ -403,6 +429,8 @@ export function renderLessonMap (el, opts = {}) {
       highlighted = newQid
     }
     activeQid = newQid
+    polityName = null
+    updateLabel()
     if (newQid && !polityInView(newQid)) {
       didFit = false
       fitToPolity(true)
@@ -500,7 +528,9 @@ export function renderLessonMap (el, opts = {}) {
         // The wash also carries the configurator's hover, the soft pre-selection when a
         // teacher moves over the map to pick a territory (nothing sets `hover` in the player).
         if (map.getLayer('boundaries-fill')) return
-        const below = map.getLayer('city-dots') ? 'city-dots' : undefined
+        // Under the route (and so under the hand-drawn ink, which goes in just below the route
+        // next): the wash must never paint over its own pen line.
+        const below = map.getLayer('lesson-route') ? 'lesson-route' : (map.getLayer('city-dots') ? 'city-dots' : undefined)
         map.addLayer({
           id: 'boundaries-fill', type: 'fill', source: 'cliopatria', 'source-layer': 'boundaries',
           filter: polityFilter(year),
@@ -515,6 +545,8 @@ export function renderLessonMap (el, opts = {}) {
               : []),
             look: () => look,
             anim: () => anim,
+            // While it morphs, the ink paints the wash too: the map's own fill would jump to the new year.
+            onMorph: (on) => requestAnimationFrame(() => { inkMorphing = on; paintTerritory() }),
           })
         } catch (e) { console.warn('lesson-map: hand-drawn territory unavailable, the map draws the line', e) }
         wirePolityPicking()
@@ -651,7 +683,12 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   function setYear (y) {
-    year = Math.round(Number(y))
+    const next = Math.round(Number(y))
+    // The border flows into the new year's shape (Bart 11-24), unless the teacher switched Morph off.
+    const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (next !== year && look.morph !== false && !calm) ink?.morphFromHere?.()
+    year = next
+    updateLabel()
     if (!map.getLayer('boundaries-line')) return
     map.setFilter('boundaries-line', polityFilter(year))
     if (map.getLayer('boundaries-fill')) map.setFilter('boundaries-fill', polityFilter(year))
@@ -723,13 +760,36 @@ export function renderLessonMap (el, opts = {}) {
   }
 
   // Put the look, the timeline's fill/border and the switch on the three territory layers.
+  // The territory's label (map/territory-label.js): its name from the tiles, the year the map shows.
+  function updateLabel () {
+    if (!look.label_year && !look.label_name && !label) return
+    if (!label) { try { label = createTerritoryLabel(map.getContainer()) } catch (_) { return } }
+    if (look.label_name && activeQid && map.getSource('cliopatria')) {
+      const f = map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['all', polityFilter(year), ['==', ['get', 'Wikidata'], activeQid]] })
+      const name = f.find((x) => x.properties?.Name)?.properties?.Name
+      if (name) polityName = name
+    }
+    label.update({
+      showName: look.label_name && !!activeQid,
+      showYear: look.label_year,
+      name: polityName,
+      year,
+      lang: document.documentElement.lang || 'en',
+      position: look.label_position,
+    })
+  }
+  // The name arrives with the tiles: ask again once they have.
+  map.on('idle', () => { if (look.label_name && !polityName) updateLabel() })
+  map.once('load', () => updateLabel())
+
   function paintTerritory () {
+    updateLabel()
     const paint = (layer, props) => {
       if (!map.getLayer(layer)) return
       for (const [k, v] of Object.entries(props)) { try { map.setPaintProperty(layer, k, v) } catch (_) {} }
     }
     paint('boundaries-line', linePaint(look, anim, { ...others, showOthers: layerToggles.borders, inked: !!ink }))
-    paint('boundaries-fill', washPaint(look, anim))
+    paint('boundaries-fill', washPaint(look, inkMorphing ? { ...anim, fill: 0 } : anim))
     ink?.redraw()
   }
 
@@ -738,7 +798,7 @@ export function renderLessonMap (el, opts = {}) {
   let keyedYear = null
   function setTerritoryValues (values = {}) {
     const next = territoryAnim({ ...anim, ...values })
-    if (next.fill !== anim.fill || next.border !== anim.border) { anim = next; paintTerritory() }
+    if (next.fill !== anim.fill || next.border !== anim.border || next.draw !== anim.draw) { anim = next; paintTerritory() }
     if (Number.isFinite(Number(values.year))) {
       const y = Math.round(Number(values.year))
       if (y !== keyedYear) { keyedYear = y; if (y !== year) setYear(y) }
@@ -758,12 +818,21 @@ export function renderLessonMap (el, opts = {}) {
     territoryValue: (property) => (property === 'year' ? year : anim[property] ?? null),
     /** Is a territory linked? The timeline lists a Territory row only then. */
     hasTerritory: () => !!activeQid,
+    /** The linked territory's first year in the loaded tiles (the map presets' Grow starts there), or null. */
+    territoryFromYear: () => {
+      if (!activeQid) return null
+      const years = map.querySourceFeatures('cliopatria', { sourceLayer: 'boundaries', filter: ['==', ['get', 'Wikidata'], activeQid] })
+        .map((f) => Number(f.properties?.FromYear)).filter(Number.isFinite)
+      return years.length ? Math.min(...years) : null
+    },
+    /** The teacher's focus places, [lng, lat] each: where the map presets' A to B can start. */
+    focusPoints: () => (annotations || []).map((a) => [Number(a?.lng), Number(a?.lat)]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)),
     flyToPolity: fitToPolity,
     /**
      * Projector for map-pinned text labels: converts lng/lat ⇄ percentages of `hostEl`
      * (the text-overlay host, which may not share the map container's box).
      */
-    textProjector: (hostEl) => mapTextProjector(map, hostEl),
+    textProjector: (hostEl) => mapTextProjector(map, hostEl, { refZoom: () => sceneZoom }),
     setAnnotations: (a) => anno?.update(a),
     setPolity: (id) => setPolity(id),
     /** Colour the voyage fog-of-war paints undiscovered world in. */
@@ -819,6 +888,26 @@ export function renderLessonMap (el, opts = {}) {
      * already on screen; this keeps all of it and only moves the camera.
      */
     showScene: (o = {}) => {
+      warmCancel?.()
+      try { itinerary?.destroy() } catch (_) {}
+      itinerary = null
+      if ('interactive' in o) setInteractive(o.interactive !== false)
+      // A 3D lesson's scene brings its own place names, region and route; another scene clears them.
+      if ('labels' in o) {
+        revealedLabels.clear()
+        revealAll = o.revealLabels === true
+        placeLabels = Array.isArray(o.labels) ? o.labels : []
+        try { map.getSource('lesson-labels')?.setData(labelsFC(placeLabels)) } catch (_) {}
+        applyLabelReveal()
+      }
+      if ('region' in o) {
+        regionUrl = regionOf(o.region)
+        try { map.getSource('lesson-region')?.setData(regionData(regionUrl)) } catch (_) {}
+      }
+      if ('route' in o) {
+        route = routeOf(o.route)
+        try { map.getSource('lesson-route')?.setData(routeData(route)) } catch (_) {}
+      }
       annotations = Array.isArray(o.annotations) ? o.annotations : []
       anno?.update(annotations)
       layerToggles = { cities: o.showCities === true, borders: o.showBorders === true }
@@ -832,8 +921,11 @@ export function renderLessonMap (el, opts = {}) {
       fixedCamera = openingCamera(o.timeline, o.camera)
       labelsFit = labelsFitFor(o.fit)
       map.setMaxZoom(maxZoomFor())
-      const view = fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })
-      whenStyleReady(() => map.easeTo({ ...view, duration: 600 }))
+      const view = { bearing: 0, pitch: 0, ...(fixedCamera || labelsFit || openingView({ annotations, labels: placeLabels, route })) }
+      // `jump`: the map was out of sight (another kind of scene, or the title): it opens on its frame, no
+      // glide across the chart from wherever the last map scene left it.
+      sceneZoom = view.zoom
+      whenStyleReady(() => (o.jump ? map.jumpTo(view) : map.easeTo({ ...view, duration: 600 })))
       // The territory: highlight it, and fit to it once its tiles are in (unless the pins own the camera).
       const id = o.qid || null
       if (highlighted !== id) {
@@ -842,6 +934,8 @@ export function renderLessonMap (el, opts = {}) {
         highlighted = id
       }
       activeQid = id
+      polityName = null
+      updateLabel()
       didFit = false
       if (id) requestAfterTiles(fitToPolity)
     },
@@ -880,6 +974,45 @@ export function renderLessonMap (el, opts = {}) {
       return itinerary
     },
     pauseItinerary: () => itinerary?.pause(),
+    stopItinerary: () => { try { itinerary?.destroy() } catch (_) {} itinerary = null },
+    setInteractive,
+    /**
+     * Load the tiles of the views a coming scene will show, before it shows them (Bart 11-24: "I don't
+     * want to see the loading of tiles anymore"). `prefetch` only fetches them, so the browser has them
+     * when the map asks; it is safe while the map is on screen. `warm` flies the map itself through the
+     * views, so the tiles are decoded and in its own cache: only while the map is out of sight. A
+     * showScene ends a warm that is still running.
+     *
+     * @param {Array<{center:[number,number], zoom:number, pitch?:number}>} views
+     */
+    prefetch: (views) => prefetchTiles(map, views, { width: el.clientWidth, height: el.clientHeight }),
+    /** warm() through a map scene's own frames. Only while the map is out of sight. */
+    warmScene: (cfg) => api.warm(sceneViews(cfg || {}, { width: el.clientWidth, height: el.clientHeight })),
+    /** prefetch() for a map scene's own frames (its opening, and its timeline camera's path). */
+    prefetchScene: (cfg) => {
+      const size = { width: el.clientWidth, height: el.clientHeight }
+      return prefetchTiles(map, sceneViews(cfg || {}, size), size)
+    },
+    warm: (views) => {
+      warmCancel?.()
+      const list = (views || []).filter(Boolean)
+      if (!list.length) return Promise.resolve()
+      let cancelled = false
+      const back = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }
+      const done = () => { warmCancel = null }
+      warmCancel = () => { cancelled = true; done() }
+      const step = (i) => new Promise((resolve) => {
+        if (cancelled || i >= list.length) return resolve()
+        try { map.jumpTo(list[i]) } catch (_) { return resolve() }
+        let t = null
+        const next = () => { clearTimeout(t); map.off('idle', next); resolve(step(i + 1)) }
+        t = setTimeout(next, WARM_STEP_MS)
+        map.once('idle', next)
+      })
+      return new Promise((resolve) => whenStyleReady(() => resolve(step(0)))).then(() => {
+        if (!cancelled) { try { map.jumpTo(back) } catch (_) {} done() }
+      })
+    },
     resumeItinerary: () => itinerary?.resume(),
 
     destroy: () => {
@@ -888,6 +1021,7 @@ export function renderLessonMap (el, opts = {}) {
       try { untune?.() } catch (_) {}
       try { chartPaper.remove() } catch (_) {}
       try { ink?.destroy() } catch (_) {}
+      try { label?.destroy() } catch (_) {}
       try { map.remove() } catch (_) {}
       if (window.__lessonMapApi === api) window.__lessonMapApi = null
     },

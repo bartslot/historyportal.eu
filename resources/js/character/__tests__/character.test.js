@@ -99,6 +99,15 @@ describe('recipe', () => {
     for (const c of Object.values(r.zones)) expect(kit.swatches.some((sw) => sw.id === c)).toBe(true)
   })
 
+  it('keeps a random outfit inside its time: never Marco Polo\'s Venice for a Babylonian, only Venice for Marco', () => {
+    const k = structuredClone(kit)
+    k.bodies[0].pieces.push({ ...piece('outfit/venice-tunic-satchel', 'outfit', ['skin', 'tunic']), period: 'venice-1271' })
+    let s = 7
+    const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647)
+    for (let i = 0; i < 40; i++) expect(randomRecipe(k, weaver(), rand).outfit).not.toBe('venice-tunic-satchel')
+    for (let i = 0; i < 5; i++) expect(randomRecipe(k, { ...weaver(), outfit: 'venice-tunic-satchel' }, rand).outfit).toBe('venice-tunic-satchel')
+  })
+
   it('cleans a recipe from outside: unknown ids go, the body\'s preset fills in', () => {
     const r = cleanRecipe(kit, { body: 'woman', outfit: 'evil', face: 'old-woman-n', parts: ['hair/woman-bun', '../x', 3], skin: 's9', zones: { garment: 'madder-red', apron: '#fff' }, height_m: 9, role: 'x'.repeat(99) })
     expect(r.outfit).toBe('work-tunic-apron')

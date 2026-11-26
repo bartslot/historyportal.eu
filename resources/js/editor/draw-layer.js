@@ -9,13 +9,19 @@
  *
  *   { tool: 'pen' | 'line' | 'arrow', colour: '#rrggbb', width: px at a 1000 px tall stage, points: [[x, y], ...] }
  *
- * The editor saves each one as its own layer (EditsDrawings::addDrawing makes the picture from the points), so it is
- * selected, moved and deleted like any picture. In class the player keeps them in this surface only: a tap selects
- * one, the bin or Delete removes it, Clear removes all. Nothing in class is saved.
+ * The editor puts every stroke of one drawing session on one layer (EditsDrawings::addDrawing makes the picture from
+ * the points), so it is selected, moved and deleted like any picture. In class the player keeps them in this surface
+ * only: a tap selects one, the bin or Delete removes it, Clear removes all. Nothing in class is saved.
+ *
+ * The eraser (tool 'eraser', the editor's Gum) draws nothing: its drag is handed to `onErase(path, size)`, the path in
+ * stage percent and size the eraser's width in px at a 1000 px tall stage.
  */
 
 import { TOOLS, COLOURS, WIDTHS } from './draw-options.js'
 export { TOOLS, COLOURS, WIDTHS }
+
+/** The eraser's width (px at a 1000 px tall stage) for a pen width: wide enough to hit a line without aiming. */
+export const eraserSize = (width) => Math.max(24, width * 5)
 
 /** Drop points closer than `min` (stage %) to the last kept one: a slow hand makes hundreds of them. */
 export function thin (points, min = 0.25) {
@@ -108,7 +114,7 @@ export function distanceTo (s, p, w, h) {
  *   keep              true: strokes stay on this surface, selectable and deletable (the player, in class)
  * Returns { setTool, setColour, setWidth, clear, removeSelected, strokes, destroy }.
  */
-export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect = () => {} } = {}) {
+export function mountDraw (host, { onStroke = () => {}, onErase = () => {}, keep = false, onSelect = () => {} } = {}) {
   const canvas = document.createElement('canvas')
   canvas.dataset.drawLayer = ''
   canvas.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; z-index:60; touch-action:none; cursor:crosshair; pointer-events:auto;'
@@ -118,6 +124,7 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
   let strokes = []
   let selected = -1
   let live = null
+  let hover = null   // where the pointer is, for the eraser's ring
 
   const size = () => {
     const r = canvas.getBoundingClientRect()
@@ -129,7 +136,21 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
   const paint = () => {
     g.clearRect(0, 0, canvas.width, canvas.height)
     strokes.forEach((s, i) => paintStroke(g, s, canvas.width, canvas.height, i === selected))
-    if (live && live.points.length > 1) paintStroke(g, { ...live, points: shape(live.tool, live.points) }, canvas.width, canvas.height)
+    if (live && live.tool === 'eraser') {
+      if (live.points.length > 1) {
+        paintStroke(g, { tool: 'pen', colour: '#38bdf8', width: eraserSize(width), points: thin(live.points) }, canvas.width, canvas.height)
+      }
+    } else if (live && live.points.length > 1) paintStroke(g, { ...live, points: shape(live.tool, live.points) }, canvas.width, canvas.height)
+    if (tool === 'eraser' && hover) {
+      const r = eraserSize(width) * canvas.height / 2000
+      g.save()
+      g.lineWidth = Math.max(1, canvas.height / 600)
+      g.strokeStyle = '#38bdf8'
+      g.beginPath()
+      g.arc(hover[0] / 100 * canvas.width, hover[1] / 100 * canvas.height, r, 0, Math.PI * 2)
+      g.stroke()
+      g.restore()
+    }
   }
   const at = (e) => {
     const r = canvas.getBoundingClientRect()
@@ -151,18 +172,36 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
       if (selected >= 0) select(-1)
     }
     live = { tool, colour, width, points: [p] }
+    if (tool === 'eraser') { canvas.style.opacity = '0.55'; paint() }
   }
   const move = (e) => {
-    if (!live) return
-    live.points.push(at(e))
+    hover = at(e)
+    if (!live) { if (tool === 'eraser') paint(); return }
+    live.points.push(hover)
     paint()
   }
+  const leave = () => { hover = null; if (!live) paint() }
   const up = () => {
     if (!live) return
+    if (live.tool === 'eraser') {
+      const path = thin(live.points)
+      live = null
+      canvas.style.opacity = ''
+      paint()
+      onErase(path, eraserSize(width))
+      return
+    }
     const s = { ...live, points: shape(live.tool, live.points) }
     live = null
     if (isStroke(s)) {
       if (keep) strokes = [...strokes, s]
+      else {
+        // the editor: shown here until it is saved and the stage draws it
+        strokes = [...strokes, s]
+        Promise.resolve(onStroke(s)).finally(() => { strokes = strokes.filter((x) => x !== s); paint() })
+        paint()
+        return
+      }
       onStroke(s)
     }
     paint()
@@ -175,6 +214,7 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
   canvas.addEventListener('pointermove', move)
   canvas.addEventListener('pointerup', up)
   canvas.addEventListener('pointercancel', up)
+  canvas.addEventListener('pointerleave', leave)
   window.addEventListener('keydown', key)
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(size) : null
   ro?.observe(canvas)
@@ -182,7 +222,7 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
 
   const api = {
     canvas,
-    setTool (t) { if (TOOLS.includes(t)) tool = t },
+    setTool (t) { if (TOOLS.includes(t) || t === 'eraser') { tool = t; canvas.style.cursor = t === 'eraser' ? 'none' : 'crosshair'; paint() } },
     setColour (c) { if (/^#[0-9a-f]{6}$/i.test(c)) colour = c },
     setWidth (w) { if (WIDTHS.includes(Number(w))) width = Number(w) },
     get strokes () { return strokes },
@@ -198,16 +238,47 @@ export function mountDraw (host, { onStroke = () => {}, keep = false, onSelect =
   return api
 }
 
+/** The map's view as EditsDrawings::mapView reads it, from the artwork overlay over the map (null: no map). */
+export function drawMapView (overlay, points = null) {
+  const projector = overlay?._projector
+  const zoom = projector?.zoom?.()
+  const box = overlay?.host?.getBoundingClientRect()
+  const px = box?.height
+  if (!projector || !Number.isFinite(zoom) || !(px > 0)) return null
+  const pins = {}
+  for (const item of overlay._layers ?? []) {
+    if (item.anchor === 'map' && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+      pins[item.asset_id] = { x: item.x, y: item.y, f: overlay._mapFactor(item), fx: overlay._mapFactor(item, 'x') }
+    }
+  }
+  const view = { zoom, px, w: box.width, pins }
+  if (points?.length) {
+    const xs = points.map((p) => p[0])
+    const ys = points.map((p) => p[1])
+    const x = (Math.min(...xs) + Math.max(...xs)) / 2
+    const y = (Math.min(...ys) + Math.max(...ys)) / 2
+    const ll = projector.unproject(x, y)
+    if (ll && Number.isFinite(ll.lng) && Number.isFinite(ll.lat)) view.centre = { x, y, lng: ll.lng, lat: ll.lat }
+  }
+  return view
+}
+
 /**
- * The editor's Tekenen button and strip: x-data="drawTool()". While on, a drawing surface lies over the stage and
- * every finished stroke is saved as its own layer ($wire.addDrawing); Klaar (or Esc) puts the stage back to normal,
- * where the drawn lines are selected, moved and deleted like any picture.
+ * The editor's Tekenen button and strip: x-data="drawTool()". While on, a drawing surface lies over the stage. The
+ * first stroke becomes a drawing layer ($wire.addDrawing) and every next one goes onto that same layer until Klaar
+ * (Bart, 2026-11-24: "it should draw on 1 layer"); a layer that is gone by then (undone) makes the next stroke a new one. The Gum rubs out parts of the scene's drawings
+ * ($wire.eraseDrawing). Every stroke and every rub is its own undo step. Klaar puts the stage back to normal, where
+ * the drawing is selected, moved and deleted like any picture.
  */
 export function drawTool () {
   return {
     on: false, tool: 'pen', colour: COLOURS[0], width: WIDTHS[1], busy: 0,
     tools: TOOLS, colours: COLOURS, widths: WIDTHS,
     surface: null,
+    /** Counts drawing sessions: each Klaar starts a new one. */
+    session: 0,
+    /** The drawing layer (asset id) each session draws on, by session; none until its first stroke is saved. */
+    layers: {},
     /** Whether this scene has something to draw on: the bar's Draw button greys out when it has not. */
     available: true,
     /** What the pen lies on: the 2D scene's layers, or its stage until the first line makes them. The 3D stage has none. */
@@ -234,17 +305,36 @@ export function drawTool () {
       if (!host) return false
       this.surface?.destroy()
       this.surface = mountDraw(host, {
-        onStroke: async (stroke) => {
-          const r = host.getBoundingClientRect()
-          this.busy++
-          try { await this.$wire.addDrawing(stroke, r.height ? r.width / r.height : 16 / 9) } finally { this.busy--; this.remount() }
+        // one at a time, in order: a quick second stroke waits for the first to have made the layer it goes on
+        // each its own undo step: the marker goes right before the save, since a queued save can be sent after the
+        // next stroke's press already sent its marker (edit-steps.js)
+        onStroke: (stroke) => {
+          // the layer belongs to the session the stroke was drawn in: a save that lands after Klaar never hands it on
+          const session = this.session
+          return this.queue(async () => {
+            await this.$wire.startEditStep?.()
+            const res = await this.$wire.addDrawing(stroke, this.aspect(host), this.layers[session] ?? null, this.mapView(stroke.points))
+            if (res?.ok) this.layers[session] = res.id
+          })
         },
+        onErase: (path, size) => this.queue(async () => {
+          await this.$wire.startEditStep?.()
+          return this.$wire.eraseDrawing(path, size, this.aspect(host), this.mapView())
+        }),
       })
       this.apply()
       return true
     },
+    mapView (points = null) { return drawMapView(window.__artOverlay?.() ?? null, points) },
+    aspect (host) { const r = host.getBoundingClientRect(); return r.height ? r.width / r.height : 16 / 9 },
+    queue (job) {
+      this.busy++
+      const run = (this._queue ?? Promise.resolve()).then(job).catch(() => {}).finally(() => { this.busy--; this.remount() })
+      this._queue = run
+      return run
+    },
     remount () { if (this.on && !this.surface?.canvas.isConnected) this.mount() },
-    stop () { this.surface?.destroy(); this.surface = null; this.on = false },
+    stop () { this.surface?.destroy(); this.surface = null; this.on = false; this.session++ },
     apply () { this.surface?.setTool(this.tool); this.surface?.setColour(this.colour); this.surface?.setWidth(this.width) },
     pick (key, value) { this[key] = value; this.apply() },
   }

@@ -70,9 +70,12 @@ class GenerateLessonScript implements ShouldQueue
 
             // ── Critique-and-revise: one judge call, at most one regeneration ──
             $critique = $this->critique($llm, $lesson, $scripts);
-            if ($critique !== null && ScriptCritiquePrompt::needsRevision($critique)) {
-                Log::info("GenerateLessonScript #{$lesson->id}: revising after critique", $critique);
-                $issues = array_values(array_filter((array) ($critique['issues'] ?? [])));
+            // Letters from another writing system in the narration ("Marco终于", Nov 2026) always
+            // earn the one revision, whatever the judge thought of the rest.
+            $stray = $this->strayScriptIssues($lesson, $scripts);
+            if ($stray !== [] || ($critique !== null && ScriptCritiquePrompt::needsRevision($critique))) {
+                Log::info("GenerateLessonScript #{$lesson->id}: revising after critique", ['critique' => $critique, 'stray' => $stray]);
+                $issues = [...$stray, ...array_values(array_filter((array) ($critique['issues'] ?? [])))];
                 $scripts = $this->generateScripts($llm, $lesson, $scenes, $briefs, $sourceText, $issues);
                 $critique = $this->critique($llm, $lesson, $scripts) ?? $critique;
             }
@@ -103,6 +106,12 @@ class GenerateLessonScript implements ShouldQueue
         }
     }
 
+    /** Output tokens for a whole-lesson script: about 400 per scene, 4096 to 16384 (gpt-4o-mini's cap). */
+    public static function scriptTokens(int $scenes): int
+    {
+        return max(4096, min(16384, $scenes * 400));
+    }
+
     /**
      * One whole-lesson LLM call. Retries once internally when the model skips a scene —
      * a missing script would otherwise surface as a silent empty narration downstream.
@@ -126,6 +135,9 @@ class GenerateLessonScript implements ShouldQueue
             $result = $llm->json(
                 system: LessonScriptPrompt::system($lesson),
                 user: LessonScriptPrompt::user($lesson, $scenes, $briefs, $sourceText, $critiqueIssues),
+                // The whole lesson in one answer: the 2048 default cut 30-50 scenes short, which
+                // read as "orders missing" or non-JSON on prod (2026-11-02, 11-22).
+                maxTokens: self::scriptTokens($scenes->count()),
             );
 
             $scripts = collect($result['scenes'] ?? [])
@@ -150,6 +162,25 @@ class GenerateLessonScript implements ShouldQueue
      * @param  Collection<int, string>  $scripts
      * @return array<string, mixed>|null
      */
+    /**
+     * One issue per scene whose script slipped into another writing system.
+     *
+     * @return list<string>
+     */
+    private function strayScriptIssues(Lesson $lesson, Collection $scripts): array
+    {
+        $language = (string) ($lesson->language ?: 'en');
+        $issues = [];
+        foreach ($scripts as $order => $text) {
+            $runs = \App\Support\StrayScript::find((string) $text, $language);
+            if ($runs !== []) {
+                $issues[] = "Scene {$order} contains words in another writing system (".implode(', ', $runs)."): write it entirely in the lesson's language.";
+            }
+        }
+
+        return $issues;
+    }
+
     private function critique(OpenAiLlmService $llm, Lesson $lesson, Collection $scripts): ?array
     {
         try {

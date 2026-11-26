@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BACKDROP_UPSCALE, bandCopyWidth, bombU, sharpWidth, skyCover, COVER_MARGIN, bonesAt, bandOf, bandPose, BAND_NEAR_M, cameraFront, fovRad, HOUSE_PITCH_DEG, isBandPicture, distanceOf, groundHeight, isGroundStrip, landHeight, liesFlat, stripBottom, autoHorizon, bandBottom, bandHeight, bandSlot, bandWidth, GROUND_SLOT, cameraAt, DEPTH_Z, HOUSE, stainIndex, layerAt, motionOf, placeLayer, renderScale, sceneDuration, setShotDuration, setShotPose, shotAt, shotsEnd, nextTier, TIER0, ADAPT, viewWidthAt, type Tier } from './layout'
-import { cameraWobble, faceAt, tileU } from './layout'
+import { cameraWobble, faceAt, tileU, inGroup, withGroups } from './layout'
 import type { Scene } from './types'
 import { LessonDoc } from './edits'
 import type { Asset } from './types'
@@ -605,5 +605,54 @@ describe('faceAt', () => {
   it('steps to the last face at or before t', () => {
     const layer = { depth: 'fg' as const, keys: [{ t: 0, face: 'neutral' }, { t: 2, face: 'smile' }, { t: 1, x: 0.3 }] }
     expect([faceAt(layer, 0), faceAt(layer, 1.9), faceAt(layer, 2), faceAt({ depth: 'fg' }, 1)]).toEqual(['neutral', 'neutral', 'smile', null])
+  })
+})
+
+describe('groups: a parent that carries its layers (Babylon TransformNode, in metres)', () => {
+  const rest = { x: 0.5, z: 20 }
+  const child = { x: 0.6, y: 0, z: 20, scale: 1, opacity: 1, rotation: 0 }
+
+  it('a group that has not moved changes nothing', () => {
+    const now = inGroup(child, 20, { id: 'g', rest }, 0)
+    expect(now.x).toBeCloseTo(0.6)
+    expect(now.z).toBeCloseTo(20)
+    expect(now.scale).toBe(1)
+  })
+
+  it('moved sideways, every layer moves the same metres: a nearer one moves further across the view', () => {
+    const g = { id: 'g', rest, x: 0.6 }   // its middle 10 % of the view at 20 m to the right
+    const far = inGroup(child, 20, g, 0)
+    const near = inGroup({ ...child, x: 0.5, z: 10 }, 10, g, 0)
+    expect(far.x).toBeCloseTo(0.7)
+    const metres = 0.1 * viewWidthAt(20)
+    expect((near.x - 0.5) * viewWidthAt(10) - 0).toBeCloseTo(metres)
+  })
+
+  it('scaled about its middle: sizes and distances from the middle grow together', () => {
+    const now = inGroup(child, 20, { id: 'g', rest, scale: 2 }, 0)
+    expect(now.scale).toBe(2)
+    expect(now.x).toBeCloseTo(0.7)
+    const deeper = inGroup({ ...child, x: 0.5, z: 30 }, 30, { id: 'g', rest, scale: 2 }, 0)
+    expect(deeper.z).toBeCloseTo(40)
+  })
+
+  it('turned clockwise on screen: a layer to the right of the middle goes down, and turns along', () => {
+    const now = inGroup(child, 20, { id: 'g', rest, rotation: 90 }, 0)
+    expect(now.x).toBeCloseTo(0.5)
+    expect(now.y).toBeCloseTo(-0.1 * viewWidthAt(20))
+    expect(now.rotation).toBe(90)
+  })
+
+  it('its fade multiplies the layer\'s, and its keys move it over time', () => {
+    const g = { id: 'g', rest, opacity: 0.5, keys: [{ t: 0, x: 0.5 }, { t: 2, x: 0.7 }] }
+    expect(inGroup({ ...child, opacity: 0.8 }, 20, g, 0).opacity).toBeCloseTo(0.4)
+    expect(inGroup(child, 20, g, 2).x).toBeCloseTo(0.8)
+  })
+
+  it('layerAt carries a grouped layer; withGroups resolves the group and leaves a missing one alone', () => {
+    const layers = withGroups([{ depth: 'mid', x: 0.6, z: 20, group: 'g' }, { depth: 'mid', x: 0.6, group: 'gone' }], [{ id: 'g', rest, x: 0.6 }])
+    expect(layerAt(layers[0], 0).x).toBeCloseTo(0.7)
+    expect(layers[1]._group).toBeUndefined()
+    expect(layerAt(layers[1], 0).x).toBeCloseTo(0.6)
   })
 })

@@ -277,3 +277,19 @@ cd /home/customer/www/historyportal.eu/public_html \
   && php artisan optimize:clear \
   && php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
+
+---
+
+## AI pictures: ChatGPT on Bart's Mac (2026-11-21)
+
+The editor's Generate / Regenerate and Restyle buttons no longer spend OpenAI image credits.
+With `IMAGE_GENERATION_DRIVER=chatgpt_relay` (the default outside `local`) a job files a row in
+`image_relay_requests` and waits; Bart's Mac makes the picture with its ChatGPT subscription and
+posts it back.
+
+1. Server `.env`: `IMAGE_RELAY_TOKEN=<openssl rand -hex 32>`, then `php artisan migrate`.
+2. Mac `.env`: the same `IMAGE_RELAY_TOKEN`, and `IMAGE_RELAY_URL=https://historyportal.eu`.
+3. On the Mac, leave `php artisan chatgpt:relay` running in a terminal.
+
+While the Mac command is not running, a request fails after `IMAGE_RELAY_PICKUP` seconds (90)
+and the editor says the Mac is off. `IMAGE_GENERATION_DRIVER=openai` brings the paid API back.

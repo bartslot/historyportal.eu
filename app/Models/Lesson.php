@@ -51,6 +51,7 @@ class Lesson extends Model
         'game_config',
         'import_report',
         'script_review',
+        'story_map',
         'game_pack_path',
         'quiz_question_count',
         'quiz_timing',
@@ -194,6 +195,7 @@ class Lesson extends Model
             'game_config' => 'array',
             'import_report' => 'array',
             'script_review' => 'array',
+            'story_map' => 'array',
             'teacher_guide' => 'array',
             'include_game' => 'boolean',
             'quiz_question_count' => 'integer',
@@ -285,6 +287,12 @@ class Lesson extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    /** Accounts the owner let into the editor (lesson_editors). The owner is not in this list. */
+    public function editors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'lesson_editors')->withTimestamps();
     }
 
     public function quizQuestions(): HasMany

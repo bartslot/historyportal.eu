@@ -3,6 +3,7 @@
 // with only a painted sky picture keeps it, and takes its light from the time the picture's tags name. Pure.
 import { hexRgb } from './ground'
 import type { Asset, Daylight, Scene, TimeOfDay } from './types'
+import { weatherOf, type WeatherNow } from './weather'
 
 export type RGB = [number, number, number]
 export const TIMES: TimeOfDay[] = ['dawn', 'day', 'dusk', 'night']
@@ -108,6 +109,8 @@ export interface Light {
   reach: number
   /** how strong the shadows are, 0..1 */
   shadowK: number
+  /** snow or rain (weather.ts), null when dry */
+  weather: WeatherNow | null
   preset: Preset
 }
 
@@ -125,13 +128,15 @@ export function daylightOf(set: Pick<Scene['set'], 'daylight' | 'sky'> | undefin
   const amount = dynamic ? clamp01(d.clouds?.amount, 0.4) : 0
   const dull = !dynamic && isDull(skyAsset?.tags)
   const dir = sunDirOf(sun)
+  const weather = weatherOf(d.weather)
   return {
     time, dynamic, auto, preset, hex, sun, dir,
     sky: { top: hexRgb(hex.top), mid: hexRgb(hex.mid), horizon: hexRgb(hex.horizon) },
     clouds: { assets: Array.isArray(d.clouds?.assets) && d.clouds.assets.length ? d.clouds.assets.map(String) : null, amount },
     reach: shadowReach(sun),
-    // more cloud, softer sun: a full sky keeps half its shadows
-    shadowK: preset.shadowK * (dull ? DULL_SHADOW : 1) * (1 - 0.5 * amount),
+    weather,
+    // more cloud, softer sun: a full sky keeps half its shadows; falling snow or rain softens them the same way
+    shadowK: preset.shadowK * (dull ? DULL_SHADOW : 1) * (1 - 0.5 * amount) * (1 - 0.5 * (weather?.amount ?? 0)),
   }
 }
 

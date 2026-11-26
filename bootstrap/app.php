@@ -11,6 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // /broadcasting/auth signs the editor's presence channel (routes/channels.php, LessonCollaboration).
+    ->withBroadcasting(__DIR__.'/../routes/channels.php')
     ->withMiddleware(function (Middleware $middleware): void {
         // Sanctum stateful middleware for cookie-based auth (web)
         $middleware->statefulApi();

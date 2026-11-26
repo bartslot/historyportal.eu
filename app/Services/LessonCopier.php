@@ -65,6 +65,19 @@ class LessonCopier
                 }
             }
 
+            // The story map places each scene by id too: carry the layout over to the copies.
+            if (is_array($source->story_map)) {
+                $map = [];
+                foreach (['scenes', 'choices'] as $group) {
+                    foreach ((array) ($source->story_map[$group] ?? []) as $id => $point) {
+                        if (isset($ids[(int) $id])) {
+                            $map[$group][(string) $ids[(int) $id]] = $point;
+                        }
+                    }
+                }
+                $lesson->forceFill(['story_map' => $map === [] ? null : $map])->saveQuietly();
+            }
+
             $source->quizQuestions()->get()->each(function ($question) use ($lesson): void {
                 $copy = $question->replicate();
                 $copy->lesson_id = $lesson->id;

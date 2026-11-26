@@ -22,7 +22,7 @@ batch claimed (one claim id)                 job folders: prompt.txt,
                                                                                  Download
                                              studio.py take N  (~/Downloads → job folder)
         ◄── POST .../items/{id}/finish ───── studio.py push
-item → ready (pictures get the style check); teacher approves as usual
+item → ready; teacher approves as usual
 ```
 
 The studio page cannot reach historyportal.eu, because its content security policy blocks both requests and
@@ -34,11 +34,13 @@ images (tested 2026-11-23). That is why files go through the Mac.
 
 ```
 STUDIO_TOKEN=<a long random string>
-STORY_VIDEO_PICTURE_DRIVER=studio   # optional: character sheets + world shots from the studio
-STORY_VIDEO_CLIP_DRIVER=studio      # optional: clips from the studio
-STUDIO_IMAGE_MODEL="Recraft 4.1"    # names as the studio's model picker shows them
-STUDIO_VIDEO_MODEL="MiniMax H3"
+STORY_VIDEO_CLIP_DRIVER=studio      # clips from the studio
+STUDIO_VIDEO_MODEL="MiniMax H3"     # the name as the studio's model picker shows it
 ```
+
+Clips only. Character sheets and world shots always come from ChatGPT (bart, 2026-11-23: the Recraft 4.1 test in
+the studio was not History Lines, and Recraft takes no reference plates). A leftover
+`STORY_VIDEO_PICTURE_DRIVER=studio` is read as `chatgpt`.
 
 **Mac**: create `tools/studio/studio.env` (git-ignored) containing `STUDIO_TOKEN=<the same string>`.
 

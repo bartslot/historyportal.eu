@@ -49,7 +49,7 @@ final class SceneRail extends Component
     public function render(): View
     {
         $lesson = Lesson::findOrFail($this->lessonId);
-        abort_unless(auth()->user()?->canManage($lesson), 403);
+        abort_unless(auth()->user()?->canEdit($lesson), 403);
         $problems = [];
         foreach (LessonProblems::for($lesson) as $problem) {
             $problems[$problem['scene_id']][] = $problem;
