@@ -40,12 +40,9 @@ final class NarrationEta
     }
 
     /** The teacher pressed Re-narrate: remember when, and what we promised, for the countdown and the measurement. */
-    public static function requested(int $sceneId, string $provider, int $characters): int
+    public static function requested(int $sceneId, string $provider, int $characters): void
     {
-        $estimate = self::estimate($provider, $characters);
-        Cache::put(self::requestKey($sceneId), ['at' => microtime(true), 'estimate' => $estimate], now()->addHour());
-
-        return $estimate;
+        Cache::put(self::requestKey($sceneId), ['at' => microtime(true), 'estimate' => self::estimate($provider, $characters)], now()->addHour());
     }
 
     /**

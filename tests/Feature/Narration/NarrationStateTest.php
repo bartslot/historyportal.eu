@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Narration;
 
 use App\Livewire\Wizard\Step3SceneConfigurator;
-use App\Models\Scene;
 use App\Models\User;
 use App\Services\LessonComposer;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Services\Support\NarrationEta;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -134,7 +133,7 @@ class NarrationStateTest extends TestCase
 
     public function test_spoken_words_ignore_punctuation_capitals_and_spacing(): void
     {
-        $this->assertSame('ravenna 1321 dante', Step3SceneConfigurator::spokenWords("Ravenna,  1321. Dante!"));
+        $this->assertSame('ravenna 1321 dante', Step3SceneConfigurator::spokenWords('Ravenna,  1321. Dante!'));
         $this->assertNotSame(Step3SceneConfigurator::spokenWords('Dante schrijft'), Step3SceneConfigurator::spokenWords('Dante schreef'));
     }
 }

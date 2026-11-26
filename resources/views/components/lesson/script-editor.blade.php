@@ -320,7 +320,6 @@
             __('Testing the microphone…'),
         ]);
         const NARRATE_ALMOST = @js(__('Almost there…'));
-        const NARRATE_LINE_MS = 2600;
         window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating) {
             return {
                 ws: null,
@@ -361,13 +360,10 @@
                 regenerating: !!narrating,
                 _narrateTimer: null,
                 _narrateWatch: null,
-                // The countdown: seconds left as the server last said, and when it said it.
+                // The countdown: seconds left as the server last said, ticked down between answers.
                 etaLeft: null,
-                _etaAt: 0,
-                _etaTick: null,
                 narrateLine: NARRATE_LINES[0],
-                _lineIdx: 0,
-                _lineTick: null,
+                _narrateTick: null,
                 _ro: null,
                 _waveRo: null,
                 _lastSaved: '',
@@ -554,8 +550,7 @@
                 destroy() {
                     clearTimeout(this._narrateTimer);
                     clearInterval(this._narrateWatch);
-                    clearInterval(this._etaTick);
-                    clearInterval(this._lineTick);
+                    clearInterval(this._narrateTick);
                     try { this.ws?.destroy(); } catch (_) {}
                     if (this._ro) this._ro.disconnect();
                     if (this._waveRo) this._waveRo.disconnect();
@@ -861,7 +856,7 @@
                         let s = null;
                         try { s = await this.$wire.narrationState(this.sceneId); } catch (_) { return; }
                         if (!s || !this.regenerating) return;
-                        if (Number.isFinite(s.etaSeconds)) { this.etaLeft = s.etaSeconds; this._etaAt = Date.now(); }
+                        if (Number.isFinite(s.etaSeconds)) this.etaLeft = s.etaSeconds;
                         if (s.status === 'generating') { sawGenerating = true; return; }
                         if (s.audioUrl && s.audioFresh) { this.reloadAudio(s.audioUrl); return; }
                         if (s.status === 'failed') { this.narrationFailed(s.errorMessage); return; }
@@ -887,22 +882,16 @@
                 },
                 /** Rotate the status line and run the countdown down between server answers; stop both when the wait ends. */
                 _narrateTicker(on) {
-                    clearInterval(this._etaTick);
-                    clearInterval(this._lineTick);
+                    clearInterval(this._narrateTick);
                     if (!on) { this.etaLeft = null; return; }
-                    this._lineIdx = 0;
+                    let n = 0;
                     this.narrateLine = NARRATE_LINES[0];
-                    this._lineTick = setInterval(() => {
-                        if (this.etaLeft === 0) { this.narrateLine = NARRATE_ALMOST; return; }
-                        this._lineIdx = (this._lineIdx + 1) % NARRATE_LINES.length;
-                        this.narrateLine = NARRATE_LINES[this._lineIdx];
-                    }, NARRATE_LINE_MS);
-                    this._etaTick = setInterval(() => {
-                        if (this.etaLeft === null) return;
-                        const passed = Math.floor((Date.now() - this._etaAt) / 1000);
-                        if (passed >= 1) { this.etaLeft = Math.max(0, this.etaLeft - passed); this._etaAt += passed * 1000; }
-                        if (this.etaLeft === 0) this.narrateLine = NARRATE_ALMOST;
-                    }, 250);
+                    // One tick a second: the countdown drops a second, the status line moves on every third.
+                    this._narrateTick = setInterval(() => {
+                        if (this.etaLeft) this.etaLeft--;
+                        n++;
+                        this.narrateLine = this.etaLeft === 0 ? NARRATE_ALMOST : NARRATE_LINES[Math.floor(n / 3) % NARRATE_LINES.length];
+                    }, 1000);
                 },
                 /** Never wait for ever: say the recording could not be made and give the button back. */
                 _armGiveUpTimer() {
