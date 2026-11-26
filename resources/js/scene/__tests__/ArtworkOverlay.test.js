@@ -234,6 +234,75 @@ describe('ArtworkOverlay — pinned to the map', () => {
     expect(saved.at(-1)).toMatchObject({ anchor: 'screen', x: 5, y: 52 })
   })
 
+  // Bart 11-26, the Marco Polo route drawn on the map: pinned by hand it grew by PIN_ZOOM_GROWTH, not with the map,
+  // so in play (another zoom) the lines slid off the route they were traced over.
+  describe('a drawing pinned to the map follows the map exactly', () => {
+    const sized = (w = 1600, h = 900) => {
+      const el = host()
+      el.getBoundingClientRect = () => ({ left: 0, top: 0, width: w, height: h, right: w, bottom: h, x: 0, y: 0 })
+      return el
+    }
+    const zoomed = (z, ref = 3) => ({ ...projector(), zoom: () => z, refZoom: () => ref })
+    const drawing = (extra = {}) => layer({ strokes: [{ points: [[0, 0], [1, 1]] }], drawn: { x: 50, y: 50, width: 10, height: 10 }, ...extra })
+
+    it('keeps the map view when it is pinned by hand, and saves it', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      const proj = zoomed(4)
+      overlay.setProjector(proj)
+      overlay.setLayers([drawing({ x: 60, y: 50 })])
+
+      overlay.togglePin(1)
+      expect(saved.at(-1)).toMatchObject({ anchor: 'map', scale: 1, geo: { zoom: 4, px: 900, w: 1600 } })
+      // one zoom step out halves it, exactly like the map (not 1/sqrt 2)
+      proj.zoom = () => 3
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(20)
+    })
+
+    it('a picture that is not a drawing still grows by the set amount', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      overlay.setProjector(zoomed(4))
+      overlay.setLayers([layer({ x: 60, y: 50 })])
+
+      overlay.togglePin(1)
+      expect(saved.at(-1).geo).toBeUndefined()
+    })
+
+    it('gives an old pinned drawing the view of its opening zoom, so it looks the same there and follows the map', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      const proj = zoomed(3, 3)
+      overlay.setProjector(proj)
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      const before = overlay._heightPct(overlay._layers[0])
+
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+      expect(saved.at(-1)).toMatchObject({ geo: { zoom: 3, px: 900, w: 1600 } })
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(before)
+      proj.zoom = () => 5
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(before * 4)
+      expect(overlay.adoptDrawingGeo()).toBe(0)   // once
+    })
+
+    it('uses the current zoom on a voyage, whose projector has no opening zoom', () => {
+      const saved = []
+      const overlay = new ArtworkOverlay(sized(), { onChange: (id, t) => saved.push(t) })
+      overlay.setProjector({ ...projector(), zoom: () => 4, refZoom: () => NaN })
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(1)
+      expect(saved.at(-1)).toMatchObject({ geo: { zoom: 4, px: 900, w: 1600 } })
+      expect(overlay._heightPct(overlay._layers[0])).toBeCloseTo(40)
+    })
+
+    it('never touches a drawing in the player', () => {
+      const overlay = new ArtworkOverlay(sized(), { readonly: true })
+      overlay.setProjector(zoomed(3, 3))
+      overlay.setLayers([drawing({ anchor: 'map', lng: 10, lat: -20 })])
+      expect(overlay.adoptDrawingGeo()).toBe(0)
+    })
+  })
+
   it('refuses to pin when there is no map to pin to', () => {
     const el = host()
     const overlay = new ArtworkOverlay(el)

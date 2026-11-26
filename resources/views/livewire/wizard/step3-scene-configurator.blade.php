@@ -372,6 +372,7 @@
                         anchor: free ? 'screen' : (ll ? 'map' : null),
                         lng: !free && ll ? ll.lng : null,
                         lat: !free && ll ? ll.lat : null,
+                        geo: !free && ll ? (t.geo ?? null) : null,
                     })
                 },
             })
@@ -431,6 +432,10 @@
             // repointed by a slideshow render (wizard-bridge), so it isn't reliable here.
             window.__voyageArtworkLayer = overlay
             window.__lessonArtworkLayer = overlay
+            // A drawing pinned before pins kept the map's view grows the wrong amount and drifts off the map in play:
+            // give it the view it shows now, once the opening camera has settled (ArtworkOverlay.adoptDrawingGeo).
+            const sid = p.sceneId
+            setTimeout(() => { if (sid === currentSceneId) overlay.adoptDrawingGeo?.() }, 1200)
         }
         const hideMapArt = () => {
             const h = voyageArtHost()
@@ -462,6 +467,16 @@
         // is never thrown away while the editor is open. A slide, a voyage or the title only hides it; the
         // next map scene puts itself on it (showScene), with every tile and picture of the chart still in.
         let keptMap = null      // the lesson map block
+        // The voyage's map, kept the same way (Bart 11-26: "maps keep on being shown anew. on every scene"): a slide
+        // between two legs only hides it, and the next leg of the same voyage plays on it with its tiles still in.
+        let keptVoyage = null   // { inst, inner, voyage, style, def }
+        const parkVoyage = () => { if (keptVoyage) keptVoyage.inner.style.visibility = 'hidden' }
+        const dropVoyage = () => {
+            if (!keptVoyage) return
+            try { keptVoyage.inst.destroy() } catch (_) {}
+            keptVoyage.inner.remove()
+            keptVoyage = null
+        }
         let keptInner = null    // its container, a child of host beside any voyage/gallery mount
         const parkMap = () => {
             if (!keptInner) return
@@ -469,12 +484,15 @@
             try { keptMap.stopItinerary?.() } catch (_) {}
         }
         const destroy = () => {
-            if (inst && inst !== keptMap) inst.destroy()
+            if (inst && inst !== keptMap && inst !== keptVoyage?.inst) inst.destroy()
+            // The voyage on stage is parked like the map, with the route as it last drew it (see keptVoyage).
+            if (keptVoyage && inst === keptVoyage.inst) keptVoyage.def = lastVoyageDefStr
             inst = null
-            for (const c of [...host.children]) if (c !== keptInner) c.remove()
+            for (const c of [...host.children]) if (c !== keptInner && c !== keptVoyage?.inner) c.remove()
             parkMap()
+            parkVoyage()
             // Out of sight but laid out, so the map keeps its size (and its tiles) for the next map scene.
-            if (keptInner) { host.style.display = 'block'; host.style.visibility = 'hidden' } else host.style.display = 'none'
+            if (keptInner || keptVoyage) { host.style.display = 'block'; host.style.visibility = 'hidden' } else host.style.display = 'none'
             hideMapArt()
             lastKey = null; lastVoyageId = null; lastMapStyle = null; lastVoyageDefStr = null; lastLeg = null; lastGalleryId = null; lastOverview = false
         }
@@ -706,7 +724,18 @@
                 //  • route GEOMETRY edited (drag / insert / move a waypoint) → setVoyageDef() reshapes
                 //    the ship + trail + fog + handles in place at the current camera (no jump, no flash)
                 //  • leg changed → playLeg()   • same leg, content changed → refreshArrivalContent()
-                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && (p.voyage_map?.style || 'earth') === lastMapStyle) {
+                // The same voyage, parked since a slide, the map or the title: back on stage, and the leg played on it again.
+                const style = p.voyage_map?.style || 'earth'
+                if (p.kind === 'voyage' && keptVoyage && inst !== keptVoyage.inst && keptVoyage.voyage === cfg.voyage && keptVoyage.style === style) {
+                    destroy(); wireMapProjectors()
+                    inst = keptVoyage.inst
+                    keptVoyage.inner.style.visibility = ''
+                    host.style.display = 'block'
+                    host.style.visibility = ''
+                    lastVoyageId = cfg.voyage; lastMapStyle = style; lastVoyageDefStr = keptVoyage.def
+                    window.__voyageTour = inst
+                }
+                if (inst && p.kind === 'voyage' && cfg.voyage === lastVoyageId && style === lastMapStyle) {
                     applyLiveMap()
                     const legNow = Number(cfg.leg) || 0
                     const defStr = JSON.stringify(p.voyage_def || null)
@@ -765,9 +794,11 @@
                     return
                 }
                 destroy(); wireMapProjectors()
+                // Another voyage (or its ground changed): the parked one goes for good.
+                if (p.kind === 'voyage') dropVoyage()
                 lastKey = key
                 lastVoyageId = cfg.voyage
-                lastMapStyle = p.voyage_map?.style || 'earth'
+                lastMapStyle = style
                 lastVoyageDefStr = JSON.stringify(p.voyage_def || null)
                 lastLeg = Number(cfg.leg) || 0
                 // `cfg`, not `vcfg`: the same scene config, but vcfg is declared further down and
@@ -829,6 +860,7 @@
                     }
                     // Expose the live tour so the zoom-out toggle can reach it from any voyage scene.
                     window.__voyageTour = inst
+                    keptVoyage = { inst, inner: stageInner, voyage: vcfg.voyage, style: lastMapStyle, def: lastVoyageDefStr }
                     lastGalleryId = null
                 } else if (p.kind === 'gallery' && window.renderGallery) {
                     inst = window.renderGallery(stageInner, vcfg)

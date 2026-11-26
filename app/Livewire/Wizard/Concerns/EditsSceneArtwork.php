@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\Editor\Drawings;
 use App\Services\SceneArrow;
 use App\Services\SceneLayers;
 use App\Services\Support\LayerAmbient;
@@ -745,13 +746,33 @@ trait EditsSceneArtwork
     }
 
     /**
+     * A map view from the browser, checked: zoom 0-24, stage height and width in px. Null when any part is missing.
+     *
+     * @param  array<string,mixed>|null  $geo
+     * @return array{zoom:float, px:float, w:float}|null
+     */
+    private static function cleanGeo(?array $geo): ?array
+    {
+        $num = fn ($v): bool => is_numeric($v) && is_finite((float) $v);
+        if (! is_array($geo) || ! $num($geo['zoom'] ?? null) || ! $num($geo['px'] ?? null) || ! $num($geo['w'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'zoom' => round(max(0.0, min(24.0, (float) $geo['zoom'])), 4),
+            'px' => round(max(50.0, min(10000.0, (float) $geo['px'])), 1),
+            'w' => round(max(50.0, min(20000.0, (float) $geo['w'])), 1),
+        ];
+    }
+
+    /**
      * Batched move + scale from an on-canvas drag/resize. Persists all three in one call and,
      * crucially, does NOT re-dispatch scene:load — the canvas editor already holds the new
      * position, so re-broadcasting would clobber the layer mid-interaction (same guard the
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null, ?array $geo = null): void
     {
         if (! $this->selectedSceneId) {
             return;
@@ -785,11 +806,15 @@ trait EditsSceneArtwork
         // caller that sends none leaves the stored angle alone.
         $rotation = $rotation === null ? null : max(-180.0, min(180.0, $rotation));
 
-        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $scene): array {
+        // A pinned drawing's map view (zoom, stage px tall and wide), so it grows exactly with the map
+        // (ArtworkOverlay geoZoomFactor). Only kept on a drawing layer that is pinned.
+        $geo = $pinned ? self::cleanGeo($geo) : null;
+
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo, $scene): array {
             if (! $this->editsShot($scene, $i)) {
                 return $shot;
             }
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
                     $l['y'] = $y;
@@ -804,6 +829,9 @@ trait EditsSceneArtwork
                             $l['anchor'] = 'map';
                             $l['lng'] = $lng;
                             $l['lat'] = $lat;
+                            if ($geo !== null && Drawings::isDrawingLayer($l)) {
+                                $l['geo'] = $geo;
+                            }
                         } else {
                             unset($l['anchor'], $l['lng'], $l['lat']);
                         }
