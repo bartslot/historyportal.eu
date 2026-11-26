@@ -426,7 +426,7 @@ export const BLOOM_LAYER_ID = LAYER_ID
  * in too much causes the textures to light up, as if we are the sun". Close in there is no point
  * source left to bloom, so the pass bows out between these two zooms.
  */
-export const BLOOM_FADE_ZOOM = [2.5, 4]
+const BLOOM_FADE_ZOOM = [2.5, 4]
 export const bloomZoomFade = (zoom) => {
   const [from, to] = BLOOM_FADE_ZOOM
   if (!Number.isFinite(zoom) || zoom <= from) return 1

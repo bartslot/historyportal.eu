@@ -283,7 +283,7 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [3, 8, 3, 8],
       },
-      paint: { 'text-color': VOYAGE_LABEL_INK, 'icon-opacity': 1 },
+      paint: { 'text-color': VOYAGE_LABEL_INK },
     },
   ];
 }

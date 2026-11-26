@@ -33,6 +33,7 @@ import { EASING } from '../easing.js';
 import { planetSpacePosition } from './planet-mesh.js';
 import { sunDirection, midsummerAt, utcHourWithSunOver, hourDelta } from './sun.js';
 import { registerCardControls } from './information-card.js';
+import { COMIC_MAP_STYLE, addComicStyle, setComicVisible } from './comic-style.js';
 
 // Curated national fill colours (schoolbook hues: NL orange, France blue, Spain gold) keyed by the
 // tile QID; a nation's regimes AND colonies share one hue, so Spanish Peru reads as Spain. Polities
@@ -1034,6 +1035,8 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       text: { color: EARTH_COLOURS.text, halo: EARTH_COLOURS.halo },
       voyage: EARTH_COLOURS.voyage, paper: 0, vignette: 'rgba(0,0,0,0.4)',
     },
+    // Comic: the lesson map's watercolour chart (comic-style.js reuses map-chart.js as it is).
+    'comic': { palette: ATLAS_PAL, ...COMIC_MAP_STYLE },
     'night': { palette: NIGHT_PAL, water: '#0f1420', shore: { color: '#8a99b8', width: 0.7, shadow: '#070b12', shadowWidth: 2.0, dy: 1.6 }, land: '#1b2230', fillOpacity: 0.6, selected: '#f5c518', hover: '#5a6b8c', line: { color: '#8a99b8', width: 0.6, blur: 0.2 }, text: { color: '#e6ecf7', halo: '#10151f' }, voyage: '#8fc3ef', paper: 0, vignette: 'rgba(0,0,0,0.45)' },
   };
   const applyOverlays = (s) => {
@@ -1703,12 +1706,18 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // Satellite: the photographed ground replaces the drawn one, so every layer that paints a
     // substitute for it (land fill, sea grid, coast drop-shadow, lakes) steps aside.
     const photo = !!s.imagery;
+    const chart = !!s.chart;
     const vis = (layer, on) => { if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', on ? 'visible' : 'none'); };
+    // Comic: the painted chart IS the ground, and like the lesson map it has no sun, clouds or night
+    // ("map is just map"), so the globe stack steps aside with the Time-Map's own drawn ground.
+    setComicVisible(map, chart);
+    for (const layer of Object.values(globe?.layers || {})) { if (layer?.id) vis(layer.id, !chart); }
+    vis('coast-bold', !chart);
     // Both halves of the satellite ground: the base, and the close-range detail that fades in
     // over it. Toggling only the base leaves Sentinel-2 painting over a drawn atlas.
     vis('satellite', photo);
     vis('satellite-detail', photo);
-    for (const drawn of ['land', 'coast-shadow', 'lakes', 'lake-line', 'lake-shadow']) vis(drawn, !photo);
+    for (const drawn of ['land', 'coast-shadow', 'lakes', 'lake-line', 'lake-shadow']) vis(drawn, !photo && !chart);
     // The bold ink shore would fence off a real coastline; keep it as a faint guide line.
     if (map.getLayer('coast-bold')) map.setPaintProperty('coast-bold', 'line-opacity', photo ? 0.4 : 1);
     map.setPaintProperty('water', 'background-color', s.water);
@@ -2168,6 +2177,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // Border tiles load asynchronously; re-settle once they're in so labels + prefetch see them.
     map.on('sourcedata', (e) => { if (e.sourceId === 'cliopatria' && e.isSourceLoaded) scheduleSettle(); });
 
+    // The Comic style's ground (the lesson map's watercolour chart), hidden until it is chosen. Its
+    // sea and land go under the Time-Map's own drawn ground, its coast ink under the territories.
+    addComicStyle(map, { origin: location.origin, underBefore: 'graticule', overBefore: 'boundaries-fill' });
     let savedStyle = null;
     try { savedStyle = localStorage.getItem('tm-style'); } catch (e) { /* private mode */ }
     applyMapStyle(savedStyle || 'soft-atlas');
