@@ -44,7 +44,7 @@ const dist2 = (a, b) => {
 
 /**
  * Where along the track the traveller passes the checkpoint: the fraction (between f0 and f1, the leg's span)
- * of the track point nearest to it. Sampled, then refined around the best sample.
+ * of the nearest of `steps` track samples (1/240 of a leg is well under a second of sailing).
  *
  * @param {{lng:number,lat:number}} cp
  * @param {(f:number) => ({lng:number,lat:number}|null)} pointAt  the track, as the ship sails it
@@ -55,20 +55,13 @@ export function checkpointFraction (cp, pointAt, f0, f1, steps = 240) {
   if (!(Math.abs(span) > 0)) return f0
   let best = f0
   let bestD = Infinity
-  const scan = (from, to, n) => {
-    for (let i = 0; i <= n; i++) {
-      const f = from + (to - from) * (i / n)
-      const p = pointAt(f)
-      if (!p) continue
-      const d = dist2(p, target)
-      if (d < bestD) { bestD = d; best = f }
-    }
+  for (let i = 0; i <= steps; i++) {
+    const f = f0 + span * (i / steps)
+    const p = pointAt(f)
+    if (!p) continue
+    const d = dist2(p, target)
+    if (d < bestD) { bestD = d; best = f }
   }
-  scan(f0, f1, steps)
-  const step = span / steps
-  const lo = Math.min(f0, f1)
-  const hi = Math.max(f0, f1)
-  scan(Math.max(lo, best - step), Math.min(hi, best + step), 40)
   return best
 }
 
@@ -167,8 +160,7 @@ export function renderCheckpointCard (host, cp, { onClose = null } = {}) {
   card.addEventListener('pointerdown', (e) => e.stopPropagation())   // a press on the card never pans the map
 
   host.appendChild(card)
-  // Next frame, so the fade in actually runs from the resting state.
-  requestAnimationFrame(() => card.classList.add('is-in'))
-  setTimeout(() => card.classList.add('is-in'), 50)   // rAF never runs in a background tab
+  // A beat later, so the fade in runs from the resting state (a timer, not rAF: rAF never runs in a background tab).
+  setTimeout(() => card.classList.add('is-in'), 50)
   return { el: card, id: cp.id, close }
 }
