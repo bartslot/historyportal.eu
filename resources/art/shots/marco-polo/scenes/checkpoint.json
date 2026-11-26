@@ -165,7 +165,13 @@
             ],
             "framing": "Medium, reverse angle"
           },
-          "action": "The Mongol officer sees the tablet and gives a respectful nod."
+          "action": "The Mongol officer sees the tablet and gives a respectful nod.",
+          "places": {
+            "officer": [
+              265.0,
+              103.75
+            ]
+          }
         },
         {
           "shot": 4,

@@ -147,7 +147,13 @@
             ],
             "framing": "Wide"
           },
-          "action": "A herd of argali with huge curling horns stands on a slope and watches the travellers."
+          "action": "A herd of argali with huge curling horns stands on a slope and watches the travellers.",
+          "places": {
+            "argali": [
+              932.0,
+              324.0
+            ]
+          }
         },
         {
           "shot": 3,

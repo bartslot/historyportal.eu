@@ -167,7 +167,13 @@
             "framing": "Medium"
           },
           "action": "The guide has stopped and looks toward the left horizon; his horse lifts its head.",
-          "sees": {}
+          "sees": {},
+          "places": {
+            "guide": [
+              1047.61,
+              567.64
+            ]
+          }
         },
         {
           "shot": 3,
@@ -316,16 +322,16 @@
           },
           "places": {
             "maffeo": [
-              1088,
-              720
+              1056.95,
+              706.76
             ],
             "niccolo": [
-              1100,
-              722
+              1061.5,
+              704.67
             ],
             "marco": [
-              1113,
-              718
+              1066.04,
+              702.59
             ]
           }
         },
@@ -414,16 +420,16 @@
           },
           "places": {
             "maffeo": [
-              3480,
-              765
+              3455.69,
+              762.43
             ],
             "marco": [
-              3500,
-              770
+              3457.9,
+              761.26
             ],
             "niccolo": [
-              3520,
-              774
+              3460.11,
+              760.1
             ]
           }
         }

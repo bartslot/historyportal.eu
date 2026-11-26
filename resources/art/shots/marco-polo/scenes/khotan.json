@@ -128,7 +128,13 @@
             ],
             "framing": "Medium wide"
           },
-          "action": "Jade gatherers wade knee-deep in the river, feeling for stones with their feet."
+          "action": "Jade gatherers wade knee-deep in the river, feeling for stones with their feet.",
+          "places": {
+            "gatherer": [
+              385.57,
+              173.93
+            ]
+          }
         },
         {
           "shot": 3,
@@ -145,7 +151,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "Wet hands lift a rounded river pebble of white to pale green jade out of the water."
+          "action": "Wet hands lift a rounded river pebble of white to pale green jade out of the water.",
+          "places": {
+            "hands": [
+              395.67,
+              191.34
+            ]
+          }
         },
         {
           "shot": 4,

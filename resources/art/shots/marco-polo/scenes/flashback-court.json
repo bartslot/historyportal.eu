@@ -96,16 +96,16 @@
           },
           "places": {
             "niccolo": [
-              17.0,
-              26.0
+              18.8,
+              23.0
             ],
             "maffeo": [
-              23.0,
-              26.0
+              21.2,
+              23.0
             ],
             "kublai": [
               20.0,
-              26.0
+              25.5
             ]
           }
         },
@@ -186,7 +186,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "The gold tablet in Niccolò's hands: a long gold plate with rounded ends, a hole at the top for its cord, engraved with vertical Uyghur-Mongol script; no animal on it."
+          "action": "The gold tablet in Niccolò's hands: a long gold plate with rounded ends, a hole at the top for its cord, engraved with vertical Uyghur-Mongol script; no animal on it.",
+          "places": {
+            "tablet": [
+              20.0,
+              21.5
+            ]
+          }
         }
       ]
     }

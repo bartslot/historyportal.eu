@@ -165,7 +165,13 @@
             ],
             "framing": "Wide"
           },
-          "action": "Empty ruined streets: mud-brick rubble, broken glazed tiles and a few marble blocks; a single goatherd and his goats."
+          "action": "Empty ruined streets: mud-brick rubble, broken glazed tiles and a few marble blocks; a single goatherd and his goats.",
+          "places": {
+            "goatherd": [
+              531.23,
+              324.99
+            ]
+          }
         },
         {
           "shot": 4,

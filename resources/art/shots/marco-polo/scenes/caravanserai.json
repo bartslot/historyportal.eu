@@ -123,7 +123,13 @@
             ],
             "framing": "Medium"
           },
-          "action": "A Persian caravan master by the fire leans in and warns: Caraonas raiders roam the plain."
+          "action": "A Persian caravan master by the fire leans in and warns: Caraonas raiders roam the plain.",
+          "places": {
+            "traveller": [
+              17.14,
+              22.12
+            ]
+          }
         },
         {
           "shot": 3,

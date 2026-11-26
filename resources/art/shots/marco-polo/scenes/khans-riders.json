@@ -149,7 +149,13 @@
             ],
             "framing": "Close-up"
           },
-          "action": "A rider's belt hung with small bells; his hand tight on the reins."
+          "action": "A rider's belt hung with small bells; his hand tight on the reins.",
+          "places": {
+            "rider": [
+              3002.24,
+              791.12
+            ]
+          }
         },
         {
           "shot": 3,
@@ -169,6 +175,12 @@
           "action": "A post station: a low walled lodging, fresh horses waiting, a clerk with brush and paper at the door.",
           "sees": {
             "station": "centre"
+          },
+          "places": {
+            "clerk": [
+              3431.23,
+              744.99
+            ]
           }
         },
         {
@@ -186,7 +198,17 @@
             ],
             "framing": "Medium"
           },
-          "action": "The rider leaps onto a fresh horse while the clerk writes down the hour."
+          "action": "The rider leaps onto a fresh horse while the clerk writes down the hour.",
+          "places": {
+            "rider": [
+              3474.95,
+              776.36
+            ],
+            "clerk": [
+              3476.51,
+              774.81
+            ]
+          }
         }
       ]
     },
@@ -217,7 +239,13 @@
             ],
             "framing": "Wide"
           },
-          "action": "The rider gallops over a hill and past a river, his head, chest and stomach bound tight with bands."
+          "action": "The rider gallops over a hill and past a river, his head, chest and stomach bound tight with bands.",
+          "places": {
+            "rider": [
+              2564.95,
+              669.28
+            ]
+          }
         },
         {
           "shot": 6,
