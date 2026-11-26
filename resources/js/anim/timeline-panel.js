@@ -15,6 +15,7 @@ import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, key
 import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
 import { storedNarrationStart } from './narration-start.js'
 import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
+import { setLoopsPaused, seekLoops } from '../scene/picture-loop.js'
 import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
@@ -273,6 +274,9 @@ export const animationTimeline = (config = {}) => ({
   videoLength: null,
 
   init () {
+    // The timeline is the scene's clock, the background video included: it rests with the playhead
+    // and moves only while the scene plays (Bart, 2026-11-26: "the video needs to be paused too").
+    setLoopsPaused(true)
     this.audioSpans = wordSpans(config.alignment ?? [])
     this.spans = shiftSpans(this.audioSpans, this.narrationStart)
     this.refreshObjects()
@@ -1249,6 +1253,7 @@ export const animationTimeline = (config = {}) => ({
 
   seek (time) {
     this.time = Math.min(this.duration, Math.max(0, time))
+    if (!this.playing) seekLoops(this.time)   // a scrub shows the video's frame at the playhead
     this.applyFrame()
     this.previewSail()
     this.remember()
@@ -1591,6 +1596,8 @@ export const animationTimeline = (config = {}) => ({
     this._startedAt = performance.now()
     this._voiceTried = false
     this.speakFrom(this._startedFrom)
+    seekLoops(this._startedFrom)
+    setLoopsPaused(false)
     const step = () => {
       if (!this.playing) return
       // While the voice plays, IT is the clock: the lit word is the word being heard, even when the
@@ -1614,6 +1621,7 @@ export const animationTimeline = (config = {}) => ({
         this._startedAt = performance.now() - t * 1000
         this._voiceTried = false
         this.speakFrom(t)
+        seekLoops(t)   // the video starts its lap with the scene's
       }
       // The playhead reached a clip that starts later in the scene: the voice comes in now, once.
       if (!voice && this.voiceDue(t)) { this._voiceTried = true; this.speakFrom(t) }
@@ -1628,6 +1636,7 @@ export const animationTimeline = (config = {}) => ({
     if (this.playing) window.dispatchEvent(new CustomEvent('timeline-playing', { detail: false }))
     this.playing = false
     NARRATION.get(config.sceneId)?.pause()
+    setLoopsPaused(true)
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = null
   },
