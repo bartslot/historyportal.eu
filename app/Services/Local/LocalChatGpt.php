@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Local;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
@@ -124,6 +125,11 @@ final class LocalChatGpt
         foreach ($images as $image) {
             array_push($cmd, '-i', $image);
         }
+        // What actually went out, by content: a picture made "with the sheet" must be provable later (bart, 2026-11-26).
+        Log::info('chatgpt-local request', [
+            'prompt_sha256' => hash('sha256', $prompt),
+            'images' => array_map(fn (string $image) => ['file' => basename($image), 'sha256' => (string) @hash_file('sha256', $image)], $images),
+        ]);
         $result = Process::timeout($timeout)->input($prompt)->run($cmd);
         if (! $result->successful()) {
             $tail = implode("\n", array_slice(explode("\n", trim($result->output()."\n".$result->errorOutput())), -12));

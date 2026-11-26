@@ -18,10 +18,10 @@ use App\Services\Art\HistoryLineStyle;
  */
 final class StoryVideoPrompts
 {
-    /** The colour anchors and the texture plate that carry the look in every picture request, in attach order. */
-    public const IMAGE_ANCHORS = ['colour-caesar.jpg', 'colour-castle.jpg', 'texture-watercolour.jpg'];
+    /** The approved History Lines colour reference that carries the look in every picture request (anchors.json). */
+    public const IMAGE_ANCHORS = ['colour-ship-spyglass.jpg'];
 
-    public const SHEET_ANCHORS = ['colour-classroom.jpg', 'colour-caesar.jpg', 'texture-watercolour.jpg'];
+    public const SHEET_ANCHORS = self::IMAGE_ANCHORS;
 
     /**
      * @param  array{name: string, colour?: string, look?: string}  $person

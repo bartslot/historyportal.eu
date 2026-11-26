@@ -1,0 +1,95 @@
+{
+  "lesson": "marco-polo",
+  "media": "topics/marco-polo/v2",
+  "about": "The cast of the Marco Polo lesson. Looks are copied from the History Lines skill (bart, 24-26 Nov 2026). A sheet is null until bart approves one; palette colours are sampled from the approved colour sheet with `shots.py palette`, never typed in by hand.",
+  "characters": {
+    "marco": {
+      "name": "Marco Polo",
+      "kind": "person",
+      "look": "Young and beardless, shoulder-length chestnut hair, cream linen tunic with a lace at the neck, brown belt, brown satchel on a strap, brown leggings, soft boots. In snow: a cream fur-lined coat over the same.",
+      "horse": "marco-horse",
+      "signature_parts": [
+        "tunic"
+      ],
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    },
+    "niccolo": {
+      "name": "Niccolò Polo (Marco's father)",
+      "kind": "person",
+      "look": "The elder, calm. Broad square face, heavy brows, wide nose, lined forehead, full rounded beard in dark brown with grey streaks, warm steady look. Hair dark brown, greying at the temples. Cream under-tunic, rust-orange cap, red cloak with a gold clasp.",
+      "signature": "red",
+      "horse": "niccolo-horse",
+      "signature_parts": [
+        "cloak"
+      ],
+      "reserved": [
+        "cloak"
+      ],
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    },
+    "maffeo": {
+      "name": "Maffeo Polo (Marco's uncle)",
+      "kind": "person",
+      "look": "The uncle with the sharp eyes. Long narrow face, high cheekbones, thin slightly hooked nose, keen narrow eyes, short trimmed pointed beard, near-black. Hair near-black, cropped short. Cream under-tunic, blue cap, blue cloak with a gold clasp, in every picture. No one else wears a blue cap.",
+      "signature": "blue",
+      "horse": "maffeo-horse",
+      "signature_parts": [
+        "cloak",
+        "cap"
+      ],
+      "reserved": [
+        "cloak",
+        "cap"
+      ],
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    },
+    "marco-horse": {
+      "name": "Marco's horse",
+      "kind": "horse",
+      "look": "A smaller, lively chestnut: red-brown, lighter mane, white socks. A small, sturdy horse of the region, never a big European warhorse.",
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    },
+    "niccolo-horse": {
+      "name": "Niccolò's horse",
+      "kind": "horse",
+      "look": "A heavy, calm bay: warm brown, black mane and tail, white blaze. A small, sturdy horse of the region, never a big European warhorse.",
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    },
+    "maffeo-horse": {
+      "name": "Maffeo's horse",
+      "kind": "horse",
+      "look": "A lean, long-necked dapple grey. A small, sturdy horse of the region, never a big European warhorse.",
+      "sheets": {
+        "ink": null,
+        "colour": null
+      },
+      "swatches": {},
+      "palette": {}
+    }
+  }
+}
