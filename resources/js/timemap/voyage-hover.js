@@ -138,6 +138,22 @@ export const nearestOnRoute = (coords, lng, lat) => {
 const LAND = new Set((transportCatalog?.transports ?? []).filter((t) => t?.terrain === 'land').map((t) => t.id));
 
 /**
+ * The leg being travelled at a point on the route, or null where no leg covers it.
+ *
+ * @param {{ legs?: Array<object> }} voyage  a voyages.json entry
+ * @param {number} sample  fractional index into smooth(voyage.waypoints)
+ * @returns {object|null}
+ */
+export const legAtSample = (voyage, sample) => {
+  const wp = sample / SAMPLES_PER_SEGMENT;
+  return (voyage?.legs ?? []).find((l) => {
+    const a = Number(l?.wp?.[0]);
+    const b = Number(l?.wp?.[1] ?? a);
+    return wp >= Math.min(a, b) - 1e-6 && wp <= Math.max(a, b) + 1e-6;
+  }) ?? null;
+};
+
+/**
  * The overland transport at a point on the route ('horse', 'camel'), or null on a sea leg.
  * The hover label names this instead of the fleet: Marco Polo crossed Persia by camel, not in the
  * galley he sailed from Venice in.
@@ -147,11 +163,15 @@ const LAND = new Set((transportCatalog?.transports ?? []).filter((t) => t?.terra
  * @returns {string|null}
  */
 export const landTransportAtSample = (voyage, sample) => {
-  const wp = sample / SAMPLES_PER_SEGMENT;
-  const leg = (voyage?.legs ?? []).find((l) => {
-    const a = Number(l?.wp?.[0]);
-    const b = Number(l?.wp?.[1] ?? a);
-    return wp >= Math.min(a, b) - 1e-6 && wp <= Math.max(a, b) + 1e-6;
-  });
+  const leg = legAtSample(voyage, sample);
   return leg && LAND.has(leg.transport) ? leg.transport : null;
+};
+
+/**
+ * The ship's name on a sea leg that names its own (`legs[].vessel`), else null. Bonaparte sailed
+ * to Egypt in L'Orient and came home in La Muiron; neither is "L'armée d'Italie".
+ */
+export const vesselAtSample = (voyage, sample) => {
+  const leg = legAtSample(voyage, sample);
+  return leg && !LAND.has(leg.transport) && leg.vessel ? String(leg.vessel) : null;
 };
