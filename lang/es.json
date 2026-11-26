@@ -3084,7 +3084,7 @@
     "Area colour": "Color del área",
     "Etched": "Grabado",
     "its border at the chosen year": "su frontera en el año elegido",
-    "Clickable on the map": "Clicable en el mapa",
-    "The class can open this stop.": "La clase puede abrir esta parada.",
-    "The class sees the name only.": "La clase solo ve el nombre."
+    "Opens when the class arrives": "Se abre al llegar",
+    "Opens by itself; the bubble opens it again.": "Se abre sola; el bocadillo la vuelve a abrir.",
+    "Nothing opens; the class sees the name only.": "No se abre nada; la clase solo ve el nombre."
 }

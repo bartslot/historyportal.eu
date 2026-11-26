@@ -3359,7 +3359,7 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * The stop inspector's "Clickable on the map" switch (config.gallery.button): off, the class gets no button
+     * The stop inspector's "Opens when the class arrives" switch (config.gallery.button): off, the class gets no button
      * to open this stop. See App\Support\VoyageStopButton for the default while it is unset.
      */
     public function setStopButton(bool $on): void
