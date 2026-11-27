@@ -129,13 +129,14 @@ def sample(rgb: np.ndarray) -> str | None:
 
 def ink_kept(ink_rgb: np.ndarray, colour_rgb: np.ndarray, width: int = 512) -> float:
     """Share of the pass 1 ink that is still ink, in the same place, after pass 2 (1.0 = every mark kept)."""
-    def dark(rgb: np.ndarray) -> np.ndarray:
-        h = max(1, round(width * rgb.shape[0] / rgb.shape[1]))
+    h = max(1, round(width * ink_rgb.shape[0] / ink_rgb.shape[1]))
+    if abs(colour_rgb.shape[0] / colour_rgb.shape[1] - ink_rgb.shape[0] / ink_rgb.shape[1]) > 0.01:
+        return 0.0                         # another shape: not an edit of this ink
+
+    def dark(rgb: np.ndarray) -> np.ndarray:  # both to one size: an edit may come back a pixel off (1670x942)
         small = np.asarray(Image.fromarray(rgb.astype(np.uint8)).resize((width, h), Image.LANCZOS), dtype=np.float64)
         return lab(small)[..., 0] < 50
     a, b = dark(ink_rgb), dark(colour_rgb)
-    if a.shape != b.shape:
-        return 0.0
     grown = b.copy()
     for dy in (-2, -1, 0, 1, 2):          # a mark may move a pixel or two; more than that is a redraw
         for dx in (-2, -1, 0, 1, 2):
