@@ -533,6 +533,10 @@
                     if (text === this._lastSaved) return;   // no change → no round-trip
                     this._savedBefore = this._lastSaved;    // to fall back on if the server refuses
                     this._lastSaved = text;
+                    // The stored words now differ from the recording: stale until a new one comes back, or the
+                    // server answers that only punctuation changed (scene:audio-still-fresh). Kept apart from
+                    // _lastSaved, or an autosave followed by an undo made the old voice look current.
+                    if (this.hasAudio) this.audioStale = true;
                     // sceneId lets the server reject a stale save aimed at a scene we already left.
                     try { window.Livewire.dispatch('scene:update-script', { text, sceneId: this.sceneId }); } catch (_) {}
                 },
