@@ -387,7 +387,11 @@ export const animationTimeline = (config = {}) => ({
      * animated yet" with a Title sitting on the canvas. Listening was never going to be enough on
      * its own; the moment a teacher looks at the timeline is the moment to look at the scene.
      */
-    this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
+    this.$watch('$store.view.bottomTab', (tab) => {
+      if (tab === 'timeline') this.refreshObjects()
+      const audio = NARRATION.get(config.sceneId)
+      if (audio) audio.volume = this.voiceVolume()   // Script plays at full volume, Timeline at the lane's level
+    })
     this.listenToNarration()
     this.fitSailIntoDuration()
     this.waitForObjects()
@@ -940,8 +944,17 @@ export const animationTimeline = (config = {}) => ({
       audio.src = config.audioUrl
       NARRATION.set(config.sceneId, audio)
     }
-    audio.volume = this.narrationMuted ? 0 : this.narrationVolume
+    audio.volume = this.voiceVolume()
     return audio
+  },
+
+  /**
+   * How loud the voice plays. The Script tab and the Timeline tab play the SAME clip with the same play/pause
+   * (Bart, 2026-11-27): from the Script tab always at full volume, in the Timeline tab at the lane's own level.
+   */
+  voiceVolume () {
+    if (this.$store?.view?.bottomTab === 'script') return 1
+    return this.narrationMuted ? 0 : this.narrationVolume
   },
 
   /** Load the clip, stop any other scene's voice, and let the timeline follow the clip's length. */
@@ -1090,7 +1103,7 @@ export const animationTimeline = (config = {}) => ({
     this.narrationMuted = this.narrationVolume === 0
     try { localStorage.setItem(VOLUME_KEY, String(this.narrationVolume)) } catch { /* private mode: this visit only */ }
     const audio = NARRATION.get(config.sceneId)
-    if (audio) audio.volume = this.narrationMuted ? 0 : this.narrationVolume
+    if (audio) audio.volume = this.voiceVolume()
   },
 
   /** The speaker on the lane mutes and unmutes, keeping the level to come back to. */
@@ -1098,7 +1111,7 @@ export const animationTimeline = (config = {}) => ({
     this.narrationMuted = !this.narrationMuted
     if (!this.narrationMuted && this.narrationVolume === 0) this.narrationVolume = 1
     const audio = NARRATION.get(config.sceneId)
-    if (audio) audio.volume = this.narrationMuted ? 0 : this.narrationVolume
+    if (audio) audio.volume = this.voiceVolume()
   },
 
   /** Hand the Length back to the narration after the teacher typed one. */
