@@ -474,3 +474,12 @@ def test_ink_kept_survives_an_edit_that_comes_back_a_pixel_off():
     assert colour.ink_kept(ink, off) > 0.9
     tall = np.full((1200, 1670, 3), 252.0)
     assert colour.ink_kept(ink, tall) == 0.0
+
+
+def test_thin_light_pen_strokes_are_not_grey_shading():
+    rgb = np.full((200, 300, 3), 252.0)
+    for y in range(20, 180, 8):
+        rgb[y:y + 2, 20:280] = 150             # light ripple strokes, 2 px, far from any black ink
+    assert colour.grey_shading(rgb) == 0
+    rgb[60:120, 60:160] = 150                  # a grey wash patch still counts
+    assert colour.grey_shading(rgb) > 5
