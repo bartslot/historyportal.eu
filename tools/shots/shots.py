@@ -84,6 +84,11 @@ def main(argv: list[str] | None = None) -> int:
     p = command('cut', 'lesson', 'scene', 'board', 'file')
     p.add_argument('--size', default='1920x1080')
     command('tally', 'lesson')
+    p = command('regions', 'file', 'out')
+    p.add_argument('colours', nargs='+', help='name=#hex sampled from the sheet, e.g. coat=#A0522D blaze=#FCF9F8')
+    p = command('recolour', 'file', 'map')
+    p.add_argument('changes', nargs='+', help='name=#hex, the new colour of a region')
+    p.add_argument('-o', '--out', required=True)
     p = command('unsky', 'file', 'out')
     p.add_argument('--grid', default='2x2', help='rows x cols of the board (1x1 for one picture)')
     p = sub.add_parser('sheet')
@@ -99,6 +104,31 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def run(args) -> int | None:
+    if args.command == 'regions':
+        import regions
+        palette = dict(c.split('=', 1) for c in args.colours)
+        rgb = colour.load(args.file)
+        label, names = regions.mark(rgb, palette)
+        out = regions.stem(args.out)
+        if out == regions.stem(args.file):
+            raise Refused('The map would overwrite the sheet; give it its own name, e.g. colour-02.regions')
+        legend = regions.save(label, names, rgb, Path(args.file), out)
+        for name, row in legend['regions'].items():
+            print(f"{name:12} key {row['key']}  now {row['colour']}  {row['share']}%")
+        print(f'{out}.png (touch up by hand if needed), {out}.json (legend), {out}.preview.png')
+        return 0
+    if args.command == 'recolour':
+        import regions
+        legend = read(Path(regions.stem(args.map) + '.json'))
+        masks = regions.read_map(Path(regions.stem(args.map) + '.png'), legend)
+        changes = dict(c.split('=', 1) for c in args.changes)
+        unknown = set(changes) - set(masks)
+        if unknown:
+            raise Refused(f'No region called {", ".join(sorted(unknown))}; the map has {", ".join(masks)}.')
+        out = regions.recolour(colour.load(args.file), masks, changes)
+        Image.fromarray(out.round().clip(0, 255).astype('uint8')).save(args.out)
+        print(f'{args.out}: ' + ', '.join(f'{k} -> {v}' for k, v in changes.items()))
+        return 0
     if args.command == 'unsky':
         rows, cols = (int(n) for n in args.grid.lower().split('x'))
         out, changed = colour.unsky(colour.load(args.file), rows, cols)

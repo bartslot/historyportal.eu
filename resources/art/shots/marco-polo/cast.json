@@ -196,19 +196,21 @@
       "look": "A lean, long-necked dapple grey with a dark muzzle and darker legs. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
       "sheets": {
         "ink": {
-          "path": "sheets/maffeo-horse/ink-02.png",
-          "sha256": "2ed7e45d95ed74d91bed92461b9f2c55461c4400788db2a5483652b1f9308615",
+          "path": "sheets/maffeo-horse/ink-02-fixed.png",
+          "sha256": "03e59109e0d24f21b5b95e9e48d558cf071c76ca5b78474ce72f9c220901f603",
           "approved": {
             "by": "bart",
-            "date": "2026-11-26"
+            "date": "2026-11-27",
+            "note": "fixed by hand by bart (\"also the other horse the grey is fixed\", 27 Nov)"
           }
         },
         "colour": {
-          "path": "sheets/maffeo-horse/colour-02.png",
-          "sha256": "2389c428b04e81d8517163e3e242264b61fb5a0351aef0c70681ba91991f9f87",
+          "path": "sheets/maffeo-horse/colour-02-fixed.png",
+          "sha256": "608b067344c62309206009fc96aec4e380f38c29c9dde4763bfdd94aa1767b98",
           "approved": {
             "by": "bart",
-            "date": "2026-11-26"
+            "date": "2026-11-27",
+            "note": "fixed by hand by bart (\"also the other horse the grey is fixed\", 27 Nov)"
           }
         }
       },
