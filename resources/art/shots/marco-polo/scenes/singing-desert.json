@@ -93,7 +93,7 @@
             ],
             "framing": "Very wide"
           },
-          "action": "The caravan small between huge pale dunes at midday; nothing alive anywhere.",
+          "action": "The caravan small between huge pale dunes at midday; nothing alive anywhere; the pack animals are Bactrian camels with two humps, no dromedaries.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
@@ -135,7 +135,7 @@
             ],
             "framing": "Close-up"
           },
-          "action": "A hand ties a small bell to a camel's neck; the other animals already wear bells.",
+          "action": "A hand ties a small bell to a Bactrian camel's neck (two humps); the other animals already wear bells.",
           "places": {
             "camel": [
               1201.77,
@@ -289,7 +289,7 @@
             ],
             "framing": "Wide, dawn"
           },
-          "action": "At dawn the caravan moves on in a tight line, bells on every animal.",
+          "action": "At dawn the caravan moves on in a tight line, bells on every animal; the pack camels are two-humped Bactrians.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",

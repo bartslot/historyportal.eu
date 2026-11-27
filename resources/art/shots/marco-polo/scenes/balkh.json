@@ -94,7 +94,7 @@
             ],
             "framing": "Very wide"
           },
-          "action": "The caravan small before the long eroded mud-brick ramparts of Balkh, one or two broken domes behind them.",
+          "action": "The caravan small before the long eroded mud-brick ramparts of Balkh, one or two broken domes behind them: the three Polos on horseback with two pack mules.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
@@ -165,7 +165,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "Empty ruined streets: mud-brick rubble, broken glazed tiles and a few marble blocks; a single goatherd and his goats.",
+          "action": "Empty ruined streets of mud brick: mud-brick rubble, a few broken glazed tile fragments and plain square marble blocks (no columns, no column drums, nothing Greek or Roman); a single goatherd and his goats.",
           "places": {
             "goatherd": [
               531.23,
