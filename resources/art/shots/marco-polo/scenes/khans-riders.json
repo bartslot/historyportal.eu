@@ -115,9 +115,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "marco": [
@@ -267,7 +267,7 @@
           },
           "action": "The rider reaches the Polos and holds up a gold tablet with a gerfalcon; Niccolò bows in the saddle.",
           "where": {
-            "niccolo-horse": "Niccolò's mount"
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame"
           },
           "places": {
             "niccolo": [
@@ -303,9 +303,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "marco": [
@@ -342,7 +342,7 @@
           },
           "action": "Marco looks at the escort riders, proud and excited: the Great Khan is waiting.",
           "where": {
-            "marco-horse": "Marco's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame"
           },
           "places": {
             "marco": [

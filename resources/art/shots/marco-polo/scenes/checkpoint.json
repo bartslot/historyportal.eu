@@ -99,9 +99,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red in front",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "sees": {
             "post": "ahead, right of centre"
@@ -141,7 +141,7 @@
           },
           "action": "Niccolò holds up the gold tablet from the saddle toward the Mongol officer: a long flat gold plate with rounded ends, as long as his forearm, held up flat to show its face (not a cup, not a box).",
           "where": {
-            "niccolo-horse": "Niccolò's mount"
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame"
           },
           "places": {
             "niccolo": [
