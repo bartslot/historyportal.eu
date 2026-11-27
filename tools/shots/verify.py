@@ -175,7 +175,7 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
                     continue
                 area = region(cell, (regions or {}).get(str(n), {}).get(who)) if present else cell
                 result = colour.find(area, target)
-                close = result['delta'] is not None and result['delta'] <= colour.SAME
+                close = result['delta'] is not None and result['wash'] <= colour.SAME
                 if not present:
                     if part in person.get('reserved', []) and close and result['share'] >= RESERVED_SHARE:
                         notes.append(f'Cell {n}: {result["share"]}% of the paint is {person["name"]}\'s {part} colour, '
@@ -195,10 +195,11 @@ def coloured(lesson: Lesson, board: dict, ink_path: Path, path: Path, regions: d
                 if not close:
                     failures.append(f'colour-drift:{who}')
                     notes.append(f'Cell {n}: {person["name"]}\'s {part} came out {result["found"]}, fixed colour {target} '
-                                 f'(Delta E {result["delta"]}).')
+                                 f'(Delta E {result["delta"]}, as a wash {result["wash"]}).')
         measured.append(row)
     for (who, part), found in seen.items():
-        worst = max((colour.delta(colour.hex_rgb(a), colour.hex_rgb(b)) for _, a in found for _, b in found), default=0)
+        worst = max((colour.wash_delta(colour.lab(colour.hex_rgb(a)), colour.lab(colour.hex_rgb(b)), symmetric=True)
+                     for _, a in found for _, b in found), default=0)
         if worst > colour.SAME:
             failures.append(f'colour-inconsistent:{who}')
             notes.append(f'{people[who]["name"]}\'s {part} differs between cells: '

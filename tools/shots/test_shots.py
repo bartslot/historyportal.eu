@@ -441,3 +441,13 @@ def test_regions_split_a_horse_into_coat_mane_and_sock_and_recolour_changes_only
     assert colour.delta(black[100, 150], colour.hex_rgb('#1E1A1A')) < 3
     assert (black[50, 90] == rgb[50, 90]).all() and (black[160, 90] == rgb[160, 90]).all()
     assert (black[39, 90] == rgb[39, 90]).all()
+
+
+def test_a_paler_wash_of_the_cloak_passes_but_a_rust_or_blue_cloak_still_drifts():
+    lab = lambda h: colour.lab(colour.hex_rgb(h))
+    red = lab('#D84238')
+    assert colour.wash_delta(lab('#D76049'), red) <= colour.SAME      # caravanserai cell 1, measured 27 Nov
+    assert colour.wash_delta(lab('#E1634D'), red) <= colour.SAME
+    assert colour.wash_delta(lab('#A45446'), red) > colour.SAME       # rust
+    assert colour.wash_delta(lab('#876247'), red) > colour.SAME       # brown
+    assert colour.wash_delta(lab('#6B8CB7'), red) > colour.SAME       # Maffeo's blue
