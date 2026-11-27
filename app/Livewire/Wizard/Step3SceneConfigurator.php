@@ -6630,7 +6630,7 @@ class Step3SceneConfigurator extends Component
      * seconds could slip past it: Bart 11-24, one word changed, the audio was on the server two seconds later and
      * the panel kept spinning for minutes. No render, one row.
      *
-     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, errorMessage?: ?string, etaSeconds?: ?int, etaTotal?: ?int}
+     * @return array{status: string, audioUrl?: ?string, audioFresh?: bool, audioAlignment?: array<int, mixed>, errorMessage?: ?string, etaSeconds?: ?int, etaTotal?: ?int}
      */
     #[Renderless]
     public function narrationState(int $sceneId): array
@@ -6646,6 +6646,8 @@ class Step3SceneConfigurator extends Component
             'status' => (string) $scene->status,
             'audioUrl' => $scene->audioUrl(),
             'audioFresh' => $scene->hasFreshAudio(),
+            // The timings of that recording: the timeline's clip (which the Script tab plays too) takes it from here.
+            'audioAlignment' => $scene->audio_alignment ?? [],
             'errorMessage' => $scene->error_message,
             // Seconds left on the countdown, from measured recordings; null when nobody is counting.
             'etaSeconds' => $eta['remaining'] ?? null,
