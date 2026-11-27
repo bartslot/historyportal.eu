@@ -16,7 +16,7 @@ import colour
 from registry import INK, Lesson
 
 GREY_MAX = 0.5       # percent of grey tone away from the lines an ink pass may have (paper texture, stray specks)
-BOARD_GREY_MAX = 1.5  # a board on average: ground stipple on sand and grass reads as grey specks, a wash does not stay this low
+BOARD_GREY_MAX = 2.0  # a board on average: stipple on sand and grass and ripple lines on water read as grey specks; a wash does not stay this low
 SAME_SHAPE = 0.65    # side-view outline overlap above which two animals may be one animal redrawn
 SAME_BUILD = 0.05    # ...when their proportions (length over height) also differ by less than this
 INK_KEPT = 0.85       # share of pass 1 ink that must survive pass 2 in place
