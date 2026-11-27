@@ -55,7 +55,7 @@
   "boards": [
     {
       "id": "caravanserai-a",
-      "kind": "scene",
+      "kind": "bright",
       "grid": [
         2,
         2
