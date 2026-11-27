@@ -75,7 +75,7 @@ class GenerateSceneAudio implements ShouldQueue
             // old clip and shows the error instead of playing a blip.
             $timedSeconds = NarrationTiming::fromStored($timing['character_timings'] ?? [])->duration();
             $spokenSeconds = $timedSeconds > 0.0 ? $timedSeconds : AudioEncoder::seconds($audio, $tts->lastExtension());
-            if ($spokenSeconds !== null && self::tooShort($text, $spokenSeconds)) {
+            if ($spokenSeconds !== null && self::tooShort($text, $spokenSeconds, (float) ($narrator?->voice_speed ?? 1.0))) {
                 throw new \RuntimeException(sprintf(
                     'The narration came back %.1f seconds long, far too short for this text, so it was not saved. Re-narrate to try again.',
                     $spokenSeconds,
@@ -154,14 +154,16 @@ class GenerateSceneAudio implements ShouldQueue
 
     /**
      * Whether a recording is too short to hold its text. Five words a second is faster than any
-     * narrator reads, so anything under that is cut off, not quick. Very short texts are left
-     * alone: "Rome." can honestly last half a second.
+     * narrator reads at normal speed, so anything under that (scaled by the narrator's speed, up
+     * to 2x) is cut off, not quick. Very short texts are left alone: "Rome." can honestly last
+     * half a second. Words are counted Unicode-aware, so "élèves" is one word, not three.
      */
-    public static function tooShort(string $text, float $seconds): bool
+    public static function tooShort(string $text, float $seconds, float $speed = 1.0): bool
     {
-        $words = str_word_count(strip_tags($text));
+        $words = preg_match_all('/[\p{L}\p{N}][\p{L}\p{N}\p{M}\'’-]*/u', strip_tags($text));
+        $speed = max(1.0, $speed);
 
-        return $words >= 8 && $seconds < $words / 5.0;
+        return $words >= 8 && $seconds < $words / (5.0 * $speed);
     }
 
     /**

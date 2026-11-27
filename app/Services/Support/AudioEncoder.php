@@ -154,15 +154,21 @@ final class AudioEncoder
         if ($ffprobe === null || $audio === '') {
             return null;
         }
-        $file = tempnam(sys_get_temp_dir(), 'probe').'.'.preg_replace('/[^a-z0-9]/', '', strtolower($extension));
-        file_put_contents($file, $audio);
+        $base = tempnam(sys_get_temp_dir(), 'probe');
+        if ($base === false) {
+            return null;
+        }
+        $file = $base.'.'.preg_replace('/[^a-z0-9]/', '', strtolower($extension));
         try {
+            rename($base, $file);   // ffprobe wants the extension; renaming leaves no stray tempnam file
+            file_put_contents($file, $audio);
             $run = Process::timeout(30)->run([$ffprobe, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', $file]);
             $seconds = (float) trim($run->output());
 
             return $run->successful() && $seconds > 0 ? $seconds : null;
         } finally {
             self::remove($file);
+            self::remove($base);
         }
     }
 

@@ -80,6 +80,10 @@ class GenerateSceneAudioTest extends TestCase
         $this->assertFalse(GenerateSceneAudio::tooShort('Rome, 1271.', 0.6));
         $this->assertTrue(GenerateSceneAudio::tooShort(str_repeat('word ', 48), 1.0));
         $this->assertFalse(GenerateSceneAudio::tooShort(str_repeat('word ', 48), 14.0));
+        // A 2x narrator reads 48 words in about 9 s; that is complete, not cut off.
+        $this->assertFalse(GenerateSceneAudio::tooShort(str_repeat('word ', 48), 9.0, 2.0));
+        // Accented words count once: 10 French words in 3 s is under five a second.
+        $this->assertFalse(GenerateSceneAudio::tooShort('Les élèves étudient les sociétés européennes et leurs célèbres révolutions.', 3.0));
     }
 
     public function test_produces_audio_alignment_and_marks_ready_when_all_assets_present(): void
