@@ -91,7 +91,21 @@ def find(rgb: np.ndarray, target_hex: str) -> dict:
         return {'target': target_hex, 'found': None, 'delta': None, 'share': round(share, 2)}
     median = np.median(values[near], axis=0)
     return {'target': target_hex, 'found': rgb_hex(unlab(median)), 'delta': round(float(np.linalg.norm(median - target)), 1),
-            'share': round(share, 2)}
+            'wash': round(wash_delta(median, target), 1), 'share': round(share, 2)}
+
+
+def wash_delta(found, target, symmetric: bool = False) -> float:
+    """How far a watercolour wash is from a fixed colour (both Lab). A wash that is only paler or lighter than the
+    sheet (less pigment) counts half, so a watery red cloak still reads as red; a change of hue, or more saturation
+    than the sheet, counts in full, so a rust or brown cloak still fails. `symmetric`: two washes compared with each
+    other, where either may be the paler one."""
+    found, target = np.asarray(found, dtype=np.float64), np.asarray(target, dtype=np.float64)
+    d = found - target
+    chroma = np.hypot(found[1], found[2]) - np.hypot(target[1], target[2])
+    hue = np.sqrt(max(d[1] ** 2 + d[2] ** 2 - chroma ** 2, 0.0))
+    if symmetric or chroma < 0:
+        chroma /= 2
+    return float(np.sqrt((d[0] / 2) ** 2 + chroma ** 2 + hue ** 2))
 
 
 def is_paper(value: str) -> bool:
