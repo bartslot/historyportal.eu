@@ -977,11 +977,12 @@
                     if (tl.playing) tl.pause(); else tl.play();
                 },
                 /** Move the timeline's playhead to `clipTime` seconds into the clip, carrying on if it plays. */
-                _seekClip(clipTime) {
+                _seekClip(clipTime, play = false) {
                     const tl = this.tl;
                     if (!tl || this.dirty || this.regenerating) return;
                     const at = tl.narrationStart + Math.max(0, Math.min(clipTime, this.dur || 0));
-                    if (tl.playing) tl.seekToWord(at); else tl.seek(at);
+                    // seekToWord seeks and plays, the way pressing a word in the timeline does.
+                    if (play || tl.playing) tl.seekToWord(at); else tl.seek(at);
                     this.t = at - tl.narrationStart;
                     this.syncActive();
                 },
@@ -990,14 +991,7 @@
                     if (r.width > 0) this._seekClip(((e.clientX - r.left) / r.width) * this.dur);
                 },
                 /** A paragraph's timecode: play the voice from there. */
-                seek(i) {
-                    const tl = this.tl;
-                    if (!tl || this.dirty || this.regenerating) return;
-                    const at = tl.narrationStart + Math.max(0, Math.min(this.starts[i] ?? 0, this.dur || 0));
-                    tl.seekToWord(at);   // seeks and plays, the way pressing a word in the timeline does
-                    this.t = at - tl.narrationStart;
-                    this.syncActive();
-                },
+                seek(i) { this._seekClip(this.starts[i] ?? 0, true); },
                 syncActive() {
                     let a = 0;
                     for (let i = 0; i < this.starts.length; i++) { if (this.t >= this.starts[i]) a = i; }
