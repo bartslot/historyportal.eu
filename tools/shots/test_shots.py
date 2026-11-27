@@ -462,3 +462,15 @@ def test_fix_area_recolours_only_the_wrong_horse_inside_the_box():
     out = regions.recolour(rgb, {'area': mask}, {'area': '#2A2422'})
     assert colour.delta(out[50, 30], colour.hex_rgb('#2A2422')) < 3
     assert (out[50, 130] == rgb[50, 130]).all() and (out[5, 5] == rgb[5, 5]).all()
+
+
+def test_ink_kept_survives_an_edit_that_comes_back_a_pixel_off():
+    import numpy as np
+    import colour
+    ink = np.full((941, 1671, 3), 252.0)
+    ink[300:320, 200:1400] = 0
+    off = np.full((942, 1670, 3), 252.0)
+    off[300:320, 200:1400] = 0
+    assert colour.ink_kept(ink, off) > 0.9
+    tall = np.full((1200, 1670, 3), 252.0)
+    assert colour.ink_kept(ink, tall) == 0.0
