@@ -384,3 +384,22 @@ def test_an_ink_sheet_that_fails_the_gate_cannot_be_approved(lesson, tmp_path, m
     monkeypatch.setattr(shots, 'Lesson', lambda slug: Lesson(slug, tmp_path / 'shots', tmp_path / 'media', tmp_path / 'style'))
     assert shots.main(['approve', 'test', 'niccolo', 'ink', 'sheets/niccolo-ink.png']) == 2
     assert shots.main(['sheet', str(_lines(tmp_path / 'x.png', wash=True))]) == 1
+
+
+def test_unsky_takes_the_sky_wash_back_to_paper_and_leaves_a_blue_cloak_alone():
+    rgb = np.full((200, 300, 3), 250.0)
+    rgb[:80] = (205, 222, 242)                     # pale sky wash at the top
+    rgb[80:83] = 20                                # horizon line in ink
+    rgb[120:180, 100:160] = (107, 140, 183)        # Maffeo's blue cloak, lower down
+    rgb[130:140, 20:60] = (205, 222, 242)          # pale blue not touching the sky
+    out, changed = colour.unsky(rgb)
+    assert colour.is_paper(colour.rgb_hex(out[10, 10]))
+    assert (out[150, 130] == rgb[150, 130]).all()
+    assert (out[135, 40] == rgb[135, 40]).all()
+    assert (out[81, 50] == rgb[81, 50]).all()
+    assert 35 < changed < 45
+
+
+def test_the_colour_prompt_keeps_the_sky_bare_paper():
+    import inspect
+    assert 'no blue wash in the sky' in inspect.getsource(packs)
