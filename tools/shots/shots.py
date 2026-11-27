@@ -84,6 +84,8 @@ def main(argv: list[str] | None = None) -> int:
     p = command('cut', 'lesson', 'scene', 'board', 'file')
     p.add_argument('--size', default='1920x1080')
     command('tally', 'lesson')
+    p = command('unsky', 'file', 'out')
+    p.add_argument('--grid', default='2x2', help='rows x cols of the board (1x1 for one picture)')
     p = sub.add_parser('sheet')
     p.add_argument('files', nargs='+')
     p.add_argument('--kind', default='sheet')
@@ -97,6 +99,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def run(args) -> int | None:
+    if args.command == 'unsky':
+        rows, cols = (int(n) for n in args.grid.lower().split('x'))
+        out, changed = colour.unsky(colour.load(args.file), rows, cols)
+        Image.fromarray(out.round().clip(0, 255).astype('uint8')).save(args.out)
+        print(f'{args.out}: sky wash taken back to paper on {changed}% of the picture')
+        return 0
     if args.command == 'seen':
         packs.seen(Path(args.pack), today())
         return print('Recorded: bart saw these inputs.')

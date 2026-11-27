@@ -145,7 +145,8 @@ def _prompt(lesson: Lesson, scene: dict, board: dict, pass_: str, cast: list[str
     else:
         text.append(('Colour the whole board in one go, all cells together, as an edit of the ink board. ' if count > 1
                      else 'Colour it as an edit of the ink drawing. ') + f'The ink stays at {ink}.'
-                    + (' Keep the 5 px gaps pure white.' if count > 1 else ''))
+                    + (' Keep the 5 px gaps pure white.' if count > 1 else '')
+                    + ' Leave the sky as bare white paper: no blue wash in the sky.')
     text.append('\nAttached images, in order:\n' + '\n'.join(image_lines))
     text.append(f'\nPlace and time: {scene["place"]}')
     text.append('The scene from above, the same in every cell: '

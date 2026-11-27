@@ -127,3 +127,51 @@ def ink_kept(ink_rgb: np.ndarray, colour_rgb: np.ndarray, width: int = 512) -> f
             grown |= np.roll(np.roll(b, dy, 0), dx, 1)
     return float((a & grown).sum()) / max(1, int(a.sum()))
 
+
+
+def _grow(seed: np.ndarray, allowed: np.ndarray) -> np.ndarray:
+    """Every allowed pixel 4-connected to the seed (a flood fill, without scipy)."""
+    region = seed & allowed
+    while True:
+        grown = region.copy()
+        grown[1:] |= region[:-1]
+        grown[:-1] |= region[1:]
+        grown[:, 1:] |= region[:, :-1]
+        grown[:, :-1] |= region[:, 1:]
+        grown &= allowed
+        if grown.sum() == region.sum():
+            return region
+        region = grown
+
+
+def unsky(rgb: np.ndarray, rows: int = 1, cols: int = 1) -> tuple[np.ndarray, float]:
+    """Take a pale blue sky wash back to bare paper (bart, 2026-11-27: "you can easily remove it by code").
+
+    The sky is every pale bluish pixel joined to the top edge of a cell, so a blue cloak lower down is left alone.
+    The soft blue at the edge of a line is made grey of the same lightness, so the line itself is not touched.
+    Returns the new picture and the percent of it that changed."""
+    values = lab(rgb)
+    bluish = values[..., 2] < -4.0
+    pale = bluish & (values[..., 0] > 70.0)
+    seed = np.zeros(pale.shape, dtype=bool)
+    h, w = pale.shape
+    for r in range(rows):
+        top = r * h // rows
+        seed[top:top + max(3, h // (rows * 30))] = True
+    sky = _grow(seed, pale)
+    edge = _grow(sky, bluish) & ~sky
+    near = sky.copy()
+    for _ in range(3):
+        near[1:] |= near[:-1]
+        near[:-1] |= near[1:]
+        near[:, 1:] |= near[:, :-1]
+        near[:, :-1] |= near[:, 1:]
+    edge &= near
+    _, _, paper = masks(rgb)
+    white = np.median(rgb[paper], axis=0) if paper.any() else np.array([255.0, 255.0, 255.0])
+    out = rgb.copy()
+    out[sky] = white
+    grey = rgb[edge] @ np.array([0.299, 0.587, 0.114])
+    out[edge] = grey[:, None] * white / 255.0
+    changed = 100 * float((sky | edge).mean())
+    return out, round(changed, 1)
