@@ -411,3 +411,33 @@ def test_unsky_on_a_board_whose_whole_background_is_washed_paints_true_paper():
     rgb[100:103] = 20
     out, _ = colour.unsky(rgb)
     assert colour.rgb_hex(out[10, 10]) == colour.PAPER_WHITE
+
+
+def _horse(path=None):
+    """A drawn 'horse': an ink-outlined body in chestnut, a darker mane shape, a white sock closed by ink."""
+    rgb = np.full((200, 300, 3), 252.0)
+    rgb[60:140, 60:240] = (200, 110, 60)             # coat
+    rgb[40:60, 60:120] = (140, 80, 50)               # mane, darker than the coat
+    rgb[140:180, 80:100] = 252                       # white sock, paper inside the figure
+    for y0, y1, x0, x1 in [(38, 40, 58, 122), (38, 142, 58, 60), (38, 60, 120, 122), (58, 60, 120, 242),
+                           (58, 142, 240, 242), (140, 142, 100, 242), (140, 142, 58, 80),
+                           (140, 182, 78, 80), (140, 182, 100, 102), (180, 182, 78, 102)]:
+        rgb[y0:y1, x0:x1] = 15
+    return rgb
+
+
+def test_regions_split_a_horse_into_coat_mane_and_sock_and_recolour_changes_only_the_coat(tmp_path):
+    import regions
+    rgb = _horse()
+    palette = {'coat': '#C86E3C', 'mane': '#8C5032', 'markings': '#FCF9F8'}
+    label, names = regions.mark(rgb, palette)
+    at = lambda y, x: names[label[y, x]]
+    assert (at(100, 150), at(50, 90), at(160, 90), at(10, 10), at(39, 90)) == ('coat', 'mane', 'markings', 'background', 'line')
+    src = tmp_path / 'colour.png'
+    Image.fromarray(rgb.astype('uint8')).save(src)
+    legend = regions.save(label, names, rgb, src, str(tmp_path / 'colour.regions'))
+    masks = regions.read_map(tmp_path / 'colour.regions.png', legend)
+    black = regions.recolour(rgb, masks, {'coat': '#1E1A1A'})
+    assert colour.delta(black[100, 150], colour.hex_rgb('#1E1A1A')) < 3
+    assert (black[50, 90] == rgb[50, 90]).all() and (black[160, 90] == rgb[160, 90]).all()
+    assert (black[39, 90] == rgb[39, 90]).all()
