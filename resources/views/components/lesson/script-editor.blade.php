@@ -537,7 +537,7 @@
                     // server answers that only punctuation changed (scene:audio-still-fresh). Kept apart from
                     // _lastSaved, or an autosave followed by an undo made the old voice look current.
                     if (this.hasAudio) this.audioStale = true;
-                    // sceneId lets the server reject a stale save aimed at a scene we already left.
+                    // sceneId: the words land on THIS panel's scene, even after the editor moved to another one.
                     try { window.Livewire.dispatch('scene:update-script', { text, sceneId: this.sceneId }); } catch (_) {}
                 },
 
@@ -865,7 +865,7 @@
                 },
                 _tellStale() {
                     const detail = { sceneId: this.sceneId, stale: !!(this.hasAudio && this.dirty) };
-                    try { window.dispatchEvent(new CustomEvent('script:audio-stale', { detail })); } catch (_) {}
+                    window.dispatchEvent(new CustomEvent('script:audio-stale', { detail }));
                 },
                 _clearDirty() { this.dirty = false; this.paras.forEach((p) => { p.dirty = false; }); },
                 onPlay() {
