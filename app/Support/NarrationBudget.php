@@ -119,6 +119,10 @@ final class NarrationBudget
      */
     public static function canAfford(Lesson $lesson, string $before, string $after): bool
     {
+        if (self::isUnmetered($lesson)) {
+            return true;
+        }
+
         return self::costOfEdit($before, $after) <= self::remainingFor($lesson);
     }
 
@@ -138,6 +142,9 @@ final class NarrationBudget
     {
         if ($characters <= 0) {
             return true;   // an edit that changed nothing is free, and there is nothing to record
+        }
+        if (self::isUnmetered($lesson)) {
+            return true;   // an admin's edit is ours to pay; neither pot is touched
         }
 
         $ledger = self::ledger();
@@ -174,6 +181,19 @@ final class NarrationBudget
 
                 return $apply();
             });
+    }
+
+    /**
+     * Whether this edit is outside the allowance altogether: the person editing is an admin, or the
+     * lesson belongs to one. Admin is the superuser role (User::canManage); the allowance protects
+     * us from a teacher's keystrokes running up our ElevenLabs bill, and an admin IS us (Bart
+     * 2026-11-27: "it says I'm out of credits, while I am a super user").
+     */
+    public static function isUnmetered(Lesson $lesson): bool
+    {
+        $actor = auth()->user();
+
+        return ($actor instanceof User && $actor->isAdmin()) || $lesson->teacher?->isAdmin() === true;
     }
 
     private static function ledger(): NarrationCreditLedger

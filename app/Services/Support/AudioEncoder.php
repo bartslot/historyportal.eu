@@ -147,6 +147,31 @@ final class AudioEncoder
         return $run->successful() && $rate > 0 ? $rate : null;
     }
 
+    /** Length in seconds of audio held in memory (ffprobe), or null when it cannot be measured here. */
+    public static function seconds(string $audio, string $extension): ?float
+    {
+        $ffprobe = self::binary('ffprobe');
+        if ($ffprobe === null || $audio === '') {
+            return null;
+        }
+        $base = tempnam(sys_get_temp_dir(), 'probe');
+        if ($base === false) {
+            return null;
+        }
+        $file = $base.'.'.preg_replace('/[^a-z0-9]/', '', strtolower($extension));
+        try {
+            rename($base, $file);   // ffprobe wants the extension; renaming leaves no stray tempnam file
+            file_put_contents($file, $audio);
+            $run = Process::timeout(30)->run([$ffprobe, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', $file]);
+            $seconds = (float) trim($run->output());
+
+            return $run->successful() && $seconds > 0 ? $seconds : null;
+        } finally {
+            self::remove($file);
+            self::remove($base);
+        }
+    }
+
     private static function binary(string $name): ?string
     {
         foreach (['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'] as $dir) {

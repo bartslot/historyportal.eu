@@ -198,12 +198,14 @@ class SceneMusic extends Component
         $this->authorizeScene($this->scene);
         $this->validate(['soundPrompt' => 'required|string|min:8|max:500']);
         $key = 'scene-sound:'.auth()->id();
-        if (RateLimiter::tooManyAttempts($key, self::SOUNDS_PER_HOUR)) {
-            $this->addError('soundPrompt', __('That is a lot of new sounds for one hour. Try again a little later.'));
+        if (! auth()->user()?->isAdmin()) {   // the hourly cap guards our ElevenLabs bill against a teacher; an admin is us
+            if (RateLimiter::tooManyAttempts($key, self::SOUNDS_PER_HOUR)) {
+                $this->addError('soundPrompt', __('That is a lot of new sounds for one hour. Try again a little later.'));
 
-            return;
+                return;
+            }
+            RateLimiter::hit($key, 3600);
         }
-        RateLimiter::hit($key, 3600);
 
         $prompt = trim($this->soundPrompt);
         $audio = $eleven->soundEffect($prompt.' No music, no speech, no words, no modern sounds.');
