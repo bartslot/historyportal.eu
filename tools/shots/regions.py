@@ -137,3 +137,14 @@ def recolour(rgb: np.ndarray, masks: dict[str, np.ndarray], changes: dict[str, s
     untouched = ~np.any([masks[n] for n in changes], axis=0) | ink
     result[untouched] = rgb[untouched]
     return result
+
+
+def area(rgb: np.ndarray, box: tuple[int, int, int, int], wrong: str, near: float = colour.NEAR) -> np.ndarray:
+    """A small region on a board marked by hand as a box in pixels (x0, y0, x1, y1), narrowed to the paint near the
+    wrong colour inside it: e.g. the brown a tiny horse was painted where it should be black. Ink and paper are
+    never in it."""
+    values, ink, paper = colour.masks(rgb)
+    x0, y0, x1, y1 = box
+    inside = np.zeros(ink.shape, dtype=bool)
+    inside[y0:y1, x0:x1] = True
+    return inside & ~ink & ~paper & (np.linalg.norm(values - colour.lab(colour.hex_rgb(wrong)), axis=-1) < near)
