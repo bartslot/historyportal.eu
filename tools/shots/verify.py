@@ -16,6 +16,7 @@ import colour
 from registry import INK, Lesson
 
 GREY_MAX = 0.5       # percent of grey tone away from the lines an ink pass may have (paper texture, stray specks)
+BOARD_GREY_MAX = 1.0  # a board on average: ground stipple on sand and grass reads as grey specks, a wash does not stay this low
 SAME_SHAPE = 0.65    # side-view outline overlap above which two animals may be one animal redrawn
 SAME_BUILD = 0.05    # ...when their proportions (length over height) also differ by less than this
 INK_KEPT = 0.85       # share of pass 1 ink that must survive pass 2 in place
@@ -48,8 +49,12 @@ def ink(board: dict, path: Path) -> dict:
     for n, cell in enumerate(_cells(rgb, board), 1):
         row = {'cell': n, **colour.coverage(cell), 'grey': colour.grey_shading(cell)}
         measured.append(row)
-        failures += _ink_rules(row, board['kind'], f'Cell {n}', notes)
-    return {'pass': 'ink', 'file': str(path), 'failures': sorted(set(failures)), 'notes': notes, 'cells': measured}
+        if row['ink'] > high:                    # one cell can be too dark; an empty plain is rightly light
+            failures.append('ink-weight')
+            notes.append(f'Cell {n}: {row["ink"]}% ink, above the {high}% the gate allows in any cell.')
+    whole = {k: round(sum(r[k] for r in measured) / len(measured), 2) for k in ('ink', 'paper', 'grey')}
+    failures += _ink_rules(whole, board['kind'], 'The board on average', notes, grey_max=BOARD_GREY_MAX)
+    return {'pass': 'ink', 'file': str(path), 'failures': sorted(set(failures)), 'notes': notes, **whole, 'cells': measured}
 
 
 def _has_colour(rgb: np.ndarray) -> bool:
@@ -58,7 +63,7 @@ def _has_colour(rgb: np.ndarray) -> bool:
     return float((np.hypot(values[..., 1], values[..., 2]) > 15).mean()) > 0.01
 
 
-def _ink_rules(row: dict, kind: str, tag: str, notes: list[str]) -> list[str]:
+def _ink_rules(row: dict, kind: str, tag: str, notes: list[str], grey_max: float | None = None) -> list[str]:
     """The ink gate on one measured picture or cell: ink share, bare paper, and no grey shading."""
     asked, white, _, (low, high), least_paper = INK[kind]
     failures = []
@@ -68,9 +73,10 @@ def _ink_rules(row: dict, kind: str, tag: str, notes: list[str]) -> list[str]:
     if row['paper'] < least_paper:
         failures.append('paper')
         notes.append(f'{tag}: {row["paper"]}% bare paper; the gate is at least {least_paper}%.')
-    if row['grey'] > GREY_MAX:
+    grey_max = GREY_MAX if grey_max is None else grey_max
+    if row['grey'] > grey_max:
         failures.append('grey-shading')
-        notes.append(f'{tag}: {row["grey"]}% grey shading away from the lines; ink passes have none (at most {GREY_MAX}%).')
+        notes.append(f'{tag}: {row["grey"]}% grey shading away from the lines; ink passes have none (at most {grey_max}%).')
     return failures
 
 

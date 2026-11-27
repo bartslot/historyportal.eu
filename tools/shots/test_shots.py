@@ -334,6 +334,25 @@ def test_a_sheet_too_light_or_too_dark_fails_the_ink_gate(tmp_path):
     assert {'ink-weight', 'paper'} <= set(verify.sheet(dark)['failures'])
 
 
+def _ink_board(path: Path, shares: list[float]) -> Path:
+    """A 2x2 board whose cells carry the given share of black ink (a block in the corner of each cell)."""
+    image = Image.new('RGB', (800, 450), 'white')
+    draw = ImageDraw.Draw(image)
+    for share, (left, top, right, bottom) in zip(shares, boards.cells(800, 450, 2, 2)):
+        side = round(((right - left) * (bottom - top) * share / 100) ** 0.5)
+        draw.rectangle([left + 20, top + 20, left + 20 + side - 1, top + 20 + side - 1], fill='black')
+    image.save(path)
+    return path
+
+
+def test_an_empty_wide_cell_does_not_fail_a_board_whose_average_ink_is_right(tmp_path):
+    board = {'kind': 'bright', 'grid': [2, 2], 'cells': [{}] * 4}
+    light = verify.ink(board, _ink_board(tmp_path / 'light.png', [1, 7, 7, 7]))
+    assert 'ink-weight' not in light['failures']
+    dark = verify.ink(board, _ink_board(tmp_path / 'dark.png', [1, 7, 7, 14]))
+    assert 'ink-weight' in dark['failures']
+
+
 def test_a_white_garment_samples_as_white_not_as_its_grey_folds():
     box = np.full((40, 40, 3), 244.0)
     box[::6] = 200.0                                    # a few grey shadow folds
