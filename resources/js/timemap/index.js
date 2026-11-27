@@ -6,7 +6,10 @@ import { mountTimeSlider } from './slider.js';
 import voyagesData from './voyages.json';
 import { mountYearFlash } from './year-flash.js';
 import { mountScrubTick } from './scrub-tick.js';
-import { addMountainLayer } from '../map-mountains.js';
+import { addMountainLayer, addPaintedMountains } from '../map-mountains.js';
+
+// Painted range pictures (one per range), shown with the mountains toggle.
+let paintedMountainIds = [];
 import { addForestLayer } from '../map-forests.js';
 import { addScatterLayer } from '../map-scatter.js';
 import { addVolcanoLayer, setVolcanoVisibility } from '../map-volcanoes.js';
@@ -1782,6 +1785,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       }
     }
     // Mountain glyphs along ridge lines — ink styles only.
+    for (const id of paintedMountainIds) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', s.mountains ? 'visible' : 'none');
+    }
     if (map.getLayer('mountains')) {
       map.setLayoutProperty('mountains', 'visibility', s.mountains ? 'visible' : 'none');
     }
@@ -2074,6 +2080,8 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     addScatterLayer(map, { beforeId: 'boundaries-label', visibility: 'none' })
       .then(() => addForestLayer(map, { beforeId: 'boundaries-label', visibility: 'none', landColor: terrainLand() }))
       .then(() => addMountainLayer(map, { beforeId: 'boundaries-label', visibility: 'none', landColor: terrainLand() }))
+      .then(() => addPaintedMountains(map, { beforeId: 'mountains', visibility: 'none' }))
+      .then((ids) => { paintedMountainIds = ids || []; })
       .then(() => addVolcanoLayer(map, { beforeId: 'boundaries-label', visibility: 'none' }))
       .then(() => applyMapStyle(currentStyleName));
 

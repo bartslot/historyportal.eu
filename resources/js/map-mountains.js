@@ -107,3 +107,39 @@ export async function addMountainLayer (map, opts = {}) {
     paint: { 'icon-opacity': opacity },
   }, map.getLayer(beforeId) ? beforeId : undefined)
 }
+
+/**
+ * Painted mountains (bart, 2026-11-26): one History Lines picture per range, pinned to the
+ * range's geographic box with a MapLibre image source, instead of a field of peak glyphs.
+ * Ranges and boxes: public/timemap/mountain-regions.geojson (scripts/build-mountain-regions.mjs);
+ * pictures + boxes: public/timemap/assets/mountains/painted/manifest.json
+ *   [{ id, url, coordinates: [[w,n],[e,n],[e,s],[w,s]] }]
+ * A range with no picture yet simply has no layer.
+ */
+export const PAINTED_MANIFEST_URL = '/timemap/assets/mountains/painted/manifest.json'
+
+export async function addPaintedMountains (map, opts = {}) {
+  const { beforeId, opacity = 1, visibility = 'visible' } = opts
+  let list
+  try {
+    list = await fetch(PAINTED_MANIFEST_URL).then((r) => (r.ok ? r.json() : null))
+  } catch (_) { return [] }
+  if (!Array.isArray(list) || mapGone(map)) return []
+  const ids = []
+  for (const p of list) {
+    if (!p?.id || !p.url || !Array.isArray(p.coordinates) || p.coordinates.length !== 4) continue
+    const id = `painted-mountains-${p.id}`
+    if (!map.getSource(id)) map.addSource(id, { type: 'image', url: p.url, coordinates: p.coordinates })
+    if (!map.getLayer(id)) {
+      map.addLayer({
+        id,
+        type: 'raster',
+        source: id,
+        layout: { visibility },
+        paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
+      }, map.getLayer(beforeId) ? beforeId : undefined)
+    }
+    ids.push(id)
+  }
+  return ids
+}
