@@ -286,6 +286,7 @@ export const animationTimeline = (config = {}) => ({
     window.Livewire?.on?.('scene:load', (e) => {
       const p = Array.isArray(e) ? e[0]?.payload : e?.payload
       if (!p || p.sceneId !== config.sceneId) return
+      this.followRecording(p)
       const url = p.imageLoop ?? null
       if (url === this.videoLoop) return
       this.videoLoop = url
@@ -304,6 +305,10 @@ export const animationTimeline = (config = {}) => ({
     document.addEventListener('click', (event) => {
       if (event.target.closest?.('[wire\\:click*="selectScene("]')) flushBeforeRequest()
     }, true)
+    // The Script panel says when the words no longer match the clip (edited, not yet re-narrated).
+    window.addEventListener('script:audio-stale', (e) => {
+      if (e.detail?.sceneId === config.sceneId) this.narrationStale = !!e.detail.stale
+    })
     window.addEventListener('pagehide', () => {
       this.stashDraft()
       flushBeforeRequest()
@@ -979,8 +984,33 @@ export const animationTimeline = (config = {}) => ({
     this.remember()
   },
 
+  /**
+   * A new recording of this scene (a re-narration) reaches the lane while the panel lives on: the lane
+   * used to keep playing and drawing the old voice until the scene was opened again (Bart 11-27).
+   * Only a recording the server calls fresh: every other scene:load carries the one being replaced.
+   */
+  followRecording (p) {
+    if (!p.audioUrl || !p.audioFresh || p.audioUrl === config.audioUrl) return
+    NARRATION.get(config.sceneId)?.pause()
+    config.audioUrl = p.audioUrl
+    config.alignment = p.audioAlignment ?? []
+    this.narrationUrl = p.audioUrl
+    this.narrationStale = false
+    this.audioSpans = wordSpans(config.alignment)
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
+    this.narrationLength = 0
+    this.wavePath = ''
+    this.waveBuckets = 0
+    this.listenToNarration()
+  },
+
+  /** The clip on the lane: config.audioUrl, kept here as well so Alpine sees it change. */
+  narrationUrl: config.audioUrl ?? null,
+  /** The clip no longer says the scene's words: the Script panel's edit, or the server's word at load. */
+  narrationStale: !!config.audioStale,
+
   /** Whether the timeline has a narration lane: a scene with audio. */
-  get hasNarration () { return !!config.audioUrl },
+  get hasNarration () { return !!this.narrationUrl },
 
   /** The narration clip on the lane, from where it starts to the clip's end (dragged: the draft). */
   get narrationSpan () {
