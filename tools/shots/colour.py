@@ -69,15 +69,29 @@ def coverage(rgb: np.ndarray) -> dict[str, float]:
 
 def grey_shading(rgb: np.ndarray) -> float:
     """Percent of the picture that is grey tone away from any line: wash, smudge or soft shading. The soft edge of
-    an ink line (anti-aliasing) does not count; only grey more than two pixels from ink does."""
+    an ink line (anti-aliasing) does not count, nor does a thin light pen stroke (ripples on water, distant orchard
+    rows, up to about 4 px wide): only a grey patch wider than a stroke, more than two pixels from ink, does."""
     values, ink, _ = masks(rgb)
     chroma = np.hypot(values[..., 1], values[..., 2])
     grey = (values[..., 0] >= 40) & (values[..., 0] <= 85) & (chroma < PAPER_CHROMA)
+
+    def grow(mask: np.ndarray, steps: int) -> np.ndarray:
+        out = mask.copy()
+        for _ in range(steps):
+            step = out.copy()
+            step[1:] |= out[:-1]
+            step[:-1] |= out[1:]
+            step[:, 1:] |= out[:, :-1]
+            step[:, :-1] |= out[:, 1:]
+            out = step
+        return out
+
+    patch = grow(~grow(~grey, 2), 2) & grey     # opening: what is left once 2 px is eaten from every side
     near = ink.copy()
     for dy in range(-2, 3):
         for dx in range(-2, 3):
             near |= np.roll(np.roll(ink, dy, 0), dx, 1)
-    return round(100 * float((grey & ~near).mean()), 2)
+    return round(100 * float((patch & ~near).mean()), 2)
 
 
 def find(rgb: np.ndarray, target_hex: str) -> dict:
