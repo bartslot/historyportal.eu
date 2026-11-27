@@ -403,3 +403,11 @@ def test_unsky_takes_the_sky_wash_back_to_paper_and_leaves_a_blue_cloak_alone():
 def test_the_colour_prompt_keeps_the_sky_bare_paper():
     import inspect
     assert 'no blue wash in the sky' in inspect.getsource(packs)
+
+
+def test_unsky_on_a_board_whose_whole_background_is_washed_paints_true_paper():
+    rgb = np.full((200, 300, 3), 0.0)
+    rgb[:] = (231, 241, 249)                       # the faintest wash everywhere, nothing left as paper
+    rgb[100:103] = 20
+    out, _ = colour.unsky(rgb)
+    assert colour.rgb_hex(out[10, 10]) == colour.PAPER_WHITE
