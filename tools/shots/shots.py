@@ -89,6 +89,10 @@ def main(argv: list[str] | None = None) -> int:
     p = command('recolour', 'file', 'map')
     p.add_argument('changes', nargs='+', help='name=#hex, the new colour of a region')
     p.add_argument('-o', '--out', required=True)
+    p = command('fix-area', 'file', 'out')
+    p.add_argument('--box', required=True, help='x0,y0,x1,y1 in pixels of the board, around the one wrong figure')
+    p.add_argument('--wrong', required=True, help='the colour it came out, sampled, e.g. #7A5236')
+    p.add_argument('--to', required=True, help="the approved colour, from the sheet's palette or region legend")
     p = command('unsky', 'file', 'out')
     p.add_argument('--grid', default='2x2', help='rows x cols of the board (1x1 for one picture)')
     p = sub.add_parser('sheet')
@@ -128,6 +132,17 @@ def run(args) -> int | None:
         out = regions.recolour(colour.load(args.file), masks, changes)
         Image.fromarray(out.round().clip(0, 255).astype('uint8')).save(args.out)
         print(f'{args.out}: ' + ', '.join(f'{k} -> {v}' for k, v in changes.items()))
+        return 0
+    if args.command == 'fix-area':
+        import regions
+        rgb = colour.load(args.file)
+        box = tuple(int(v) for v in args.box.split(','))
+        mask = regions.area(rgb, box, args.wrong)
+        if not mask.any():
+            raise Refused(f'No paint near {args.wrong} inside {args.box}.')
+        out = regions.recolour(rgb, {'area': mask}, {'area': args.to})
+        Image.fromarray(out.round().clip(0, 255).astype('uint8')).save(args.out)
+        print(f'{args.out}: {int(mask.sum())} px in {args.box} moved from {args.wrong} to {args.to}')
         return 0
     if args.command == 'unsky':
         rows, cols = (int(n) for n in args.grid.lower().split('x'))

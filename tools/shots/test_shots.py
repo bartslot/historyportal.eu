@@ -451,3 +451,14 @@ def test_a_paler_wash_of_the_cloak_passes_but_a_rust_or_blue_cloak_still_drifts(
     assert colour.wash_delta(lab('#A45446'), red) > colour.SAME       # rust
     assert colour.wash_delta(lab('#876247'), red) > colour.SAME       # brown
     assert colour.wash_delta(lab('#6B8CB7'), red) > colour.SAME       # Maffeo's blue
+
+
+def test_fix_area_recolours_only_the_wrong_horse_inside_the_box():
+    import regions
+    rgb = np.full((100, 200, 3), 252.0)
+    rgb[40:60, 20:40] = (122, 82, 54)      # tiny horse painted brown, should be black
+    rgb[40:60, 120:140] = (122, 82, 54)    # another brown horse outside the box: Marco's chestnut, stays
+    mask = regions.area(rgb, (10, 30, 50, 70), '#7A5236')
+    out = regions.recolour(rgb, {'area': mask}, {'area': '#2A2422'})
+    assert colour.delta(out[50, 30], colour.hex_rgb('#2A2422')) < 3
+    assert (out[50, 130] == rgb[50, 130]).all() and (out[5, 5] == rgb[5, 5]).all()
