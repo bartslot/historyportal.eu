@@ -26,6 +26,10 @@
     // only knew in the browser went with it, so the teacher was left looking at a play bar that
     // had forgotten it was waiting for anything, for ever. State the server owns survives that.
     $narrating = $scene?->status === 'generating' && ! $scene?->hasFreshAudio();
+    // A recording that no longer says the words on the scene: edited since, or a duplicate whose words were
+    // changed. Seeded from the server so a reload still says so; it used to come back looking fresh and
+    // played the old voice (Bart 11-27).
+    $audioStale = $audioUrl !== null && ! $scene->hasFreshAudio();
 @endphp
 
 {{-- {{ $attributes }} carries the wire:key="script-{sceneId}" from the parent so a scene change
@@ -38,7 +42,7 @@
           made Alpine start a second panel on the same element while the buttons inside stayed bound to the
           first, whose watcher had just been stopped: the recording came back and Re-narrate spun on for ever
           (Bart 11-26, the Hormuz stop). An x-data that never changes is never restarted by a morph. --}}
-     data-script-init="{{ json_encode([$audioUrl, $paragraphs, $scene?->id, $narrating], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+     data-script-init="{{ json_encode([$audioUrl, $paragraphs, $scene?->id, $narrating, $audioStale], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
      x-data="scriptEditor(...JSON.parse($el.dataset.scriptInit))"
      class="fixed bottom-0 z-30 flex flex-col overflow-hidden"
      :style="`left:var(--rail-w,11rem);right:calc(var(--work-right,16rem) - var(--editor-gap) / 2);height:${panelH}px`">
@@ -320,7 +324,7 @@
             __('Testing the microphone…'),
         ]);
         const NARRATE_ALMOST = @js(__('Almost there…'));
-        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating) {
+        window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating, audioStale) {
             return {
                 ws: null,
                 sceneId: sceneId ?? null,
@@ -355,7 +359,11 @@
                 // are seeded from the server so a rebuilt panel comes back still waiting: while a
                 // recording is being made the words on the scene are, by definition, not the words
                 // in the recording.
-                dirty: !!narrating,
+                dirty: !!narrating || !!audioStale,
+                // The server said the recording does not match the stored words. Stays until a new
+                // recording comes back (or the server says the words are the same after all).
+                audioStale: !!audioStale,
+                _autosaveTimer: null,
                 dirtyLines: [],
                 regenerating: !!narrating,
                 _narrateTimer: null,
@@ -387,6 +395,15 @@
                     this.paras = this._seed.map((p) => ({ id: this._pid++, text: p.text || '', dirty: false }));
                     this.starts = this._seed.map((p) => p.start || 0);   // server timecodes until audio loads
                     this.$nextTick(() => { this.reserveSpace(); this._lastSaved = this._currentScriptText(); });
+                    // An edit is saved a moment after the typing stops, not only when the box loses focus.
+                    // A paste followed by a reload, or a panel rebuilt while the caret was still in a box,
+                    // lost the words: the scene came back with its old script (Bart 11-27, a duplicate).
+                    this.$watch('paras', () => this._queueSave());
+                    this._onPageHide = () => this._flushSave();
+                    window.addEventListener('pagehide', this._onPageHide);
+                    // The timeline's narration lane says when its clip no longer matches the words.
+                    this.$watch('dirty', () => this._tellStale());
+                    this.$nextTick(() => this._tellStale());
                     // Keep the reserved bottom space in sync with the panel's real height + its
                     // shown/hidden state, so the stage always sits ABOVE the script panel.
                     this._ro = new ResizeObserver(() => this.reserveSpace());
@@ -416,7 +433,7 @@
                     // Only punctuation or spacing changed: the recording still says these words, nothing to re-narrate.
                     this._unwatchFresh = window.Livewire.on('scene:audio-still-fresh', (e) => {
                         const p = Array.isArray(e) ? e[0] : e;
-                        if (p && p.sceneId === this.sceneId && !this.regenerating && this.hasAudio) this._clearDirty();
+                        if (p && p.sceneId === this.sceneId && !this.regenerating && this.hasAudio) { this.audioStale = false; this._clearDirty(); }
                     });
                     // Regenerate-paragraph result: the server rewrites one paragraph and hands it back.
                     this._unwatchPara = window.Livewire.on('scene:paragraph-result', (e) => {
@@ -533,7 +550,7 @@
                     this._lastSaved = chunks.join('\n\n');
                     // Nothing is unsaved any more — unless a recording is still being made, which
                     // keeps the audio out of date whatever the boxes say.
-                    this.dirty = this.regenerating;
+                    this.dirty = this.regenerating || this.audioStale;
                     this.recomputeStarts();
                     // Fresh ids mean x-for builds new boxes and x-init seeds them, but write the
                     // text in as well: a reused node never re-runs x-init and would keep the old
@@ -548,6 +565,10 @@
                     else requestAnimationFrame(() => this.refreshWave());
                 },
                 destroy() {
+                    // Torn down with words still waiting (a scene switch, a duplicate): they go to THIS
+                    // panel's scene, which the server now accepts even when another scene is open.
+                    this._flushSave();
+                    window.removeEventListener('pagehide', this._onPageHide);
                     clearTimeout(this._narrateTimer);
                     clearInterval(this._narrateWatch);
                     clearInterval(this._narrateTick);
@@ -823,9 +844,24 @@
                     const changed = this._currentScriptText() !== this._lastSaved;
                     // While a recording is being made the audio is out of date whatever the text
                     // does, so typing and undoing must not hand the Play button back mid-job.
-                    this.dirty = changed || this.regenerating;
+                    this.dirty = changed || this.regenerating || this.audioStale;
                     if (this.paras[i]) this.paras[i].dirty = changed;
                     if (!changed) this.paras.forEach((p) => { p.dirty = false; });
+                },
+                _queueSave() {
+                    clearTimeout(this._autosaveTimer);
+                    this._autosaveTimer = setTimeout(() => this._flushSave(), 1500);
+                },
+                /** Save words still waiting, if there are any. Never the empty-box refusal: that is the focusout's. */
+                _flushSave() {
+                    clearTimeout(this._autosaveTimer);
+                    if (!this._boxes().length) return;
+                    const text = this._currentScriptText();
+                    if (text && text !== this._lastSaved) this.saveScript();
+                },
+                _tellStale() {
+                    const detail = { sceneId: this.sceneId, stale: !!(this.hasAudio && this.dirty) };
+                    try { window.dispatchEvent(new CustomEvent('script:audio-stale', { detail })); } catch (_) {}
                 },
                 _clearDirty() { this.dirty = false; this.paras.forEach((p) => { p.dirty = false; }); },
                 onPlay() {
@@ -915,6 +951,7 @@
                     clearTimeout(this._narrateTimer);
                     clearInterval(this._narrateWatch);
                     this.regenerating = false;
+                    this.audioStale = false;
                     this._clearDirty();
                     if (!newUrl) return;
                     this.hasAudio = true;

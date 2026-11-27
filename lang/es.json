@@ -3244,5 +3244,7 @@
     "Delete checkpoint": "Eliminar el punto de paso",
     "Have a look": "Mira",
     "Checkpoint: click to show, drag to move": "Punto de paso: haz clic para mostrar, arrastra para mover",
-    "Click to add a checkpoint, drag to bend the route": "Haz clic para añadir un punto de paso, arrastra para curvar la ruta"
+    "Click to add a checkpoint, drag to bend the route": "Haz clic para añadir un punto de paso, arrastra para curvar la ruta",
+    "Old audio": "Audio antiguo",
+    "The words changed. Re-narrate in the Script tab to hear them.": "El texto ha cambiado. Vuelve a narrarlo en la pestaña Guion para oírlo."
 }

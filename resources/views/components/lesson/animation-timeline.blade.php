@@ -48,6 +48,8 @@
         // The scene's narration: play plays it, and the Length follows it (Bart, 2026-11-23).
         'audioUrl'  => $scene?->audioUrl(),
         'alignment' => $alignment,
+        // The clip no longer says the scene's words (edited since it was recorded): the lane says so.
+        'audioStale' => $scene?->audio_path !== null && ! $scene?->hasFreshAudio(),
         'targets'   => $timeline['targets'] ?? [],
         'tracks'    => $timeline['tracks'] ?? [],
         'sail'      => $timeline['sail'] ?? null,
@@ -521,6 +523,10 @@
                         <x-ui.icon name="sound" class="h-3.5 w-3.5" />
                     </button>
                     <span class="min-w-0 flex-1 truncate text-2xs font-semibold text-panel-value">{{ __('Narration') }}</span>
+                    {{-- The clip still says the old words: say so where the clip is (Bart 11-27). --}}
+                    <span x-show="narrationStale" x-cloak data-timeline-narration-stale
+                          class="badge badge-xs badge-warning shrink-0"
+                          data-tooltip="{{ __('The words changed. Re-narrate in the Script tab to hear them.') }}">{{ __('Old audio') }}</span>
                     <span class="range-panel-knob w-16 shrink-0" :style="`--range-t: ${narrationMuted ? 0 : narrationVolume}`">
                         <input type="range" min="0" max="1" step="0.05" data-timeline-narration-volume
                                :value="narrationMuted ? 0 : narrationVolume"
@@ -743,6 +749,7 @@
                         <div x-show="narrationSpan" class="absolute cursor-grab overflow-hidden rounded-[3px] active:cursor-grabbing"
                              data-timeline-narration-clip :title="@js(__('Drag to move the narration'))"
                              x-on:pointerdown.stop="startNarrationDrag($event)"
+                             :class="narrationStale && 'opacity-40'"
                              :style="barStyle(narrationSpan) + '; top: 5px; height: 30px; background: var(--color-timeline-bar-group)'">
                             {{-- view-box.camel: HTML lowercases a bound :viewBox to "viewbox", which SVG ignores, and the
                                  peaks were then drawn one pixel per column from the left instead of across the clip. --}}

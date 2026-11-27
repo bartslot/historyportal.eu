@@ -345,16 +345,40 @@ class Step3SceneConfiguratorTest extends TestCase
         $this->assertSame('Old script.', $this->s1->fresh()->script_segment, 'empty save must be ignored');
     }
 
-    public function test_update_scene_script_ignores_a_save_from_a_scene_we_left(): void
+    public function test_update_scene_script_from_a_scene_we_left_lands_on_that_scene(): void
     {
-        // The dispatch carries the originating sceneId; a stale save aimed at a scene that is no
-        // longer selected must not overwrite the current one.
+        // The dispatch carries the originating sceneId. A save that arrives after the editor moved on
+        // (a duplicate, a click on another scene) belongs to the scene it came from: it never touches the
+        // open scene, and it is not thrown away either (Bart 11-27, the duplicate came back with old words).
         Livewire::actingAs($this->teacher)
             ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
             ->set('selectedSceneId', $this->s1->id)
-            ->dispatch('scene:update-script', text: 'Contamination from scene two.', sceneId: $this->s2->id);
+            ->dispatch('scene:update-script', text: 'Words for scene two.', sceneId: $this->s2->id);
 
-        $this->assertSame('Old script.', $this->s1->fresh()->script_segment, 'stale-scene save must be ignored');
+        $this->assertSame('Old script.', $this->s1->fresh()->script_segment, 'the open scene keeps its words');
+        $this->assertSame('Words for scene two.', $this->s2->fresh()->script_segment, 'the words reach their own scene');
+    }
+
+    public function test_a_duplicate_keeps_its_own_edited_script_and_its_audio_goes_stale(): void
+    {
+        $component = Livewire::actingAs($this->teacher)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $this->lesson])
+            ->call('selectScene', $this->s1->id)
+            ->call('duplicateScene', $this->s1->id);
+
+        $copyId = (int) $component->get('selectedSceneId');
+        $this->assertNotSame($this->s1->id, $copyId, 'the copy is selected');
+        $this->assertTrue(\App\Models\Scene::find($copyId)->hasFreshAudio(), 'a fresh copy plays the same recording');
+        // The Script panel of the copy is the copy's own, not the original's.
+        $this->assertSame($copyId, $component->instance()->selectedSceneModel->id);
+
+        $component->dispatch('scene:update-script', text: 'Only the second half.', sceneId: $copyId);
+
+        $copy = \App\Models\Scene::find($copyId);
+        $this->assertSame('Only the second half.', $copy->script_segment);
+        $this->assertFalse($copy->hasFreshAudio(), 'the copied recording no longer matches the new words');
+        $this->assertSame('Old script.', $this->s1->fresh()->script_segment, 'the original keeps its words');
+        $this->assertTrue($this->s1->fresh()->hasFreshAudio(), 'and its recording');
     }
 
     public function test_scene_add_event_opens_the_scene_picker(): void

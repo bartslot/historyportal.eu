@@ -773,6 +773,22 @@ describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
     expect(p.narrationStart).toBe(0)                 // never before the scene starts
   })
 
+  it('a new recording reaches the lane without rebuilding the panel (Bart, 2026-11-27)', () => {
+    const p = voiced({ audioStale: true, alignment: [] })
+    p.listenToNarration()
+    FakeAudio.made[0].loaded(9)
+    expect(p.narrationStale).toBe(true)
+    // Saves re-fire scene:load with the recording being replaced: that changes nothing.
+    p.followRecording({ audioUrl: '/storage/b.mp3', audioFresh: false })
+    expect(FakeAudio.made).toHaveLength(1)
+    p.followRecording({ audioUrl: '/storage/b.mp3', audioFresh: true, audioAlignment: [] })
+    expect(FakeAudio.made[0].paused).toBe(true)        // the old voice stops
+    expect(FakeAudio.made[1].src).toBe('/storage/b.mp3')
+    expect(p.narrationStale).toBe(false)
+    FakeAudio.made[1].loaded(4)
+    expect(p.duration).toBeCloseTo(4)                  // and the Length follows the new clip
+  })
+
   it('a scene without audio keeps its length and plays silently', () => {
     const p = voiced({ audioUrl: null })
     p.listenToNarration()
