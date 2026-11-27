@@ -115,9 +115,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "marco": [
@@ -149,7 +149,7 @@
             ],
             "framing": "Close-up"
           },
-          "action": "A rider's belt hung with small bells; his hand tight on the reins.",
+          "action": "A rider's belt hung with small bells; his hand tight on the reins. The relay rider wears an ochre-brown quilted coat and a dark felt cap, never white (white is only Marco's).",
           "places": {
             "rider": [
               3002.24,
@@ -172,7 +172,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "A post station: a low walled lodging, fresh horses waiting, a clerk with brush and paper at the door.",
+          "action": "A post station: a low walled lodging, fresh horses waiting, a clerk with brush and paper at the door. The station horses are plain duns and light browns with plain undyed cloths, never chestnut, black or grey and never red or blue cloths (those are the Polos' own).",
           "sees": {
             "station": "centre"
           },
@@ -198,7 +198,7 @@
             ],
             "framing": "Medium"
           },
-          "action": "The rider leaps onto a fresh horse while the clerk writes down the hour.",
+          "action": "The rider swings up onto a fresh horse, seen from the side: left foot in the stirrup, body lifted high, right leg swinging up over the horse's back in mid-air, one hand on the saddle; the clerk beside the door writes down the hour. The relay rider wears an ochre-brown quilted coat and a dark felt cap, never white (white is only Marco's). The station horses are plain duns and light browns with plain undyed cloths, never chestnut, black or grey and never red or blue cloths (those are the Polos' own).",
           "places": {
             "rider": [
               3474.95,
@@ -239,7 +239,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "The rider gallops over a hill and past a river, his head, chest and stomach bound tight with bands.",
+          "action": "The rider gallops over a hill and past a river, his head, chest and stomach bound tight with bands. The relay rider wears an ochre-brown quilted coat and a dark felt cap and rides a dun, never white clothes and never the Polos' chestnut, black or grey.",
           "places": {
             "rider": [
               2564.95,
@@ -265,9 +265,9 @@
             ],
             "framing": "Medium"
           },
-          "action": "The rider reaches the Polos and holds up a gold tablet with a gerfalcon; Niccolò bows in the saddle.",
+          "action": "The rider reaches the Polos and holds up a gold tablet with a gerfalcon; Niccolò bows in the saddle. The relay rider wears an ochre-brown quilted coat and a dark felt cap and rides a dun, never white clothes and never the Polos' chestnut, black or grey.",
           "where": {
-            "niccolo-horse": "Niccolò's mount"
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame"
           },
           "places": {
             "niccolo": [
@@ -298,14 +298,14 @@
             ],
             "framing": "Wide"
           },
-          "action": "The Polos ride on, now with a Mongol escort riding beside them.",
+          "action": "The Polos ride on, now with a Mongol escort riding beside them. The Mongol escort wear muted ochre, brown and grey-green deels on duns and light browns, never white, red or blue and never the Polos' chestnut, black or grey.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "marco": [
@@ -340,9 +340,9 @@
             ],
             "framing": "Medium"
           },
-          "action": "Marco looks at the escort riders, proud and excited: the Great Khan is waiting.",
+          "action": "Marco looks at the escort riders, proud and excited: the Great Khan is waiting. The Mongol escort wear muted ochre, brown and grey-green deels on duns and light browns, never white, red or blue and never the Polos' chestnut, black or grey.",
           "where": {
-            "marco-horse": "Marco's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame"
           },
           "places": {
             "marco": [

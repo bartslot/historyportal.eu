@@ -294,9 +294,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "marco": [
@@ -333,7 +333,7 @@
           },
           "action": "Maffeo rides last, glancing back at the empty dunes behind them.",
           "where": {
-            "maffeo-horse": "Maffeo's mount"
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "places": {
             "maffeo": [
