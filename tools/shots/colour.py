@@ -12,7 +12,8 @@ INK_L = 35.0          # darker than this is ink
 PAPER_L = 88.0        # lighter than this and nearly grey is bare paper
 PAPER_CHROMA = 8.0
 NEAR = 25.0           # a pixel within this Delta E of a palette colour belongs to that garment
-SAME = 12.0           # two colours closer than this read as the same colour
+SAME = 12.0
+PAPER_WHITE = '#FCF9F8'   # bare History Lines paper           # two colours closer than this read as the same colour
 
 _M = np.array([[0.4124564, 0.3575761, 0.1804375],
                [0.2126729, 0.7151522, 0.0721750],
@@ -151,7 +152,7 @@ def unsky(rgb: np.ndarray, rows: int = 1, cols: int = 1) -> tuple[np.ndarray, fl
     The soft blue at the edge of a line is made grey of the same lightness, so the line itself is not touched.
     Returns the new picture and the percent of it that changed."""
     values = lab(rgb)
-    bluish = values[..., 2] < -4.0
+    bluish = values[..., 2] < -1.5
     pale = bluish & (values[..., 0] > 70.0)
     seed = np.zeros(pale.shape, dtype=bool)
     h, w = pale.shape
@@ -167,8 +168,7 @@ def unsky(rgb: np.ndarray, rows: int = 1, cols: int = 1) -> tuple[np.ndarray, fl
         near[:, 1:] |= near[:, :-1]
         near[:, :-1] |= near[:, 1:]
     edge &= near
-    _, _, paper = masks(rgb)
-    white = np.median(rgb[paper], axis=0) if paper.any() else np.array([255.0, 255.0, 255.0])
+    white = hex_rgb(PAPER_WHITE)   # fixed: on a fully washed board the median 'paper' is itself the wash
     out = rgb.copy()
     out[sky] = white
     grey = rgb[edge] @ np.array([0.299, 0.587, 0.114])
