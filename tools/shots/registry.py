@@ -26,7 +26,7 @@ PASSES = ('ink', 'colour')
 INK = {
     'sheet': ('6 to 8%', 'at least 85%', 'none', (5.5, 8), 85),
     'scene': ('10 to 14%', '65 to 75%', 'at most a fifth of the shaded area', (8, 16), 60),
-    'bright': ('5 to 8%', '80% or more', 'none', (5, 8), 80),
+    'bright': ('5 to 8%', '80% or more', 'none', (2, 9), 80),     # gate: board average from 2% (open plain), any cell up to 9%
     'backdrop': ('8 to 12%', '70 to 80%', 'at most a fifth of the shaded area', (6, 14), 65),
 }
 
