@@ -94,7 +94,7 @@
             ],
             "framing": "Wide"
           },
-          "action": "Mongol guards on horseback block the road at the post; the caravan halts.",
+          "action": "Two Mongol guards sit ON HORSEBACK side by side across the road in front of the post, blocking it, one holding a spear across; the Polos' caravan halts in front of them.",
           "where": {
             "marco": "the rider in white",
             "niccolo": "the rider in red in front",
@@ -192,7 +192,7 @@
             ],
             "framing": "Medium wide"
           },
-          "action": "Guards lead up fresh horses for the Polos; Marco watches, amazed.",
+          "action": "Mongol guards lead three fresh saddled horses up to the Polos by the reins, walking them forward; Marco watches, amazed.",
           "where": {
             "marco": "the young man in white, left",
             "niccolo": "the man in red, centre",
