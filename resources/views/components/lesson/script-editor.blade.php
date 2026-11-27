@@ -270,7 +270,7 @@
                 <span x-show="regenerating && etaLeft !== null" x-cloak class="tabular-nums opacity-70" x-text="etaLabel" data-narrate-eta></span>
             </button>
 
-            <button type="button" x-show="hasAudio && !dirty" x-on:click="toggle()" :disabled="!ready"
+            <button type="button" x-show="hasAudio && !dirty" x-on:click="toggle()" :disabled="!tl"
                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-slate-950 transition hover:brightness-110 disabled:opacity-40"
                     :title="playing ? @js(__('Pause')) : @js(__('Play'))"
                     aria-label="{{ __('Play narration') }}">
@@ -278,9 +278,20 @@
                 <svg x-show="playing" x-cloak viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5"><path d="M6.75 5.25h3v13.5h-3zM14.25 5.25h3v13.5h-3z"/></svg>
             </button>
 
-            {{-- wire:ignore so Livewire morphs never wipe WaveSurfer's rendered canvas. --}}
-            <div x-ref="waveform" wire:ignore x-show="hasAudio" class="h-7 min-w-0 flex-1 cursor-pointer transition-opacity"
-                 :class="dirty && 'pointer-events-none opacity-40'"></div>
+            {{-- The timeline's narration clip, drawn the same way as on its lane: one clip, one waveform, one
+                 play/pause for both tabs (Bart 11-27). Pressing it moves the timeline's playhead. --}}
+            <div x-ref="waveform" x-show="hasAudio" data-script-wave
+                 x-on:pointerdown="seekWave($event)"
+                 class="relative h-7 min-w-0 flex-1 cursor-pointer overflow-hidden rounded-[3px] transition-opacity"
+                 style="background: var(--color-timeline-bar-group)"
+                 :class="dirty && 'pointer-events-none opacity-40'">
+                <svg x-show="wave.path" class="pointer-events-none absolute inset-0 h-full w-full text-panel-value/70" preserveAspectRatio="none"
+                     :view-box.camel="`0 0 ${wave.buckets || 1} 100`" aria-hidden="true">
+                    <path :d="wave.path" stroke="currentColor" stroke-width="0.6" fill="none" vector-effect="non-scaling-stroke"/>
+                </svg>
+                <div class="pointer-events-none absolute inset-y-0 w-px" data-script-wave-playhead
+                     :style="`left: ${progress * 100}%; background: var(--color-timeline-mark)`"></div>
+            </div>
             <span x-show="!hasAudio && !regenerating" class="min-w-0 flex-1 truncate text-2xs text-panel-hint">
                 {{ __('No narration yet') }}
             </span>
@@ -326,13 +337,12 @@
         const NARRATE_ALMOST = @js(__('Almost there…'));
         window.scriptEditor = window.scriptEditor || function (url, paragraphs, sceneId, narrating, audioStale) {
             return {
-                ws: null,
                 sceneId: sceneId ?? null,
+                // Where the voice is on its own clock, and how long the clip is: both read from the timeline.
                 t: 0,
                 dur: 0,
-                playing: false,
-                ready: false,
                 active: 0,
+                _tlEffect: null,
                 // One entry per PARAGRAPH: { id, text, dirty }. Seeded from the server; edits
                 // (type / split / merge / paste) mutate this array and the DOM boxes track it.
                 paras: [],
@@ -373,7 +383,6 @@
                 narrateLine: NARRATE_LINES[0],
                 _narrateTick: null,
                 _ro: null,
-                _waveRo: null,
                 _lastSaved: '',
                 _savedBefore: '',
                 _unwatchAudio: null,
@@ -425,7 +434,7 @@
                         // that save answers with a scene:load of its own carrying the audio we are
                         // replacing. audioFresh is the server saying the recording matches the words
                         // on the scene, which only the finished job can make true.
-                        if (p.audioUrl && p.audioFresh) { this.reloadAudio(p.audioUrl); return; }
+                        if (p.audioUrl && p.audioFresh) { this.reloadAudio(p.audioUrl, p.audioAlignment); return; }
                         // The narrator could not record it (no TTS service, a bad voice, a refusal).
                         // Say so and give the button back — this used to spin for ever.
                         if (p.status === 'failed') this.narrationFailed(p.errorMessage);
@@ -455,47 +464,35 @@
                         this._lastSaved = this._savedBefore;
                     });
 
-                    if (url) await this.mountWave(url);
+                    this.$nextTick(() => this._followTimeline());
                 },
 
                 /**
-                 * Build the waveform for `src`. Called on load when the scene already has audio, and
-                 * again after a first narration finishes — a scene that started without a recording
-                 * has no WaveSurfer to reload, and used to stay silent until a full page refresh.
+                 * The Timeline tab's component, which owns the scene's narration clip: its audio, its waveform and
+                 * its play/pause. The Script tab is a second view of that one clip (Bart 11-27: "these 2 should look
+                 * and feel together"), so Space, the timeline's play button and this one are the same switch.
                  */
-                async mountWave(src) {
-                    if (this.ws || !src) return;
-                    try {
-                        const WS = await window.ensureWaveSurfer();
-                        // Built WITHOUT url, then load() separately: switching scenes destroys this
-                        // component mid-download, and WaveSurfer aborts the fetch. Loading through a
-                        // promise we can catch keeps that from surfacing as an uncaught AbortError.
-                        this.ws = WS.create({
-                            container: this.$refs.waveform,
-                            waveColor: '#475569',      // slate-600
-                            progressColor: '#f59e0b',  // amber-500, the theme primary
-                            cursorColor: '#f59e0b',    // amber-500 playhead
-                            barWidth: 2, barGap: 1, barRadius: 2, height: 32, normalize: true,
-                        });
-                        this._load(src);
-                        this.ws.on('ready', (d) => {
-                            this.dur = d || 0;
-                            this.ready = true;
-                            this.hasAudio = true;
-                            this.recomputeStarts();   // spread paragraph timecodes over the REAL length
-                            this.refreshWave();
-                        });
-                        this.ws.on('audioprocess', (t) => { this.t = t; this.syncActive(); });
-                        this.ws.on('interaction', () => { this.t = this.ws.getCurrentTime(); this.syncActive(); });
-                        this.ws.on('play', () => { this.playing = true; });
-                        this.ws.on('pause', () => { this.playing = false; });
-                        this.ws.on('finish', () => { this.playing = false; });
+                get tl() {
+                    const el = this._root?.querySelector('[data-timeline-config]');
+                    const d = el && window.Alpine?.$data(el);
+                    return d && 'narrationStart' in d ? d : null;
+                },
+                get playing() { return !!this.tl?.playing; },
+                get wave() { const tl = this.tl; return { path: tl?.wavePath || '', buckets: tl?.waveBuckets || 0 }; },
+                /** 0..1 along the clip, for the playhead on this bar. */
+                get progress() { return this.dur > 0 ? Math.min(1, Math.max(0, this.t / this.dur)) : 0; },
 
-                        // WaveSurfer draws nothing if it initialised while the panel was hidden
-                        // (script off) or 0-width. Redraw whenever the container gets a real width.
-                        this._waveRo = new ResizeObserver(() => this.refreshWave());
-                        this._waveRo.observe(this.$refs.waveform);
-                    } catch (_) { /* WaveSurfer failed to load — leave the play bar disabled */ }
+                /** Follow the timeline's clock: the time label, the paragraph timecodes and the lit paragraph. */
+                _followTimeline(tries = 0) {
+                    if (!this.tl) { if (tries < 20) requestAnimationFrame(() => this._followTimeline(tries + 1)); return; }
+                    this._tlEffect = window.Alpine.effect(() => {
+                        const tl = this.tl;
+                        if (!tl) return;
+                        const length = tl.narrationLength || 0;
+                        if (length !== this.dur) { this.dur = length; this.recomputeStarts(); }
+                        this.t = Math.max(0, Math.min(length || Infinity, tl.time - tl.narrationStart));
+                        if (tl.playing) this.syncActive();
+                    });
                 },
 
                 // Pull each box's live text back into paras, then serialise: soft newlines (single
@@ -562,12 +559,6 @@
                     this.$nextTick(() => this._boxes().forEach((el, i) => { el.textContent = this.paras[i]?.text ?? ''; }));
                 },
 
-                refreshWave() {
-                    if (!this.ws || !this.$refs.waveform) return;
-                    const width = this.$refs.waveform.clientWidth;
-                    if (width > 0) { try { this.ws.setOptions({ width }); } catch (_) {} }
-                    else requestAnimationFrame(() => this.refreshWave());
-                },
                 destroy() {
                     // Torn down with words still waiting (a scene switch, a duplicate): they go to THIS
                     // panel's scene, which the server now accepts even when another scene is open.
@@ -576,9 +567,8 @@
                     clearTimeout(this._narrateTimer);
                     clearInterval(this._narrateWatch);
                     clearInterval(this._narrateTick);
-                    try { this.ws?.destroy(); } catch (_) {}
+                    if (this._tlEffect) { try { window.Alpine.release(this._tlEffect); } catch (_) {} }
                     if (this._ro) this._ro.disconnect();
-                    if (this._waveRo) this._waveRo.disconnect();
                     if (this._unwatchAudio) { try { this._unwatchAudio(); } catch (_) {} }
                     if (this._unwatchFresh) { try { this._unwatchFresh(); } catch (_) {} }
                     if (this._unwatchPara) { try { this._unwatchPara(); } catch (_) {} }
@@ -898,7 +888,7 @@
                         if (!s || !this.regenerating) return;
                         if (Number.isFinite(s.etaSeconds)) this.etaLeft = s.etaSeconds;
                         if (s.status === 'generating') { sawGenerating = true; return; }
-                        if (s.audioUrl && s.audioFresh) { this.reloadAudio(s.audioUrl); return; }
+                        if (s.audioUrl && s.audioFresh) { this.reloadAudio(s.audioUrl, s.audioAlignment); return; }
                         if (s.status === 'failed') { this.narrationFailed(s.errorMessage); return; }
                         if (!sawGenerating && Date.now() - since < 8000) return;
                         // The job gave up and the scene kept its earlier recording: say why, and leave the edit
@@ -951,7 +941,7 @@
                     };
                     try { window.dispatchEvent(new CustomEvent('toast', { detail })); } catch (_) {}
                 },
-                reloadAudio(newUrl) {
+                reloadAudio(newUrl, alignment) {
                     clearTimeout(this._narrateTimer);
                     clearInterval(this._narrateWatch);
                     this.regenerating = false;
@@ -959,16 +949,9 @@
                     this._clearDirty();
                     if (!newUrl) return;
                     this.hasAudio = true;
-                    // Bust the HTTP cache — the re-narrated file often reuses the same path.
-                    const bust = newUrl + (newUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
-                    // First narration for this scene: there is no waveform yet, so build one.
-                    if (!this.ws) { this.$nextTick(() => this.mountWave(bust)); return; }
-                    this._load(bust);
-                },
-
-                /** load() rejects with AbortError when the component is torn down mid-download. */
-                _load(src) {
-                    try { Promise.resolve(this.ws?.load(src)).catch(() => {}); } catch (_) {}
+                    // The new recording goes to the timeline's clip, which both tabs play. Its URL carries a version
+                    // of the words and the voice, so the browser cannot hand back the old file.
+                    this.tl?.followRecording({ audioUrl: newUrl, audioFresh: true, audioAlignment: alignment ?? [] });
                 },
 
                 reserveSpace() {
@@ -987,19 +970,28 @@
                     window.dispatchEvent(new Event('resize'));   // refit the WebGL stage
                 },
 
-                toggle() { this.ws?.playPause(); },
-                seek(i) {
-                    // Only seek the CURRENT scene's loaded, up-to-date track. A not-ready or
-                    // stale/regenerating waveform could otherwise play a clip from a scene you
-                    // already left (e.g. clicking a timecode on a freshly-added empty paragraph).
-                    if (!this.ws || !this.ready || this.dirty || this.regenerating) return;
-                    const s = Math.max(0, Math.min(this.starts[i] ?? 0, this.dur || 0));
-                    if (typeof this.ws.setTime === 'function') this.ws.setTime(s);
-                    else this.ws.seekTo(this.dur ? s / this.dur : 0);
-                    this.t = s;
-                    this.syncActive();
-                    if (!this.playing) this.ws.play();
+                /** The timeline's play/pause: the same switch as Space and the timeline's own button. */
+                toggle() {
+                    const tl = this.tl;
+                    if (!tl) return;
+                    if (tl.playing) tl.pause(); else tl.play();
                 },
+                /** Move the timeline's playhead to `clipTime` seconds into the clip, carrying on if it plays. */
+                _seekClip(clipTime, play = false) {
+                    const tl = this.tl;
+                    if (!tl || this.dirty || this.regenerating) return;
+                    const at = tl.narrationStart + Math.max(0, Math.min(clipTime, this.dur || 0));
+                    // seekToWord seeks and plays, the way pressing a word in the timeline does.
+                    if (play || tl.playing) tl.seekToWord(at); else tl.seek(at);
+                    this.t = at - tl.narrationStart;
+                    this.syncActive();
+                },
+                seekWave(e) {
+                    const r = this.$refs.waveform.getBoundingClientRect();
+                    if (r.width > 0) this._seekClip(((e.clientX - r.left) / r.width) * this.dur);
+                },
+                /** A paragraph's timecode: play the voice from there. */
+                seek(i) { this._seekClip(this.starts[i] ?? 0, true); },
                 syncActive() {
                     let a = 0;
                     for (let i = 0; i < this.starts.length; i++) { if (this.t >= this.starts[i]) a = i; }
@@ -1031,7 +1023,6 @@
                 },
                 keepHeight() {
                     try { localStorage.setItem(SCRIPT_H_KEY, String(this.panelH)); } catch (_) {}
-                    this.$nextTick(() => this.refreshWave());
                 },
                 fmt(s) {
                     s = Math.max(0, Math.round(s || 0));

@@ -789,6 +789,19 @@ describe('the narration plays with the timeline (Bart, 2026-11-23)', () => {
     expect(p.duration).toBeCloseTo(4)                  // and the Length follows the new clip
   })
 
+  it('plays at full volume from the Script tab, at the lane level in the Timeline tab (Bart, 2026-11-27)', () => {
+    const p = voiced()
+    p.$store = { view: { bottomTab: 'timeline', script: true } }
+    p.setNarrationVolume(0.3)
+    expect(p.narration().volume).toBeCloseTo(0.3)
+    p.$store.view.bottomTab = 'script'
+    expect(p.narration().volume).toBe(1)
+    p.toggleNarrationMute()
+    expect(p.narration().volume).toBe(1)               // the lane's mute is the Timeline tab's, not the Script tab's
+    p.$store.view.bottomTab = 'timeline'
+    expect(p.narration().volume).toBe(0)
+  })
+
   it('a scene without audio keeps its length and plays silently', () => {
     const p = voiced({ audioUrl: null })
     p.listenToNarration()
