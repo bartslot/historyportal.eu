@@ -518,6 +518,9 @@ class Step3SceneConfigurator extends Component
 
         $scene = $this->lesson->scenes()->findOrFail($id);
         $this->selectedSceneId = $id;
+        // The computed model is memoised per request: read before the switch, it rendered the panels of
+        // the scene we just left under the new scene's key.
+        unset($this->selectedSceneModel);
         $this->selectedScene = $this->snapshot($scene);
         $this->prevSelectedStatus = (string) $scene->status;   // the status poller reloads only when this changes
 
@@ -540,6 +543,9 @@ class Step3SceneConfigurator extends Component
             // the save it makes just before asking, above all — carries the recording being
             // replaced. Without this the panel took the first of those as the answer.
             'audioFresh' => $scene->hasFreshAudio(),
+            // The word timings that go with that recording: the timeline's narration lane takes a new
+            // recording from here without being rebuilt.
+            'audioAlignment' => $scene->audio_alignment ?? [],
             // The Script panel spins while narration is being made; without these it had no way to
             // learn the job had failed and kept spinning for good.
             'status' => (string) $scene->status,
@@ -6496,20 +6502,31 @@ class Step3SceneConfigurator extends Component
     /**
      * Inline script edit from the Script panel — persist the edited narration text.
      * Guards against data loss: a focusout can fire while the panel is being rebuilt on a
-     * scene switch, dispatching empty or stale text. Never wipe a scene to empty, and never
-     * apply a save whose originating scene is no longer the selected one.
+     * scene switch, dispatching empty text. Never wipe a scene to empty.
+     *
+     * The panel names the scene its words belong to, and they are saved THERE, selected or not. This used
+     * to drop a save aimed at a scene the editor had already left, as "stale". But the words were the
+     * teacher's: an edit still waiting when the panel was replaced (a duplicate, a click on another scene)
+     * vanished, and the scene came back after a reload with its old script (Bart 11-27).
      */
     #[On('scene:update-script')]
     public function updateSceneScript(string $text, ?int $sceneId = null): void
     {
-        if (! $this->selectedScene || ! $this->selectedSceneId) {
+        $sceneId ??= $this->selectedSceneId;
+        if (! $sceneId) {
             return;
-        }
-        if ($sceneId !== null && $sceneId !== $this->selectedSceneId) {
-            return;   // stale save from a panel we already switched away from
         }
         if (trim($text) === '') {
             return;   // inline editing never clears all narration (delete the scene instead)
+        }
+        $scene = $this->lesson->scenes()->find($sceneId);
+        if (! $scene) {
+            return;   // deleted meanwhile
+        }
+        $selected = $sceneId === $this->selectedSceneId && $this->selectedScene;
+        if (! $selected && ($user = auth()->user())) {
+            // The claim guard judged this call by the scene on screen; the words go to another one.
+            app(LessonCollaboration::class)->authorizeEdit($this->lesson, $user, LessonCollaboration::sceneTarget($sceneId));
         }
 
         // Editing narration is the one keystroke in this app that becomes an ElevenLabs invoice, so
@@ -6519,8 +6536,7 @@ class Step3SceneConfigurator extends Component
         // Charged BEFORE the save, because charge() is also what decides. It checks and takes the
         // characters in one locked step, so two panels autosaving at once cannot both read the same
         // balance and both spend it. False means the teacher has run out and nothing was taken.
-        $scene = $this->lesson->scenes()->find($this->selectedSceneId);
-        $before = (string) ($scene?->script_segment ?? '');
+        $before = (string) ($scene->script_segment ?? '');
         $after = trim($text);
         $cost = NarrationBudget::costOfEdit($before, $after);
 
@@ -6530,19 +6546,23 @@ class Step3SceneConfigurator extends Component
             // saved the moment it sends it, so a refusal left it believing the scene held words
             // it does not: the next save was skipped as "no change", and a re-narration would
             // have spoken the OLD script while the new one sat on screen looking safe.
-            $this->dispatch('scene:script-rejected', sceneId: $this->selectedSceneId);
+            $this->dispatch('scene:script-rejected', sceneId: $sceneId);
 
             return;   // the edit is refused, so nothing is charged and nothing is re-narrated
         }
 
-        $wasFresh = $scene?->hasFreshAudio() ?? false;
-        $this->selectedScene['script_segment'] = $after;
-        $this->saveSelected();
+        $wasFresh = $scene->hasFreshAudio();
+        if ($selected) {
+            $this->selectedScene['script_segment'] = $after;
+            $this->saveSelected();
+        } elseif ($before !== $after) {
+            $scene->update(['script_segment' => $after, 'audio_script_hash' => null]);
+        }
 
         // Only punctuation, capitals or spaces changed (Bart 11-24: "if it's just one word, or a . ... it's really
         // crazy we need to redo a whole paragraph"): the narrator says the same words, so the recording stays and
         // counts as matching the script. Nothing to re-narrate, and the panel is told so.
-        if ($wasFresh && $scene !== null && self::spokenWords($before) === self::spokenWords($after)) {
+        if ($wasFresh && self::spokenWords($before) === self::spokenWords($after)) {
             $scene->refresh();
             $scene->forceFill(['audio_script_hash' => sha1((string) $scene->script_segment)])->saveQuietly();
             $this->dispatch('scene:audio-still-fresh', sceneId: $scene->id);

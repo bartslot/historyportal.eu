@@ -3202,5 +3202,7 @@
     "Delete checkpoint": "Checkpoint löschen",
     "Have a look": "Schau mal",
     "Checkpoint: click to show, drag to move": "Checkpoint: klicken zum Zeigen, ziehen zum Verschieben",
-    "Click to add a checkpoint, drag to bend the route": "Klicken für einen Checkpoint, ziehen, um die Route zu biegen"
+    "Click to add a checkpoint, drag to bend the route": "Klicken für einen Checkpoint, ziehen, um die Route zu biegen",
+    "Old audio": "Alte Aufnahme",
+    "The words changed. Re-narrate in the Script tab to hear them.": "Der Text hat sich geändert. Lass ihn im Tab Skript neu einsprechen, um ihn zu hören."
 }
