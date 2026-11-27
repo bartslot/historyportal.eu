@@ -83,10 +83,12 @@ class ImageRestyler
 
         $key = 'restyle:'.$user->id;
         $perHour = (int) config('services.openai.restyle_per_hour', 12);
-        if (RateLimiter::tooManyAttempts($key, $perHour)) {
-            return self::LIMIT;
+        if (! $user->isAdmin()) {   // the hourly cap guards our OpenAI bill against a teacher; an admin is us
+            if (RateLimiter::tooManyAttempts($key, $perHour)) {
+                return self::LIMIT;
+            }
+            RateLimiter::hit($key, 3600);
         }
-        RateLimiter::hit($key, 3600);
 
         $row = ImageRestyle::create([
             'user_id' => $user->id,

@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Jobs\Concerns\MarksSceneReady;
 use App\Models\Scene;
 use App\Services\Support\NarrationEta;
+use App\Services\Support\AudioEncoder;
 use App\Services\Support\NarrationTiming;
 use App\Services\Support\NarrationVoice;
 use App\Services\Support\PronunciationLexicon;
@@ -66,6 +67,19 @@ class GenerateSceneAudio implements ShouldQueue
             );
             if ($audio === null) {
                 throw new \RuntimeException('TTS service returned no audio.');
+            }
+
+            // A recording far too short for its words is a failed one, whatever the service said
+            // (Bart 2026-11-27: a 48-word paragraph came back as one second of ElevenLabs audio).
+            // Refuse it BEFORE it is saved or kept in the narration library, so the scene keeps its
+            // old clip and shows the error instead of playing a blip.
+            $timedSeconds = NarrationTiming::fromStored($timing['character_timings'] ?? [])->duration();
+            $spokenSeconds = $timedSeconds > 0.0 ? $timedSeconds : AudioEncoder::seconds($audio, $tts->lastExtension());
+            if ($spokenSeconds !== null && self::tooShort($text, $spokenSeconds)) {
+                throw new \RuntimeException(sprintf(
+                    'The narration came back %.1f seconds long, far too short for this text, so it was not saved. Re-narrate to try again.',
+                    $spokenSeconds,
+                ));
             }
 
             // An ElevenLabs recording (Ron Slot, Bart's father) is kept at full quality in the narration
@@ -136,6 +150,18 @@ class GenerateSceneAudio implements ShouldQueue
             NarrationEta::forget($scene->id);
             throw $e;
         }
+    }
+
+    /**
+     * Whether a recording is too short to hold its text. Five words a second is faster than any
+     * narrator reads, so anything under that is cut off, not quick. Very short texts are left
+     * alone: "Rome." can honestly last half a second.
+     */
+    public static function tooShort(string $text, float $seconds): bool
+    {
+        $words = str_word_count(strip_tags($text));
+
+        return $words >= 8 && $seconds < $words / 5.0;
     }
 
     /**

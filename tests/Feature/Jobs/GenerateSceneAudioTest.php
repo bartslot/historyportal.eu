@@ -24,6 +24,64 @@ class GenerateSceneAudioTest extends TestCase
         Storage::fake('public');
     }
 
+    public function test_a_recording_far_too_short_for_its_text_is_refused_and_not_saved(): void
+    {
+        // Bart 2026-11-27: a 48-word paragraph came back as one second of ElevenLabs audio and was
+        // saved as the scene's narration. It must fail with a message instead.
+        $teacher = User::factory()->create();
+        $narrator = Narrator::create([
+            'name' => 'Ron', 'slug' => 'ron-short', 'gender' => 'male',
+            'voice_provider' => 'elevenlabs', 'voice_id' => 'voice-x',
+            'voice_speed' => 1.0, 'is_active' => true, 'sort_order' => 1,
+        ]);
+        $lesson = Lesson::create([
+            'teacher_id' => $teacher->id, 'avatar_id' => $narrator->id,
+            'topic' => 'X', 'subject' => 'history', 'grade_level' => '9th',
+        ]);
+        $text = 'In 1265, in the city of Bukhara, they got an invitation from the most powerful Mongol lord of all: Kublai Khan. '
+            ."The Khan's mother was a Christian, and he welcomed the two Christian brothers kindly. "
+            .'He gave them the right to travel freely through all the lands of the Mongols.';
+        $scene = Scene::create([
+            'lesson_id' => $lesson->id, 'order' => 1, 'kind' => 'narration',
+            'script_segment' => $text, 'image_path' => 'x.png', 'status' => 'generating',
+        ]);
+
+        $this->mock(TtsService::class, function ($mock) use ($text): void {
+            $mock->shouldReceive('prepareSpeechText')->andReturn($text);
+            $mock->shouldReceive('generateAudioRaw')->andReturnUsing(
+                function ($t, $voiceId, $speed, $provider, &$timing) {
+                    $timing = ['character_timings' => [['character' => 'I', 'start_time' => 0.0, 'end_time' => 1.0]]];
+
+                    return 'BINARYMP3';
+                }
+            );
+            $mock->shouldReceive('lastExtension')->andReturn('mp3');
+            $mock->shouldReceive('lastProvider')->andReturn('elevenlabs');
+            $mock->shouldReceive('lastSourceAudio')->andReturn('BINARYMP3');
+            $mock->shouldReceive('lastVoice')->andReturn('voice-x');
+        });
+
+        try {
+            (new GenerateSceneAudio($scene->id))->handle(app(TtsService::class));
+            $this->fail('a one-second recording of a 48-word text was accepted');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('too short', $e->getMessage());
+        }
+
+        $scene->refresh();
+        $this->assertNull($scene->audio_path);
+        $this->assertSame('failed', $scene->status);
+        $this->assertStringContainsString('too short', (string) $scene->error_message);
+        Storage::disk('public')->assertMissing(\App\Services\LessonComposer::NARRATION_LIBRARY.'/'.sha1($text).'.mp3');
+    }
+
+    public function test_short_texts_may_be_short_recordings(): void
+    {
+        $this->assertFalse(GenerateSceneAudio::tooShort('Rome, 1271.', 0.6));
+        $this->assertTrue(GenerateSceneAudio::tooShort(str_repeat('word ', 48), 1.0));
+        $this->assertFalse(GenerateSceneAudio::tooShort(str_repeat('word ', 48), 14.0));
+    }
+
     public function test_produces_audio_alignment_and_marks_ready_when_all_assets_present(): void
     {
         $teacher = User::factory()->create();
