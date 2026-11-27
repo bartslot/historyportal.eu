@@ -110,9 +110,9 @@
             "marco": "the rider in white",
             "niccolo": "the rider in red",
             "maffeo": "the rider in blue",
-            "marco-horse": "Marco's mount",
-            "niccolo-horse": "Niccolò's mount",
-            "maffeo-horse": "Maffeo's mount"
+            "marco-horse": "Marco's mount, a red-brown chestnut even this small",
+            "niccolo-horse": "Niccolò's mount, a black horse even this small",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey even this small: light grey body, darker legs, the lightest of the three horses, never dark"
           },
           "sees": {
             "peaks": "across the horizon"
