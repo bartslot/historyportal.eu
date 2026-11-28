@@ -94,6 +94,45 @@ final class SyncFields
             ->all();
     }
 
+    /**
+     * The questions of a scene (or the lesson's pool, scene null) become $rows, row by row: existing rows are
+     * updated in place, so the answers classes already gave stay linked to their question.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    public static function writeQuestions(Lesson $lesson, ?Scene $scene, array $rows): void
+    {
+        $existing = QuizQuestion::query()->where('lesson_id', $lesson->id)
+            ->when($scene, fn ($q) => $q->where('scene_id', $scene->id), fn ($q) => $q->whereNull('scene_id'))
+            ->orderBy('order')->orderBy('id')->get()->values();
+        $allowed = array_flip(self::questionFields());
+        foreach (array_values($rows) as $i => $row) {
+            $row = array_intersect_key((array) $row, $allowed);
+            isset($existing[$i])
+                ? $existing[$i]->forceFill($row)->save()
+                : (new QuizQuestion)->forceFill($row + ['lesson_id' => $lesson->id, 'scene_id' => $scene?->id])->save();
+        }
+        $existing->slice(count($rows))->each->delete();
+    }
+
+    /**
+     * The lesson's scenes numbered 1..n in $order, the ones it does not name after them in their own order.
+     * Two passes because (lesson_id, order) is unique (Step3SceneConfigurator::renumberScenes).
+     *
+     * @param  list<int>  $order
+     */
+    public static function renumber(Lesson $lesson, array $order): void
+    {
+        $alive = $lesson->scenes()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $final = array_values(array_unique([...array_values(array_intersect($order, $alive)), ...array_values(array_diff($alive, $order))]));
+        foreach ($final as $i => $id) {
+            Scene::query()->whereKey($id)->update(['order' => -1 * ($i + 1)]);
+        }
+        foreach ($final as $i => $id) {
+            Scene::query()->whereKey($id)->update(['order' => $i + 1]);
+        }
+    }
+
     /** What a scene says, as the push sends it. @return array{fields: array<string, mixed>, questions: list<array<string, mixed>>} */
     public static function scenePayload(Scene $scene, Lesson $lesson): array
     {

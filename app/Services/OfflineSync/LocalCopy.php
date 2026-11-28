@@ -6,7 +6,6 @@ namespace App\Services\OfflineSync;
 
 use App\Models\Lesson;
 use App\Models\OfflineCopy;
-use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Lessons\SceneIdRemap;
@@ -250,7 +249,7 @@ final class LocalCopy
                 $cols += ['lesson_id' => $lesson->id, 'order' => $next++];
             }
             $scene->forceFill($cols)->save();
-            $this->writeQuestions($lesson, $scene, array_map($toOffline, (array) $row['questions']));
+            SyncFields::writeQuestions($lesson, $scene, array_map($toOffline, (array) $row['questions']));
             $newBase[(string) $scene->id] = ['remote_id' => $remoteId, 'remote_hash' => $row['hash'], 'local_hash' => ''];
             $imported[] = $scene;
         }
@@ -284,12 +283,12 @@ final class LocalCopy
         if (! $lessonEdited || $overwrite) {
             $story = $toOffline(['story_map' => $remoteLesson['columns']['story_map'] ?? null])['story_map'];
             $lesson->forceFill(['story_map' => SceneIdRemap::storyMap(is_array($story) ? $story : null, $ids)])->save();
-            $this->writeQuestions($lesson, null, array_map($toOffline, (array) $remoteLesson['questions']));
+            SyncFields::writeQuestions($lesson, null, array_map($toOffline, (array) $remoteLesson['questions']));
             $order = array_values(array_filter(array_map(fn ($r) => $ids[(int) $r] ?? null, (array) $remoteLesson['order'])));
-            $this->renumber($lesson, $order);
+            SyncFields::renumber($lesson, $order);
             $lessonBase = ['remote_hash' => $remoteLesson['hash'], 'local_hash' => ''];
         } else {
-            $this->renumber($lesson, $lesson->scenes()->pluck('id')->map(fn ($id) => (int) $id)->all());
+            SyncFields::renumber($lesson, $lesson->scenes()->pluck('id')->map(fn ($id) => (int) $id)->all());
         }
 
         // Fingerprints of what is here now, as this database stores it.
@@ -403,34 +402,5 @@ final class LocalCopy
         }
 
         return $cols;
-    }
-
-    /** @param list<array<string, mixed>> $rows */
-    private function writeQuestions(Lesson $lesson, ?Scene $scene, array $rows): void
-    {
-        $existing = QuizQuestion::query()->where('lesson_id', $lesson->id)
-            ->when($scene, fn ($q) => $q->where('scene_id', $scene->id), fn ($q) => $q->whereNull('scene_id'))
-            ->orderBy('order')->orderBy('id')->get()->values();
-        $allowed = array_flip(SyncFields::questionFields());
-        foreach (array_values($rows) as $i => $row) {
-            $row = array_intersect_key($row, $allowed);
-            isset($existing[$i])
-                ? $existing[$i]->forceFill($row)->save()
-                : (new QuizQuestion)->forceFill($row + ['lesson_id' => $lesson->id, 'scene_id' => $scene?->id])->save();
-        }
-        $existing->slice(count($rows))->each->delete();
-    }
-
-    /** @param list<int> $order */
-    private function renumber(Lesson $lesson, array $order): void
-    {
-        $alive = $lesson->scenes()->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $final = array_values(array_unique([...array_values(array_intersect($order, $alive)), ...array_values(array_diff($alive, $order))]));
-        foreach ($final as $i => $id) {
-            Scene::query()->whereKey($id)->update(['order' => -1 * ($i + 1)]);
-        }
-        foreach ($final as $i => $id) {
-            Scene::query()->whereKey($id)->update(['order' => $i + 1]);
-        }
     }
 }

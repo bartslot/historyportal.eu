@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\OfflineSync;
 
 use App\Models\Lesson;
-use App\Models\QuizQuestion;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Collaboration\LessonCollaboration;
@@ -65,11 +64,6 @@ final class LiveLesson
                 $paths[$p] = true;
             }
         }
-        foreach ($data['lesson']['questions'] as $q) {
-            foreach (MediaRefs::collect($q, $hosts) as $p) {
-                $paths[$p] = true;
-            }
-        }
         $disk = Storage::disk('public');
         $data['media'] = collect(array_keys($paths))
             ->filter(fn (string $p) => MediaRefs::isSafe($p) && $disk->exists($p))
@@ -84,7 +78,7 @@ final class LiveLesson
      * picture it only placed is not uploaded again.
      *
      * @param  list<array{path: string, sha1: string}>  $files
-     * @return list<string>  the paths that exist with that content
+     * @return list<string> the paths that exist with that content
      */
     public function existing(array $files): array
     {
@@ -191,7 +185,7 @@ final class LiveLesson
                         $after[$scene->id] = (int) $scenes[$key]->id;  // "keep both": mine right after theirs
                     }
                 }
-                $this->writeQuestions($lesson, $scene, (array) ($item['questions'] ?? []));
+                SyncFields::writeQuestions($lesson, $scene, (array) ($item['questions'] ?? []));
                 $touched[] = $scene;
             }
 
@@ -210,7 +204,7 @@ final class LiveLesson
                     $fields['story_map'] = SceneIdRemap::storyMap(is_array($fields['story_map']) ? $fields['story_map'] : null, $ids);
                 }
                 $lesson->fill($fields)->save();
-                $this->writeQuestions($lesson, null, (array) ($lessonItem['questions'] ?? []));
+                SyncFields::writeQuestions($lesson, null, (array) ($lessonItem['questions'] ?? []));
                 $order = array_values(array_filter(array_map(fn ($local) => $ids[(int) $local] ?? null, (array) ($lessonItem['order'] ?? []))));
             } else {
                 $order = array_values(array_diff($current, array_values($created)));
@@ -219,53 +213,11 @@ final class LiveLesson
                     $at === false ? $order[] = $id : array_splice($order, $at + 1, 0, [$id]);
                 }
             }
-            $this->renumber($lesson, $order);
+            SyncFields::renumber($lesson, $order);
+            $lesson->touch();
 
             return ['created' => $created];
         });
-    }
-
-    /**
-     * The live scenes numbered 1..n in $order, the ones it does not name after them in their own order. Two
-     * passes because (lesson_id, order) is unique (Step3SceneConfigurator::renumberScenes).
-     *
-     * @param  list<int>  $order
-     */
-    private function renumber(Lesson $lesson, array $order): void
-    {
-        $alive = $lesson->scenes()->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $final = [...array_values(array_intersect($order, $alive)), ...array_values(array_diff($alive, $order))];
-        $final = array_values(array_unique($final));
-        foreach ($final as $i => $id) {
-            Scene::query()->whereKey($id)->update(['order' => -1 * ($i + 1)]);
-        }
-        foreach ($final as $i => $id) {
-            Scene::query()->whereKey($id)->update(['order' => $i + 1]);
-        }
-        $lesson->touch();
-    }
-
-    /**
-     * The questions of a scene (or the lesson's pool) become $rows, row by row: existing rows are updated in
-     * place, so the answers classes already gave stay linked to their question.
-     *
-     * @param  list<array<string, mixed>>  $rows
-     */
-    private function writeQuestions(Lesson $lesson, ?Scene $scene, array $rows): void
-    {
-        $existing = QuizQuestion::query()->where('lesson_id', $lesson->id)
-            ->when($scene, fn ($q) => $q->where('scene_id', $scene->id), fn ($q) => $q->whereNull('scene_id'))
-            ->orderBy('order')->orderBy('id')->get()->values();
-        $allowed = array_flip(SyncFields::questionFields());
-        foreach (array_values($rows) as $i => $row) {
-            $row = array_intersect_key((array) $row, $allowed);
-            if (isset($existing[$i])) {
-                $existing[$i]->fill($row)->save();
-            } else {
-                (new QuizQuestion($row))->forceFill(['lesson_id' => $lesson->id, 'scene_id' => $scene?->id])->save();
-            }
-        }
-        $existing->slice(count($rows))->each->delete();
     }
 
     /** The live version a push replaces, kept as JSON on the private disk. */
