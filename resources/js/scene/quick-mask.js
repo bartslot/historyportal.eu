@@ -369,13 +369,32 @@ export function whiteHoles(data, w, h, strength = CLEAN_DEFAULTS.white) {
 const KEY_GREEN = [0, 255, 0];
 
 /**
- * Green holes: what is left of the #00FF00 screen, between curls or under an arm, goes whatever its size: no painting
- * has that colour. Close to the key itself, not merely green, so painted grass stays. Same strength as white holes.
+ * Green key: the green screen's range is the alpha channel (Bart 2026-11-23: "green is in almost all the images we
+ * upload. it's a range of colors. we try not to produce anything in this range"). How much greener a pixel is than its
+ * red and blue: past KEY_EDGE it starts going clear, from the clear point on it is gone, wherever it is in the picture.
+ * The clear point follows the picture's own screen (a paler or bluer one leads by less than #00FF00), as GreenKey.php.
+ * Returns how clear each pixel goes, 0..1 (Float32Array); all 0 at strength 0. Olive and sap greens stay.
  */
-export function greenHoles(data, w, h, strength = CLEAN_DEFAULTS.white) {
-    if (strength <= 0) return new Uint8Array(w * h);
-    const tol = 24 + 32 * (Math.min(100, strength) / 100);
-    return patches(w, h, (p) => data[p * 4 + 3] > 0 && dist(data, p * 4, KEY_GREEN) <= tol, 1);
+export const KEY_EDGE = 40, KEY_FULL = 140;
+const SCREEN_SPILL = 100, SCREEN_MARGIN = 0.85;
+const spillOf = (d, i) => d[i + 1] - Math.max(d[i], d[i + 2]);
+
+export function greenKey(data, w, h, strength = CLEAN_DEFAULTS.white) {
+    const out = new Float32Array(w * h);
+    if (strength <= 0) return out;
+    const leads = [];
+    const step = Math.max(1, Math.floor((w * h) / 90000));   // a sample is enough for the screen's median
+    for (let p = 0; p < w * h; p += step) {
+        const i = p * 4;
+        if (data[i + 3] > 0 && spillOf(data, i) >= SCREEN_SPILL) leads.push(spillOf(data, i));
+    }
+    leads.sort((a, b) => a - b);
+    const full = Math.max(KEY_EDGE + 20, leads.length ? Math.min(KEY_FULL, Math.round(leads[leads.length >> 1] * SCREEN_MARGIN)) : KEY_FULL);
+    for (let p = 0; p < w * h; p++) {
+        const s = spillOf(data, p * 4);
+        if (s > KEY_EDGE) out[p] = Math.min(1, (s - KEY_EDGE) / (full - KEY_EDGE));
+    }
+    return out;
 }
 
 /** Every 4-connected patch of pixels that pass `test` and is at least `minArea` big, as a mask (Uint8Array). */
@@ -481,9 +500,15 @@ export function fadeBottom(data, w, h, px = CLEAN_DEFAULTS.fade) {
 export function cleanUp(data, w, h, { white = 0, fringe = 0, fade = 0 } = {}) {
     let out = new Uint8ClampedArray(data);
     const holes = whiteHoles(out, w, h, white);
-    const green = greenHoles(out, w, h, white);
+    const green = greenKey(out, w, h, white);
     const onGreen = green.some(Boolean);   // what is left of the screen says the picture was made on it
-    for (let p = 0; p < w * h; p++) if (holes[p] || green[p]) out[p * 4 + 3] = 0;
+    for (let p = 0; p < w * h; p++) {
+        const i = p * 4;
+        if (holes[p]) { out[i + 3] = 0; continue; }
+        if (!green[p]) continue;
+        out[i + 3] = Math.round(out[i + 3] * (1 - green[p]));
+        out[i + 1] = Math.max(out[i], out[i + 2]);   // no green left in what stays
+    }
     out = defringe(out, w, h, fringe, onGreen);
     return fadeBottom(out, w, h, fade);
 }

@@ -56,6 +56,7 @@ use App\Services\SceneArrow;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\StageSet;
 use App\Services\Support\BackingPanel;
+use App\Services\Support\GreenKey;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
@@ -4100,9 +4101,10 @@ class Step3SceneConfigurator extends Component
         $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
 
         if ($this->showsAPicture($scene)) {
-            // A layer sits on top of something, so a drawing on white paper loses its paper.
+            // A layer sits on top of something, so it loses the green screen's range, or else the
+            // white paper of a drawing.
             // Only as a layer: a background keeps its white.
-            $this->cutOutWhite($path);
+            $this->cutOutBackground($path);
 
             // A local /storage URL: libraryImagePath() reuses the file in place rather than
             // re-fetching it, so this costs nothing beyond the upload we already did.
@@ -4126,7 +4128,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $this->cutOutWhite($path);
+        $this->cutOutBackground($path);
         $assetId = $this->addLibraryImageLayer('/storage/'.$path, __('Image'), x: 50.0, y: 50.0);
         if ($assetId === null) {
             return;
@@ -4138,16 +4140,19 @@ class Step3SceneConfigurator extends Component
     }
 
     /**
-     * Make the white around an uploaded layer picture transparent, in place (WhiteCutout: only white
-     * connected to the edge, only when the picture sits on white). A photo is left as it is.
+     * Make the background around an uploaded layer picture transparent, in place. The green screen's
+     * range of greens becomes the alpha channel wherever it is (GreenKey, Bart 2026-11-23: "we try not
+     * to produce anything in this range"); a picture with none of it loses the white paper connected
+     * to its edge (WhiteCutout). A photo or painting with neither is left as it is.
      */
-    private function cutOutWhite(string $path): void
+    private function cutOutBackground(string $path): void
     {
         $disk = \Illuminate\Support\Facades\Storage::disk('public');
         if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'webp' || ! function_exists('imagewebp')) {
             return;   // a GIF keeps its frames; without WebP support there is nothing to write
         }
-        $img = WhiteCutout::apply((string) $disk->get($path));
+        $bytes = (string) $disk->get($path);
+        $img = GreenKey::apply($bytes) ?? WhiteCutout::apply($bytes);
         if ($img === null) {
             return;
         }
@@ -4399,7 +4404,7 @@ class Step3SceneConfigurator extends Component
         // "Add an image on the slide" means a layer. This branch used to fall through to the
         // background, so a teacher's own picture replaced the backdrop it was meant to sit on.
         if ($mode === 'layer' && $this->selectedSceneId) {
-            $this->cutOutWhite($path);
+            $this->cutOutBackground($path);
             $this->addLibraryImageLayer('/storage/'.$path, $name);
 
             return;
