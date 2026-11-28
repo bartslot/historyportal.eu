@@ -483,3 +483,17 @@ def test_thin_light_pen_strokes_are_not_grey_shading():
     assert colour.grey_shading(rgb) == 0
     rgb[60:120, 60:160] = 150                  # a grey wash patch still counts
     assert colour.grey_shading(rgb) > 5
+
+
+def test_upscale_check_passes_a_faithful_upscale_and_catches_a_recolour():
+    import numpy as np
+    from PIL import Image
+    import colour
+    src = np.full((462, 828, 3), 250.0)
+    src[100:110, 50:700] = 20
+    src[200:400, 100:300] = (200, 80, 70)
+    hd = np.asarray(Image.fromarray(src.astype(np.uint8)).resize((1920, 1080), Image.LANCZOS), dtype=np.float64)
+    assert colour.upscale_check(src, hd)['failures'] == []
+    bad = hd.copy()
+    bad[430:930, 230:700] = (70, 90, 200)
+    assert 'colour-drift' in colour.upscale_check(src, bad)['failures']

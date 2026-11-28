@@ -93,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--box', required=True, help='x0,y0,x1,y1 in pixels of the board, around the one wrong figure')
     p.add_argument('--wrong', required=True, help='the colour it came out, sampled, e.g. #7A5236')
     p.add_argument('--to', required=True, help="the approved colour, from the sheet's palette or region legend")
+    command('upscale-check', 'src', 'hd')
     p = command('unsky', 'file', 'out')
     p.add_argument('--grid', default='2x2', help='rows x cols of the board (1x1 for one picture)')
     p = sub.add_parser('sheet')
@@ -133,6 +134,10 @@ def run(args) -> int | None:
         Image.fromarray(out.round().clip(0, 255).astype('uint8')).save(args.out)
         print(f'{args.out}: ' + ', '.join(f'{k} -> {v}' for k, v in changes.items()))
         return 0
+    if args.command == 'upscale-check':
+        result = colour.upscale_check(colour.load(args.src), colour.load(args.hd))
+        print(json.dumps(result))
+        return 1 if result['failures'] else 0
     if args.command == 'fix-area':
         import regions
         rgb = colour.load(args.file)

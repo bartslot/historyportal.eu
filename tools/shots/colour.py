@@ -204,3 +204,21 @@ def unsky(rgb: np.ndarray, rows: int = 1, cols: int = 1) -> tuple[np.ndarray, fl
     out[edge] = grey[:, None] * white / 255.0
     changed = 100 * float((sky | edge).mean())
     return out, round(changed, 1)
+
+
+UPSCALE_INK_KEPT = 0.80   # an upscale keeps at least this share of the source's ink in place
+UPSCALE_DRIFT = 12.0      # largest colour change (Lab delta) of any patch on a 4x4 grid
+
+
+def upscale_check(src_rgb: np.ndarray, hd_rgb: np.ndarray) -> dict:
+    """Is the upscale the same picture? Same shape, ink kept in place, no patch of the picture recoloured."""
+    aspect = abs(hd_rgb.shape[1] / hd_rgb.shape[0] - src_rgb.shape[1] / src_rgb.shape[0]) <= 0.02
+    kept = ink_kept(src_rgb, hd_rgb) if aspect else 0.0
+
+    def grid(rgb):
+        small = np.asarray(Image.fromarray(rgb.astype(np.uint8)).resize((4, 4), Image.BOX), dtype=np.float64)
+        return lab(small)
+    drift = float(np.linalg.norm(grid(src_rgb) - grid(hd_rgb), axis=-1).max()) if aspect else 99.0
+    failures = [f for f, bad in (('aspect', not aspect), ('ink-lost', kept < UPSCALE_INK_KEPT),
+                                 ('colour-drift', drift > UPSCALE_DRIFT)) if bad]
+    return {'ink_kept': round(kept, 3), 'drift': round(drift, 1), 'failures': failures}
