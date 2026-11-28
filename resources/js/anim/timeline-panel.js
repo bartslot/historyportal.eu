@@ -16,7 +16,7 @@ import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
 import { storedNarrationStart } from './narration-start.js'
 import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
 import { setLoopsPaused, seekLoops } from '../scene/picture-loop.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
+import { textObjects, artObjects, groupObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
@@ -525,7 +525,7 @@ export const animationTimeline = (config = {}) => ({
     const territory = config.sceneKind === 'map' ? territoryObjects(config.objectLabels?.mapBlock) : []
     // The Choices layer (scene-links.js): it fades in when the scene is over, so its clip sits at the end (Bart 2026-11-24).
     const choices = window.__objScene?.choices ? [{ target: 'choices', kind: 'choices', icon: 'choices', label: config.objectLabels?.choices ?? 'Choices' }] : []
-    const listed = [...choices, ...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+    const listed = [...choices, ...cameras, ...territory, ...crossing, ...balloonObjects(), ...groupObjects(config.objectLabels?.group), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
       // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
       ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
@@ -2179,6 +2179,7 @@ export const animationTimeline = (config = {}) => ({
       return arrow?.target ?? `art:${String(id).slice(4)}`
     }
     if (String(id).startsWith('dio_')) return `dio:${String(id).slice(4)}`
+    if (String(id).startsWith('grp_')) return `grp:${String(id).slice(4)}`   // a group of pictures (art-groups.js)
     if (id === 's25_camera') return 's25cam'
     // The sky's row is its own kind (scene-objects.js): 's25:sky' matched no row and lit none.
     if (id === 's25_sky') return 's25sky:sky'
@@ -2223,6 +2224,7 @@ export const animationTimeline = (config = {}) => ({
     const [kind, ...rest] = String(target).split(':')
     const id = rest.join(':')
     if (kind === 'art') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`art_${id}`)
+    else if (kind === 'grp') (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(`grp_${id}`)
     else if (kind === 'text' || kind === 'rect') window.__lessonTextLayer?.select?.(id)
     else if (kind === 'dio') window.__diorama?.select?.(id)
     else if (kind === 's25') window.__stage25d?.select?.(id)

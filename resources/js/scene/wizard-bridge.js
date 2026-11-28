@@ -165,6 +165,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         fit: payload.fit ?? payload.config?.background_fit,
                         // A map or voyage draws its figures over the map itself (flatStageLayers).
                         layers: flatStageLayers(payload.kind, firstShot?.layers ?? null),
+                        groups: firstShot?.groups ?? null,
                         camera: firstShot?.camera ?? null,
                         entry: firstShot?.entry ?? null,
                         clipartOnTop: !!payload.config?.clipart_on_top,
@@ -317,6 +318,7 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 focus: e.detail?.focus ?? e.detail?.config?.background_focus,
                 fit: e.detail?.fit ?? e.detail?.config?.background_fit,
                 layers: firstShot?.layers ?? null,
+                groups: firstShot?.groups ?? null,
                 camera: firstShot?.camera ?? null,
                 entry: firstShot?.entry ?? null,
                 clipartOnTop: !!e.detail?.config?.clipart_on_top,
@@ -972,7 +974,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
             onSelect: (i) => window.Livewire?.dispatch('split:panel', { panel: i }),
             onLayerChange: (i, assetId, t) => (t.end_x !== undefined
               ? window.Livewire?.dispatch('artwork:arrow', { assetId, fields: t, panel: i })
-              : window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i })),
+              : window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, panel: i, pivotX: t.pivot_x ?? null, pivotY: t.pivot_y ?? null })),
+            onGroupChange: (i, groupId, values) => {
+                window.Livewire?.dispatch('split:panel', { panel: i })
+                window.Livewire?.dispatch('artwork:group', { groupId, values })
+            },
             // The divider and the panes, moved on the stage: the same values the sliders set.
             onSplitChange: (s) => window.Livewire?.dispatch('split:at', { at: s.at }),
             // A pane panned or zoomed on the stage: its crop, and a key at the playhead when the
@@ -1110,6 +1116,11 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
     window.addEventListener('stage25d:select', (e) => {
       const id = e.detail?.id ?? (Number.isInteger(e.detail?.index) ? `layer-${e.detail.index}` : null)
       if (id) setTimeout(() => window.__stage25d?.select?.(id), 600)
+    })
+    // A group of pictures just made (GroupsSceneArtwork): its box and pivot once the canvas has the new groups.
+    window.addEventListener('artwork:select-group', (e) => {
+      const id = e.detail?.id
+      if (id) setTimeout(() => (window.__artOverlay?.() ?? window.__lessonArtworkLayer)?.select?.(id), 600)
     })
     let _stage25d = null
     let _stage25dHost = null
@@ -1404,8 +1415,10 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                         onChange: (assetId, t) => {
                             // An arrow's values (end, bend, width, head) save as one; a picture moves.
                             if (t.end_x !== undefined) return window.Livewire?.dispatch('artwork:arrow', { assetId, fields: t })
-                            window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation })
+                            window.Livewire?.dispatch('artwork:move', { assetId, x: t.x, y: t.y, scale: t.scale, rotation: t.rotation, pivotX: t.pivot_x ?? null, pivotY: t.pivot_y ?? null })
                         },
+                        // A group let go on the canvas (art-groups.js): its values in one save.
+                        onGroupChange: (groupId, values) => window.Livewire?.dispatch('artwork:group', { groupId, values }),
                     })
                 }
                 // Reclaim the shared object-list handle on EVERY slideshow render — a voyage scene
@@ -1419,6 +1432,8 @@ export async function mountWizardScene({ canvasEl, overlayEl, timerEl, scenes, c
                 _artworkOverlay.setStackLevels(2, 8)   // on the nodes — a z-index here would break blending
                 // The backdrop blend-into-scene samples its colours from.
                 _artworkOverlay.setBackdrop(bgLayers.find(l => (l.kind ?? 'cover') === 'cover')?.url, payload.backdropDepth)
+                // The shot's groups of pictures (art-groups.js), before the layers: they carry them.
+                _artworkOverlay.setGroups(payload.groups ?? null)
                 // Skip re-seeding on identical poll re-renders (would reset an in-progress edit).
                 const sig = _artworkMod.layersSignature(artLayers)
                 // Re-seed only on a real change, then replay the entrances so the teacher sees

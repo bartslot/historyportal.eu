@@ -39,6 +39,23 @@ export const artObjects = () => {
 }
 
 /**
+ * Groups of pictures (shot.groups[], scene/art-groups.js), from the overlay on screen: one row each, with the pictures
+ * in it listed after it like a layers panel. Target `grp:<id>`.
+ */
+export const groupObjects = (label = 'Group :n') => {
+  const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
+  return (overlay?.groups?.() ?? []).map((g) => ({
+    target: `grp:${g.id}`,
+    kind: 'grp',
+    icon: 'group',
+    label: groupLabel(g, label),
+  }))
+}
+
+/** A group's name, or "Group 2" from its id (g2) in the teacher's language (`label` is 'Group :n' translated). */
+export const groupLabel = (g, label = 'Group :n') => g?.name || String(label).replace(':n', String(g?.id ?? '').replace(/^g/, ''))
+
+/**
  * When a layer's entrance plays, in scene seconds: from its delay for as long as it takes
  * (Appear's speed). Null when it has no entrance: it is simply there from the start.
  */
@@ -107,6 +124,11 @@ export const readObjectProperty = (target, property) => {
   const [kind, id] = String(target).split(':')
 
   if (kind === 'terr') return window.__lessonMapApi?.territoryValue?.(property) ?? null
+
+  if (kind === 'grp') {
+    const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
+    return overlay?.groupValue?.(id, property) ?? null
+  }
 
   if (kind === 'art' || kind === 'arw') {
     const overlay = window.__artOverlay?.() ?? window.__lessonArtworkLayer
@@ -191,6 +213,7 @@ export const writeObjectProperty = (target, property, value) => {
   // A map or voyage scene keeps TWO artwork overlays alive over the same layers, so this has to go
   // through the helper that reaches both — see resources/js/scene/layer-overlays.js.
   if (kind === 'art' || kind === 'arw') return void window.__setLayerProp?.(id, property, value)
+  if (kind === 'grp') return void window.__setGroupProp?.(id, property, value)
   if (kind === 'bal') return void window.__balloons?.patch?.(`bal_${id}`, { [property]: value })
   if (kind === 'bg') return void window.__backgrounds?.patch?.(id, { [property]: value })
   if (kind === 's25') return void window.__stage25d?.setLayerProp?.(id, property, value)

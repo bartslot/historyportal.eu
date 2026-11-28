@@ -70,7 +70,7 @@
             'hold'           => __('Hold'),
             'custom'         => __('Custom bezier'),
         ],
-        'objectLabels' => ['background' => __('Background'), 'mapBlock' => __('Map block'), 'choices' => __('Choices')],
+        'objectLabels' => ['background' => __('Background'), 'mapBlock' => __('Map block'), 'choices' => __('Choices'), 'group' => __('Group :n')],
         'propertyLabels' => [
             'bone:head' => __('Neck'), 'bone:chest' => __('Upper body'), 'bone:upperarm_n' => __('Near upper arm'), 'bone:forearm_n' => __('Near forearm'),
             'bone:upperarm_f' => __('Far upper arm'), 'bone:forearm_f' => __('Far forearm'), 'bone:braid' => __('Braid'),

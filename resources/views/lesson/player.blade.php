@@ -242,6 +242,8 @@
                         // A vector arrow's end, bend, width and head (empty for every other kind).
                         ...\App\Services\SceneArrow::payload($l),
                         'occlude' => ! empty($l['occlude']),
+                        // The point it turns about and the group it moves with (ArtworkGroups).
+                        ...\App\Services\Editor\ArtworkGroups::layerPayload($l),
                     ])->filter(fn($l) => $l['url'] || $l['embed'] || $l['kind'] === \App\Services\SceneArrow::KIND)->values()->all() ?: null,
                     'anchor_sentence' => $shot['anchor_sentence'] ?? null,
                     // The panel's own camera move and entry (resources/js/scene/camera.js).
@@ -251,6 +253,8 @@
                     'focus' => \App\Services\Support\SceneSplit::focus($shot['focus'] ?? null),
                     // A split panel's own colour, drawn behind (or instead of) its picture.
                     'background_color' => $shot['background_color'] ?? null,
+                    // Its groups of pictures (ArtworkGroups): a parent transform over their layers.
+                    'groups' => \App\Services\Editor\ArtworkGroups::payload($shot['groups'] ?? null),
                     // Keep a shot with EITHER a background image OR clipart layers — a voyage scene's
                     // shot is layer-only (the map is the backdrop), so it has no image_url. A split
                     // scene keeps both panels, an empty one too, so each stays in its own place.

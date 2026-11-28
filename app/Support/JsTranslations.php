@@ -291,6 +291,9 @@ final class JsTranslations
             'Split position' => __('Split position'),
             'Drag to rotate · hold Shift for 15°' => __('Drag to rotate · hold Shift for 15°'),
             'Drag to resize' => __('Drag to resize'),
+            // A pivot point (scene/art-groups.js): a picture's or a group's.
+            'Drag to move the pivot point' => __('Drag to move the pivot point'),
+            'Pivot point' => __('Pivot point'),
             'Drag to bend the route around land' => __('Drag to bend the route around land'),
             // Voyage checkpoints (voyage-checkpoints.js, voyage-tour.js).
             'Checkpoint' => __('Checkpoint'),

@@ -88,6 +88,8 @@ export const applyFrameTo = (frame, { art = null, text = null, bal = null, bg = 
     const id = String(target).slice(kind.length + 1)
     if (kind === 'art' || kind === 'arw') {
       for (const [property, value] of Object.entries(values)) art?.setLayerProp?.(id, property, value)
+    } else if (kind === 'grp') {
+      for (const [property, value] of Object.entries(values)) art?.setGroupProp?.(id, property, value)
     } else if (kind === 'text' || kind === 'rect') {
       text?.patch?.(id, values)
     } else if (kind === 'bal') {

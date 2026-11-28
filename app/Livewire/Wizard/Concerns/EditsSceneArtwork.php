@@ -6,6 +6,7 @@ namespace App\Livewire\Wizard\Concerns;
 
 use App\Models\Scene;
 use App\Models\SvgAsset;
+use App\Services\Editor\ArtworkGroups;
 use App\Services\Editor\Drawings;
 use App\Services\SceneArrow;
 use App\Services\SceneLayers;
@@ -285,6 +286,8 @@ trait EditsSceneArtwork
                 return $shot;
             }
             $layers = collect($shot['layers'] ?? [])->reject(fn ($l) => ($l['asset_id'] ?? null) === $assetId)->values()->all();
+            // A group left with no picture goes too (ArtworkGroups).
+            $shot = ArtworkGroups::prune([...$shot, 'layers' => $layers]);
 
             // If only a cover layer remains (no asset_id), drop the layers key entirely.
             if (count($layers) === 1 && ($layers[0]['asset_id'] ?? null) === null) {
@@ -308,7 +311,12 @@ trait EditsSceneArtwork
             ->values()
             ->all();
 
-        $scene->update(['shots' => $shots]);
+        // A group pruned with its last picture takes its timeline keys with it.
+        $config = ArtworkGroups::dropGoneTracks((array) ($scene->config ?? []), (array) ($scene->shots ?? []), $shots);
+        $scene->update(['shots' => $shots, 'config' => $config]);
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
         $this->selectSceneInternal($scene->id);
     }
 
@@ -788,7 +796,7 @@ trait EditsSceneArtwork
      * text overlay uses). The Livewire re-render still refreshes the Layers panel thumbnails.
      */
     #[On('artwork:move')]
-    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null, ?array $geo = null): void
+    public function moveArtworkLayer(int $assetId, float $x, float $y, float $scale, ?string $anchor = null, ?float $lng = null, ?float $lat = null, ?float $rotation = null, ?int $panel = null, ?array $geo = null, ?float $pivotX = null, ?float $pivotY = null): void
     {
         if (! $this->selectedSceneId) {
             return;
@@ -826,17 +834,22 @@ trait EditsSceneArtwork
         // (ArtworkOverlay geoZoomFactor). Only kept on a drawing layer that is pinned.
         $geo = $pinned ? self::cleanGeo($geo) : null;
 
-        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo, $scene): array {
+        $shots = collect($shots)->map(function (array $shot, int $i) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo, $scene, $pivotX, $pivotY): array {
             if (! $this->editsShot($scene, $i)) {
                 return $shot;
             }
-            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo): array {
+            $layers = collect($shot['layers'] ?? [])->map(function (array $l) use ($assetId, $x, $y, $scale, $anchor, $pinned, $lng, $lat, $rotation, $geo, $pivotX, $pivotY): array {
                 if (($l['asset_id'] ?? null) === $assetId) {
                     $l['x'] = $x;
                     $l['y'] = $y;
                     $l['scale'] = $scale;
                     if ($rotation !== null) {
                         $l['rotation'] = $rotation;
+                    }
+                    // The point it turns about, after a drag of its pivot (ArtworkGroups::PIVOT).
+                    if ($pivotX !== null && $pivotY !== null) {
+                        $l['pivot_x'] = round(max(ArtworkGroups::PIVOT[0], min(ArtworkGroups::PIVOT[1], $pivotX)), 3);
+                        $l['pivot_y'] = round(max(ArtworkGroups::PIVOT[0], min(ArtworkGroups::PIVOT[1], $pivotY)), 3);
                     }
                     // Only an overlay that knows about anchoring sends one; an older caller
                     // that doesn't leaves whatever the layer already had alone.

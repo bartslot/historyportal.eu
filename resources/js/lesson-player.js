@@ -2851,6 +2851,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this._pinArtToMap()
       // Blend-into-scene samples its colours here; occlusion reads the plate's depth map.
       this._artLayer.setBackdrop(cover?.url, (scene.config || {}).backdrop_depth)
+      // Groups of pictures (art-groups.js) carry their layers: set first, so the first paint is in place.
+      this._artLayer.setGroups(sceneMode(scene.config) === 'split' ? null : (scene.shots || [])[0]?.groups)
       this._artLayer.setLayers(layers)
       // Each layer arrives the way the teacher set it in the Animate tab. Run after setLayers,
       // which rebuilds the nodes the animation targets.
@@ -2878,6 +2880,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // The background keyed like a layer: a split scene's panels, else the scene's own picture.
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
+      // Pictures and their groups: a split scene's groups live in its panels' overlays (group ids are unique per scene).
+      const artSink = {
+        setLayerProp: (id, property, value) => this._artLayer?.setLayerProp?.(id, property, value),
+        setGroupProp: (id, property, value) => {
+          this._artLayer?.setGroupProp?.(id, property, value)
+          for (const p of _split?.panels ?? []) p.overlay?.setGroupProp?.(id, property, value)
+        },
+      }
       const camEnd = cameraEnd(timeline)
       // A silent scene's clock stands still while the class has paused, as its hold does (setPlaybackPaused).
       let silent = 0
@@ -2893,7 +2903,7 @@ Alpine.data('lessonGame', (lesson) => ({
         if (animated) {
           const frame = frameAt(timeline, t)
           if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-          applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+          applyFrameTo(frame, { art: artSink, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
         }
         if (leaves) {
           this._artLayer?.applyLeaves(t)

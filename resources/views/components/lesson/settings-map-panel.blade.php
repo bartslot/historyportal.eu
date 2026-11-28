@@ -187,6 +187,23 @@
                             :flip-x="(bool) $val('flip_x', false)" :flip-y="(bool) $val('flip_y', false)" />
             @endunless
 
+            {{-- The point it turns about (scene/art-groups.js): a corner, an edge or its middle; or drag the ring on the
+                 canvas anywhere. The picture stays where it is. --}}
+            @unless ($isArrow)
+            <x-ui.panel-row :label="__('Pivot point')">
+                <div class="grid grid-cols-3 gap-0.5" role="group" aria-label="{{ __('Pivot point') }}" data-layer-pivot-presets
+                     x-data="pivotPresets({{ (int) $aid }})" x-on:scene-object-edited.window="$nextTick(() => sync())">
+                    <template x-for="p in presets" :key="p.join(',')">
+                        <button type="button" class="grid h-6 w-6 place-items-center rounded-xs hover:bg-base-300"
+                                :aria-label="@js(__('Pivot point')) + ' ' + (p[0] * 100) + '% ' + (p[1] * 100) + '%'"
+                                :aria-pressed="isAt(p) ? 'true' : 'false'" :data-pivot-preset="p.join(',')" x-on:click="pick(p)">
+                            <span class="block h-2 w-2 rounded-full border" :class="isAt(p) ? 'border-primary bg-primary' : 'border-panel-hint'"></span>
+                        </button>
+                    </template>
+                </div>
+            </x-ui.panel-row>
+            @endunless
+
             <x-ui.slider-row :label="__('Blur')" :min="0" :max="2.5" :step="0.1"
                              keyframe :keyframe-target="'art:'.$aid" keyframe-property="blur"
                              :value="$val('blur', 0)" :display="$num($val('blur', 0), 1)" :default="0"

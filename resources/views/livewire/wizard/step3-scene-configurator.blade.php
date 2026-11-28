@@ -373,8 +373,11 @@
                         lng: !free && ll ? ll.lng : null,
                         lat: !free && ll ? ll.lat : null,
                         geo: !free && ll ? (t.geo ?? null) : null,
+                        pivotX: t.pivot_x ?? null,
+                        pivotY: t.pivot_y ?? null,
                     })
                 },
+                onGroupChange: (groupId, values) => window.Livewire.dispatch('artwork:group', { groupId, values }),
             })
             return artOverlay
         }
@@ -408,6 +411,7 @@
             // Levels go on the LAYER NODES, not this host: a host with a z-index is a stacking
             // context, and that traps mix-blend-mode inside the overlay with an empty backdrop.
             overlay.setStackLevels(6, 8)            // above text (7) when stacked on top, else below it
+            overlay.setGroups?.(((p.shots || [])[0] || {}).groups ?? null)   // its groups of pictures (art-groups.js)
             h.style.display = ''
             // Skip re-seeding on identical poll re-renders — it would reset an in-progress drag.
             const sig = window.LessonScene.layersSignature(layers)
@@ -1276,6 +1280,9 @@
                     </div>
                 </div>
             </div>
+            @elseif ($activeArtGroupId)
+            {{-- A group of pictures: its name, place, size, angle, fade and pivot, keyed like a picture's (art-groups.js). --}}
+            <x-lesson.art-group-inspector :group-id="$activeArtGroupId" wire:key="art-group-inspector-{{ $activeArtGroupId }}" />
             @elseif ($activeDioramaId)
             {{-- A diorama item: where it stands (X, Z on its floor), keyed like the timeline rows. --}}
             <x-lesson.diorama-item-inspector :item-id="$activeDioramaId" wire:key="dio-inspector-{{ $activeDioramaId }}" />
@@ -2139,10 +2146,23 @@
                 // The camera: selected, the canvas frames its move (drag, scroll, pinch). Pinned, never copied or deleted.
                 if (window.__stage25d) s25Sky.push({ id: 's25_camera', icon: 'camera', label: @js(__('Camera')), bg: false, s25: true, s25sky: true, cam: true });
                 const artPin = !!artLayer?.canPin?.();
-                const artItems = [...arts].reverse().map((a) =>
+                const artRows = [...arts].reverse().map((a) =>
                     ({ id: 'art_' + a.asset_id, icon: a.embed ? (a.embed.type === 'video' ? 'photo' : 'map') : 'photo',
                        label: a.title || (a.embed ? (a.embed.type === 'video' ? @js(__('Video')) : @js(__('3D model'))) : @js(__('Icon'))), bg: false, art: true,
-                       locked: !!a.locked, pinnable: artPin && a.kind !== 'arrow', pinned: a.anchor === 'map' }));
+                       locked: !!a.locked, pinnable: artPin && a.kind !== 'arrow', pinned: a.anchor === 'map', arrow: a.kind === 'arrow',
+                       inGroup: !!a.group, groupId: a.group ?? null }));
+                // A group of pictures (Bart 11-28, as in Photoshop; art-groups.js) is a row of its own where its front-most picture
+                // stands, with its pictures indented under it. Selected, the canvas shows its box and its pivot.
+                const artGroups = new Map((artLayer?.groups?.() ?? []).map((g) => [g.id, { id: 'grp_' + g.id, icon: 'group', bg: false, artgroup: true, groupId: g.id,
+                    label: g.name || @js(__('Group :n')).replace(':n', String(g.id).replace(/^g/, '')) }]));
+                const artItems = [];
+                const artDone = new Set();
+                for (const row of artRows) {
+                    if (artDone.has(row.id)) continue;
+                    if (!row.groupId || !artGroups.has(row.groupId)) { artItems.push({ ...row, inGroup: false }); continue; }
+                    artItems.push(artGroups.get(row.groupId));
+                    for (const m of artRows.filter((r) => r.groupId === row.groupId)) { artItems.push(m); artDone.add(m.id); }
+                }
                 // The clipart group sits above the text objects only when the teacher dragged it there
                 // (config.clipart_on_top → the overlay host's z-index is raised above the text layer).
                 const onTop = !!(artLayer && artLayer.onTop);
@@ -2194,7 +2214,7 @@
                     // adjust button ([data-nodrag]) opts out so tapping it doesn't start a drag.
                     draggable: '[data-obj-id]',
                     // Diorama rows stack by depth on the floor, never by hand: pinned like the background.
-                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal], [data-s25group]',
+                    filter: '[data-bg], [data-nodrag], [data-dio], [data-s25sky], [data-bal], [data-s25group], [data-artgroup]',
                     preventOnFilter: false,         // keep the adjust button's own click working
                     // Pointer-based dragging (not native HTML5 DnD): more reliable inside this
                     // fixed-position panel and works consistently across browsers.
@@ -2225,7 +2245,7 @@
                         }
                         const kindOf = (id) => {
                             const it = this.items.find((i) => i.id === id);
-                            return !it || it.bg || it.bal || it.dio || it.s25 ? null : (it.art ? 'art' : 'text');
+                            return !it || it.bg || it.bal || it.dio || it.s25 || it.artgroup ? null : (it.art ? 'art' : 'text');
                         };
                         const drop = window.__objectListDrop({
                             ids, kindOf, movedId: evt.item.dataset.objId,
@@ -2290,6 +2310,10 @@
                 }
                 if (obj.bal) {
                     window.__balloons?.select(obj.id);
+                    return;
+                }
+                if (obj.artgroup) {
+                    this.artOverlay()?.select?.(obj.id);   // the group's box and pivot on the canvas; its panel opens
                     return;
                 }
                 if (obj.art) {
@@ -2373,23 +2397,46 @@
             },
             // Several stage layers picked at once (Shift- or Cmd-click on their rows), for Group.
             picked: [],
-            canPick(obj) { return !!obj?.s25 && !obj.s25sky && !obj.s25group; },
+            // A picture on a flat scene can be picked too (its groups: art-groups.js), never with a stage layer.
+            canPick(obj) { return (!!obj?.s25 && !obj.s25sky && !obj.s25group) || (!!obj?.art && !obj.arrow); },
             togglePicked(obj) {
                 const now = this.picked.length ? this.picked : (this.selectedId && this.items.find((i) => i.id === this.selectedId && this.canPick(i)) ? [this.selectedId] : []);
                 this.picked = now.includes(obj.id) ? now.filter((id) => id !== obj.id) : [...now, obj.id];
             },
             // Group: the picked layers when the menu is on one of them, else the layer under it. Ungroup: a group, or a layer's own group.
             canGroup(obj) { return this.canPick(obj); },
-            groupOf(obj) { return obj?.s25group ? obj.groupId : (obj?.inGroup ? obj.groupId : null); },
+            groupOf(obj) { return obj?.s25group || obj?.artgroup ? obj.groupId : (obj?.inGroup ? obj.groupId : null); },
             groupLayers(obj) {
                 const ids = this.picked.includes(obj?.id) && this.picked.length > 1 ? this.picked : [obj?.id];
                 const indexes = ids.filter((id) => /^s25_layer-\d+$/.test(id ?? '')).map((id) => Number(id.slice(10)));
                 if (indexes.length) this.$wire.groupStage25dLayers(indexes);
+                // Pictures of a flat scene: the pivot starts in the middle of them, measured on the canvas.
+                const arts = indexes.length ? [] : ids.filter((id) => /^art_\d+$/.test(id ?? ''));
+                if (arts.length) {
+                    const host = this.artOverlay()?.host;
+                    const box = host?.getBoundingClientRect();
+                    const rects = arts.map((id) => host?.querySelector(`[data-layer-id="${id}"]`)?.getBoundingClientRect()).filter((r) => r && (r.width || r.height));
+                    let px = 50, py = 50;
+                    if (box?.width && rects.length) {
+                        const l = Math.min(...rects.map((r) => r.left)), r = Math.max(...rects.map((r) => r.right));
+                        const t = Math.min(...rects.map((r) => r.top)), b = Math.max(...rects.map((r) => r.bottom));
+                        px = Math.round(((l + r) / 2 - box.left) / box.width * 10000) / 100;
+                        py = Math.round(((t + b) / 2 - box.top) / box.height * 10000) / 100;
+                    }
+                    this.$wire.groupArtworkLayers(arts.map((id) => Number(id.slice(4))), px, py, box?.height ? box.width / box.height : null);
+                }
                 this.picked = [];
             },
             ungroup(obj) {
                 const id = this.groupOf(obj);
-                if (id) this.$wire.ungroupStage25d(id);
+                if (!id) return;
+                if (obj.art || obj.artgroup) {
+                    const box = this.artOverlay()?.host?.getBoundingClientRect();
+                    window.__clearLayerGuard?.();
+                    this.$wire.ungroupArtwork(id, box?.height ? box.width / box.height : null);
+                    return;
+                }
+                this.$wire.ungroupStage25d(id);
             },
             // Pin to map: the same toggle as the inspector's switch (togglePin on the overlay), so the two always agree.
             togglePin(obj) {
@@ -2460,7 +2507,8 @@
             const isText = !!window.__lessonTextLayer?._texts?.some((text) => text.id === id);
             const isBalloon = id.indexOf('bal_') === 0;
             const isStage25d = id.indexOf('s25_') === 0;
-            const objectId = (isArtwork || isDiorama || isText || isBalloon || isStage25d) ? id : '';
+            const isArtGroup = id.indexOf('grp_') === 0;   // a group of pictures (art-groups.js)
+            const objectId = (isArtwork || isDiorama || isText || isBalloon || isStage25d || isArtGroup) ? id : '';
             if (objectId) window.dispatchEvent(new CustomEvent('inspector-open'));
             if (objectId === lastSelection) return;
             lastSelection = objectId;
@@ -3054,7 +3102,7 @@
             <template x-for="obj in items" :key="obj.id">
                 {{-- The whole row is the drag handle (grab cursor); only the adjust button opts out.
                      Text and clipart rows reorder; the background is pinned to the bottom ([data-bg]). --}}
-                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null" :data-s25group="obj.s25group ? '1' : null"
+                <div :data-obj-id="obj.bg ? null : obj.id" :data-bg="obj.bg ? '1' : null" :data-dio="obj.dio ? '1' : null" :data-s25="obj.s25 ? '1' : null" :data-s25sky="obj.s25sky ? '1' : null" :data-bal="obj.bal ? '1' : null" :data-s25group="obj.s25group ? '1' : null" :data-artgroup="obj.artgroup ? '1' : null"
                      data-obj-row
                      @click="($event.shiftKey || $event.metaKey || $event.ctrlKey) && canPick(obj) ? togglePicked(obj) : select(obj)"
                      @contextmenu.prevent="openMenu(obj, $event)"
@@ -3104,7 +3152,7 @@
         <ul popover data-obj-menu
             class="menu m-0 hidden w-52 open:flex rounded-box border border-base-300 bg-base-200 p-1 text-sm shadow-none"
             style="position: fixed; inset: auto;">
-            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio && !menuObj.s25group">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.dio && !menuObj.s25group && !menuObj.artgroup">
                 <button type="button" @click="closeMenu(); copyObject(menuObj)">
                     <x-ui.icon name="copy" />
                     {{ __('Copy') }}
@@ -3118,7 +3166,7 @@
                     <span class="ml-auto opacity-60">⌘V</span>
                 </button>
             </li>
-            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.s25group">
+            <li x-show="!pasteOnly && menuObj && !menuObj.bal && !menuObj.s25sky && !menuObj.s25group && !menuObj.artgroup">
                 <button type="button" @click="closeMenu(); duplicateObject(menuObj)">
                     <x-ui.icon name="duplicate" />
                     {{ __('Duplicate') }}
