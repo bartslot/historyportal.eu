@@ -2866,7 +2866,11 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this._timelineRaf) cancelAnimationFrame(this._timelineRaf)
       this._timelineRaf = null
       const timeline = scene?.config?.timeline
-      if (!hasAnimation(timeline)) return
+      const animated = hasAnimation(timeline)
+      // A layer whose timeline bar ends before the scene does leaves on the same clock. Read from the
+      // scene, not the overlay: the overlay is filled after the plate loads, a beat after this starts.
+      const leaves = (scene?.shots || []).some((shot) => (shot?.layers || []).some((l) => Number.isFinite(l?.anim_until)))
+      if (!animated && !leaves) return
       const epoch = this._playEpoch
       const started = performance.now()
       // Balloons keyframed like layers: the full-stage ones, or a split scene's in their panels.
@@ -2879,9 +2883,12 @@ Alpine.data('lessonGame', (lesson) => ({
       const step = () => {
         if (epoch !== this._playEpoch) return
         const t = clock()
-        const frame = frameAt(timeline, t)
-        if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+        if (animated) {
+          const frame = frameAt(timeline, t)
+          if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
+          applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+        }
+        if (leaves) this._artLayer?.applyLeaves(t)
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

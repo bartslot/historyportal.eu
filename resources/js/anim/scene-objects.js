@@ -33,6 +33,8 @@ export const artObjects = () => {
     kind: l.kind === 'arrow' ? 'arw' : 'art',
     label: l.title || (l.embed ? (l.embed.type === 'video' ? 'Video' : '3D model') : 'Icon'),
     entrance: entranceSpan(l),
+    // When it leaves the stage: the end of its layer bar. null: it stays to the scene's end.
+    until: Number.isFinite(l.anim_until) ? l.anim_until : null,
   }))
 }
 

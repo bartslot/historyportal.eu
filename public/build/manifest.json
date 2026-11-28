@@ -263,7 +263,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CCQaq3w1.css",
+    "file": "assets/app-Dwlvir7r.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -272,7 +272,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DOOE9Mwo.js",
+    "file": "assets/app-Cy3L3jBo.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -350,7 +350,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-CVJyewja.js",
+    "file": "assets/cutout-dialog--vAGenPK.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -414,7 +414,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DXU4rVfx.js",
+    "file": "assets/lesson-player-BvTCXXEv.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -483,7 +483,7 @@
     ]
   },
   "resources/js/scene/ArtworkOverlay.js": {
-    "file": "assets/ArtworkOverlay-qB1kCtvW.js",
+    "file": "assets/ArtworkOverlay-gD7pWdgT.js",
     "name": "ArtworkOverlay",
     "src": "resources/js/scene/ArtworkOverlay.js",
     "isDynamicEntry": true,
@@ -531,7 +531,7 @@
     ]
   },
   "resources/js/scene/SplitStage.js": {
-    "file": "assets/SplitStage-jQRgCsV-.js",
+    "file": "assets/SplitStage-CDck83dL.js",
     "name": "SplitStage",
     "src": "resources/js/scene/SplitStage.js",
     "isDynamicEntry": true,
@@ -594,7 +594,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-Drd28D3Q.js",
+    "file": "assets/index-C96_XGdc.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -726,7 +726,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-DuQsl8U5.js",
+    "file": "assets/recorder-B9hzPmOr.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

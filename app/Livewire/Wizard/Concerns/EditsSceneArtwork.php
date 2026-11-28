@@ -478,6 +478,21 @@ trait EditsSceneArtwork
         $this->updateArtworkLayer($assetId, 'anim_delay', round($delay, 1));
     }
 
+    /**
+     * The timeline's layer bar: its end dragged to $at, when the layer leaves the stage (Bart, 2026-11-28:
+     * the bar's end should be at the scene's end and take a drag). Null, or dragged back to the scene's
+     * end, clears it: the layer stays to the end, as every layer saved before it does.
+     */
+    public function setLayerLeaveAt(int $assetId, ?float $at): void
+    {
+        if ($at === null) {
+            $this->writeLayerFields($assetId, ['anim_until' => null]);
+
+            return;
+        }
+        $this->updateArtworkLayer($assetId, 'anim_until', round($at, 1));
+    }
+
     public function updateArtworkLayer(int $assetId, string $field, mixed $value): void
     {
         // Whitelist allowed fields with clamps.
@@ -525,6 +540,7 @@ trait EditsSceneArtwork
             // The vocabulary is shared with resources/js/scene/animations.js, which plays it.
             'anim' => ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'pop'],
             'anim_delay' => [0, 10],   // seconds before the entrance starts
+            'anim_until' => [0, 600],  // when it leaves the stage, scene seconds (absent: the scene's end)
             'anim_ease' => ['enter', 'move', 'exit', 'pop', 'linear'],
             'x' => [0, 100],   // stage position %, centre anchor
             // A vector arrow's end, bend, width and head (SceneArrow), and its look.
@@ -565,7 +581,7 @@ trait EditsSceneArtwork
         // "leave the artwork alone" or a hex colour. Anything else is dropped.
         // Coerce and clamp the value.
         $coercedValue = match ($field) {
-            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay', 'end_x', 'end_y', 'bend', 'shaft', 'head',
+            'depth', 'scale', 'opacity', 'blur', 'x', 'y', 'draw_time', 'anim_delay', 'anim_until', 'end_x', 'end_y', 'bend', 'shaft', 'head',
             'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'ambient_speed', 'ambient_amount',
             'waterline', 'reflection', 'contact_shadow', 'color_match', 'foam', 'speed', 'frames_fps' => (float) $value,
             'wobble' => (int) $value,
@@ -580,7 +596,7 @@ trait EditsSceneArtwork
             // Clamp: use floats for min/max to preserve float results when clamping floats
             $coercedValue = max((float) $min, min((float) $max, (float) $coercedValue));
             // Re-cast after clamping to preserve float/int type
-            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'end_x', 'end_y', 'bend', 'shaft', 'head'], true)) {
+            if (in_array($field, ['depth', 'scale', 'opacity', 'blur', 'x', 'y', 'anim_delay', 'anim_until', 'height', 'width', 'rotation', 'white_key', 'tint_opacity', 'end_x', 'end_y', 'bend', 'shaft', 'head'], true)) {
                 $coercedValue = (float) $coercedValue;
             } elseif ($field === 'wobble') {
                 $coercedValue = (int) $coercedValue;

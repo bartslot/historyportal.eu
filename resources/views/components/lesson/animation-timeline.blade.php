@@ -564,7 +564,7 @@
                      data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
                         <span class="absolute top-1.5 text-xs text-panel-label"
-                              :style="`left: ${xOf(t)}px`" x-text="Math.round(t * 1000)"></span>
+                              :style="`left: ${xOf(t)}px`" x-text="t.toFixed(2)"></span>
                     </template>
                     {{-- Word marks: faint, because they are somewhere to land, not something to read. --}}
                     <template x-for="span in spans" :key="span.start">
@@ -660,13 +660,18 @@
                                     </span>
                                 </div>
                             </template>
+                            {{-- Both ends take a drag (Bart, 2026-11-28: the end could not be found): a figure's end is
+                                 the scene's end until it is dragged in, then the figure leaves there. The press area is
+                                 taller than the 6 px bar, so an end is easy to take. --}}
                             <template x-if="object.kind === 'bal' || object.kind === 'art'">
-                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
+                                <div class="absolute flex cursor-grab items-center"
                                      :data-timeline-span="object.target"
                                      x-on:pointerdown="startBar($event, object.target)"
-                                     :style="barStyle(barOf(object.target)) + '; bottom: 3px; height: 6px'">
-                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
-                                    <span x-show="object.kind === 'bal'" class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                     :style="barStyle(barOf(object.target)) + '; bottom: 0; height: 12px'">
+                                    <div class="flex h-1.5 w-full items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25">
+                                        <span class="h-full w-2 cursor-ew-resize bg-base-content/60" data-timeline-span-start></span>
+                                        <span class="h-full w-2 cursor-ew-resize bg-base-content/60" data-timeline-span-end></span>
+                                    </div>
                                 </div>
                             </template>
                         </div>
