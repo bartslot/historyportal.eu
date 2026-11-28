@@ -42,7 +42,10 @@ class SceneRailTest extends TestCase
         Livewire::actingAs($lesson->teacher)->test(SceneRail::class, ['lessonId' => $lesson->id, 'selectedSceneId' => $scene->id])
             ->assertSee('Place 2')
             ->assertSeeHtml('wire:click="$parent.selectScene('.$scene->id.')"')
-            ->assertSeeHtml('data-thumb-selected');
+            ->assertSeeHtml('data-thumb-selected')
+            // The Scenes / Map switch sits above the scenes, beside the scene (Bart, 2026-11-26).
+            ->assertSeeHtml('data-view-switch')
+            ->assertSeeHtml('data-story-map-open');
     }
 
     public function test_the_title_card_shows_what_the_title_screen_shows_when_the_lesson_has_no_title_picture(): void

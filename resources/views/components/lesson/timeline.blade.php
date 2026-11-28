@@ -33,6 +33,7 @@
         [data-rail-col] [data-thumb-selected] { background: color-mix(in oklab, var(--color-primary) 14%, transparent) !important; }
         [data-rail-col] [data-thumb-selected] [data-thumb-compact] { color: var(--color-primary) !important; }
         [data-rail-col] [data-rail-label] { display: none !important; }
+        [data-rail-col] [data-rail-icon] { display: block !important; }   /* the view switch: words when wide, icons when narrow */
         [data-rail-col] [data-rail-add] { aspect-ratio: auto !important; height: 2.1rem !important; border-radius: 0.5rem !important; }
     }
 </style>
@@ -49,6 +50,26 @@
     </svg>
     <div class="lp-panel-content">
     <div class="flex h-full flex-col pt-20" data-rail-col>
+        {{-- The view switch, beside the scene (Bart, 2026-11-26: "the switch has to be in the scene view. aside the
+             scene"): this list of scenes, or the story map of all of them (components/lesson/story-map). The same
+             switch sits in the map, so it reads as one control in two places. A narrow rail shows icons instead of the words. --}}
+        @if ($editable)
+            <div class="px-3 pt-3">
+                <div class="flex items-center gap-1 rounded-xl border border-panel-hairline p-1" role="group" aria-label="{{ __('View') }}" data-view-switch>
+                    <button type="button" aria-pressed="true"
+                            class="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-primary/15 px-1 text-sm text-primary"
+                            data-tooltip="{{ __('Scenes') }}">
+                        <x-ui.icon name="scene-view" class="hidden h-4 w-4 shrink-0" data-rail-icon="" /><span data-rail-label class="truncate">{{ __('Scenes') }}</span>
+                    </button>
+                    <button type="button" aria-pressed="false" data-story-map-open
+                            onclick="window.dispatchEvent(new CustomEvent('story-map-open'))"
+                            class="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg px-1 text-sm text-panel-icon transition hover:bg-base-200 hover:text-base-content"
+                            data-tooltip="{{ __('Story map') }}">
+                        <x-ui.icon name="story-map" class="hidden h-4 w-4 shrink-0" data-rail-icon="" /><span data-rail-label class="truncate">{{ __('Story') }}</span>
+                    </button>
+                </div>
+            </div>
+        @endif
         {{-- The title screen: always first, never deleted or dragged. It sits OUTSIDE the sortable
              track, so no scene can be dropped above it and it stays put while the scenes scroll. --}}
         @if ($titleScreen)

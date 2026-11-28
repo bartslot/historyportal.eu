@@ -248,8 +248,7 @@ class StoryMapTest extends TestCase
 
     public function test_the_editor_has_the_story_map(): void
     {
-        $this->editor()
-            ->assertSeeHtml('data-story-map-open')
-            ->assertSeeHtml('x-data="storyMap()"');
+        // The map itself; the switch that opens it is in the scene rail (SceneRailTest).
+        $this->editor()->assertSeeHtml('x-data="storyMap()"');
     }
 }
