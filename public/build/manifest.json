@@ -50,8 +50,8 @@
       "_team-colours-JOtUsqOj.js"
     ]
   },
-  "_TextOverlayLayer-CkjDUo45.js": {
-    "file": "assets/TextOverlayLayer-CkjDUo45.js",
+  "_TextOverlayLayer-ulvVEvO-.js": {
+    "file": "assets/TextOverlayLayer-ulvVEvO-.js",
     "name": "TextOverlayLayer",
     "isDynamicEntry": true,
     "imports": [
@@ -284,7 +284,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-8j0uUfTf.js",
+    "file": "assets/app-C5pc1Ygp.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -362,7 +362,7 @@
     ]
   },
   "resources/js/editor/cutout-dialog.js": {
-    "file": "assets/cutout-dialog-BAsEEBoD.js",
+    "file": "assets/cutout-dialog-Gas_QM8w.js",
     "name": "cutout-dialog",
     "src": "resources/js/editor/cutout-dialog.js",
     "isDynamicEntry": true,
@@ -426,7 +426,7 @@
     ]
   },
   "resources/js/lesson-player.js": {
-    "file": "assets/lesson-player-DYOvz6FS.js",
+    "file": "assets/lesson-player-BOHKjztL.js",
     "name": "lesson-player",
     "src": "resources/js/lesson-player.js",
     "isEntry": true,
@@ -460,7 +460,7 @@
       "resources/js/voyage-tour.js",
       "resources/js/voyage-tour.js",
       "resources/js/voyage-tour.js",
-      "_TextOverlayLayer-CkjDUo45.js",
+      "_TextOverlayLayer-ulvVEvO-.js",
       "_BalloonLayer-C-gpfOdZ.js",
       "resources/js/scene/ArtworkOverlay.js",
       "resources/js/scene/QuizOverlay.js",
@@ -594,7 +594,7 @@
     ]
   },
   "resources/js/scene/index.js": {
-    "file": "assets/index-PX0wsg9_.js",
+    "file": "assets/index-BNN97Atv.js",
     "name": "index",
     "src": "resources/js/scene/index.js",
     "isDynamicEntry": true,
@@ -602,7 +602,7 @@
       "_big-countdown-COi1XB8M.js",
       "resources/js/scene/QuizOverlay.js",
       "_i18n-DoByrmTl.js",
-      "_TextOverlayLayer-CkjDUo45.js",
+      "_TextOverlayLayer-ulvVEvO-.js",
       "resources/js/scene/ArtworkOverlay.js",
       "_vite-helpers-DqutJMZx.js",
       "resources/js/avatar-3d.js",
@@ -726,7 +726,7 @@
     ]
   },
   "resources/js/test-session/recorder.js": {
-    "file": "assets/recorder-Drioqggm.js",
+    "file": "assets/recorder-MsG8xbis.js",
     "name": "recorder",
     "src": "resources/js/test-session/recorder.js",
     "isDynamicEntry": true,

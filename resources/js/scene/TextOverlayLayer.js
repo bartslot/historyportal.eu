@@ -33,7 +33,7 @@ import { letterComicAmerica } from '../comic-america.js'
 import { applyReveal, clearReveal } from './text-reveal.js'
 import { handleCss } from './stage-handle.js'
 import { passPress } from './pass-press.js'
-import { drawPanel } from './backing-panel.js'
+import { drawPanel, hexToRgba } from './backing-panel.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -171,14 +171,6 @@ const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? 
 const listOf = (item) => (item.list === 'bullet' || item.list === 'number') ? item.list : 'none'
 const listTag = (list) => (list === 'number' ? 'ol' : 'ul')
 
-// Backing panels use an rgba fill (not element opacity) so the backdrop-blur behind them
-// still shows through the translucency — a frosted-glass scrim over the moving scene.
-const hexToRgba = (hex, alpha) => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex))
-  if (!m) return `rgba(15,23,42,${alpha})`
-  const n = parseInt(m[1], 16)
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
-}
 
 // The rgba fill of a text box's glass card.
 const glassFill = (item) =>

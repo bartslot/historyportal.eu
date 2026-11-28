@@ -56,9 +56,12 @@ export function panelBox ({ side, size }) {
 
 const maskUrl = (wash) => `url('/images/paper/${wash === 'book' ? 'edge-mask' : `edge-mask-${wash}`}.webp')`
 
-function hexToRgba (hex, a) {
-  const n = parseInt(hex.slice(1), 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+/** '#rrggbb' as rgba(): a fill that stays see-through while the frosted glass behind it shows. */
+export function hexToRgba (hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex))
+  if (!m) return `rgba(15,23,42,${alpha})`
+  const n = parseInt(m[1], 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
 }
 
 /**

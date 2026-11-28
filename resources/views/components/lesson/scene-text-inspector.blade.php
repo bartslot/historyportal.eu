@@ -2,7 +2,6 @@
 
 @php
     $id = (string) ($text['id'] ?? '');
-    $isPanel = ($text['kind'] ?? null) === 'rect';
     $isGlass = ($text['bg'] ?? 'none') === 'glass';
     // Pinning needs a map under the label — offer it on the two scene kinds that have one.
     $isMapScene = in_array($scene->kind ?? null, ['map', 'voyage'], true);
@@ -32,7 +31,6 @@
     $labelCol = 'style="width: var(--settings-panel-label-w, 7.5rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
 @endphp
 
-@if (! $isPanel)
 {{-- A TEXT layer gets the picture layer's inspector shell (Figma `settings-Text Panel`, 1674:4695):
      a title bar, Format | Animate, and the same banded sections built from the same row components
      (settings-section, segmented, color-field, stepper-field, slider-row, toggle-row), with the
@@ -304,4 +302,3 @@
                 class="btn btn-sm w-full rounded-full">{{ __('Show in timeline') }}</button>
     </div>
 </div>
-@endif

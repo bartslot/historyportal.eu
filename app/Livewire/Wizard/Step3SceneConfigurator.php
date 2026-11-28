@@ -1243,9 +1243,9 @@ class Step3SceneConfigurator extends Component
                 'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
                 'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
                 'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
-                'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
+                'bgColor' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
                 ? (string) $value : ($text[$field] ?? '#0f172a'),
-                'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
+                'bgOpacity' => max(0.05, min(0.95, (float) $value)),
                 'x', 'y' => max(0.0, min(100.0, (float) $value)),
                 'w' => max(5.0, min(95.0, (float) $value)),
             };
@@ -1296,12 +1296,7 @@ class Step3SceneConfigurator extends Component
             return;
         }
 
-        $merged = [...$texts[$index], ...$fields];
-        foreach ($fields as $key => $value) {
-            if ($value === null) {
-                unset($merged[$key]);
-            }
-        }
+        $merged = array_filter([...$texts[$index], ...$fields], fn ($v) => $v !== null);
         // A new picture starts on its middle, uncropped.
         if (array_key_exists('image', $fields) && ! array_key_exists('focus', $fields)) {
             unset($merged['focus']);
