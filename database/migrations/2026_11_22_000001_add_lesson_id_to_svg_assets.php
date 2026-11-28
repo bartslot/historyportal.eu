@@ -14,6 +14,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Prod already had the column (added before this migration was recorded), which stopped the
+        // 2026-11-27 deploy at "Duplicate column". Skip when it is there.
+        if (Schema::hasColumn('svg_assets', 'lesson_id')) {
+            return;
+        }
+
         Schema::table('svg_assets', function (Blueprint $table) {
             $table->foreignId('lesson_id')->nullable()->after('user_id')->constrained()->cascadeOnDelete();
         });
