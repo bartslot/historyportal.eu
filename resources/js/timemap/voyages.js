@@ -278,7 +278,10 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
       // labels before (see map-place-label.js), and a route name plus its years fits on one.
       layout: {
         'text-field': ['concat', ['get', 'name'], '  ', ['get', 'years']],
-        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'top',
+        'text-font': fontStack, 'text-size': 11.5, 'text-anchor': 'center',
+        'text-justify': 'center',
+        'text-pitch-alignment': 'viewport', 'text-rotation-alignment': 'viewport',
+        'icon-pitch-alignment': 'viewport', 'icon-rotation-alignment': 'viewport',
         'text-max-width': 40,
         'icon-image': VOYAGE_PILL,
         'icon-text-fit': 'both',
@@ -291,6 +294,8 @@ export function voyageStyleLayers(fontStack = ['Cinzel']) {
       paint: {
         'text-color': VOYAGE_LABEL_INK,
         'text-translate': [0, VOYAGE_LABEL_DROP_PX],
+        // This is a screen-space glyph correction, not a geographic map translation.
+        'text-translate-anchor': 'viewport',
       },
     },
   ];
