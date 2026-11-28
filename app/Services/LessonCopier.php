@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Lessons\SceneIdRemap;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,33 +59,16 @@ class LessonCopier
             // Choices name the scene they jump to by id (SceneLinks): point them at the copies, or the copied
             // lesson would link into the original and the player would drop every choice.
             foreach ($copies as $copy) {
-                $links = ($copy->config ?? [])['links'] ?? null;
-                if (is_array($links) && $links !== []) {
-                    $copy->config = ['links' => array_map(fn ($l) => is_array($l) ? ['to' => $ids[(int) ($l['to'] ?? 0)] ?? null] + $l : $l, $links)] + $copy->config;
+                $config = SceneIdRemap::config($copy->config, $ids);
+                if ($config !== $copy->config) {
+                    $copy->config = $config;
                     $copy->save();
                 }
             }
 
             // The story map places each scene by id too: carry the layout over to the copies.
             if (is_array($source->story_map)) {
-                // Both ways the map runs: left to right at the top level, top to bottom under 'tb'.
-                $remap = function (array $layout) use ($ids): array {
-                    $map = [];
-                    foreach (['scenes', 'choices'] as $group) {
-                        foreach ((array) ($layout[$group] ?? []) as $id => $point) {
-                            if (isset($ids[(int) $id])) {
-                                $map[$group][(string) $ids[(int) $id]] = $point;
-                            }
-                        }
-                    }
-
-                    return $map;
-                };
-                $map = $remap($source->story_map);
-                if (is_array($source->story_map['tb'] ?? null) && ($tb = $remap($source->story_map['tb'])) !== []) {
-                    $map['tb'] = $tb;
-                }
-                $lesson->forceFill(['story_map' => $map === [] ? null : $map])->saveQuietly();
+                $lesson->forceFill(['story_map' => SceneIdRemap::storyMap($source->story_map, $ids)])->saveQuietly();
             }
 
             $source->quizQuestions()->get()->each(function ($question) use ($lesson): void {

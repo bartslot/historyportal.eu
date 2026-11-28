@@ -2728,6 +2728,7 @@
 
         {{-- Right group: who else is here | Help | Settings, then Publish in the far corner --}}
         <div class="flex items-stretch gap-0.5">
+        <x-editor.offline-copy-badge :lesson="$lesson" />
         <x-editor.collab-people :lesson="$lesson" />
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}
@@ -3556,6 +3557,9 @@
 
     {{-- Somebody else holds the scene on screen: read-only, with Take over (editor/collab.js). --}}
     <x-editor.collab-overlay :lesson="$lesson" />
+
+    {{-- No connection: pause the work area and say so (no edit can be saved offline). --}}
+    <x-editor.offline-lock />
 
     {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
          The selected thumb is announced to it here: the element is new whenever the selection changes. --}}
