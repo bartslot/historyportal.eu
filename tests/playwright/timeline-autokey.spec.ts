@@ -105,7 +105,7 @@ async function openTimeline(page: Page) {
 const diamonds = (page: Page, row: string) => page.locator(`[data-timeline-diamond="${row}"]`);
 const valueField = (page: Page, row: string) =>
   page.locator(`[data-timeline-row]:has([data-timeline-key="${row}"]) [data-timeline-value]`);
-const timeMs = async (page: Page) => Number(await page.locator('[data-timeline-time]').inputValue());
+const timeMs = async (page: Page) => Math.round(Number(await page.locator('[data-timeline-time]').inputValue()) * 1000);
 
 /** Type a number into a row the way a hand does: select what is there, type, commit with Tab. */
 async function typeValue(page: Page, row: string, value: number) {

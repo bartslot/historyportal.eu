@@ -66,7 +66,7 @@ async function openTimeline(page: Page) {
   await expect(page.locator('[data-timeline-key]').first()).toBeAttached({ timeout: 20000 });
 }
 
-const timeMs = async (page: Page) => Number(await page.locator('[data-timeline-time]').inputValue());
+const timeMs = async (page: Page) => Math.round(Number(await page.locator('[data-timeline-time]').inputValue()) * 1000);
 
 test('collapse all folds every group away, and the next press brings them back', async ({ page }) => {
   const errors = watchConsole(page);
@@ -164,7 +164,7 @@ test('loop sends the playhead back to the start instead of stopping', async ({ p
   const timeField = page.locator('[data-timeline-time]');
   const tb = (await timeField.boundingBox())!;
   await page.mouse.click(tb.x + tb.width / 2, tb.y + tb.height / 2, { clickCount: 3 });
-  await page.keyboard.type('7600');
+  await page.keyboard.type('7.6');
   await page.keyboard.press('Tab');
   await page.waitForTimeout(500);
 

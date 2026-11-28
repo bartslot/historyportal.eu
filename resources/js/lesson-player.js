@@ -2866,7 +2866,11 @@ Alpine.data('lessonGame', (lesson) => ({
       if (this._timelineRaf) cancelAnimationFrame(this._timelineRaf)
       this._timelineRaf = null
       const timeline = scene?.config?.timeline
-      if (!hasAnimation(timeline)) return
+      const animated = hasAnimation(timeline)
+      // A layer whose timeline bar ends before the scene does leaves on the same clock. Read from the
+      // scene, not the overlay: the overlay is filled after the plate loads, a beat after this starts.
+      const leaves = (scene?.shots || []).some((shot) => (shot?.layers || []).some((l) => Number.isFinite(l?.anim_until)))
+      if (!animated && !leaves) return
       const epoch = this._playEpoch
       const started = performance.now()
       // Balloons keyframed like layers: the full-stage ones, or a split scene's in their panels.
@@ -2875,13 +2879,26 @@ Alpine.data('lessonGame', (lesson) => ({
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
       const camEnd = cameraEnd(timeline)
-      const clock = () => (scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : (performance.now() - started) / 1000)
+      // A silent scene's clock stands still while the class has paused, as its hold does (setPlaybackPaused).
+      let silent = 0
+      let last = started
+      const clock = (now) => {
+        if (!this.playbackPaused) silent += (now - last) / 1000
+        last = now
+        return scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : silent
+      }
       const step = () => {
         if (epoch !== this._playEpoch) return
-        const t = clock()
-        const frame = frameAt(timeline, t)
-        if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+        const t = clock(performance.now())
+        if (animated) {
+          const frame = frameAt(timeline, t)
+          if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
+          applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+        }
+        if (leaves) {
+          this._artLayer?.applyLeaves(t)
+          _split?.applyLeaves(t)   // a split scene's figures live in its panels
+        }
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

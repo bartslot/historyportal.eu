@@ -140,6 +140,20 @@ class AppearSpeedDelayTest extends TestCase
         $this->assertEquals([3.0, 'zoom'], [round((float) $layer['anim_delay'], 1), $layer['anim']]);
     }
 
+    public function test_dragging_the_layer_bars_end_sets_when_the_figure_leaves(): void
+    {
+        // The end dragged in to 6 s: the figure leaves there, in the editor and the player.
+        $this->wizard()->call('setLayerLeaveAt', $this->asset->id, 6.04);
+        $layer = collect($this->scene->fresh()->shots[0]['layers'])->firstWhere('asset_id', $this->asset->id);
+        $this->assertEquals(6.0, $layer['anim_until']);
+        $this->assertEquals(6.0, LayerEntrances::payload($layer)['anim_until']);
+
+        // Dragged back to the scene's end: the key goes, as on a layer that never had one.
+        $this->wizard()->call('setLayerLeaveAt', $this->asset->id, null);
+        $layer = collect($this->scene->fresh()->shots[0]['layers'])->firstWhere('asset_id', $this->asset->id);
+        $this->assertArrayNotHasKey('anim_until', $layer);
+    }
+
     /**
      * The player plays the entrance the teacher set. Its scene payload dropped every anim field,
      * so a figure's Appear, delay and speed only ever played in the editor's preview.

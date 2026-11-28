@@ -129,8 +129,8 @@ test('dragging the playhead scrubs, and the readout names the spoken word', asyn
   await page.mouse.up();
   await page.waitForTimeout(400);
 
-  const ms = Number(await page.locator('[data-timeline-time]').inputValue());
-  expect(ms, 'the field reads milliseconds').toBeGreaterThan(1000);
+  const ms = Math.round(Number(await page.locator('[data-timeline-time]').inputValue()) * 1000);
+  expect(ms, 'the field reads seconds, two decimals').toBeGreaterThan(1000);
 
   // Land ON a word rather than hoping one is being spoken: there is real silence between words,
   // and asserting at an arbitrary moment tests the gaps, not the readout.

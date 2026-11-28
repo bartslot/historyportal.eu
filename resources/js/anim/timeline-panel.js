@@ -1330,11 +1330,12 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A figure is not on screen before its layer bar starts (After Effects, Bart 2026-11-10), nor
-   *  while its eye is off. */
+   *  after it ends, nor while its eye is off. */
   applyAppearances () {
     for (const o of this.objects) {
       if (o.kind !== 'art') continue
-      const hidden = this.isHidden(o.target) || this.time < (o.entrance?.from ?? 0)
+      const span = this.barOf(o.target)
+      const hidden = this.isHidden(o.target) || this.time < span.from || (span.to < this.duration && this.time >= span.to)
       document.querySelectorAll(`[data-layer-id="art_${o.target.slice(4)}"]`).forEach((el) => { el.style.visibility = hidden ? 'hidden' : '' })
     }
   },
@@ -1569,7 +1570,10 @@ export const animationTimeline = (config = {}) => ({
     if (target === 'choices') return { from: Math.max(0, this.duration - CHOICES_CLIP_S), to: this.duration }
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
-    if (o.kind === 'art') return { from: o.entrance?.from ?? 0, to: this.duration }
+    if (o.kind === 'art') {
+      const until = Number.isFinite(o.until) ? Math.min(this.duration, o.until) : this.duration
+      return { from: o.entrance?.from ?? 0, to: until }
+    }
     return { from: o.start ?? 0, to: Number.isFinite(o.end) ? o.end : this.duration }
   },
 
@@ -1595,9 +1599,18 @@ export const animationTimeline = (config = {}) => ({
       moved = true
       const dt = this.rawTimeFromEvent(e) - t0
       if (target.startsWith('art:')) {
-        // Only its start moves: the end is the scene's end.
-        // 10 s is the server's cap on anim_delay (EditsSceneArtwork).
-        this.spanDraft = { target, from: Math.min(10, this.duration - 0.1, Math.max(0, span0.from + dt)), to: this.duration }
+        // Its start is when it appears (10 s is the server's cap on anim_delay, EditsSceneArtwork),
+        // its end when it leaves; by default the scene's end (Bart, 2026-11-28: grab it there).
+        const len = span0.to - span0.from
+        let from = span0.from
+        let to = span0.to
+        if (mode === 'end') to = Math.min(this.duration, Math.max(from + 0.1, span0.to + dt))
+        else if (mode === 'start') from = Math.min(10, to - 0.1, Math.max(0, span0.from + dt))
+        else {
+          from = Math.min(10, this.duration - len, Math.max(0, span0.from + dt))
+          to = from + len
+        }
+        this.spanDraft = { target, from, to }
         return
       }
       const keys = mode === 'move' ? shiftClip(keys0, dt)
@@ -1629,11 +1642,17 @@ export const animationTimeline = (config = {}) => ({
     }
     const o = this.objects.find((x) => x.target === target)
     if (o?.kind === 'art') {
+      const id = Number(target.slice(4))
       const from = Math.round(draft.from * 10) / 10
-      this.$wire?.setLayerAppearAt?.(Number(target.slice(4)), from)
+      // Up to the scene's end means it stays to the end, however long the scene becomes.
+      const until = draft.to >= this.duration - 0.05 ? null : Math.round(draft.to * 10) / 10
+      if (from !== (o.entrance?.from ?? 0)) this.$wire?.setLayerAppearAt?.(id, from)
+      if (until !== (o.until ?? null)) this.$wire?.setLayerLeaveAt?.(id, until)
       // The row shows the new bar now; the layer's own values arrive with the save.
       o.entrance = { ...o.entrance, from }
+      o.until = until
       this.spanDraft = null
+      this.applyAppearances()
       return
     }
     // Up to the timeline's end means up to the scene's end, however long the narration runs.
