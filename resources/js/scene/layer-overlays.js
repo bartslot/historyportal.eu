@@ -55,6 +55,11 @@ export function selectLayerEverywhere (layerId) {
  * on what a slideshow render last did, and a live preview that updates the wrong node is
  * indistinguishable from one that is broken.
  */
+/** Set a group's value (art-groups.js) on every overlay that has the group, like setLayerPropEverywhere. */
+export function setGroupPropEverywhere (groupId, key, value) {
+  all().forEach((o) => { if (o.groupValue?.(groupId, 'x') !== null && o.groupValue?.(groupId, 'x') !== undefined) o.setGroupProp?.(groupId, key, value) })
+}
+
 export function setLayerPropEverywhere (assetId, key, value) {
   all().forEach((o) => {
     if (owns(o, assetId)) o.setLayerProp?.(assetId, key, value)

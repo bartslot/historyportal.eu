@@ -2851,6 +2851,8 @@ Alpine.data('lessonGame', (lesson) => ({
       this._pinArtToMap()
       // Blend-into-scene samples its colours here; occlusion reads the plate's depth map.
       this._artLayer.setBackdrop(cover?.url, (scene.config || {}).backdrop_depth)
+      // Groups of pictures (art-groups.js) carry their layers: set first, so the first paint is in place.
+      this._artLayer.setGroups(sceneMode(scene.config) === 'split' ? null : (scene.shots || [])[0]?.groups)
       this._artLayer.setLayers(layers)
       // Each layer arrives the way the teacher set it in the Animate tab. Run after setLayers,
       // which rebuilds the nodes the animation targets.

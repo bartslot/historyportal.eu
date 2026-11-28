@@ -57,12 +57,13 @@ export class SplitStage {
    *          onSplitChange?: (split:{layout:string, at:number[]})=>void, onViewChange?: (i:number, focus:{x:number,y:number,zoom:number})=>void,
    *          balloons?: object|null}} opts  balloons: an editable BalloonLayer's options (balloon-edit.js)
    */
-  constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null, balloons = null } = {}) {
+  constructor (host, { editable = false, onSelect = null, onLayerChange = null, onSplitChange = null, onViewChange = null, onGroupChange = null, balloons = null } = {}) {
     if (!host) throw new TypeError('SplitStage: host element is required')
     this.host = host
     this.editable = editable
     this.onSelect = onSelect
     this.onLayerChange = onLayerChange
+    this.onGroupChange = onGroupChange   // a group of pictures let go in panel i (art-groups.js)
     this.onSplitChange = onSplitChange
     this.onViewChange = onViewChange
     this.balloonOptions = balloons
@@ -142,8 +143,10 @@ export class SplitStage {
     const figures = layers.filter(l => (l?.url || l?.embed || l?.kind === 'arrow') && isClipartLayer(l))
 
     const overlay = new ArtworkOverlay(art, this.editable
-      ? { onChange: (assetId, t) => this.onLayerChange?.(i, assetId, t) }
+      ? { onChange: (assetId, t) => this.onLayerChange?.(i, assetId, t), onGroupChange: (groupId, values) => this.onGroupChange?.(i, groupId, values) }
       : { readonly: true })
+    // The panel's groups of pictures (art-groups.js): they carry the figures set below.
+    overlay.setGroups(shot.groups ?? null)
     overlay.setStackLevels(30, 32)
     overlay.setBackdrop(planes.find(l => (l.kind ?? 'cover') === 'cover')?.url)
 

@@ -29,6 +29,7 @@ import { loadDepth, applyOcclusion, clearOcclusion, fitHeight, OCC } from './occ
 import { SIT_KEYS, sitSpec, renderSitIn, backdropPixels, sampleColours, registerSitTuner, applyFoamSpeed, hullSpan } from './sit-in-scene.js'
 import { mountFrames, showFrame, syncFrames } from './layer-frames.js'
 import { ARROW_KEYS, ARROW_LIMITS, arrowParams, arrowPaths, arrowHandles, bendFromPoint, shaftFromPoint, headFromPoint } from './arrow-shape.js'
+import { normalizeGroup, composeMember, releaseMember, localDelta, groupPivotAt, moveGroupPivot, layerPivot, layerTransform, moveLayerPivot, layerPivotAt, GROUP_FIELDS } from './art-groups.js'
 
 const DRAG_THRESHOLD_PX = 4
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -109,6 +110,8 @@ const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend', 'edge',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
   ...SIT_KEYS, 'occlude', ...ARROW_KEYS, 'locked',
+  // art-groups.js: the point the layer turns about, and the group it moves with.
+  'pivot_x', 'pivot_y', 'group',
 ]
 
 /**
@@ -159,6 +162,7 @@ export function layersSignature(layers) {
     l.anchor, l.lng, l.lat, JSON.stringify(l.geo || null), l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
     l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style, !!l.locked,
+    l.pivot_x, l.pivot_y, l.group,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
     l.frames ? JSON.stringify(l.frames) : null,
   ]))
@@ -235,6 +239,11 @@ export function normalizeLayer(l) {
         occlude: l.occlude ? 1 : 0,
         // Locked on the canvas (the right-click menu's Lock): a press goes through to what is under it.
         locked: !!l.locked,
+        // The point it turns about, 0..1 across its box (art-groups.js); null = its middle.
+        pivot_x: Number.isFinite(l.pivot_x) ? l.pivot_x : null,
+        pivot_y: Number.isFinite(l.pivot_y) ? l.pivot_y : null,
+        // The group it moves with (shot.groups[], art-groups.js), or null. An arrow is drawn in stage units: never grouped.
+        group: l.kind !== 'arrow' && typeof l.group === 'string' && l.group ? l.group : null,
         // A sprite sheet over the picture (layer-frames.js): {url, count, columns, play, fps} or null.
         frames: l.frames && typeof l.frames === 'object' ? l.frames : null,
         // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
@@ -280,9 +289,14 @@ export function geoZoomFactor(projector, item, stagePx, axis = 'y') {
 const onStage = (v) => (!Number.isFinite(v) ? 50 : v >= 0 && v <= 100 ? v : Math.max(10, Math.min(90, v)))
 
 export class ArtworkOverlay {
-  constructor(hostEl, { onChange = null, readonly = false } = {}) {
+  constructor(hostEl, { onChange = null, onGroupChange = null, readonly = false } = {}) {
     this.host = hostEl
     this.onChange = onChange
+    // A group's own values after a canvas move, turn, size or pivot drag (art-groups.js): onGroupChange(id, values).
+    this.onGroupChange = onGroupChange
+    // The shot's groups (shot.groups[]), normalised, by id. Their layers carry `group: <id>`.
+    this._groups = new Map()
+    this._groupsSig = null
     this.readonly = readonly   // playback: render the layers but never let the viewer drag them
     this._layers = []
     this._selectedId = null
@@ -307,6 +321,8 @@ export class ArtworkOverlay {
           for (const i of this._layers) if (i.occlude) this._occlude(i)
           // A vector arrow is drawn in stage units, so a new stage shape means a new drawing.
           for (const i of this._layers) if (i.kind === 'arrow') { this._paintArrow(i); this._placeArrowHandles(i) }
+          // A group turns its layers in stage pixels: a new stage shape puts them again.
+          for (const id of this._groups.keys()) this._placeGroup(id)
         })
       })
       this._occResize.observe(this.host)
@@ -318,7 +334,7 @@ export class ArtworkOverlay {
     // selection across text, artwork and background — no re-dispatch, so no loop).
     window.addEventListener('scene-object-selected', (e) => {
       const id = e.detail?.id
-      if (id && !this._layers.some(l => artObjId(l.asset_id) === id) && this._selectedId !== null) {
+      if (id && !this._layers.some(l => artObjId(l.asset_id) === id) && !this._groups.has(String(id).replace(/^grp_/, '')) && this._selectedId !== null) {
         this._selectedId = null
         this._applySelection()
       }
@@ -351,7 +367,8 @@ export class ArtworkOverlay {
     if (!node || !hostW) return null
     const h = this._heightPct(item) / 100
     const w = (this._widthPct(item) ?? (node.offsetWidth / hostW) * 100) / 100
-    return w > 0 && h > 0 ? { x: item.x / 100, y: item.y / 100, w, h } : null
+    const at = this._disp(item)
+    return w > 0 && h > 0 ? { x: at.x / 100, y: at.y / 100, w, h } : null
   }
 
   /** Occlusion (occlusion.js): mask the layer where the backdrop is drawn in front of it. */
@@ -495,8 +512,7 @@ export class ArtworkOverlay {
         item.y = y
         const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
         if (el) {
-          el.style.left = `${item.x}%`
-          el.style.top = `${item.y}%`
+          this._place(el, item)
           this._syncChrome(item)
         }
       }
@@ -552,8 +568,7 @@ export class ArtworkOverlay {
       if (!this._projectPinnedItem(item)) continue
       const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
       if (el && el !== this._dragNode) {
-        el.style.left = `${item.x}%`
-        el.style.top = `${item.y}%`
+        this._place(el, item)
         // It grows with the map too (_mapFactor); only its size, never `max-content` (see the scale case).
         el.style.height = `${this._heightPct(item)}%`
         const w = this._widthPct(item)
@@ -587,26 +602,402 @@ export class ArtworkOverlay {
     // An arrow is drawn in stage units across the whole stage: it has no box to centre, so no
     // centring translate, parallax drift or turn applies to it.
     if (item.kind === 'arrow') return 'none'
-    // Rotation AFTER the centring translate, so the layer turns about its own middle rather than
-    // swinging around the stage origin.
-    const spin = item.rotation ? ` rotate(${item.rotation}deg)` : ''
-    // After the rotation, so a flipped layer mirrors about its own axes rather than about the
-    // stage's — flip then turn puts a mirrored ship on the wrong heading.
-    const sx = item.flip_x ? -1 : 1
-    const sy = item.flip_y ? -1 : 1
-    const mirror = (sx === 1 && sy === 1) ? '' : ` scale(${sx}, ${sy})`
+    // Rotation AFTER the centring translate, so the layer turns about its own pivot (its middle unless the teacher
+    // moved it) rather than swinging around the stage origin. The mirror comes after the rotation, so a flipped
+    // layer mirrors about its own axes rather than about the stage's: flip then turn puts a mirrored ship on the
+    // wrong heading. A grouped layer turns with its group as well (art-groups.js).
+    return layerTransform(item, this._disp(item).rotation, dx, dy)
+  }
 
-    return `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))${spin}${mirror}`
+  // ── Groups (art-groups.js): a parent transform over their layers, like a Babylon TransformNode ──
+
+  /** The group a layer moves with, or null. */
+  _groupOf(item) {
+    return item?.group ? this._groups.get(String(item.group)) ?? null : null
+  }
+
+  /** A layer as it is shown: its own values carried by its group (its middle, size, turn and fade on screen). */
+  _disp(item) {
+    const g = item?.kind === 'arrow' ? null : this._groupOf(item)
+    if (!g) return { x: item.x, y: item.y, scale: item.scale, rotation: item.rotation || 0, opacity: item.opacity }
+    return composeMember(item, g, this.host.clientWidth, this.host.clientHeight)
+  }
+
+  /** Put a node's middle where its layer is shown. */
+  _place(node, item) {
+    const at = this._disp(item)
+    node.style.left = `${at.x}%`
+    node.style.top = `${at.y}%`
+  }
+
+  /** The fade on the picture (never the node: the selection ring stays crisp), its group's included. */
+  _applyOpacity(node, item) {
+    const target = node?.querySelector('img') || node?.querySelector('iframe')
+    if (!target) return
+    const g = this._groupOf(item)
+    const o = Math.max(0.05, item.opacity) * (g ? g.opacity : 1)
+    target.style.opacity = o < 1 ? String(o) : ''
+  }
+
+  /**
+   * The shot's groups (shot.groups[]). Call with the layers; the same groups again change nothing, so a poll that
+   * re-seeds them never undoes a timeline scrub.
+   */
+  setGroups(groups) {
+    const list = (Array.isArray(groups) ? groups : []).filter(g => g && g.id)
+    const sig = JSON.stringify(list)
+    if (sig === this._groupsSig) return
+    this._groupsSig = sig
+    const before = [...this._groups.keys()]
+    this._groups = new Map(list.map(g => [String(g.id), normalizeGroup(g)]))
+    this._syncGroupChromes()
+    for (const id of new Set([...before, ...this._groups.keys()])) this._placeGroup(id)
+    if (String(this._selectedId ?? '').startsWith('grp_') && !this._groups.has(this._selectedId.slice(4))) this._selectedId = null
+    this._applySelection()
+  }
+
+  /** The groups and their layers, for the object list and the timeline: `[{id, name, members: [assetId]}]`. */
+  groups() {
+    return [...this._groups.values()].map(g => ({
+      id: g.id,
+      name: g.name,
+      members: this._layers.filter(l => l.group === g.id).map(l => l.asset_id),
+    })).filter(g => g.members.length)
+  }
+
+  /** One of a group's values (its panel and the timeline read it), or null. */
+  groupValue(id, key) {
+    const g = this._groups.get(String(id))
+    if (!g) return null
+    if (key === 'name') return g.name
+    return Number.isFinite(g[key]) ? g[key] : null
+  }
+
+  /** A group's whole value set, e.g. to send with Ungroup. */
+  groupData(id) {
+    const g = this._groups.get(String(id))
+    return g ? { ...g } : null
+  }
+
+  /** Set one of a group's values live (its panel, the timeline), nothing saved. */
+  setGroupProp(id, key, value) {
+    const g = this._groups.get(String(id))
+    if (!g) return
+    if (key === 'name') { g.name = String(value ?? ''); return }
+    if (![...GROUP_FIELDS, 'pivot_x', 'pivot_y'].includes(key) || !Number.isFinite(Number(value))) return
+    g[key] = key === 'scale' ? Math.max(0.05, Number(value)) : key === 'opacity' ? Math.min(1, Math.max(0, Number(value))) : Number(value)
+    this._placeGroup(g.id)
+  }
+
+  /** Every layer of a group shown again where the group puts it, and its box. */
+  _placeGroup(id) {
+    for (const item of this._layers) {
+      if (item.group !== id) continue
+      const node = this._nodeEl(item)
+      if (!node) continue
+      this._place(node, item)
+      node.style.height = `${this._heightPct(item)}%`
+      const w = this._widthPct(item)
+      if (w !== null) node.style.width = `${w}%`
+      if (node !== this._dragNode) node.style.transform = this._transform(item)
+      this._applyOpacity(node, item)
+      this._syncChrome(item)
+    }
+    this._syncGroupChrome(id)
+  }
+
+  /** The values a group saves and the timeline keys, rounded. */
+  _groupValues(g) {
+    const r = (n, d) => Math.round(n * d) / d
+    return { x: r(g.x, 100), y: r(g.y, 100), scale: r(g.scale, 1000), rotation: r(((g.rotation + 540) % 360) - 180, 10), pivot_x: r(g.pivot_x, 100), pivot_y: r(g.pivot_y, 100) }
+  }
+
+  /** The end of a group drag, turn, size or pivot move: saved, and keyed when the timeline animates it. */
+  _emitGroup(g) {
+    const values = this._groupValues(g)
+    this.onGroupChange?.(g.id, values)
+    window.dispatchEvent(new CustomEvent('scene-object-edited', {
+      detail: { target: `grp:${g.id}`, values: { x: g.x, y: g.y, scale: g.scale, rotation: g.rotation } },
+    }))
+  }
+
+  /** The group's box on the stage: around everything its layers show, in px of the host. */
+  _groupBox(id) {
+    const host = this.host.getBoundingClientRect()
+    let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity
+    for (const item of this._layers) {
+      if (item.group !== id) continue
+      const node = this._nodeEl(item)
+      if (!node || node.style.visibility === 'hidden') continue
+      const rc = node.getBoundingClientRect()
+      if (!rc.width && !rc.height) continue
+      l = Math.min(l, rc.left - host.left); t = Math.min(t, rc.top - host.top)
+      r = Math.max(r, rc.right - host.left); b = Math.max(b, rc.bottom - host.top)
+    }
+    return Number.isFinite(l) ? { l, t, w: r - l, h: b - t, hostW: host.width || 1, hostH: host.height || 1 } : null
+  }
+
+  _groupChromeEl(id) {
+    return [...this.host.querySelectorAll(':scope > [data-group-chrome]')].find(el => el.dataset.groupChrome === `grp_${id}`) ?? null
+  }
+
+  /** One box per group, editor only: made or taken away to match the groups there are. */
+  _syncGroupChromes() {
+    if (this.readonly) return
+    for (const el of this.host.querySelectorAll(':scope > [data-group-chrome]')) {
+      if (!this._groups.has(el.dataset.groupChrome.slice(4))) { el._pivot?.remove(); el.remove() }
+    }
+    for (const g of this._groups.values()) {
+      if (!this._groupChromeEl(g.id)) this.host.appendChild(this._groupChrome(g.id))
+    }
+  }
+
+  /**
+   * A group's box on the canvas: a dashed frame round its layers, its pivot (drag it to move the point it turns and
+   * grows about), a grip to turn it and a corner to size it. Moving it is a press on any of its layers.
+   */
+  _groupChrome(id) {
+    const chrome = document.createElement('div')
+    chrome.dataset.groupChrome = `grp_${id}`
+    chrome.style.cssText = `position:absolute; display:none; pointer-events:none; box-sizing:border-box;
+      outline:1px dashed #38bdf8; outline-offset:2px; z-index:${this._zTop + 1};`
+    const stem = document.createElement('div')
+    stem.style.cssText = 'position:absolute; left:calc(50% - 1px); top:-22px; width:2px; height:18px; background:#38bdf8; pointer-events:none;'
+    const spin = document.createElement('div')
+    spin.dataset.groupRotate = '1'
+    spin.setAttribute('data-tooltip', t('Drag to rotate · hold Shift for 15°'))
+    spin.style.cssText = `position:absolute; left:calc(50% - 6px); top:-34px; width:12px; height:12px;
+      border-radius:50%; background:#fff; border:1px solid rgba(15,23,42,0.55); cursor:grab;
+      box-shadow:0 1px 3px rgba(0,0,0,0.4); touch-action:none; pointer-events:auto;`
+    const size = document.createElement('div')
+    size.dataset.groupScale = '1'
+    size.setAttribute('data-tooltip', t('Drag to resize'))
+    size.style.cssText = handleCss('bottom:-5px; right:-5px;', 'nwse-resize')
+    chrome.append(stem, spin, size)
+    const pivot = this._pivotDot()
+    pivot.dataset.groupPivot = '1'
+    // The pivot stands on the stage, not in the box: it is placed in host px by _syncGroupChrome.
+    this.host.appendChild(pivot)
+    chrome._pivot = pivot
+    this._wireGroupRotate(id, spin)
+    this._wireGroupScale(id, size)
+    this._wirePivotDrag(pivot, { group: id })
+    return chrome
+  }
+
+  /** The pivot point: a ring with a cross, grabbed to move it. */
+  _pivotDot() {
+    const dot = document.createElement('div')
+    dot.setAttribute('data-tooltip', t('Drag to move the pivot point'))
+    dot.setAttribute('aria-label', t('Pivot point'))
+    dot.style.cssText = `position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px; display:none; box-sizing:border-box;
+      border-radius:50%; border:2px solid #38bdf8; background:rgba(15,23,42,0.35); cursor:move; touch-action:none;
+      pointer-events:auto; z-index:${this._zTop + 2};
+      background-image:linear-gradient(#38bdf8,#38bdf8),linear-gradient(#38bdf8,#38bdf8);
+      background-size:2px 8px, 8px 2px; background-position:center; background-repeat:no-repeat;`
+    return dot
+  }
+
+  _syncGroupChrome(id) {
+    const chrome = this._groupChromeEl(id)
+    if (!chrome) return
+    const g = this._groups.get(String(id))
+    const box = g && this._groupBox(id)
+    const shown = this._selectedId === `grp_${id}` && !!box
+    chrome.style.display = shown ? 'block' : 'none'
+    if (chrome._pivot) chrome._pivot.style.display = shown ? 'block' : 'none'
+    if (!shown) return
+    chrome.style.left = `${box.l}px`
+    chrome.style.top = `${box.t}px`
+    chrome.style.width = `${box.w}px`
+    chrome.style.height = `${box.h}px`
+    const [px, py] = groupPivotAt(g)
+    chrome._pivot.style.left = `${px}%`
+    chrome._pivot.style.top = `${py}%`
+  }
+
+  /** Where a group's pivot is on the page (client px). */
+  _groupPivotClient(g) {
+    const r = this.host.getBoundingClientRect()
+    const [px, py] = groupPivotAt(g)
+    return [r.left + (px / 100) * r.width, r.top + (py / 100) * r.height]
+  }
+
+  /** Press on a grouped layer: the whole group moves (Figma, Photoshop's auto-select group). */
+  _dragGroup(g, e, node) {
+    this.select(`grp_${g.id}`)
+    const startX = e.clientX, startY = e.clientY
+    const rect = this.host.getBoundingClientRect()
+    const origin = { x: g.x, y: g.y }
+    let dragging = false
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY
+      if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
+      if (!dragging) {
+        dragging = true
+        node.style.cursor = 'grabbing'
+        try { node.setPointerCapture?.(ev.pointerId) } catch (_) { /* synthetic pointers */ }
+      }
+      g.x = origin.x + (dx / (rect.width || 1)) * 100
+      g.y = origin.y + (dy / (rect.height || 1)) * 100
+      this._placeGroup(g.id)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      node.style.cursor = 'grab'
+      if (dragging) this._emitGroup(g)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  _wireGroupRotate(id, handle) {
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      const g = this._groups.get(String(id))
+      if (!g) return
+      const [cx, cy] = this._groupPivotClient(g)
+      const angleAt = (ev) => Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI
+      const grabbed = angleAt(e) - g.rotation
+      const onMove = (ev) => {
+        let deg = angleAt(ev) - grabbed
+        if (ev.shiftKey) deg = Math.round(deg / 15) * 15
+        g.rotation = Math.round((((deg + 540) % 360) - 180) * 10) / 10
+        this._placeGroup(g.id)
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        this._emitGroup(g)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      try { handle.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointers */ }
+    })
+  }
+
+  /** The corner: the group grows or shrinks about its pivot, as far as the pointer is from it. */
+  _wireGroupScale(id, handle) {
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      const g = this._groups.get(String(id))
+      if (!g) return
+      const [cx, cy] = this._groupPivotClient(g)
+      const start = Math.hypot(e.clientX - cx, e.clientY - cy) || 1
+      const startScale = g.scale
+      const onMove = (ev) => {
+        const span = Math.hypot(ev.clientX - cx, ev.clientY - cy)
+        g.scale = Math.min(MAX_SCALE, Math.max(0.1, startScale * (span / start)))
+        this._placeGroup(g.id)
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        this._emitGroup(g)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      try { handle.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointers */ }
+    })
+  }
+
+  /**
+   * Drag a pivot point: a group's (the point it turns and grows about) or a layer's (the point it turns about). The
+   * pictures never move: the place is put right for the new pivot at once (art-groups.js moveGroupPivot / moveLayerPivot).
+   */
+  _wirePivotDrag(dot, { group = null, item = null }) {
+    dot.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      if (item?.locked) return
+      const host = this.host.getBoundingClientRect()
+      const W = host.width || 1
+      const H = host.height || 1
+      const onMove = (ev) => {
+        const qx = ev.clientX - host.left
+        const qy = ev.clientY - host.top
+        if (group) {
+          const g = this._groups.get(String(group))
+          if (!g) return
+          Object.assign(g, moveGroupPivot(g, (qx / W) * 100, (qy / H) * 100, W, H))
+          this._placeGroup(g.id)
+          return
+        }
+        const node = this._nodeEl(item)
+        if (!node) return
+        const at = this._disp(item)
+        const next = moveLayerPivot({ cx: (at.x / 100) * W, cy: (at.y / 100) * H, bw: node.offsetWidth, bh: node.offsetHeight, rotation: at.rotation, pivot: layerPivot(item) }, qx, qy)
+        const own = releaseMember({ x: (next.cx / W) * 100, y: (next.cy / H) * 100 }, this._groupOf(item), W, H)
+        item.pivot_x = Math.round(Math.min(2, Math.max(-1, next.pivot_x)) * 1000) / 1000
+        item.pivot_y = Math.round(Math.min(2, Math.max(-1, next.pivot_y)) * 1000) / 1000
+        item.x = own.x
+        item.y = own.y
+        this._place(node, item)
+        node.style.transform = this._transform(item)
+        this._syncChrome(item)
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        if (group) { const g = this._groups.get(String(group)); if (g) this._emitGroup(g) } else this._emit(item)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      try { dot.setPointerCapture(e.pointerId) } catch (_) { /* synthetic pointers */ }
+    })
+  }
+
+  /** Move a group's pivot to a point of the stage (%), its layers staying put; saved like a canvas drag. */
+  moveGroupPivotTo(id, qx, qy) {
+    const g = this._groups.get(String(id))
+    if (!g) return
+    Object.assign(g, moveGroupPivot(g, qx, qy, this.host.clientWidth, this.host.clientHeight))
+    this._placeGroup(g.id)
+    this._emitGroup(g)
+  }
+
+  /**
+   * Put a layer's pivot on a point of its box (the panel's nine presets: corners, edges, middle), the picture staying
+   * where it is. Returns the values to save (`pivot_x`, `pivot_y`, `x`, `y`), or null.
+   */
+  setPivotPreset(assetId, px, py) {
+    const item = this._layers.find(l => String(l.asset_id) === String(assetId))
+    const node = item && this._nodeEl(item)
+    if (!item || !node) return null
+    const W = this.host.clientWidth || 1
+    const H = this.host.clientHeight || 1
+    const at = this._disp(item)
+    const box = { cx: (at.x / 100) * W, cy: (at.y / 100) * H, bw: node.offsetWidth, bh: node.offsetHeight, rotation: at.rotation, pivot: layerPivot(item) }
+    // where the box point (px, py) stands on screen now, turned about the old pivot
+    const o = [(px - 0.5) * box.bw, (py - 0.5) * box.bh]
+    const po = [(box.pivot[0] - 0.5) * box.bw, (box.pivot[1] - 0.5) * box.bh]
+    const a = at.rotation * Math.PI / 180
+    const v = [o[0] - po[0], o[1] - po[1]]
+    const sx = box.cx + po[0] + v[0] * Math.cos(a) - v[1] * Math.sin(a)
+    const sy = box.cy + po[1] + v[0] * Math.sin(a) + v[1] * Math.cos(a)
+    const next = moveLayerPivot(box, sx, sy)
+    const own = releaseMember({ x: (next.cx / W) * 100, y: (next.cy / H) * 100 }, this._groupOf(item), W, H)
+    item.pivot_x = px
+    item.pivot_y = py
+    item.x = own.x
+    item.y = own.y
+    this._place(node, item)
+    node.style.transform = this._transform(item)
+    this._syncChrome(item)
+    return { pivot_x: px, pivot_y: py, x: Math.round(own.x * 100) / 100, y: Math.round(own.y * 100) / 100 }
   }
 
   // On-screen height of the node = base height × user scale (× the map's zoom, when pinned), as a % of the stage.
   _heightPct(item) {
-    return item.height * item.scale * this._mapFactor(item)
+    return item.height * this._disp(item).scale * this._mapFactor(item)
   }
 
   // On-screen width, or null when the layer has none of its own.
   _widthPct(item) {
-    return Number.isFinite(item.width) ? item.width * item.scale * this._mapFactor(item, 'x') : null
+    return Number.isFinite(item.width) ? item.width * this._disp(item).scale * this._mapFactor(item, 'x') : null
   }
 
   /**
@@ -732,6 +1123,9 @@ export class ArtworkOverlay {
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
     const BOOLEAN = ['grayscale', 'flip_x', 'flip_y', 'locked']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
+    // No pivot and no group are null, never 0 or '' (a 0 pivot is the box's corner).
+    if (key === 'pivot_x' || key === 'pivot_y') item[key] = Number.isFinite(Number(value)) && value !== null && value !== '' ? Number(value) : null
+    if (key === 'group') item.group = typeof value === 'string' && value ? value : null
     // A width of null is "no width of its own", not zero: Number(null) is 0, which drew the layer
     // as a 0%-wide box the moment a save cleared its width.
     if (key === 'width' && (value === null || value === '' || value === undefined)) item.width = null
@@ -754,9 +1148,23 @@ export class ArtworkOverlay {
         if (img) img.style.filter = applyLayerFilter(this.host, item)
         break
       }
-      case 'opacity': {
-        const target = node.querySelector('img') || node.querySelector('iframe')
-        if (target) target.style.opacity = String(Math.max(0.05, item.opacity))
+      case 'opacity':
+        this._applyOpacity(node, item)
+        break
+      // A new pivot turns the layer about another point; a new group carries it differently.
+      case 'pivot_x':
+      case 'pivot_y':
+        node.style.transform = this._transform(item)
+        this._syncChrome(item)
+        break
+      case 'group': {
+        const before = [...this._groups.keys()]
+        this._place(node, item)
+        node.style.height = `${this._heightPct(item)}%`
+        node.style.transform = this._transform(item)
+        this._applyOpacity(node, item)
+        this._syncChrome(item)
+        for (const id of before) this._syncGroupChrome(id)
         break
       }
       case 'blend':
@@ -809,8 +1217,7 @@ export class ArtworkOverlay {
       }
       case 'x':
       case 'y':
-        node.style.left = `${item.x}%`
-        node.style.top = `${item.y}%`
+        this._place(node, item)
         this._syncChrome(item)
         break
     }
@@ -945,8 +1352,9 @@ export class ArtworkOverlay {
       }
       const f = frameFor(item.depth)
       const px = (n) => Math.round(n * 100) / 100
-      const dx = px((f.translateX / 100) * rect.width + ((item.x - 50) / 100) * rect.width * (f.scale - 1))
-      const dy = px((f.translateY / 100) * rect.height + ((item.y - 50) / 100) * rect.height * (f.scale - 1))
+      const at = this._disp(item)
+      const dx = px((f.translateX / 100) * rect.width + ((at.x - 50) / 100) * rect.width * (f.scale - 1))
+      const dy = px((f.translateY / 100) * rect.height + ((at.y - 50) / 100) * rect.height * (f.scale - 1))
       el.style.transform = this._transform(item, dx, dy) + (f.scale !== 1 ? ` scale(${f.scale})` : '')
       this._syncChrome(item)
     }
@@ -1083,8 +1491,12 @@ export class ArtworkOverlay {
   _applySelection() {
     for (const item of this._layers) {
       const chrome = this._chromeEl(item)
-      if (chrome) chrome.style.display = artObjId(item.asset_id) === this._selectedId ? 'block' : 'none'
+      const on = artObjId(item.asset_id) === this._selectedId
+      if (chrome) chrome.style.display = on ? 'block' : 'none'
+      if (chrome?._pivot) chrome._pivot.style.display = on && !item.locked ? 'block' : 'none'
+      if (on) this._syncChrome(item)
     }
+    for (const id of this._groups.keys()) this._syncGroupChrome(id)
   }
 
   _chromeEl(item) {
@@ -1114,6 +1526,16 @@ export class ArtworkOverlay {
     chrome.style.transform = node.style.transform
     const w = node.offsetWidth
     if (w) chrome.style.width = `${w}px`
+    // The pivot stands where the layer turns about (its middle plus its offset in the box: the turn keeps it there).
+    if (chrome._pivot && chrome._pivot.style.display !== 'none') {
+      const W = this.host.clientWidth || 1
+      const H = this.host.clientHeight || 1
+      const at = this._disp(item)
+      const [px, py] = layerPivotAt({ cx: (at.x / 100) * W, cy: (at.y / 100) * H, bw: node.offsetWidth, bh: node.offsetHeight, pivot: layerPivot(item) })
+      chrome._pivot.style.left = `${px}px`
+      chrome._pivot.style.top = `${py}px`
+    }
+    if (item.group) this._syncGroupChrome(item.group)
   }
 
   _render() {
@@ -1124,6 +1546,7 @@ export class ArtworkOverlay {
       if (!this.readonly) this.host.appendChild(this._chrome(item))
     }
     for (const item of this._layers) this._syncChrome(item)
+    this._syncGroupChromes()
     this._applySelection()
     // A finished camera move asks for no more frames; rebuilt nodes still take its last pose.
     if (this._cameraFrame) this.setCamera(this._cameraFrame)
@@ -1168,6 +1591,13 @@ export class ArtworkOverlay {
       if (node) this._wireScale(item, node, handle, c)
     }
 
+    // The point it turns about (art-groups.js): on the stage beside the chrome, so it never turns or scales with it.
+    const pivot = this._pivotDot()
+    pivot.dataset.layerPivot = artObjId(item.asset_id)
+    chrome._pivot = pivot
+    this._wirePivotDrag(pivot, { item })
+    queueMicrotask(() => { if (chrome.isConnected) chrome.after(pivot) })
+
     return chrome
   }
 
@@ -1189,7 +1619,7 @@ export class ArtworkOverlay {
       // 3D / video layer — an <iframe> instead of an <img>. It has no intrinsic aspect, so give the
       // node an explicit ratio (video 16:9, model viewer 4:3) and derive width from the % height.
       const ratio = item.embed.type === 'video' ? '16 / 9' : '4 / 3'
-      node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; height:${this._heightPct(item)}%;
+      node.style.cssText = `position:absolute; left:${this._disp(item).x}%; top:${this._disp(item).y}%; height:${this._heightPct(item)}%;
         aspect-ratio:${ratio}; width:auto; transform:${this._transform(item)}; transform-origin:center;
         z-index:${this.onTop ? this._zTop : this._zNormal}; ${interact} touch-action:none; user-select:none;`
 
@@ -1222,8 +1652,8 @@ export class ArtworkOverlay {
         node.style.borderRadius = '10px'
         node.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.16)'
       }
-      if (item.opacity < 1) frame.style.opacity = String(Math.max(0.05, item.opacity))
       node.appendChild(frame)
+      this._applyOpacity(node, item)
 
       if (!this.readonly) {
         const shield = document.createElement('div')
@@ -1239,7 +1669,7 @@ export class ArtworkOverlay {
     // uses percentage height — that distorted the selection box.)
     // Playback nodes are inert (pointer-events:none) so a student can't drag the decoration and it
     // never steals a map pan; editor nodes catch pointers to move/select.
-    node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; height:${this._heightPct(item)}%;
+    node.style.cssText = `position:absolute; left:${this._disp(item).x}%; top:${this._disp(item).y}%; height:${this._heightPct(item)}%;
       ${this._widthCss(item)} transform:${this._transform(item)}; transform-origin:center;
       z-index:${this.onTop ? this._zTop : this._zNormal}; ${interact} touch-action:none; user-select:none;`
 
@@ -1264,7 +1694,6 @@ export class ArtworkOverlay {
     // single CSS filter, so they can't overwrite one another.
     const filter = applyLayerFilter(this.host, item)
     if (filter) img.style.filter = filter
-    if (item.opacity < 1) img.style.opacity = String(Math.max(0.05, item.opacity))
     // Blend on the NODE, not the img: the node carries the transform, which makes it a stacking
     // context, so a blend on the img would only ever mix with the node's own empty backdrop.
     // On the node it mixes with whatever the overlay sits over — which is the point of Multiply.
@@ -1277,6 +1706,7 @@ export class ArtworkOverlay {
     amb.className = 'art-ambient'
     amb.style.cssText = 'height:100%; transform-origin:50% 100%; pointer-events:none;'
     amb.appendChild(img)
+    this._applyOpacity(amb, item)
     mountFrames(amb, img, item.frames)
     applyAmbient(amb, item, this._layers.indexOf(item))
     node.appendChild(amb)
@@ -1516,6 +1946,13 @@ export class ArtworkOverlay {
         if (this._onEmptyPixels(item, node, e)) { this._passDown(node, e); return }
       }
       if (e.target.dataset && (e.target.dataset.scaleHandle || e.target.dataset.rotateHandle)) return   // handles resize/rotate, not drag
+      // A grouped layer moves its whole group, unless it is the one selected (its row in the layer list) or the press
+      // holds Cmd / Ctrl (Photoshop's auto-select off): then the layer moves inside its group.
+      const group = this._groupOf(item)
+      if (group && !this.readonly && this._selectedId !== artObjId(item.asset_id) && !(e.metaKey || e.ctrlKey)) {
+        this._dragGroup(group, e, node)
+        return
+      }
       this.select(artObjId(item.asset_id))
       const startX = e.clientX, startY = e.clientY
       const rect = this.host.getBoundingClientRect()
@@ -1530,8 +1967,7 @@ export class ArtworkOverlay {
       }
       // The chrome is a sibling, so it has to be moved with the layer on every frame of a drag.
       const paint = () => {
-        node.style.left = `${item.x}%`
-        node.style.top = `${item.y}%`
+        this._place(node, item)
         this._syncChrome(item)
       }
 
@@ -1545,8 +1981,9 @@ export class ArtworkOverlay {
           node.style.transform = this._transform(item)   // drop any parallax offset so drag is 1:1
           try { node.setPointerCapture?.(ev.pointerId) } catch (_) { /* synthetic/edge pointers throw */ }
         }
-        item.x = origin.x + (dx / rect.width) * 100
-        item.y = origin.y + (dy / rect.height) * 100
+        const [lx, ly] = localDelta((dx / rect.width) * 100, (dy / rect.height) * 100, this._groupOf(item), rect.width, rect.height)
+        item.x = origin.x + lx
+        item.y = origin.y + ly
         clamp(); paint()
         this._fitGhost(item, node)
         // Magnetic snap to ruler guides (edges/centre of the layer).
@@ -1554,8 +1991,9 @@ export class ArtworkOverlay {
         if (guides && typeof guides.snap === 'function') {
           const { dx: sdx, dy: sdy } = guides.snap(node.getBoundingClientRect())
           if (sdx || sdy) {
-            item.x += (sdx / rect.width) * 100
-            item.y += (sdy / rect.height) * 100
+            const [lx, ly] = localDelta((sdx / rect.width) * 100, (sdy / rect.height) * 100, this._groupOf(item), rect.width, rect.height)
+            item.x += lx
+            item.y += ly
             clamp(); paint()
           }
         }
@@ -1619,10 +2057,11 @@ export class ArtworkOverlay {
         const cyClient = A.sy === 0 ? cyFixed : A.ay + A.sy * (r.height * f) / 2
         const host = this.host.getBoundingClientRect()
         item.scale = s
-        item.x = (cxClient - host.left) / host.width * 100
-        item.y = (cyClient - host.top) / host.height * 100
-        node.style.left = `${item.x}%`
-        node.style.top = `${item.y}%`
+        // Where the middle is on screen, as the layer's own place (inside its group, when it has one).
+        const own = releaseMember({ x: (cxClient - host.left) / host.width * 100, y: (cyClient - host.top) / host.height * 100 }, this._groupOf(item), host.width, host.height)
+        item.x = own.x
+        item.y = own.y
+        this._place(node, item)
         node.style.height = `${this._heightPct(item)}%`   // scale lives in height, not transform
         this._syncChrome(item)
       }
@@ -1660,17 +2099,21 @@ export class ArtworkOverlay {
       this.select(artObjId(item.asset_id))
       this._dragNode = node
 
-      const r = node.getBoundingClientRect()
-      const cx = r.left + r.width / 2
-      const cy = r.top + r.height / 2
+      // It turns about its pivot (its middle unless moved), carried by its group when it has one.
+      const host = this.host.getBoundingClientRect()
+      const at = this._disp(item)
+      const [pxl, pyl] = layerPivotAt({ cx: (at.x / 100) * host.width, cy: (at.y / 100) * host.height, bw: node.offsetWidth, bh: node.offsetHeight, pivot: layerPivot(item) })
+      const cx = host.left + pxl
+      const cy = host.top + pyl
+      const turnedBy = this._groupOf(item)?.rotation ?? 0
       const angleAt = (ev) => Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI
-      const grabbed = angleAt(e) - (item.rotation || 0)
+      const grabbed = angleAt(e) - at.rotation
 
       const onMove = (ev) => {
         let deg = angleAt(ev) - grabbed
         if (ev.shiftKey) deg = Math.round(deg / 15) * 15
         // Keep it in -180..180 so the saved value stays readable and the slider agrees with it.
-        item.rotation = Math.round(((deg + 540) % 360 - 180) * 10) / 10
+        item.rotation = Math.round(((deg - turnedBy + 540) % 360 - 180) * 10) / 10
         node.style.transform = this._transform(item)
         this._syncChrome(item)
       }
@@ -1704,6 +2147,8 @@ export class ArtworkOverlay {
       // render put the layer back flat. It looked like the handle "didn't register"; in fact it
       // worked perfectly and nothing was listening.
       rotation: Math.round((item.rotation || 0) * 10) / 10,
+      // The point it turns about, once moved (art-groups.js); a layer never given one sends none.
+      ...(Number.isFinite(item.pivot_x) && Number.isFinite(item.pivot_y) ? { pivot_x: item.pivot_x, pivot_y: item.pivot_y } : {}),
       anchor: item.anchor,
       lng: Number.isFinite(item.lng) ? item.lng : null,
       lat: Number.isFinite(item.lat) ? item.lat : null,

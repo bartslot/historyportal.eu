@@ -106,6 +106,17 @@ const REGISTRY = {
     P('tint_opacity', 'Colour %', 'linear', ''),
   ],
   /**
+   * A group of pictures (shot.groups[], scene/art-groups.js): its move from where it was made, its size and turn about
+   * its pivot, and its fade, carried onto every picture in it.
+   */
+  grp: [
+    P('x', 'X', 'linear', '%'),
+    P('y', 'Y', 'linear', '%'),
+    P('scale', 'Scale', 'linear', '%'),
+    P('rotation', 'Angle', 'angle', '°'),
+    P('opacity', 'Opacity', 'linear', ''),
+  ],
+  /**
    * A speech or thought balloon (config.lines, BalloonLayer.balloonValue): where its middle is, its
    * size and opacity, and its tail: the tip, the root on the outline (0..1) and the bend.
    */

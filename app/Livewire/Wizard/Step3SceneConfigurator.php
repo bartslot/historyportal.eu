@@ -35,6 +35,7 @@ use App\Livewire\Wizard\Concerns\EditsTitleScreen;
 use App\Livewire\Wizard\Concerns\EditsVoyageCheckpoints;
 use App\Livewire\Wizard\Concerns\EditsWithSpark;
 use App\Livewire\Wizard\Concerns\FixesLessonProblems;
+use App\Livewire\Wizard\Concerns\GroupsSceneArtwork;
 use App\Livewire\Wizard\Concerns\GroupsStage25dLayers;
 use App\Livewire\Wizard\Concerns\GuardsLessonClaims;
 use App\Livewire\Wizard\Concerns\LocksSceneObjects;
@@ -117,7 +118,11 @@ class Step3SceneConfigurator extends Component
     use EditsVoyageCheckpoints;
     use EditsWithSpark;
     use FixesLessonProblems;
+    use GroupsSceneArtwork;
     use GroupsStage25dLayers;
+
+    /** The selected group of pictures on a flat scene (GroupsSceneArtwork): its id ('g1'), or null. */
+    public ?string $activeArtGroupId = null;
     use GuardsLessonClaims;
     use LocksSceneObjects;
     use RestylesImages;
@@ -381,6 +386,8 @@ class Step3SceneConfigurator extends Component
             'focus' => SceneSplit::focus($shot['focus'] ?? null),
             // A split panel's own colour, drawn behind (or instead of) its picture.
             'background_color' => $shot['background_color'] ?? null,
+            // Its groups of pictures (ArtworkGroups): a parent transform over the layers that name them.
+            'groups' => \App\Services\Editor\ArtworkGroups::payload($shot['groups'] ?? null),
             // Multiplane layers (E3c): [{path|url, depth, kind, scale, height, sway}] back→front.
             'layers' => collect($shot['layers'] ?? [])->map(fn ($l) => [
                 'url' => ! empty($l['path']) ? MediaUrl::versioned($l['path'], $ts) : ($l['url'] ?? null),
@@ -454,6 +461,8 @@ class Step3SceneConfigurator extends Component
                 'occlude' => ! empty($l['occlude']),
                 // Locked on the canvas (LocksSceneObjects).
                 'locked' => ! empty($l['locked']),
+                // The point it turns about and the group it moves with (ArtworkGroups, art-groups.js).
+                ...\App\Services\Editor\ArtworkGroups::layerPayload($l),
             ])->filter(fn ($l) => $l['url'] || $l['embed'] || $l['kind'] === SceneArrow::KIND)->values()->all() ?: null,
             // Keep a shot when it has EITHER a background image OR clipart layers. Map-backed scenes
             // (voyage / map) carry layer-only shots — the MAP is the backdrop, so there's no image_url,
@@ -1128,9 +1137,19 @@ class Step3SceneConfigurator extends Component
         $this->activeDioramaId = null;
         $this->activeStage25dLayer = null;
         $this->activeBalloonId = null;
+        $this->activeArtGroupId = null;
         $this->panelView = 'scene';
 
         if (! $objectId) {
+            return;
+        }
+
+        // A group of pictures (the canvas selects 'grp_<id>'): its own panel.
+        if (preg_match('/^grp_([A-Za-z0-9_-]+)$/', $objectId, $m) === 1) {
+            if (collect($this->artGroupsOfScene())->contains('id', $m[1])) {
+                $this->activeArtGroupId = $m[1];
+            }
+
             return;
         }
 
@@ -1340,6 +1359,11 @@ class Step3SceneConfigurator extends Component
         }
         if (preg_match('/^art_(\d+)$/', $objectId, $m)) {
             $this->detachArtwork((int) $m[1]);
+
+            return;
+        }
+        if (preg_match('/^grp_([A-Za-z0-9_-]+)$/', $objectId, $m) === 1) {
+            $this->removeArtworkGroup($m[1]);   // the group with its pictures, as in Photoshop
 
             return;
         }
@@ -2619,6 +2643,8 @@ class Step3SceneConfigurator extends Component
                 'art' => ['x', 'y', 'width', 'height', 'scale', 'rotation', 'blur', 'opacity', 'tint', 'tint_opacity'],
                 // A vector arrow: its start (x, y) and its end, bend, width and head (SceneArrow::KEYS).
                 'arw' => ['x', 'y', ...SceneArrow::KEYS],
+                // A group of pictures (ArtworkGroups): its move, size, turn and fade.
+                'grp' => ['x', 'y', 'scale', 'rotation', 'opacity'],
                 'bal' => SpeechBalloons::TIMELINE_PROPERTIES,
                 default => [],
             };

@@ -29,7 +29,7 @@ import { initKeyedFields } from './ui/keyed-fields.js';
 import { initColorFields } from './ui/color-field.js';
 import { initRangeFill } from './ui/range-fill.js';
 import { initNumericFields } from './ui/numeric-field.js';
-import { layerOverlay, setLayerPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
+import { layerOverlay, setLayerPropEverywhere, setGroupPropEverywhere, selectLayerEverywhere } from './scene/layer-overlays.js';
 import { isTypingTarget } from './ui/keyboard.js';
 import { installEditSteps } from './editor/edit-steps.js';
 import { routePaste, OBJECTS_MARK } from './ui/paste-router.js';
@@ -41,6 +41,7 @@ import { installStageZoom } from './editor/stage-zoom.js';
 import { drawTool } from './editor/draw-layer.js';
 import { pendingCode as pendingTestSession } from './test-session/pending.js';
 import { resolveDrop, shieldListFromAlpine } from './scene/object-list-drop.js';
+import { registerArtGroupInspector } from './editor/art-group-inspector.js';
 import './scene/choices-preview.js';   // the Choices layer shown on the editor's stage while it is selected
 
 window.Sortable = Sortable;
@@ -135,6 +136,8 @@ initImageZoom();
 // resources/js/scene/layer-overlays.js — the panel's live previews all go through these.
 window.__layerOverlay = layerOverlay;
 window.__setLayerProp = setLayerPropEverywhere;
+window.__setGroupProp = setGroupPropEverywhere;
+registerArtGroupInspector();   // the group panel and the pivot presets (Alpine x-data, art-groups.js)
 window.__selectLayer = selectLayerEverywhere;
 
 // The rotation dial: x-data="layerAngleRow({ ... })". Same global-factory pattern.
