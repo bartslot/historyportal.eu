@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Support;
 
-use App\Livewire\Wizard\Concerns\EditsSceneArtwork;
+use App\Livewire\Wizard\Step3SceneConfigurator;
 use App\Support\MediaUrl;
 
 /**
@@ -21,7 +21,7 @@ use App\Support\MediaUrl;
  *     blur    0..20    px of frosted glass behind it (absent = 10, how every older panel looked)
  *     image   a picture of this scene (sceneImages), drawn as a zoomed crop
  *     focus   ['x', 'y', 'zoom'?] the crop of that picture, as a split panel's (SceneSplit::focus)
- *     wash    null | a paper edge (EditsSceneArtwork::PAPER_MASKS): a watercolour edge and paper tooth
+ *     wash    null | a paper edge (Step3SceneConfigurator::PAPER_MASKS): a watercolour edge and paper tooth
  *
  * resources/js/scene/backing-panel.js reads the same fields for the editor and the player.
  */
@@ -73,7 +73,7 @@ final class BackingPanel
                 $out['focus'] = $focus;
             }
         }
-        if (in_array($t['wash'] ?? null, EditsSceneArtwork::PAPER_MASKS, true)) {
+        if (in_array($t['wash'] ?? null, Step3SceneConfigurator::PAPER_MASKS, true)) {
             $out['wash'] = $t['wash'];
         }
         // Stacking order set by drag-reorder in the object list (higher = in front).
