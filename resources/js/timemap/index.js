@@ -17,7 +17,7 @@ import supplementalMarkers from './markers.json';
 import { handTerritories, provenanceFor } from './hand-territories.js';
 import theme from './theme.json';
 import qidOverrides from '../../../database/data/cliopatria-qid-overrides.json';
-import { voyageStyleSources, voyageStyleLayers, initVoyages, ensureVoyagePill, VOYAGE_PILL, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
+import { voyageStyleSources, voyageStyleLayers, initVoyages, applyVoyageYear, applyVoyageStyle, smooth, VOYAGE_HIT_WIDTH } from './voyages.js';
 import { initVoyageInteraction } from './voyage-interact.js';
 import { loadVoyageCard } from './voyage-card.js';
 import { dateAtSample } from './voyage-hover.js';
@@ -180,9 +180,6 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     // below instead, collapsed and in the corner. See addControl.
     attributionControl: false,
   });
-  // The route-name pill is drawn on demand, the first time the label layer asks for it, and again
-  // after any style reload.
-  map.on('styleimagemissing', (e) => { if (e.id === VOYAGE_PILL) ensureVoyagePill(map); });
 
   /**
    * The credit, back — as a mark you open, not a strip across the globe.
@@ -1449,7 +1446,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
           apply: (v) => ownedPaint('voyage-label', 'text-color', v) },
         { key: 'voyageLabelHalo', label: 'Name halo', type: 'color', value: '#0f172a',
           apply: (v) => ownedPaint('voyage-label', 'text-halo-color', v) },
-        { key: 'voyageLabelHaloWidth', label: 'Name halo width', min: 0, max: 4, step: 0.1, value: 0,
+        { key: 'voyageLabelHaloWidth', label: 'Name halo width', min: 0, max: 4, step: 0.1, value: 1.5,
           apply: (v) => ownedPaint('voyage-label', 'text-halo-width', v) },
         // Layout, not paint — it cannot be transitioned and does not read feature-state, so it is
         // set directly rather than through ownedPaint.
@@ -2347,7 +2344,7 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       return;
     }
 
-    // Voyage name pills and routes are explicit click/tap targets. Prefer the visible name
+    // Voyage names and routes are explicit click/tap targets. Prefer the visible name
     // when it overlaps a different route. The hit line already has its own tolerance.
     const voyageLabel = map.getLayer('voyage-label')
       && map.queryRenderedFeatures(e.point, { layers: ['voyage-label'] })[0];
