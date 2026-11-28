@@ -19,7 +19,7 @@ export const textObjects = () => {
     target: `${t.kind === 'rect' ? 'rect' : 'text'}:${t.id}`,
     kind: t.kind === 'rect' ? 'rect' : 'text',
     label: t.kind === 'rect'
-      ? `${t.side || 'left'} half`
+      ? `${t.side === 'full' ? 'Full screen' : `${t.side || 'left'} half`}`
       : (String(t.text || 'Text').trim().slice(0, 28) || 'Text'),
   }))
 }

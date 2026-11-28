@@ -92,11 +92,14 @@ class TextLayerInspectorTest extends TestCase
         $this->assertArrayNotHasKey('color', $this->text());
     }
 
+    // A backing panel can be a solid background now (BackingPanel::OPACITY), never invisible.
     public function test_a_backing_panel_keeps_its_own_opacity_range(): void
     {
-        $this->wizard()->call('updateSceneText', 'rect_a', 'opacity', 1);
+        $wizard = $this->wizard()->call('updateSceneText', 'rect_a', 'opacity', 3);
+        $this->assertEquals(1.0, $this->text('rect_a')['opacity']);
 
-        $this->assertEquals(0.95, $this->text('rect_a')['opacity']);
+        $wizard->call('updateSceneText', 'rect_a', 'opacity', 0);
+        $this->assertEquals(0.1, $this->text('rect_a')['opacity']);
     }
 
     // The canvas saves every text through sceneTextsChanged on each drag and edit. A field it did

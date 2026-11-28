@@ -33,6 +33,7 @@ import { letterComicAmerica } from '../comic-america.js'
 import { applyReveal, clearReveal } from './text-reveal.js'
 import { handleCss } from './stage-handle.js'
 import { passPress } from './pass-press.js'
+import { drawPanel } from './backing-panel.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -412,8 +413,8 @@ export class TextOverlayLayer {
   }
 
   /**
-   * Add a half-screen backing panel (left or right) — a legibility scrim so text
-   * reads over busy paintings. A preset, not a freeform shape: side + colour + opacity.
+   * Add a backing panel (backing-panel.js) on the left or the right half: a scrim so text reads
+   * over busy paintings. Its inspector then moves it, fills it and gives it a watercolour edge.
    */
   addRect(side = 'left') {
     if (!this.editable) return
@@ -489,29 +490,20 @@ export class TextOverlayLayer {
     this._emitChange()
   }
 
-  // ── Rectangle panels (backing scrim) ─────────────────────────────────────
-  _rectStyle(item) {
-    const edge = item.side === 'right' ? 'right:0;' : 'left:0;'
-    const op = Number.isFinite(item.opacity) ? item.opacity : 0.5
-    return `position:absolute; top:0; bottom:0; ${edge} width:50%;
-      background:${hexToRgba(item.color || '#0f172a', op)};
-      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);`
-  }
-
+  // ── Backing panels (backing-panel.js: where it sits, its fill, its watercolour edge) ──
   _readonlyRect(item) {
     const node = document.createElement('div')
     node.dataset.textId = item.id
-    node.style.cssText = this._rectStyle(item) + 'pointer-events:none;'
-    return node
+    node.style.cssText = 'pointer-events:none;'
+    return drawPanel(node, item)
   }
 
   _editableRect(item) {
     const node = document.createElement('div')
     node.dataset.textId = item.id
-    node.style.cssText = this._rectStyle(item) +
-      'pointer-events:auto; cursor:pointer;'
+    node.style.cssText = 'pointer-events:auto; cursor:pointer;'
     node.addEventListener('pointerdown', (e) => { if (!this._passLocked(item, node, e)) this.select(item.id) })
-    return node
+    return drawPanel(node, item)
   }
 
   _baseNode(item) {
