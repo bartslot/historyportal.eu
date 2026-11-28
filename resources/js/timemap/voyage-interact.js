@@ -121,7 +121,7 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
     if (frame) { cancelAnimationFrame(frame); frame = 0; }
     release();
   });
-  // The permanent route-name pill is also an explicit click target.
+  // The permanent route name is also an explicit click target.
   map.on('mouseenter', 'voyage-label', () => { map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', 'voyage-label', () => { map.getCanvas().style.cursor = ''; });
   // A drag or zoom moves the line out from under a still pointer; discard any queued preview.
