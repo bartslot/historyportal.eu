@@ -460,6 +460,11 @@ export class SplitStage {
   }
 
   /** The narration clock: balloons come and go. */
+  /** Hide each panel's figures whose timeline bar has ended by scene time t (ArtworkOverlay.applyLeaves). */
+  applyLeaves (t) {
+    for (const p of this.panels) p.overlay?.applyLeaves(t)
+  }
+
   setTime (t) {
     for (const p of this.panels) p.balloons.update(t)
   }

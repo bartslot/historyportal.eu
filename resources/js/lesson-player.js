@@ -2879,16 +2879,26 @@ Alpine.data('lessonGame', (lesson) => ({
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
       const camEnd = cameraEnd(timeline)
-      const clock = () => (scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : (performance.now() - started) / 1000)
+      // A silent scene's clock stands still while the class has paused, as its hold does (setPlaybackPaused).
+      let silent = 0
+      let last = started
+      const clock = (now) => {
+        if (!this.playbackPaused) silent += (now - last) / 1000
+        last = now
+        return scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : silent
+      }
       const step = () => {
         if (epoch !== this._playEpoch) return
-        const t = clock()
+        const t = clock(performance.now())
         if (animated) {
           const frame = frameAt(timeline, t)
           if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
           applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
         }
-        if (leaves) this._artLayer?.applyLeaves(t)
+        if (leaves) {
+          this._artLayer?.applyLeaves(t)
+          _split?.applyLeaves(t)   // a split scene's figures live in its panels
+        }
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)
