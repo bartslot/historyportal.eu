@@ -3247,7 +3247,18 @@
     "Click to add a checkpoint, drag to bend the route": "Klik om een checkpoint toe te voegen, sleep om de route te buigen",
     "Old audio": "Oude audio",
     "The words changed. Re-narrate in the Script tab to hear them.": "De tekst is veranderd. Laat hem opnieuw inspreken in het tabblad Script om hem te horen.",
-    "You're offline. Nothing can be saved until the connection is back.": "Je bent offline. Er kan niets worden opgeslagen tot de verbinding terug is.",
+    "Full screen": "Volledig scherm",
+    "Top half": "Bovenhelft",
+    "Bottom half": "Onderhelft",
+    "Night glass": "Nachtglas",
+    "Scene wash": "Scènekleur",
+    "Light glass": "Licht glas",
+    "Close-up": "Close-up",
+    "Presets": "Voorinstellingen",
+    "Scene colours": "Kleuren van de scène",
+    "This scene has no pictures yet.": "Deze scène heeft nog geen afbeeldingen.",
+    "Frosted glass": "Matglas",
+    "Watercolour edge": "Waterverfrand",
     ":name is editing this scene offline": ":name bewerkt deze scène offline",
     "That email and password did not work on :site.": "Dat e-mailadres en wachtwoord werken niet op :site.",
     "Sign in to :site first.": "Log eerst in op :site.",
@@ -3288,5 +3299,6 @@
     "{1} 1 scene|[0,*] :count scenes": "{1} 1 scène|[0,*] :count scènes",
     "Take offline": "Offline nemen",
     "Offline copy": "Offline kopie",
-    "Bring this lesson back online": "Deze les weer online zetten"
+    "Bring this lesson back online": "Deze les weer online zetten",
+    "You're offline. Nothing can be saved until the connection is back.": "Je bent offline. Er kan niets worden opgeslagen tot de verbinding terug is."
 }

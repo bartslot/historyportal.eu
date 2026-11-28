@@ -3247,7 +3247,18 @@
     "Click to add a checkpoint, drag to bend the route": "Haz clic para añadir un punto de paso, arrastra para curvar la ruta",
     "Old audio": "Audio antiguo",
     "The words changed. Re-narrate in the Script tab to hear them.": "El texto ha cambiado. Vuelve a narrarlo en la pestaña Guion para oírlo.",
-    "You're offline. Nothing can be saved until the connection is back.": "Estás sin conexión. No se puede guardar nada hasta que vuelva la conexión.",
+    "Full screen": "Pantalla completa",
+    "Top half": "Mitad superior",
+    "Bottom half": "Mitad inferior",
+    "Night glass": "Cristal nocturno",
+    "Scene wash": "Aguada de la escena",
+    "Light glass": "Cristal claro",
+    "Close-up": "Primer plano",
+    "Presets": "Ajustes rápidos",
+    "Scene colours": "Colores de la escena",
+    "This scene has no pictures yet.": "Esta escena aún no tiene imágenes.",
+    "Frosted glass": "Cristal esmerilado",
+    "Watercolour edge": "Borde de acuarela",
     ":name is editing this scene offline": ":name está editando esta escena sin conexión",
     "That email and password did not work on :site.": "Ese correo y esa contraseña no funcionan en :site.",
     "Sign in to :site first.": "Inicia sesión primero en :site.",
@@ -3288,5 +3299,6 @@
     "{1} 1 scene|[0,*] :count scenes": "{1} 1 escena|[0,*] :count escenas",
     "Take offline": "Llevar sin conexión",
     "Offline copy": "Copia sin conexión",
-    "Bring this lesson back online": "Volver a poner esta lección en línea"
+    "Bring this lesson back online": "Volver a poner esta lección en línea",
+    "You're offline. Nothing can be saved until the connection is back.": "Estás sin conexión. No se puede guardar nada hasta que vuelva la conexión."
 }

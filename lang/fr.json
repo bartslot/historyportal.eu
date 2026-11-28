@@ -3205,7 +3205,18 @@
     "Click to add a checkpoint, drag to bend the route": "Cliquez pour ajouter un point de passage, glissez pour courber l'itinéraire",
     "Old audio": "Ancien audio",
     "The words changed. Re-narrate in the Script tab to hear them.": "Le texte a changé. Refaites la narration dans l'onglet Script pour l'entendre.",
-    "You're offline. Nothing can be saved until the connection is back.": "Vous êtes hors ligne. Rien ne peut être enregistré tant que la connexion n'est pas revenue.",
+    "Full screen": "Plein écran",
+    "Top half": "Moitié haute",
+    "Bottom half": "Moitié basse",
+    "Night glass": "Verre de nuit",
+    "Scene wash": "Lavis de la scène",
+    "Light glass": "Verre clair",
+    "Close-up": "Gros plan",
+    "Presets": "Préréglages",
+    "Scene colours": "Couleurs de la scène",
+    "This scene has no pictures yet.": "Cette scène n'a pas encore d'images.",
+    "Frosted glass": "Verre dépoli",
+    "Watercolour edge": "Bord aquarelle",
     ":name is editing this scene offline": ":name modifie cette scène hors ligne",
     "That email and password did not work on :site.": "Cet e-mail et ce mot de passe ne fonctionnent pas sur :site.",
     "Sign in to :site first.": "Connectez-vous d'abord à :site.",
@@ -3246,5 +3257,6 @@
     "{1} 1 scene|[0,*] :count scenes": "{1} 1 scène|[0,*] :count scènes",
     "Take offline": "Mettre hors ligne",
     "Offline copy": "Copie hors ligne",
-    "Bring this lesson back online": "Remettre cette leçon en ligne"
+    "Bring this lesson back online": "Remettre cette leçon en ligne",
+    "You're offline. Nothing can be saved until the connection is back.": "Vous êtes hors ligne. Rien ne peut être enregistré tant que la connexion n'est pas revenue."
 }

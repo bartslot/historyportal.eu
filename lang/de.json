@@ -3205,7 +3205,18 @@
     "Click to add a checkpoint, drag to bend the route": "Klicken für einen Checkpoint, ziehen, um die Route zu biegen",
     "Old audio": "Alte Aufnahme",
     "The words changed. Re-narrate in the Script tab to hear them.": "Der Text hat sich geändert. Lass ihn im Tab Skript neu einsprechen, um ihn zu hören.",
-    "You're offline. Nothing can be saved until the connection is back.": "Du bist offline. Bis die Verbindung zurück ist, kann nichts gespeichert werden.",
+    "Full screen": "Ganzer Bildschirm",
+    "Top half": "Obere Hälfte",
+    "Bottom half": "Untere Hälfte",
+    "Night glass": "Nachtglas",
+    "Scene wash": "Szenenfarbe",
+    "Light glass": "Helles Glas",
+    "Close-up": "Nahaufnahme",
+    "Presets": "Vorlagen",
+    "Scene colours": "Farben der Szene",
+    "This scene has no pictures yet.": "Diese Szene hat noch keine Bilder.",
+    "Frosted glass": "Milchglas",
+    "Watercolour edge": "Aquarellrand",
     ":name is editing this scene offline": ":name bearbeitet diese Szene offline",
     "That email and password did not work on :site.": "Diese E-Mail und dieses Passwort funktionieren auf :site nicht.",
     "Sign in to :site first.": "Melde dich zuerst bei :site an.",
@@ -3246,5 +3257,6 @@
     "{1} 1 scene|[0,*] :count scenes": "{1} 1 Szene|[0,*] :count Szenen",
     "Take offline": "Offline nehmen",
     "Offline copy": "Offline-Kopie",
-    "Bring this lesson back online": "Diese Lektion wieder online bringen"
+    "Bring this lesson back online": "Diese Lektion wieder online bringen",
+    "You're offline. Nothing can be saved until the connection is back.": "Du bist offline. Bis die Verbindung zurück ist, kann nichts gespeichert werden."
 }

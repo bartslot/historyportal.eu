@@ -1229,7 +1229,11 @@
             <x-lesson.title-screen-inspector :lesson="$lesson" />
             @elseif ($activeTextId && ($activeText = $this->activeText))
             {{-- Text and backing-panel controls live in Format, never over the canvas object. --}}
-            <x-lesson.scene-text-inspector :text="$activeText" :scene="$this->selectedSceneModel" />
+            @if (($activeText['kind'] ?? null) === 'rect')
+                <x-lesson.backing-panel-inspector :panel="$activeText" :images="$this->backingPanelImages" />
+            @else
+                <x-lesson.scene-text-inspector :text="$activeText" :scene="$this->selectedSceneModel" />
+            @endif
             @elseif ($activeBalloonId && ($activeBalloon = $this->activeBalloon))
             {{-- A speech or thought balloon: its words, its type, who it points at. --}}
             <x-lesson.balloon-inspector :balloon="$activeBalloon" :speakers="$this->balloonSpeakers()" />
@@ -2097,7 +2101,7 @@
                 // locked: the canvas lets presses through (the right-click menu's Lock); pinnable/pinned: Pin to map, on a live map only.
                 const textPin = !!window.__lessonTextLayer?.canPin?.();
                 const textItems = withZ.map(({ t }) => t.kind === 'rect'
-                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: t.side === 'right' ? @js(__('Right half')) : @js(__('Left half')), bg: false, text: true, locked: !!t.locked }
+                    ? { id: t.id, icon: t.side === 'right' ? 'panelR' : 'panelL', label: ({ full: @js(__('Full screen')), right: @js(__('Right half')), top: @js(__('Top half')), bottom: @js(__('Bottom half')) })[t.side] ?? @js(__('Left half')), bg: false, text: true, locked: !!t.locked }
                     : { id: t.id, icon: 'text', label: (t.text || @js(__('Text'))).slice(0, 40), bg: false, text: true, locked: !!t.locked, pinnable: textPin, pinned: t.anchor === 'map' });
                 // Clipart / artwork / embed layers (own overlay, drag-reorderable). _layers is bottom-first
                 // (last painted = on top), so reverse it to list front-most first like the text rows.
