@@ -2724,6 +2724,7 @@
 
         {{-- Right group: who else is here | Help | Settings, then Publish in the far corner --}}
         <div class="flex items-stretch gap-0.5">
+        <x-editor.offline-copy-badge :lesson="$lesson" />
         <x-editor.collab-people :lesson="$lesson" />
         {{-- Help leaves the lesson (a new tab, the help centre), so a divider keeps it apart from
              the two things you do TO the lesson. Bart tried it centred first: it read as weird. --}}

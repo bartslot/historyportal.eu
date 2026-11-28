@@ -7,7 +7,7 @@
     <div x-cloak x-show="$store.collab && !$store.collab.mine && $store.collab.holder" class="collab-lock" data-collab-lock>
         <div class="collab-lock-bar alert">
             <span class="collab-avatar" :style="`--collab-color: ${$store.collab?.holder?.color}`" x-text="$store.collab?.holder?.initials"></span>
-            <span class="text-prose" x-text="@js(__(':name is editing this scene')).replace(':name', $store.collab?.holder?.name ?? '')"></span>
+            <span class="text-prose" x-text="($store.collab?.holder?.offline ? @js(__(':name is editing this scene offline')) : @js(__(':name is editing this scene'))).replace(':name', $store.collab?.holder?.name ?? '')"></span>
             <button type="button" class="btn btn-sm btn-primary" @click="window.__lessonCollab?.takeOver()">{{ __('Take over') }}</button>
         </div>
     </div>

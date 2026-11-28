@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogManifestController;
 use App\Http\Controllers\Api\ImageRelayController;
 use App\Http\Controllers\Api\LessonTeamController;
+use App\Http\Controllers\Api\OfflineLessonController;
 use App\Http\Controllers\Api\StudentLessonController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
         Route::get('/user', fn (Request $request) => $request->user())->name('user');
+
+        // ── Offline editing: a laptop's own History Portal takes a lesson offline and brings it back ──
+        Route::prefix('offline')->name('offline.')->middleware('throttle:120,1')->group(function () {
+            Route::get('/lessons', [OfflineLessonController::class, 'index'])->name('lessons.index');
+            Route::get('/lessons/{lesson:lesson_code}', [OfflineLessonController::class, 'show'])->name('lessons.show');
+            Route::post('/lessons/{lesson:lesson_code}/media/existing', [OfflineLessonController::class, 'existing'])->name('lessons.media.existing');
+            Route::post('/lessons/{lesson:lesson_code}/media', [OfflineLessonController::class, 'media'])->name('lessons.media');
+            Route::post('/lessons/{lesson:lesson_code}/push', [OfflineLessonController::class, 'push'])->name('lessons.push');
+            Route::post('/lessons/{lesson:lesson_code}/release', [OfflineLessonController::class, 'release'])->name('lessons.release');
+        });
 
         // ── Student endpoints (Flutter app) ───────────────────────────────
         Route::middleware('role:student')->prefix('student')->name('student.')->group(function () {

@@ -2,7 +2,10 @@
      (the same lock the collab overlay uses) until the browser is back online, instead of clicks silently doing
      nothing (Bart, 2026-11-28, on a flight). Browser online/offline events, so it also clears by itself.
      The overlay only stops the pointer, so keys are stopped too: the focused field is left and typing and the
-     editor's shortcuts are swallowed in the capture phase, before any editor handler sees them. --}}
+     editor's shortcuts are swallowed in the capture phase, before any editor handler sees them.
+     Not on a computer running its own copy (local, or keeping offline copies): the server is on the same
+     machine there, so editing works with no connection at all, which is the point of offline copies. --}}
+@if (config('offline_sync.remote') === '' && ! app()->environment('local'))
 <div wire:ignore
      x-data="{
         offline: ! navigator.onLine,
@@ -18,3 +21,4 @@
         </div>
     </div>
 </div>
+@endif
