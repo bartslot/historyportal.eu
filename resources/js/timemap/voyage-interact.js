@@ -10,10 +10,7 @@ import { dateAtSample, formatVoyageDate, landTransportAtSample, nearestOnRoute, 
 // goes, the ships go back to their own lap.
 
 const LABEL_GAP_PX = 18;          // label sits this far above the snapped point
-// Resting the pointer on a route this long opens its journey (Bart, 2026-11-26: "hovering over a
-// route line, should open the journey"). Long enough that sweeping across the map past a route
-// does not open it, short enough that it feels like the hover did it.
-const DWELL_MS = 450;
+// Hover only previews a voyage; opening its card requires an explicit click/tap (index.js).
 
 const routes = new Map(voyagesData.voyages.map((v) => [v.id, { voyage: v, coords: smooth(v.waypoints) }]));
 
@@ -47,7 +44,7 @@ const makeLabel = (container) => {
  *   returns the voyage-ships handle once its lazy chunk has loaded (null before); transportNames are the
  *   overland transports' names in the page language ({ camel: 'Kameel' }), from the Blade view
  */
-export function initVoyageInteraction(map, { ships, locale = 'en', transportNames = {}, onDwell = null } = {}) {
+export function initVoyageInteraction(map, { ships, locale = 'en', transportNames = {} } = {}) {
   // Into the map's WRAPPER, not the map: MapLibre's canvas paints over anything inside its own
   // container, and the map element itself is shifted to centre the globe above the deck.
   const host = map.getContainer().parentElement || map.getContainer();
@@ -57,17 +54,7 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
   let pending = null;       // the latest { id, lngLat } under the pointer, consumed once per frame
   let frame = 0;
   let playing = null;       // the voyage the camera is following: hover stands aside meanwhile
-  let dwellId = null;
-  let dwellTimer = 0;
-
-  const stopDwell = () => {
-    if (dwellTimer) window.clearTimeout(dwellTimer);
-    dwellTimer = 0;
-    dwellId = null;
-  };
-
   const release = () => {
-    stopDwell();
     if (playing) return;
     if (pinned) ships()?.setTourProgress(pinned, null);
     pinned = null;
@@ -112,11 +99,6 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
 
     showLabel(route, hit.sample, hit.lng, hit.lat);
 
-    if (onDwell && dwellId !== id) {
-      stopDwell();
-      dwellId = id;
-      dwellTimer = window.setTimeout(() => { dwellTimer = 0; onDwell(id); }, DWELL_MS);
-    }
   };
 
   const onFrame = () => {
@@ -139,8 +121,15 @@ export function initVoyageInteraction(map, { ships, locale = 'en', transportName
     if (frame) { cancelAnimationFrame(frame); frame = 0; }
     release();
   });
-  // A drag or zoom moves the line out from under a still pointer; the label would float.
-  map.on('movestart', release);
+  // The permanent route-name pill is also an explicit click target.
+  map.on('mouseenter', 'voyage-label', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'voyage-label', () => { map.getCanvas().style.cursor = ''; });
+  // A drag or zoom moves the line out from under a still pointer; discard any queued preview.
+  map.on('movestart', () => {
+    pending = null;
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    release();
+  });
 
   return {
     select(id) {
