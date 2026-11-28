@@ -3246,5 +3246,6 @@
     "Checkpoint: click to show, drag to move": "Checkpoint: klik om te tonen, sleep om te verplaatsen",
     "Click to add a checkpoint, drag to bend the route": "Klik om een checkpoint toe te voegen, sleep om de route te buigen",
     "Old audio": "Oude audio",
-    "The words changed. Re-narrate in the Script tab to hear them.": "De tekst is veranderd. Laat hem opnieuw inspreken in het tabblad Script om hem te horen."
+    "The words changed. Re-narrate in the Script tab to hear them.": "De tekst is veranderd. Laat hem opnieuw inspreken in het tabblad Script om hem te horen.",
+    "You're offline. Nothing can be saved until the connection is back.": "Je bent offline. Er kan niets worden opgeslagen tot de verbinding terug is."
 }

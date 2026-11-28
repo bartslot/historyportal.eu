@@ -3553,6 +3553,9 @@
     {{-- Somebody else holds the scene on screen: read-only, with Take over (editor/collab.js). --}}
     <x-editor.collab-overlay :lesson="$lesson" />
 
+    {{-- No connection: pause the work area and say so (no edit can be saved offline). --}}
+    <x-editor.offline-lock />
+
     {{-- Scene rail (vertical, left edge): its own component, re-rendered only when what it shows changed (SceneRail).
          The selected thumb is announced to it here: the element is new whenever the selection changes. --}}
     <livewire:wizard.scene-rail :lesson-id="$lesson->id" :selected-scene-id="$selectedSceneId" :title-selected="$this->titleSelected" wire:key="scene-rail" />

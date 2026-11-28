@@ -3204,5 +3204,6 @@
     "Checkpoint: click to show, drag to move": "Punto di passaggio: clic per mostrare, trascina per spostare",
     "Click to add a checkpoint, drag to bend the route": "Clic per aggiungere un punto di passaggio, trascina per piegare il percorso",
     "Old audio": "Audio vecchio",
-    "The words changed. Re-narrate in the Script tab to hear them.": "Il testo è cambiato. Rifai la narrazione nella scheda Script per ascoltarlo."
+    "The words changed. Re-narrate in the Script tab to hear them.": "Il testo è cambiato. Rifai la narrazione nella scheda Script per ascoltarlo.",
+    "You're offline. Nothing can be saved until the connection is back.": "Sei offline. Non si può salvare nulla finché la connessione non torna."
 }
