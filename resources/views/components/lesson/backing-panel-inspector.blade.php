@@ -58,6 +58,7 @@
      watercolour edge the scene's picture can have (the Mask tab's shapes); and presets for all of it. --}}
 <div data-panel-inspector wire:key="panel-inspector-{{ $id }}"
      x-data="{
+        tab: 'format',
         fill: @js($image ? 'image' : 'color'),
         sceneColors: [],
         async init() {
@@ -92,7 +93,7 @@
         </button>
     </div>
 
-    <x-ui.panel-tabs class="mb-1" name="panel-tabs-{{ $id }}" model="'format'"
+    <x-ui.panel-tabs class="mb-1" name="panel-tabs-{{ $id }}" model="tab"
                      :tabs="[['format', __('Format'), \App\Support\TabIcons::FORMAT]]">
         <x-slot:breadcrumb>
             <x-ui.panel-breadcrumb :label="__('Scene')" wire:click="clearActiveText"
