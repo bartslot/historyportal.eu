@@ -276,11 +276,14 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
     if (!chromeInsetEnabled || chromeInsetLocked) return;
     const deck = document.querySelector('[data-timemap-deck]');
     if (!deck) return;
-    const box = el.getBoundingClientRect();
+    // Measure the unshifted wrapper so repeated resizes cannot compound the inset.
+    const box = (el.parentElement || el).getBoundingClientRect();
     const bar = deck.getBoundingClientRect();
-    // Clamped to a third: a deck taller than that means a viewport so short there would be nowhere
-    // left to draw the map at all.
-    const covered = Math.max(0, Math.min(box.bottom - bar.top, box.height / 3));
+    const deckOverlap = Math.max(0, Math.min(box.bottom - bar.top, box.height / 3));
+    // Move the projected centre an additional 5% of the available height above the
+    // deck-centred position, without changing camera zoom or geographic centre.
+    // Growing the top by 10% moves the container midpoint by 5%.
+    const covered = Math.round(Math.min(box.height * 0.43, deckOverlap + box.height * 0.10));
     if (Math.abs(parseFloat(el.style.top || '0') + covered) < 1) return;
     // BOTH, or the box slides instead of growing. MapLibre puts its own height on the container, so
     // moving the top alone translated the whole map upward and left a gap at the bottom of the
@@ -300,7 +303,9 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       return;
     }
     centreForChrome();
-    new ResizeObserver(centreForChrome).observe(deck);
+    const chromeObserver = new ResizeObserver(centreForChrome);
+    chromeObserver.observe(deck);
+    if (el.parentElement) chromeObserver.observe(el.parentElement);
   };
   watchDeck();
 
@@ -2160,8 +2165,6 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       ships: () => voyageShips,
       locale: document.documentElement.lang || 'en',
       transportNames: JSON.parse(el.dataset.transportNames || '{}'),
-      // Resting on a route opens its journey, as a click does.
-      onDwell: (id) => { if (voyageInteract?.selected !== id) openVoyage(id); },
     });
     // The sailing tall ship (three.js custom layer) rides in its own lazy chunk — same
     // below-the-clouds placement, same era window as the routes.
@@ -2344,9 +2347,12 @@ window.initTimeMap = function initTimeMap(el, wire, initialYear) {
       return;
     }
 
-    // Voyage routes next. Queried at the POINT, not the marker box: the hit line already carries
-    // the 10px either side, and the box on top of it would make that 17.
-    const voyage = map.getLayer('voyage-hit') && map.queryRenderedFeatures(e.point, { layers: ['voyage-hit'] })[0];
+    // Voyage name pills and routes are explicit click/tap targets. Prefer the visible name
+    // when it overlaps a different route. The hit line already has its own tolerance.
+    const voyageLabel = map.getLayer('voyage-label')
+      && map.queryRenderedFeatures(e.point, { layers: ['voyage-label'] })[0];
+    const voyage = voyageLabel || (map.getLayer('voyage-hit')
+      && map.queryRenderedFeatures(e.point, { layers: ['voyage-hit'] })[0]);
     if (voyage) {
       openVoyage(voyage.properties.id);
       return;
