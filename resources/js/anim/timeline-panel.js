@@ -13,10 +13,15 @@ import { addKeyframe, sortedKeys, sameTime, segmentEasing, easingFn, keyStateAt,
 import { keyId, moveKeys, deleteKeys, rubberBand, snapToNearest } from './timeline-edit.js'
 import { propertiesFor, propertyFor, sampleFrame, kindOfTarget, INTERPOLATE, keyGroupTogether } from './properties.js'
 import { wordSpans, snapTime, wordAt, sentenceAt } from './narration-clock.js'
-import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
+import { storedNarrationStart } from './narration-start.js'
+import { loopRestarts, videoLengthLabel, probeVideoLength } from './video-clip.js'
+import { setLoopsPaused, seekLoops } from '../scene/picture-loop.js'
+import { textObjects, artObjects, balloonObjects, dioramaObjects, stage25dObjects, backgroundObjects, territoryObjects, readObjectProperty, writeObjectProperty, setObjectHidden, canHide } from './scene-objects.js'
 import { createSaveQueue } from './save-queue.js'
 import { introCameraTracks, isIntroCamera } from './scene-animation.js'
 import { applyTextPreset, PRESET_PROPERTIES, EXIT_PRESETS } from './text-presets.js'
+import { applyMapPreset, MAP_PRESET_PROPERTIES, MAP_EXIT_PRESETS } from './map-presets.js'
+import { applyCameraPreset } from './map-camera-presets.js'
 import { balloonPatch } from '../scene/BalloonLayer.js'
 import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from './stage25d-keys.js'
 
@@ -24,6 +29,7 @@ import { LAYER_KEY_FIELDS, WORD_FIELDS, keysFromTracks, tracksFromKeys } from '.
 const isLayerKeyTrack = (t) => LAYER_KEY_FIELDS.includes(t.property) || WORD_FIELDS.includes(t.property)
 import { clipOf, shiftClip, stretchClip } from '../scene/diorama/clip.js'
 import { sailClip, storedSail, sailProgressAt } from './sail-clip.js'
+import { cutTracks, cutCamera } from './timeline-cut.js'
 
 /** Which part of a diorama cell a row edits: X across, Z away from the camera. */
 const DIO_AXIS = { x: 0, z: 1 }
@@ -86,7 +92,53 @@ const KEY_MENU_H = 120
  */
 const SESSIONS = new Map()
 
-const isPinnedObject = (o) => o.kind === 'camera' || o.kind === 's25cam' || o.kind === 'sail'
+/**
+ * The scene's narration, one <audio> per scene, kept OUT of the Alpine component: a media element
+ * behind Alpine's reactive proxy misbehaves, and a scene switch rebuilds the component while the
+ * clip is still loaded and worth keeping (Bart, 2026-11-23: play in the timeline plays the voice).
+ */
+const NARRATION = new Map()
+
+/** The narration's preview volume in the editor, per teacher (not the lesson's: the class sets its own on the deck). */
+const VOLUME_KEY = 'timeline-narration-volume'
+const storedVolume = () => {
+  try { const v = Number(localStorage.getItem(VOLUME_KEY)); return localStorage.getItem(VOLUME_KEY) !== null && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1 } catch { return 1 }
+}
+
+/** The clip as peaks for the narration lane: one 0..1 loudness per bucket, at most `max` buckets. */
+export const audioPeaks = (samples, buckets) => {
+  const n = Math.max(1, Math.floor(buckets))
+  const size = Math.max(1, Math.floor(samples.length / n))
+  const peaks = []
+  let top = 0
+  for (let i = 0; i < n && i * size < samples.length; i++) {
+    let peak = 0
+    for (let j = i * size, end = Math.min(samples.length, j + size); j < end; j++) { const v = Math.abs(samples[j]); if (v > peak) peak = v }
+    peaks.push(peak)
+    if (peak > top) top = peak
+  }
+  return top > 0 ? peaks.map((p) => p / top) : peaks
+}
+
+/** Peaks as one SVG path in a `0 0 {peaks.length} 100` box: a bar per bucket, mirrored about the middle. */
+export const peaksPath = (peaks) => peaks.map((p, i) => {
+  const h = Math.max(1, p * 92)
+  return `M${i + 0.5} ${(50 - h / 2).toFixed(1)}v${h.toFixed(1)}`
+}).join('')
+
+/** Word spans on the scene's clock: the clip's own times moved along by where the clip starts. */
+export const shiftSpans = (spans, by) => (by ? spans.map((w) => ({ ...w, start: w.start + by, end: w.end + by })) : spans)
+
+/** The latest key on any track, so a timeline that follows the narration never cuts a key off. */
+const lastKeyTime = (tracks) => {
+  let last = 0
+  for (const t of tracks ?? []) for (const k of t?.keyframes ?? []) if (Number.isFinite(k?.time) && k.time > last) last = k.time
+  return last
+}
+
+/** How long the Choices clip reads at the end of the ruler: the card comes when the scene is over. */
+const CHOICES_CLIP_S = 1.5
+const isPinnedObject = (o) => o.kind === 'choices' || o.kind === 'camera' || o.kind === 's25cam' || o.kind === 'sail'
 
 const pinStyle = (scrolled, layer) => ` position: relative; z-index: ${layer}; background: var(--color-timeline-ground); transform: translateY(${scrolled}px);`
 
@@ -177,6 +229,20 @@ export const animationTimeline = (config = {}) => ({
   ...labelColumn(),
   time: 0,
   duration: Number(config.duration) || DEFAULT_DURATION,
+  /** The teacher typed a Length: it stays theirs. Until then a scene with narration is as long as its clip. */
+  durationSet: !!config.durationSet,
+  /** Seconds of narration audio, once known; 0 for a scene without any. */
+  narrationLength: 0,
+  /** Where the clip starts on the scene's clock, in seconds; the teacher drags it (storedNarrationStart). */
+  narrationStart: storedNarrationStart(config),
+  /** The words on the clip's own clock, as the alignment gives them; `spans` is these moved to narrationStart. */
+  audioSpans: [],
+  /** The narration lane's waveform, as an SVG path over `waveBuckets` columns; '' until decoded. */
+  wavePath: '',
+  waveBuckets: 0,
+  /** The editor's preview volume for the narration, 0..1, and whether it is muted. */
+  narrationVolume: storedVolume(),
+  narrationMuted: false,
   zoom: 100,
   tracks: Array.isArray(config.tracks) ? config.tracks : [],
   targets: Array.isArray(config.targets) ? config.targets : [],
@@ -189,6 +255,7 @@ export const animationTimeline = (config = {}) => ({
   scrollLeft: 0,
 
   loop: false,               // playback returns to 0 at the end instead of stopping
+  cutting: false,            // a cut is on its way to the server (cutAtPlayhead)
   autoKey: true,             // a value change records itself at the playhead
   hiddenObjects: {},         // objects the author has taken off the canvas while working
 
@@ -202,9 +269,31 @@ export const animationTimeline = (config = {}) => ({
   /** Bumped whenever the canvas moves something, so fields that read live values re-render. */
   canvasTick: 0,
 
+  /** The background's moving version (SceneLoop): its URL from the server, its length once the browser has read it. */
+  videoLoop: config.loop ?? null,
+  videoLength: null,
+
   init () {
-    this.spans = wordSpans(config.alignment ?? [])
+    // The timeline is the scene's clock, the background video included: it rests with the playhead
+    // and moves only while the scene plays (Bart, 2026-11-26: "the video needs to be paused too").
+    setLoopsPaused(true)
+    this.audioSpans = wordSpans(config.alignment ?? [])
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
     this.refreshObjects()
+    if (this.videoLoop) probeVideoLength(this.videoLoop).then((s) => { this.videoLength = s })
+    // A video dropped on (or removed from) this scene arrives with its next scene:load, while the
+    // panel lives on: follow it, so the clip appears without switching scenes.
+    window.Livewire?.on?.('scene:load', (e) => {
+      const p = Array.isArray(e) ? e[0]?.payload : e?.payload
+      if (!p || p.sceneId !== config.sceneId) return
+      this.followRecording(p)
+      const url = p.imageLoop ?? null
+      if (url === this.videoLoop) return
+      this.videoLoop = url
+      this.videoLength = null
+      this.refreshObjects()
+      if (url) probeVideoLength(url).then((s) => { if (this.videoLoop === url) this.videoLength = s })
+    })
 
     // A live edit still waiting for its pause goes out BEFORE an action that moves the scene on: an
     // undo (fired before its server call) and a scene switch (a capture listener, so it runs before
@@ -216,13 +305,18 @@ export const animationTimeline = (config = {}) => ({
     document.addEventListener('click', (event) => {
       if (event.target.closest?.('[wire\\:click*="selectScene("]')) flushBeforeRequest()
     }, true)
+    // The Script panel says when the words no longer match the clip (edited, not yet re-narrated).
+    window.addEventListener('script:audio-stale', (e) => {
+      if (e.detail?.sceneId === config.sceneId) this.narrationStale = !!e.detail.stale
+    })
     window.addEventListener('pagehide', () => {
       this.stashDraft()
       flushBeforeRequest()
     })
 
-    const saved = SESSIONS.get(config.sceneId)
-    if (saved) Object.assign(this, saved)
+    // Remembered under another cut count, the scene id held another scene (a cut, or its undo): start from the server's.
+    const { epoch: savedEpoch = 0, ...saved } = SESSIONS.get(config.sceneId) ?? {}
+    if (savedEpoch === (config.epoch ?? 0) && Object.keys(saved).length) Object.assign(this, saved)
     this.restoreDraft()
 
     // The Format panel's diamonds live in a different component, so the timeline publishes the
@@ -258,6 +352,9 @@ export const animationTimeline = (config = {}) => ({
       setLayerKeys: (target, keys) => this.replaceLayerKeys(target, keys),
       // a text's motion preset (Motion tab, text-presets.js): keys on its rows at the playhead, one edit, played once
       textPreset: (target, id) => this.applyTextPreset(target, id),
+      // the Map block's motion presets (Motion tab with the map selected): its territory rows, and its camera
+      mapPreset: (id) => this.applyMapPreset(id),
+      cameraPreset: (id) => this.applyCameraPreset(id),
       seek: (time) => this.seek(time),
       refresh: () => this.applyFrame(),
       // the Object list's type icon: the same hidden state as this panel's eye
@@ -277,7 +374,7 @@ export const animationTimeline = (config = {}) => ({
     window.addEventListener('stage25d-synced', () => { this.adoptStage25d(); this.refreshObjects(); this.applyFrame() })
     this.adoptStage25d()
 
-    for (const event of ['scene-objects-changed', 'objscene-changed', 'stage25d-edited']) {
+    for (const event of ['scene-objects-changed', 'objscene-changed', 'stage25d-edited', 'scene-choices']) {
       window.addEventListener(event, () => { this.refreshObjects(); this.canvasTick++ })   // a diorama path changed: its rows re-read
     }
 
@@ -290,7 +387,12 @@ export const animationTimeline = (config = {}) => ({
      * animated yet" with a Title sitting on the canvas. Listening was never going to be enough on
      * its own; the moment a teacher looks at the timeline is the moment to look at the scene.
      */
-    this.$watch('$store.view.bottomTab', (tab) => { if (tab === 'timeline') this.refreshObjects() })
+    this.$watch('$store.view.bottomTab', (tab) => {
+      if (tab === 'timeline') this.refreshObjects()
+      const audio = NARRATION.get(config.sceneId)
+      if (audio) audio.volume = this.voiceVolume()   // Script plays at full volume, Timeline at the lane's level
+    })
+    this.listenToNarration()
     this.fitSailIntoDuration()
     this.waitForObjects()
     this.listenToCanvas()
@@ -390,7 +492,8 @@ export const animationTimeline = (config = {}) => ({
   /** Remember everything a morph would otherwise throw away. */
   remember () {
     SESSIONS.set(config.sceneId, {
-      time: this.time, zoom: this.zoom, zoomIsMine: this.zoomIsMine, duration: this.duration,
+      epoch: config.epoch ?? 0,
+      time: this.time, zoom: this.zoom, zoomIsMine: this.zoomIsMine, duration: this.duration, durationSet: this.durationSet,
       openGroups: { ...this.openGroups },
       loop: this.loop, autoKey: this.autoKey, hiddenObjects: { ...this.hiddenObjects },
       // The tracks too, because between a save and the next server render the CLIENT holds the
@@ -398,6 +501,7 @@ export const animationTimeline = (config = {}) => ({
       // be the state before the keyframe you just set — and the keyframes vanish off the lane
       // while sitting safely in the database. Measured: two diamonds to none, no action taken.
       tracks: this.tracks, targets: this.targets, sail: this.sail,
+      narrationStart: this.narrationStart, spans: this.spans,
     })
   },
 
@@ -417,8 +521,13 @@ export const animationTimeline = (config = {}) => ({
       .map((target) => ({ target, kind: 'camera', label: 'Camera' }))
     // A voyage leg's crossing is a clip, under the camera that frames it (Bart 2026-11-21).
     const crossing = this.isVoyageLeg ? [{ target: 'sail', kind: 'sail', icon: 'voyage', label: config.sailLabel ?? 'Crossing' }] : []
-    const listed = [...cameras, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
-      ...backgroundObjects(config.objectLabels?.background)]   // the back-most, so the last row
+    // The map block: its year, and its territory's area and border (Bart 2026-11-23).
+    const territory = config.sceneKind === 'map' ? territoryObjects(config.objectLabels?.mapBlock) : []
+    // The Choices layer (scene-links.js): it fades in when the scene is over, so its clip sits at the end (Bart 2026-11-24).
+    const choices = window.__objScene?.choices ? [{ target: 'choices', kind: 'choices', icon: 'choices', label: config.objectLabels?.choices ?? 'Choices' }] : []
+    const listed = [...choices, ...cameras, ...territory, ...crossing, ...balloonObjects(), ...artObjects(), ...textObjects(), ...dioramaObjects(), ...stage25dObjects(),
+      // the back-most, so the last row; a background that moves wears the video glyph (Bart, 2026-11-23)
+      ...backgroundObjects(config.objectLabels?.background).map((o) => (this.videoLoop ? { ...o, icon: 'video' } : o))]
     this.objects = [...listed.filter(isPinnedObject), ...listed.filter((o) => !isPinnedObject(o))]
     for (const o of this.objects) if (!(o.target in this.openGroups)) this.openGroups[o.target] = false   // closed until a teacher opens one (Bart 2026-11-04)
     this.applyAppearances()   // an entrance changed elsewhere (Motion tab) shows at once
@@ -519,6 +628,26 @@ export const animationTimeline = (config = {}) => ({
     } else {
       this.openGroups[target] = !this.openGroups[target]
     }
+    if (this.openGroups[target]) this.closeOtherLayers(target)
+    this.remember()
+  },
+
+  /**
+   * One layer open at a time (Bart 2026-11-22: "clicking on a layer should collapse the others … so 1 click just
+   * changes its movement"). Only the layer rows close; each layer's own groups keep their state for when it reopens.
+   */
+  closeOtherLayers (target) {
+    for (const o of this.objects) if (o.target !== target) this.openGroups[o.target] = false
+  },
+
+  /** A click on a row's name: select the layer, and open its movement (closing the rest) or close it again. */
+  clickObjectName (target) {
+    // Read the row's state first: selecting on the canvas opens the layer, which would make the toggle close it.
+    const wasOpen = !!this.openGroups[target]
+    this.selectObject(target)
+    if (target === 'sail') return
+    this.openGroups[target] = !wasOpen
+    if (!wasOpen) this.closeOtherLayers(target)
     this.remember()
   },
 
@@ -669,6 +798,17 @@ export const animationTimeline = (config = {}) => ({
   },
 
   /** A span as pixels on the lane. Kept above zero so a bar is never invisible. */
+  /** The background video's clip: the whole scene, since it loops until the scene ends. */
+  get videoSpan () { return this.videoLoop ? { from: 0, to: this.duration } : null },
+
+  /** Where the video starts over, as left offsets inside its bar. */
+  get videoRestarts () {
+    const left = this.xOf(0)
+    return loopRestarts(this.duration, this.videoLength).map((t) => Math.round(this.xOf(t) - left))
+  },
+
+  get videoLabel () { return videoLengthLabel(this.videoLength) },
+
   barStyle (span) {
     if (!span) return 'display: none'
     const left = this.xOf(span.from)
@@ -782,11 +922,231 @@ export const animationTimeline = (config = {}) => ({
 
   /** The timeline's length. Keys outside it stay where they are; the ruler simply stops there. */
   setDuration (seconds) {
+    this.durationSet = true   // typed by the teacher: the narration no longer decides it
     this.duration = Math.min(3600, Math.max(0.1, Number(seconds) || DEFAULT_DURATION))
     if (this.time > this.duration) this.seek(this.duration)
     if (this.zoomIsMine) this.measureFit(); else this.fit()
     this.remember()
     this.save()
+  },
+
+  // ── Narration ───────────────────────────────────────────────────────────────────────────
+
+  /** The scene's narration clip, made on first use; null on a scene with no audio (or no Audio, in tests). */
+  narration () {
+    if (!config.audioUrl || typeof Audio === 'undefined') return null
+    let audio = NARRATION.get(config.sceneId)
+    if (audio && audio.__src !== config.audioUrl) { audio.pause(); audio = null }   // the voice was re-recorded
+    if (!audio) {
+      audio = new Audio()
+      audio.preload = 'auto'
+      audio.__src = config.audioUrl
+      audio.src = config.audioUrl
+      NARRATION.set(config.sceneId, audio)
+    }
+    audio.volume = this.voiceVolume()
+    return audio
+  },
+
+  /**
+   * How loud the voice plays. The Script tab and the Timeline tab play the SAME clip with the same play/pause
+   * (Bart, 2026-11-27): from the Script tab always at full volume, in the Timeline tab at the lane's own level.
+   */
+  voiceVolume () {
+    if (this.$store?.view?.bottomTab === 'script') return 1
+    return this.narrationMuted ? 0 : this.narrationVolume
+  },
+
+  /** Load the clip, stop any other scene's voice, and let the timeline follow the clip's length. */
+  listenToNarration () {
+    for (const [id, other] of NARRATION) if (id !== config.sceneId) other.pause()
+    this.followNarration()   // from the word timings at once, so the ruler does not jump later
+    const audio = this.narration()
+    if (!audio) return
+    this.drawWaveform()
+    if (audio.readyState >= 1) this.followNarration()
+    else audio.addEventListener('loadedmetadata', () => { if (this.$el?.isConnected !== false) this.followNarration() }, { once: true })
+  },
+
+  /** Alpine calls this when the panel goes (a scene switch): the voice stops with it. */
+  destroy () {
+    NARRATION.get(config.sceneId)?.pause()
+  },
+
+  /**
+   * A scene with narration is as long as its clip (Bart, 2026-11-23: "automatically change the
+   * timeline based on the length of the audio clip"), until the teacher types a Length of their own.
+   * Never shorter than its last key (the save clamps keys to the length, so that would move them)
+   * or a voyage leg's crossing.
+   */
+  followNarration () {
+    if (!config.audioUrl) return
+    const audio = NARRATION.get(config.sceneId)
+    const fromAudio = Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : 0
+    const length = fromAudio || (this.audioSpans.length ? this.audioSpans[this.audioSpans.length - 1].end : 0)
+    if (!(length > 0)) return
+    this.narrationLength = length
+    if (this.durationSet) return
+    // Nor shorter than a voyage leg's crossing, or the ship's landing falls off the ruler.
+    const crossing = this.isVoyageLeg ? this.sailSpan().end : 0
+    const want = Math.round(Math.max(this.narrationStart + length, lastKeyTime(this.tracks), crossing) * 100) / 100
+    if (Math.abs(want - this.duration) < 0.01) return
+    this.duration = Math.min(3600, want)
+    if (this.time > this.duration) this.seek(this.duration)
+    if (this.$refs?.lanes) { if (this.zoomIsMine) this.measureFit(); else this.fit() }
+    this.remember()
+  },
+
+  /**
+   * A new recording of this scene (a re-narration) reaches the lane while the panel lives on: the lane
+   * used to keep playing and drawing the old voice until the scene was opened again (Bart 11-27).
+   * Only a recording the server calls fresh: every other scene:load carries the one being replaced.
+   */
+  followRecording (p) {
+    if (!p.audioUrl || !p.audioFresh || p.audioUrl === config.audioUrl) return
+    NARRATION.get(config.sceneId)?.pause()
+    config.audioUrl = p.audioUrl
+    config.alignment = p.audioAlignment ?? []
+    this.narrationUrl = p.audioUrl
+    this.narrationStale = false
+    this.audioSpans = wordSpans(config.alignment)
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
+    this.narrationLength = 0
+    this.wavePath = ''
+    this.waveBuckets = 0
+    this.listenToNarration()
+  },
+
+  /** The clip on the lane: config.audioUrl, kept here as well so Alpine sees it change. */
+  narrationUrl: config.audioUrl ?? null,
+  /** The clip no longer says the scene's words: the Script panel's edit, or the server's word at load. */
+  narrationStale: !!config.audioStale,
+
+  /** Whether the timeline has a narration lane: a scene with audio. */
+  get hasNarration () { return !!this.narrationUrl },
+
+  /** The narration clip on the lane, from where it starts to the clip's end (dragged: the draft). */
+  get narrationSpan () {
+    const length = this.narrationLength || (this.audioSpans.length ? this.audioSpans[this.audioSpans.length - 1].end : 0)
+    const from = this.narrationDraft ?? this.narrationStart
+    return length > 0 ? { from, to: from + length } : null
+  },
+
+  /** The clip's start while it is being dragged; null otherwise. */
+  narrationDraft: null,
+
+  /**
+   * Pressing the narration clip drags it left or right: when the voice starts on the scene's clock (Bart, 2026-11-24).
+   * A press that does not move scrubs, as the lane always did. Saved with the timeline, so one undo takes it back.
+   */
+  startNarrationDrag (event) {
+    if (event.button !== 0) return
+    const startX = event.clientX
+    const from = this.narrationStart
+    let moved = false
+    const onMove = (e) => {
+      if (!moved && Math.abs(e.clientX - startX) < 4) return
+      if (!moved) { moved = true; this.pause() }
+      const want = from + (e.clientX - startX) / this.zoom
+      // Back to the start of the scene when it is dropped close to it; else to a twentieth of a second.
+      this.narrationDraft = want < 4 / this.zoom ? 0 : Math.min(3600, Math.round(want * 20) / 20)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      const draft = this.narrationDraft
+      this.narrationDraft = null
+      if (!moved || draft === null || Math.abs(draft - from) < 0.001) return
+      window.dispatchEvent(new CustomEvent('scene:edit-step'))
+      this.setNarrationStart(draft)
+      this.save()
+    }
+    if (!this.narrationLength && !this.audioSpans.length) return this.startScrub(event)
+    event.stopPropagation()
+    // Not moved by release: the lane's own press, which scrubs.
+    const scrubUnlessMoved = (e) => { if (!moved) this.seek(this.timeFromEvent(e)) }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', (e) => { scrubUnlessMoved(e); onUp() }, { once: true })
+  },
+
+  /** Move the clip's start, and with it the words, and the Length when the narration decides it. */
+  setNarrationStart (start) {
+    this.narrationStart = Math.max(0, Math.min(3600, Math.round(start * 100) / 100))
+    this.spans = shiftSpans(this.audioSpans, this.narrationStart)
+    this.followNarration()
+    this.remember()
+  },
+
+  /**
+   * Draw the clip's waveform on its lane (Bart, 2026-11-24: the sound clip at the bottom of the
+   * timeline). Decoded once from the same file the voice plays; a clip that will not decode keeps
+   * a plain bar, which still says where the voice runs.
+   */
+  async drawWaveform () {
+    if (this.wavePath || !config.audioUrl || typeof fetch === 'undefined') return
+    const Ctx = window.AudioContext ?? window.webkitAudioContext
+    if (!Ctx) return
+    try {
+      const bytes = await (await fetch(config.audioUrl)).arrayBuffer()
+      const ctx = new Ctx()
+      const buffer = await ctx.decodeAudioData(bytes)
+      ctx.close?.()
+      // ~25 columns a second: fine enough to see the words, few enough to stay one light path.
+      const peaks = audioPeaks(buffer.getChannelData(0), Math.min(4000, Math.ceil(buffer.duration * 25)))
+      this.waveBuckets = peaks.length
+      this.wavePath = peaksPath(peaks)
+    } catch { /* no waveform: the bar stays plain */ }
+  },
+
+  /** The lane's volume slider: the editor's own listening level, remembered for this teacher. */
+  setNarrationVolume (value) {
+    this.narrationVolume = Math.min(1, Math.max(0, Number(value) || 0))
+    this.narrationMuted = this.narrationVolume === 0
+    try { localStorage.setItem(VOLUME_KEY, String(this.narrationVolume)) } catch { /* private mode: this visit only */ }
+    const audio = NARRATION.get(config.sceneId)
+    if (audio) audio.volume = this.voiceVolume()
+  },
+
+  /** The speaker on the lane mutes and unmutes, keeping the level to come back to. */
+  toggleNarrationMute () {
+    this.narrationMuted = !this.narrationMuted
+    if (!this.narrationMuted && this.narrationVolume === 0) this.narrationVolume = 1
+    const audio = NARRATION.get(config.sceneId)
+    if (audio) audio.volume = this.voiceVolume()
+  },
+
+  /** Hand the Length back to the narration after the teacher typed one. */
+  matchNarration () {
+    this.durationSet = false
+    this.followNarration()
+    this.save()
+  },
+
+  /**
+   * Play the voice from a time on the timeline; before the clip starts, or past its end, it simply stays quiet
+   * (play() starts it when the playhead reaches the clip).
+   */
+  speakFrom (time) {
+    const audio = this.narration()
+    if (!audio) return
+    const at = time - this.narrationStart
+    if (at < 0 || (Number.isFinite(audio.duration) && at >= audio.duration - 0.02)) { audio.pause(); return }
+    try { audio.currentTime = at } catch { /* not seekable yet: plays from the start */ }
+    audio.play()?.catch?.(() => {})   // blocked or missing: the timeline still plays, silently
+  },
+
+  /** Whether the playhead has just reached the clip while the voice waits: play() starts it then. */
+  voiceDue (t) {
+    if (this._voiceTried || !config.audioUrl) return false
+    const audio = NARRATION.get(config.sceneId)
+    if (!audio || !audio.paused) return false
+    const end = this.narrationStart + (this.narrationLength || Infinity)
+    return t >= this.narrationStart && t < end - 0.05
+  },
+
+  /** The voice while it is actually playing, which is the clock playback follows. */
+  speakingVoice () {
+    const audio = NARRATION.get(config.sceneId)
+    return audio && config.audioUrl && !audio.paused && !audio.ended && !audio.error ? audio : null
   },
 
   /** Keep the playhead in view when it moves under playback or a keyboard jump. */
@@ -816,10 +1176,11 @@ export const animationTimeline = (config = {}) => ({
    */
   seekToWord (time) {
     this.seek(time)
-    if (this.playing) {
-      this._startedFrom = this.time
-      this._startedAt = performance.now()
-    }
+    // Pressing a word plays the narration from it (Bart, 2026-11-23: "it should play this word").
+    if (!this.playing) return this.play()
+    this._startedFrom = this.time
+    this._startedAt = performance.now()
+    this.speakFrom(this.time)
   },
 
   revealSpokenWord (strip) {
@@ -955,6 +1316,7 @@ export const animationTimeline = (config = {}) => ({
 
   seek (time) {
     this.time = Math.min(this.duration, Math.max(0, time))
+    if (!this.playing) seekLoops(this.time)   // a scrub shows the video's frame at the playhead
     this.applyFrame()
     this.previewSail()
     this.remember()
@@ -1065,6 +1427,68 @@ export const animationTimeline = (config = {}) => ({
     playStretch(done.from, done.to, this.reducedMotion)
   },
 
+  /**
+   * A Map block territory preset laid into its rows at the playhead (map-presets.js), the same way as a text's: one
+   * edit, one undo, played once; another one picked where the last one ended takes its place (Bart 11-24).
+   */
+  applyMapPreset (id) {
+    const target = 'terr:map'
+    if (!window.__lessonMapApi?.hasTerritory?.()) return
+    this.stopEasingPreview()
+    this.pause()
+    const api = window.__lessonMapApi
+    const rest = (p) => {
+      if (p === 'from') return api.territoryFromYear?.() ?? null
+      const track = this.trackFor(target, p)
+      return track ? baseOf(track) : readObjectProperty(target, p)
+    }
+    const last = this._lastPreset
+    const exit = MAP_EXIT_PRESETS.includes(id)
+    const start = last?.target === target && last.exit === exit && sameTime(this.time, last.to) ? last.from : this.time
+    const done = applyMapPreset(this.tracks, target, id, { start, duration: this.duration, rest })
+    if (!done) return
+    this._lastPreset = { target, exit, from: done.from, to: done.to }
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))
+    const before = this.tracks
+    this.tracks = done.tracks
+    for (const p of MAP_PRESET_PROPERTIES) {
+      if (sortedKeys(this.trackFor(target, p)).length >= 2) continue
+      const old = before.find((t) => t.target === target && t.property === p)
+      if (old) writeObjectProperty(target, p, baseOf(old) ?? readObjectProperty(target, p))
+    }
+    this.openGroups[target] = true
+    this.refreshObjects()
+    this.save()
+    this.announce()
+    playStretch(done.from, done.to, this.reducedMotion)
+  },
+
+  /**
+   * A map camera preset (map-camera-presets.js), ending on the shot framed on the stage now: it replaces every camera
+   * key (a scene's camera makes one move), from the playhead, and lengthens the scene when the move runs past its end.
+   */
+  applyCameraPreset (id) {
+    const map = window.__lessonMap
+    if (!map || !this.canHaveCamera) return
+    this.stopEasingPreview()
+    this.pause()
+    const view = cameraFromMap(map)
+    const start = this._lastCameraPreset && sameTime(this.time, this._lastCameraPreset.to) ? this._lastCameraPreset.from : this.time
+    const done = applyCameraPreset(this.tracks, id, view, { start, focus: window.__lessonMapApi?.focusPoints?.() ?? [] })
+    if (!done) return
+    this._lastCameraPreset = { from: done.from, to: done.to }
+    window.dispatchEvent(new CustomEvent('scene:edit-step'))
+    this.tracks = done.tracks
+    if (!this.hasCamera) this.targets = [...this.targets, 'camera']
+    if (this.duration < done.to) this.duration = done.to
+    this.openGroups.camera = true
+    this.fitSailIntoDuration?.()
+    this.refreshObjects()
+    this.save()
+    this.announce()
+    playStretch(done.from, done.to, this.reducedMotion)
+  },
+
   /** Hand the stage25d layers their keys, as the timeline holds them now: it eases them exactly as the player will. */
   syncStage25d () {
     const stage = window.__stage25d
@@ -1142,6 +1566,7 @@ export const animationTimeline = (config = {}) => ({
   barOf (target) {
     if (this.spanDraft?.target === target) return this.spanDraft
     if (target === 'sail') { const c = this.sailSpan(); return { from: c.start, to: c.end } }
+    if (target === 'choices') return { from: Math.max(0, this.duration - CHOICES_CLIP_S), to: this.duration }
     const o = this.objects.find((x) => x.target === target)
     if (!o) return null
     if (o.kind === 'art') return { from: o.entrance?.from ?? 0, to: this.duration }
@@ -1232,8 +1657,19 @@ export const animationTimeline = (config = {}) => ({
     window.dispatchEvent(new CustomEvent('timeline-playing', { detail: true }))
     this._startedFrom = this.time >= this.duration ? 0 : this.time
     this._startedAt = performance.now()
+    this._voiceTried = false
+    this.speakFrom(this._startedFrom)
+    seekLoops(this._startedFrom)
+    setLoopsPaused(false)
     const step = () => {
       if (!this.playing) return
+      // While the voice plays, IT is the clock: the lit word is the word being heard, even when the
+      // clip stalls to buffer. Past its end (or with none) the frame clock carries on from there.
+      const voice = this.speakingVoice()
+      if (voice) {
+        this._startedFrom = this.narrationStart + voice.currentTime
+        this._startedAt = performance.now()
+      }
       const elapsed = (performance.now() - this._startedAt) / 1000
       let t = this._startedFrom + elapsed
       if (t >= this.duration) {
@@ -1246,7 +1682,12 @@ export const animationTimeline = (config = {}) => ({
         t %= this.duration
         this._startedFrom = 0
         this._startedAt = performance.now() - t * 1000
+        this._voiceTried = false
+        this.speakFrom(t)
+        seekLoops(t)   // the video starts its lap with the scene's
       }
+      // The playhead reached a clip that starts later in the scene: the voice comes in now, once.
+      if (!voice && this.voiceDue(t)) { this._voiceTried = true; this.speakFrom(t) }
       this.seek(t)
       this.revealPlayhead()
       this._raf = requestAnimationFrame(step)
@@ -1257,6 +1698,8 @@ export const animationTimeline = (config = {}) => ({
   pause () {
     if (this.playing) window.dispatchEvent(new CustomEvent('timeline-playing', { detail: false }))
     this.playing = false
+    NARRATION.get(config.sceneId)?.pause()
+    setLoopsPaused(true)
     if (this._raf) cancelAnimationFrame(this._raf)
     this._raf = null
   },
@@ -1301,6 +1744,9 @@ export const animationTimeline = (config = {}) => ({
     if (!isPlayPauseKey(event)) return
 
     event.preventDefault()   // only now that the key is ours: Space must not also scroll the page
+    // A button just pressed with the mouse (play, a word) still has focus, and the browser presses it
+    // again on Space's keyup: play-then-pause. Letting go of it leaves the key to the timeline.
+    if (event.target?.tagName === 'BUTTON') event.target.blur?.()
     if (this.playing) this.pause()
     else this.play()
   },
@@ -1426,7 +1872,16 @@ export const animationTimeline = (config = {}) => ({
     const s25 = this.tracks.filter((t) => kindOfTarget(t.target) === 's25')
     this.tracks = [...(Array.isArray(timeline.tracks) ? timeline.tracks : []), ...s25]
     this.targets = Array.isArray(timeline.targets) ? timeline.targets : this.targets
+    // The stored length too: a paste into a scene with no timeline yet takes the source's, and a panel left at its old
+    // length hid the later keys and clamped them on its next save.
+    const duration = Number(timeline.duration)
+    if (duration > 0 && !sameTime(duration, this.duration)) {
+      this.duration = Math.min(3600, duration)
+      if (this.time > this.duration) this.seek(this.duration)
+      if (this.zoomIsMine) this.measureFit(); else this.fit()
+    }
     this.sail = storedSail(timeline)
+    this.setNarrationStart(storedNarrationStart(timeline))
     this.selected = []
     this.remember()
     this.refreshObjects()
@@ -1710,6 +2165,7 @@ export const animationTimeline = (config = {}) => ({
     if (id === 's25_sky') return 's25sky:sky'
     if (String(id).startsWith('s25_')) return `s25:${String(id).slice(4)}`
     if (String(id).startsWith('bg_')) return `bg:${String(id).slice(3)}`
+    if (id === '__choices__') return this.objects.some((o) => o.target === 'choices') ? 'choices' : null
     if (String(id).startsWith('bal_')) return `bal:${String(id).slice(4)}`
     const text = this.objects.find((o) => (o.kind === 'text' || o.kind === 'rect') && o.target.slice(o.target.indexOf(':') + 1) === String(id))
     return text?.target ?? null
@@ -1729,7 +2185,7 @@ export const animationTimeline = (config = {}) => ({
     if (!target) return
     this.noteCanvasValues(target)
     // The 3D camera stays closed: its two keys are on its own row, and its panel frames them.
-    if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.remember() }
+    if (kindOfTarget(target) !== 's25cam' && !this.openGroups[target]) { this.openGroups[target] = true; this.closeOtherLayers(target); this.remember() }
     this.$nextTick(() => {
       const row = [...this.$el.querySelectorAll('[data-timeline-group]')].find((el) => el.dataset.timelineGroup === target)
       row?.scrollIntoView({ block: 'nearest' })
@@ -1755,6 +2211,11 @@ export const animationTimeline = (config = {}) => ({
     else if (kind === 's25sky') window.__stage25d?.select?.('sky')
     else if (kind === 'bal') window.__balloons?.select?.(`bal_${id}`)
     // the background has no selection of its own: choosing its row lets go of whatever was selected on the stage
+    // the Choices layer: the stage shows its card, the object list and the Choices panel follow
+    else if (kind === 'choices') {
+      window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: '__choices__' } }))
+      window.dispatchEvent(new CustomEvent('inspector-open'))
+    }
     else if (kind === 'bg') window.dispatchEvent(new CustomEvent('scene-object-selected', { detail: { id: `bg_${id}` } }))
   },
 
@@ -2160,16 +2621,46 @@ export const animationTimeline = (config = {}) => ({
   save () {
     this._saves?.cancel()
     this.remember()   // the client's copy is the newer one until the server renders again
-    this.$wire?.setTimeline?.({ duration: this.duration, targets: this.targets, tracks: this.tracks, sail: this.sail, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
+    this.$wire?.setTimeline?.({ duration: this.duration, durationSet: this.durationSet, targets: this.targets, tracks: this.tracks, sail: this.sail, narrationStart: this.narrationStart, stage25dKeys: this.stage25dKeys(), sceneId: config.sceneId })
+  },
+
+  /**
+   * The cut tool (Bart, 2026-11-24): the scene in two at the playhead, so each part can take its own
+   * background. The server says where the cut really falls (on a pause in the narration, never inside
+   * a word), the keys are split there with the sampling that plays them (timeline-cut.js), and the
+   * server makes the second scene and opens it (app/Livewire/Wizard/Concerns/CutsScenes.php). One undo.
+   */
+  async cutAtPlayhead () {
+    if (this.cutting || !this.$wire?.cutPointFor) return
+    if (this.playing) this.pause()
+    this.flushSave()
+    this.cutting = true
+    try {
+      const point = await this.$wire.cutPointFor(this.time)
+      if (!point?.ok) {
+        if (point?.message) window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: point.message } }))
+        return
+      }
+      const at = Number(point.at)
+      const { first, second } = cutTracks(this.tracks, at)
+      const stage = window.__stage25d
+      // The camera's own clock (the stage's scene length, which a last shot without dur_s runs to), not the timeline's.
+      const info = stage && String(stage.sceneId) === String(config.sceneId) ? stage.cameraInfo?.() : null
+      const camera = info ? cutCamera(info.shots, at, info.length ?? this.duration) : null
+      const half = (tracks, duration, cam) => ({ duration, durationSet: this.durationSet, targets: this.targets, tracks, stage25dKeys: this.stage25dKeys(tracks), ...(cam ? { stage25dCamera: cam } : {}) })
+      await this.$wire.cutSceneAt(at, half(first, at, camera?.first), half(second, Math.max(0, this.duration - at), camera?.second))
+    } finally {
+      this.cutting = false
+    }
   },
 
   /** `{ 'layer-3': keys, 'band-0': keys, sky: keys }` for EVERY row of the stage (an empty list clears a layer's keys), or null with no stage. */
-  stage25dKeys () {
+  stage25dKeys (tracks = this.tracks) {
     const stage = window.__stage25d
     if (!stage || String(stage.sceneId) !== String(config.sceneId)) return null   // not this scene's stage (yet): send nothing, clear nothing
     const items = (stage.items?.() ?? []).filter((i) => i.id !== 'camera')
     if (!items.length) return null
-    const byLayer = keysFromTracks(this.tracks)
+    const byLayer = keysFromTracks(tracks)
     return Object.fromEntries(items.map((i) => [i.id, byLayer[i.id] ?? []]))
   },
 })

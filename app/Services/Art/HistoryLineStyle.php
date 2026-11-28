@@ -36,6 +36,24 @@ final class HistoryLineStyle
 
     public const SAFETY = 'No readable text, no letters, no labels, no watermark, no gore.';
 
+    /**
+     * Both passes folded into one text-to-image prompt, for models that paint in one go (Nano Banana 2 through
+     * ElevenLabs). Same rules as INK_PASS + COLOUR_PROMPT + TEXTURE; first written for the ElevenLabs test batch
+     * (scripts/elevenlabs-image-test.php), kept here so there is one copy. Sent with the colour anchors.
+     */
+    public const ONE_PASS = 'Style: a clean educational historical comic illustration in the History Lines style of the reference images. '
+        .'Take only the drawing and painting style from the references, never their subjects or composition. '
+        .'Confident warm black ink line carries the picture: clear closed outer contours of varying weight, only essential interior lines, '
+        .'shadows built from controlled hatching with '.self::HATCHING_RULE.' No solid black fills, no silhouettes, no grey wash. '
+        .'Colour sits beneath the ink as transparent watercolour washes with visible blooms, backruns, granulation, tide-lines and paper tooth. '
+        .'Selective colour: architecture very light in cream, pale sandstone and light ochre; weathered brown wood; muted turquoise water; '
+        .'olive only on vegetation. Roughly 35 to 45% of the picture stays very pale paper. '
+        .'Sky is a very pale blue wash, clouds mostly untouched paper with thin contours. '
+        .'Bright, editorial, like a good European comic album. Natural, respectful, slightly idealised people, faces drawn with a few precise lines, '
+        .'hands with five fingers. Historically accurate clothing, architecture and objects; if unsure, simplify, never invent. '
+        .'No muddy wash, no sepia or antique filter, no glossy or 3D rendering, no airbrush, no blur, no haze. '
+        .'No readable text, no letters, no labels, no signature, no watermark.';
+
     /** Source → line master. Reference order: source first, then the two style anchors. */
     public static function convert(string $constraints = ''): string
     {
@@ -99,12 +117,15 @@ final class HistoryLineStyle
 
     /** Framework pass 1, with the hatching rule; the scene in brackets is the restyle source itself. */
     public const INK_PASS = 'Redraw reference image 1 as a clean black-and-white educational comic illustration. Keep its composition, framing, '
-        .'subject, pose, scale and identity exactly; change only the drawing style. The reference images after it show the History Lines '
-        .'line quality and hatching only: take their style, never their subjects. Use crisp black contours and controlled hatching, '
+        .'subject, pose, scale and identity exactly; change only the drawing style. Use crisp black contours and controlled hatching, '
         .'with '.self::HATCHING_RULE.' No solid black fills on anything that will need colour (cloaks, crosses, hulls): colour goes '
         .'under the ink. Keep broad areas of white paper and a clear focal action. Draw clouds as large irregular cumulus silhouettes '
         .'with very thin contours, few overlapping forms and nearly white interiors. No colour, grey washes, dense cloud shading, '
         .'text, labels or watermarks.';
+
+    /** Added to the ink pass only while an approved ink style reference is attached (anchors.json). */
+    public const INK_REFERENCES = 'The reference images after image 1 show the History Lines line quality and hatching only: '
+        .'take their drawing style, never their subjects and never their colour.';
 
     /** Edit lock, placed before the colour prompt (framework "Edit lock"). */
     public const EDIT_LOCK = 'Use the attached ink drawing as a locked source. Preserve exact canvas size, framing, camera, positions, scale, pose, silhouette and every ink mark. Change only color beneath the drawing. Do not crop, outpaint, recompose or add objects.';
@@ -125,19 +146,42 @@ final class HistoryLineStyle
     private const ANCHOR_DIR = 'art/style-anchors/history-lines';
 
     /**
-     * The shared anchor set: one list per pass, scene or figure flavoured. Pass 1 attaches ink refs,
-     * pass 2 the colour refs plus the texture ref. File names, in attach order, after the source image.
+     * The style references of a pass, in attach order after the source image: the files in anchors.json that bart
+     * approved as real History Lines (bart, 2026-11-26: the classroom, castle and Caesar plates were not, and went).
+     * Pass 1 takes the line references (approved for their drawing only; they are coloured pictures), pass 2 the colour ones. A pass with none approved attaches none: a wrong
+     * reference steers the picture harder than no reference. The Python side (tools/shots) reads the same file.
      *
      * @return list<string>
      */
-    public static function anchors(int $pass, bool $figure): array
+    public static function anchors(int $pass): array
     {
-        return match (true) {
-            $pass === 1 && $figure => ['ink-classroom.jpg', 'ink-caesar.jpg'],
-            $pass === 1 => ['ink-caesar.jpg', 'ink-castle.jpg'],
-            $figure => ['colour-classroom.jpg', 'colour-caesar.jpg', 'texture-watercolour.jpg'],
-            default => ['colour-caesar.jpg', 'colour-castle.jpg', 'texture-watercolour.jpg'],
-        };
+        $manifest = json_decode((string) file_get_contents(dirname(__DIR__, 3).'/resources/'.self::ANCHOR_DIR.'/anchors.json'), true);
+        $want = $pass === 1 ? 'ink' : 'colour';
+
+        return array_values(array_column(
+            array_filter($manifest['files'] ?? [], fn (array $file) => $file['pass'] === $want && ! empty($file['approved'])),
+            'path',
+        ));
+    }
+
+    /**
+     * The style references of a pass as file name => bytes, in attach order.
+     *
+     * @return array<string, string>
+     *
+     * @throws \RuntimeException when a listed reference is not on disk
+     */
+    public static function anchorBytes(int $pass): array
+    {
+        $out = [];
+        foreach (self::anchors($pass) as $file) {
+            if (! is_file($path = self::anchorPath($file))) {
+                throw new \RuntimeException("History Lines style reference missing ({$file}).");
+            }
+            $out[$file] = (string) file_get_contents($path);
+        }
+
+        return $out;
     }
 
     public static function anchorPath(string $file): string
@@ -159,7 +203,7 @@ final class HistoryLineStyle
     {
         $eraLine = $era !== '' ? " Keep everything correct for {$era}; add nothing that does not belong to that time." : '';
 
-        return self::INK_PASS.$eraLine.self::figureClause($figure).' '.self::SAFETY;
+        return self::INK_PASS.(self::anchors(1) !== [] ? ' '.self::INK_REFERENCES : '').$eraLine.self::figureClause($figure).' '.self::SAFETY;
     }
 
     /** Pass 2: the pass-1 ink + colour refs + texture ref → watercolour edited from that ink. */

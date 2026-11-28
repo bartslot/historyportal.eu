@@ -352,4 +352,27 @@ class IconPanelTest extends TestCase
         $this->assertSame(31.2357, $layer['lng']);
         $this->assertSame('#ffffff', $layer['tint']);
     }
+
+    public function test_a_lesson_opens_on_its_own_pictures_and_never_another_lessons(): void
+    {
+        // Bart 2026-11-22: "Dante is never going to be added to a story about marco polo and vice versa".
+        $panel = Livewire::actingAs($this->teacher)->test(IconPanel::class, ['lessonId' => $this->lesson->id]);
+        $this->assertNotContains(IconPanel::LESSON, $panel->instance()->collections(), 'no tab before the lesson has a picture');
+
+        $this->slideshowScene->update(['shots' => [['order' => 0, 'layers' => [['asset_id' => $this->pharaoh->id, 'kind' => 'figure']]]]]);
+        $cut = SvgAsset::create(['user_id' => $this->teacher->id, 'lesson_id' => $this->lesson->id, 'source' => 'cutout', 'source_ref' => 'a', 'source_url' => '',
+            'title' => 'Cut-out of a boat', 'license' => 'Own cut-out', 'svg_path' => 'cutouts/1/a.png']);
+        $other = Lesson::create(['teacher_id' => $this->teacher->id, 'topic' => 'Dante', 'subject' => 'history', 'grade_level' => 'K-7',
+            'image_style' => 'cinematic', 'status' => LessonStatus::ScenesReady]);
+        $dante = SvgAsset::create(['user_id' => $this->teacher->id, 'lesson_id' => $other->id, 'source' => 'cutout', 'source_ref' => 'b', 'source_url' => '',
+            'title' => 'Cut-out of Dante', 'license' => 'Own cut-out', 'svg_path' => 'cutouts/1/b.png']);
+
+        $panel = Livewire::actingAs($this->teacher)->test(IconPanel::class, ['lessonId' => $this->lesson->id]);
+        $this->assertSame(IconPanel::LESSON, $panel->get('collection'), 'it opens on the lesson\'s own pictures');
+        $this->assertSame(IconPanel::LESSON, $panel->instance()->collections()[0]);
+        $ids = $panel->instance()->icons()->pluck('id')->all();
+        $this->assertEqualsCanonicalizing([$this->pharaoh->id, $cut->id], $ids);
+        $this->assertNotContains($dante->id, $ids);
+        $panel->assertSee(__('In this lesson'));
+    }
 }

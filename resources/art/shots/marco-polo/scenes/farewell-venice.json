@@ -1,0 +1,212 @@
+{
+  "scene": "farewell-venice",
+  "title": "Farewell, Venice",
+  "script": "project files: new-scenes/storyboard-order.md, item 2 (scene 5004)",
+  "place": "Venice, the quay at San Marco, 1271: the Polos leave on a round sailing ship (no rowers).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo does not name the ship; a two-masted lateen round ship (navis), no rowers, fits.",
+      "Venice 1271: San Marco and the Campanile stand, but the Doge's palace is the older fortified one (the Gothic palace is c.1340); the Rialto bridge is wooden."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/farewell-venice.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      300,
+      200
+    ],
+    "light": "clear morning light from the east (right)",
+    "landmarks": [
+      {
+        "id": "ship",
+        "label": "two-masted round ship at the quay",
+        "at": [
+          200,
+          150
+        ],
+        "size": 30,
+        "note": "a round-hulled two-masted navis with lateen yards and high castles fore and aft, moored along the quay; no oars",
+        "height": 30
+      },
+      {
+        "id": "campanile",
+        "label": "the bell tower of San Marco",
+        "at": [
+          60,
+          40
+        ],
+        "size": 12,
+        "note": "behind the quay to the west; as it stood in 1271: a plain square brick tower, shorter and slimmer than today, with a simple open belfry and a modest pointed wooden spire sheathed in copper; NO white stone belfry loggia, NO tall attic, NO golden angel on top (those are 1511-14)",
+        "height": 70
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "farewell-venice-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              100,
+              60
+            ],
+            "looks_at": [
+              110,
+              66
+            ],
+            "framing": "Medium, inside a Venetian house"
+          },
+          "action": "Back in Venice, Niccolò and Maffeo show the Khan's gold tablet to young Marco, who stares at it: the same tablet as in the flashback, a long narrow gold plate with rounded ends, as long as a forearm, a hole at the top for its cord, engraved with vertical Uyghur-Mongol script; Niccolò holds it upright by its lower end (not a square tray, frame, box or book).",
+          "where": {
+            "marco": "the young man on the left, leaning in",
+            "niccolo": "the man in the middle holding the tablet",
+            "maffeo": "the man on the right"
+          },
+          "places": {
+            "marco": [
+              106.24,
+              65.14
+            ],
+            "niccolo": [
+              106.86,
+              64.12
+            ],
+            "maffeo": [
+              107.48,
+              63.09
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              150,
+              70
+            ],
+            "looks_at": [
+              200,
+              150
+            ],
+            "framing": "Very wide, from the quay"
+          },
+          "action": "The two-masted round ship with lateen sails waits at the crowded quay, behind it the older Doge's palace of 1271: a plain fortress-like stone building with corner towers and small windows, NO Gothic arcades and NO pink-and-white patterned wall (that palace was begun c.1340), and NO clock tower anywhere (built 1496-99); the three Polos walk toward it, porters carrying chests.",
+          "where": {
+            "marco": "the smallest figure, in front",
+            "niccolo": "the figure in red behind him",
+            "maffeo": "the figure in blue"
+          },
+          "sees": {
+            "ship": "large, right of centre"
+          },
+          "places": {
+            "marco": [
+              200.0,
+              150.0
+            ],
+            "niccolo": [
+              193.22,
+              154.24
+            ],
+            "maffeo": [
+              206.78,
+              145.76
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              185,
+              140
+            ],
+            "looks_at": [
+              195,
+              150
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Marco at the ship's rail looks back at Venice, excited and a little afraid.",
+          "places": {
+            "marco": [
+              186.41,
+              142.12
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              185,
+              145
+            ],
+            "looks_at": [
+              195,
+              152
+            ],
+            "framing": "Close on two faces"
+          },
+          "action": "Niccolò and Maffeo at the rail, calm and resolved, looking ahead to the open sea.",
+          "where": {
+            "niccolo": "the older man with the grey beard, left",
+            "maffeo": "the man with the pointed black beard, right"
+          },
+          "places": {
+            "niccolo": [
+              186.76,
+              146.84
+            ],
+            "maffeo": [
+              187.33,
+              146.02
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

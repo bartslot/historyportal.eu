@@ -1,0 +1,443 @@
+{
+  "scene": "raiders",
+  "title": "Raiders on the plain",
+  "script": "project files: raiders-scene/script.md",
+  "place": "Persia, the hot Rudbar (Jiroft) plain south of Kerman, below the mountain descent near ruined Camadi, on the road down to Hormuz, autumn of about 1272.",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed., Book 1 ch. 18 and notes 1-5 (Project Gutenberg #10636)",
+    "findings": [
+      "A vast, very hot plain (Reobarles: Rudbar/Jiroft) with dates, pistachios and 'apples of Paradise'; turtledoves, francolins, white humped oxen, fat-tailed sheep.",
+      "Villages and towns 'have lofty walls of mud, made as a defence against the banditti'.",
+      "The Caraonas bring a darkness ('you can scarcely discern your comrade riding beside you'), ride abreast across the whole plain and catch every living thing outside the walls. The darkness is a dry dust haze or fog, typical after the autumn equinox (Sykes).",
+      "Marco threw himself into a village hard by, Conosalmi; he lost his whole company except seven (Pauthier's text).",
+      "Not in the source: the caravan's animals, flight on horseback, who spotted the raiders, the open gate. These are our reconstruction.",
+      "Raiders c.1272: Mongol (Negüderi) kit, wrap-over deel, quilted or fur-trimmed caps, composite recurve bow first, sabre and mace, some lamellar; small steppe horses 13-14 hands."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/raiders-accuracy.md"
+  },
+  "layout": {
+    "status": "Draft blocking from bart's note of 26 Nov 2026 (the village stays small on the far right until the Polos race toward it). The distances are a first proposal for bart to correct, not a reconstruction.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      4000,
+      1500
+    ],
+    "light": "warm low sun from behind the camera side (south), dimming once the haze rises",
+    "landmarks": [
+      {
+        "id": "village",
+        "label": "walled village (Conosalmi)",
+        "at": [
+          3700,
+          800
+        ],
+        "size": 200,
+        "note": "far to the east, on the right of frame: a walled village with lofty mud walls and one plain gate, not a town; about 3 km from the caravan until the chase"
+      },
+      {
+        "id": "haze",
+        "label": "brown haze, later the raiders",
+        "at": [
+          300,
+          900
+        ],
+        "size": 300,
+        "note": "far to the west, on the left of frame; a dry dust haze that rises in the clips and hides the sun, the raiders coming out of it as a broad line abreast; the stills show a clear horizon there",
+        "in_stills": false
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the Polos: at a walk, then at a gallop east",
+        "points": [
+          [
+            700,
+            700
+          ],
+          [
+            1100,
+            720
+          ],
+          [
+            3600,
+            800
+          ]
+        ]
+      },
+      {
+        "who": [
+          "raiders"
+        ],
+        "label": "Karauna raiders",
+        "points": [
+          [
+            300,
+            900
+          ],
+          [
+            2600,
+            820
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "raiders-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              300,
+              560
+            ],
+            "looks_at": [
+              1600,
+              960
+            ],
+            "framing": "Very wide, eye level"
+          },
+          "action": "The whole caravan, the three Polos with servants and pack animals, small on a vast hot plain with a few date palms and pistachio trees, calm, at a walk away from the camera toward the right.",
+          "sees": {
+            "village": "a small shape on the far right horizon"
+          },
+          "where": {
+            "marco": "the small rider in front, on the right",
+            "niccolo": "the small rider in the middle",
+            "maffeo": "the small rider on the left",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "marco": [
+              684.66,
+              669.99
+            ],
+            "niccolo": [
+              682.31,
+              677.63
+            ],
+            "maffeo": [
+              679.96,
+              685.28
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              1050,
+              560
+            ],
+            "looks_at": [
+              1000,
+              720
+            ],
+            "framing": "Medium"
+          },
+          "action": "The guide has stopped and looks toward the left horizon; his horse lifts its head.",
+          "sees": {},
+          "places": {
+            "guide": [
+              1047.61,
+              567.64
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "marco-horse"
+          ],
+          "camera": {
+            "at": [
+              1200,
+              640
+            ],
+            "looks_at": [
+              300,
+              900
+            ],
+            "framing": "Wide, over Marco's shoulder"
+          },
+          "action": "Marco, in the saddle, seen from behind, turns his head to his LEFT and looks at the far left horizon; the plain there is still clear (the haze rises in the clip, not in the still).",
+          "sees": {
+            "haze": "not there yet: a clear horizon"
+          },
+          "where": {
+            "marco": "the rider seen from behind, close to the camera",
+            "marco-horse": "the horse he sits on"
+          },
+          "places": {
+            "marco": [
+              1198.42,
+              639.94
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              1010,
+              650
+            ],
+            "looks_at": [
+              1000,
+              720
+            ],
+            "framing": "Close on two faces"
+          },
+          "action": "Niccolò and Marco side by side; Marco narrows his eyes, Niccolò looks past him, steady.",
+          "sees": {},
+          "where": {
+            "niccolo": "the man on the left, nearer the camera",
+            "marco": "the young man on the right"
+          },
+          "places": {
+            "niccolo": [
+              1009.15,
+              652.4
+            ],
+            "marco": [
+              1010.14,
+              652.55
+            ]
+          }
+        }
+      ],
+      "size": [
+        1672,
+        941
+      ]
+    },
+    {
+      "id": "raiders-b",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "cells": [
+        {
+          "shot": 5,
+          "seconds": 4,
+          "who": [
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              1020,
+              660
+            ],
+            "looks_at": [
+              300,
+              900
+            ],
+            "framing": "Close"
+          },
+          "action": "Maffeo shades his eyes with one hand and stares at the left horizon.",
+          "sees": {},
+          "where": {
+            "maffeo": "the only man in the cell"
+          },
+          "places": {
+            "maffeo": [
+              1017.47,
+              660.32
+            ]
+          }
+        },
+        {
+          "shot": 6,
+          "seconds": 2,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              1040,
+              700
+            ],
+            "looks_at": [
+              1500,
+              800
+            ],
+            "framing": "Medium wide, looking along the road"
+          },
+          "action": "Already riding east toward the village, the three Polos spur from a walk into a gallop, each at a different moment.",
+          "sees": {
+            "village": "a small shape on the far right horizon, the same size as in the cells before"
+          },
+          "where": {
+            "marco": "the rider on the right, already galloping",
+            "niccolo": "the rider in the middle, breaking into a gallop",
+            "maffeo": "the rider on the left, still at a walk, looking back",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              1056.95,
+              706.76
+            ],
+            "niccolo": [
+              1061.5,
+              704.67
+            ],
+            "marco": [
+              1066.04,
+              702.59
+            ]
+          }
+        },
+        {
+          "shot": 7,
+          "seconds": 6,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              2260,
+              770
+            ],
+            "looks_at": [
+              2700,
+              880
+            ],
+            "framing": "Wide, from behind and a little to the side"
+          },
+          "action": "Seen from behind, the Polos ride hard away from the camera toward the village, low over their horses' necks, the horses' legs clearly apart in a full gallop (the raiders behind them are in the clip, not in this still).",
+          "sees": {
+            "village": "larger now, ahead on the right: lofty mud walls and one plain gate"
+          },
+          "where": {
+            "marco": "the rider in front, on the right",
+            "niccolo": "the rider in the middle",
+            "maffeo": "the rider at the back, on the left",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              2285,
+              788
+            ],
+            "niccolo": [
+              2300,
+              790
+            ],
+            "marco": [
+              2316,
+              791
+            ]
+          }
+        },
+        {
+          "shot": 8,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              3450,
+              760
+            ],
+            "looks_at": [
+              3700,
+              800
+            ],
+            "framing": "Medium, from behind the riders"
+          },
+          "action": "The village gate stands open ahead in the lofty mud wall and the Polos reach it.",
+          "sees": {
+            "village": "the gate fills most of the frame"
+          },
+          "where": {
+            "niccolo": "the rider nearest the gate",
+            "marco": "the rider in the middle",
+            "maffeo": "the rider nearest the camera",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "places": {
+            "maffeo": [
+              3455.69,
+              762.43
+            ],
+            "marco": [
+              3457.9,
+              761.26
+            ],
+            "niccolo": [
+              3460.11,
+              760.1
+            ]
+          }
+        }
+      ],
+      "size": [
+        1672,
+        941
+      ]
+    }
+  ]
+}

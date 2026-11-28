@@ -181,7 +181,23 @@
         </div>
 
         {{-- The picture stays in view while the settings below it scroll: a click changes it, a double-click edits it. --}}
-        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain' && !info?.own">
+        {{-- A group (Bart 11-25, as in Photoshop): no picture of its own. Its name, and Ungroup, which leaves every layer
+             standing where the group put it; its place, size, turn and fade are the rows below, keyed like a layer's. --}}
+        @if (str_starts_with((string) $layerId, 'group-'))
+            <div class="mt-3 space-y-2" data-stage25d-group>
+                <x-ui.panel-row :label="__('Name')">
+                    <input type="text" maxlength="40" class="input input-xs w-full" aria-label="{{ __('Name') }}" data-stage25d-group-name
+                           :value="info?.label" x-on:change="window.__stage25d?.commitLayerProp?.(@js($layerId), 'name', $event.target.value); sync()" />
+                </x-ui.panel-row>
+                <button type="button" class="btn btn-sm w-full" data-stage25d-ungroup
+                        x-on:click="window.__clearLayerGuard?.(); $wire.ungroupStage25d(@js(substr((string) $layerId, 6)))">
+                    <x-ui.icon name="layer-group" />
+                    {{ __('Ungroup') }}
+                </button>
+            </div>
+        @endif
+
+        <div class="sticky top-0 z-10 mt-3 h-28 w-full overflow-hidden rounded-md bg-base-200" x-show="info?.role !== 'terrain' && info?.role !== 'group' && !info?.own">
             <button type="button" class="absolute inset-0 flex items-center justify-center"
                     data-stage25d-picture data-tooltip="{{ __('Click to change, double-click to edit') }}" aria-label="{{ __('Change picture') }}"
                     x-on:click="pickPicture()" x-on:dblclick="editPicture()">
@@ -317,6 +333,28 @@
                             <x-icons.chevron-right class="h-4 w-4 shrink-0 text-panel-hint transition-colors group-hover:text-base-content" />
                         </button>
                     </template>
+                </div>
+            </x-ui.settings-section>
+        </template>
+
+        {{-- The terrain's plants (Bart 11-24: "it's impossible for me to adjust this"): every low plant of the library, a
+             click switches it on or off for this floor (the first click makes the list the teacher's own); Shuffle throws
+             the same plants on new spots; Automatic gives the choice back to the terrain. How many: the World's Grass slider. --}}
+        <template x-if="info?.role === 'terrain' && strew && strew.plants.length">
+            <x-ui.settings-section :title="__('Plants')" :open="true" class="-mx-4 w-auto!" data-stage25d-plants>
+                <div class="grid grid-cols-3 gap-2">
+                    <template x-for="p in strew.plants" :key="p.key">
+                        <button type="button" class="flex flex-col items-stretch gap-1 rounded-md border bg-base-200 p-1 text-left transition-colors hover:border-base-content/40"
+                                :class="p.on ? 'border-base-content' : 'border-panel-hairline opacity-60'" :aria-pressed="p.on ? 'true' : 'false'"
+                                :aria-label="p.label" :data-stage25d-plant="p.key" x-on:click="togglePlant(p.key)">
+                            <span class="block aspect-square w-full rounded-xs" :style="plantCell(p)"></span>
+                            <span class="truncate text-xs font-semibold text-base-content" x-text="p.label"></span>
+                        </button>
+                    </template>
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                    <button type="button" class="btn btn-sm flex-1" data-stage25d-plants-shuffle x-on:click="shufflePlants()">{{ __('Shuffle') }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-stage25d-plants-auto x-show="strew.own" x-cloak x-on:click="setStrew({ plants: null })">{{ __('Automatic') }}</button>
                 </div>
             </x-ui.settings-section>
         </template>

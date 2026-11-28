@@ -47,6 +47,13 @@ class GenerateSceneScript implements ShouldQueue
                 ),
             );
 
+            // A model that slips into another writing system mid-sentence ("Marco终于") fails the
+            // scene instead of saving it, so the job's retry asks again.
+            $stray = \App\Support\StrayScript::find($text, (string) ($scene->lesson->language ?: 'en'));
+            if ($stray !== []) {
+                throw new \RuntimeException('The script has words in another writing system: '.implode(', ', $stray));
+            }
+
             $scene->update(['script_segment' => trim($text)]);
             $this->maybeMarkReady($scene->fresh());
         } catch (Throwable $e) {

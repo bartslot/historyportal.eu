@@ -21,6 +21,7 @@
 import { playEntrance, playExit } from './animations.js'
 import { t } from '../i18n.js'
 import { handleCss } from './stage-handle.js'
+import { passPress } from './pass-press.js'
 import { applyLayerFilter } from './layer-filters.js'
 import { alphaAt, DRAWN_ALPHA, loadAlphaMask, picturePoint } from './diorama/alpha-mask.js'
 import { applyAmbient, trackStage } from './ambient.js'
@@ -107,7 +108,7 @@ export const artObjId = (assetId) => `art_${assetId}`
 const SYNCABLE = [
   'x', 'y', 'scale', 'height', 'width', 'rotation', 'opacity', 'blur', 'blend', 'edge',
   'white_key', 'grayscale', 'tint', 'tint_opacity', 'flip_x', 'flip_y',
-  ...SIT_KEYS, 'occlude', ...ARROW_KEYS,
+  ...SIT_KEYS, 'occlude', ...ARROW_KEYS, 'locked',
 ]
 
 /**
@@ -155,9 +156,9 @@ export function layersSignature(layers) {
     l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
-    l.anchor, l.lng, l.lat, l.flip_x, l.flip_y,
+    l.anchor, l.lng, l.lat, JSON.stringify(l.geo || null), l.flip_x, l.flip_y,
     l.waterline, l.reflection, l.contact_shadow, l.color_match, l.foam, l.speed, l.occlude,
-    l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style,
+    l.end_x, l.end_y, l.bend, l.shaft, l.head, l.arrow_style, !!l.locked,
     l.embed ? JSON.stringify(l.embed.opts || null) : null,
     l.frames ? JSON.stringify(l.frames) : null,
   ]))
@@ -232,6 +233,8 @@ export function normalizeLayer(l) {
         ...Object.fromEntries(SIT_KEYS.map(k => [k, Number.isFinite(l[k]) ? l[k] : null])),
         // Hidden where the backdrop is nearer (occlusion.js): 1 on, 0 off.
         occlude: l.occlude ? 1 : 0,
+        // Locked on the canvas (the right-click menu's Lock): a press goes through to what is under it.
+        locked: !!l.locked,
         // A sprite sheet over the picture (layer-frames.js): {url, count, columns, play, fps} or null.
         frames: l.frames && typeof l.frames === 'object' ? l.frames : null,
         // How tall the drawn thing really is, for "fit to this spot" (null: a standing person).
@@ -240,10 +243,37 @@ export function normalizeLayer(l) {
         anchor: l.anchor === 'map' && l.kind !== 'arrow' ? 'map' : 'screen',
         lng: Number.isFinite(l.lng) ? l.lng : null,
         lat: Number.isFinite(l.lat) ? l.lat : null,
+        geo: isGeo(l) ? l.geo : null,
+        // A line drawn with the pen (EditsDrawings): once pinned it must follow the map exactly, never by PIN_ZOOM_GROWTH.
+        // The editor's payload says so (`drawing`); the saved layer itself carries the strokes.
+        drawing: l.drawing === true || (Array.isArray(l.strokes) && l.strokes.length > 0 && !!l.drawn),
         // A vector arrow (arrow-shape.js): its end and its shape. Every other kind ignores these.
         ...(l.kind === 'arrow' ? arrowParams(l) : {}),
         title: l.title || (l.embed && l.embed.title) || 'Icon',
   }
+}
+
+/** How much bigger a pinned picture gets for each zoom step in (the map itself doubles). */
+export const PIN_ZOOM_GROWTH = Math.SQRT2
+export const PIN_SCALE_MIN = 0.4
+export const PIN_SCALE_MAX = 2.5
+
+/** The size factor for a pinned picture under this projector: 1 at the scene's opening zoom. */
+export function pinZoomFactor(projector) {
+  const z = projector?.zoom?.()
+  const ref = projector?.refZoom?.()
+  if (!Number.isFinite(z) || !Number.isFinite(ref)) return 1
+  return Math.max(PIN_SCALE_MIN, Math.min(PIN_SCALE_MAX, PIN_ZOOM_GROWTH ** (z - ref)))
+}
+
+/** A drawing pinned to the map (EditsDrawings): `geo` is the map's zoom and the stage's px when it was drawn. */
+export const isGeo = (l) => Number.isFinite(l?.geo?.zoom) && l.geo.px > 0 && l.geo.w > 0
+
+/** Its size factor: exactly the map's own (doubles per zoom step, smaller on a bigger stage); `axis` 'x' for its width. */
+export function geoZoomFactor(projector, item, stagePx, axis = 'y') {
+  const z = projector?.zoom?.()
+  if (!Number.isFinite(z) || !(stagePx > 0) || !isGeo(item)) return 1
+  return Math.max(0.01, Math.min(100, 2 ** (z - item.geo.zoom) * (axis === 'x' ? item.geo.w : item.geo.px) / stagePx))
 }
 
 /** A stage position (%) off the stage pulled back in, far enough that the picture can be seen and grabbed. */
@@ -449,7 +479,10 @@ export class ArtworkOverlay {
     const item = this._layers.find((l) => String(l.asset_id) === String(assetId))
     if (!item || !this._projector) return false
 
+    // A drawing that scales with the map keeps the size it has on screen now, pinned or not.
+    const geo = isGeo(item)
     if (item.anchor === 'map') {
+      if (geo) item.scale *= this._mapFactor(item)
       item.anchor = 'screen'
       item.lng = null
       item.lat = null
@@ -473,9 +506,43 @@ export class ArtworkOverlay {
       item.anchor = 'map'
       item.lng = ll.lng
       item.lat = ll.lat
+      if (geo) item.scale /= this._mapFactor(item)
+      // A drawing pinned by hand gets the map's view now, so it grows exactly with the map from here on.
+      else if (item.drawing) item.geo = this._viewGeo(this._projector.zoom?.())
     }
     this._emit(item)
     return item.anchor === 'map'
+  }
+
+  /** The map's zoom and this stage's size in px: what a drawing's `geo` holds. Null when unknown. */
+  _viewGeo(zoom) {
+    const r = this.host.getBoundingClientRect()
+    if (!Number.isFinite(zoom) || !(r.height > 0) || !(r.width > 0)) return null
+    return { zoom: Math.round(zoom * 10000) / 10000, px: Math.round(r.height * 10) / 10, w: Math.round(r.width * 10) / 10 }
+  }
+
+  /**
+   * Pinned drawings saved without `geo` (pinned by hand before it was kept) grew by PIN_ZOOM_GROWTH, so a route traced
+   * over the map slid off it as soon as the camera zoomed (Bart 11-26: "when I play it drifts"). Give each the view it
+   * shows at the scene's opening zoom, where it looks exactly as before, and save it. Editor only.
+   * @returns {number} how many layers were given one
+   */
+  adoptDrawingGeo() {
+    if (this.readonly || !this._projector) return 0
+    // No opening zoom (a voyage's projector): such a picture never grew with the map, so it looks right at today's zoom.
+    const ref = this._projector.refZoom?.()
+    const zoom = Number.isFinite(ref) ? ref : this._projector.zoom?.()
+    let n = 0
+    for (const item of this._layers) {
+      if (item.anchor !== 'map' || !item.drawing || item.geo) continue
+      const geo = this._viewGeo(zoom)
+      if (!geo) continue
+      item.geo = geo
+      this._emit(item)
+      n++
+    }
+    if (n) this.refreshPositions()
+    return n
   }
 
   /** Reposition map-anchored layers — call on every map move/zoom. */
@@ -487,6 +554,10 @@ export class ArtworkOverlay {
       if (el && el !== this._dragNode) {
         el.style.left = `${item.x}%`
         el.style.top = `${item.y}%`
+        // It grows with the map too (_mapFactor); only its size, never `max-content` (see the scale case).
+        el.style.height = `${this._heightPct(item)}%`
+        const w = this._widthPct(item)
+        if (w !== null) el.style.width = `${w}%`
         this._syncChrome(item)
       }
     }
@@ -528,14 +599,29 @@ export class ArtworkOverlay {
     return `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))${spin}${mirror}`
   }
 
-  // On-screen height of the node = base height × user scale, as a % of the stage.
+  // On-screen height of the node = base height × user scale (× the map's zoom, when pinned), as a % of the stage.
   _heightPct(item) {
-    return item.height * item.scale
+    return item.height * item.scale * this._mapFactor(item)
   }
 
   // On-screen width, or null when the layer has none of its own.
   _widthPct(item) {
-    return Number.isFinite(item.width) ? item.width * item.scale : null
+    return Number.isFinite(item.width) ? item.width * item.scale * this._mapFactor(item, 'x') : null
+  }
+
+  /**
+   * A picture pinned to a place grows and shrinks with the map, by a set amount (Bart 11-24: "if they
+   * are pinned to the map, they need to be scaled to a certain amount"). Its saved size is its size at
+   * the scene's opening frame; a map zoomed in one step (twice as close) makes it PIN_ZOOM_GROWTH
+   * times as big, held between PIN_SCALE_MIN and PIN_SCALE_MAX so it never fills the stage or vanishes.
+   */
+  _mapFactor(item, axis = 'y') {
+    if (item?.anchor !== 'map') return 1
+    if (isGeo(item)) {
+      const r = this.host.getBoundingClientRect()
+      return geoZoomFactor(this._projector, item, axis === 'x' ? r.width : r.height, axis)
+    }
+    return pinZoomFactor(this._projector)
   }
 
   /**
@@ -644,8 +730,11 @@ export class ArtworkOverlay {
     if (!item || !node) return
 
     const NUMERIC = ['x', 'y', 'scale', 'height', 'width', 'opacity', 'blur', 'white_key', 'depth', 'rotation', 'tint_opacity', 'occlude', ...SIT_KEYS, ...ARROW_KEYS]
-    const BOOLEAN = ['grayscale', 'flip_x', 'flip_y']
+    const BOOLEAN = ['grayscale', 'flip_x', 'flip_y', 'locked']
     item[key] = NUMERIC.includes(key) ? Number(value) : (BOOLEAN.includes(key) ? !!value : value)
+    // A width of null is "no width of its own", not zero: Number(null) is 0, which drew the layer
+    // as a 0%-wide box the moment a save cleared its width.
+    if (key === 'width' && (value === null || value === '' || value === undefined)) item.width = null
     // An arrow has no box to move or scale: its geometry and ink are repainted from its values.
     if (item.kind === 'arrow') {
       if (ARROW_KEYS.includes(key) || ['x', 'y', 'tint', 'opacity'].includes(key)) {
@@ -682,12 +771,17 @@ export class ArtworkOverlay {
       case 'width': {
         node.style.height = `${this._heightPct(item)}%`
         const w = this._widthPct(item)
-        // Setting the property to '' returns the node to width:max-content, so clearing an
-        // explicit width puts the layer back on its own aspect rather than freezing the last one.
-        node.style.width = w === null ? '' : `${w}%`
+        // No explicit width means `max-content`, written out, never ''. Clearing the inline width
+        // dropped the node to width:auto, which on an absolutely placed box is shrink-to-fit: it
+        // is capped by the room between its left edge and the stage's right edge. The picture's
+        // `max-width:100%` (Tailwind's reset) then followed the box down while its height stayed,
+        // so every scale/height repaint squeezed a figure sideways, worse the further right it
+        // stood. Any save that came back (a drag, a balloon edit) repainted through here.
+        node.style.width = w === null ? 'max-content' : `${w}%`
         const liveImg = node.querySelector('img')
         if (liveImg) {
           liveImg.style.width = w === null ? 'auto' : '100%'
+          liveImg.style.maxWidth = w === null ? 'none' : ''
           liveImg.style.objectFit = w === null ? '' : 'fill'
         }
         this._syncChrome(item)
@@ -1156,8 +1250,10 @@ export class ArtworkOverlay {
     // With no explicit width the node hugs the image and `width:auto` keeps its natural aspect.
     // Once a teacher unlocks the aspect and types a width, the box is theirs and the picture is
     // stretched to it — `contain` would letterbox and leave the ring around empty space.
+    // `max-width:none` because Tailwind's reset caps every img at 100% of its box: should the box
+    // ever be narrower than the picture, the picture must overflow it, never squeeze into it.
     img.style.cssText = this._widthPct(item) === null
-      ? 'height:100%; width:auto; display:block; pointer-events:none; user-select:none;'
+      ? 'height:100%; width:auto; max-width:none; display:block; pointer-events:none; user-select:none;'
       : 'height:100%; width:100%; object-fit:fill; display:block; pointer-events:none; user-select:none;'
     // The node sizes itself to the image's aspect, so the chrome can only be measured once the
     // file has decoded. Without this the ring is a sliver on first paint.
@@ -1304,6 +1400,7 @@ export class ArtworkOverlay {
   /** Drag the arrow's body: the whole arrow moves, start and end together. */
   _wireArrowBody(item, el) {
     el.addEventListener('pointerdown', (e) => {
+      if (item.locked) return
       this.select(artObjId(item.asset_id))
       const [sx, sy] = this._pointPct(e)
       const origin = { x: item.x, y: item.y, ex: item.end_x, ey: item.end_y }
@@ -1335,6 +1432,7 @@ export class ArtworkOverlay {
   _wireArrowHandle(item, el, name) {
     el.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
+      if (item.locked) return
       this.select(artObjId(item.asset_id))
       let moved = false
       const onMove = (ev) => {
@@ -1401,12 +1499,7 @@ export class ArtworkOverlay {
   }
 
   /** Hand a press on empty pixels to whatever is under it: another layer, or the stage. */
-  _passDown(node, e) {
-    node.style.pointerEvents = 'none'
-    const under = document.elementFromPoint(e.clientX, e.clientY)
-    node.style.pointerEvents = 'auto'
-    under?.dispatchEvent(new PointerEvent(e.type, e))
-  }
+  _passDown(node, e) { passPress(node, e) }
 
   _wireDrag(item, node) {
     if (!this.readonly && item.url && !item.embed && !this._masks.has(item.url)) {
@@ -1417,6 +1510,8 @@ export class ArtworkOverlay {
       if (!e.buttons) node.style.cursor = this._onEmptyPixels(item, node, e) ? 'default' : 'grab'
     })
     node.addEventListener('pointerdown', (e) => {
+      // Locked: not this layer's press at all, as if it were not there (Figma's lock). The layer list unlocks it.
+      if (item.locked) { this._passDown(node, e); return }
       if (e.target === node || e.target.tagName === 'IMG') {
         if (this._onEmptyPixels(item, node, e)) { this._passDown(node, e); return }
       }
@@ -1489,6 +1584,7 @@ export class ArtworkOverlay {
     handle.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
+      if (item.locked) return   // a locked layer keeps its size and angle
       this.select(artObjId(item.asset_id))
       this._dragNode = node   // pause parallax drift while resizing
       node.style.transform = this._transform(item)   // drop any parallax offset first
@@ -1560,6 +1656,7 @@ export class ArtworkOverlay {
     handle.addEventListener('pointerdown', (e) => {
       e.stopPropagation()
       e.preventDefault()
+      if (item.locked) return   // a locked layer keeps its size and angle
       this.select(artObjId(item.asset_id))
       this._dragNode = node
 
@@ -1610,6 +1707,8 @@ export class ArtworkOverlay {
       anchor: item.anchor,
       lng: Number.isFinite(item.lng) ? item.lng : null,
       lat: Number.isFinite(item.lat) ? item.lat : null,
+      // A pinned drawing's map view (isGeo), so its size keeps following the map after a reload.
+      ...(item.anchor === 'map' && isGeo(item) ? { geo: item.geo } : {}),
     })
     // The timeline records a canvas move as a keyframe when the property is animated.
     window.dispatchEvent(new CustomEvent('scene-object-edited', {

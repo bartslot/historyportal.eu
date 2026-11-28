@@ -491,6 +491,14 @@
     },
     {
       "leg": 4,
+      "depart": "1798-05-04",
+      "arrive": "1798-05-09",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "napoleon.org chronology (tome 2): left Paris for Toulon 4 May 1798, arrived Toulon 9 May. Wikipedia (Mediterranean campaign of 1798) says 3 May and five days later. Towns on the way are the Paris-Lyon-Marseille post road, not named in the sources."
+    },
+    {
+      "leg": 5,
       "depart": "1798-05-19",
       "arrive": "1798-07-01",
       "depart_ok": "day",
@@ -498,7 +506,7 @@
       "note": "s6: the fleet sailed from Toulon on 19 May 1798 and landed near Alexandria on 1 July (s1 agrees). The lead of s6 says 28 June, which contradicts its own body text."
     },
     {
-      "leg": 5,
+      "leg": 6,
       "depart": "1798-07-01",
       "arrive": "1798-07-21",
       "depart_ok": "day",
@@ -506,7 +514,7 @@
       "note": "s6: landing 1 July, Alexandria taken 2 July. s7: Battle of the Pyramids on 21 July 1798."
     },
     {
-      "leg": 6,
+      "leg": 7,
       "depart": "1799-02-10",
       "arrive": "1799-05-21",
       "depart_ok": "day",
@@ -514,7 +522,7 @@
       "note": "s6: Bonaparte left Cairo for Syria on 10 February 1799. s9: the siege of Acre ran 20 March to 21 May 1799."
     },
     {
-      "leg": 7,
+      "leg": 8,
       "depart": "1799-05-21",
       "arrive": "1799-08-22",
       "depart_ok": "day",
@@ -522,12 +530,28 @@
       "note": "s6: back in Cairo on 14 June, Abukir won on 25 July, left Cairo in August. No source gives 22 August for reaching Alexandria."
     },
     {
-      "leg": 8,
+      "leg": 9,
       "depart": "1799-08-23",
       "arrive": "1799-11-09",
       "depart_ok": "month",
       "arrive_ok": "day",
-      "note": "Sources differ by a day: s6 says the army was told on 23 August that Kléber had command; s1 says Bonaparte set sail on 24 August 1799. He reached Paris on 16 October (s10); the coup was on 9 November 1799 (s10)."
+      "note": "Sources differ by a day: s6 says the army was told on 23 August that Kléber had command; s1 says Bonaparte set sail on 24 August 1799. He reached Paris on 16 October (s10); the coup was on 9 November 1799 (s10). (2026-11-26: this leg is now split into Alexandria to Ajaccio, Ajaccio to Saint-Raphaël, and Saint-Raphaël to Paris, legs 9-11.)"
+    },
+    {
+      "leg": 10,
+      "depart": "1799-10-06",
+      "arrive": "1799-10-09",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "napoleon-empire.org chronology 1799: landed at Ajaccio 1 October, left 6 October, landed at Saint-Raphaël 9 October (Hérodote says Fréjus, 8 October). The course from Egypt to Ajaccio is not given in the sources read; the drawn one keeps to open water south of Sicily and west of Sardinia."
+    },
+    {
+      "leg": 11,
+      "depart": "1799-10-09",
+      "arrive": "1799-10-16",
+      "depart_ok": "day",
+      "arrive_ok": "day",
+      "note": "napoleon.org: arrived in Paris 16 October 1799; the coup of 18 Brumaire followed on 9 November. The road through Aix, Avignon, Lyon and the Bourbonnais is the usual account, not confirmed in the sources read."
     }
   ]
 }

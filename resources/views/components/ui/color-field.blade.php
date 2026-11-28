@@ -18,6 +18,8 @@
     /** The two properties it keys: a picture's tint, a text's own colour ('color', 'colorOpacity'). */
     'colorProperty' => 'tint',
     'opacityProperty' => 'tint_opacity',
+    /** False for a colour with no strength of its own (a text's outline): no dead percentage beside it. */
+    'withOpacity' => true,
 ])
 
 @php
@@ -72,7 +74,8 @@
         <span class="truncate text-xs tracking-wide text-panel-label" data-color-unset @if ($isSet) hidden @endif>{{ __('None') }}</span>
     </label>
 
-    <label class="flex shrink-0 cursor-text items-center gap-0.5 border-l border-panel-hairline pl-2">
+@if ($withOpacity)
+        <label class="flex shrink-0 cursor-text items-center gap-0.5 border-l border-panel-hairline pl-2">
         <input type="number" min="0" max="100" step="1" value="{{ (int) round(((float) $opacity) * 100) }}"
                aria-label="{{ $opacityLabel }}"
                @if ($onOpacityInput) x-on:input="{{ $onOpacityInput }}" @endif
@@ -82,6 +85,7 @@
                       [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
         <span class="text-xs font-semibold text-panel-label">%</span>
     </label>
+    @endif
 
     <span class="flex shrink-0 border-l border-panel-hairline pl-1"><x-ui.keyframe-diamond :target="$keyframeTarget" :property="$keyframeTarget ? $colorProperty.' '.$opacityProperty : null" /></span>
 </div>

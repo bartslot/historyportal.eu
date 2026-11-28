@@ -1,0 +1,190 @@
+{
+  "scene": "khotan",
+  "title": "Khotan, the jade river",
+  "script": "project files: new-scenes/storyboard-order.md, item 7 (stop 5484)",
+  "place": "Khotan oasis, about 1273: orchards, cotton fields, and jade gathered from the river (Polo, Book 1 ch. 36-37).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: Cotan has cotton, vineyards and gardens.",
+      "Polo's river 'Jasper and Chalcedony' is jade (Yule): water-rolled stones fished from the Karakash and Yurungkash rivers at Khotan, white to green."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/khotan.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      800,
+      400
+    ],
+    "light": "bright midday",
+    "landmarks": [
+      {
+        "id": "river",
+        "label": "jade river",
+        "at": [
+          400,
+          200
+        ],
+        "size": 400,
+        "note": "a wide shallow river with pebble banks across the oasis; in ink the water is bare white paper with only a few short clean ripple lines, and pebbles are open outlines with white inside: no grey tone, no dense scribble on the water or the stones",
+        "height": 1
+      },
+      {
+        "id": "orchards",
+        "label": "oasis orchards",
+        "at": [
+          400,
+          350
+        ],
+        "size": 600,
+        "note": "poplars and fruit orchards along the far bank",
+        "height": 15
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "khotan-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              200,
+              50
+            ],
+            "looks_at": [
+              400,
+              300
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan reaches the green oasis after the desert, on the near bank of a wide shallow river drawn with clear banks, pebbles and a few ripple lines; poplars, vineyards and cotton fields along the far bank.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount",
+            "niccolo-horse": "Niccolò's mount",
+            "maffeo-horse": "Maffeo's mount"
+          },
+          "sees": {
+            "orchards": "across the background"
+          },
+          "places": {
+            "marco": [
+              393.75,
+              305.0
+            ],
+            "niccolo": [
+              400.0,
+              300.0
+            ],
+            "maffeo": [
+              406.25,
+              295.0
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              380,
+              160
+            ],
+            "looks_at": [
+              400,
+              210
+            ],
+            "framing": "Medium wide"
+          },
+          "action": "In the middle of the river, three jade gatherers wade knee-deep (the water line across their knees), feeling for stones with their feet; ripples around their legs; the far bank small behind.",
+          "places": {
+            "gatherer": [
+              385.57,
+              173.93
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              395,
+              190
+            ],
+            "looks_at": [
+              400,
+              200
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Close-up from above: wet hands lift a piece of raw jade out of the water: a smooth, rounded, egg-sized stone of milky white jade with a pale green tinge, glossy and slightly translucent at its edge, clearly unlike the dull grey and brown pebbles lying under the water around it. Only the water surface with ripples and pebbles fills the background (no trees).",
+          "places": {
+            "hands": [
+              395.67,
+              191.34
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              370,
+              150
+            ],
+            "looks_at": [
+              390,
+              180
+            ],
+            "framing": "Medium"
+          },
+          "action": "Marco crouches on the DRY pebbly river bank, both boots on dry stones, the water's edge just in front of him, turning the milky white-green jade stone in his fingers, fascinated; the gatherers small in the river behind him.",
+          "places": {
+            "marco": [
+              373.44,
+              157.32
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

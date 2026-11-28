@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Scene;
+use App\Services\Lessons\StoryCraft;
 
 /**
  * Storyboard prompt: turns a scene's narration into N distinct shots, each anchored
@@ -151,6 +152,9 @@ SYS;
             ? "Do NOT depict:\n".self::bulletList((array) $brief['avoidList'])
             : '';
 
+        // Every recurring person keeps their signature colour in every shot (StoryCraft::castRules).
+        $colourBlock = StoryCraft::castColours((array) ($scene->lesson->outline ?? []), array_map('strval', (array) ($brief['characters'] ?? [])));
+
         $setting = trim(($scene->year ?? '').' '.($scene->location ?? ''));
         $settingLine = $setting !== '' ? "Setting: {$setting}" : '';
 
@@ -165,6 +169,8 @@ Narration for this scene (anchor_sentence must be a verbatim substring of THIS t
 {$visualBlock}
 
 {$avoidBlock}
+
+{$colourBlock}
 
 Produce the {$shotCount}-shot JSON storyboard now.
 USR;

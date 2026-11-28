@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { attachLoop, detachLoop, loopVideo } from '../picture-loop.js'
+import { attachLoop, detachLoop, loopVideo, loopSource, setLoopsPaused, seekLoops } from '../picture-loop.js'
 import { ParallaxScene } from '../ParallaxScene.js'
 import { hideFlatLayers } from '../stage-handoff.js'
 
@@ -67,5 +67,81 @@ describe('picture loop', () => {
     expect(plane.querySelector('img').getAttribute('src')).toBe('/storage/a.jpg')
     expect(plane.querySelector('video').getAttribute('src')).toBe('/storage/a.mp4')
     scene.destroy()
+  })
+})
+
+describe('AV1 copy', () => {
+  it('fetches the AV1 file where the browser plays AV1', () => {
+    const spy = vi.spyOn(window.HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('probably')
+    expect(loopSource('/storage/a.loop.mp4#av1')).toBe('/storage/a.loop.av1.mp4')
+    expect(loopVideo('/storage/a.loop.mp4#av1').getAttribute('src')).toBe('/storage/a.loop.av1.mp4')
+    spy.mockRestore()
+  })
+
+  it('keeps the H.264 file where it does not, and for a loop without a copy', () => {
+    const spy = vi.spyOn(window.HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('')
+    expect(loopSource('/storage/a.loop.mp4#av1')).toBe('/storage/a.loop.mp4')
+    spy.mockReturnValue('probably')
+    expect(loopSource('/storage/a.mp4')).toBe('/storage/a.mp4')
+    spy.mockRestore()
+  })
+})
+
+describe('holding every loop with the scene clock', () => {
+  it('pauses and resumes the loops on the page, and holds one made while paused', async () => {
+    const host = document.createElement('div')
+    const v = attachLoop(host, '/storage/held-a.mp4')
+    const pause = vi.fn()
+    const play = vi.fn(() => Promise.resolve())
+    Object.assign(v, { pause, play })
+    setLoopsPaused(true)
+    expect(pause).toHaveBeenCalled()
+    const late = loopVideo('/storage/held-b.mp4')
+    const latePause = vi.fn()
+    late.pause = latePause
+    late.dispatchEvent(new Event('playing'))   // it plays once (first frame), then stops with the clock
+    expect(latePause).not.toHaveBeenCalled()   // not inside 'playing': that would reject its play() promise
+    await new Promise(r => setTimeout(r, 0))
+    expect(latePause).toHaveBeenCalled()
+    setLoopsPaused(false)
+    expect(play).toHaveBeenCalled()
+  })
+
+  it('seeks every loop to the scene time, wrapped to its own length', () => {
+    setLoopsPaused(true)
+    const v = loopVideo('/storage/seek.mp4')
+    Object.defineProperty(v, 'duration', { value: 4, configurable: true })
+    Object.defineProperty(v, 'currentTime', { value: 0, writable: true, configurable: true })
+    seekLoops(9.5)
+    expect(v.currentTime).toBeCloseTo(1.5)
+    setLoopsPaused(false)
+  })
+
+  it('forgets a stopped loop', () => {
+    const host = document.createElement('div')
+    const v = attachLoop(host, '/storage/gone.mp4')
+    detachLoop(host)
+    const pause = vi.fn()
+    v.pause = pause
+    setLoopsPaused(true)
+    expect(pause).not.toHaveBeenCalled()
+    setLoopsPaused(false)
+  })
+})
+
+describe('a torn-down layered panel', () => {
+  it('stops its loops, so the page no longer holds or plays them', async () => {
+    const { stopLoopsIn, setLoopsPaused } = await import('../picture-loop.js')
+    const root = document.createElement('div')
+    const wrap = document.createElement('div')
+    root.appendChild(wrap)
+    const v = attachLoop(wrap, '/storage/panel.mp4')
+    stopLoopsIn(root)
+    expect(v.getAttribute('src')).toBeNull()
+    const play = vi.fn(() => Promise.resolve())
+    v.play = play
+    setLoopsPaused(true)
+    setLoopsPaused(false)
+    expect(play).not.toHaveBeenCalled()
   })
 })

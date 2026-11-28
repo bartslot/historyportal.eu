@@ -12,14 +12,14 @@
  * texts: [{ id, text, x, y, w, font, size, list, anchor, lng, lat }]
  *   x/y    — 0-100 percentages of the host (always kept; the screen position).
  *   w      — optional width as a % of the host (from the resize handle); text wraps to it.
- *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps) |
+ *   font   — 'sans' (Inter) | 'history' (brand serif) | 'cinzel' (classical caps) | 'comic' (Comic Relief) |
  *            'comic-america' (ComicAmerica letters, brand-kit.css .lp-comic-america).
  *   size   — 'sm' | 'md' | 'lg' | 'xl'.
  *   list   — 'none' (default) | 'bullet' | 'number': each \n line is one list item.
  *   align  — 'left' (default) | 'center' | 'right' text alignment inside the box.
  *   bg     — 'glass' adds a frosted-glass card behind the text (blurs the scene image).
  *   bgColor/bgOpacity — colour + opacity of that glass card (defaults #0f172a / 0.3).
- *   color/colorOpacity, scale, rotation, blur, blend, opacity, grayscale — the text's look
+ *   color/colorOpacity, effect/effectColor/effectWidth, scale, rotation, blur, blend, opacity, grayscale — the text's look
  *            (App\Services\Support\TextLayerStyle). Absent = white, 1x, upright, sharp, normal.
  *   anchor — 'screen' (default) or 'map': pinned to a lng/lat, repositioned on
  *            every map move via the host-provided projector.
@@ -32,6 +32,8 @@ import { t } from '../i18n.js'
 import { letterComicAmerica } from '../comic-america.js'
 import { applyReveal, clearReveal } from './text-reveal.js'
 import { handleCss } from './stage-handle.js'
+import { passPress } from './pass-press.js'
+import { drawPanel, hexToRgba } from './backing-panel.js'
 
 const URL_PATTERN = /^https?:\/\/\S+$/i
 const DRAG_THRESHOLD_PX = 4
@@ -49,6 +51,7 @@ const FONTS = {
   sans:    { label: 'Clean',   stack: "'Inter', ui-sans-serif, sans-serif", weight: 600 },
   history: { label: 'History', stack: "'History', serif",                   weight: 700 },
   cinzel:  { label: 'Classic', stack: "'Cinzel', serif",                    weight: 700 },
+  comic:   { label: 'Comic',   stack: "'Comic Relief', 'Comic Neue', sans-serif", weight: 700 },
   'comic-america': { label: 'ComicAmerica', stack: "'Luckiest Guy', sans-serif", weight: 400 },
 }
 const SIZES = {
@@ -96,6 +99,8 @@ const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Numbe
 function applyLook (item, node) {
   const strength = num(item.colorOpacity)
   if (item.color || strength !== null) node.style.color = hexToRgba(item.color || TEXT_WHITE, strength ?? 1)
+  node.style.textShadow = edgeOf(item)
+  comicLook(item, node, strength)
   const turn = num(item.rotation)
   const scale = num(item.scale)
   node.style.transform = [turn ? `rotate(${turn}deg)` : '', scale !== null && scale !== 1 ? `scale(${scale})` : ''].filter(Boolean).join(' ')
@@ -107,6 +112,58 @@ function applyLook (item, node) {
   node.style.opacity = opacity !== null && opacity < 1 ? String(opacity) : ''
 }
 
+const SOFT_SHADOW = '0 2px 12px rgba(0,0,0,0.75)'
+const HEX = /^#[0-9a-f]{6}$/i
+
+/**
+ * What edges the letters (item.effect): the soft dark shadow (absent or 'shadow'), a hard outline in
+ * item.effectColor ('outline'), or nothing ('none', ink on light paper). The outline is a ring of
+ * hard shadows rather than -webkit-text-stroke, which eats into the letters. ComicAmerica draws its
+ * own outline (comicLook), so it takes no shadow.
+ */
+export function edgeOf (item) {
+  if (isComicAmerica(item) || item.effect === 'none') return 'none'
+  if (item.effect !== 'outline' && item.effect !== 'glow') return SOFT_SHADOW
+  const ink = HEX.test(item.effectColor) ? item.effectColor : '#000000'
+  const width = num(item.effectWidth) ?? 0.06
+  const em = (k) => `${Math.round(width * k * 1000) / 1000}em`
+  const ring = (d) => [`${d} 0`, `-${d} 0`, `0 ${d}`, `0 -${d}`, `${d} ${d}`, `-${d} ${d}`, `${d} -${d}`, `-${d} -${d}`]
+    .map((o) => `${o} 0 ${ink}`)
+  // A glow is a thin ring in the ink with a soft halo round it: the map labels' lettering ("Southern Song").
+  if (item.effect === 'glow') return [...ring(em(0.5)), `0 0 ${em(3)} ${ink}`, `0 0 ${em(3)} ${ink}`].join(', ')
+  return ring(em(1)).join(', ')
+}
+
+/** A colour `share` of the way from `hex` to `to`, as #rrggbb. */
+const mix = (hex, to, share) => {
+  const a = parseInt(hex.slice(1), 16)
+  const b = parseInt(to.slice(1), 16)
+  const ch = (shift) => Math.round(((a >> shift) & 255) * (1 - share) + ((b >> shift) & 255) * share)
+  return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * ComicAmerica's fill and ink (brand-kit.css .lp-comic-america): its letters are a gradient clipped
+ * to the text, so `color` alone never reached them and the Colour field did nothing on a comic text.
+ * The fill runs from the text's colour down to a darker shade of it; the outline takes effectColor,
+ * or goes when the edge is 'none'. Unset leaves the stylesheet's white and black.
+ */
+export function comicLook (item, node, strength = num(item.colorOpacity)) {
+  const props = ['--lp-ca-fill', '--lp-ca-shade', '--lp-ca-ink', '--lp-ca-outline-w']
+  for (const p of props) node.style.removeProperty(p)
+  if (!isComicAmerica(item)) return
+  if (HEX.test(item.color) || strength !== null) {
+    const fill = HEX.test(item.color) ? item.color : '#ffffff'
+    node.style.setProperty('--lp-ca-fill', hexToRgba(fill, strength ?? 1))
+    node.style.setProperty('--lp-ca-shade', hexToRgba(mix(fill, '#2f3a4a', 0.38), strength ?? 1))
+  }
+  if (item.effect === 'none') node.style.setProperty('--lp-ca-ink', 'transparent')
+  else if ((item.effect === 'outline' || item.effect === 'glow') && HEX.test(item.effectColor)) node.style.setProperty('--lp-ca-ink', item.effectColor)
+  // Its outline is a stroke, drawn about twice as wide as the ring the other fonts get for the same thickness.
+  const width = num(item.effectWidth)
+  if (width !== null && item.effect !== 'none') node.style.setProperty('--lp-ca-outline-w', `${Math.round(width * 1.8 * 1000) / 1000}em`)
+}
+
 const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? item.align : 'left'
 
 // Bullet / numbered lists: each line of item.text is one list item. Storage stays
@@ -114,14 +171,6 @@ const alignOf = (item) => (item.align === 'center' || item.align === 'right') ? 
 const listOf = (item) => (item.list === 'bullet' || item.list === 'number') ? item.list : 'none'
 const listTag = (list) => (list === 'number' ? 'ol' : 'ul')
 
-// Backing panels use an rgba fill (not element opacity) so the backdrop-blur behind them
-// still shows through the translucency — a frosted-glass scrim over the moving scene.
-const hexToRgba = (hex, alpha) => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex))
-  if (!m) return `rgba(15,23,42,${alpha})`
-  const n = parseInt(m[1], 16)
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
-}
 
 // The rgba fill of a text box's glass card.
 const glassFill = (item) =>
@@ -247,6 +296,31 @@ export class TextOverlayLayer {
     return item.anchor === 'map'
   }
 
+  /** Is this text box or panel locked on the canvas? */
+  isLocked(id) {
+    return !!this._texts.find((t) => t.id === id)?.locked
+  }
+
+  /**
+   * Lock or unlock a text box or panel (the right-click menu's Lock, the layer list's lock). Saved with the texts, so
+   * one Cmd-Z takes it back. A locked one ignores presses on the canvas: they go through to what is under it.
+   */
+  setLocked(id, locked) {
+    const item = this._texts.find((t) => t.id === id)
+    if (!item || !!item.locked === !!locked) return
+    if (locked) item.locked = 1
+    else delete item.locked
+    this._emitChange()
+  }
+
+  /** A press on a locked box: hand it to whatever is under it (another layer, or the stage) and say so. */
+  _passLocked(item, node, e) {
+    if (!item.locked) return false
+    e.preventDefault()
+    passPress(node, e)
+    return true
+  }
+
   /** Reposition map-anchored labels — call on every map move/zoom. */
   refreshPositions() {
     if (!this._projector) return
@@ -331,8 +405,8 @@ export class TextOverlayLayer {
   }
 
   /**
-   * Add a half-screen backing panel (left or right) — a legibility scrim so text
-   * reads over busy paintings. A preset, not a freeform shape: side + colour + opacity.
+   * Add a backing panel (backing-panel.js) on the left or the right half: a scrim so text reads
+   * over busy paintings. Its inspector then moves it, fills it and gives it a watercolour edge.
    */
   addRect(side = 'left') {
     if (!this.editable) return
@@ -408,29 +482,20 @@ export class TextOverlayLayer {
     this._emitChange()
   }
 
-  // ── Rectangle panels (backing scrim) ─────────────────────────────────────
-  _rectStyle(item) {
-    const edge = item.side === 'right' ? 'right:0;' : 'left:0;'
-    const op = Number.isFinite(item.opacity) ? item.opacity : 0.5
-    return `position:absolute; top:0; bottom:0; ${edge} width:50%;
-      background:${hexToRgba(item.color || '#0f172a', op)};
-      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);`
-  }
-
+  // ── Backing panels (backing-panel.js: where it sits, its fill, its watercolour edge) ──
   _readonlyRect(item) {
     const node = document.createElement('div')
     node.dataset.textId = item.id
-    node.style.cssText = this._rectStyle(item) + 'pointer-events:none;'
-    return node
+    node.style.cssText = 'pointer-events:none;'
+    return drawPanel(node, item)
   }
 
   _editableRect(item) {
     const node = document.createElement('div')
     node.dataset.textId = item.id
-    node.style.cssText = this._rectStyle(item) +
-      'pointer-events:auto; cursor:pointer;'
-    node.addEventListener('pointerdown', () => this.select(item.id))
-    return node
+    node.style.cssText = 'pointer-events:auto; cursor:pointer;'
+    node.addEventListener('pointerdown', (e) => { if (!this._passLocked(item, node, e)) this.select(item.id) })
+    return drawPanel(node, item)
   }
 
   _baseNode(item) {
@@ -439,7 +504,7 @@ export class TextOverlayLayer {
     node.style.cssText = `position:absolute; left:${item.x}%; top:${item.y}%; max-width:46%;
       pointer-events:auto; color:#f8fafc; font-size:${sizeOf(item).css};
       font-family:${fontOf(item).stack}; font-weight:${fontOf(item).weight};
-      line-height:1.3; text-shadow:${isComicAmerica(item) ? 'none' : '0 2px 12px rgba(0,0,0,0.75)'};`
+      line-height:1.3;`
     // Frosted-glass card: blurs the moving scene image behind the text.
     if (item.bg === 'glass') {
       node.style.background = glassFill(item)
@@ -554,6 +619,7 @@ export class TextOverlayLayer {
 
     // Drag anywhere on the box; a press that doesn't move stays a click-to-edit.
     node.addEventListener('pointerdown', (e) => {
+      if (this._passLocked(item, node, e)) return
       this.select(item.id)
       const editingPress = edit.contains(e.target) && edit.contains(document.activeElement)
       const startX = e.clientX, startY = e.clientY
@@ -647,6 +713,7 @@ export class TextOverlayLayer {
       handle.addEventListener('pointerdown', (e) => {
         e.stopPropagation()
         e.preventDefault()
+        if (item.locked) return   // a locked box keeps its width
         this.select(item.id)
         const rect = this.host.getBoundingClientRect()
         if (!rect.width) return

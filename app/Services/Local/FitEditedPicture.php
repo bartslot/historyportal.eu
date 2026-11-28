@@ -61,6 +61,19 @@ final class FitEditedPicture
         return (string) ob_get_clean();
     }
 
+    /** A picture ChatGPT made on #00FF00, with the green keyed out. @return string PNG bytes */
+    public static function keyOut(string $path): string
+    {
+        $im = self::open($path);
+        imagealphablending($im, false);
+        imagesavealpha($im, true);
+        GreenKey::key($im);
+        ob_start();
+        imagepng($im);
+
+        return (string) ob_get_clean();
+    }
+
     /** Is the picture's border see-through? Then it is a cut-out, not a painting that fills its frame. */
     public static function isCutOut(GdImage $im): bool
     {

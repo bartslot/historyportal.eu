@@ -7,7 +7,8 @@ import type { Asset, Library } from './types'
 /** One picture to strew: a library plant, or one cell of a sprite sheet (cell: uv [u0, v0, du, dv], v 0 at the top). */
 /** px: the picture's own height in px (a sheet cell's), so a clump is never drawn taller than its px allow (layout.ts
  *  sharpWidth). lod: the far, low-detail copy of its file (Asset.lod), the same layout. */
-export interface Sprite { asset: string; file: string; tags: string[]; height_m: number; aspect: number; cell: [number, number, number, number]; px?: number; lod?: string }
+/** key: names it in set.strew.plants: the asset id, a sheet cell as 'asset#n'. */
+export interface Sprite { key: string; asset: string; file: string; tags: string[]; height_m: number; aspect: number; cell: [number, number, number, number]; px?: number; lod?: string }
 /** One strewn sprite: where it stands (metres), how tall, which pick, its sway phase, drawn mirrored or not. */
 export interface Clump { x: number; z: number; h: number; pick: number; phase: number; flip?: boolean }
 
@@ -52,12 +53,15 @@ const isPlant = (a: Asset) => a.layer !== 'ground' && a.layer !== 'sky' && a.lay
 export function spritesOf(lib: Library): Sprite[] {
   const sheets = lib.assets.filter((a) => a.kind === 'sheet')
   if (sheets.length) {
-    return sheets.flatMap((a) => (a.cells ?? []).map((c): Sprite => ({ asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect, px: c.rect[3] * a.h, lod: a.lod })))
+    return sheets.flatMap((a) => (a.cells ?? []).map((c, n): Sprite => ({ key: `${a.id}#${n}`, asset: a.id, file: a.file, tags: c.tags, height_m: c.height_m, aspect: (c.rect[2] * a.w) / Math.max(1, c.rect[3] * a.h), cell: c.rect, px: c.rect[3] * a.h, lod: a.lod })))
   }
-  return lib.assets.filter(isPlant).map((a) => ({ asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1], px: a.h, lod: a.lod }))
+  return lib.assets.filter(isPlant).map((a) => ({ key: a.id, asset: a.id, file: a.file, tags: a.tags, height_m: a.height_m, aspect: a.w / Math.max(1, a.h), cell: [0, 0, 1, 1], px: a.h, lod: a.lod }))
 }
 
 const shares = (s: Sprite, groundTags: string[]) => s.tags.some((t) => !PLAIN.includes(t) && groundTags.includes(t))
+
+/** The low plants a teacher can strew on any floor (set.strew.plants): every clump that is not a tree. */
+export const lowPlants = (sprites: Sprite[]): Sprite[] => sprites.filter((s) => s.height_m <= CLUMP_MAX_M && !s.tags.includes('tree'))
 
 /** The low plants that grow on a ground with these tags. */
 export const clumpPicks = (sprites: Sprite[], groundTags: string[]): Sprite[] =>

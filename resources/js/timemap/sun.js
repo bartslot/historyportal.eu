@@ -132,3 +132,36 @@ export const sunDirection = (date = new Date()) => {
     Math.cos(latRad) * Math.sin(lngRad),
   ]
 }
+
+/**
+ * A year and a UTC clock time, as one moment: midsummer of `year` at `utcHours`.
+ *
+ * Built with setUTCFullYear rather than Date.UTC because Date.UTC reads the years 0 to 99 as 1900
+ * to 1999, and the Time-Map runs back past them. The day is fixed (the June solstice): a year alone
+ * does not say which day, and the season is not what the view-follow below changes, only the hour.
+ *
+ * @param {number} year      astronomical year (0 = 1 BC)
+ * @param {number} utcHours  any number; wrapped into one day so the date never walks off midsummer
+ */
+export const midsummerAt = (year, utcHours = 12) => {
+  const at = new Date(0)
+  at.setUTCFullYear(Number.isFinite(year) ? year : 2000, 5, 21)
+  const hours = ((utcHours % 24) + 24) % 24
+  return new Date(at.getTime() + hours * 3600000)
+}
+
+/**
+ * The UTC hour at which the sun stands over longitude `lng` on the day of `date`: subsolarPoint run
+ * backwards. Solving `lng = -15 (h - 12 + EoT/60)` for h, with the same equation of time, so the two
+ * agree to the minute and the sun lands where it was asked to.
+ *
+ * @returns {number} hours in [0, 24)
+ */
+export const utcHourWithSunOver = (lng, date = new Date()) => {
+  const { equationOfTime } = solarPosition(date)
+  const hours = 12 - lng / 15 - equationOfTime / 60
+  return ((hours % 24) + 24) % 24
+}
+
+/** The shortest way round the clock from `from` to `to`, in hours, in [-12, 12). */
+export const hourDelta = (from, to) => ((((to - from) % 24) + 36) % 24) - 12

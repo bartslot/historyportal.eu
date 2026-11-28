@@ -125,6 +125,28 @@ class User extends Authenticatable
         return $this->isAdmin() || (int) ($record->teacher_id ?? 0) === (int) $this->id;
     }
 
+    /**
+     * May open this lesson in the editor: its owner, an admin, or an account the owner added as an
+     * editor (lesson_editors). Narrower things stay with canManage(): deleting, sharing, publishing,
+     * and who else may edit.
+     */
+    public function canEdit(Lesson $lesson): bool
+    {
+        if ($this->canManage($lesson)) {
+            return true;
+        }
+
+        return $lesson->relationLoaded('editors')
+            ? $lesson->editors->contains('id', $this->id)
+            : $lesson->editors()->whereKey($this->id)->exists();
+    }
+
+    /** Other teachers' lessons this account was added to as an editor. */
+    public function editableLessons(): BelongsToMany
+    {
+        return $this->belongsToMany(Lesson::class, 'lesson_editors')->withTimestamps();
+    }
+
     // ── Teacher relationships ───────────────────────────────────────────────
 
     public function lessons(): HasMany

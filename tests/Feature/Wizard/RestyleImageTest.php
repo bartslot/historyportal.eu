@@ -142,15 +142,15 @@ class RestyleImageTest extends TestCase
         $this->assertCount(2, $requests);
         [$ink, $colour] = [$requests[0]->body(), $requests[1]->body()];
 
-        // Pass 1: the source first, then the ink anchors, all as image[] parts, with the ink prompt.
-        $this->assertSame(1 + count(HistoryLineStyle::anchors(1, false)), substr_count($ink, 'name="image[]"'));
-        $this->assertStringContainsString('ink-caesar.jpg', $ink);
+        // Pass 1: the source first, then any approved ink reference, all as image[] parts, with the ink prompt.
+        $this->assertSame(1 + count(HistoryLineStyle::anchors(1)), substr_count($ink, 'name="image[]"'));
+        $this->assertStringContainsString('line-tasman-mast.jpg', $ink);
         $this->assertStringContainsString(HistoryLineStyle::HATCHING_RULE, $ink);
         $this->assertStringNotContainsString('Preserve all black linework', $ink);
 
-        // Pass 2: pass 1's output first, then the colour anchors and the texture anchor, with Bart's colour prompt.
-        $this->assertSame(1 + count(HistoryLineStyle::anchors(2, false)), substr_count($colour, 'name="image[]"'));
-        $this->assertStringContainsString('texture-watercolour.jpg', $colour);
+        // Pass 2: pass 1's output first, then the approved colour reference, with Bart's colour prompt.
+        $this->assertSame(1 + count(HistoryLineStyle::anchors(2)), substr_count($colour, 'name="image[]"'));
+        $this->assertStringContainsString('colour-ship-spyglass.jpg', $colour);
         $this->assertStringContainsString(HistoryLineStyle::COLOUR_PROMPT, $colour);
         $this->assertStringContainsString($this->ink(301), $colour, 'the colour pass edits the ink the first call returned');
         $this->assertStringNotContainsString(Storage::disk('public')->get('lessons/1/orig.png'), $colour, 'never coloured from the original');
@@ -252,7 +252,7 @@ class RestyleImageTest extends TestCase
         $this->assertSame(ImageRestyle::READY, $row->status);
         $final = imagecreatefromstring(Storage::disk('public')->get($row->result_path));
         $this->assertSame(127, imagecolorat($final, 0, 10) >> 24, 'paper white around a figure is cut to alpha');
-        Http::assertSent(fn ($r) => str_contains($r->body(), 'head to feet') && str_contains($r->body(), 'ink-classroom.jpg'));
+        Http::assertSent(fn ($r) => str_contains($r->body(), 'head to feet'));
 
         $panel->call('keepRestyle', $row->id);
         $this->assertSame($row->result_path, $asset->fresh()->svg_path);

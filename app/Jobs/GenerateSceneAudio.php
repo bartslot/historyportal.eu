@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\MarksSceneReady;
 use App\Models\Scene;
+use App\Services\Support\NarrationEta;
+use App\Services\Support\AudioEncoder;
 use App\Services\Support\NarrationTiming;
 use App\Services\Support\NarrationVoice;
 use App\Services\Support\PronunciationLexicon;
@@ -42,6 +44,7 @@ class GenerateSceneAudio implements ShouldQueue
     public function handle(TtsService $tts): void
     {
         $scene = Scene::with('lesson.narrator')->findOrFail($this->sceneId);
+        $startedAt = microtime(true);
 
         try {
             $narrator = $scene->lesson->narrator;
@@ -64,6 +67,19 @@ class GenerateSceneAudio implements ShouldQueue
             );
             if ($audio === null) {
                 throw new \RuntimeException('TTS service returned no audio.');
+            }
+
+            // A recording far too short for its words is a failed one, whatever the service said
+            // (Bart 2026-11-27: a 48-word paragraph came back as one second of ElevenLabs audio).
+            // Refuse it BEFORE it is saved or kept in the narration library, so the scene keeps its
+            // old clip and shows the error instead of playing a blip.
+            $timedSeconds = NarrationTiming::fromStored($timing['character_timings'] ?? [])->duration();
+            $spokenSeconds = $timedSeconds > 0.0 ? $timedSeconds : AudioEncoder::seconds($audio, $tts->lastExtension());
+            if ($spokenSeconds !== null && self::tooShort($text, $spokenSeconds, (float) ($narrator?->voice_speed ?? 1.0))) {
+                throw new \RuntimeException(sprintf(
+                    'The narration came back %.1f seconds long, far too short for this text, so it was not saved. Re-narrate to try again.',
+                    $spokenSeconds,
+                ));
             }
 
             // An ElevenLabs recording (Ron Slot, Bart's father) is kept at full quality in the narration
@@ -116,6 +132,9 @@ class GenerateSceneAudio implements ShouldQueue
 
             $this->warnIfDowngraded($scene, $provider, $actualProvider, $voiceId, $narrationTiming);
 
+            // The editor's countdown learns from every recording how long the next one will take.
+            NarrationEta::finished($scene->id, $provider, mb_strlen($script), $startedAt);
+
             // A scene that ends in choices: the narrator reads those out too, in this same voice. The job
             // skips words it already recorded in this voice, so a re-narration costs nothing extra then.
             if (\App\Services\Lessons\ChoicePrompt::spoken($scene->config) !== '') {
@@ -128,8 +147,23 @@ class GenerateSceneAudio implements ShouldQueue
             // re-narration (a voice change) is not a broken scene. It keeps the error, which
             // LessonProblems shows in amber (error scan 2026-10-18: 14 such scenes marked failed).
             $scene->update(['status' => $scene->hasFreshAudio() ? 'ready' : 'failed', 'error_message' => $e->getMessage()]);
+            NarrationEta::forget($scene->id);
             throw $e;
         }
+    }
+
+    /**
+     * Whether a recording is too short to hold its text. Five words a second is faster than any
+     * narrator reads at normal speed, so anything under that (scaled by the narrator's speed, up
+     * to 2x) is cut off, not quick. Very short texts are left alone: "Rome." can honestly last
+     * half a second. Words are counted Unicode-aware, so "élèves" is one word, not three.
+     */
+    public static function tooShort(string $text, float $seconds, float $speed = 1.0): bool
+    {
+        $words = preg_match_all('/[\p{L}\p{N}][\p{L}\p{N}\p{M}\'’-]*/u', strip_tags($text));
+        $speed = max(1.0, $speed);
+
+        return $words >= 8 && $seconds < $words / (5.0 * $speed);
     }
 
     /**

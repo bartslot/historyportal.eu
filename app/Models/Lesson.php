@@ -51,6 +51,7 @@ class Lesson extends Model
         'game_config',
         'import_report',
         'script_review',
+        'story_map',
         'game_pack_path',
         'quiz_question_count',
         'quiz_timing',
@@ -194,6 +195,7 @@ class Lesson extends Model
             'game_config' => 'array',
             'import_report' => 'array',
             'script_review' => 'array',
+            'story_map' => 'array',
             'teacher_guide' => 'array',
             'include_game' => 'boolean',
             'quiz_question_count' => 'integer',
@@ -287,6 +289,12 @@ class Lesson extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    /** Accounts the owner let into the editor (lesson_editors). The owner is not in this list. */
+    public function editors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'lesson_editors')->withTimestamps();
+    }
+
     public function quizQuestions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class)->orderBy('order');
@@ -311,6 +319,12 @@ class Lesson extends Model
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class)->orderBy('order');
+    }
+
+    /** Story to video: character sheets, world shots and clips (App\Services\StoryVideo\StoryVideoRun). */
+    public function storyMedia(): HasMany
+    {
+        return $this->hasMany(StoryMediaItem::class)->orderBy('position');
     }
 
     /** "≈ N min" on the lesson card and the player's title screen. Eager-load `scenes` when listing. */
@@ -1168,6 +1182,11 @@ class Lesson extends Model
             }
             foreach ((($cfg['gallery'] ?? [])['images'] ?? []) as $u) {
                 $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Gallery image'));
+            }
+            foreach ((array) ($cfg['checkpoints'] ?? []) as $cp) {
+                foreach ((array) (is_array($cp) ? ($cp['images'] ?? []) : []) as $u) {
+                    $push(is_array($u) ? ($u['url'] ?? null) : $u, __('Checkpoint picture'));
+                }
             }
         }
 

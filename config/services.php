@@ -83,6 +83,19 @@ return [
         'bin' => env('CHATGPT_CODEX_BIN', '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex'),
     ],
 
+    // Where AI pictures are made (App\Services\Imaging\ImageRoute). Bart 2026-11-21: not on paid OpenAI image credits.
+    //   chatgpt_local  ChatGPT on this machine (a developer's Mac), the same route as the spark edits.
+    //   chatgpt_relay  the server queues the request and `php artisan chatgpt:relay` on Bart's Mac makes it with
+    //                  ChatGPT and sends it back; it waits while the Mac is off, then fails with a clear message.
+    //   openai         the paid OpenAI image API, as before.
+    'image_generation' => [
+        'driver' => env('IMAGE_GENERATION_DRIVER', env('APP_ENV') === 'local' ? 'chatgpt_local' : 'chatgpt_relay'),
+        'relay_token' => env('IMAGE_RELAY_TOKEN'),          // the same secret on the server and on the Mac
+        'relay_url' => env('IMAGE_RELAY_URL', 'https://historyportal.eu'),   // the Mac: which server to serve
+        'relay_wait' => (int) env('IMAGE_RELAY_WAIT', 540),  // seconds a job waits for its picture; under DB_QUEUE_RETRY_AFTER
+        'relay_pickup' => (int) env('IMAGE_RELAY_PICKUP', 90), // seconds before an unclaimed request fails: the Mac is off
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         // Dedicated key for image generation (gpt-image-1 needs a verified org); falls back to the main key.
@@ -130,6 +143,9 @@ return [
         'base_url' => 'https://api.elevenlabs.io',
         // Narration voice for the Time-Map "read summary aloud" feature (George by default).
         'voice_id' => env('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb'),
+        // Pictures and video for the story-to-video pipeline (App\Services\StoryVideo\ElevenLabsMedia).
+        // Its own key when the voice key lacks the image and video permission; otherwise the voice key itself.
+        'media_api_key' => env('ELEVENLABS_IMAGE_API_KEY') ?: env('ELEVENLABS_API_KEY'),
     ],
 
     'tts' => [
@@ -213,6 +229,8 @@ return [
     'ffmpeg' => [
         'path' => env('FFMPEG_PATH', 'ffmpeg'),
         'probe_path' => env('FFPROBE_PATH', 'ffprobe'),
+        // Threads per encode; SiteGround caps a user at 80 processes, threads included.
+        'threads' => (int) env('FFMPEG_THREADS', 4),
     ],
 
     // ── Upscayl local CLI (replaces fal.ai upscaling in dev) ─────────────────

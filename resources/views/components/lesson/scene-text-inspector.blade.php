@@ -2,7 +2,6 @@
 
 @php
     $id = (string) ($text['id'] ?? '');
-    $isPanel = ($text['kind'] ?? null) === 'rect';
     $isGlass = ($text['bg'] ?? 'none') === 'glass';
     // Pinning needs a map under the label — offer it on the two scene kinds that have one.
     $isMapScene = in_array($scene->kind ?? null, ['map', 'voyage'], true);
@@ -32,7 +31,6 @@
     $labelCol = 'style="width: var(--settings-panel-label-w, 7.5rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
 @endphp
 
-@if (! $isPanel)
 {{-- A TEXT layer gets the picture layer's inspector shell (Figma `settings-Text Panel`, 1674:4695):
      a title bar, Format | Animate, and the same banded sections built from the same row components
      (settings-section, segmented, color-field, stepper-field, slider-row, toggle-row), with the
@@ -76,6 +74,40 @@
 
     <div x-show="tab === 'format'" class="-mx-4 -mb-4 text-sm">
 
+        {{-- Text styles (App\Support\TextStylePresets): how the letters look (colour, edge, box), not which font.
+             Bart 2026-11-24: "lettertype is the font type, the text style is how it looks". Each tile draws the
+             word "Text" in this layer's own font and that look, on a scrap of a History Lines painting. 2 x 3. --}}
+        @php
+            $currentStyle = \App\Support\TextStylePresets::current($text);
+            $sceneThumb = asset('images/editor/text-style-scene.webp');
+            $sample = __('Text');
+        @endphp
+        <x-ui.settings-section :title="__('Styles')" name="text-styles">
+            <div class="grid grid-cols-3 gap-x-1.5 gap-y-2" role="group" aria-label="{{ __('Styles') }}" data-text-styles>
+                @foreach (\App\Support\TextStylePresets::labels() as $styleId => $styleLabel)
+                    @php
+                        $look = \App\Support\TextStylePresets::preview($styleId, (string) $val('font', 'sans'));
+                    @endphp
+                    <button type="button" data-text-style="{{ $styleId }}" wire:click="applyTextStyle({{ $tid }}, @js($styleId))"
+                            aria-pressed="{{ $currentStyle === $styleId ? 'true' : 'false' }}" aria-label="{{ $styleLabel }}"
+                            class="group flex min-w-0 flex-col items-stretch gap-1">
+                        <span class="relative grid h-12 place-items-center overflow-hidden rounded-md px-1 ring-inset transition
+                                     {{ $currentStyle === $styleId ? 'ring-2 ring-base-content' : 'ring-1 ring-panel-hairline group-hover:ring-base-content/40' }}"
+                              style="background: url('{{ $sceneThumb }}') center / cover">
+                            <span class="block max-w-full truncate leading-tight" style="{{ $look['card'] }}">
+                                @if ($look['comic'])
+                                    <span class="lp-comic-america text-base" data-t="{{ $sample }}" style="{{ $look['text'] }}"><span>{{ $sample }}</span></span>
+                                @else
+                                    <span class="text-base" style="{{ $look['text'] }}">{{ $sample }}</span>
+                                @endif
+                            </span>
+                        </span>
+                        <span class="truncate text-xs {{ $currentStyle === $styleId ? 'text-panel-value' : 'text-panel-label' }}">{{ $styleLabel }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </x-ui.settings-section>
+
         <x-ui.settings-section :title="__('Typography')" name="text-typography">
             <div class="space-y-2">
                 <label class="flex items-center justify-between gap-2">
@@ -83,7 +115,7 @@
                     <div class="min-w-0 flex-1">
                         <select wire:change="{{ $save('font') }}" aria-label="{{ __('Font type') }}"
                                 style="height: var(--settings-panel-row-h, 2rem)" class="select select-xs w-full text-2xs">
-                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display'), 'comic-america' => __('ComicAmerica')] as $fv => $fl)
+                            @foreach (['sans' => __('Sans'), 'history' => __('History'), 'cinzel' => __('Display'), 'comic' => __('Comic'), 'comic-america' => __('ComicAmerica')] as $fv => $fl)
                                 <option value="{{ $fv }}" @selected($val('font', 'sans') === $fv)>{{ $fl }}</option>
                             @endforeach
                         </select>
@@ -126,6 +158,27 @@
                     :on-opacity-input="$live('colorOpacity', '$event.target.value / 100')"
                     :on-opacity-change="$save('colorOpacity', '$event.target.value / 100')"
                     :keyframe-target="$target" color-property="color" opacity-property="colorOpacity" />
+
+                {{-- What edges the letters: the soft shadow (default), a hard outline, a soft glow, or nothing.
+                     Bart 2026-11-24: "Every text now has a outline. this needs a setting too." --}}
+                <span class="block pt-1 text-xs font-semibold uppercase tracking-wide text-panel-label">{{ __('Edge') }}</span>
+                @php
+                    // The edge names come from TextLayerStyle: a bare edge name here reads as a CSS utility to FlatSurfacesTest.
+                    [$edgeSoft, $edgeOutline, $edgeGlow, $edgeNone] = \App\Services\Support\TextLayerStyle::EFFECTS;
+                @endphp
+                <x-ui.segmented panel aria-label="{{ __('Edge') }}" name="text-effect-{{ $id }}" class="w-full" tab-class="flex-1 !px-1 !text-xs !font-semibold" :value="$val('effect', $edgeSoft)"
+                                :options="[[$edgeSoft, __('Shadow')], [$edgeOutline, __('Outline')], [$edgeGlow, __('Glow')], [$edgeNone, __('None')]]"
+                                on-change="$wire.call('updateSceneText', {{ $tid }}, 'effect', $event.target.value)" />
+                @if (in_array($val('effect', $edgeSoft), [$edgeOutline, $edgeGlow], true))
+                    <x-ui.color-field
+                        :color="$val('effectColor', '#000000')" :with-opacity="false"
+                        :color-label="__('Edge colour')"
+                        :on-color-input="$live('effectColor', '$event.target.value')"
+                        :on-color-change="$save('effectColor')" />
+                    <x-ui.slider-row :label="__('Thickness')" :min="0.02" :max="0.2" :step="0.01"
+                                     :display-scale="100" :value="$val('effectWidth', 0.06)" :display="$num(((float) $val('effectWidth', 0.06)) * 100, 0)" :default="0.06"
+                                     :on-input="$live('effectWidth')" :on-change="$save('effectWidth')" />
+                @endif
 
                 <div class="divider my-0" role="presentation"></div>
 
@@ -249,56 +302,3 @@
                 class="btn btn-sm w-full rounded-full">{{ __('Show in timeline') }}</button>
     </div>
 </div>
-@else
-
-
-<div class="space-y-3 text-sm" wire:key="text-inspector-{{ $id }}">
-    <button type="button" wire:click="clearActiveText"
-            x-on:click="window.__lessonTextLayer?.select?.(null); window.__clearLayerGuard?.()"
-            class="inline-flex items-center gap-1 text-xs text-panel-hint transition hover:text-primary">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-        {{ __('Scene') }}
-    </button>
-
-    @if ($isPanel)
-        <div>
-            <h3 class="font-semibold text-primary">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-prose leading-tight text-panel-hint">{{ __('A readable backing panel behind the scene text.') }}</p>
-        </div>
-
-        <label class="form-control">
-            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Side') }}</span>
-            <select class="select select-sm select-bordered mt-1 bg-slate-900"
-                    wire:change="updateSceneText(@js($id), 'side', $event.target.value)">
-                <option value="left" @selected(($text['side'] ?? 'left') === 'left')>{{ __('Left') }}</option>
-                <option value="right" @selected(($text['side'] ?? 'left') === 'right')>{{ __('Right') }}</option>
-            </select>
-        </label>
-
-        <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Color') }}</span>
-            {{-- @input patches the canvas overlay instantly while the picker is open;
-                 wire:change persists once the teacher commits. --}}
-            <input type="color" value="{{ $text['color'] ?? '#0f172a' }}"
-                   @input="window.__lessonTextLayer?.patch?.(@js($id), { color: $event.target.value })"
-                   wire:change="updateSceneText(@js($id), 'color', $event.target.value)"
-                   class="h-8 w-12 cursor-pointer rounded border border-slate-700 bg-slate-900 p-1" />
-        </div>
-
-        <x-ui.slider-row :label="__('Opacity')" :min="0.1" :max="0.95" :step="0.05"
-                         :value="$text['opacity'] ?? 0.5"
-                         :display="rtrim(rtrim(number_format((float) ($text['opacity'] ?? 0.5), 2), '0'), '.')"
-                         :on-input="'window.__lessonTextLayer?.patch?.(' . \Illuminate\Support\Js::from($id) . ', { opacity: parseFloat($event.target.value) })'"
-                         :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'opacity\', $event.target.value)'" />
-    @endif
-
-    <button type="button" wire:click="deleteSceneText(@js($id))"
-            wire:confirm="{{ $isPanel ? __('Remove this background panel?') : __('Remove this text?') }}"
-            class="text-xs text-error/80 underline transition hover:text-error">
-        {{ $isPanel ? __('Remove panel') : __('Remove text') }}
-    </button>
-</div>
-
-@endif

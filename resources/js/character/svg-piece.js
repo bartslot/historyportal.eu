@@ -89,6 +89,35 @@ export function keyedFill ({ data, width, height }) {
   return new ImageData(out, width, height)
 }
 
+/**
+ * An SVG piece laid over a baked one of the same box (kit.json `files.under`, kit_outfit_svg.py): where the SVG paints,
+ * its fill, pen line and shade replace the one under it; elsewhere the one under shows, with any SVG line drawn over it.
+ * Pure (tested).
+ */
+export function overRaw (under, top) {
+  const { width: w, height: h } = top.fill
+  if (under.fill.width !== w || under.fill.height !== h) throw new Error('an SVG piece and the piece under it need one box')
+  const fill = new Uint8ClampedArray(under.fill.data)
+  const ink = new Uint8ClampedArray(under.ink.data)
+  const shade = new Uint8ClampedArray(under.shade.data)
+  const cast = under.cast || top.cast ? new Uint8ClampedArray(w * h * 4) : null
+  const t = top.fill.data
+  for (let o = 0; o < fill.length; o += 4) {
+    const covered = t[o + 3] >= 128
+    if (covered || (t[o + 3] && !fill[o + 3])) for (let c = 0; c < 4; c++) fill[o + c] = t[o + c]
+    for (const [out, a, b] of [[ink, under.ink.data, top.ink.data], [shade, under.shade.data, top.shade.data]]) {
+      const v = covered ? b[o] : Math.max(a[o], b[o])
+      out[o] = v; out[o + 1] = v; out[o + 2] = v; out[o + 3] = 255
+    }
+    if (cast) {
+      const v = Math.max(under.cast?.data[o] ?? 0, top.cast?.data[o] ?? 0)
+      cast[o] = v; cast[o + 1] = v; cast[o + 2] = v; cast[o + 3] = 255
+    }
+  }
+  const raw = (data) => ({ width: w, height: h, data })   // as a hood's cut hair: pixels, no ImageData needed
+  return { fill: raw(fill), ink: raw(ink), shade: raw(shade), cast: cast ? raw(cast) : null }
+}
+
 const texts = new Map()   // url -> Promise<string>
 
 /** The four layers of an SVG piece, as baked pieces have them: { fill, ink, shade, cast }. */

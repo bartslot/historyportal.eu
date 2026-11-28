@@ -887,6 +887,11 @@ export function addVoyageShips(map, { beforeId = 'tm-clouds', only = null, ambie
       if (i < 0) return 0;
       return (cum[i] + (cum[i + 1] - cum[i]) * (s - i)) / (v.track.total || 1);
     },
+    /** The inverse of fractionAtSample: the fractional sample index at track fraction `t`. */
+    sampleAtFraction(voyageId, t) {
+      const v = voyages.find((x) => x.id === voyageId);
+      return v ? waypointAt(v.track, t) * SAMPLES_PER_SEGMENT : 0;
+    },
     destroy() {
       if (raf) window.clearTimeout(raf);
       // Mixers keep references to the loaded rigs; drop them or a re-mounted map leaks a skeleton

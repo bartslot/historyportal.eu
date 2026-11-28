@@ -1,0 +1,196 @@
+{
+  "scene": "caravanserai",
+  "title": "The warning",
+  "script": "project files: new-scenes/storyboard-order.md, item 4, shot 0",
+  "place": "A caravanserai near Kerman, Persia, about 1272, the evening before the raid.",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "A caravanserai (ribat) is a square walled courtyard with arcaded rooms on all four sides and one gate.",
+      "No warning scene is in Polo: our dramatisation.",
+      "The raiders were Mongol bands (Caraonas), so the warning comes from a Persian caravan master."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/caravanserai.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      40,
+      40
+    ],
+    "light": "evening: a fire in the courtyard, last light in the sky",
+    "landmarks": [
+      {
+        "id": "fire",
+        "label": "courtyard fire",
+        "at": [
+          20,
+          20
+        ],
+        "size": 2,
+        "note": "in the middle of the walled courtyard",
+        "height": 1
+      },
+      {
+        "id": "gate",
+        "label": "the caravanserai gate",
+        "at": [
+          20,
+          2
+        ],
+        "size": 5,
+        "note": "south side, arched",
+        "height": 6
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "caravanserai-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              20,
+              4
+            ],
+            "looks_at": [
+              20,
+              22
+            ],
+            "framing": "Wide, from the gate"
+          },
+          "action": "Inside the square walled caravanserai at dusk, arcaded rooms on all four sides and one arched gate; travellers sit round a fire, camels rest along the walls.",
+          "where": {
+            "marco": "the young man in white by the fire",
+            "niccolo": "the man in the red cloak and rust-orange cap with the full grey beard, by the fire (no turban)",
+            "maffeo": "the man in blue"
+          },
+          "sees": {
+            "fire": "centre"
+          },
+          "places": {
+            "marco": [
+              17.0,
+              22.0
+            ],
+            "niccolo": [
+              20.0,
+              22.0
+            ],
+            "maffeo": [
+              23.0,
+              22.0
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              24,
+              18
+            ],
+            "looks_at": [
+              19,
+              21
+            ],
+            "framing": "Medium"
+          },
+          "action": "A Persian caravan master by the fire leans in and warns: Caraonas raiders roam the plain.",
+          "places": {
+            "traveller": [
+              17.14,
+              22.12
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              18,
+              18
+            ],
+            "looks_at": [
+              21,
+              21
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Marco listens, wide-eyed, firelight on his face.",
+          "places": {
+            "marco": [
+              19.41,
+              20.12
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              16,
+              22
+            ],
+            "looks_at": [
+              22,
+              20
+            ],
+            "framing": "Medium on two"
+          },
+          "action": "Maffeo frowns; Niccolò waves the warning off with one hand.",
+          "where": {
+            "niccolo": "the older man with the grey beard, waving his hand",
+            "maffeo": "the man in blue, frowning"
+          },
+          "places": {
+            "niccolo": [
+              22.23,
+              20.68
+            ],
+            "maffeo": [
+              21.77,
+              19.32
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

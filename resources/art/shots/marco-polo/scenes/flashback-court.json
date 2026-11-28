@@ -1,0 +1,200 @@
+{
+  "scene": "flashback-court",
+  "title": "Flashback: the Khan's gold tablet",
+  "script": "project files: new-scenes/storyboard-order.md, item 1",
+  "place": "The court of Kublai Khan, 1266, a generic Mongol palace hall (Polo, Prologue ch. 2-8: the brothers' first journey).",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: Kublai gave them 'a Tablet of Gold' ordering horses and escorts on the way (Prologue ch. 8).",
+      "Surviving tablets: long plates with rounded ends and a hole at the top. Phags-pa script came only in 1269, so a 1266 tablet carries vertical Uyghur-Mongol script.",
+      "Kublai: 'neither tall nor short', 'complexion white and red, the eyes black'.",
+      "Dadu was not built until 1267: keep the hall generic."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/flashback-court.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      40,
+      30
+    ],
+    "light": "warm daylight from tall doors on the south side (bottom of the map)",
+    "landmarks": [
+      {
+        "id": "throne",
+        "label": "the Khan's raised throne",
+        "at": [
+          20,
+          26
+        ],
+        "size": 4,
+        "note": "on a low dais at the north end of the hall",
+        "height": 3
+      },
+      {
+        "id": "doors",
+        "label": "the open hall doors",
+        "at": [
+          20,
+          2
+        ],
+        "size": 6,
+        "note": "south end, daylight pouring in",
+        "height": 5
+      }
+    ],
+    "routes": []
+  },
+  "boards": [
+    {
+      "id": "flashback-court-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "niccolo",
+            "maffeo",
+            "kublai"
+          ],
+          "camera": {
+            "at": [
+              20,
+              4
+            ],
+            "looks_at": [
+              20,
+              26
+            ],
+            "framing": "Wide, from the doors, eye level"
+          },
+          "action": "Down the long hall, Niccolò and Maffeo kneel before Kublai Khan on his raised throne; courtiers line both sides.",
+          "where": {
+            "niccolo": "the kneeling man on the left",
+            "maffeo": "the kneeling man on the right",
+            "kublai": "the seated ruler on the throne at the far end"
+          },
+          "sees": {
+            "throne": "at the far end, centred"
+          },
+          "places": {
+            "niccolo": [
+              18.8,
+              23.0
+            ],
+            "maffeo": [
+              21.2,
+              23.0
+            ],
+            "kublai": [
+              20.0,
+              25.5
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [
+            "kublai"
+          ],
+          "camera": {
+            "at": [
+              20,
+              18
+            ],
+            "looks_at": [
+              20,
+              26
+            ],
+            "framing": "Medium, low angle"
+          },
+          "action": "Kublai Khan leans forward on his throne, curious about these two Latin merchants.",
+          "sees": {
+            "throne": "filling the lower frame"
+          },
+          "places": {
+            "kublai": [
+              18.8,
+              26.0
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              17,
+              20
+            ],
+            "looks_at": [
+              21,
+              21
+            ],
+            "framing": "Medium close"
+          },
+          "action": "A courtier lays a gold tablet in Niccolò's open hands; Maffeo kneels beside him, watching.",
+          "where": {
+            "niccolo": "the man receiving the tablet, on the right",
+            "maffeo": "the man on the left, beside him"
+          },
+          "places": {
+            "niccolo": [
+              19.55,
+              20.12
+            ],
+            "maffeo": [
+              19.3,
+              21.09
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              20,
+              20
+            ],
+            "looks_at": [
+              20,
+              22
+            ],
+            "framing": "Close-up"
+          },
+          "action": "The gold tablet in Niccolò's hands: a long gold plate with rounded ends, a hole at the top for its cord, engraved with vertical Uyghur-Mongol script; no animal on it.",
+          "places": {
+            "tablet": [
+              20.0,
+              21.5
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

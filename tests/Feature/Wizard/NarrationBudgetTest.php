@@ -107,6 +107,25 @@ class NarrationBudgetTest extends TestCase
         );
     }
 
+    public function test_an_admin_edits_past_the_allowance_without_being_charged(): void
+    {
+        // Bart 2026-11-27: "it says I'm out of credits, while I am a super user". The allowance
+        // guards our bill against a teacher; an admin is us.
+        [, $lesson, $scene] = $this->lessonWithScript('Original narration text.');
+        $lesson->update(['narration_edit_characters' => NarrationBudget::FREE_CHARACTERS_PER_LESSON]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $script = str_repeat('An entirely different script. ', 20);
+
+        Livewire::actingAs($admin)
+            ->test(Step3SceneConfigurator::class, ['lesson' => $lesson])
+            ->call('selectScene', $scene->id)
+            ->call('updateSceneScript', $script, $scene->id)
+            ->assertNotDispatched('scene:script-rejected');
+
+        $this->assertSame(trim($script), (string) $scene->refresh()->script_segment);
+        $this->assertSame(NarrationBudget::FREE_CHARACTERS_PER_LESSON, NarrationBudget::spentOn($lesson->refresh()));
+    }
+
     public function test_a_refused_edit_is_not_charged(): void
     {
         // Otherwise a teacher who hits the wall keeps being billed for edits that never happened.

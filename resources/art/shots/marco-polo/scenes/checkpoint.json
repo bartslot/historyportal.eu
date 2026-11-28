@@ -1,0 +1,219 @@
+{
+  "scene": "checkpoint",
+  "title": "The checkpoint",
+  "script": "project files: new-scenes/storyboard-order.md, item 3",
+  "place": "A Mongol road post in western Asia, about 1272.",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "The tablet got them 'whatever they stood in need of'; homeward they had escorts of '200 horsemen'.",
+      "No particular checkpoint is in Polo: this scene is our dramatisation of what the tablet did."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/checkpoint.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      400,
+      200
+    ],
+    "light": "afternoon sun from the west (left)",
+    "landmarks": [
+      {
+        "id": "post",
+        "label": "Mongol road post",
+        "at": [
+          280,
+          100
+        ],
+        "size": 20,
+        "note": "a few felt tents and a pole with a horsetail standard beside the road",
+        "height": 8
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the caravan, from the west",
+        "points": [
+          [
+            40,
+            100
+          ],
+          [
+            260,
+            100
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "checkpoint-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              120,
+              60
+            ],
+            "looks_at": [
+              280,
+              100
+            ],
+            "framing": "Wide"
+          },
+          "action": "Two Mongol guards sit ON HORSEBACK side by side across the road in front of the post, blocking it; EACH guard holds his own lance upright (two guards, two lances); the Polos' caravan halts in front of them. TRUE SCALE: a horse stands about 1.45 m at the withers, its back level with a standing man's shoulder, its body longer than a man is tall; a rider's legs hang down past the horse's belly; a yurt is about 6 m across and twice a man's height.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red in front",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
+          },
+          "sees": {
+            "post": "ahead, right of centre"
+          },
+          "places": {
+            "marco": [
+              158.08,
+              72.61
+            ],
+            "niccolo": [
+              158.81,
+              69.7
+            ],
+            "maffeo": [
+              159.53,
+              66.79
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 3,
+          "who": [
+            "niccolo",
+            "niccolo-horse"
+          ],
+          "camera": {
+            "at": [
+              250,
+              85
+            ],
+            "looks_at": [
+              262,
+              100
+            ],
+            "framing": "Medium"
+          },
+          "action": "Niccolò holds up the gold tablet from the saddle toward the Mongol officer: a long flat gold plate with rounded ends, as long as his forearm, held naturally upright in one hand by its lower end, like showing a pass, its face turned toward the officer so he can read it (not a cup, not a box, not tilted flat or sideways). Niccolò and his black horse at true scale: a full-sized horse (head and neck as long as Niccolò's arm), Niccolò seated, not oversized against it. TRUE SCALE: a horse stands about 1.45 m at the withers, its back level with a standing man's shoulder, its body longer than a man is tall; a rider's legs hang down past the horse's belly; a yurt is about 6 m across and twice a man's height.",
+          "where": {
+            "niccolo-horse": "Niccolò's mount, a black horse seen close: an all-black face with no white star and no blaze, at most a faint grey smudge on the forehead"
+          },
+          "places": {
+            "niccolo": [
+              254.06,
+              92.0
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 3,
+          "who": [],
+          "camera": {
+            "at": [
+              270,
+              110
+            ],
+            "looks_at": [
+              262,
+              100
+            ],
+            "framing": "Medium, reverse angle"
+          },
+          "action": "The Mongol officer sees the tablet and gives a respectful nod.",
+          "places": {
+            "officer": [
+              265.0,
+              103.75
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              240,
+              80
+            ],
+            "looks_at": [
+              280,
+              100
+            ],
+            "framing": "Medium wide"
+          },
+          "action": "Post-station horses: two Mongol guards lead three fresh saddled post horses toward the Polos by the reins. These are the station's horses, plain duns and light browns, NOT the Polos' own chestnut, black and grey. The Polos stand on foot at the left, side by side, a step back; Marco watches, amazed. Keep it uncluttered: five people and three horses, all legs clear and on the ground, nobody overlapping a horse's head. TRUE SCALE: a horse stands about 1.45 m at the withers, its back level with a standing man's shoulder, its body longer than a man is tall; a rider's legs hang down past the horse's belly; a yurt is about 6 m across and twice a man's height. The three post horses are full-sized, never pony- or toy-sized next to the men.",
+          "where": {
+            "marco": "the young man in white, left",
+            "niccolo": "the man in red, centre",
+            "maffeo": "the man in blue, right"
+          },
+          "places": {
+            "marco": [
+              252.52,
+              88.5
+            ],
+            "niccolo": [
+              253.42,
+              86.71
+            ],
+            "maffeo": [
+              254.31,
+              84.92
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "scene": "pamir",
+  "title": "The Roof of the World",
+  "script": "project files: new-scenes/storyboard-order.md, item 6 (scene 5008)",
+  "place": "The high Pamir plateau, about 1273 (Polo, Book 1 ch. 32): so high and cold that fire burns badly; wild argali sheep with great horns.",
+  "accuracy": {
+    "checked": "2026-11-26",
+    "by": "Claude with ChatGPT (text only)",
+    "source": "Marco Polo, Travels, Yule-Cordier ed. (Project Gutenberg #10636); Claude with ChatGPT (text only), 2026-11-26",
+    "findings": [
+      "Polo: 'the highest place in the world'; argali with horns 'good six palms'; no birds; fire does not 'cook food so effectually'; twelve days with no habitations; heaps of horns as way markers.",
+      "Polo does not mention yaks here: the caravan's own horses, mules and Bactrian camels carry the loads."
+    ],
+    "report": "~/BartsMedia/historyportal/topics/marco-polo/v3/review/accuracy/pamir.md"
+  },
+  "layout": {
+    "status": "Draft blocking for the storyboard (Nov 26 2026); distances are a first proposal.",
+    "approved": {
+      "by": "bart",
+      "date": "2026-11-26",
+      "how": "standing approval, 23:25: \"can you just not wait for my approval every time, and continue making all the storyboards that we need?\""
+    },
+    "size": [
+      2000,
+      1000
+    ],
+    "light": "cold clear light, low sun from the south",
+    "landmarks": [
+      {
+        "id": "peaks",
+        "label": "snow peaks",
+        "at": [
+          1000,
+          950
+        ],
+        "size": 1500,
+        "note": "a long wall of snow mountains to the north",
+        "height": 1500
+      },
+      {
+        "id": "lake",
+        "label": "high lake",
+        "at": [
+          1300,
+          500
+        ],
+        "size": 300,
+        "note": "a frozen-edged lake on the plateau",
+        "height": 1
+      }
+    ],
+    "routes": [
+      {
+        "who": [
+          "marco",
+          "niccolo",
+          "maffeo"
+        ],
+        "label": "the caravan, west to east",
+        "points": [
+          [
+            200,
+            300
+          ],
+          [
+            1700,
+            350
+          ]
+        ]
+      }
+    ]
+  },
+  "boards": [
+    {
+      "id": "pamir-a",
+      "kind": "bright",
+      "grid": [
+        2,
+        2
+      ],
+      "size": [
+        1672,
+        941
+      ],
+      "cells": [
+        {
+          "shot": 1,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo",
+            "marco-horse",
+            "niccolo-horse",
+            "maffeo-horse"
+          ],
+          "camera": {
+            "at": [
+              400,
+              100
+            ],
+            "looks_at": [
+              1000,
+              700
+            ],
+            "framing": "Very wide"
+          },
+          "action": "The caravan tiny on the endless high plain under the snow peaks; horses, mules and Bactrian camels carry the loads; grass by the lake, no birds, a heap of argali horns marks the way.",
+          "where": {
+            "marco": "the rider in white",
+            "niccolo": "the rider in red",
+            "maffeo": "the rider in blue",
+            "marco-horse": "Marco's mount, a red-brown chestnut, however small in the frame",
+            "niccolo-horse": "Niccolò's mount, a black horse, however small in the frame",
+            "maffeo-horse": "Maffeo's mount, a PALE dapple grey, however small in the frame: light grey body, darker legs, the lightest of the three horses, never dark"
+          },
+          "sees": {
+            "peaks": "across the horizon"
+          },
+          "places": {
+            "marco": [
+              677.19,
+              388.5
+            ],
+            "niccolo": [
+              682.84,
+              382.84
+            ],
+            "maffeo": [
+              688.5,
+              377.19
+            ]
+          }
+        },
+        {
+          "shot": 2,
+          "seconds": 4,
+          "who": [],
+          "camera": {
+            "at": [
+              900,
+              300
+            ],
+            "looks_at": [
+              1100,
+              450
+            ],
+            "framing": "Wide"
+          },
+          "action": "A herd of argali with huge curling horns stands on a slope and watches the travellers.",
+          "places": {
+            "argali": [
+              932.0,
+              324.0
+            ]
+          }
+        },
+        {
+          "shot": 3,
+          "seconds": 4,
+          "who": [
+            "marco",
+            "niccolo",
+            "maffeo"
+          ],
+          "camera": {
+            "at": [
+              1250,
+              380
+            ],
+            "looks_at": [
+              1290,
+              400
+            ],
+            "framing": "Medium, evening camp"
+          },
+          "action": "Evening camp: the fire burns small and pale; the Polos hold their hands to it, wrapped in plain felt cloaks with fur only at the collar (draw the fur as a few short strokes, not dense texture).",
+          "where": {
+            "marco": "the young man in white fur coat",
+            "niccolo": "the man in red",
+            "maffeo": "the man in blue"
+          },
+          "places": {
+            "marco": [
+              1256.62,
+              384.65
+            ],
+            "niccolo": [
+              1257.16,
+              383.58
+            ],
+            "maffeo": [
+              1257.69,
+              382.5
+            ]
+          }
+        },
+        {
+          "shot": 4,
+          "seconds": 3,
+          "who": [
+            "marco"
+          ],
+          "camera": {
+            "at": [
+              1280,
+              390
+            ],
+            "looks_at": [
+              1290,
+              398
+            ],
+            "framing": "Close-up"
+          },
+          "action": "Close-up: Marco, a plain felt cloak with a fur collar over his white tunic, watches a pot that barely steams, the food slow to cook, his breath white in the cold.",
+          "places": {
+            "marco": [
+              1281.64,
+              391.95
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@
         'arrows' => __('Arrows'),
         'shapes' => __('Shapes'),
         \App\Livewire\Wizard\IconPanel::CUTOUTS => __('My cut-outs'),
+        \App\Livewire\Wizard\IconPanel::LESSON => __('In this lesson'),
     ];
 @endphp
 

@@ -66,7 +66,7 @@ class OpenAiLlmService
 
         if (! is_array($parsed)) {
             Log::warning('[OpenAiLlmService] non-JSON response', ['raw' => substr($raw, 0, 500)]);
-            throw new RuntimeException('OpenAI returned non-JSON (likely truncated — raise max_tokens for this call).');
+            throw new \App\Services\Llm\LlmBadJsonException('OpenAI returned non-JSON (likely truncated — raise max_tokens for this call).');
         }
         return $parsed;
     }

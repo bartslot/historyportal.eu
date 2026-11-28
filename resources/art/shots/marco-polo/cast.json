@@ -1,0 +1,261 @@
+{
+  "lesson": "marco-polo",
+  "media": "topics/marco-polo/v3",
+  "about": "The cast of the Marco Polo lesson. Looks are copied from the History Lines skill (bart, 24-26 Nov 2026). A sheet is null until bart approves one; palette colours are sampled from the approved colour sheet with `shots.py palette`, never typed in by hand.",
+  "characters": {
+    "marco": {
+      "name": "Marco Polo",
+      "kind": "person",
+      "look": "Marco is 17: young and beardless, shoulder-length chestnut hair, white linen tunic with a lace at the neck, brown belt, brown satchel on a strap, brown leggings, soft boots. In snow: a white fur-lined coat over the same. White is his colour; no one else in this lesson wears white.",
+      "horse": "marco-horse",
+      "signature_parts": [
+        "tunic"
+      ],
+      "sheets": {
+        "ink": {
+          "path": "sheets/marco/ink-03.png",
+          "sha256": "748860428404bcf48b3f99f8610319fbd142f06afae12be00834575d6287cc29",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/marco/colour-03.png",
+          "sha256": "7d6b1a58efe9c2ed676e0f470fec0cc475050743739548cb11d52c29b568a811",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {
+        "tunic": [
+          0.58,
+          0.38,
+          0.63,
+          0.45
+        ]
+      },
+      "palette": {
+        "tunic": "#FCFAF8"
+      },
+      "tell": "17, beardless, shoulder-length chestnut hair, white tunic, no cloak",
+      "signature": "white"
+    },
+    "niccolo": {
+      "name": "Niccolò Polo (Marco's father)",
+      "kind": "person",
+      "look": "Marco's father, clearly the oldest. Broad square face, heavy brows, wide nose, lined forehead, full rounded grey beard, warm steady look. Hair grey. Cream under-tunic, rust-orange cap, red cloak with a gold clasp.",
+      "signature": "red",
+      "horse": "niccolo-horse",
+      "signature_parts": [
+        "cloak"
+      ],
+      "reserved": [
+        "cloak"
+      ],
+      "sheets": {
+        "ink": {
+          "path": "sheets/niccolo/ink-05.png",
+          "sha256": "a2762f6fc3b45e1d46b309d543468e43e74158fe0d8aead7adaf70c37a3a2f44",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/niccolo/colour-05.png",
+          "sha256": "202e266e7677eec407bc5c063bc2fc5039a30e78522e454b5abd5a1233b30399",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {
+        "cloak": [
+          0.78,
+          0.2,
+          0.82,
+          0.3
+        ]
+      },
+      "palette": {
+        "cloak": "#D84238"
+      },
+      "tell": "oldest, broad square face, full rounded grey beard, rust-orange cap, red cloak"
+    },
+    "maffeo": {
+      "name": "Maffeo Polo (Marco's uncle)",
+      "kind": "person",
+      "look": "The uncle with the sharp eyes, younger-looking than Niccolò and never like him. Long narrow face, high cheekbones, thin slightly hooked nose, keen narrow eyes, short trimmed pointed beard, near-black. Hair near-black, cropped short. Cream under-tunic, blue cap, blue cloak with a gold clasp, in every picture. No one else wears a blue cap.",
+      "signature": "blue",
+      "horse": "maffeo-horse",
+      "signature_parts": [
+        "cloak",
+        "cap"
+      ],
+      "reserved": [
+        "cloak",
+        "cap"
+      ],
+      "sheets": {
+        "ink": {
+          "path": "sheets/maffeo/ink-03.png",
+          "sha256": "3afba537bfa51de29211ba024459ed4103a001c6ba2ed50f253da570d21417f5",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/maffeo/colour-03.png",
+          "sha256": "f1412f8e7b8f4ba34ac94f5f3e3eab13a50fbc93e7e5a7355f8e18757fce1c30",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {
+        "cloak": [
+          0.76,
+          0.27,
+          0.82,
+          0.36
+        ],
+        "cap": [
+          0.46,
+          0.625,
+          0.5,
+          0.65
+        ]
+      },
+      "palette": {
+        "cloak": "#6B8CB7",
+        "cap": "#6E8EB8"
+      },
+      "tell": "long narrow face, short pointed near-black beard, blue cap, blue cloak"
+    },
+    "marco-horse": {
+      "name": "Marco's horse",
+      "kind": "horse",
+      "look": "A smaller, lively, compact chestnut: red-brown, lighter mane, a white blaze and one white sock on the left hind. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
+      "sheets": {
+        "ink": {
+          "path": "sheets/marco-horse/ink-03.png",
+          "sha256": "942151f46dd5bff4955b04b020f3c7aada322ec969b49e90ffe27597926d8f46",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/marco-horse/colour-03.png",
+          "sha256": "a65937206b93ebd9e63eb62f504777beb51fe30250b9682616d942c6d7b8e447",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {},
+      "palette": {},
+      "tell": "the smallest, compact red-brown horse with a blaze and one white hind sock"
+    },
+    "niccolo-horse": {
+      "name": "Niccolò's horse",
+      "kind": "horse",
+      "look": "A black horse with the same build and size as Marco's chestnut (bart, Nov 26: the bay was too small): black coat, black mane and tail, only a small, faint, irregular natural white patch on the forehead. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
+      "sheets": {
+        "ink": {
+          "path": "sheets/niccolo-horse/ink-09.png",
+          "sha256": "d0f6861eaa49de1b027b5440481b6abf2efcf7a0c725b3c606b4771faf6c6044",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        },
+        "colour": {
+          "path": "sheets/niccolo-horse/colour-09.png",
+          "sha256": "a494b125b08761ad22ffb26f679ad078a2bf8ad7a4cc287104b6464b7cc2fd73",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-26"
+          }
+        }
+      },
+      "swatches": {},
+      "palette": {},
+      "tell": "the black horse, built like the chestnut"
+    },
+    "maffeo-horse": {
+      "name": "Maffeo's horse",
+      "kind": "horse",
+      "look": "A lean, long-necked dapple grey with a dark muzzle and darker legs. A small, sturdy horse of the region (13 to 14 hands), never a big European warhorse.",
+      "sheets": {
+        "ink": {
+          "path": "sheets/maffeo-horse/ink-02-fixed.png",
+          "sha256": "03e59109e0d24f21b5b95e9e48d558cf071c76ca5b78474ce72f9c220901f603",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27",
+            "note": "fixed by hand by bart (\"also the other horse the grey is fixed\", 27 Nov)"
+          }
+        },
+        "colour": {
+          "path": "sheets/maffeo-horse/colour-02-fixed.png",
+          "sha256": "608b067344c62309206009fc96aec4e380f38c29c9dde4763bfdd94aa1767b98",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27",
+            "note": "fixed by hand by bart (\"also the other horse the grey is fixed\", 27 Nov)"
+          }
+        }
+      },
+      "swatches": {},
+      "palette": {},
+      "tell": "the lean long-necked dapple grey with a dark muzzle"
+    },
+    "kublai": {
+      "name": "Kublai Khan",
+      "kind": "person",
+      "look": "The Great Khan, about 51 in 1266. Polo: 'neither tall nor short', 'the eyes black and fine'. A broad round face, a thin moustache and a small chin beard, a sturdy build. A long robe of dark gold silk with a fur-trimmed collar, a broad belt, a fur-trimmed Mongol hat. Seated on a throne in every shot he is in.",
+      "tell": "the seated ruler in dark gold silk with a fur-trimmed hat",
+      "signature": "gold",
+      "signature_parts": [
+        "robe"
+      ],
+      "sheets": {
+        "ink": {
+          "path": "sheets/kublai/ink-02.png",
+          "sha256": "d3af0e4999f705d582f6b9661c0e900cb7dbcf27ed498a723cd02c0a9fbffa97",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27"
+          }
+        },
+        "colour": {
+          "path": "sheets/kublai/colour-02.png",
+          "sha256": "8c9fab02e8d76d20635f0976295a89e82d512a4359719bb78d6cf799ff9504ec",
+          "approved": {
+            "by": "bart",
+            "date": "2026-11-27"
+          }
+        }
+      },
+      "swatches": {
+        "robe": [
+          0.56,
+          0.4,
+          0.64,
+          0.52
+        ]
+      },
+      "palette": {
+        "robe": "#EFAD3A"
+      }
+    }
+  }
+}

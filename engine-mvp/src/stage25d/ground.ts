@@ -96,6 +96,49 @@ export function landTop(data: Uint8ClampedArray | Uint8Array, w: number, h: numb
   return 0
 }
 
+/** How far below the land start a far strip's ground line is looked for (share of its height), and how much brighter
+ *  the rows under it must be than the rows over it (mean luminance) to count. */
+const GROUND_LINE_SPAN = 0.25
+const GROUND_LINE_STEP = 0.075
+/** Where a far strip's painted ground meets what stands on it (share of the height, from the top): the foot of its
+ *  treeline, houses, cliffs or town, where the darker band above gives way to lighter field, beach or water. landTop
+ *  is the first mostly painted row: the treetops on a farmland strip (Bart 11-24: the floor, the far bushes and the
+ *  grid all met the trees there). Looked for in a band under landTop; with no clear step, landTop itself. A strip
+ *  whose line this misses carries its own (Asset.ground_line). */
+export function groundLine(data: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
+  const top = landTop(data, w, h)
+  const lum = new Float32Array(h).fill(NaN)
+  const stepX = Math.max(1, Math.floor(w / 400))
+  for (let y = 0; y < h; y++) {
+    let sum = 0, n = 0
+    for (let x = 0; x < w; x += stepX) {
+      const i = (y * w + x) * 4
+      if (data[i + 3] > 128) { sum += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255; n++ }
+    }
+    if (n) lum[y] = sum / n
+  }
+  const mean = (a: number, b: number) => { let sum = 0, n = 0; for (let y = a; y < b; y++) if (!Number.isNaN(lum[y])) { sum += lum[y]; n++ } return n ? sum / n : NaN }
+  const k = Math.max(2, Math.round(h * 0.03))
+  const from = Math.round(top * h) + k, to = Math.min(h - k - 1, Math.round((top + GROUND_LINE_SPAN) * h))
+  let best = 0, at = -1
+  for (let y = from; y <= to; y++) {
+    const step = mean(y, y + k) - mean(y - k, y)
+    if (step > best) { best = step; at = y }
+  }
+  return best > GROUND_LINE_STEP ? at / h : top
+}
+
+/** Ground lines measured by eye for the far strips the luminance step misses (share of the height, from the top),
+ *  used when library.json carries no ground_line of its own. Kept here because the live library is edited on the
+ *  server, not in the repo. */
+export const GROUND_LINES: Readonly<Record<string, number>> = {
+  'trb-forest-backdrop-01': 0.88,
+  'bb-town-skyline-01': 0.62,
+  'pa-snowy-peaks-backdrop-01': 0.92,
+  'river-euphrates-01': 0.37,
+  'bg-mohua-01': 0.62,
+}
+
 /** Eye height of the house camera (layout HOUSE.y): a flat stain is foreshortened by eye / distance. */
 const EYE_M = 1.6
 /** On screen a stain is this share of its width tall, at any distance. */
