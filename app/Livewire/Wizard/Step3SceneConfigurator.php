@@ -522,6 +522,7 @@ class Step3SceneConfigurator extends Component
             $this->activeDioramaId = null;
             $this->activeStage25dLayer = null;
             $this->activeBalloonId = null;
+            $this->activeArtGroupId = null;
             $this->activePanel = 0;
         }
 
@@ -1488,6 +1489,7 @@ class Step3SceneConfigurator extends Component
             $this->activeLayerId = null;
             $this->activeDioramaId = null;
             $this->activeStage25dLayer = null;
+            $this->activeArtGroupId = null;
             $this->activeTextId = $selectedTextId;
             $this->panelView = 'scene';
             unset($this->activeText);

@@ -105,4 +105,29 @@ class ArtworkGroupsTest extends TestCase
         $this->assertSame(['pivot_x' => 0.0, 'pivot_y' => 2.0, 'group' => 'g1'], ArtworkGroups::layerPayload(['pivot_x' => 0, 'pivot_y' => 5, 'group' => 'g1']));
         $this->assertSame(['pivot_x' => null, 'pivot_y' => null, 'group' => null], ArtworkGroups::layerPayload(['kind' => 'arrow', 'group' => 'g1']));
     }
+
+    public function test_a_new_id_skips_ids_used_in_other_panels_or_still_keyed(): void
+    {
+        $other = ArtworkGroups::group($this->shot(), [1], 20.0, 50.0)[0];
+        $config = ['timeline' => ['tracks' => [['target' => 'grp:g2', 'property' => 'x', 'keyframes' => []]]]];
+        $taken = ArtworkGroups::idsInUse([$other], $config);
+        $this->assertSame(['g1', 'g2'], $taken);
+
+        [, $id] = ArtworkGroups::group($this->shot(), [2], 80.0, 50.0, ArtworkGroups::ASPECT, $taken);
+        $this->assertSame('g3', $id);
+    }
+
+    public function test_drop_gone_tracks_only_drops_the_keys_of_groups_that_went(): void
+    {
+        $before = ArtworkGroups::group(ArtworkGroups::group($this->shot(), [1], 20.0, 50.0)[0], [2], 80.0, 50.0)[0];
+        $after = $before;
+        $after['groups'] = [$before['groups'][1]];
+        $config = ['timeline' => ['tracks' => [
+            ['target' => 'grp:g1', 'property' => 'x', 'keyframes' => []],
+            ['target' => 'grp:g2', 'property' => 'x', 'keyframes' => []],
+        ]]];
+
+        $left = ArtworkGroups::dropGoneTracks($config, [$before], [$after]);
+        $this->assertSame(['grp:g2'], array_column($left['timeline']['tracks'], 'target'));
+    }
 }

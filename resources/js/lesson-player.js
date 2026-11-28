@@ -2876,6 +2876,14 @@ Alpine.data('lessonGame', (lesson) => ({
       // The background keyed like a layer: a split scene's panels, else the scene's own picture.
       const single = this._backgroundSource()
       const bgSink = { patch: (id, values) => (_split ? _split.backgrounds() : single).patch(id, values) }
+      // Pictures and their groups: a split scene's groups live in its panels' overlays (group ids are unique per scene).
+      const artSink = {
+        setLayerProp: (id, property, value) => this._artLayer?.setLayerProp?.(id, property, value),
+        setGroupProp: (id, property, value) => {
+          this._artLayer?.setGroupProp?.(id, property, value)
+          for (const p of _split?.panels ?? []) p.overlay?.setGroupProp?.(id, property, value)
+        },
+      }
       const camEnd = cameraEnd(timeline)
       const clock = () => (scene.audio_url && (this._audio || this._preVoiceHold) ? this._sceneTime() : (performance.now() - started) / 1000)
       const step = () => {
@@ -2883,7 +2891,7 @@ Alpine.data('lessonGame', (lesson) => ({
         const t = clock()
         const frame = frameAt(timeline, t)
         if (t > camEnd) delete frame.camera   // the camera move is over: let the voyage camera have the map
-        applyFrameTo(frame, { art: this._artLayer, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
+        applyFrameTo(frame, { art: artSink, text: this._textLayer, bal: balloonSink, bg: bgSink, map: (_mapShown ? _mapInstance?.map : null) ?? _voyageInstance?.map, territory: _mapShown ? _mapInstance : null })
         this._timelineRaf = requestAnimationFrame(step)
       }
       this._timelineRaf = requestAnimationFrame(step)

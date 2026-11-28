@@ -34,11 +34,13 @@ trait GroupsSceneArtwork
         }
         $ids = array_values(array_unique(array_map('intval', $assetIds)));
         $made = null;
-        $shots = collect($scene->shots ?? [])->map(function (array $shot, int $i) use ($scene, $ids, $pivotX, $pivotY, $aspect, &$made): array {
+        // A new id is new to the whole scene: no other panel has it, and no stale key of a deleted group moves it.
+        $taken = ArtworkGroups::idsInUse((array) ($scene->shots ?? []), (array) ($scene->config ?? []));
+        $shots = collect($scene->shots ?? [])->map(function (array $shot, int $i) use ($scene, $ids, $pivotX, $pivotY, $aspect, $taken, &$made): array {
             if (! $this->editsShot($scene, $i)) {
                 return $shot;
             }
-            [$shot, $id] = ArtworkGroups::group($shot, $ids, $pivotX, $pivotY, self::stageAspect($aspect));
+            [$shot, $id] = ArtworkGroups::group($shot, $ids, $pivotX, $pivotY, self::stageAspect($aspect), $taken);
             $made ??= $id;
 
             return $shot;

@@ -152,9 +152,10 @@ final class ArtworkGroups
      *
      * @param  array<string,mixed>  $shot
      * @param  list<int>  $assetIds
+     * @param  list<string>  $taken  ids not to hand out: groups in the scene's other panels, and ids its timeline still keys
      * @return array{0: array<string,mixed>, 1: ?string} the shot, and the new group's id (null: nothing to group)
      */
-    public static function group(array $shot, array $assetIds, float $pivotX, float $pivotY, float $aspect = self::ASPECT): array
+    public static function group(array $shot, array $assetIds, float $pivotX, float $pivotY, float $aspect = self::ASPECT, array $taken = []): array
     {
         $layers = array_values((array) ($shot['layers'] ?? []));
         $picked = [];
@@ -169,7 +170,7 @@ final class ArtworkGroups
         $groups = self::of($shot);
         $byId = array_column($groups, null, 'id');
         $n = 1;
-        while (isset($byId['g'.$n])) {
+        while (isset($byId['g'.$n]) || in_array('g'.$n, $taken, true)) {
             $n++;
         }
         $id = 'g'.$n;
@@ -312,6 +313,45 @@ final class ArtworkGroups
      * @param  array<string,mixed>  $config
      * @return array<string,mixed>
      */
+    /**
+     * Every group id the scene uses: in any shot, or still keyed on its timeline (target grp:<id>).
+     *
+     * @param  array<int,mixed>  $shots  @param  array<string,mixed>  $config  @return list<string>
+     */
+    public static function idsInUse(array $shots, array $config): array
+    {
+        $ids = [];
+        foreach ($shots as $shot) {
+            if (is_array($shot)) {
+                $ids = [...$ids, ...array_column(self::of($shot), 'id')];
+            }
+        }
+        foreach ((array) ($config['timeline']['tracks'] ?? []) as $t) {
+            $target = is_array($t) ? ($t['target'] ?? null) : null;
+            if (is_string($target) && str_starts_with($target, 'grp:')) {
+                $ids[] = substr($target, 4);
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Drop the timeline tracks of every group that was in $before and is gone from $after.
+     *
+     * @param  array<int,mixed>  $before  @param  array<int,mixed>  $after  @param  array<string,mixed>  $config
+     * @return array<string,mixed>
+     */
+    public static function dropGoneTracks(array $config, array $before, array $after): array
+    {
+        $gone = array_diff(self::idsInUse($before, []), self::idsInUse($after, []));
+        foreach ($gone as $id) {
+            $config = self::dropTracks($config, $id);
+        }
+
+        return $config;
+    }
+
     public static function dropTracks(array $config, string $id): array
     {
         $timeline = $config['timeline'] ?? null;

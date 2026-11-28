@@ -167,4 +167,28 @@ class GroupSceneArtworkTest extends TestCase
         $this->assertSame(1.0, $layer['pivot_y']);
         $this->assertSame(15.0, $layer['rotation']);
     }
+
+    public function test_detaching_the_last_picture_of_an_animated_group_drops_its_keys_and_its_id_is_not_reused(): void
+    {
+        $wizard = $this->wizard()->call('groupArtworkLayers', [$this->ids[0]], 40.0, 60.0);
+        $wizard->call('setTimeline', ['duration' => 10, 'tracks' => [
+            ['target' => 'grp:g1', 'property' => 'x', 'keyframes' => [['time' => 0, 'value' => 0], ['time' => 2, 'value' => 20]]],
+        ]]);
+        $wizard->call('detachArtwork', $this->ids[0]);
+        $this->assertSame([], $this->scene->fresh()->config['timeline']['tracks']);
+
+        $wizard->call('groupArtworkLayers', [$this->ids[1]], 60.0, 60.0)->assertSet('activeArtGroupId', 'g1');
+    }
+
+    public function test_opening_another_scene_closes_the_group_panel(): void
+    {
+        $other = Scene::create([
+            'lesson_id' => $this->scene->lesson_id, 'order' => 2, 'kind' => 'narration', 'status' => 'ready',
+            'image_path' => 'yard.png', 'config' => [],
+        ]);
+        $this->wizard()->call('groupArtworkLayers', [$this->ids[0]], 40.0, 60.0)
+            ->assertSet('activeArtGroupId', 'g1')
+            ->call('selectScene', $other->id)
+            ->assertSet('activeArtGroupId', null);
+    }
 }

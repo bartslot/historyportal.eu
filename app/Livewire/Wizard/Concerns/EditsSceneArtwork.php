@@ -311,7 +311,12 @@ trait EditsSceneArtwork
             ->values()
             ->all();
 
-        $scene->update(['shots' => $shots]);
+        // A group pruned with its last picture takes its timeline keys with it.
+        $config = ArtworkGroups::dropGoneTracks((array) ($scene->config ?? []), (array) ($scene->shots ?? []), $shots);
+        $scene->update(['shots' => $shots, 'config' => $config]);
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
         $this->selectSceneInternal($scene->id);
     }
 
