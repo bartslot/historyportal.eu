@@ -2,7 +2,6 @@
 
 @php
     $id = (string) ($text['id'] ?? '');
-    $isPanel = ($text['kind'] ?? null) === 'rect';
     $isGlass = ($text['bg'] ?? 'none') === 'glass';
     // Pinning needs a map under the label — offer it on the two scene kinds that have one.
     $isMapScene = in_array($scene->kind ?? null, ['map', 'voyage'], true);
@@ -32,7 +31,6 @@
     $labelCol = 'style="width: var(--settings-panel-label-w, 7.5rem)" class="shrink-0 text-xs font-semibold uppercase tracking-wide text-panel-label"';
 @endphp
 
-@if (! $isPanel)
 {{-- A TEXT layer gets the picture layer's inspector shell (Figma `settings-Text Panel`, 1674:4695):
      a title bar, Format | Animate, and the same banded sections built from the same row components
      (settings-section, segmented, color-field, stepper-field, slider-row, toggle-row), with the
@@ -304,56 +302,3 @@
                 class="btn btn-sm w-full rounded-full">{{ __('Show in timeline') }}</button>
     </div>
 </div>
-@else
-
-
-<div class="space-y-3 text-sm" wire:key="text-inspector-{{ $id }}">
-    <button type="button" wire:click="clearActiveText"
-            x-on:click="window.__lessonTextLayer?.select?.(null); window.__clearLayerGuard?.()"
-            class="inline-flex items-center gap-1 text-xs text-panel-hint transition hover:text-primary">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-        {{ __('Scene') }}
-    </button>
-
-    @if ($isPanel)
-        <div>
-            <h3 class="font-semibold text-primary">{{ __('Background panel') }}</h3>
-            <p class="mt-1 text-prose leading-tight text-panel-hint">{{ __('A readable backing panel behind the scene text.') }}</p>
-        </div>
-
-        <label class="form-control">
-            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Side') }}</span>
-            <select class="select select-sm select-bordered mt-1 bg-slate-900"
-                    wire:change="updateSceneText(@js($id), 'side', $event.target.value)">
-                <option value="left" @selected(($text['side'] ?? 'left') === 'left')>{{ __('Left') }}</option>
-                <option value="right" @selected(($text['side'] ?? 'left') === 'right')>{{ __('Right') }}</option>
-            </select>
-        </label>
-
-        <div class="flex items-center justify-between gap-3">
-            <span class="text-2xs uppercase tracking-widest text-panel-hint">{{ __('Color') }}</span>
-            {{-- @input patches the canvas overlay instantly while the picker is open;
-                 wire:change persists once the teacher commits. --}}
-            <input type="color" value="{{ $text['color'] ?? '#0f172a' }}"
-                   @input="window.__lessonTextLayer?.patch?.(@js($id), { color: $event.target.value })"
-                   wire:change="updateSceneText(@js($id), 'color', $event.target.value)"
-                   class="h-8 w-12 cursor-pointer rounded border border-slate-700 bg-slate-900 p-1" />
-        </div>
-
-        <x-ui.slider-row :label="__('Opacity')" :min="0.1" :max="0.95" :step="0.05"
-                         :value="$text['opacity'] ?? 0.5"
-                         :display="rtrim(rtrim(number_format((float) ($text['opacity'] ?? 0.5), 2), '0'), '.')"
-                         :on-input="'window.__lessonTextLayer?.patch?.(' . \Illuminate\Support\Js::from($id) . ', { opacity: parseFloat($event.target.value) })'"
-                         :on-change="'updateSceneText(' . \Illuminate\Support\Js::from($id) . ', \'opacity\', $event.target.value)'" />
-    @endif
-
-    <button type="button" wire:click="deleteSceneText(@js($id))"
-            wire:confirm="{{ $isPanel ? __('Remove this background panel?') : __('Remove this text?') }}"
-            class="text-xs text-error/80 underline transition hover:text-error">
-        {{ $isPanel ? __('Remove panel') : __('Remove text') }}
-    </button>
-</div>
-
-@endif

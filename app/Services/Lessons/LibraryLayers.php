@@ -55,7 +55,7 @@ class LibraryLayers
         'kind', 'depth', 'scale', 'height', 'x', 'y', 'opacity', 'blend', 'edge', 'white_key', 'rotation',
         'blur', 'wobble', 'sway', 'grayscale', 'tint', 'tint_opacity', 'z',
         'anim', 'anim_delay', 'anim_duration', 'anim_ease',
-        'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
+        'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration', 'anim_until',
         'ambient', 'ambient_speed', 'ambient_amount',
         'flip_x', 'flip_y', ...LayerSitIn::KEYS,
         'occlude',

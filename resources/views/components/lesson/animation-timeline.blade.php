@@ -163,23 +163,24 @@
              something to a teacher. --}}
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
             <span data-scrub class="cursor-col-resize select-none text-xs uppercase tracking-wide text-panel-label">{{ __('Time') }}</span>
-            {{-- Bound one way and rounded: x-model showed 10.444200824847092 in a field two
+            {{-- In seconds like the ruler (Bart, 2026-11-28: "6000 is a bit much, we should do 6.00").
+                 Bound one way and rounded: x-model showed 10.444200824847092 in a field two
                  digits wide. The model keeps the full precision; the teacher does not need it. --}}
-            <input type="number" min="0" step="10" :max="Math.round(duration * 1000)"
-                   :value="Math.round(time * 1000)"
-                   x-on:change="seek(Number($event.target.value) / 1000)"
+            <input type="number" min="0" step="0.01" :max="duration.toFixed(2)"
+                   :value="time.toFixed(2)"
+                   x-on:change="seek(Number($event.target.value))"
                    data-timeline-time
                    class="h-8 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
-            <span class="text-xs text-panel-label">ms</span>
+            <span class="text-xs text-panel-label">s</span>
         </label>
 
         <label class="flex shrink-0 items-center gap-1.5" data-scrub-scope>
             <span data-scrub class="cursor-col-resize select-none text-xs uppercase tracking-wide text-panel-label">{{ __('Length') }}</span>
-            <input type="number" min="100" step="100" :value="Math.round(duration * 1000)"
-                   x-on:change="setDuration(Number($event.target.value) / 1000)"
+            <input type="number" min="0.1" step="0.01" :value="duration.toFixed(2)"
+                   x-on:change="setDuration(Number($event.target.value))"
                    data-timeline-duration
                    class="h-8 w-16 rounded bg-panel-hairline px-1.5 text-right font-mono text-2xs text-panel-value focus:outline-none" />
-            <span class="text-xs text-panel-label">ms</span>
+            <span class="text-xs text-panel-label">s</span>
         </label>
         {{-- A Length the teacher typed stays theirs; this hands it back to the narration's clip. --}}
         <template x-if="durationSet && narrationLength > 0">
@@ -564,7 +565,7 @@
                      data-timeline-ruler x-on:pointerdown="startScrub($event)">
                     <template x-for="t in ticks" :key="t">
                         <span class="absolute top-1.5 text-xs text-panel-label"
-                              :style="`left: ${xOf(t)}px`" x-text="Math.round(t * 1000)"></span>
+                              :style="`left: ${xOf(t)}px`" x-text="t.toFixed(2)"></span>
                     </template>
                     {{-- Word marks: faint, because they are somewhere to land, not something to read. --}}
                     <template x-for="span in spans" :key="span.start">
@@ -660,13 +661,18 @@
                                     </span>
                                 </div>
                             </template>
+                            {{-- Both ends take a drag (Bart, 2026-11-28: the end could not be found): a figure's end is
+                                 the scene's end until it is dragged in, then the figure leaves there. The press area is
+                                 taller than the 6 px bar, so an end is easy to take. --}}
                             <template x-if="object.kind === 'bal' || object.kind === 'art'">
-                                <div class="absolute flex cursor-grab items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25"
+                                <div class="absolute flex cursor-grab items-center"
                                      :data-timeline-span="object.target"
                                      x-on:pointerdown="startBar($event, object.target)"
-                                     :style="barStyle(barOf(object.target)) + '; bottom: 3px; height: 6px'">
-                                    <span class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
-                                    <span x-show="object.kind === 'bal'" class="pointer-events-none h-full w-1.5 bg-base-content/50"></span>
+                                     :style="barStyle(barOf(object.target)) + '; bottom: 0; height: 12px'">
+                                    <div class="flex h-1.5 w-full items-center justify-between overflow-hidden rounded-[3px] bg-base-content/25">
+                                        <span class="h-full w-2 cursor-ew-resize bg-base-content/60" data-timeline-span-start></span>
+                                        <span class="h-full w-2 cursor-ew-resize bg-base-content/60" data-timeline-span-end></span>
+                                    </div>
                                 </div>
                             </template>
                         </div>

@@ -106,7 +106,7 @@ test('screenshots', async ({ page }) => {
   await page.mouse.up();
   await page.waitForTimeout(600);
   await page.locator(`[data-timeline-key="${TARGET}:x"]`).click();
-  await page.locator('[data-timeline-time]').fill('2000');
+  await page.locator('[data-timeline-time]').fill('2');
   await page.locator('[data-timeline-time]').dispatchEvent('change');
   await page.locator(`[data-timeline-key="${TARGET}:opacity"]`).click();
   await settle(page);
@@ -217,7 +217,7 @@ for (const locale of LOCALES) {
         await settle(page);
         expect(await keyCount(page, 'x')).toBe(1);
 
-        await page.locator('[data-timeline-time]').fill('1500');
+        await page.locator('[data-timeline-time]').fill('1.5');
         await page.locator('[data-timeline-time]').dispatchEvent('change');
         const field = page.locator(`${row} [data-timeline-value]`);
         await field.locator('..').click();

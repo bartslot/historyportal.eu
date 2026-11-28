@@ -257,7 +257,7 @@ const seek = async (page: Page, ms: number) => {
   if (!await page.locator('[data-timeline-time]').isVisible()) await page.getByRole('tab', { name: 'Timeline', exact: true }).click()
   const input = page.locator('[data-timeline-time]')
   await input.click()
-  await input.fill(String(ms))
+  await input.fill(String(ms / 1000))
   await input.press('Enter')
   await page.waitForTimeout(500)
 }

@@ -80,6 +80,8 @@ final class LayerEntrances
             'anim_out_delay' => $float('anim_out_delay'),
             'anim_out_ease' => $text('anim_out_ease'),
             'anim_out_duration' => $int('anim_out_duration'),
+            // When the layer leaves the stage, in scene seconds: the end of its timeline bar. Null: the scene's end.
+            'anim_until' => $float('anim_until'),
         ];
     }
 

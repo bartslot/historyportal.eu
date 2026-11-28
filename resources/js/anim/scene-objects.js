@@ -19,7 +19,7 @@ export const textObjects = () => {
     target: `${t.kind === 'rect' ? 'rect' : 'text'}:${t.id}`,
     kind: t.kind === 'rect' ? 'rect' : 'text',
     label: t.kind === 'rect'
-      ? `${t.side || 'left'} half`
+      ? `${t.side === 'full' ? 'Full screen' : `${t.side || 'left'} half`}`
       : (String(t.text || 'Text').trim().slice(0, 28) || 'Text'),
   }))
 }
@@ -33,6 +33,8 @@ export const artObjects = () => {
     kind: l.kind === 'arrow' ? 'arw' : 'art',
     label: l.title || (l.embed ? (l.embed.type === 'video' ? 'Video' : '3D model') : 'Icon'),
     entrance: entranceSpan(l),
+    // When it leaves the stage: the end of its layer bar. null: it stays to the scene's end.
+    until: Number.isFinite(l.anim_until) ? l.anim_until : null,
   }))
 }
 

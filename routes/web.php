@@ -261,6 +261,9 @@ Route::middleware(['auth', \App\Http\Middleware\RestrictGuestDemo::class])
 
         Route::get('/lessons', \App\Http\Controllers\Teacher\LessonIndexController::class)->name('lessons.index');
 
+        // Offline lessons: only on a laptop that keeps local copies (OFFLINE_SYNC_REMOTE); 404 on the live site.
+        Route::get('/offline', \App\Livewire\OfflineLessons::class)->name('offline');
+
         // Sharing a lesson with every teacher, and taking a copy of one somebody shared. Deliberately
         // NOT model-scoped in the route: who may share and who may copy are different questions, and
         // LessonSharing answers each of them. See LessonSharingController.

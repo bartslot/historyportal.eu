@@ -844,3 +844,31 @@ describe('the narration lane (Bart, 2026-11-24)', () => {
     expect(p.play).toHaveBeenCalled()
   })
 })
+
+describe("a figure's layer bar has two ends (Bart, 2026-11-28)", () => {
+  const withFigure = (until = null) => {
+    const p = panel()
+    p.$wire = { setTimeline: vi.fn(), setLayerAppearAt: vi.fn(), setLayerLeaveAt: vi.fn() }
+    p.objects = [{ target: 'art:7', kind: 'art', entrance: { from: 2, to: 2.6 }, until }]
+    return p
+  }
+
+  it('ends at the scene end until it is dragged in', () => {
+    expect(withFigure().barOf('art:7')).toEqual({ from: 2, to: 8 })
+    expect(withFigure(5).barOf('art:7')).toEqual({ from: 2, to: 5 })
+  })
+
+  it('saves an end dragged in as when the figure leaves, and only that', () => {
+    const p = withFigure()
+    p.commitBar('art:7', { target: 'art:7', from: 2, to: 6.04 })
+    expect(p.$wire.setLayerLeaveAt).toHaveBeenCalledWith(7, 6)
+    expect(p.$wire.setLayerAppearAt).not.toHaveBeenCalled()
+    expect(p.barOf('art:7')).toEqual({ from: 2, to: 6 })
+  })
+
+  it('dragged back to the scene end, it stays to the end again', () => {
+    const p = withFigure(5)
+    p.commitBar('art:7', { target: 'art:7', from: 2, to: 8 })
+    expect(p.$wire.setLayerLeaveAt).toHaveBeenCalledWith(7, null)
+  })
+})

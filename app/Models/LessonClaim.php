@@ -14,11 +14,11 @@ final class LessonClaim extends Model
 
     protected $table = 'lesson_claims';
 
-    protected $fillable = ['lesson_id', 'user_id', 'target', 'seen_at'];
+    protected $fillable = ['lesson_id', 'user_id', 'target', 'seen_at', 'offline_until'];
 
     protected function casts(): array
     {
-        return ['seen_at' => 'datetime'];
+        return ['seen_at' => 'datetime', 'offline_until' => 'datetime'];
     }
 
     public function user(): BelongsTo

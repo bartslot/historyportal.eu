@@ -53,6 +53,8 @@
                 ['label' => 'All lessons', 'route' => 'teacher.lessons.index'],
                 ['label' => 'New Lesson', 'route' => 'teacher.lessons.create'],
                 ['label' => 'Create with AI', 'route' => 'teacher.lessons.chat'],
+                // Only on a laptop that keeps offline copies of live lessons (config/offline_sync.php).
+                ...(config('offline_sync.remote') !== '' ? [['label' => 'Offline lessons', 'route' => 'teacher.offline']] : []),
             ],
         ];
         $items[] = [

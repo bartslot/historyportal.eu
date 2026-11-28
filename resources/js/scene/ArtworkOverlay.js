@@ -130,7 +130,7 @@ const WATCHED = [
   ...SYNCABLE,
   'depth', 'anchor', 'lng', 'lat', 'arrow_style',
   'anim', 'anim_delay', 'anim_ease', 'anim_duration',
-  'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration',
+  'anim_out', 'anim_out_delay', 'anim_out_ease', 'anim_out_duration', 'anim_until',
 ]
 
 /** 'painted' or 'straight'. Unset: a whole picture (cover) is painted, a cut-out is not. */
@@ -156,7 +156,7 @@ export function layersSignature(layers) {
     l.blur, l.opacity, l.blend, l.edge,
     l.white_key, l.grayscale, l.tint, l.tint_opacity,
     l.anim, l.anim_delay, l.anim_ease, l.anim_duration,
-    l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration,
+    l.anim_out, l.anim_out_delay, l.anim_out_ease, l.anim_out_duration, l.anim_until,
     l.kind,
     l.ambient, l.ambient_speed, l.ambient_amount,
     l.anchor, l.lng, l.lat, JSON.stringify(l.geo || null), l.flip_x, l.flip_y,
@@ -217,6 +217,8 @@ export function normalizeLayer(l) {
         anim_out_delay: Number.isFinite(l.anim_out_delay) ? l.anim_out_delay : 0,
         anim_out_ease: l.anim_out_ease || 'exit',
         anim_out_duration: Number.isFinite(l.anim_out_duration) ? l.anim_out_duration : 600,
+        // When it leaves the stage, scene seconds: the end of its timeline bar. null: the scene's end.
+        anim_until: Number.isFinite(l.anim_until) ? l.anim_until : null,
         rotation: Number.isFinite(l.rotation) ? l.rotation : 0,   // degrees, clockwise
         // Mirroring. Absent means unflipped, so every layer authored before the Angle control
         // renders exactly as it did. NOT a rotation: a 180-degree turn and a horizontal flip look
@@ -1381,6 +1383,18 @@ export class ArtworkOverlay {
         baseTransform: this._transform(item),
       })
       if (anim) this._entrances.push(anim)
+    }
+  }
+
+  /**
+   * At scene time `t` (seconds), hide each layer whose timeline bar has ended. The player's scene clock
+   * calls this every frame, so a pause or a seek lands where the editor's timeline shows it.
+   */
+  applyLeaves(t) {
+    for (const item of this._layers) {
+      if (!Number.isFinite(item.anim_until)) continue
+      const el = this.host.querySelector(`[data-layer-id="${artObjId(item.asset_id)}"]`)
+      if (el) el.style.visibility = t >= item.anim_until ? 'hidden' : ''
     }
   }
 

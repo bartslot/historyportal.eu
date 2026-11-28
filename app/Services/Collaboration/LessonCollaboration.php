@@ -71,13 +71,15 @@ final class LessonCollaboration
 
         $existing = LessonClaim::query()->where('lesson_id', $lesson->id)->where('target', $target);
         if (! $force) {
-            $existing->where(fn ($q) => $q->where('user_id', $user->id)
+            // A scene this account took offline is left as it is: its seen_at runs until offline_until, and
+            // refreshing it to now would let it lapse 20 seconds later (OfflineSync).
+            $existing->where(fn ($q) => $q->where(fn ($mine) => $mine->where('user_id', $user->id)->whereNull('offline_until'))
                 ->orWhere('seen_at', '<', $now->copy()->subSeconds(self::CLAIM_SECONDS)));
         }
 
         // One conditional UPDATE, then an INSERT the unique index can refuse: two people clicking the same
         // scene in the same second end with exactly one holder, on Postgres and MySQL alike.
-        if ($existing->update(['user_id' => $user->id, 'seen_at' => $now]) === 0) {
+        if ($existing->update(['user_id' => $user->id, 'seen_at' => $now, 'offline_until' => null]) === 0) {
             LessonClaim::query()->insertOrIgnore([
                 'lesson_id' => $lesson->id, 'user_id' => $user->id, 'target' => $target, 'seen_at' => $now,
             ]);
@@ -153,8 +155,8 @@ final class LessonCollaboration
             ['target', 'seen_at'],
         );
 
-        // Moving to another scene frees the one you were on.
-        LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)
+        // Moving to another scene frees the one you were on; scenes taken offline stay held.
+        LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->whereNull('offline_until')
             ->when($target !== null, fn ($q) => $q->where('target', '!=', $target))
             ->delete();
 
@@ -173,7 +175,7 @@ final class LessonCollaboration
     /** The tab closed (sendBeacon): free everything at once instead of waiting for the claim to lapse. */
     public function leave(Lesson $lesson, User $user): void
     {
-        LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->delete();
+        LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->whereNull('offline_until')->delete();
         LessonPresence::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->delete();
         $this->nudge($lesson, $user);
     }
@@ -183,6 +185,53 @@ final class LessonCollaboration
     {
         $this->claim($lesson, $user, $target, force: true);
         $this->nudge($lesson, $user);
+    }
+
+    /**
+     * Take the lesson offline: every scene and the title screen stay held by $user until $until, except what
+     * somebody else is editing right now. Returns the targets left with others.
+     *
+     * A held scene is a claim whose seen_at is $until, so every "is it held" check above sees it without
+     * knowing about offline at all; offline_until marks it, so the ping and a closed tab leave it alone.
+     *
+     * @return list<string>
+     */
+    public function takeOffline(Lesson $lesson, User $user, Carbon $until): array
+    {
+        $targets = [self::TITLE, ...$lesson->scenes()->pluck('id')->map(fn ($id) => self::sceneTarget((int) $id))];
+        $busy = [];
+        foreach ($targets as $target) {
+            if ($this->claim($lesson, $user, $target) !== (int) $user->id) {
+                $busy[] = $target;
+
+                continue;
+            }
+            LessonClaim::query()->where('lesson_id', $lesson->id)->where('target', $target)->where('user_id', $user->id)
+                ->update(['seen_at' => $until, 'offline_until' => $until]);
+        }
+        $this->nudge($lesson, $user);
+
+        return $busy;
+    }
+
+    /** Back online: the scenes $user took offline are free again. */
+    public function releaseOffline(Lesson $lesson, User $user): void
+    {
+        LessonClaim::query()->where('lesson_id', $lesson->id)->where('user_id', $user->id)->whereNotNull('offline_until')->delete();
+        $this->nudge($lesson, $user);
+    }
+
+    /** Somebody other than $user holds this scene right now, online or offline: their name, else null. */
+    public function heldByOther(Lesson $lesson, User $user, string $target): ?string
+    {
+        $claim = LessonClaim::query()
+            ->where('lesson_id', $lesson->id)->where('target', $target)
+            ->where('user_id', '!=', $user->id)
+            ->where('seen_at', '>=', now()->subSeconds(self::CLAIM_SECONDS))
+            ->with('user:id,name')
+            ->first();
+
+        return $claim === null ? null : ($claim->user->name ?? '');
     }
 
     /**
@@ -241,6 +290,11 @@ final class LessonCollaboration
         $holder = $holderId !== null
             ? collect($people)->firstWhere('id', $holderId) ?? self::person(User::query()->find($holderId))
             : null;
+        // Held by somebody who took the lesson offline: the overlay says so, Take over still works.
+        if ($holder !== null) {
+            $holder['offline'] = LessonClaim::query()->where('lesson_id', $lesson->id)->where('target', $target)
+                ->whereNotNull('offline_until')->exists();
+        }
 
         $sceneId = self::sceneIdOf($target);
         $scene = $sceneId !== null ? $lesson->scenes()->whereKey($sceneId)->first(['id', 'updated_at', 'image_path', 'config']) : null;
