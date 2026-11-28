@@ -152,6 +152,9 @@ class BackingPanelTest extends TestCase
             ->assertSeeHtml('data-panel-side="bottom"')
             ->assertSeeHtml('data-panel-preset')
             ->assertSeeHtml('data-panel-image="/storage/library/kublai.webp"')
-            ->assertSeeHtml('data-panel-wash="blot-004"');
+            ->assertSeeHtml('data-panel-wash="blot-004"')
+            // The readouts keep their whole numbers: size 50 %, frosted glass 10 px.
+            ->assertSeeHtml('>50<')
+            ->assertSeeHtml('>10<');
     }
 }

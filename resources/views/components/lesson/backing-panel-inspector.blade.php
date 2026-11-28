@@ -45,7 +45,12 @@
         $images ? ['id' => 'closeup', 'label' => __('Close-up'), 'fields' => ['image' => $images[0], 'focus' => ['x' => 50, 'y' => 40, 'zoom' => 2.5], 'opacity' => 1, 'blur' => 0, 'wash' => 'blot-004']] : null,
     ]));
     $live = fn (string $expr) => "window.__lessonTextLayer?.patch?.({$tid}, {$expr})";
-    $num = fn ($v, int $dp = 0) => rtrim(rtrim(number_format((float) $v, $dp, '.', ''), '0'), '.') ?: '0';
+    // Trim only a decimal part's zeros: 50 stays 50, 2.50 reads 2.5.
+    $num = function ($v, int $dp = 0): string {
+        $s = number_format((float) $v, $dp, '.', '');
+
+        return str_contains($s, '.') ? rtrim(rtrim($s, '0'), '.') : $s;
+    };
 @endphp
 
 {{-- A backing panel's inspector (Bart, 2026-11-28): where it sits, like the scene's Layout strip; what
@@ -61,6 +66,7 @@
         },
         preset(fields) {
             if (fields.wash === 'blot-005' && fields.image === null && this.sceneColors[0]) fields = { ...fields, color: this.sceneColors[0] }
+            if ('image' in fields) this.fill = fields.image ? 'image' : 'color'
             {{ $live('fields') }}
             $wire.call('patchBackingPanel', {{ $tid }}, fields)
         },
