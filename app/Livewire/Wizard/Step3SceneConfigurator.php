@@ -55,6 +55,7 @@ use App\Services\Lessons\TeamGameSpec;
 use App\Services\SceneArrow;
 use App\Services\Stage25d\LayerKeys;
 use App\Services\Stage25d\StageSet;
+use App\Services\Support\BackingPanel;
 use App\Services\Support\LayerAmbient;
 use App\Services\Support\LayerFrames;
 use App\Services\Support\LayerSitIn;
@@ -1221,10 +1222,12 @@ class Step3SceneConfigurator extends Component
         }
 
         $text = $texts[$index];
-        $isPanel = ($text['kind'] ?? null) === 'rect';
-        $valid = $isPanel
-            ? ['side', 'color', 'opacity']
-            : ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w', ...TextLayerStyle::FIELDS];
+        if (($text['kind'] ?? null) === 'rect') {
+            $this->patchBackingPanel($textId, [$field => $value]);
+
+            return;
+        }
+        $valid = ['font', 'size', 'align', 'list', 'bg', 'bgColor', 'bgOpacity', 'x', 'y', 'w', ...TextLayerStyle::FIELDS];
 
         if (! in_array($field, $valid, true)) {
             return;
@@ -1232,7 +1235,7 @@ class Step3SceneConfigurator extends Component
 
         // A text's colour, scale, rotation, blur, blend, opacity and grayscale (TextLayerStyle).
         // Anything that is not a value for the field leaves the text as it was.
-        $next = ! $isPanel && in_array($field, TextLayerStyle::FIELDS, true)
+        $next = in_array($field, TextLayerStyle::FIELDS, true)
             ? TextLayerStyle::value($field, $value)
             : match ($field) {
                 'font' => in_array($value, self::TEXT_FONTS, true) ? $value : $text['font'] ?? 'sans',
@@ -1240,10 +1243,9 @@ class Step3SceneConfigurator extends Component
                 'align' => in_array($value, ['left', 'center', 'right'], true) ? $value : $text['align'] ?? 'left',
                 'list' => in_array($value, ['none', 'bullet', 'number'], true) ? $value : $text['list'] ?? 'none',
                 'bg' => $value === true || $value === '1' || $value === 1 ? 'glass' : 'none',
-                'bgColor', 'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
+                'bgColor' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value)
                 ? (string) $value : ($text[$field] ?? '#0f172a'),
-                'bgOpacity', 'opacity' => max(0.05, min(0.95, (float) $value)),
-                'side' => $value === 'right' ? 'right' : 'left',
+                'bgOpacity' => max(0.05, min(0.95, (float) $value)),
                 'x', 'y' => max(0.0, min(100.0, (float) $value)),
                 'w' => max(5.0, min(95.0, (float) $value)),
             };
@@ -1262,6 +1264,69 @@ class Step3SceneConfigurator extends Component
         unset($this->activeText);
 
         $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $text);
+    }
+
+    /**
+     * Change a backing panel (BackingPanel): one field from a control, or several at once from a
+     * preset. A picture must be one of this scene's own (BackingPanel::sceneImages); anything else
+     * is ignored, never stored.
+     *
+     * @param  array<string, mixed>  $fields
+     */
+    public function patchBackingPanel(string $textId, array $fields): void
+    {
+        if (! $this->selectedSceneId || $textId === '') {
+            return;
+        }
+
+        $scene = $this->lesson->scenes()->findOrFail($this->selectedSceneId);
+        $config = $scene->config ?? [];
+        $texts = array_values((array) ($config['texts'] ?? []));
+        $index = collect($texts)->search(fn ($text) => is_array($text) && ($text['id'] ?? null) === $textId);
+        if ($index === false || ! is_array($texts[$index]) || ($texts[$index]['kind'] ?? null) !== 'rect') {
+            return;
+        }
+
+        $fields = array_intersect_key($fields, array_flip(BackingPanel::FIELDS));
+        if (array_key_exists('image', $fields) && $fields['image'] !== null
+            && ! in_array($fields['image'], BackingPanel::sceneImages($scene->image_path, $config, $scene->shots), true)) {
+            unset($fields['image']);
+        }
+        if ($fields === []) {
+            return;
+        }
+
+        $merged = array_filter([...$texts[$index], ...$fields], fn ($v) => $v !== null);
+        // A new picture starts on its middle, uncropped.
+        if (array_key_exists('image', $fields) && ! array_key_exists('focus', $fields)) {
+            unset($merged['focus']);
+        }
+        $text = BackingPanel::clean($merged, $textId);
+        $texts[$index] = $text;
+        $config['texts'] = $texts;
+        $scene->update(['config' => $config]);
+
+        if ($this->selectedScene !== null) {
+            $this->selectedScene['config'] = $config;
+        }
+        unset($this->activeText);
+
+        // The canvas merges a patch into what it has, so a field the panel dropped goes as null.
+        $patch = [...array_fill_keys(BackingPanel::FIELDS, null), ...$text];
+        $this->dispatch('scene:text-updated', sceneId: $scene->id, textId: $textId, text: $patch);
+    }
+
+    /**
+     * The pictures a backing panel can crop: this scene's own (BackingPanel::sceneImages).
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function backingPanelImages(): array
+    {
+        $scene = $this->selectedSceneId ? $this->lesson->scenes()->find($this->selectedSceneId) : null;
+
+        return $scene ? BackingPanel::sceneImages($scene->image_path, $scene->config ?? [], $scene->shots) : [];
     }
 
     /** Put one of the ready-made looks (App\Support\TextStylePresets) on a text layer: one click, one save. */
@@ -1391,20 +1456,9 @@ class Step3SceneConfigurator extends Component
                 // The id is client-supplied — cap it so it can't be used to bloat scene config.
                 $id = mb_substr((string) ($t['id'] ?? ''), 0, 64);
 
-                // Rectangle backing panel: side + colour + opacity, no text/position.
+                // Backing panel: where it sits, its colour or picture, its watercolour edge (BackingPanel).
                 if (($t['kind'] ?? null) === 'rect') {
-                    $color = (string) ($t['color'] ?? '#0f172a');
-
-                    return [
-                        'id' => $id !== '' ? $id : uniqid('rect_'),
-                        'kind' => 'rect',
-                        'side' => ($t['side'] ?? 'left') === 'right' ? 'right' : 'left',
-                        'color' => preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : '#0f172a',
-                        'opacity' => max(0.1, min(0.95, (float) ($t['opacity'] ?? 0.5))),
-                        // Stacking order set by drag-reorder in the object list (higher = in front).
-                        'z' => (isset($t['z']) && is_numeric($t['z'])) ? (int) $t['z'] : null,
-                        ...(! empty($t['locked']) ? ['locked' => 1] : []),
-                    ];
+                    return BackingPanel::clean($t, $id !== '' ? $id : uniqid('rect_'));
                 }
 
                 // Map-pinned labels carry a lng/lat; anything malformed falls back to screen.
