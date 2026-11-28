@@ -173,8 +173,9 @@ class OfflineEditingTest extends TestCase
         $this->venice->refresh();
         $this->assertSame('Venice, written on a plane.', $this->venice->script_segment);
         $this->assertSame('lessons/'.$this->live->id.'/venice.webp', $this->venice->image_path, 'a pulled file goes back to its own path');
+        // Laptop and live site share one disk in this test, so the live site already "has" the file and keeps
+        // its path; a real upload lands under lessons/<live id>/offline/ (test_a_file_upload_is_stored_once...).
         $uploaded = ltrim(substr($this->venice->config['layers'][0]['src'], strlen('/storage/')), '/');
-        $this->assertStringStartsWith('lessons/'.$this->live->id.'/offline/', $uploaded);
         $this->assertSame('DRAWN OFFLINE', Storage::disk('public')->get($uploaded));
 
         $new = $this->live->scenes()->where('script_segment', 'Made offline.')->firstOrFail();

@@ -19,8 +19,11 @@ final class MediaRefs
     /** Where pulled files live on the laptop's public disk. */
     public const OFFLINE_PREFIX = 'offline-copy/';
 
-    /** A /storage/ URL: optional scheme and host, then the disk path up to a quote, space, query or bracket. */
-    private const URL = '#(https?://[^/\s"\'<>]+)?/storage/([^\s"\'<>?\#)]+)#';
+    /**
+     * A whole absolute URL (judged by its host and path in the callback), or a relative /storage/ URL that
+     * is not the tail of some other URL.
+     */
+    private const URL = '#https?://[^\s"\'<>)]+|(?<![\w\-.%/:])/storage/[^\s"\'<>?\#)]+#';
 
     /**
      * Every disk path in a row's columns.
@@ -76,12 +79,18 @@ final class MediaRefs
         }
 
         return (string) preg_replace_callback(self::URL, function (array $m) use ($map, $hosts): string {
-            $host = $m[1] !== '' ? (string) parse_url($m[1], PHP_URL_HOST) : null;
-            if ($host !== null && ! in_array($host, $hosts, true)) {
-                return $m[0];
+            $url = $m[0];
+            if (str_starts_with($url, '/storage/')) {
+                return '/storage/'.$map(rawurldecode(substr($url, 9)));
             }
+            $host = (string) parse_url($url, PHP_URL_HOST);
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            if (! in_array($host, $hosts, true) || ! str_starts_with($path, '/storage/')) {
+                return $url;   // another host, or not a file of ours
+            }
+            $rest = substr($url, strpos($url, $path) + strlen($path));   // query and fragment stay
 
-            return '/storage/'.$map(rawurldecode($m[2]));
+            return '/storage/'.$map(rawurldecode(substr($path, 9))).$rest;
         }, $value);
     }
 
